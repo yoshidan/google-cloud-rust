@@ -2,9 +2,9 @@ use crate::reader::{AsyncIterator, Reader, StatementReader, StreamReader, TableR
 use crate::session_pool::{ManagedSession, SessionHandle, SessionManager};
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, ReadOptions, Transaction};
+use crate::value::TimestampBound;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
-use internal::spanner::v1::transaction_options::read_only::TimestampBound;
 use internal::spanner::v1::{
     commit_request, execute_sql_request::QueryMode, request_options, result_set_stats,
     transaction_options, transaction_selector, BeginTransactionRequest, CommitRequest,
@@ -39,7 +39,7 @@ impl DerefMut for ReadOnlyTransaction {
 impl ReadOnlyTransaction {
     pub async fn single(
         session: ManagedSession,
-        tb: Option<transaction_options::read_only::TimestampBound>,
+        tb: TimestampBound,
     ) -> Result<ReadOnlyTransaction, Status> {
         return Ok(ReadOnlyTransaction {
             base_tx: Transaction {
@@ -48,12 +48,7 @@ impl ReadOnlyTransaction {
                 transaction_selector: TransactionSelector {
                     selector: Some(transaction_selector::Selector::SingleUse(
                         TransactionOptions {
-                            mode: Some(transaction_options::Mode::ReadOnly(
-                                transaction_options::ReadOnly {
-                                    return_read_timestamp: true,
-                                    timestamp_bound: tb,
-                                },
-                            )),
+                            mode: Some(transaction_options::Mode::ReadOnly(tb.into())),
                         },
                     )),
                 },
@@ -64,18 +59,13 @@ impl ReadOnlyTransaction {
 
     pub async fn begin(
         mut session: ManagedSession,
-        tb: Option<transaction_options::read_only::TimestampBound>,
+        tb: TimestampBound,
         options: CallOptions,
     ) -> Result<ReadOnlyTransaction, Status> {
         let request = BeginTransactionRequest {
             session: session.session.name.to_string(),
             options: Some(TransactionOptions {
-                mode: Some(transaction_options::Mode::ReadOnly(
-                    transaction_options::ReadOnly {
-                        return_read_timestamp: true,
-                        timestamp_bound: tb,
-                    },
-                )),
+                mode: Some(transaction_options::Mode::ReadOnly(tb.into())),
             }),
             request_options: Transaction::create_request_options(options.priority),
         };
@@ -129,7 +119,7 @@ impl DerefMut for BatchReadOnlyTransaction {
 impl BatchReadOnlyTransaction {
     pub async fn begin(
         mut session: ManagedSession,
-        tb: Option<TimestampBound>,
+        tb: TimestampBound,
         options: CallOptions,
     ) -> Result<BatchReadOnlyTransaction, Status> {
         match ReadOnlyTransaction::begin(session, tb, options).await {

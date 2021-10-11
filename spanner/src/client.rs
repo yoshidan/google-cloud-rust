@@ -10,6 +10,7 @@ use crate::statement::ToKind;
 use crate::transaction::{CallOptions, QueryOptions, Transaction};
 use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
+use crate::value::TimestampBound;
 use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, TimeZone, Timelike, Utc, Weekday};
 use futures_util::future::BoxFuture;
 use gax::call_option::{Backoff, BackoffRetryer, CallSettings};
@@ -18,7 +19,6 @@ use gax::{call_option, invoke as retryer};
 use internal::spanner::v1::execute_sql_request::QueryMode;
 use internal::spanner::v1::mutation::{Operation, Write};
 use internal::spanner::v1::request_options::Priority;
-use internal::spanner::v1::transaction_options::read_only::TimestampBound;
 use internal::spanner::v1::transaction_options::Mode::ReadOnly;
 use internal::spanner::v1::{
     commit_request, request_options, result_set_stats, transaction_options, transaction_selector,
@@ -66,7 +66,7 @@ pub struct ReadOnlyTransactionOption {
 impl Default for ReadOnlyTransactionOption {
     fn default() -> Self {
         ReadOnlyTransactionOption {
-            timestamp_bound: TimestampBound::Strong(true),
+            timestamp_bound: TimestampBound::strong_read(),
             call_options: CallOptions::default(),
         }
     }
@@ -207,7 +207,7 @@ impl Client {
 
     pub async fn single(&self) -> Result<ReadOnlyTransaction, TxError> {
         let session = self.get_session().await?;
-        let result = ReadOnlyTransaction::single(session, None).await?;
+        let result = ReadOnlyTransaction::single(session, TimestampBound::strong_read()).await?;
         Ok(result)
     }
 
@@ -221,8 +221,7 @@ impl Client {
         };
         let session = self.get_session().await?;
         let result =
-            ReadOnlyTransaction::begin(session, Some(opt.timestamp_bound), opt.call_options)
-                .await?;
+            ReadOnlyTransaction::begin(session, opt.timestamp_bound, opt.call_options).await?;
         Ok(result)
     }
 
@@ -236,8 +235,7 @@ impl Client {
         };
         let session = self.get_session().await?;
         let result =
-            BatchReadOnlyTransaction::begin(session, Some(opt.timestamp_bound), opt.call_options)
-                .await?;
+            BatchReadOnlyTransaction::begin(session, opt.timestamp_bound, opt.call_options).await?;
         Ok(result)
     }
 
