@@ -1,4 +1,10 @@
 use crate::apiv1::spanner_client::Client;
+use crate::client::ReadWriteTransactionOption;
+use crate::session_pool::{ManagedSession, SessionHandle, SessionManager};
+use crate::statement::Statement;
+use crate::transaction::{CallOptions, QueryOptions, Transaction};
+use async_trait::async_trait;
+use chrono::NaiveDateTime;
 use gax::call_option::CallSettings;
 use gax::invoke::AsTonicStatus;
 use internal::spanner::v1::spanner_client::SpannerClient;
@@ -10,12 +16,6 @@ use internal::spanner::v1::{
     RequestOptions, ResultSet, ResultSetStats, RollbackRequest, Session, TransactionOptions,
     TransactionSelector,
 };
-use crate::client::ReadWriteTransactionOption;
-use crate::session_pool::{SessionHandle, SessionManager, ManagedSession};
-use crate::statement::Statement;
-use crate::transaction::{CallOptions, QueryOptions, Transaction};
-use async_trait::async_trait;
-use chrono::NaiveDateTime;
 use prost_types::Struct;
 use std::future::Future;
 use std::net::Shutdown::Read;

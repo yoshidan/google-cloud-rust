@@ -1,6 +1,6 @@
-use gax::{call_option as gax_opt };
-use internal::spanner::v1 as internal;
+use gax::call_option as gax_opt;
 use gcpauth;
+use internal::spanner::v1 as internal;
 use once_cell::sync::Lazy;
 use std::any::Any;
 use std::convert::TryInto;

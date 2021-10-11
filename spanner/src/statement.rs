@@ -1,16 +1,16 @@
-use internal::spanner::v1::struct_type::Field;
-use internal::spanner::v1::{StructType, Type, TypeCode};
+use crate::value::CommitTimestamp;
 use base64::encode;
 use chrono::{DateTime, LocalResult, NaiveDate, NaiveDateTime, TimeZone, Utc};
 use chrono_tz::OffsetComponents;
 use gcpauth::token::TokenSource;
+use internal::spanner::v1::struct_type::Field;
+use internal::spanner::v1::{StructType, Type, TypeCode};
 use prost_types::value::Kind;
 use prost_types::value::Kind::StringValue;
 use prost_types::NullValue::NullValue;
 use prost_types::{value, ListValue, Struct, Value};
 use std::any::Any;
 use std::collections::{BTreeMap, HashMap};
-use crate::value::CommitTimestamp;
 
 #[derive(Clone)]
 pub struct Statement {
@@ -29,8 +29,8 @@ impl Statement {
     }
 
     pub fn add_param<T>(&mut self, name: &str, value: T)
-        where
-            T: ToKind,
+    where
+        T: ToKind,
     {
         self.param_types.insert(name.to_string(), T::get_type());
         self.params.insert(
@@ -43,8 +43,8 @@ impl Statement {
 }
 
 fn single_type<T>(code: T) -> Type
-    where
-        T: Into<i32>,
+where
+    T: Into<i32>,
 {
     Type {
         code: code.into(),
@@ -159,8 +159,8 @@ impl ToKind for rust_decimal::Decimal {
 }
 
 impl<T> ToKind for T
-    where
-        T: ToStruct,
+where
+    T: ToStruct,
 {
     fn to_kind(&self) -> Kind {
         let mut fields = BTreeMap::<String, Value>::default();
@@ -187,8 +187,8 @@ impl<T> ToKind for T
 }
 
 impl<T> ToKind for Option<T>
-    where
-        T: ToKind,
+where
+    T: ToKind,
 {
     fn to_kind(&self) -> Kind {
         match self {
@@ -202,8 +202,8 @@ impl<T> ToKind for Option<T>
 }
 
 impl<T> ToKind for Vec<T>
-    where
-        T: ToKind,
+where
+    T: ToKind,
 {
     fn to_kind(&self) -> Kind {
         value::Kind::ListValue(ListValue {

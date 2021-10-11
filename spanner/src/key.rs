@@ -34,7 +34,7 @@ pub fn all_keys() -> KeySet {
             keys: vec![],
             ranges: vec![],
             all: true,
-        }
+        },
     }
 }
 
@@ -82,7 +82,7 @@ impl From<Range> for KeySet {
                 keys: vec![],
                 ranges: vec![key_range.into()],
                 all: false,
-            }
+            },
         }
     }
 }
@@ -107,7 +107,7 @@ impl From<Key> for KeySet {
                 keys: vec![key.values],
                 ranges: vec![],
                 all: false,
-            }
+            },
         }
     }
 }
@@ -120,7 +120,7 @@ impl From<Vec<Key>> for KeySet {
                 keys,
                 ranges: vec![],
                 all: false,
-            }
+            },
         }
     }
 }

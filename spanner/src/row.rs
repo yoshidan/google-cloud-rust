@@ -1,13 +1,13 @@
+use anyhow::{anyhow, Context, Result};
+use chrono::{NaiveDate, NaiveDateTime, TimeZone, Utc};
 use internal::spanner::v1::struct_type::Field;
 use internal::spanner::v1::StructType;
-use chrono::{NaiveDate, NaiveDateTime, TimeZone, Utc};
 use prost_types::value::Kind;
 use prost_types::value::Kind::{StringValue, StructValue};
 use prost_types::{value, ListValue, Value};
 use std::collections::{BTreeMap, HashMap};
 use std::ops::Deref;
 use std::sync::Arc;
-use anyhow::{anyhow, Context, Result};
 
 #[derive(Clone)]
 pub struct Row {
@@ -30,17 +30,17 @@ impl Row {
     }
 
     pub fn column<T>(&self, column_index: usize) -> Result<T>
-        where
-            T: TryFromValue,
+    where
+        T: TryFromValue,
     {
         column(&self.values, &self.fields, column_index)
     }
 
     pub fn column_by_name<T>(&self, column_name: &str) -> Result<T>
-        where
-            T: TryFromValue,
+    where
+        T: TryFromValue,
     {
-        self.column(index(&self.index,column_name)?)
+        self.column(index(&self.index, column_name)?)
     }
 }
 
@@ -74,24 +74,26 @@ impl<'a> Struct<'a> {
     }
 
     pub fn column<T>(&self, column_index: usize) -> Result<T>
-        where
-            T: TryFromValue,
+    where
+        T: TryFromValue,
     {
         column(&self.values.values, &self.metadata.fields, column_index)
     }
 
     pub fn column_by_name<T>(&self, column_name: &str) -> Result<T>
-        where
-            T: TryFromValue,
+    where
+        T: TryFromValue,
     {
-        self.column(index(&self.index,column_name)?)
+        self.column(index(&self.index, column_name)?)
     }
 }
 
 impl TryFromValue for i64 {
     fn try_from(item: &Value, field: &Field) -> Result<Self> {
-        match as_ref(item,field)? {
-            Kind::StringValue(s) => s.parse().map_err(|e| anyhow!("{}: i64 parse error {:?}", field.name, e)),
+        match as_ref(item, field)? {
+            Kind::StringValue(s) => s
+                .parse()
+                .map_err(|e| anyhow!("{}: i64 parse error {:?}", field.name, e)),
             v => kind_to_error(v, field),
         }
     }
@@ -99,7 +101,7 @@ impl TryFromValue for i64 {
 
 impl TryFromValue for f64 {
     fn try_from(item: &Value, field: &Field) -> Result<Self> {
-        match as_ref(item,field)? {
+        match as_ref(item, field)? {
             Kind::NumberValue(s) => Ok(*s),
             v => kind_to_error(v, field),
         }
@@ -108,59 +110,58 @@ impl TryFromValue for f64 {
 
 impl TryFromValue for bool {
     fn try_from(item: &Value, field: &Field) -> Result<Self> {
-        match as_ref(item,field)? {
+        match as_ref(item, field)? {
             Kind::BoolValue(s) => Ok(*s),
-            v => kind_to_error(v, field)
+            v => kind_to_error(v, field),
         }
     }
 }
 
 impl TryFromValue for NaiveDateTime {
     fn try_from(item: &Value, field: &Field) -> Result<Self> {
-        match as_ref(item,field)? {
+        match as_ref(item, field)? {
             Kind::StringValue(s) => chrono::DateTime::parse_from_rfc3339(s)
                 .map(|v| v.naive_utc())
                 .context(format!("{}: datetime parse error ", field.name)),
-            v => kind_to_error(v, field)
+            v => kind_to_error(v, field),
         }
     }
 }
 
 impl TryFromValue for NaiveDate {
     fn try_from(item: &Value, field: &Field) -> Result<Self> {
-        match as_ref(item,field)? {
+        match as_ref(item, field)? {
             Kind::StringValue(s) => chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
                 .context(format!("{}: date parse error ", field.name)),
-            v => kind_to_error(v, field)
+            v => kind_to_error(v, field),
         }
     }
 }
 
 impl TryFromValue for Vec<u8> {
     fn try_from(item: &Value, field: &Field) -> Result<Self> {
-        match as_ref(item,field)? {
+        match as_ref(item, field)? {
             Kind::StringValue(s) => base64::decode(s).map_err(|e| e.into()),
-            v => kind_to_error(v, field)
+            v => kind_to_error(v, field),
         }
     }
 }
 
 impl TryFromValue for String {
     fn try_from(item: &Value, field: &Field) -> Result<Self> {
-        match as_ref(item,field)? {
+        match as_ref(item, field)? {
             Kind::StringValue(s) => Ok(s.to_string()),
-            v => kind_to_error(v, field)
+            v => kind_to_error(v, field),
         }
     }
 }
 
 impl<T> TryFromValue for T
-    where
-        T: TryFromStruct,
+where
+    T: TryFromStruct,
 {
     fn try_from(item: &Value, field: &Field) -> Result<Self> {
-        match as_ref(item,field)?
-        {
+        match as_ref(item, field)? {
             Kind::ListValue(s) => {
                 let maybe_array = match field.r#type.as_ref() {
                     None => return Err(anyhow!("field type must not be none {}", field.name)),
@@ -184,18 +185,17 @@ impl<T> TryFromValue for T
                     Err(e) => Err(e),
                 }
             }
-            v => kind_to_error(v, field)
+            v => kind_to_error(v, field),
         }
     }
 }
 
 impl<T> TryFromValue for Option<T>
-    where
-        T: TryFromValue,
+where
+    T: TryFromValue,
 {
     fn try_from(item: &Value, field: &Field) -> Result<Self> {
-        match as_ref(item,field)?
-        {
+        match as_ref(item, field)? {
             Kind::NullValue(i) => Ok(None),
             _ => Ok(Some(T::try_from(item, field)?)),
         }
@@ -203,55 +203,53 @@ impl<T> TryFromValue for Option<T>
 }
 
 impl<T> TryFromValue for Vec<T>
-    where
-        T: TryFromValue,
+where
+    T: TryFromValue,
 {
     fn try_from(item: &Value, field: &Field) -> Result<Self> {
-        match as_ref(item,field)? {
+        match as_ref(item, field)? {
             Kind::ListValue(s) => s.values.iter().map(|v| T::try_from(v, field)).collect(),
-            v => kind_to_error(v,field)
+            v => kind_to_error(v, field),
         }
     }
 }
 
-fn index(index: &HashMap<String,usize>, column_name: &str) -> Result<usize> {
+fn index(index: &HashMap<String, usize>, column_name: &str) -> Result<usize> {
     match index.get(column_name) {
         Some(column_index) => Ok(*column_index),
         None => Err(anyhow!("no column found: name={}", column_name)),
     }
 }
 
-
 fn column<T>(values: &Vec<Value>, fields: &Vec<Field>, column_index: usize) -> Result<T>
-    where
-        T: TryFromValue,
+where
+    T: TryFromValue,
 {
     if values.len() <= column_index {
         return Err(anyhow!(
-                "invalid column index: index={}, length={}",
-                column_index,
-                values.len()
-            ));
+            "invalid column index: index={}, length={}",
+            column_index,
+            values.len()
+        ));
     }
     if column_index < 0 {
         return Err(anyhow!(
-                "invalid column index: index={}, length={}",
-                column_index,
-                values.len()
-            ));
+            "invalid column index: index={}, length={}",
+            column_index,
+            values.len()
+        ));
     }
     let value = &values[column_index];
     return T::try_from(value, &fields[column_index]);
 }
 
 fn as_ref<'a>(item: &'a Value, field: &'a Field) -> Result<&'a Kind> {
-    item
-        .kind
+    item.kind
         .as_ref()
         .context(format!("{}: no kind found", field.name))
 }
 
-fn kind_to_error<'a,T>(v: &'a value::Kind, field: &'a Field) -> Result<T> {
+fn kind_to_error<'a, T>(v: &'a value::Kind, field: &'a Field) -> Result<T> {
     let actual = match v {
         Kind::StringValue(s) => "StringValue".to_string(),
         Kind::BoolValue(s) => "BoolValue".to_string(),
@@ -260,5 +258,5 @@ fn kind_to_error<'a,T>(v: &'a value::Kind, field: &'a Field) -> Result<T> {
         Kind::StructValue(s) => "StructValue".to_string(),
         _ => "unknown".to_string(),
     };
-    return Err(anyhow!("{} : Illegal Kind={}", field.name, actual))
+    return Err(anyhow!("{} : Illegal Kind={}", field.name, actual));
 }

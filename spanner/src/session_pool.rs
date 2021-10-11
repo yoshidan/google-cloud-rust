@@ -4,13 +4,13 @@ use std::sync::{Arc, Weak};
 
 use crate::apiv1::conn_pool::{ConnPool, ConnectionManager};
 use crate::apiv1::spanner_client::{ping_query_request, Client};
+use async_trait::async_trait;
+use chrono::{DateTime, NaiveDateTime};
 use internal::spanner::v1::spanner_client::SpannerClient;
 use internal::spanner::v1::{
     BatchCreateSessionsRequest, CreateSessionRequest, DeleteSessionRequest, ExecuteSqlRequest,
     Session,
 };
-use async_trait::async_trait;
-use chrono::{DateTime, NaiveDateTime};
 use oneshot::{RecvError, Sender};
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicI64, AtomicUsize, Ordering};
@@ -36,10 +36,7 @@ pub struct SessionHandle {
 }
 
 impl SessionHandle {
-    pub async fn invalidate_if_needed<T>(
-        &mut self,
-        arg: Result<T, Status>,
-    ) -> Result<T, Status> {
+    pub async fn invalidate_if_needed<T>(&mut self, arg: Result<T, Status>) -> Result<T, Status> {
         return match arg {
             Ok(s) => Ok(s),
             Err(e) => {
@@ -199,7 +196,7 @@ impl SessionManager {
                 database.clone(),
                 creation_count_per_channel,
             )
-                .await
+            .await
             {
                 Ok(r) => {
                     for i in r {
@@ -272,7 +269,7 @@ impl SessionManager {
                 database,
                 creation_count,
             )
-                .await
+            .await
             {
                 Ok(mut fresh_sessions) => {
                     // Register fresh sessions into pool.

@@ -1,5 +1,17 @@
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::spanner_client::Client as SpannerClient;
+use crate::reader;
+use crate::reader::AsyncIterator;
+use crate::session_pool::{
+    ManagedSession, SessionConfig, SessionError, SessionHandle, SessionManager,
+};
+use crate::statement::Statement;
+use crate::statement::ToKind;
+use crate::transaction::{CallOptions, QueryOptions, Transaction};
+use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
+use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
+use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, TimeZone, Timelike, Utc, Weekday};
+use futures_util::future::BoxFuture;
 use gax::call_option::{Backoff, BackoffRetryer, CallSettings};
 use gax::invoke::AsTonicStatus;
 use gax::{call_option, invoke as retryer};
@@ -13,18 +25,6 @@ use internal::spanner::v1::{
     ExecuteSqlRequest, KeySet, Mutation, RequestOptions, RollbackRequest,
     TransactionOptions as TxOptions, TransactionOptions, TransactionSelector,
 };
-use crate::reader;
-use crate::reader::AsyncIterator;
-use crate::session_pool::{
-    ManagedSession, SessionConfig, SessionError, SessionHandle, SessionManager,
-};
-use crate::statement::Statement;
-use crate::statement::ToKind;
-use crate::transaction::{CallOptions, QueryOptions, Transaction};
-use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
-use crate::transaction_rw::{CommitOptions, ReadWriteTransaction, commit};
-use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, TimeZone, Timelike, Utc, Weekday};
-use futures_util::future::BoxFuture;
 use prost_types::value::Kind::StringValue;
 use prost_types::{value, ListValue, Timestamp, Value};
 use std::future::Future;
@@ -191,8 +191,7 @@ impl Client {
             )));
         }
 
-        let conn_pool =
-            ConnectionManager::new(config.channel_config.num_channels as usize).await?;
+        let conn_pool = ConnectionManager::new(config.channel_config.num_channels as usize).await?;
         let session_manager =
             SessionManager::new(database, conn_pool, config.session_config).await?;
         session_manager.schedule_refresh();
@@ -273,7 +272,7 @@ impl Client {
             },
             &mut ro,
         )
-            .await;
+        .await;
     }
 
     pub async fn apply_at_least_once(
@@ -296,13 +295,12 @@ impl Client {
                         transaction_options::ReadWrite {},
                     )),
                 });
-                let commit_result =
-                    commit(&mut session, ms.clone(), tx, co.clone()).await?;
+                let commit_result = commit(&mut session, ms.clone(), tx, co.clone()).await?;
                 return Ok(commit_result.commit_timestamp);
             },
             &mut ro,
         )
-            .await;
+        .await;
     }
 
     pub async fn apply(
@@ -343,9 +341,9 @@ impl Client {
         mut f: impl FnMut() -> Fut,
         retry_setting: Option<CallSettings>,
     ) -> Result<T, E>
-        where
-            E: AsTonicStatus,
-            Fut: Future<Output = Result<T, E>>,
+    where
+        E: AsTonicStatus,
+        Fut: Future<Output = Result<T, E>>,
     {
         let mut o = match retry_setting {
             Some(c) => c,
@@ -359,9 +357,9 @@ impl Client {
         mut f: impl Fn(Arc<Mutex<ReadWriteTransaction>>) -> F,
         options: Option<ReadWriteTransactionOption>,
     ) -> Result<(Option<prost_types::Timestamp>, T), E>
-        where
-            E: AsTonicStatus + From<TxError> + From<Status>,
-            F: Future<Output = Result<T, E>>,
+    where
+        E: AsTonicStatus + From<TxError> + From<Status>,
+        F: Future<Output = Result<T, E>>,
     {
         let (mut ro, bo, co) = Client::split_read_write_transaction_option(options);
 
@@ -377,7 +375,7 @@ impl Client {
             },
             &mut ro,
         )
-            .await;
+        .await;
     }
 
     async fn get_session(&self) -> Result<ManagedSession, SessionError> {

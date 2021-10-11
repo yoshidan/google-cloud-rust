@@ -1,6 +1,6 @@
+use async_trait::async_trait;
 use internal::spanner::v1 as internal;
 use std::ops::DerefMut;
-use async_trait::async_trait;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::Arc;
 use tokio::sync::Mutex;

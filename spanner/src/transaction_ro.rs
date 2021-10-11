@@ -1,3 +1,10 @@
+use crate::reader::{AsyncIterator, Reader, StatementReader, StreamReader, TableReader};
+use crate::session_pool::{ManagedSession, SessionHandle, SessionManager};
+use crate::statement::Statement;
+use crate::transaction::{CallOptions, QueryOptions, ReadOptions, Transaction};
+use async_trait::async_trait;
+use chrono::NaiveDateTime;
+use internal::spanner::v1::transaction_options::read_only::TimestampBound;
 use internal::spanner::v1::{
     commit_request, execute_sql_request::QueryMode, request_options, result_set_stats,
     transaction_options, transaction_selector, BeginTransactionRequest, CommitRequest,
@@ -5,17 +12,10 @@ use internal::spanner::v1::{
     PartitionReadRequest, PartitionResponse, ReadRequest, RequestOptions, RollbackRequest, Session,
     TransactionOptions, TransactionSelector,
 };
-use crate::reader::{AsyncIterator, Reader, StatementReader, StreamReader, TableReader};
-use crate::session_pool::{ManagedSession, SessionHandle, SessionManager};
-use crate::statement::Statement;
-use crate::transaction::{CallOptions, QueryOptions, ReadOptions, Transaction};
-use async_trait::async_trait;
-use chrono::NaiveDateTime;
 use prost_types::Struct;
 use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicI64, Ordering};
 use tonic::{Response, Status};
-use internal::spanner::v1::transaction_options::read_only::TimestampBound;
 
 pub struct ReadOnlyTransaction {
     base_tx: Transaction,

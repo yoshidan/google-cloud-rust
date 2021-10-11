@@ -1,4 +1,8 @@
 use crate::apiv1::spanner_client::Client;
+use crate::row::{Row, TryFromValue};
+use crate::session_pool::SessionHandle;
+use async_trait::async_trait;
+use chrono::{FixedOffset, NaiveDate, NaiveDateTime, NaiveTime};
 use gax::call_option::CallSettings;
 use internal::spanner::v1::spanner_client::SpannerClient;
 use internal::spanner::v1::struct_type::Field;
@@ -6,10 +10,6 @@ use internal::spanner::v1::{
     result_set_stats::RowCount, ExecuteSqlRequest, PartialResultSet, ReadRequest,
     ResultSetMetadata, Session,
 };
-use crate::row::{Row, TryFromValue};
-use crate::session_pool::SessionHandle;
-use async_trait::async_trait;
-use chrono::{FixedOffset, NaiveDate, NaiveDateTime, NaiveTime};
 use parking_lot::Mutex;
 use prost::encoding::message::merge;
 use prost_types::field_descriptor_proto::Type::Uint32;

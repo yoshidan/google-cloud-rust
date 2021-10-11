@@ -1,26 +1,26 @@
 use crate::apiv1::spanner_client::Client;
-use gax::call_option::CallSettings;
-use internal::spanner::v1::{
-    commit_request, execute_sql_request::QueryMode,
-    execute_sql_request::QueryOptions as ExecuteQueryOptions, request_options, result_set_stats,
-    transaction_options, transaction_selector, BeginTransactionRequest, CommitRequest,
-    CommitResponse, ExecuteSqlRequest,  Mutation, ReadRequest, RequestOptions,
-    RollbackRequest, Session, TransactionSelector,
-};
+use crate::key::KeySet;
 use crate::reader::{AsyncIterator, StatementReader, StreamReader, TableReader};
 use crate::session_pool::ManagedSession;
 use crate::session_pool::{SessionHandle, SessionManager};
 use crate::statement::Statement;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
+use gax::call_option::CallSettings;
+use internal::spanner::v1::request_options::Priority;
+use internal::spanner::v1::{
+    commit_request, execute_sql_request::QueryMode,
+    execute_sql_request::QueryOptions as ExecuteQueryOptions, request_options, result_set_stats,
+    transaction_options, transaction_selector, BeginTransactionRequest, CommitRequest,
+    CommitResponse, ExecuteSqlRequest, Mutation, ReadRequest, RequestOptions, RollbackRequest,
+    Session, TransactionSelector,
+};
 use prost_types::field::Cardinality::Optional;
 use prost_types::Struct;
 use std::ops::DerefMut;
 use std::sync::atomic::{AtomicI64, Ordering};
-use tonic::Streaming;
 use tonic::Status;
-use internal::spanner::v1::request_options::Priority;
-use crate::key::KeySet;
+use tonic::Streaming;
 
 #[derive(Clone)]
 pub struct CallOptions {
@@ -85,9 +85,7 @@ pub struct Transaction {
 }
 
 impl Transaction {
-    pub(crate) fn create_request_options(
-        priority: Option<Priority>,
-    ) -> Option<RequestOptions> {
+    pub(crate) fn create_request_options(priority: Option<Priority>) -> Option<RequestOptions> {
         return match priority {
             None => None,
             Some(s) => Some(RequestOptions {
