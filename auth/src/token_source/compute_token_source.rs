@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::token::{Token, TokenSource};
-use crate::token_source::{default_http_connector, InternalToken, ResponseExtension};
+use crate::token_source::{InternalToken, ResponseExtension};
 use async_trait::async_trait;
 use hyper::client::Client;
 use hyper::client::HttpConnector;
@@ -8,14 +8,7 @@ use hyper::http::{Method, Request};
 use tokio::net;
 use tokio::sync::OnceCell;
 use urlencoding::encode;
-
-pub const METADATA_IP: &str = "169.254.169.254";
-pub const METADATA_HOST_ENV: &str = "GCE_METADATA_HOST";
-pub const METADATA_GOOGLE_HOST: &str = "metadata.gen.internal:80";
-pub const METADATA_FLAVOR_KEY: &str = "Metadata-Flavor";
-pub const METADATA_GOOGLE: &str = "Google";
-
-pub static ON_GCE: OnceCell<bool> = OnceCell::const_new();
+use metadata::{METADATA_HOST_ENV, METADATA_IP, METADATA_FLAVOR_KEY, METADATA_GOOGLE, default_http_connector};
 
 pub struct ComputeTokenSource {
     pub token_url: String,
@@ -49,7 +42,7 @@ impl TokenSource for ComputeTokenSource {
             .uri(self.token_url.as_str())
             .header(METADATA_FLAVOR_KEY, METADATA_GOOGLE)
             .body(body)
-            .unwrap();
+            .map_err(Error::HttpError)?;
 
         let it: InternalToken = self
             .client
@@ -61,53 +54,4 @@ impl TokenSource for ComputeTokenSource {
 
         return Ok(it.to_token(chrono::Utc::now()));
     }
-}
-
-pub async fn on_gce() -> bool {
-    return match ON_GCE.get_or_try_init(test_on_gce).await {
-        Ok(s) => *s,
-        Err(_err) => false,
-    };
-}
-
-async fn test_on_gce() -> Result<bool, Error> {
-    // The user explicitly said they're on GCE, so trust them.
-    if std::env::var(METADATA_HOST_ENV).is_ok() {
-        return Ok(true);
-    }
-
-    let url = format!("http://{}", METADATA_IP);
-    let body = hyper::Body::empty();
-    let request = Request::builder()
-        .method(Method::GET)
-        .uri(&url)
-        .body(body)
-        .unwrap();
-
-    let client = hyper::Client::builder().build(default_http_connector());
-    let response = client.request(request).await.map_err(Error::HyperError);
-
-    if response.is_ok() {
-        let on_gce = match response.unwrap().headers().get(METADATA_FLAVOR_KEY) {
-            None => false,
-            Some(s) => s == "Google",
-        };
-
-        if on_gce {
-            return Ok(true);
-        }
-    }
-
-    match net::lookup_host(METADATA_GOOGLE_HOST).await {
-        Ok(s) => {
-            for ip in s {
-                if ip.ip().to_string() == METADATA_IP {
-                    return Ok(true);
-                }
-            }
-        }
-        Err(_e) => return Ok(false),
-    };
-
-    return Ok(false);
 }

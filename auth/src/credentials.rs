@@ -82,12 +82,9 @@ impl CredentialsFile {
                     }
                 }
             }
-        };
+        }?;
 
-        let credentials_json = match path {
-            Ok(s) => fs::read(s).await.map_err(Error::IOError)?,
-            Err(e) => return Err(e),
-        };
+        let credentials_json = fs::read(path).await.map_err(Error::IOError)?;
 
         return Ok(json::from_slice(credentials_json.as_slice()).map_err(Error::JsonError)?);
     }

@@ -20,7 +20,9 @@ thiserror = "1.0.24"
 async-trait = "0.1.50"
 home = "0.5.3"
 urlencoding = "2.1.0"
-tokio = { version = "1.7.0", features = ["full"] }
+tokio = { version = "1.7.0", features = ["fs"]}
+metadata = { path = "../metadata" }
 
 [dev-dependencies]
+tokio = { version = "1.7.0", features = ["test-util", "rt-multi-thread", "macros"]}
 base64 = "0.13.0"

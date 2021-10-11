@@ -53,8 +53,7 @@ impl TokenSource for UserAccountTokenSource {
             .method(Method::POST)
             .uri(self.token_url.to_string())
             .header("content-type", "application/json")
-            .body(Body::from(json::to_string(&data).unwrap()))
-            .unwrap();
+            .body(Body::from(json::to_string(&data).unwrap())).map_err(Error::HttpError)?;
 
         let it: InternalToken = self
             .client
@@ -63,6 +62,7 @@ impl TokenSource for UserAccountTokenSource {
             .map_err(Error::HyperError)?
             .deserialize()
             .await?;
+
         return Ok(it.to_token(chrono::Utc::now()));
     }
 }

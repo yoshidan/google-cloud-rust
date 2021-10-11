@@ -3,10 +3,11 @@ pub mod error;
 pub mod token;
 pub mod token_source;
 
+use metadata::on_gce;
 use crate::credentials::CredentialsFile;
 use crate::token::TokenSource;
 use crate::token_source::authorized_user_token_source::UserAccountTokenSource;
-use crate::token_source::compute_token_source::{on_gce, ComputeTokenSource};
+use crate::token_source::compute_token_source::{ComputeTokenSource};
 use crate::token_source::reuse_token_source::ReuseTokenSource;
 use crate::token_source::service_account_token_source::OAuth2ServiceAccountTokenSource;
 use crate::token_source::service_account_token_source::ServiceAccountTokenSource;

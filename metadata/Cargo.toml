@@ -1,0 +1,10 @@
+[package]
+name = "metadata"
+version = "0.1.0"
+authors = ["yoshidan <naohiro.y@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+tokio = { version = "1.7.0", features = ["sync","net","parking_lot"] }
+hyper = { version = "0.14.9", features = ["full"] }
+thiserror = "1.0.24"

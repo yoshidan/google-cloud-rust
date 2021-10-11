@@ -139,8 +139,7 @@ impl TokenSource for OAuth2ServiceAccountTokenSource {
             .method(Method::POST)
             .uri(self.token_url.as_str())
             .header("Content-Type", "application/x-www-form-urlencoded")
-            .body(body)
-            .unwrap();
+            .body(body).map_err(Error::HttpError)?;
 
         let it: InternalToken = self
             .client

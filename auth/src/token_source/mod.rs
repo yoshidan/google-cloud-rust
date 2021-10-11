@@ -12,16 +12,8 @@ use hyper::http::Response;
 use hyper_tls::HttpsConnector;
 use serde::{de, Deserialize};
 
-fn default_http_connector() -> HttpConnector {
-    let mut connector = HttpConnector::new();
-    connector.enforce_http(false);
-    connector.set_connect_timeout(Some(Duration::seconds(2).to_std().unwrap()));
-    connector.set_keepalive(Some(Duration::seconds(30).to_std().unwrap()));
-    connector
-}
-
 fn default_https_client() -> hyper::Client<HttpsConnector<HttpConnector>> {
-    hyper::Client::builder().build(HttpsConnector::new_with_connector(default_http_connector()))
+    hyper::Client::builder().build(HttpsConnector::new_with_connector(metadata::default_http_connector()))
 }
 
 #[async_trait]

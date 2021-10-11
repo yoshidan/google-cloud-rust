@@ -1,6 +1,7 @@
 use crate::error::Error;
 use crate::token::{Token, TokenSource};
 use async_trait::async_trait;
+use std::ops::Deref;
 
 pub struct ReuseTokenSource {
     pub target: Box<dyn TokenSource>,
