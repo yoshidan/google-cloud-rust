@@ -38,12 +38,10 @@ where
             None => return Err(err),
         };
 
-        let (duration, should_retry) = retryer.retry(status);
-        if should_retry {
-            tokio::time::sleep(duration.to_std().unwrap()).await;
-        } else {
-            return Err(err);
-        }
+        match retryer.retry(status) {
+            Some(duration) => tokio::time::sleep(duration).await,
+            None => return Err(err)
+        };
     }
 }
 
@@ -70,11 +68,9 @@ where
             Some(s) => s,
             None => return Err(err),
         };
-        let (duration, should_retry) = retryer.retry(status);
-        if should_retry {
-            tokio::time::sleep(duration.to_std().unwrap()).await;
-        } else {
-            return Err(err);
-        }
+        match retryer.retry(status) {
+            Some(duration) => tokio::time::sleep(duration).await,
+            None => return Err(err)
+        };
     }
 }
