@@ -9,7 +9,7 @@ use tokio::sync::OnceCell;
 
 pub const METADATA_IP: &str = "169.254.169.254";
 pub const METADATA_HOST_ENV: &str = "GCE_METADATA_HOST";
-pub const METADATA_GOOGLE_HOST: &str = "metadata.gen.internal:80";
+pub const METADATA_GOOGLE_HOST: &str = "metadata.google.internal:80";
 pub const METADATA_FLAVOR_KEY: &str = "Metadata-Flavor";
 pub const METADATA_GOOGLE: &str = "Google";
 
