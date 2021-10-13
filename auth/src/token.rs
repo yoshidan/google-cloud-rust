@@ -20,11 +20,13 @@ impl Token {
     }
 
     fn expired(&self) -> bool {
-        if self.expiry.is_none() {
-            return false;
+        match self.expiry {
+            None => false,
+            Some(s) => {
+                let now = chrono::Utc::now();
+                let exp = s + chrono::Duration::seconds(-10);
+                now > exp
+            }
         }
-        let now = chrono::Utc::now();
-        let exp = self.expiry.unwrap() + chrono::Duration::seconds(-10);
-        return now > exp;
     }
 }
