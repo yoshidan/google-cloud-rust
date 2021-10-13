@@ -1,5 +1,3 @@
-use crate::error::Error;
-use async_trait::async_trait;
 use chrono::DateTime;
 
 pub const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
@@ -10,11 +8,6 @@ pub struct Token {
     pub access_token: String,
     pub token_type: String,
     pub expiry: Option<DateTime<chrono::Utc>>,
-}
-
-#[async_trait]
-pub trait TokenSource: Send + Sync {
-    async fn token(&self) -> Result<Token, Error>;
 }
 
 impl Token {

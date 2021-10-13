@@ -1,7 +1,7 @@
 use crate::error::Error;
-use crate::token::{Token, TokenSource};
+use crate::token::{Token};
 use async_trait::async_trait;
-use std::ops::Deref;
+use crate::token_source::token_source::TokenSource;
 
 pub struct ReuseTokenSource {
     pub target: Box<dyn TokenSource>,
@@ -20,9 +20,15 @@ impl ReuseTokenSource {
 #[async_trait]
 impl TokenSource for ReuseTokenSource {
     async fn token(&self) -> Result<Token, Error> {
-        let token = self.current_token.read().unwrap().clone();
-        if token.valid() {
-            return Ok(token);
+        {
+            let r_lock = self.current_token.read().unwrap();
+            if r_lock.valid() {
+                return Ok(Token {
+                    access_token: r_lock.access_token.to_string(),
+                    token_type: r_lock.token_type.to_string(),
+                    expiry: r_lock.expiry.clone()
+                });
+            }
         }
         let token = self.target.token().await?;
         *self.current_token.write().unwrap() = token.clone();

@@ -1,11 +1,13 @@
 use crate::credentials;
 use crate::error::Error;
-use crate::token::{Token, TokenSource, TOKEN_URL};
+use crate::token::{Token, TOKEN_URL};
 use crate::token_source::{default_https_client, InternalToken, ResponseExtension};
 use async_trait::async_trait;
 use hyper::client::HttpConnector;
 use hyper::http::{Method, Request};
 use serde::{Deserialize, Serialize};
+use crate::misc::UnwrapOrEmpty;
+use crate::token_source::token_source::TokenSource;
 
 #[derive(Clone, Serialize)]
 struct Claims<'a> {
@@ -21,7 +23,8 @@ impl Claims<'_> {
     fn token(&self, pk: &jwt::EncodingKey, pk_id: &str) -> Result<String, Error> {
         let mut header = jwt::Header::new(jwt::Algorithm::RS256);
         header.kid = Some(pk_id.to_string());
-        return jwt::encode(&header, self, pk).map_err(Error::JwtError);
+        let v = jwt::encode(&header, self, pk)?;
+        Ok(v)
     }
 }
 
@@ -41,9 +44,9 @@ impl ServiceAccountTokenSource {
         audience: &str,
     ) -> Result<ServiceAccountTokenSource, Error> {
         return Ok(ServiceAccountTokenSource {
-            email: cred.client_email.as_ref().unwrap().to_string(),
-            pk: cred.unwrap_private_key()?,
-            pk_id: cred.private_key_id.as_ref().unwrap().to_string(),
+            email: cred.client_email.unwrap_or_empty(),
+            pk: cred.try_to_private_key()?,
+            pk_id: cred.private_key_id.unwrap_or_empty(),
             audience: match &cred.audience {
                 None => audience.to_string(),
                 Some(s) => s.to_string(),
@@ -101,9 +104,9 @@ impl OAuth2ServiceAccountTokenSource {
         scopes: &str,
     ) -> Result<OAuth2ServiceAccountTokenSource, Error> {
         return Ok(OAuth2ServiceAccountTokenSource {
-            email: cred.client_email.as_ref().unwrap().to_string(),
-            pk: cred.unwrap_private_key()?,
-            pk_id: cred.private_key_id.as_ref().unwrap().to_string(),
+            email: cred.client_email.unwrap_or_empty(),
+            pk: cred.try_to_private_key()?,
+            pk_id: cred.private_key_id.unwrap_or_empty(),
             scopes: scopes.to_string(),
             token_url: match &cred.token_uri {
                 None => TOKEN_URL.to_string(),
@@ -139,13 +142,12 @@ impl TokenSource for OAuth2ServiceAccountTokenSource {
             .method(Method::POST)
             .uri(self.token_url.as_str())
             .header("Content-Type", "application/x-www-form-urlencoded")
-            .body(body).map_err(Error::HttpError)?;
+            .body(body)?;
 
         let it: InternalToken = self
             .client
             .request(request)
-            .await
-            .map_err(Error::HyperError)?
+            .await?
             .deserialize()
             .await?;
 

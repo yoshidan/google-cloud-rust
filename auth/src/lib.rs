@@ -2,15 +2,17 @@ pub mod credentials;
 pub mod error;
 pub mod token;
 pub mod token_source;
+mod misc;
 
 use metadata::on_gce;
 use crate::credentials::CredentialsFile;
-use crate::token::TokenSource;
+use crate::token_source::token_source::TokenSource;
 use crate::token_source::authorized_user_token_source::UserAccountTokenSource;
 use crate::token_source::compute_token_source::{ComputeTokenSource};
 use crate::token_source::reuse_token_source::ReuseTokenSource;
 use crate::token_source::service_account_token_source::OAuth2ServiceAccountTokenSource;
 use crate::token_source::service_account_token_source::ServiceAccountTokenSource;
+use crate::misc::EMPTY;
 
 const SERVICE_ACCOUNT_KEY: &str = "service_account";
 const USER_CREDENTIALS_KEY: &str = "authorized_user";
@@ -22,12 +24,16 @@ pub struct Config<'a> {
 
 impl Config<'_> {
     pub fn scopes_to_string(&self, sep: &str) -> String {
-        self.scopes
-            .unwrap()
-            .iter()
-            .map(|x| x.to_string())
-            .collect::<Vec<_>>()
-            .join(sep)
+        match self.scopes {
+            Some(s) => {
+                    s.iter()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<_>>()
+                    .join(sep)
+            },
+            None => EMPTY.to_string()
+        }
+
     }
 }
 
@@ -59,37 +65,29 @@ fn credentials_from_json_with_params(
 ) -> Result<Box<dyn TokenSource>, error::Error> {
     match credentials.tp.as_str() {
         SERVICE_ACCOUNT_KEY => {
-            if config.audience.is_none() {
-                if config.scopes.is_none() {
-                    return Err(error::Error::StringError(
-                        "scopes is required if the audience is none".to_string(),
-                    ));
-                }
+            match config.audience {
+                None => {
+                    if config.scopes.is_none() {
+                        return Err(error::Error::ScopeOrAudienceRequired);
+                    }
 
-                // use Standard OAuth 2.0 Flow
-                return match OAuth2ServiceAccountTokenSource::new(
-                    &credentials,
-                    config.scopes_to_string(" ").as_str(),
-                ) {
-                    Ok(s) => Ok(Box::new(s)),
-                    Err(e) => return Err(e),
-                };
-            }
-            // use self-signed JWT.
-            match ServiceAccountTokenSource::new(&credentials, config.audience.unwrap()) {
-                Ok(s) => Ok(Box::new(s)),
-                Err(e) => return Err(e),
+                    // use Standard OAuth 2.0 Flow
+                    let source = OAuth2ServiceAccountTokenSource::new(
+                        &credentials,
+                        config.scopes_to_string(" ").as_str(),
+                    )?;
+                    Ok(Box::new(source))
+                },
+                Some(audience) => {
+                    // use self-signed JWT.
+                    let source = ServiceAccountTokenSource::new(&credentials, audience)?;
+                    Ok(Box::new(source))
+                }
             }
         }
-        USER_CREDENTIALS_KEY => match UserAccountTokenSource::new(&credentials) {
-            Ok(s) => Ok(Box::new(s)),
-            Err(e) => return Err(e),
-        },
+        USER_CREDENTIALS_KEY => Ok(Box::new(UserAccountTokenSource::new(&credentials)?)),
         //TODO support GDC https://console.developers.google.com,
         //TODO support external account
-        _ => Err(error::Error::StringError(format!(
-            "unsupported account type {}",
-            credentials.tp
-        ))),
+        _ => Err(error::Error::UnsupportedAccountType(credentials.tp)),
     }
 }

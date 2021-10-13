@@ -1,5 +1,5 @@
-use gcpauth::token::TokenSource;
 use gcpauth::*;
+use gcpauth::token_source::token_source::TokenSource;
 
 #[tokio::test]
 async fn test_jwt_token_source() -> Result<(), error::Error> {

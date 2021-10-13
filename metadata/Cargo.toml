@@ -8,3 +8,6 @@ edition = "2018"
 tokio = { version = "1.7.0", features = ["sync","net","parking_lot"] }
 hyper = { version = "0.14.9", features = ["full"] }
 thiserror = "1.0.24"
+
+[dev-dependencies]
+tokio = { version = "1.7.0", features = ["test-util", "rt-multi-thread", "macros"]}

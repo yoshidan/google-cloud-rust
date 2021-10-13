@@ -2,11 +2,11 @@ pub mod authorized_user_token_source;
 pub mod compute_token_source;
 pub mod reuse_token_source;
 pub mod service_account_token_source;
+pub mod token_source;
 
 use crate::error::Error;
 use crate::token::Token;
 use async_trait::async_trait;
-use chrono::Duration;
 use hyper::client::HttpConnector;
 use hyper::http::Response;
 use hyper_tls::HttpsConnector;
@@ -30,10 +30,7 @@ impl ResponseExtension for Response<hyper::body::Body> {
         T: de::DeserializeOwned,
     {
         if !self.status().is_success() {
-            return Err(Error::StringError(format!(
-                "Server responded with error status is {}",
-                self.status().as_str()
-            )));
+            return Err(Error::DeserializeError(self.status().to_string()));
         }
         let (_, body) = self.into_parts();
         let body = hyper::body::to_bytes(body)

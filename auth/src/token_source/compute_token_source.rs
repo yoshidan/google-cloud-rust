@@ -1,14 +1,13 @@
 use crate::error::Error;
-use crate::token::{Token, TokenSource};
+use crate::token::{Token};
 use crate::token_source::{InternalToken, ResponseExtension};
 use async_trait::async_trait;
 use hyper::client::Client;
 use hyper::client::HttpConnector;
 use hyper::http::{Method, Request};
-use tokio::net;
-use tokio::sync::OnceCell;
 use urlencoding::encode;
 use metadata::{METADATA_HOST_ENV, METADATA_IP, METADATA_FLAVOR_KEY, METADATA_GOOGLE, default_http_connector};
+use crate::token_source::token_source::TokenSource;
 
 pub struct ComputeTokenSource {
     pub token_url: String,
@@ -16,7 +15,7 @@ pub struct ComputeTokenSource {
 }
 
 impl ComputeTokenSource {
-    pub fn new<'a>(scope: &str) -> Result<ComputeTokenSource, Error> {
+    pub fn new(scope: &str) -> Result<ComputeTokenSource, Error> {
         let host = match std::env::var(METADATA_HOST_ENV) {
             Ok(s) => s,
             Err(_e) => METADATA_IP.to_string(),
@@ -41,14 +40,12 @@ impl TokenSource for ComputeTokenSource {
             .method(Method::GET)
             .uri(self.token_url.as_str())
             .header(METADATA_FLAVOR_KEY, METADATA_GOOGLE)
-            .body(body)
-            .map_err(Error::HttpError)?;
+            .body(body)?;
 
         let it: InternalToken = self
             .client
             .request(request)
-            .await
-            .map_err(Error::HyperError)?
+            .await?
             .deserialize()
             .await?;
 

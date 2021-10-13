@@ -69,28 +69,28 @@ impl CredentialsFile {
             Err(_e) => {
                 // get well known file name
                 if cfg!(target_os = "windows") {
-                    let app_data = std::env::var("APPDATA").unwrap();
+                    let app_data = std::env::var("APPDATA")?;
                     Ok(std::path::Path::new(app_data.as_str())
                         .join("gcloud")
                         .join(CREDENTIALS_FILE))
                 } else {
                     match home::home_dir() {
                         Some(s) => Ok(s.join(".config").join("gcloud").join(CREDENTIALS_FILE)),
-                        None => Err(Error::StringError(
-                            "user home directory not found".to_string(),
-                        )),
+                        None => Err(Error::NoHomeDirectoryFound),
                     }
                 }
             }
         }?;
 
-        let credentials_json = fs::read(path).await.map_err(Error::IOError)?;
+        let credentials_json = fs::read(path).await?;
 
-        return Ok(json::from_slice(credentials_json.as_slice()).map_err(Error::JsonError)?);
+        return Ok(json::from_slice(credentials_json.as_slice())?);
     }
 
-    pub fn unwrap_private_key(&self) -> Result<jwt::EncodingKey, Error> {
-        return jwt::EncodingKey::from_rsa_pem(self.private_key.as_ref().unwrap().as_bytes())
-            .map_err(Error::JwtError);
+    pub fn try_to_private_key(&self) -> Result<jwt::EncodingKey, Error> {
+        match self.private_key.as_ref() {
+            Some(key) => Ok(jwt::EncodingKey::from_rsa_pem(key.as_bytes())?),
+            None => Err(Error::NoPrivateKeyFound)
+        }
     }
 }

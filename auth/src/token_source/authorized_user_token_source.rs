@@ -1,11 +1,13 @@
 use crate::credentials;
 use crate::error::Error;
-use crate::token::{Token, TokenSource, TOKEN_URL};
+use crate::token::{Token, TOKEN_URL};
 use crate::token_source::{default_https_client, InternalToken, ResponseExtension};
 use async_trait::async_trait;
 use hyper::client::HttpConnector;
 use hyper::http::{Method, Request};
 use hyper::{Body, Client};
+use crate::misc::{UnwrapOrEmpty, EMPTY};
+use crate::token_source::token_source::TokenSource;
 
 pub struct UserAccountTokenSource {
     pub client_id: String,
@@ -20,20 +22,18 @@ pub struct UserAccountTokenSource {
 impl UserAccountTokenSource {
     pub fn new(cred: &credentials::CredentialsFile) -> Result<UserAccountTokenSource, Error> {
         if cred.refresh_token.is_none() {
-            return Err(Error::StringError(
-                "refresh token is required for user account credentials".to_string(),
-            ));
+            return Err(Error::RefreshTokenIsRequired);
         }
 
         let ts = UserAccountTokenSource {
-            client_id: cred.client_id.as_ref().unwrap().to_string(),
-            client_secret: cred.client_secret.as_ref().unwrap().to_string(),
+            client_id: cred.client_id.unwrap_or_empty(),
+            client_secret: cred.client_secret.unwrap_or_empty(),
             token_url: match &cred.token_uri {
                 None => TOKEN_URL.to_string(),
                 Some(s) => s.to_string(),
             },
-            redirect_url: "".to_string(),
-            refresh_token: cred.refresh_token.as_ref().unwrap().to_string(),
+            redirect_url: EMPTY.to_string(),
+            refresh_token: cred.refresh_token.unwrap_or_empty(),
             client: default_https_client(),
         };
         return Ok(ts);
@@ -48,12 +48,13 @@ impl TokenSource for UserAccountTokenSource {
             "client_secret": self.client_secret,
             "grant_type": "refresh_token".to_string(),
             "refresh_token": self.refresh_token,
-        });
+        }).to_string();
+
         let request = Request::builder()
             .method(Method::POST)
             .uri(self.token_url.to_string())
             .header("content-type", "application/json")
-            .body(Body::from(json::to_string(&data).unwrap())).map_err(Error::HttpError)?;
+            .body(Body::from(data))?;
 
         let it: InternalToken = self
             .client
