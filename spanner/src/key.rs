@@ -1,6 +1,6 @@
-use internal::spanner::v1::key_range::{EndKeyType, StartKeyType};
-use internal::spanner::v1::KeyRange;
-use internal::spanner::v1::KeySet as InternalKeySet;
+use google_cloud_googleapis::spanner::v1::key_range::{EndKeyType, StartKeyType};
+use google_cloud_googleapis::spanner::v1::KeyRange;
+use google_cloud_googleapis::spanner::v1::KeySet as InternalKeySet;
 use prost_types::{value, ListValue, Value};
 
 #[derive(Clone)]

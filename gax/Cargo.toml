@@ -1,6 +1,6 @@
 [package]
-name = "gax"
-version = "0.0.1"
+name = "google-cloud-gax"
+version = "0.1.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/yoshidan/google-cloud-rust/gax"

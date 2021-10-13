@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context, Result};
 use chrono::{NaiveDate, NaiveDateTime, TimeZone, Utc};
-use internal::spanner::v1::struct_type::Field;
-use internal::spanner::v1::StructType;
+use google_cloud_googleapis::spanner::v1::struct_type::Field;
+use google_cloud_googleapis::spanner::v1::StructType;
 use prost_types::value::Kind;
 use prost_types::value::Kind::{StringValue, StructValue};
 use prost_types::{value, ListValue, Value};

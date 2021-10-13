@@ -1,13 +1,13 @@
 use crate::credentials;
 use crate::error::Error;
+use crate::misc::UnwrapOrEmpty;
 use crate::token::{Token, TOKEN_URL};
+use crate::token_source::token_source::TokenSource;
 use crate::token_source::{default_https_client, InternalToken, ResponseExtension};
 use async_trait::async_trait;
 use hyper::client::HttpConnector;
 use hyper::http::{Method, Request};
 use serde::{Deserialize, Serialize};
-use crate::misc::UnwrapOrEmpty;
-use crate::token_source::token_source::TokenSource;
 
 #[derive(Clone, Serialize)]
 struct Claims<'a> {
@@ -144,12 +144,7 @@ impl TokenSource for OAuth2ServiceAccountTokenSource {
             .header("Content-Type", "application/x-www-form-urlencoded")
             .body(body)?;
 
-        let it: InternalToken = self
-            .client
-            .request(request)
-            .await?
-            .deserialize()
-            .await?;
+        let it: InternalToken = self.client.request(request).await?.deserialize().await?;
 
         return Ok(it.to_token(iat));
     }

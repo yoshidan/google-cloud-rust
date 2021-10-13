@@ -90,7 +90,7 @@ impl CredentialsFile {
     pub fn try_to_private_key(&self) -> Result<jwt::EncodingKey, Error> {
         match self.private_key.as_ref() {
             Some(key) => Ok(jwt::EncodingKey::from_rsa_pem(key.as_bytes())?),
-            None => Err(Error::NoPrivateKeyFound)
+            None => Err(Error::NoPrivateKeyFound),
         }
     }
 }

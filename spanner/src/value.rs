@@ -1,7 +1,7 @@
 use chrono::{NaiveDate, NaiveDateTime};
-use internal::spanner::v1::transaction_options::read_only::TimestampBound as InternalTimestampBound;
-use internal::spanner::v1::transaction_options::ReadOnly;
-use internal::spanner::v1::TransactionOptions;
+use google_cloud_googleapis::spanner::v1::transaction_options::read_only::TimestampBound as InternalTimestampBound;
+use google_cloud_googleapis::spanner::v1::transaction_options::ReadOnly;
+use google_cloud_googleapis::spanner::v1::TransactionOptions;
 use prost_types::Timestamp;
 use std::ops::Deref;
 use std::time::Duration;

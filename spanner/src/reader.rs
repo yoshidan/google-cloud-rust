@@ -3,10 +3,10 @@ use crate::row::{Row, TryFromValue};
 use crate::session_pool::SessionHandle;
 use async_trait::async_trait;
 use chrono::{FixedOffset, NaiveDate, NaiveDateTime, NaiveTime};
-use gax::call_option::CallSettings;
-use internal::spanner::v1::spanner_client::SpannerClient;
-use internal::spanner::v1::struct_type::Field;
-use internal::spanner::v1::{
+use google_cloud_gax::call_option::CallSettings;
+use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
+use google_cloud_googleapis::spanner::v1::struct_type::Field;
+use google_cloud_googleapis::spanner::v1::{
     result_set_stats::RowCount, ExecuteSqlRequest, PartialResultSet, ReadRequest,
     ResultSetMetadata, Session,
 };

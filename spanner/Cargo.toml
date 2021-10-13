@@ -1,5 +1,5 @@
 [package]
-name = "spanner"
+name = "google-cloud-spanner"
 version = "0.1.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2018"
@@ -30,6 +30,6 @@ futures-channel = "0.3.17"
 anyhow = "1.0.44"
 base64 = "0.13.0"
 
-gcpauth = { path = "../auth" }
-gax = { path = "../gax" }
-internal = { path = "../proto" }
+google-cloud-auth = { path = "../auth" }
+google-cloud-gax = { path = "../gax" }
+google-cloud-googleapis = { path = "../googleapis" }

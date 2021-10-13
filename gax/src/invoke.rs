@@ -40,7 +40,7 @@ where
 
         match retryer.retry(status) {
             Some(duration) => tokio::time::sleep(duration).await,
-            None => return Err(err)
+            None => return Err(err),
         };
     }
 }
@@ -70,7 +70,7 @@ where
         };
         match retryer.retry(status) {
             Some(duration) => tokio::time::sleep(duration).await,
-            None => return Err(err)
+            None => return Err(err),
         };
     }
 }

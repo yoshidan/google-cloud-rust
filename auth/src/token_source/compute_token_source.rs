@@ -1,13 +1,15 @@
 use crate::error::Error;
-use crate::token::{Token};
+use crate::token::Token;
+use crate::token_source::token_source::TokenSource;
 use crate::token_source::{InternalToken, ResponseExtension};
 use async_trait::async_trait;
+use google_cloud_metadata::{
+    default_http_connector, METADATA_FLAVOR_KEY, METADATA_GOOGLE, METADATA_HOST_ENV, METADATA_IP,
+};
 use hyper::client::Client;
 use hyper::client::HttpConnector;
 use hyper::http::{Method, Request};
 use urlencoding::encode;
-use metadata::{METADATA_HOST_ENV, METADATA_IP, METADATA_FLAVOR_KEY, METADATA_GOOGLE, default_http_connector};
-use crate::token_source::token_source::TokenSource;
 
 pub struct ComputeTokenSource {
     pub token_url: String,
@@ -42,12 +44,7 @@ impl TokenSource for ComputeTokenSource {
             .header(METADATA_FLAVOR_KEY, METADATA_GOOGLE)
             .body(body)?;
 
-        let it: InternalToken = self
-            .client
-            .request(request)
-            .await?
-            .deserialize()
-            .await?;
+        let it: InternalToken = self.client.request(request).await?.deserialize().await?;
 
         return Ok(it.to_token(chrono::Utc::now()));
     }

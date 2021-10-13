@@ -1,7 +1,7 @@
 use crate::error::Error;
-use crate::token::{Token};
-use async_trait::async_trait;
+use crate::token::Token;
 use crate::token_source::token_source::TokenSource;
+use async_trait::async_trait;
 
 pub struct ReuseTokenSource {
     pub target: Box<dyn TokenSource>,
@@ -26,7 +26,7 @@ impl TokenSource for ReuseTokenSource {
                 return Ok(Token {
                     access_token: r_lock.access_token.to_string(),
                     token_type: r_lock.token_type.to_string(),
-                    expiry: r_lock.expiry.clone()
+                    expiry: r_lock.expiry.clone(),
                 });
             }
         }

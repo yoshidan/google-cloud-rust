@@ -1,13 +1,13 @@
 use crate::credentials;
 use crate::error::Error;
+use crate::misc::{UnwrapOrEmpty, EMPTY};
 use crate::token::{Token, TOKEN_URL};
+use crate::token_source::token_source::TokenSource;
 use crate::token_source::{default_https_client, InternalToken, ResponseExtension};
 use async_trait::async_trait;
 use hyper::client::HttpConnector;
 use hyper::http::{Method, Request};
 use hyper::{Body, Client};
-use crate::misc::{UnwrapOrEmpty, EMPTY};
-use crate::token_source::token_source::TokenSource;
 
 pub struct UserAccountTokenSource {
     pub client_id: String,
@@ -48,7 +48,8 @@ impl TokenSource for UserAccountTokenSource {
             "client_secret": self.client_secret,
             "grant_type": "refresh_token".to_string(),
             "refresh_token": self.refresh_token,
-        }).to_string();
+        })
+        .to_string();
 
         let request = Request::builder()
             .method(Method::POST)

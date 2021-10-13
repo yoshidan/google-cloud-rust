@@ -6,8 +6,8 @@ use crate::apiv1::conn_pool::{ConnPool, ConnectionManager};
 use crate::apiv1::spanner_client::{ping_query_request, Client};
 use async_trait::async_trait;
 use chrono::{DateTime, NaiveDateTime};
-use internal::spanner::v1::spanner_client::SpannerClient;
-use internal::spanner::v1::{
+use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
+use google_cloud_googleapis::spanner::v1::{
     BatchCreateSessionsRequest, CreateSessionRequest, DeleteSessionRequest, ExecuteSqlRequest,
     Session,
 };

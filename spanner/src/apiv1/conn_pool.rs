@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use internal::spanner::v1 as internal;
+use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
 use std::ops::DerefMut;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::Arc;
@@ -14,13 +14,13 @@ pub const TLS_CERTS: &[u8] = include_bytes!("../../roots.pem");
 
 pub trait ConnPool {
     fn num(&self) -> usize;
-    fn conn(&self) -> internal::spanner_client::SpannerClient<Channel>;
+    fn conn(&self) -> SpannerClient<Channel>;
 }
 
 #[derive(Debug)]
 pub struct ConnectionManager {
     index: AtomicI64,
-    conns: Vec<internal::spanner_client::SpannerClient<Channel>>,
+    conns: Vec<SpannerClient<Channel>>,
 }
 
 impl ConnectionManager {
@@ -41,14 +41,14 @@ impl ConnectionManager {
 
     async fn connect(
         tls_config: ClientTlsConfig,
-    ) -> Result<internal::spanner_client::SpannerClient<Channel>, tonic::transport::Error> {
+    ) -> Result<SpannerClient<Channel>, tonic::transport::Error> {
         let channel = Channel::from_static("https://spanner.googleapis.com")
             .tls_config(tls_config)
             .unwrap()
             .connect()
             .await?;
         log::debug!("gRPC Connection Created");
-        return Ok(internal::spanner_client::SpannerClient::new(channel));
+        return Ok(SpannerClient::new(channel));
     }
 }
 
@@ -57,7 +57,7 @@ impl ConnPool for ConnectionManager {
         self.conns.len()
     }
 
-    fn conn(&self) -> internal::spanner_client::SpannerClient<Channel> {
+    fn conn(&self) -> SpannerClient<Channel> {
         let current = self.index.fetch_add(1, Ordering::SeqCst) as usize;
         //clone() reuses http/s connection
         return self.conns[current % self.conns.len()].clone();

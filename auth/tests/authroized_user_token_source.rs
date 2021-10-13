@@ -1,12 +1,12 @@
+use gcpauth::token_source::token_source::TokenSource;
 use gcpauth::*;
 use std::fs::File;
 use std::io::Write;
-use gcpauth::token_source::token_source::TokenSource;
 
 #[tokio::test]
 async fn test() -> Result<(), error::Error> {
-    let authorized_user_credentials = std::env::var("TEST_USER_CREDENTIALS")
-        .map_err(error::Error::VarError)?;
+    let authorized_user_credentials =
+        std::env::var("TEST_USER_CREDENTIALS").map_err(error::Error::VarError)?;
 
     let json = base64::decode(authorized_user_credentials).unwrap();
     let mut file = File::create(".cred.json")?;

@@ -1,5 +1,5 @@
 [package]
-name = "internal"
+name = "google-cloud-googleapis"
 version = "0.1.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2018"

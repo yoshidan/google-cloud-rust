@@ -7,13 +7,14 @@ pub mod token_source;
 use crate::error::Error;
 use crate::token::Token;
 use async_trait::async_trait;
+use google_cloud_metadata::default_http_connector;
 use hyper::client::HttpConnector;
 use hyper::http::Response;
 use hyper_tls::HttpsConnector;
 use serde::{de, Deserialize};
 
 fn default_https_client() -> hyper::Client<HttpsConnector<HttpConnector>> {
-    hyper::Client::builder().build(HttpsConnector::new_with_connector(metadata::default_http_connector()))
+    hyper::Client::builder().build(HttpsConnector::new_with_connector(default_http_connector()))
 }
 
 #[async_trait]

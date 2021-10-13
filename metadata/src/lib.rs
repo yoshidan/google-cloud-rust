@@ -1,11 +1,11 @@
-use tokio::sync::OnceCell;
-use tokio::net::lookup_host;
 use hyper;
-use hyper::http::{Method, Request};
-use thiserror;
-use hyper::Client;
 use hyper::client::HttpConnector;
+use hyper::http::{Method, Request};
+use hyper::Client;
 use std::time::Duration;
+use thiserror;
+use tokio::net::lookup_host;
+use tokio::sync::OnceCell;
 
 pub const METADATA_IP: &str = "169.254.169.254";
 pub const METADATA_HOST_ENV: &str = "GCE_METADATA_HOST";
@@ -23,7 +23,7 @@ pub fn default_http_connector() -> HttpConnector {
     connector
 }
 
-#[derive(thiserror::Error,Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
     Http(#[from] hyper::http::Error),
@@ -76,4 +76,3 @@ async fn test_on_gce() -> Result<bool, Error> {
 
     return Ok(false);
 }
-

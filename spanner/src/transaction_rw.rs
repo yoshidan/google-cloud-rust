@@ -5,11 +5,11 @@ use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, Transaction};
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
-use gax::call_option::CallSettings;
-use gax::invoke::AsTonicStatus;
-use internal::spanner::v1::spanner_client::SpannerClient;
-use internal::spanner::v1::transaction_options::Mode::ReadWrite;
-use internal::spanner::v1::{
+use google_cloud_gax::call_option::CallSettings;
+use google_cloud_gax::invoke::AsTonicStatus;
+use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
+use google_cloud_googleapis::spanner::v1::transaction_options::Mode::ReadWrite;
+use google_cloud_googleapis::spanner::v1::{
     commit_request, execute_batch_dml_request, execute_sql_request::QueryMode, request_options,
     result_set_stats, transaction_options, transaction_selector, BeginTransactionRequest,
     CommitRequest, CommitResponse, ExecuteBatchDmlRequest, ExecuteSqlRequest, Mutation,

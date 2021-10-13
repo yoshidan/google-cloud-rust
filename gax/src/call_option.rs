@@ -47,7 +47,7 @@ impl Default for Backoff {
             initial: Duration::from_micros(250),
             max: Duration::from_micros(32000),
             multiplier: 1.30,
-            cur: Duration::from_nanos(0)
+            cur: Duration::from_nanos(0),
         }
     }
 }

@@ -1,18 +1,18 @@
 pub mod credentials;
 pub mod error;
+mod misc;
 pub mod token;
 pub mod token_source;
-mod misc;
 
-use metadata::on_gce;
 use crate::credentials::CredentialsFile;
-use crate::token_source::token_source::TokenSource;
+use crate::misc::EMPTY;
 use crate::token_source::authorized_user_token_source::UserAccountTokenSource;
-use crate::token_source::compute_token_source::{ComputeTokenSource};
+use crate::token_source::compute_token_source::ComputeTokenSource;
 use crate::token_source::reuse_token_source::ReuseTokenSource;
 use crate::token_source::service_account_token_source::OAuth2ServiceAccountTokenSource;
 use crate::token_source::service_account_token_source::ServiceAccountTokenSource;
-use crate::misc::EMPTY;
+use crate::token_source::token_source::TokenSource;
+use google_cloud_metadata::on_gce;
 
 const SERVICE_ACCOUNT_KEY: &str = "service_account";
 const USER_CREDENTIALS_KEY: &str = "authorized_user";
@@ -25,15 +25,13 @@ pub struct Config<'a> {
 impl Config<'_> {
     pub fn scopes_to_string(&self, sep: &str) -> String {
         match self.scopes {
-            Some(s) => {
-                    s.iter()
-                    .map(|x| x.to_string())
-                    .collect::<Vec<_>>()
-                    .join(sep)
-            },
-            None => EMPTY.to_string()
+            Some(s) => s
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(sep),
+            None => EMPTY.to_string(),
         }
-
     }
 }
 
@@ -77,7 +75,7 @@ fn credentials_from_json_with_params(
                         config.scopes_to_string(" ").as_str(),
                     )?;
                     Ok(Box::new(source))
-                },
+                }
                 Some(audience) => {
                     // use self-signed JWT.
                     let source = ServiceAccountTokenSource::new(&credentials, audience)?;

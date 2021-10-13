@@ -13,14 +13,14 @@ use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
 use crate::value::TimestampBound;
 use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, TimeZone, Timelike, Utc, Weekday};
 use futures_util::future::BoxFuture;
-use gax::call_option::{Backoff, BackoffRetryer, CallSettings};
-use gax::invoke::AsTonicStatus;
-use gax::{call_option, invoke as retryer};
-use internal::spanner::v1::execute_sql_request::QueryMode;
-use internal::spanner::v1::mutation::{Operation, Write};
-use internal::spanner::v1::request_options::Priority;
-use internal::spanner::v1::transaction_options::Mode::ReadOnly;
-use internal::spanner::v1::{
+use google_cloud_gax::call_option::{Backoff, BackoffRetryer, CallSettings};
+use google_cloud_gax::invoke::AsTonicStatus;
+use google_cloud_gax::{call_option, invoke as retryer};
+use google_cloud_googleapis::spanner::v1::execute_sql_request::QueryMode;
+use google_cloud_googleapis::spanner::v1::mutation::{Operation, Write};
+use google_cloud_googleapis::spanner::v1::request_options::Priority;
+use google_cloud_googleapis::spanner::v1::transaction_options::Mode::ReadOnly;
+use google_cloud_googleapis::spanner::v1::{
     commit_request, request_options, result_set_stats, transaction_options, transaction_selector,
     ExecuteSqlRequest, KeySet, Mutation, RequestOptions, RollbackRequest,
     TransactionOptions as TxOptions, TransactionOptions, TransactionSelector,

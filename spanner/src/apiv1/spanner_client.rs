@@ -1,6 +1,17 @@
-use gax::call_option as gax_opt;
-use gcpauth;
-use internal::spanner::v1 as internal;
+use google_cloud_auth::token_source::token_source::TokenSource;
+use google_cloud_auth::{create_token_source, Config};
+use google_cloud_gax::call_option::{Backoff, BackoffRetryer, CallSettings};
+use google_cloud_gax::invoke::invoke_reuse;
+use google_cloud_googleapis::spanner::v1 as internal;
+use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
+use google_cloud_googleapis::spanner::v1::{
+    BatchCreateSessionsRequest, BatchCreateSessionsResponse, BeginTransactionRequest,
+    CommitRequest, CommitResponse, CreateSessionRequest, DeleteSessionRequest,
+    ExecuteBatchDmlRequest, ExecuteBatchDmlResponse, ExecuteSqlRequest, GetSessionRequest,
+    ListSessionsRequest, ListSessionsResponse, PartialResultSet, PartitionQueryRequest,
+    PartitionReadRequest, PartitionResponse, ReadRequest, ResultSet, RollbackRequest, Session,
+    Transaction,
+};
 use once_cell::sync::Lazy;
 use std::any::Any;
 use std::convert::TryInto;
@@ -12,12 +23,13 @@ use tonic::metadata::{Ascii, BinaryMetadataValue, KeyAndValueRef, MetadataMap, M
 use tonic::transport::Channel;
 use tonic::{IntoRequest, Request, Response, Status, Streaming};
 
+const AUDIENCE: &str = "https://spanner.googleapis.com/";
 const SCOPES: [&'static str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
     "https://www.googleapis.com/auth/spanner.data",
 ];
 
-static AUTHENTICATOR: OnceCell<Box<dyn gcpauth::token::TokenSource>> = OnceCell::const_new();
+static AUTHENTICATOR: OnceCell<Box<dyn TokenSource>> = OnceCell::const_new();
 
 pub(crate) fn ping_query_request(session_name: impl Into<String>) -> internal::ExecuteSqlRequest {
     internal::ExecuteSqlRequest {
@@ -36,10 +48,10 @@ pub(crate) fn ping_query_request(session_name: impl Into<String>) -> internal::E
 }
 
 // default retry call settings
-fn default_setting() -> gax_opt::CallSettings {
-    return gax_opt::CallSettings {
-        retryer: gax_opt::BackoffRetryer {
-            backoff: gax_opt::Backoff::default(),
+fn default_setting() -> CallSettings {
+    return CallSettings {
+        retryer: BackoffRetryer {
+            backoff: Backoff::default(),
             codes: vec![tonic::Code::Unavailable],
             check_session_not_found: false,
         },
@@ -47,17 +59,17 @@ fn default_setting() -> gax_opt::CallSettings {
 }
 #[derive(Clone, Debug)]
 pub struct Client {
-    inner: internal::spanner_client::SpannerClient<Channel>,
+    inner: SpannerClient<Channel>,
 }
 
 impl Client {
     // create new spanner client
-    pub fn new(inner: internal::spanner_client::SpannerClient<Channel>) -> Client {
+    pub fn new(inner: SpannerClient<Channel>) -> Client {
         return Client { inner };
     }
 
     // merge call setting
-    fn get_call_setting(call_setting: Option<gax_opt::CallSettings>) -> gax_opt::CallSettings {
+    fn get_call_setting(call_setting: Option<CallSettings>) -> CallSettings {
         match call_setting {
             Some(s) => s,
             None => default_setting(),
@@ -85,13 +97,13 @@ impl Client {
     // periodically, e.g., "SELECT 1".
     pub async fn create_session(
         &mut self,
-        req: internal::CreateSessionRequest,
-        opt: Option<gax_opt::CallSettings>,
-    ) -> Result<tonic::Response<internal::Session>, tonic::Status> {
+        req: CreateSessionRequest,
+        opt: Option<CallSettings>,
+    ) -> Result<Response<Session>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let database = &req.database;
         let token = get_token().await;
-        return gax::invoke::invoke_reuse(
+        return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(
                     format!("database={}", database),
@@ -115,13 +127,13 @@ impl Client {
     // See https://goo.gl/TgSFN2 (at https://goo.gl/TgSFN2) for best practices on session cache management.
     pub async fn batch_create_sessions(
         &mut self,
-        req: internal::BatchCreateSessionsRequest,
-        opt: Option<gax_opt::CallSettings>,
-    ) -> Result<tonic::Response<internal::BatchCreateSessionsResponse>, tonic::Status> {
+        req: BatchCreateSessionsRequest,
+        opt: Option<CallSettings>,
+    ) -> Result<tonic::Response<BatchCreateSessionsResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let database = &req.database;
         let token = get_token().await;
-        return gax::invoke::invoke_reuse(
+        return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(
                     format!("database={}", database),
@@ -144,13 +156,13 @@ impl Client {
     // alive.
     pub async fn get_session(
         &mut self,
-        req: internal::GetSessionRequest,
-        opt: Option<gax_opt::CallSettings>,
-    ) -> Result<tonic::Response<internal::Session>, tonic::Status> {
+        req: GetSessionRequest,
+        opt: Option<CallSettings>,
+    ) -> Result<Response<Session>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let name = &req.name;
         let token = get_token().await;
-        return gax::invoke::invoke_reuse(
+        return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(
                     format!("name={}", name),
@@ -171,13 +183,13 @@ impl Client {
     // ListSessions lists all sessions in a given database.
     pub async fn list_sessions(
         &mut self,
-        req: internal::ListSessionsRequest,
-        opt: Option<gax_opt::CallSettings>,
-    ) -> Result<tonic::Response<internal::ListSessionsResponse>, tonic::Status> {
+        req: ListSessionsRequest,
+        opt: Option<CallSettings>,
+    ) -> Result<Response<ListSessionsResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let database = &req.database;
         let token = get_token().await;
-        return gax::invoke::invoke_reuse(
+        return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(
                     format!("database={}", database),
@@ -200,13 +212,13 @@ impl Client {
     // this session.
     pub async fn delete_session(
         &mut self,
-        req: internal::DeleteSessionRequest,
-        opt: Option<gax_opt::CallSettings>,
-    ) -> Result<tonic::Response<()>, tonic::Status> {
+        req: DeleteSessionRequest,
+        opt: Option<CallSettings>,
+    ) -> Result<Response<()>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let name = &req.name;
         let token = get_token().await;
-        return gax::invoke::invoke_reuse(
+        return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(
                     format!("name={}", name),
@@ -237,13 +249,13 @@ impl Client {
     // ExecuteStreamingSql instead.
     pub async fn execute_sql(
         &mut self,
-        req: internal::ExecuteSqlRequest,
-        opt: Option<gax_opt::CallSettings>,
-    ) -> Result<Response<internal::ResultSet>, tonic::Status> {
+        req: ExecuteSqlRequest,
+        opt: Option<CallSettings>,
+    ) -> Result<Response<ResultSet>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
         let token = get_token().await;
-        return gax::invoke::invoke_reuse(
+        return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(
                     format!("session={}", session),
@@ -268,13 +280,13 @@ impl Client {
     // column value can exceed 10 MiB.
     pub async fn execute_streaming_sql(
         &mut self,
-        req: internal::ExecuteSqlRequest,
-        opt: Option<gax_opt::CallSettings>,
-    ) -> Result<Response<Streaming<internal::PartialResultSet>>, Status> {
+        req: ExecuteSqlRequest,
+        opt: Option<CallSettings>,
+    ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
         let token = get_token().await;
-        return gax::invoke::invoke_reuse(
+        return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(
                     format!("session={}", session),
@@ -305,13 +317,13 @@ impl Client {
     // are not executed.
     pub async fn execute_batch_dml(
         &mut self,
-        req: internal::ExecuteBatchDmlRequest,
-        opt: Option<gax_opt::CallSettings>,
-    ) -> Result<Response<internal::ExecuteBatchDmlResponse>, Status> {
+        req: ExecuteBatchDmlRequest,
+        opt: Option<CallSettings>,
+    ) -> Result<Response<ExecuteBatchDmlResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
         let token = get_token().await;
-        return gax::invoke::invoke_reuse(
+        return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(
                     format!("session={}", session),
@@ -344,13 +356,13 @@ impl Client {
     // StreamingRead instead.
     pub async fn read(
         &mut self,
-        req: internal::ReadRequest,
-        opt: Option<gax_opt::CallSettings>,
-    ) -> Result<Response<internal::ResultSet>, Status> {
+        req: ReadRequest,
+        opt: Option<CallSettings>,
+    ) -> Result<Response<ResultSet>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
         let token = get_token().await;
-        return gax::invoke::invoke_reuse(
+        return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(
                     format!("session={}", session),
@@ -375,13 +387,13 @@ impl Client {
     // 10 MiB.
     pub async fn streaming_read(
         &mut self,
-        req: internal::ReadRequest,
-        opt: Option<gax_opt::CallSettings>,
-    ) -> Result<Response<Streaming<internal::PartialResultSet>>, Status> {
+        req: ReadRequest,
+        opt: Option<CallSettings>,
+    ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
         let token = get_token().await;
-        return gax::invoke::invoke_reuse(
+        return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(
                     format!("session={}", session),
@@ -405,13 +417,13 @@ impl Client {
     // side-effect.
     pub async fn begin_transaction(
         &mut self,
-        req: internal::BeginTransactionRequest,
-        opt: Option<gax_opt::CallSettings>,
-    ) -> Result<Response<internal::Transaction>, Status> {
+        req: BeginTransactionRequest,
+        opt: Option<CallSettings>,
+    ) -> Result<Response<Transaction>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
         let token = get_token().await;
-        return gax::invoke::invoke_reuse(
+        return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(
                     format!("session={}", session),
@@ -445,13 +457,13 @@ impl Client {
     // state of things as they are now.
     pub async fn commit(
         &mut self,
-        req: internal::CommitRequest,
-        opt: Option<gax_opt::CallSettings>,
-    ) -> Result<Response<internal::CommitResponse>, Status> {
+        req: CommitRequest,
+        opt: Option<CallSettings>,
+    ) -> Result<Response<CommitResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
         let token = get_token().await;
-        return gax::invoke::invoke_reuse(
+        return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(
                     format!("session={}", session),
@@ -479,13 +491,13 @@ impl Client {
     // found. Rollback never returns ABORTED.
     pub async fn rollback(
         &mut self,
-        req: internal::RollbackRequest,
-        opt: Option<gax_opt::CallSettings>,
+        req: RollbackRequest,
+        opt: Option<CallSettings>,
     ) -> Result<Response<()>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
         let token = get_token().await;
-        return gax::invoke::invoke_reuse(
+        return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(
                     format!("session={}", session),
@@ -516,13 +528,13 @@ impl Client {
     // the whole operation must be restarted from the beginning.
     pub async fn partition_query(
         &mut self,
-        req: internal::PartitionQueryRequest,
-        opt: Option<gax_opt::CallSettings>,
-    ) -> Result<Response<internal::PartitionResponse>, Status> {
+        req: PartitionQueryRequest,
+        opt: Option<CallSettings>,
+    ) -> Result<Response<PartitionResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
         let token = get_token().await;
-        return gax::invoke::invoke_reuse(
+        return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(
                     format!("session={}", session),
@@ -555,13 +567,13 @@ impl Client {
     // the whole operation must be restarted from the beginning.
     pub async fn partition_read(
         &mut self,
-        req: internal::PartitionReadRequest,
-        opt: Option<gax_opt::CallSettings>,
-    ) -> Result<Response<internal::PartitionResponse>, Status> {
+        req: PartitionReadRequest,
+        opt: Option<CallSettings>,
+    ) -> Result<Response<PartitionResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
         let token = get_token().await;
-        return gax::invoke::invoke_reuse(
+        return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(
                     format!("session={}", session),
@@ -583,8 +595,8 @@ impl Client {
 async fn get_token() -> String {
     let ts = AUTHENTICATOR
         .get_or_try_init(|| {
-            gcpauth::create_token_source(gcpauth::Config {
-                audience: Some("https://spanner.googleapis.com/"),
+            create_token_source(Config {
+                audience: Some(AUDIENCE),
                 scopes: Some(&SCOPES),
             })
         })
@@ -593,11 +605,7 @@ async fn get_token() -> String {
     return ts.token().await.unwrap().value();
 }
 
-fn create_request<T>(
-    param_string: String,
-    token: &str,
-    mut request: tonic::Request<T>,
-) -> tonic::Request<T> {
+fn create_request<T>(param_string: String, token: &str, mut request: Request<T>) -> Request<T> {
     let target = request.metadata_mut();
     target.append("x-goog-request-params", param_string.parse().unwrap());
     target.insert("authorization", token.parse().unwrap());

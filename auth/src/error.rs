@@ -36,6 +36,5 @@ pub enum Error {
     DeserializeError(String),
 
     #[error("Private Key is requred")]
-    NoPrivateKeyFound
-
+    NoPrivateKeyFound,
 }

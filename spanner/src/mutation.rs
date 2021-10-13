@@ -1,5 +1,5 @@
-use internal::spanner::v1::mutation::{Delete, Operation, Write};
-use internal::spanner::v1::{KeySet, Mutation};
+use google_cloud_googleapis::spanner::v1::mutation::{Delete, Operation, Write};
+use google_cloud_googleapis::spanner::v1::{KeySet, Mutation};
 use prost_types::value::Kind;
 use prost_types::value::Kind::StringValue;
 use prost_types::{value, ListValue, Value};

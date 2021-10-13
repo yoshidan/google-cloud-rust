@@ -3,6 +3,6 @@ members = [
     "metadata",
     "auth",
     "gax",
-    "proto",
+    "googleapis",
     "spanner",
 ]
