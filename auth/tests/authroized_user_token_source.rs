@@ -1,5 +1,7 @@
-use gcpauth::token_source::token_source::TokenSource;
-use gcpauth::*;
+use google_cloud_auth::token_source::authorized_user_token_source::UserAccountTokenSource;
+use google_cloud_auth::token_source::token_source::TokenSource;
+use google_cloud_auth::token_source::*;
+use google_cloud_auth::*;
 use std::fs::File;
 use std::io::Write;
 
@@ -14,7 +16,7 @@ async fn test() -> Result<(), error::Error> {
 
     std::env::set_var("GOOGLE_APPLICATION_CREDENTIALS", ".cred.json");
     let credentials = credentials::CredentialsFile::new().await?;
-    let ts = token_source::authorized_user_token_source::UserAccountTokenSource::new(&credentials)?;
+    let ts = UserAccountTokenSource::new(&credentials)?;
     let token = ts.token().await?;
     assert_eq!("Bearer", token.token_type);
     assert_eq!(true, token.expiry.unwrap().timestamp() > 0);

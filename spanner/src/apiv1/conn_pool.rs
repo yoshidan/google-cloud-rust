@@ -12,13 +12,13 @@ use tonic::{
 
 pub const TLS_CERTS: &[u8] = include_bytes!("../../roots.pem");
 
-pub trait ConnPool {
+pub(crate) trait ConnPool {
     fn num(&self) -> usize;
     fn conn(&self) -> SpannerClient<Channel>;
 }
 
 #[derive(Debug)]
-pub struct ConnectionManager {
+pub(crate) struct ConnectionManager {
     index: AtomicI64,
     conns: Vec<SpannerClient<Channel>>,
 }
