@@ -27,6 +27,13 @@ use std::sync::Arc;
 use tonic::{Code, Response, Status, Streaming};
 
 #[async_trait]
+pub trait AsyncIterator {
+    fn column_metadata(&self, column_name: &str) -> Option<(usize, Field)>;
+
+    async fn next(&mut self) -> Result<Option<Row>, tonic::Status>;
+}
+
+#[async_trait]
 pub trait Reader {
     async fn read(
         &self,
@@ -102,9 +109,9 @@ impl<'a> RowIterator<'a> {
     pub(crate) async fn new(
         session: &'a mut SessionHandle,
         reader: Box<dyn Reader + Sync + Send>,
-    ) -> Result<StreamReader<'a>, Status> {
+    ) -> Result<RowIterator<'a>, Status> {
         let streaming = reader.read(session).await?.into_inner();
-        return Ok(StreamReader {
+        return Ok(RowIterator {
             streaming,
             session,
             fields: Arc::new(vec![]),
@@ -137,7 +144,7 @@ impl<'a> RowIterator<'a> {
                     let last_value_of_chunked_list = last.values.pop().unwrap();
                     let first_value_of_next_list = next_list.pop_front().unwrap();
                     let merged =
-                        StreamReader::merge(last_value_of_chunked_list, first_value_of_next_list);
+                        RowIterator::merge(last_value_of_chunked_list, first_value_of_next_list);
                     let mut merged_values = vec![];
                     for i in last.values {
                         merged_values.push(i)
@@ -165,7 +172,7 @@ impl<'a> RowIterator<'a> {
         //チャンクが残ってた場合はマージ
         match self.chunked_value.clone() {
             Some(chunked) => {
-                let merged = StreamReader::merge(chunked, values.pop_front().unwrap());
+                let merged = RowIterator::merge(chunked, values.pop_front().unwrap());
                 values.push_front(merged);
                 self.chunked_value = None;
             }
@@ -222,6 +229,10 @@ impl<'a> RowIterator<'a> {
         return rows;
     }
 
+}
+
+#[async_trait]
+impl<'a> AsyncIterator for RowIterator<'a> {
     fn column_metadata(&self, column_name: &str) -> Option<(usize, Field)> {
         for (i, val) in self.fields.iter().enumerate() {
             if val.name == column_name {
@@ -233,7 +244,7 @@ impl<'a> RowIterator<'a> {
 
     /// next returns the next result.
     /// Its second return value is None if there are no more results.
-    async fn next(&mut self) -> Result<Option<Row>, Status> {
+    async fn next(&mut self) -> Result<Option<Row>, tonic::Status> {
         if !self.rows.is_empty() {
             return Ok(self.rows.pop_front());
         }

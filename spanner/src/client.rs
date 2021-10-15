@@ -13,7 +13,7 @@ use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
 use crate::value::TimestampBound;
 use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, TimeZone, Timelike, Utc, Weekday};
 use futures_util::future::BoxFuture;
-use google_cloud_gax::call_option::{Backoff, BackoffRetryer, CallSettings};
+use google_cloud_gax::call_option::{Backoff, BackoffRetryer, CallSettings, Retryer};
 use google_cloud_gax::invoke::AsTonicStatus;
 use google_cloud_gax::{call_option, invoke as retryer};
 use google_cloud_googleapis::spanner::v1::execute_sql_request::QueryMode;
@@ -33,7 +33,7 @@ use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::{Mutex, MutexGuard, OnceCell};
-use tokio::time::{Instant, Interval};
+use tokio::time::{Instant, Interval, Duration};
 use tonic::{Code, Status};
 
 #[derive(Clone)]
@@ -109,7 +109,6 @@ fn default_transaction_retry_setting() -> CallSettings {
         retryer: BackoffRetryer {
             backoff: Backoff::default(),
             codes: vec![tonic::Code::Aborted],
-            check_session_not_found: true,
         },
     }
 }
@@ -350,74 +349,86 @@ impl Client {
         ms: Vec<Mutation>,
         options: Option<ReadWriteTransactionOption>,
     ) -> Result<Option<Timestamp>, TxError> {
-        let (ro, bo, co) = Client::split_read_write_transaction_option(options);
-        let result: Result<Option<Timestamp>, TxError> = Client::run_with_retry(
-            || async {
-                let mut tx = self.read_write_transaction(Some(bo.clone())).await?;
-                tx.buffer_write(ms.clone());
-                let result = tx.finish::<(), Status>(Ok(()), Some(co.clone())).await?;
-                Ok(result.0)
-            },
-            Some(ro),
-        )
-        .await;
-        return result;
+        let result: Result<(Option<Timestamp>, ()), TxError> = self.read_write_transaction(
+                |tx| {
+                    let a = ms.to_vec();
+                    async move {
+                        let mut tx = tx.lock().await;
+                        tx.buffer_write(a);
+                        Ok(())
+                    }
+                },
+                options,
+            )
+            .await;
+        return Ok(result?.0);
     }
 
-    /// read_write_transaction returns the ReadWriteTransaction.
-    /// Use ReadWriteTransaction in Client::run_with_retry because a Cloud Spanner transaction may have to be tried multiple times before it commits.
-    /// https://cloud.google.com/spanner/docs/transactions#rw_transaction_interface
-    pub async fn read_write_transaction(
+    /// ReadWriteTransaction executes a read-write transaction, with retries as
+    /// necessary.
+    ///
+    /// The function f will be called one or more times. It must not maintain
+    /// any state between calls.
+    ///
+    /// If the transaction cannot be committed or if f returns an ABORTED error,
+    /// ReadWriteTransaction will call f again. It will continue to call f until the
+    /// transaction can be committed or the Context times out or is cancelled.  If f
+    /// returns an error other than ABORTED, ReadWriteTransaction will abort the
+    /// transaction and return the error.
+    ///
+    /// To limit the number of retries, set a deadline on the Context rather than
+    /// using a fixed limit on the number of attempts. ReadWriteTransaction will
+    /// retry as needed until that deadline is met.
+    ///
+    /// See https://godoc.org/cloud.google.com/go/spanner#ReadWriteTransaction for
+    /// more details.
+    /// ```
+    pub async fn read_write_transaction<T, E, F>(
         &self,
-        options: Option<CallOptions>,
-    ) -> Result<ReadWriteTransaction, TxError> {
-        let opt = match options {
-            Some(o) => o,
-            None => CallOptions::default(),
-        };
-        let session = self.get_session().await?;
-        let result = ReadWriteTransaction::begin(session, opt).await?;
-        Ok(result)
-    }
-
-    /// run_with_retry executes a read-write transaction, with retries as necessary.
-    ///
-    /// The function f will be called one or more times. It must not maintain any state between calls.
-    ///
-    /// If the transaction cannot be committed or if f returns an ABORTED error or f returns an 'Session Not Found',
-    /// run_with_retry will call f again. It will continue to call f until the transaction can be committed.
-    /// If f returns an error other than ABORTED, run_with_retry will return the error.
-    /// # Example
-    /// ```
-    /// use google_cloud_spanner::client::Client;
-    /// use google_cloud_spanner::mutation::update;
-    /// use google_cloud_spanner::statement::{ToKind, Statement};
-    /// let result = Client::run_with_retry( || async {
-    ///     let mut tx = client.read_write_transaction(None).await?;
-    ///     let tx_result = async {
-    ///         tx.buffer_write(vec![update( "Table1",vec!["Attr1", "Attr2"],vec!["2".to_kind(), true.to_kind()])]);
-    ///
-    ///         let mut stmt = Statement::new("UPDATE Table2 SET Attr3 = @Attr3 Where Attr4 = @Attr4");
-    ///         stmt.add_param("Attr3", "updating");
-    ///         stmt.add_param("Attr4", "condition");
-    ///         tx.update(stmt,None).await
-    ///     }.await;
-    ///     tx.finish(tx_result, None).await
-    /// }.await, None);
-    /// ```
-    pub async fn run_with_retry<T, E, Fut>(
-        mut f: impl FnMut() -> Fut,
-        retry_setting: Option<CallSettings>,
-    ) -> Result<T, E>
-    where
-        E: AsTonicStatus,
-        Fut: Future<Output = Result<T, E>>,
+        mut f: impl Fn(Arc<Mutex<ReadWriteTransaction>>) -> F,
+        options: Option<ReadWriteTransactionOption>,
+    ) -> Result<(Option<prost_types::Timestamp>, T), E>
+        where
+            E: AsTonicStatus + From<TxError> + From<tonic::Status>,
+            F: Future<Output = Result<T, E>>,
     {
-        let mut o = match retry_setting {
-            Some(c) => c,
-            None => default_transaction_retry_setting(),
-        };
-        return retryer::invoke(f, &mut o).await;
+        let (mut ro, bo, co) = Client::split_read_write_transaction_option(options);
+
+        let backoff = &mut ro.retryer.backoff;
+        let mut session = Some(self.get_session().await.map_err(TxError::SessionError)?);
+
+        // reuse session
+        loop {
+            //run in transaction
+            let tx = Arc::new(Mutex::new(ReadWriteTransaction::begin(session.take().unwrap(), bo.clone()).await?));
+            let mut result = f(tx.clone()).await;
+            let result = async {
+                let mut locked = tx.lock().await;
+                let result = locked.finish(result, Some(co.clone())).await;
+                session = Some(locked.take_session());
+                result
+            }.await;
+
+            if result.is_ok() {
+                return result;
+            }
+            let err = result.err().unwrap();
+            let status = match err.as_tonic_status() {
+                Some(s) => s,
+                None => return Err(err),
+            };
+
+            // continue immediate when the session not found
+            if status.code() == Code::NotFound && status.message().contains("Session not found:") {
+                continue;
+            }
+            // backoff retry
+            if status.code() == Code::Aborted {
+                tokio::time::sleep(backoff.duration()).await;
+                continue;
+            }
+            return Err(err)
+        }
     }
 
     async fn get_session(&self) -> Result<ManagedSession, SessionError> {

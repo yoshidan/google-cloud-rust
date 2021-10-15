@@ -32,7 +32,7 @@ where
             None => return Err(err),
         };
 
-        match retryer.retry(status) {
+        match retryer.is_retryable(status) {
             Some(duration) => tokio::time::sleep(duration).await,
             None => return Err(err),
         };
@@ -62,7 +62,7 @@ where
             Some(s) => s,
             None => return Err(err),
         };
-        match retryer.retry(status) {
+        match retryer.is_retryable(status) {
             Some(duration) => tokio::time::sleep(duration).await,
             None => return Err(err),
         };

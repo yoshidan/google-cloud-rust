@@ -52,7 +52,6 @@ fn default_setting() -> CallSettings {
         retryer: BackoffRetryer {
             backoff: Backoff::default(),
             codes: vec![tonic::Code::Unavailable],
-            check_session_not_found: false,
         },
     };
 }

@@ -4,7 +4,7 @@ use tonic::{Code, Status};
 
 /// Retryer is used by Invoke to determine retry behavior.
 pub trait Retryer {
-    fn retry(&mut self, status: &Status) -> Option<Duration>;
+    fn is_retryable(&mut self, status: &Status) -> Option<Duration>;
 }
 
 /// Backoff implements exponential backoff.
@@ -20,7 +20,7 @@ pub struct Backoff {
 }
 
 impl Backoff {
-    fn duration(&mut self) -> Duration {
+    pub fn duration(&mut self) -> Duration {
         // Select a duration between 1ns and the current max. It might seem
         // counterintuitive to have so much jitter, but
         // https://www.awsarchitectureblog.com/2015/03/backoff.html argues that
@@ -41,7 +41,6 @@ impl Backoff {
 pub struct BackoffRetryer {
     pub backoff: Backoff, // supports backoff retry only
     pub codes: Vec<tonic::Code>,
-    pub check_session_not_found: bool,
 }
 
 impl Default for Backoff {
@@ -61,7 +60,7 @@ pub struct CallSettings {
 }
 
 impl Retryer for BackoffRetryer {
-    fn retry(&mut self, status: &Status) -> Option<Duration> {
+    fn is_retryable(&mut self, status: &Status) -> Option<Duration> {
         let code = status.code();
         if code == Code::Internal
             && !status.message().contains("stream terminated by RST_STREAM")
@@ -81,13 +80,6 @@ impl Retryer for BackoffRetryer {
         for candidate in self.codes.iter() {
             if *candidate == code {
                 log::debug!("retry {} {}", status.code(), status.message());
-                return Some(self.backoff.duration());
-            }
-        }
-
-        if self.check_session_not_found {
-            if status.message().contains("Session not found:") {
-                log::debug!("retry by session not found");
                 return Some(self.backoff.duration());
             }
         }

@@ -151,23 +151,19 @@ impl ReadWriteTransaction {
             .spanner_client
             .begin_transaction(request, options.call_setting)
             .await;
-        match session.invalidate_if_needed(result).await {
-            Ok(response) => {
-                let tx = response.into_inner();
-                Ok(ReadWriteTransaction {
-                    base_tx: Transaction {
-                        session,
-                        sequence_number: AtomicI64::new(0),
-                        transaction_selector: TransactionSelector {
-                            selector: Some(transaction_selector::Selector::Id(tx.id.clone())),
-                        },
-                    },
-                    tx_id: tx.id,
-                    wb: vec![],
-                })
-            }
-            Err(e) => Err(e),
-        }
+        let response = session.invalidate_if_needed(result).await?;
+        let tx = response.into_inner();
+        Ok(ReadWriteTransaction {
+            base_tx: Transaction {
+                session: Some(session),
+                sequence_number: AtomicI64::new(0),
+                transaction_selector: TransactionSelector {
+                    selector: Some(transaction_selector::Selector::Id(tx.id.clone())),
+                },
+            },
+            tx_id: tx.id,
+            wb: vec![],
+        })
     }
 
     pub fn buffer_write(&mut self, ms: Vec<Mutation>) {
@@ -185,7 +181,7 @@ impl ReadWriteTransaction {
         };
 
         let request = ExecuteSqlRequest {
-            session: self.base_tx.session.session.name.to_string(),
+            session: self.base_tx.session.as_ref().unwrap().session.name.to_string(),
             transaction: Some(self.transaction_selector.clone()),
             sql: stmt.sql.to_string(),
             params: Some(prost_types::Struct {
@@ -202,11 +198,11 @@ impl ReadWriteTransaction {
 
         let result = self
             .base_tx
-            .session
+            .session.as_mut().unwrap()
             .spanner_client
             .execute_sql(request, opt.call_options.call_setting)
             .await;
-        let response = self.session.invalidate_if_needed(result).await;
+        let response = self.session.as_mut().unwrap().invalidate_if_needed(result).await;
         match response {
             Ok(r) => Ok(extract_row_count(r.into_inner().stats)),
             Err(s) => Err(s),
@@ -224,7 +220,7 @@ impl ReadWriteTransaction {
         };
 
         let request = ExecuteBatchDmlRequest {
-            session: self.base_tx.session.session.name.to_string(),
+            session: self.base_tx.session.as_mut().unwrap().session.name.to_string(),
             transaction: Some(self.transaction_selector.clone()),
             seqno: self.sequence_number.fetch_add(1, Ordering::Relaxed),
             request_options: Transaction::create_request_options(opt.call_options.priority),
@@ -240,11 +236,11 @@ impl ReadWriteTransaction {
 
         let result = self
             .base_tx
-            .session
+            .session.as_mut().unwrap()
             .spanner_client
             .execute_batch_dml(request, opt.call_options.call_setting)
             .await;
-        let response = self.session.invalidate_if_needed(result).await;
+        let response = self.session.as_mut().unwrap().invalidate_if_needed(result).await;
         match response {
             Ok(r) => Ok(r
                 .into_inner()
@@ -309,7 +305,7 @@ impl ReadWriteTransaction {
         &mut self,
         options: CommitOptions,
     ) -> Result<CommitResponse, tonic::Status> {
-        let session = &mut self.base_tx.session;
+        let session = &mut self.base_tx.session.as_mut().unwrap();
         return commit(
             session,
             self.wb.to_vec(),
@@ -321,16 +317,16 @@ impl ReadWriteTransaction {
 
     pub async fn rollback(&mut self, setting: Option<CallSettings>) -> Result<(), tonic::Status> {
         let request = RollbackRequest {
-            session: self.base_tx.session.session.name.to_string(),
+            session: self.base_tx.session.as_ref().unwrap().session.name.to_string(),
             transaction_id: self.tx_id.clone(),
         };
         let result = self
             .base_tx
-            .session
+            .session.as_mut().unwrap()
             .spanner_client
             .rollback(request, setting)
             .await;
-        let response = self.base_tx.session.invalidate_if_needed(result).await;
+        let response = self.base_tx.session.as_mut().unwrap().invalidate_if_needed(result).await;
         match response {
             Ok(r) => Ok(r.into_inner()),
             Err(e) => Err(e),

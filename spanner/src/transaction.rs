@@ -79,7 +79,7 @@ impl Default for QueryOptions {
 }
 
 pub struct Transaction {
-    pub session: ManagedSession,
+    pub session: Option<ManagedSession>, // for returning ownership of session on before destroy
     pub sequence_number: AtomicI64,
     pub transaction_selector: TransactionSelector,
 }
@@ -111,7 +111,7 @@ impl Transaction {
         };
 
         let request = ExecuteSqlRequest {
-            session: self.session.session.name.to_string(),
+            session: self.session.as_ref().unwrap().session.name.to_string(),
             transaction: Some(self.transaction_selector.clone()),
             sql: statement.sql,
             params: Some(Struct {
@@ -125,7 +125,7 @@ impl Transaction {
             query_options: opt.optimizer_options,
             request_options: Transaction::create_request_options(opt.call_options.priority),
         };
-        let session = self.session.deref_mut();
+        let session = self.session.as_mut().unwrap().deref_mut();
         return RowIterator::new(
             session,
             Box::new(StatementReader {
@@ -155,7 +155,7 @@ impl Transaction {
         };
 
         let request = ReadRequest {
-            session: self.session.session.name.to_string(),
+            session: self.session.as_ref().unwrap().session.name.to_string(),
             transaction: Some(self.transaction_selector.clone()),
             table: table.into(),
             index: opt.index.into(),
@@ -167,7 +167,7 @@ impl Transaction {
             request_options: Transaction::create_request_options(opt.call_options.priority),
         };
 
-        let session = self.session.deref_mut();
+        let session = self.session.as_mut().unwrap();
         return RowIterator::new(
             session,
             Box::new(TableReader {
@@ -176,5 +176,11 @@ impl Transaction {
             }),
         )
         .await;
+    }
+
+
+    // returns the owner ship of session
+    pub(crate) fn take_session(&mut self) -> ManagedSession {
+        return self.session.take().unwrap();
     }
 }
