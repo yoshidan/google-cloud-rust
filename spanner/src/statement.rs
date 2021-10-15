@@ -31,7 +31,6 @@ pub struct Statement {
 }
 
 impl Statement {
-
     /// new returns a Statement with the given SQL and an empty Params map.
     pub fn new<T: Into<String>>(sql: T) -> Self {
         return Statement {

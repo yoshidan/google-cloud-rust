@@ -33,7 +33,7 @@ use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::{Mutex, MutexGuard, OnceCell};
-use tokio::time::{Instant, Interval, Duration};
+use tokio::time::{Duration, Instant, Interval};
 use tonic::{Code, Status};
 
 #[derive(Clone)]
@@ -349,7 +349,8 @@ impl Client {
         ms: Vec<Mutation>,
         options: Option<ReadWriteTransactionOption>,
     ) -> Result<Option<Timestamp>, TxError> {
-        let result: Result<(Option<Timestamp>, ()), TxError> = self.read_write_transaction(
+        let result: Result<(Option<Timestamp>, ()), TxError> = self
+            .read_write_transaction(
                 |tx| {
                     let a = ms.to_vec();
                     async move {
@@ -388,9 +389,9 @@ impl Client {
         mut f: impl Fn(Arc<Mutex<ReadWriteTransaction>>) -> F,
         options: Option<ReadWriteTransactionOption>,
     ) -> Result<(Option<prost_types::Timestamp>, T), E>
-        where
-            E: AsTonicStatus + From<TxError> + From<tonic::Status>,
-            F: Future<Output = Result<T, E>>,
+    where
+        E: AsTonicStatus + From<TxError> + From<tonic::Status>,
+        F: Future<Output = Result<T, E>>,
     {
         let (mut ro, bo, co) = Client::split_read_write_transaction_option(options);
 
@@ -400,14 +401,17 @@ impl Client {
         // reuse session
         loop {
             //run in transaction
-            let tx = Arc::new(Mutex::new(ReadWriteTransaction::begin(session.take().unwrap(), bo.clone()).await?));
+            let tx = Arc::new(Mutex::new(
+                ReadWriteTransaction::begin(session.take().unwrap(), bo.clone()).await?,
+            ));
             let mut result = f(tx.clone()).await;
             let result = async {
                 let mut locked = tx.lock().await;
                 let result = locked.finish(result, Some(co.clone())).await;
                 session = Some(locked.take_session());
                 result
-            }.await;
+            }
+            .await;
 
             if result.is_ok() {
                 return result;
@@ -427,7 +431,7 @@ impl Client {
                 tokio::time::sleep(backoff.duration()).await;
                 continue;
             }
-            return Err(err)
+            return Err(err);
         }
     }
 

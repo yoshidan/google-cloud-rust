@@ -4,7 +4,6 @@ use prost_types::value::Kind;
 use prost_types::value::Kind::StringValue;
 use prost_types::{value, ListValue, Value};
 
-
 fn write<T, C>(table: T, columns: Vec<C>, values: Vec<Kind>) -> Write
 where
     T: Into<String>,

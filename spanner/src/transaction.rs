@@ -1,6 +1,6 @@
 use crate::apiv1::spanner_client::Client;
 use crate::key::KeySet;
-use crate::reader::{AsyncIterator, StatementReader, TableReader, RowIterator};
+use crate::reader::{AsyncIterator, RowIterator, StatementReader, TableReader};
 use crate::session_pool::ManagedSession;
 use crate::session_pool::{SessionHandle, SessionManager};
 use crate::statement::Statement;
@@ -155,7 +155,7 @@ impl Transaction {
         };
 
         let request = ReadRequest {
-            session: self.session.as_ref().unwrap().session.name.to_string(),
+            session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
             table: table.into(),
             index: opt.index.into(),
@@ -167,7 +167,7 @@ impl Transaction {
             request_options: Transaction::create_request_options(opt.call_options.priority),
         };
 
-        let session = self.session.as_mut().unwrap();
+        let session = self.as_mut_session();
         return RowIterator::new(
             session,
             Box::new(TableReader {
@@ -178,6 +178,17 @@ impl Transaction {
         .await;
     }
 
+    pub(crate) fn get_session_name(&self) -> String {
+        return self.session.as_ref().unwrap().session.name.to_string();
+    }
+
+    pub(crate) fn as_ref_session(&self) -> &ManagedSession {
+        return self.session.as_ref().unwrap();
+    }
+
+    pub(crate) fn as_mut_session(&mut self) -> &mut ManagedSession {
+        return self.session.as_mut().unwrap();
+    }
 
     // returns the owner ship of session
     pub(crate) fn take_session(&mut self) -> ManagedSession {

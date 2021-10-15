@@ -1,4 +1,4 @@
-use crate::reader::{AsyncIterator, Reader, StatementReader, TableReader, RowIterator};
+use crate::reader::{AsyncIterator, Reader, RowIterator, StatementReader, TableReader};
 use crate::session_pool::{ManagedSession, SessionHandle, SessionManager};
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, ReadOptions, Transaction};
@@ -173,7 +173,7 @@ impl BatchReadOnlyTransaction {
         };
 
         let request = PartitionReadRequest {
-            session: self.session.as_ref().unwrap().session.name.to_string(),
+            session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
             table: table.clone().into(),
             index: opt.index.clone(),
@@ -182,7 +182,7 @@ impl BatchReadOnlyTransaction {
             partition_options: Some(po),
         };
         let result = match self
-            .session.as_mut().unwrap()
+            .as_mut_session()
             .spanner_client
             .partition_read(request, None)
             .await
@@ -194,7 +194,7 @@ impl BatchReadOnlyTransaction {
                 .map(|x| Partition {
                     reader: TableReader {
                         request: ReadRequest {
-                            session: self.session.as_ref().unwrap().session.name.to_string(),
+                            session: self.get_session_name(),
                             transaction: Some(self.transaction_selector.clone()),
                             table: table.clone().into(),
                             index: opt.index.clone().into(),
@@ -213,7 +213,7 @@ impl BatchReadOnlyTransaction {
                 .collect()),
             Err(e) => Err(e),
         };
-        return self.session.as_mut().unwrap().invalidate_if_needed(result).await;
+        return self.as_mut_session().invalidate_if_needed(result).await;
     }
 
     /// partition_query returns a list of Partitions that can be used to execute a query against the database.
@@ -229,7 +229,7 @@ impl BatchReadOnlyTransaction {
         };
 
         let request = PartitionQueryRequest {
-            session: self.session.as_ref().unwrap().session.name.to_string(),
+            session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
             sql: stmt.sql.clone(),
             params: Some(prost_types::Struct {
@@ -239,7 +239,7 @@ impl BatchReadOnlyTransaction {
             partition_options: Some(po),
         };
         let result = match self
-            .session.as_mut().unwrap()
+            .as_mut_session()
             .spanner_client
             .partition_query(request.clone(), None)
             .await
@@ -251,7 +251,7 @@ impl BatchReadOnlyTransaction {
                 .map(|x| Partition {
                     reader: StatementReader {
                         request: ExecuteSqlRequest {
-                            session: self.session.as_ref().unwrap().session.name.to_string(),
+                            session: self.get_session_name(),
                             transaction: Some(self.transaction_selector.clone()),
                             sql: stmt.sql.clone(),
                             params: Some(prost_types::Struct {
@@ -273,7 +273,7 @@ impl BatchReadOnlyTransaction {
                 .collect()),
             Err(e) => Err(e),
         };
-        return self.session.as_mut().unwrap().invalidate_if_needed(result).await;
+        return self.as_mut_session().invalidate_if_needed(result).await;
     }
 
     // execute runs a single Partition obtained from partition_read or partition_query.
@@ -281,7 +281,7 @@ impl BatchReadOnlyTransaction {
         &mut self,
         partition: Partition<T>,
     ) -> Result<RowIterator<'_>, Status> {
-        let session = self.session.as_mut().unwrap().deref_mut();
+        let session = self.as_mut_session();
         return RowIterator::new(session, Box::new(partition.reader)).await;
     }
 }

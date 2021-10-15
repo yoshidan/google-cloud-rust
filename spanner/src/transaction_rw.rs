@@ -7,6 +7,7 @@ use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use google_cloud_gax::call_option::CallSettings;
 use google_cloud_gax::invoke::AsTonicStatus;
+use google_cloud_googleapis::spanner::v1::commit_request::Transaction::TransactionId;
 use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
 use google_cloud_googleapis::spanner::v1::transaction_options::Mode::ReadWrite;
 use google_cloud_googleapis::spanner::v1::{
@@ -181,7 +182,7 @@ impl ReadWriteTransaction {
         };
 
         let request = ExecuteSqlRequest {
-            session: self.base_tx.session.as_ref().unwrap().session.name.to_string(),
+            session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
             sql: stmt.sql.to_string(),
             params: Some(prost_types::Struct {
@@ -196,17 +197,13 @@ impl ReadWriteTransaction {
             request_options: Transaction::create_request_options(opt.call_options.priority),
         };
 
-        let result = self
-            .base_tx
-            .session.as_mut().unwrap()
+        let session = self.as_mut_session();
+        let result = session
             .spanner_client
             .execute_sql(request, opt.call_options.call_setting)
             .await;
-        let response = self.session.as_mut().unwrap().invalidate_if_needed(result).await;
-        match response {
-            Ok(r) => Ok(extract_row_count(r.into_inner().stats)),
-            Err(s) => Err(s),
-        }
+        let response = session.invalidate_if_needed(result).await?;
+        Ok(extract_row_count(response.into_inner().stats))
     }
 
     pub async fn batch_update(
@@ -220,7 +217,7 @@ impl ReadWriteTransaction {
         };
 
         let request = ExecuteBatchDmlRequest {
-            session: self.base_tx.session.as_mut().unwrap().session.name.to_string(),
+            session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
             seqno: self.sequence_number.fetch_add(1, Ordering::Relaxed),
             request_options: Transaction::create_request_options(opt.call_options.priority),
@@ -234,22 +231,18 @@ impl ReadWriteTransaction {
                 .collect(),
         };
 
-        let result = self
-            .base_tx
-            .session.as_mut().unwrap()
+        let session = self.as_mut_session();
+        let result = session
             .spanner_client
             .execute_batch_dml(request, opt.call_options.call_setting)
             .await;
-        let response = self.session.as_mut().unwrap().invalidate_if_needed(result).await;
-        match response {
-            Ok(r) => Ok(r
-                .into_inner()
-                .result_sets
-                .into_iter()
-                .map(|x| extract_row_count(x.stats))
-                .collect()),
-            Err(s) => Err(s),
-        }
+        let response = session.invalidate_if_needed(result).await?;
+        Ok(response
+            .into_inner()
+            .result_sets
+            .into_iter()
+            .map(|x| extract_row_count(x.stats))
+            .collect())
     }
 
     pub async fn finish<T, E>(
@@ -266,7 +259,6 @@ impl ReadWriteTransaction {
         };
 
         return match result {
-
             Ok(s) => match self.commit(opt).await {
                 Ok(c) => Ok((c.commit_timestamp, s)),
                 // Retry the transaction using the same session on ABORT error.
@@ -305,28 +297,20 @@ impl ReadWriteTransaction {
         &mut self,
         options: CommitOptions,
     ) -> Result<CommitResponse, tonic::Status> {
-        let session = &mut self.base_tx.session.as_mut().unwrap();
-        return commit(
-            session,
-            self.wb.to_vec(),
-            commit_request::Transaction::TransactionId(self.tx_id.clone()),
-            options,
-        )
-        .await;
+        let tx_id = self.tx_id.clone();
+        let mutations = self.wb.to_vec();
+        let session = self.as_mut_session();
+        return commit(session, mutations, TransactionId(tx_id), options).await;
     }
 
     pub async fn rollback(&mut self, setting: Option<CallSettings>) -> Result<(), tonic::Status> {
         let request = RollbackRequest {
-            session: self.base_tx.session.as_ref().unwrap().session.name.to_string(),
             transaction_id: self.tx_id.clone(),
+            session: self.get_session_name(),
         };
-        let result = self
-            .base_tx
-            .session.as_mut().unwrap()
-            .spanner_client
-            .rollback(request, setting)
-            .await;
-        let response = self.base_tx.session.as_mut().unwrap().invalidate_if_needed(result).await;
+        let session = self.as_mut_session();
+        let result = session.spanner_client.rollback(request, setting).await;
+        let response = session.invalidate_if_needed(result).await;
         match response {
             Ok(r) => Ok(r.into_inner()),
             Err(e) => Err(e),

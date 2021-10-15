@@ -105,7 +105,6 @@ pub struct RowIterator<'a> {
 }
 
 impl<'a> RowIterator<'a> {
-
     pub(crate) async fn new(
         session: &'a mut SessionHandle,
         reader: Box<dyn Reader + Sync + Send>,
@@ -228,7 +227,6 @@ impl<'a> RowIterator<'a> {
 
         return rows;
     }
-
 }
 
 #[async_trait]
