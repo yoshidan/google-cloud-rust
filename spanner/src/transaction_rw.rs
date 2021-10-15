@@ -5,7 +5,7 @@ use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, Transaction};
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
-use google_cloud_gax::call_option::{RetrySettings, BackoffRetrySettings};
+use google_cloud_gax::call_option::{BackoffRetrySettings, RetrySettings};
 use google_cloud_gax::invoke::AsTonicStatus;
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::TransactionId;
 use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
@@ -262,7 +262,7 @@ impl ReadWriteTransaction {
         &mut self,
         result: Result<T, E>,
         options: Option<CommitOptions>,
-    ) -> Result<(Option<prost_types::Timestamp>, T), (E,Option<ManagedSession>)>
+    ) -> Result<(Option<prost_types::Timestamp>, T), (E, Option<ManagedSession>)>
     where
         E: AsTonicStatus + From<tonic::Status>,
     {
@@ -315,7 +315,10 @@ impl ReadWriteTransaction {
         return commit(session, mutations, TransactionId(tx_id), options).await;
     }
 
-    pub async fn rollback(&mut self, setting: Option<BackoffRetrySettings>) -> Result<(), tonic::Status> {
+    pub async fn rollback(
+        &mut self,
+        setting: Option<BackoffRetrySettings>,
+    ) -> Result<(), tonic::Status> {
         let request = RollbackRequest {
             transaction_id: self.tx_id.clone(),
             session: self.get_session_name(),

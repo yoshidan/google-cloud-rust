@@ -1,6 +1,6 @@
 use google_cloud_auth::token_source::token_source::TokenSource;
 use google_cloud_auth::{create_token_source, Config};
-use google_cloud_gax::call_option::{Backoff, BackoffRetryer, RetrySettings, BackoffRetrySettings};
+use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer, RetrySettings};
 use google_cloud_gax::invoke::invoke_reuse;
 use google_cloud_googleapis::spanner::v1 as internal;
 use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
@@ -108,7 +108,10 @@ impl Client {
                     token.as_str(),
                     req.clone(),
                 );
-                spanner_client.create_session(request).await.map_err(|e| (e,spanner_client))
+                spanner_client
+                    .create_session(request)
+                    .await
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -135,7 +138,10 @@ impl Client {
                     token.as_str(),
                     req.clone(),
                 );
-                spanner_client.batch_create_sessions(request).await.map_err(|e| (e,spanner_client))
+                spanner_client
+                    .batch_create_sessions(request)
+                    .await
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -157,7 +163,10 @@ impl Client {
         return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(format!("name={}", name), token.as_str(), req.clone());
-                spanner_client.get_session(request).await.map_err(|e| (e,spanner_client))
+                spanner_client
+                    .get_session(request)
+                    .await
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -181,7 +190,10 @@ impl Client {
                     token.as_str(),
                     req.clone(),
                 );
-                spanner_client.list_sessions(request).await.map_err(|e| (e,spanner_client))
+                spanner_client
+                    .list_sessions(request)
+                    .await
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -203,7 +215,10 @@ impl Client {
         return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(format!("name={}", name), token.as_str(), req.clone());
-                spanner_client.delete_session(request).await.map_err(|e| (e,spanner_client))
+                spanner_client
+                    .delete_session(request)
+                    .await
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -234,7 +249,10 @@ impl Client {
             |spanner_client| async {
                 let request =
                     create_request(format!("session={}", session), token.as_str(), req.clone());
-                spanner_client.execute_sql(request).await.map_err(|e| (e,spanner_client))
+                spanner_client
+                    .execute_sql(request)
+                    .await
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -259,7 +277,10 @@ impl Client {
             |spanner_client| async {
                 let request =
                     create_request(format!("session={}", session), token.as_str(), req.clone());
-                spanner_client.execute_streaming_sql(request).await.map_err(|e| (e,spanner_client))
+                spanner_client
+                    .execute_streaming_sql(request)
+                    .await
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -290,7 +311,10 @@ impl Client {
             |spanner_client| async {
                 let request =
                     create_request(format!("session={}", session), token.as_str(), req.clone());
-                spanner_client.execute_batch_dml(request).await.map_err(|e| (e,spanner_client))
+                spanner_client
+                    .execute_batch_dml(request)
+                    .await
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -323,7 +347,10 @@ impl Client {
             |spanner_client| async {
                 let request =
                     create_request(format!("session={}", session), token.as_str(), req.clone());
-                spanner_client.read(request).await.map_err(|e| (e,spanner_client))
+                spanner_client
+                    .read(request)
+                    .await
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -348,7 +375,10 @@ impl Client {
             |spanner_client| async {
                 let request =
                     create_request(format!("session={}", session), token.as_str(), req.clone());
-                spanner_client.streaming_read(request).await.map_err(|e| (e,spanner_client))
+                spanner_client
+                    .streaming_read(request)
+                    .await
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -372,7 +402,10 @@ impl Client {
             |spanner_client| async {
                 let request =
                     create_request(format!("session={}", session), token.as_str(), req.clone());
-                spanner_client.begin_transaction(request).await.map_err(|e| (e,spanner_client))
+                spanner_client
+                    .begin_transaction(request)
+                    .await
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -406,7 +439,10 @@ impl Client {
             |spanner_client| async {
                 let request =
                     create_request(format!("session={}", session), token.as_str(), req.clone());
-                spanner_client.commit(request).await.map_err(|e| (e,spanner_client))
+                spanner_client
+                    .commit(request)
+                    .await
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -434,7 +470,10 @@ impl Client {
             |spanner_client| async {
                 let request =
                     create_request(format!("session={}", session), token.as_str(), req.clone());
-                spanner_client.rollback(request).await.map_err(|e| (e,spanner_client))
+                spanner_client
+                    .rollback(request)
+                    .await
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -465,7 +504,10 @@ impl Client {
             |spanner_client| async {
                 let request =
                     create_request(format!("session={}", session), token.as_str(), req.clone());
-                spanner_client.partition_query(request).await.map_err(|e| (e,spanner_client))
+                spanner_client
+                    .partition_query(request)
+                    .await
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -498,7 +540,10 @@ impl Client {
             |spanner_client| async {
                 let request =
                     create_request(format!("session={}", session), token.as_str(), req.clone());
-                spanner_client.partition_read(request).await.map_err(|e| (e,spanner_client))
+                spanner_client
+                    .partition_read(request)
+                    .await
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
             &mut setting,

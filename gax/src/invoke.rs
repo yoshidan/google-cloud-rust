@@ -12,14 +12,14 @@ impl AsTonicStatus for tonic::Status {
     }
 }
 
-pub async fn invoke<Setting,T, E, Fut>(
+pub async fn invoke<Setting, T, E, Fut>(
     mut f: impl FnMut() -> Fut,
     settings: &mut RetrySettings<Setting>,
 ) -> Result<T, E>
 where
     E: AsTonicStatus,
     Fut: Future<Output = Result<T, E>>,
-    Setting: Retryer + Clone
+    Setting: Retryer + Clone,
 {
     let retryer = &mut settings.retryer;
     loop {
@@ -48,7 +48,7 @@ pub async fn invoke_reuse<Setting, T, E, V, Fut>(
 where
     E: AsTonicStatus,
     Fut: Future<Output = Result<T, (E, V)>>,
-    Setting: Retryer + Clone
+    Setting: Retryer + Clone,
 {
     let retryer = &mut settings.retryer;
     loop {

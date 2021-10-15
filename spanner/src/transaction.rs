@@ -6,7 +6,7 @@ use crate::session_pool::{SessionHandle, SessionManager};
 use crate::statement::Statement;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
-use google_cloud_gax::call_option::{RetrySettings, BackoffRetrySettings};
+use google_cloud_gax::call_option::{BackoffRetrySettings, RetrySettings};
 use google_cloud_googleapis::spanner::v1::request_options::Priority;
 use google_cloud_googleapis::spanner::v1::{
     commit_request, execute_sql_request::QueryMode,

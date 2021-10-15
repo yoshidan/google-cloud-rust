@@ -2,6 +2,7 @@ use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::spanner_client::Client as SpannerClient;
 use crate::reader;
 use crate::reader::AsyncIterator;
+use crate::retry::{new_default_tx_retry, new_tx_retry_with_codes, TransactionRetryer};
 use crate::session_pool::{
     ManagedSession, SessionConfig, SessionError, SessionHandle, SessionManager,
 };
@@ -35,7 +36,6 @@ use std::sync::Arc;
 use tokio::sync::{Mutex, MutexGuard, OnceCell};
 use tokio::time::{Duration, Instant, Interval};
 use tonic::{Code, Status};
-use crate::retry::{TransactionRetryer, new_default_tx_retry, new_tx_retry_with_codes};
 
 #[derive(Clone)]
 pub struct PartitionedUpdateOption {
@@ -260,35 +260,35 @@ impl Client {
         options: Option<PartitionedUpdateOption>,
     ) -> Result<i64, TxError> {
         let (bo, qo) = match options {
-            Some(o) => (
-                o.begin_options,
-                o.query_options,
-            ),
+            Some(o) => (o.begin_options, o.query_options),
             None => {
                 let o = PartitionedUpdateOption::default();
-                (
-                    o.begin_options,
-                    o.query_options,
-                )
+                (o.begin_options, o.query_options)
             }
         };
 
-        let mut ro = new_tx_retry_with_codes(vec![Code::Aborted,Code::Internal]);
+        let mut ro = new_tx_retry_with_codes(vec![Code::Aborted, Code::Internal]);
         let mut session = Some(self.get_session().await?);
 
         // reuse session
         return invoke_reuse(
             |session| async {
-                let mut tx = match ReadWriteTransaction::begin_partitioned_dml(session.unwrap(), bo.clone()).await {
-                    Ok(tx) => tx,
-                    Err(e) => return Err((TxError::TonicStatus(e.status), Some(e.session)))
-                };
+                let mut tx =
+                    match ReadWriteTransaction::begin_partitioned_dml(session.unwrap(), bo.clone())
+                        .await
+                    {
+                        Ok(tx) => tx,
+                        Err(e) => return Err((TxError::TonicStatus(e.status), Some(e.session))),
+                    };
                 match tx.update(stmt.clone(), qo.clone()).await {
                     Ok(s) => Ok(s),
                     Err(e) => Err((TxError::TonicStatus(e), tx.take_session())),
                 }
-            },session, &mut ro).await;
-
+            },
+            session,
+            &mut ro,
+        )
+        .await;
     }
 
     /// apply_at_least_once may attempt to apply mutations more than once; if
@@ -307,12 +307,13 @@ impl Client {
     ) -> Result<Option<prost_types::Timestamp>, TxError> {
         let co = match options {
             Some(s) => s.commit_options,
-            None => CommitOptions::default()
+            None => CommitOptions::default(),
         };
         let mut ro = new_default_tx_retry();
         let mut session = self.get_session().await?;
 
-        return invoke_reuse(|session| async {
+        return invoke_reuse(
+            |session| async {
                 let tx = commit_request::Transaction::SingleUseTransaction(TransactionOptions {
                     mode: Some(transaction_options::Mode::ReadWrite(
                         transaction_options::ReadWrite {},
@@ -320,10 +321,11 @@ impl Client {
                 });
                 match commit(session, ms.clone(), tx, co.clone()).await {
                     Ok(s) => Ok(s.commit_timestamp),
-                    Err(e) => Err((TxError::TonicStatus(e), session))
+                    Err(e) => Err((TxError::TonicStatus(e), session)),
                 }
             },
-            &mut session, &mut ro,
+            &mut session,
+            &mut ro,
         )
         .await;
     }
@@ -382,10 +384,7 @@ impl Client {
         // must reuse session
         return invoke_reuse(
             |session| async {
-                let tx = match ReadWriteTransaction::begin(session.unwrap(), bo.clone()).await {
-                    Ok(tx) => tx,
-                    Err(e) => return Err((E::from(e.status), Some(e.session))),
-                };
+                let mut tx = self.create_read_write_transaction::<E>(session,bo.clone()).await?;
                 let tx = Arc::new(Mutex::new(tx));
                 let mut result = f(tx.clone()).await;
                 let mut locked = tx.lock().await;
@@ -399,7 +398,7 @@ impl Client {
 
     pub async fn read_write_transaction_sync<T, E>(
         &self,
-        mut f: impl Fn(&mut ReadWriteTransaction) -> Result<T,E>,
+        mut f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,
         options: Option<ReadWriteTransactionOption>,
     ) -> Result<(Option<prost_types::Timestamp>, T), E>
     where
@@ -413,10 +412,7 @@ impl Client {
         // reuse session
         return invoke_reuse(
             |session| async {
-                let mut tx = match ReadWriteTransaction::begin(session.unwrap(), bo.clone()).await {
-                    Ok(tx) => tx,
-                    Err(e) => return Err((E::from(e.status), Some(e.session))),
-                };
+                let mut tx = self.create_read_write_transaction::<E>(session,bo.clone()).await?;
                 let mut result = f(&mut tx);
                 tx.finish(result, Some(co.clone())).await
             },
@@ -424,6 +420,13 @@ impl Client {
             &mut ro,
         )
         .await;
+    }
+
+    async fn create_read_write_transaction<E>(&self, session: Option<ManagedSession>, bo: CallOptions) -> Result<ReadWriteTransaction, (E,Option<ManagedSession>)>
+        where E: AsTonicStatus + From<TxError> + From<tonic::Status>{
+        return ReadWriteTransaction::begin(session.unwrap(), bo)
+            .await
+            .map_err(|e| (E::from(e.status), Some(e.session)));
     }
 
     async fn get_session(&self) -> Result<ManagedSession, TxError> {
@@ -434,16 +437,10 @@ impl Client {
         options: Option<ReadWriteTransactionOption>,
     ) -> (CallOptions, CommitOptions) {
         match options {
-            Some(s) => (
-                s.begin_options,
-                s.commit_options,
-            ),
+            Some(s) => (s.begin_options, s.commit_options),
             None => {
                 let s = ReadWriteTransactionOption::default();
-                (
-                    s.begin_options,
-                    s.commit_options,
-                )
+                (s.begin_options, s.commit_options)
             }
         }
     }

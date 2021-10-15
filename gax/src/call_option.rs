@@ -54,7 +54,7 @@ pub struct BackoffRetryer {
 }
 
 impl Retryer for BackoffRetryer {
-    fn retry(&mut self, status: &Status) ->  Option<Duration>{
+    fn retry(&mut self, status: &Status) -> Option<Duration> {
         let code = status.code();
         for candidate in self.codes.iter() {
             if *candidate == code {
@@ -66,7 +66,10 @@ impl Retryer for BackoffRetryer {
 }
 
 #[derive(Clone)]
-pub struct RetrySettings<T> where T:Retryer + Clone{
+pub struct RetrySettings<T>
+where
+    T: Retryer + Clone,
+{
     pub retryer: T,
 }
 
