@@ -296,8 +296,9 @@ impl Client {
         return retryer::invoke(
             || async {
                 let mut session = self.get_session().await?;
-                let mut tx =
-                    ReadWriteTransaction::begin_partitioned_dml(session, bo.clone()).await.map_err(|e| e.status)?;
+                let mut tx = ReadWriteTransaction::begin_partitioned_dml(session, bo.clone())
+                    .await
+                    .map_err(|e| e.status)?;
                 let result = tx.update(stmt.clone(), qo.clone()).await?;
                 Ok(result)
             },
@@ -350,14 +351,10 @@ impl Client {
         options: Option<ReadWriteTransactionOption>,
     ) -> Result<Option<Timestamp>, TxError> {
         let result: Result<(Option<Timestamp>, ()), TxError> = self
-            .read_write_transaction(
+            .read_write_transaction_sync(
                 |tx| {
-                    let a = ms.to_vec();
-                    async move {
-                        let mut tx = tx.lock().await;
-                        tx.buffer_write(a);
-                        Ok(())
-                    }
+                    tx.buffer_write(ms.to_vec());
+                    Ok(())
                 },
                 options,
             )
@@ -397,20 +394,56 @@ impl Client {
 
         let mut session = Some(self.get_session().await.map_err(TxError::SessionError)?);
 
+        // must reuse session
+        return retryer::invoke_reuse(
+            |session| async {
+                let tx = match ReadWriteTransaction::begin(session.unwrap(), bo.clone()).await {
+                    Ok(tx) => tx,
+                    Err(e) => return Err((E::from(e.status), Some(e.session))),
+                };
+                let tx = Arc::new(Mutex::new(tx));
+                let mut result = f(tx.clone()).await;
+                let mut locked = tx.lock().await;
+                match locked.finish(result, Some(co.clone())).await {
+                    Ok(s) => Ok((s, locked.take_session())),
+                    Err(e) => Err((e, locked.take_session())),
+                }
+            },
+            session,
+            &mut ro,
+        )
+        .await;
+    }
+
+    pub async fn read_write_transaction_sync<T, E>(
+        &self,
+        mut f: impl Fn(&mut ReadWriteTransaction) -> Result<T,E>,
+        options: Option<ReadWriteTransactionOption>,
+    ) -> Result<(Option<prost_types::Timestamp>, T), E>
+    where
+        E: AsTonicStatus + From<TxError> + From<tonic::Status>,
+    {
+        let (mut ro, bo, co) = Client::split_read_write_transaction_option(options);
+
+        let mut session = Some(self.get_session().await.map_err(TxError::SessionError)?);
+
         // reuse session
-        return retryer::invoke_reuse(|session| async {
-            let tx = match ReadWriteTransaction::begin(session.unwrap(), bo.clone()).await {
-                Ok(tx) => tx,
-                Err(e) => return Err((E::from(e.status),Some(e.session)))
-            };
-            let tx = Arc::new(Mutex::new(tx));
-            let mut result = f(tx.clone()).await;
-            let mut locked = tx.lock().await;
-            match locked.finish(result, Some(co.clone())).await {
-                Ok(s) => Ok((s,locked.take_session())),
-                Err(e) => Err((e,locked.take_session()))
-            }
-        }, session, &mut ro).await;
+        return retryer::invoke_reuse(
+            |session| async {
+                let mut tx = match ReadWriteTransaction::begin(session.unwrap(), bo.clone()).await {
+                    Ok(tx) => tx,
+                    Err(e) => return Err((E::from(e.status), Some(e.session))),
+                };
+                let mut result = f(&mut tx);
+                match tx.finish(result, Some(co.clone())).await {
+                    Ok(s) => Ok((s, tx.take_session())),
+                    Err(e) => Err((e, tx.take_session())),
+                }
+            },
+            session,
+            &mut ro,
+        )
+        .await;
     }
 
     async fn get_session(&self) -> Result<ManagedSession, SessionError> {

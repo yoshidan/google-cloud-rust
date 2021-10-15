@@ -114,8 +114,8 @@ impl DerefMut for ReadWriteTransaction {
 }
 
 pub struct BeginError {
-   pub status: tonic::Status,
-   pub session: ManagedSession
+    pub status: tonic::Status,
+    pub session: ManagedSession,
 }
 
 impl ReadWriteTransaction {
@@ -159,10 +159,12 @@ impl ReadWriteTransaction {
             .await;
         let response = match session.invalidate_if_needed(result).await {
             Ok(response) => response,
-            Err(err) => return Err(BeginError {
-                status: err ,
-                session
-            })
+            Err(err) => {
+                return Err(BeginError {
+                    status: err,
+                    session,
+                })
+            }
         };
         let tx = response.into_inner();
         Ok(ReadWriteTransaction {
