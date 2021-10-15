@@ -190,8 +190,9 @@ impl Transaction {
         return self.session.as_mut().unwrap();
     }
 
-    // returns the owner ship of session
-    pub(crate) fn take_session(&mut self) -> ManagedSession {
-        return self.session.take().unwrap();
+    /// returns the owner ship of session.
+    /// must drop destroy after this method.
+    pub(crate) fn take_session(&mut self) -> Option<ManagedSession> {
+        return self.session.take();
     }
 }

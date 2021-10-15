@@ -297,7 +297,7 @@ impl Client {
             || async {
                 let mut session = self.get_session().await?;
                 let mut tx =
-                    ReadWriteTransaction::begin_partitioned_dml(session, bo.clone()).await?;
+                    ReadWriteTransaction::begin_partitioned_dml(session, bo.clone()).await.map_err(|e| e.status)?;
                 let result = tx.update(stmt.clone(), qo.clone()).await?;
                 Ok(result)
             },
@@ -395,44 +395,22 @@ impl Client {
     {
         let (mut ro, bo, co) = Client::split_read_write_transaction_option(options);
 
-        let backoff = &mut ro.retryer.backoff;
         let mut session = Some(self.get_session().await.map_err(TxError::SessionError)?);
 
         // reuse session
-        loop {
-            //run in transaction
-            let tx = Arc::new(Mutex::new(
-                ReadWriteTransaction::begin(session.take().unwrap(), bo.clone()).await?,
-            ));
-            let mut result = f(tx.clone()).await;
-            let result = async {
-                let mut locked = tx.lock().await;
-                let result = locked.finish(result, Some(co.clone())).await;
-                session = Some(locked.take_session());
-                result
-            }
-            .await;
-
-            if result.is_ok() {
-                return result;
-            }
-            let err = result.err().unwrap();
-            let status = match err.as_tonic_status() {
-                Some(s) => s,
-                None => return Err(err),
+        return retryer::invoke_reuse(|session| async {
+            let tx = match ReadWriteTransaction::begin(session.unwrap(), bo.clone()).await {
+                Ok(tx) => tx,
+                Err(e) => return Err((E::from(e.status),Some(e.session)))
             };
-
-            // continue immediate when the session not found
-            if status.code() == Code::NotFound && status.message().contains("Session not found:") {
-                continue;
+            let tx = Arc::new(Mutex::new(tx));
+            let mut result = f(tx.clone()).await;
+            let mut locked = tx.lock().await;
+            match locked.finish(result, Some(co.clone())).await {
+                Ok(s) => Ok((s,locked.take_session())),
+                Err(e) => Err((e,locked.take_session()))
             }
-            // backoff retry
-            if status.code() == Code::Aborted {
-                tokio::time::sleep(backoff.duration()).await;
-                continue;
-            }
-            return Err(err);
-        }
+        }, session, &mut ro).await;
     }
 
     async fn get_session(&self) -> Result<ManagedSession, SessionError> {

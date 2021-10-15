@@ -113,11 +113,16 @@ impl DerefMut for ReadWriteTransaction {
     }
 }
 
+pub struct BeginError {
+   pub status: tonic::Status,
+   pub session: ManagedSession
+}
+
 impl ReadWriteTransaction {
     pub async fn begin(
         mut session: ManagedSession,
         options: CallOptions,
-    ) -> Result<ReadWriteTransaction, tonic::Status> {
+    ) -> Result<ReadWriteTransaction, BeginError> {
         return ReadWriteTransaction::begin_internal(
             session,
             transaction_options::Mode::ReadWrite(transaction_options::ReadWrite {}),
@@ -129,7 +134,7 @@ impl ReadWriteTransaction {
     pub async fn begin_partitioned_dml(
         mut session: ManagedSession,
         options: CallOptions,
-    ) -> Result<ReadWriteTransaction, tonic::Status> {
+    ) -> Result<ReadWriteTransaction, BeginError> {
         return ReadWriteTransaction::begin_internal(
             session,
             transaction_options::Mode::PartitionedDml(transaction_options::PartitionedDml {}),
@@ -142,7 +147,7 @@ impl ReadWriteTransaction {
         mut session: ManagedSession,
         mode: transaction_options::Mode,
         options: CallOptions,
-    ) -> Result<ReadWriteTransaction, tonic::Status> {
+    ) -> Result<ReadWriteTransaction, BeginError> {
         let request = BeginTransactionRequest {
             session: session.session.name.to_string(),
             options: Some(TransactionOptions { mode: Some(mode) }),
@@ -152,7 +157,13 @@ impl ReadWriteTransaction {
             .spanner_client
             .begin_transaction(request, options.call_setting)
             .await;
-        let response = session.invalidate_if_needed(result).await?;
+        let response = match session.invalidate_if_needed(result).await {
+            Ok(response) => response,
+            Err(err) => return Err(BeginError {
+                status: err ,
+                session
+            })
+        };
         let tx = response.into_inner();
         Ok(ReadWriteTransaction {
             base_tx: Transaction {
