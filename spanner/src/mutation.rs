@@ -4,7 +4,8 @@ use prost_types::value::Kind;
 use prost_types::value::Kind::StringValue;
 use prost_types::{value, ListValue, Value};
 
-pub fn write<T, C>(table: T, columns: Vec<C>, values: Vec<Kind>) -> Write
+
+fn write<T, C>(table: T, columns: Vec<C>, values: Vec<Kind>) -> Write
 where
     T: Into<String>,
     C: Into<String>,
@@ -21,6 +22,8 @@ where
     }
 }
 
+/// Insert returns a Mutation to insert a row into a table. If the row already
+/// exists, the write or transaction fails with codes.AlreadyExists.
 pub fn insert<T, C>(table: T, columns: Vec<C>, values: Vec<Kind>) -> Mutation
 where
     T: Into<String>,
@@ -31,6 +34,8 @@ where
     }
 }
 
+/// update returns a Mutation to update a row in a table. If the row does not
+/// already exist, the write or transaction fails.
 pub fn update<T, C>(table: T, columns: Vec<C>, values: Vec<Kind>) -> Mutation
 where
     T: Into<String>,
@@ -41,6 +46,11 @@ where
     }
 }
 
+/// replace returns a Mutation to insert a row into a table, deleting any
+/// existing row. Unlike InsertOrUpdate, this means any values not explicitly
+/// written become NULL.
+///
+/// For a similar example, See Update.
 pub fn replace<T, C>(table: T, columns: Vec<C>, values: Vec<Kind>) -> Mutation
 where
     T: Into<String>,
@@ -51,6 +61,11 @@ where
     }
 }
 
+/// insert_or_update returns a Mutation to insert a row into a table. If the row
+/// already exists, it updates it instead. Any column values not explicitly
+/// written are preserved.
+///
+/// For a similar example, See update.
 pub fn insert_or_update<T, C>(table: T, columns: Vec<C>, values: Vec<Kind>) -> Mutation
 where
     T: Into<String>,
@@ -61,6 +76,8 @@ where
     }
 }
 
+/// delete removes the rows described by the KeySet from the table. It succeeds
+/// whether or not the keys were present.
 pub fn delete<T: Into<String>, F: Into<KeySet>>(table: T, key_set: F) -> Mutation {
     Mutation {
         operation: Some(Operation::Delete(Delete {
