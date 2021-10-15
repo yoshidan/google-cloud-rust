@@ -293,18 +293,21 @@ impl Client {
             }
         };
 
-        return retryer::invoke(
-            || async {
-                let mut session = self.get_session().await?;
-                let mut tx = ReadWriteTransaction::begin_partitioned_dml(session, bo.clone())
-                    .await
-                    .map_err(|e| e.status)?;
-                let result = tx.update(stmt.clone(), qo.clone()).await?;
-                Ok(result)
-            },
-            &mut ro,
-        )
-        .await;
+        let mut session = Some(self.get_session().await?);
+
+        // reuse session
+        return retryer::invoke_reuse(
+            |session| async {
+                let mut tx = match ReadWriteTransaction::begin_partitioned_dml(session.unwrap(), bo.clone()).await {
+                    Ok(tx) => tx,
+                    Err(e) => return Err((TxError::TonicStatus(e.status), Some(e.session)))
+                };
+                match tx.update(stmt.clone(), qo.clone()).await {
+                    Ok(s) => Ok((s, tx.take_session())),
+                    Err(e) => Err((TxError::TonicStatus(e), tx.take_session())),
+                }
+            },session, &mut ro).await;
+
     }
 
     /// apply_at_least_once may attempt to apply mutations more than once; if
@@ -328,18 +331,20 @@ impl Client {
                 (s.transaction_retry_setting, s.commit_options)
             }
         };
-        return retryer::invoke(
-            || async {
-                let mut session = self.get_session().await?;
+        let mut session = self.get_session().await?;
+
+        return retryer::invoke_reuse(|session| async {
                 let tx = commit_request::Transaction::SingleUseTransaction(TransactionOptions {
                     mode: Some(transaction_options::Mode::ReadWrite(
                         transaction_options::ReadWrite {},
                     )),
                 });
-                let commit_result = commit(&mut session, ms.clone(), tx, co.clone()).await?;
-                return Ok(commit_result.commit_timestamp);
+                match commit(session, ms.clone(), tx, co.clone()).await {
+                    Ok(s) => Ok((s.commit_timestamp,session)),
+                    Err(e) => Err((TxError::TonicStatus(e), session))
+                }
             },
-            &mut ro,
+            &mut session, &mut ro,
         )
         .await;
     }
@@ -392,7 +397,7 @@ impl Client {
     {
         let (mut ro, bo, co) = Client::split_read_write_transaction_option(options);
 
-        let mut session = Some(self.get_session().await.map_err(TxError::SessionError)?);
+        let mut session = Some(self.get_session().await?);
 
         // must reuse session
         return retryer::invoke_reuse(
@@ -425,7 +430,7 @@ impl Client {
     {
         let (mut ro, bo, co) = Client::split_read_write_transaction_option(options);
 
-        let mut session = Some(self.get_session().await.map_err(TxError::SessionError)?);
+        let mut session = Some(self.get_session().await?);
 
         // reuse session
         return retryer::invoke_reuse(
@@ -446,8 +451,8 @@ impl Client {
         .await;
     }
 
-    async fn get_session(&self) -> Result<ManagedSession, SessionError> {
-        return self.sessions.get().await;
+    async fn get_session(&self) -> Result<ManagedSession, TxError> {
+        return self.sessions.get().await.map_err(TxError::SessionError);
     }
 
     fn split_read_write_transaction_option(
