@@ -262,7 +262,7 @@ impl ReadWriteTransaction {
         &mut self,
         result: Result<T, E>,
         options: Option<CommitOptions>,
-    ) -> Result<(Option<prost_types::Timestamp>, T), E>
+    ) -> Result<(Option<prost_types::Timestamp>, T), (E,Option<ManagedSession>)>
     where
         E: AsTonicStatus + From<tonic::Status>,
     {
@@ -277,7 +277,7 @@ impl ReadWriteTransaction {
                 // Retry the transaction using the same session on ABORT error.
                 // Cloud Spanner will create the new transaction with the previous
                 // one's wound-wait priority.
-                Err(e) => Err(E::from(e)),
+                Err(e) => Err((E::from(e), self.take_session())),
             },
 
             // Rollback the transaction unless the error occurred during the
@@ -291,15 +291,14 @@ impl ReadWriteTransaction {
                     Some(status) => status,
                     None => {
                         self.rollback(opt.call_options.call_setting).await;
-                        return Err(err);
+                        return Err((err, self.take_session()));
                     }
                 };
                 match status.code() {
-                    tonic::Code::Aborted => Err(err),
-                    tonic::Code::NotFound => Err(err),
+                    tonic::Code::Aborted => Err((err, self.take_session())),
                     _ => {
                         self.rollback(opt.call_options.call_setting).await;
-                        return Err(err);
+                        return Err((err, self.take_session()));
                     }
                 }
             }

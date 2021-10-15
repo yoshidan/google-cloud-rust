@@ -47,14 +47,14 @@ pub async fn invoke_reuse<Setting, T, E, V, Fut>(
 ) -> Result<T, E>
 where
     E: AsTonicStatus,
-    Fut: Future<Output = Result<(T, V), (E, V)>>,
+    Fut: Future<Output = Result<T, (E, V)>>,
     Setting: Retryer + Clone
 {
     let retryer = &mut settings.retryer;
     loop {
         let result = f(v).await;
         let err = match result {
-            Ok(s) => return Ok(s.0),
+            Ok(s) => return Ok(s),
             Err(e) => {
                 v = e.1;
                 e.0

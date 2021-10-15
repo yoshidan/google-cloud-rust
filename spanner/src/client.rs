@@ -284,7 +284,7 @@ impl Client {
                     Err(e) => return Err((TxError::TonicStatus(e.status), Some(e.session)))
                 };
                 match tx.update(stmt.clone(), qo.clone()).await {
-                    Ok(s) => Ok((s, tx.take_session())),
+                    Ok(s) => Ok(s),
                     Err(e) => Err((TxError::TonicStatus(e), tx.take_session())),
                 }
             },session, &mut ro).await;
@@ -319,7 +319,7 @@ impl Client {
                     )),
                 });
                 match commit(session, ms.clone(), tx, co.clone()).await {
-                    Ok(s) => Ok((s.commit_timestamp,session)),
+                    Ok(s) => Ok(s.commit_timestamp),
                     Err(e) => Err((TxError::TonicStatus(e), session))
                 }
             },
@@ -389,10 +389,7 @@ impl Client {
                 let tx = Arc::new(Mutex::new(tx));
                 let mut result = f(tx.clone()).await;
                 let mut locked = tx.lock().await;
-                match locked.finish(result, Some(co.clone())).await {
-                    Ok(s) => Ok((s, locked.take_session())),
-                    Err(e) => Err((e, locked.take_session())),
-                }
+                locked.finish(result, Some(co.clone())).await
             },
             session,
             &mut ro,
@@ -421,10 +418,7 @@ impl Client {
                     Err(e) => return Err((E::from(e.status), Some(e.session))),
                 };
                 let mut result = f(&mut tx);
-                match tx.finish(result, Some(co.clone())).await {
-                    Ok(s) => Ok((s, tx.take_session())),
-                    Err(e) => Err((e, tx.take_session())),
-                }
+                tx.finish(result, Some(co.clone())).await
             },
             session,
             &mut ro,
