@@ -312,9 +312,9 @@ impl Client {
     /// when the mutation was applied more than once. For example, an insert may
     /// fail with ALREADY_EXISTS even though the row did not exist before Apply was
     /// called. For this reason, most users of the library will prefer not to use
-    /// this option.  However, ApplyAtLeastOnce requires only a single RPC, whereas
-    /// Apply's default replay protection may require an additional RPC.  So this
-    /// option may be appropriate for latency sensitive and/or high throughput blind
+    /// this option.  However, apply_at_least_once requires only a single RPC, whereas
+    /// apply's default replay protection may require an additional RPC.  So this
+    /// method may be appropriate for latency sensitive and/or high throughput blind
     /// writing.
     pub async fn apply_at_least_once(
         &self,
