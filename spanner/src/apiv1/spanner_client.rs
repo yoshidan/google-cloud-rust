@@ -1,6 +1,6 @@
 use google_cloud_auth::token_source::token_source::TokenSource;
 use google_cloud_auth::{create_token_source, Config};
-use google_cloud_gax::call_option::{Backoff, BackoffRetryer, CallSettings};
+use google_cloud_gax::call_option::{Backoff, BackoffRetryer, RetrySettings, BackoffRetrySettings};
 use google_cloud_gax::invoke::invoke_reuse;
 use google_cloud_googleapis::spanner::v1 as internal;
 use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
@@ -47,8 +47,8 @@ pub(crate) fn ping_query_request(session_name: impl Into<String>) -> internal::E
     }
 }
 
-fn default_setting() -> CallSettings {
-    return CallSettings {
+fn default_setting() -> BackoffRetrySettings {
+    return BackoffRetrySettings {
         retryer: BackoffRetryer {
             backoff: Backoff::default(),
             codes: vec![tonic::Code::Unavailable],
@@ -67,7 +67,7 @@ impl Client {
     }
 
     /// merge call setting
-    fn get_call_setting(call_setting: Option<CallSettings>) -> CallSettings {
+    fn get_call_setting(call_setting: Option<BackoffRetrySettings>) -> BackoffRetrySettings {
         match call_setting {
             Some(s) => s,
             None => default_setting(),
@@ -96,7 +96,7 @@ impl Client {
     pub async fn create_session(
         &mut self,
         req: CreateSessionRequest,
-        opt: Option<CallSettings>,
+        opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Session>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let database = &req.database;
@@ -126,7 +126,7 @@ impl Client {
     pub async fn batch_create_sessions(
         &mut self,
         req: BatchCreateSessionsRequest,
-        opt: Option<CallSettings>,
+        opt: Option<BackoffRetrySettings>,
     ) -> Result<tonic::Response<BatchCreateSessionsResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let database = &req.database;
@@ -155,7 +155,7 @@ impl Client {
     pub async fn get_session(
         &mut self,
         req: GetSessionRequest,
-        opt: Option<CallSettings>,
+        opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Session>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let name = &req.name;
@@ -178,7 +178,7 @@ impl Client {
     pub async fn list_sessions(
         &mut self,
         req: ListSessionsRequest,
-        opt: Option<CallSettings>,
+        opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<ListSessionsResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let database = &req.database;
@@ -207,7 +207,7 @@ impl Client {
     pub async fn delete_session(
         &mut self,
         req: DeleteSessionRequest,
-        opt: Option<CallSettings>,
+        opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<()>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let name = &req.name;
@@ -240,7 +240,7 @@ impl Client {
     pub async fn execute_sql(
         &mut self,
         req: ExecuteSqlRequest,
-        opt: Option<CallSettings>,
+        opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<ResultSet>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
@@ -268,7 +268,7 @@ impl Client {
     pub async fn execute_streaming_sql(
         &mut self,
         req: ExecuteSqlRequest,
-        opt: Option<CallSettings>,
+        opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
@@ -302,7 +302,7 @@ impl Client {
     pub async fn execute_batch_dml(
         &mut self,
         req: ExecuteBatchDmlRequest,
-        opt: Option<CallSettings>,
+        opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<ExecuteBatchDmlResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
@@ -338,7 +338,7 @@ impl Client {
     pub async fn read(
         &mut self,
         req: ReadRequest,
-        opt: Option<CallSettings>,
+        opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<ResultSet>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
@@ -366,7 +366,7 @@ impl Client {
     pub async fn streaming_read(
         &mut self,
         req: ReadRequest,
-        opt: Option<CallSettings>,
+        opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
@@ -393,7 +393,7 @@ impl Client {
     pub async fn begin_transaction(
         &mut self,
         req: BeginTransactionRequest,
-        opt: Option<CallSettings>,
+        opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Transaction>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
@@ -430,7 +430,7 @@ impl Client {
     pub async fn commit(
         &mut self,
         req: CommitRequest,
-        opt: Option<CallSettings>,
+        opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<CommitResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
@@ -461,7 +461,7 @@ impl Client {
     pub async fn rollback(
         &mut self,
         req: RollbackRequest,
-        opt: Option<CallSettings>,
+        opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<()>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
@@ -495,7 +495,7 @@ impl Client {
     pub async fn partition_query(
         &mut self,
         req: PartitionQueryRequest,
-        opt: Option<CallSettings>,
+        opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<PartitionResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
@@ -531,7 +531,7 @@ impl Client {
     pub async fn partition_read(
         &mut self,
         req: PartitionReadRequest,
-        opt: Option<CallSettings>,
+        opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<PartitionResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;

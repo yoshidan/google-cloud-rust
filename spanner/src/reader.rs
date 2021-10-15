@@ -3,7 +3,7 @@ use crate::row::{Row, TryFromValue};
 use crate::session_pool::SessionHandle;
 use async_trait::async_trait;
 use chrono::{FixedOffset, NaiveDate, NaiveDateTime, NaiveTime};
-use google_cloud_gax::call_option::CallSettings;
+use google_cloud_gax::call_option::{RetrySettings, BackoffRetrySettings};
 use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::{
@@ -45,7 +45,7 @@ pub trait Reader {
 
 pub struct StatementReader {
     pub request: ExecuteSqlRequest,
-    pub call_setting: Option<CallSettings>,
+    pub call_setting: Option<BackoffRetrySettings>,
 }
 
 #[async_trait]
@@ -70,7 +70,7 @@ impl Reader for StatementReader {
 
 pub struct TableReader {
     pub request: ReadRequest,
-    pub call_setting: Option<CallSettings>,
+    pub call_setting: Option<BackoffRetrySettings>,
 }
 
 #[async_trait]

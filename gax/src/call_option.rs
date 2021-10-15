@@ -2,11 +2,6 @@ use rand::Rng;
 use std::time::Duration;
 use tonic::{Code, Status};
 
-/// Retryer is used by Invoke to determine retry behavior.
-pub trait Retryer {
-    fn is_retryable(&mut self, status: &Status) -> Option<Duration>;
-}
-
 /// Backoff implements exponential backoff.
 /// The wait time between retries is a random value between 0 and the "retry envelope".
 /// The envelope starts at Initial and increases by the factor of Multiplier every retry,
@@ -36,13 +31,6 @@ impl Backoff {
     }
 }
 
-/// CallSettings allow fine-grained control over how calls are made.
-#[derive(Clone)]
-pub struct BackoffRetryer {
-    pub backoff: Backoff, // supports backoff retry only
-    pub codes: Vec<tonic::Code>,
-}
-
 impl Default for Backoff {
     fn default() -> Self {
         Backoff {
@@ -54,35 +42,32 @@ impl Default for Backoff {
     }
 }
 
+/// Retryer is used by Invoke to determine retry behavior.
+pub trait Retryer {
+    fn retry(&mut self, status: &Status) -> Option<Duration>;
+}
+
 #[derive(Clone)]
-pub struct CallSettings {
-    pub retryer: BackoffRetryer,
+pub struct BackoffRetryer {
+    pub backoff: Backoff, // supports backoff retry only
+    pub codes: Vec<tonic::Code>,
 }
 
 impl Retryer for BackoffRetryer {
-    fn is_retryable(&mut self, status: &Status) -> Option<Duration> {
+    fn retry(&mut self, status: &Status) ->  Option<Duration>{
         let code = status.code();
-        if code == Code::Internal
-            && !status.message().contains("stream terminated by RST_STREAM")
-            && !status
-                .message()
-                .contains("HTTP/2 error code: INTERNAL_ERROR")
-            && !status
-                .message()
-                .contains("Connection closed with unknown cause")
-            && !status
-                .message()
-                .contains("Received unexpected EOS on DATA frame from server")
-        {
-            return None;
-        }
-
         for candidate in self.codes.iter() {
             if *candidate == code {
-                log::debug!("retry {} {}", status.code(), status.message());
                 return Some(self.backoff.duration());
             }
         }
         return None;
     }
 }
+
+#[derive(Clone)]
+pub struct RetrySettings<T> where T:Retryer + Clone{
+    pub retryer: T,
+}
+
+pub type BackoffRetrySettings = RetrySettings<BackoffRetryer>;

@@ -13,9 +13,9 @@ use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
 use crate::value::TimestampBound;
 use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, TimeZone, Timelike, Utc, Weekday};
 use futures_util::future::BoxFuture;
-use google_cloud_gax::call_option::{Backoff, BackoffRetryer, CallSettings, Retryer};
+use google_cloud_gax::call_option::{Backoff, BackoffRetryer, RetrySettings, Retryer};
 use google_cloud_gax::invoke::AsTonicStatus;
-use google_cloud_gax::{call_option, invoke as retryer};
+use google_cloud_gax::{call_option, invoke::invoke_reuse};
 use google_cloud_googleapis::spanner::v1::execute_sql_request::QueryMode;
 use google_cloud_googleapis::spanner::v1::mutation::{Operation, Write};
 use google_cloud_googleapis::spanner::v1::request_options::Priority;
@@ -35,12 +35,12 @@ use std::sync::Arc;
 use tokio::sync::{Mutex, MutexGuard, OnceCell};
 use tokio::time::{Duration, Instant, Interval};
 use tonic::{Code, Status};
+use crate::retry::{TransactionRetryer, new_default_tx_retry, new_tx_retry_with_codes};
 
 #[derive(Clone)]
 pub struct PartitionedUpdateOption {
     pub begin_options: CallOptions,
     pub query_options: Option<QueryOptions>,
-    pub transaction_retry_setting: CallSettings,
 }
 
 impl Default for PartitionedUpdateOption {
@@ -48,11 +48,6 @@ impl Default for PartitionedUpdateOption {
         PartitionedUpdateOption {
             begin_options: CallOptions::default(),
             query_options: None,
-            transaction_retry_setting: {
-                let mut o = default_transaction_retry_setting();
-                o.retryer.codes = vec![Code::Aborted, Code::Internal];
-                o
-            },
         }
     }
 }
@@ -74,7 +69,6 @@ impl Default for ReadOnlyTransactionOption {
 
 #[derive(Clone)]
 pub struct ReadWriteTransactionOption {
-    pub transaction_retry_setting: CallSettings,
     pub begin_options: CallOptions,
     pub commit_options: CommitOptions,
 }
@@ -82,7 +76,6 @@ pub struct ReadWriteTransactionOption {
 impl Default for ReadWriteTransactionOption {
     fn default() -> Self {
         ReadWriteTransactionOption {
-            transaction_retry_setting: default_transaction_retry_setting(),
             begin_options: CallOptions::default(),
             commit_options: CommitOptions::default(),
         }
@@ -91,25 +84,14 @@ impl Default for ReadWriteTransactionOption {
 
 #[derive(Clone)]
 pub struct ApplyOptions {
-    pub transaction_retry_setting: CallSettings,
     pub commit_options: CommitOptions,
 }
 
 impl Default for ApplyOptions {
     fn default() -> Self {
         ApplyOptions {
-            transaction_retry_setting: default_transaction_retry_setting(),
             commit_options: CommitOptions::default(),
         }
-    }
-}
-
-fn default_transaction_retry_setting() -> CallSettings {
-    CallSettings {
-        retryer: BackoffRetryer {
-            backoff: Backoff::default(),
-            codes: vec![tonic::Code::Aborted],
-        },
     }
 }
 
@@ -277,26 +259,25 @@ impl Client {
         stmt: Statement,
         options: Option<PartitionedUpdateOption>,
     ) -> Result<i64, TxError> {
-        let (mut ro, bo, qo) = match options {
+        let (bo, qo) = match options {
             Some(o) => (
-                o.transaction_retry_setting,
                 o.begin_options,
                 o.query_options,
             ),
             None => {
                 let o = PartitionedUpdateOption::default();
                 (
-                    o.transaction_retry_setting,
                     o.begin_options,
                     o.query_options,
                 )
             }
         };
 
+        let mut ro = new_tx_retry_with_codes(vec![Code::Aborted,Code::Internal]);
         let mut session = Some(self.get_session().await?);
 
         // reuse session
-        return retryer::invoke_reuse(
+        return invoke_reuse(
             |session| async {
                 let mut tx = match ReadWriteTransaction::begin_partitioned_dml(session.unwrap(), bo.clone()).await {
                     Ok(tx) => tx,
@@ -324,16 +305,14 @@ impl Client {
         ms: Vec<Mutation>,
         options: Option<ApplyOptions>,
     ) -> Result<Option<prost_types::Timestamp>, TxError> {
-        let (mut ro, co) = match options {
-            Some(s) => (s.transaction_retry_setting, s.commit_options),
-            None => {
-                let s = ApplyOptions::default();
-                (s.transaction_retry_setting, s.commit_options)
-            }
+        let co = match options {
+            Some(s) => s.commit_options,
+            None => CommitOptions::default()
         };
+        let mut ro = new_default_tx_retry();
         let mut session = self.get_session().await?;
 
-        return retryer::invoke_reuse(|session| async {
+        return invoke_reuse(|session| async {
                 let tx = commit_request::Transaction::SingleUseTransaction(TransactionOptions {
                     mode: Some(transaction_options::Mode::ReadWrite(
                         transaction_options::ReadWrite {},
@@ -395,12 +374,13 @@ impl Client {
         E: AsTonicStatus + From<TxError> + From<tonic::Status>,
         F: Future<Output = Result<T, E>>,
     {
-        let (mut ro, bo, co) = Client::split_read_write_transaction_option(options);
+        let (bo, co) = Client::split_read_write_transaction_option(options);
 
+        let mut ro = new_default_tx_retry();
         let mut session = Some(self.get_session().await?);
 
         // must reuse session
-        return retryer::invoke_reuse(
+        return invoke_reuse(
             |session| async {
                 let tx = match ReadWriteTransaction::begin(session.unwrap(), bo.clone()).await {
                     Ok(tx) => tx,
@@ -428,12 +408,13 @@ impl Client {
     where
         E: AsTonicStatus + From<TxError> + From<tonic::Status>,
     {
-        let (mut ro, bo, co) = Client::split_read_write_transaction_option(options);
+        let (bo, co) = Client::split_read_write_transaction_option(options);
 
+        let mut ro = new_default_tx_retry();
         let mut session = Some(self.get_session().await?);
 
         // reuse session
-        return retryer::invoke_reuse(
+        return invoke_reuse(
             |session| async {
                 let mut tx = match ReadWriteTransaction::begin(session.unwrap(), bo.clone()).await {
                     Ok(tx) => tx,
@@ -457,17 +438,15 @@ impl Client {
 
     fn split_read_write_transaction_option(
         options: Option<ReadWriteTransactionOption>,
-    ) -> (CallSettings, CallOptions, CommitOptions) {
+    ) -> (CallOptions, CommitOptions) {
         match options {
             Some(s) => (
-                s.transaction_retry_setting,
                 s.begin_options,
                 s.commit_options,
             ),
             None => {
                 let s = ReadWriteTransactionOption::default();
                 (
-                    s.transaction_retry_setting,
                     s.begin_options,
                     s.commit_options,
                 )

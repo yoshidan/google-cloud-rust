@@ -10,3 +10,4 @@ pub mod transaction;
 pub mod transaction_ro;
 pub mod transaction_rw;
 pub mod value;
+pub mod retry;

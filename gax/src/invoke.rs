@@ -1,4 +1,4 @@
-use crate::call_option::{CallSettings, Retryer};
+use crate::call_option::{RetrySettings, Retryer};
 use std::future::Future;
 use tonic::Status;
 
@@ -12,13 +12,14 @@ impl AsTonicStatus for tonic::Status {
     }
 }
 
-pub async fn invoke<T, E, Fut>(
+pub async fn invoke<Setting,T, E, Fut>(
     mut f: impl FnMut() -> Fut,
-    settings: &mut CallSettings,
+    settings: &mut RetrySettings<Setting>,
 ) -> Result<T, E>
 where
     E: AsTonicStatus,
     Fut: Future<Output = Result<T, E>>,
+    Setting: Retryer + Clone
 {
     let retryer = &mut settings.retryer;
     loop {
@@ -32,21 +33,22 @@ where
             None => return Err(err),
         };
 
-        match retryer.is_retryable(status) {
+        match retryer.retry(status) {
             Some(duration) => tokio::time::sleep(duration).await,
             None => return Err(err),
         };
     }
 }
 
-pub async fn invoke_reuse<T, E, V, Fut>(
+pub async fn invoke_reuse<Setting, T, E, V, Fut>(
     mut f: impl FnMut(V) -> Fut,
     mut v: V,
-    settings: &mut CallSettings,
+    settings: &mut RetrySettings<Setting>,
 ) -> Result<T, E>
 where
     E: AsTonicStatus,
     Fut: Future<Output = Result<(T, V), (E, V)>>,
+    Setting: Retryer + Clone
 {
     let retryer = &mut settings.retryer;
     loop {
@@ -62,7 +64,7 @@ where
             Some(s) => s,
             None => return Err(err),
         };
-        match retryer.is_retryable(status) {
+        match retryer.retry(status) {
             Some(duration) => tokio::time::sleep(duration).await,
             None => return Err(err),
         };
