@@ -1,4 +1,4 @@
-use crate::reader::{AsyncIterator, Reader, StatementReader, StreamReader, TableReader};
+use crate::reader::{AsyncIterator, Reader, StatementReader, TableReader, RowIterator};
 use crate::session_pool::{ManagedSession, SessionHandle, SessionManager};
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, ReadOptions, Transaction};
@@ -17,6 +17,20 @@ use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicI64, Ordering};
 use tonic::{Response, Status};
 
+/// ReadOnlyTransaction provides a snapshot transaction with guaranteed
+/// consistency across reads, but does not allow writes.  Read-only transactions
+/// can be configured to read at timestamps in the past.
+//
+/// Read-only transactions do not take locks. Instead, they work by choosing a
+/// Cloud Spanner timestamp, then executing all reads at that timestamp. Since
+/// they do not acquire locks, they do not block concurrent read-write
+/// transactions.
+//
+/// Unlike locking read-write transactions, read-only transactions never abort.
+/// They can fail if the chosen read timestamp is garbage collected; however, the
+/// default garbage collection policy is generous enough that most applications
+/// do not need to worry about this in practice. See the documentation of
+/// TimestampBound for more details.
 pub struct ReadOnlyTransaction {
     base_tx: Transaction,
     rts: Option<NaiveDateTime>,
@@ -57,6 +71,7 @@ impl ReadOnlyTransaction {
         });
     }
 
+    /// begin starts a snapshot read-only Transaction on Cloud Spanner.
     pub async fn begin(
         mut session: ManagedSession,
         tb: TimestampBound,
@@ -98,6 +113,11 @@ pub struct Partition<T: Reader> {
     pub reader: T,
 }
 
+/// BatchReadOnlyTransaction is a ReadOnlyTransaction that allows for exporting
+/// arbitrarily large amounts of data from Cloud Spanner databases.
+/// BatchReadOnlyTransaction partitions a read/query request. Read/query request
+/// can then be executed independently over each partition while observing the
+/// same snapshot of the database.
 pub struct BatchReadOnlyTransaction {
     base_tx: ReadOnlyTransaction,
 }
@@ -128,6 +148,10 @@ impl BatchReadOnlyTransaction {
         }
     }
 
+    /// partition_read returns a list of Partitions that can be used to read rows from
+    /// the database. These partitions can be executed across multiple processes,
+    /// even across different machines. The partition size and count hints can be
+    /// configured using PartitionOptions.
     pub async fn partition_read<T, C, K>(
         &mut self,
         table: T,
@@ -192,6 +216,7 @@ impl BatchReadOnlyTransaction {
         return self.session.invalidate_if_needed(result).await;
     }
 
+    /// partition_query returns a list of Partitions that can be used to execute a query against the database.
     pub async fn partition_query(
         &mut self,
         stmt: Statement,
@@ -251,11 +276,12 @@ impl BatchReadOnlyTransaction {
         return self.session.invalidate_if_needed(result).await;
     }
 
+    // execute runs a single Partition obtained from partition_read or partition_query.
     pub async fn execute<T: Reader + Sync + Send + 'static>(
         &mut self,
         partition: Partition<T>,
-    ) -> Result<StreamReader<'_>, Status> {
+    ) -> Result<RowIterator<'_>, Status> {
         let session = self.session.deref_mut();
-        return StreamReader::new(session, Box::new(partition.reader)).await;
+        return RowIterator::new(session, Box::new(partition.reader)).await;
     }
 }

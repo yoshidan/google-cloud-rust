@@ -11,6 +11,18 @@ use prost_types::{value, ListValue, Struct, Value};
 use std::any::Any;
 use std::collections::{BTreeMap, HashMap};
 
+/// A Statement is a SQL query with named parameters.
+///
+/// A parameter placeholder consists of '@' followed by the parameter name.
+/// The parameter name is an identifier which must conform to the naming
+/// requirements in https://cloud.google.com/spanner/docs/lexical#identifiers.
+/// Parameters may appear anywhere that a literal value is expected. The same
+/// parameter name may be used more than once.  It is an error to execute a
+/// statement with unbound parameters. On the other hand, it is allowable to
+/// bind parameter names that are not used.
+///
+/// See the documentation of the Row type for how Go types are mapped to Cloud
+/// Spanner types.
 #[derive(Clone)]
 pub struct Statement {
     pub sql: String,
@@ -19,6 +31,8 @@ pub struct Statement {
 }
 
 impl Statement {
+
+    /// new returns a Statement with the given SQL and an empty Params map.
     pub fn new<T: Into<String>>(sql: T) -> Self {
         return Statement {
             sql: sql.into(),
@@ -27,6 +41,8 @@ impl Statement {
         };
     }
 
+    /// add_params add the bind parameter.
+    /// Implement the ToKind trait to use non-predefined types.
     pub fn add_param<T>(&mut self, name: &str, value: T)
     where
         T: ToKind,

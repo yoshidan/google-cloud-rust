@@ -27,13 +27,6 @@ use std::sync::Arc;
 use tonic::{Code, Response, Status, Streaming};
 
 #[async_trait]
-pub trait AsyncIterator {
-    fn column_metadata(&self, column_name: &str) -> Option<(usize, Field)>;
-
-    async fn next(&mut self) -> Result<Option<Row>, Status>;
-}
-
-#[async_trait]
 pub trait Reader {
     async fn read(
         &self,
@@ -93,7 +86,7 @@ impl Reader for TableReader {
     }
 }
 
-pub struct StreamReader<'a> {
+pub struct RowIterator<'a> {
     streaming: Streaming<PartialResultSet>,
     session: &'a mut SessionHandle,
     reader: Box<dyn Reader + Sync + Send>,
@@ -104,8 +97,9 @@ pub struct StreamReader<'a> {
     chunked_record: Vec<Value>,
 }
 
-impl<'a> StreamReader<'a> {
-    pub async fn new(
+impl<'a> RowIterator<'a> {
+
+    pub(crate) async fn new(
         session: &'a mut SessionHandle,
         reader: Box<dyn Reader + Sync + Send>,
     ) -> Result<StreamReader<'a>, Status> {
@@ -122,6 +116,7 @@ impl<'a> StreamReader<'a> {
         });
     }
 
+    /// merge tries to combine two protobuf Values if possible.
     fn merge(chunked: Value, first: Value) -> Value {
         return match chunked.kind.unwrap() {
             Kind::StringValue(last) => match first.kind.unwrap() {
@@ -226,10 +221,7 @@ impl<'a> StreamReader<'a> {
 
         return rows;
     }
-}
 
-#[async_trait]
-impl<'a> AsyncIterator for StreamReader<'a> {
     fn column_metadata(&self, column_name: &str) -> Option<(usize, Field)> {
         for (i, val) in self.fields.iter().enumerate() {
             if val.name == column_name {
@@ -239,6 +231,8 @@ impl<'a> AsyncIterator for StreamReader<'a> {
         return None;
     }
 
+    /// next returns the next result.
+    /// Its second return value is None if there are no more results.
     async fn next(&mut self) -> Result<Option<Row>, Status> {
         if !self.rows.is_empty() {
             return Ok(self.rows.pop_front());

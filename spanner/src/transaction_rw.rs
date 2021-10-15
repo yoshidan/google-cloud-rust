@@ -40,6 +40,58 @@ impl Default for CommitOptions {
     }
 }
 
+/// ReadWriteTransaction provides a locking read-write transaction.
+///
+/// This type of transaction is the only way to write data into Cloud Spanner;
+/// Client::apply, Client::apply_at_least_once, Client::partitioned_update use
+/// transactions internally. These transactions rely on pessimistic locking and,
+/// if necessary, two-phase commit. Locking read-write transactions may abort,
+/// requiring the application to retry. However, the interface exposed by
+/// Client:run_with_retry eliminates the need for applications to write
+/// retry loops explicitly.
+///
+/// Locking transactions may be used to atomically read-modify-write data
+/// anywhere in a database. This type of transaction is externally consistent.
+///
+/// Clients should attempt to minimize the amount of time a transaction is
+/// active. Faster transactions commit with higher probability and cause less
+/// contention. Cloud Spanner attempts to keep read locks active as long as the
+/// transaction continues to do reads.  Long periods of inactivity at the client
+/// may cause Cloud Spanner to release a transaction's locks and abort it.
+///
+/// Reads performed within a transaction acquire locks on the data being
+/// read. Writes can only be done at commit time, after all reads have been
+/// completed. Conceptually, a read-write transaction consists of zero or more
+/// reads or SQL queries followed by a commit.
+///
+/// See Client::run_with_retry for an example.
+///
+/// Semantics
+///
+/// Cloud Spanner can commit the transaction if all read locks it acquired are
+/// still valid at commit time, and it is able to acquire write locks for all
+/// writes. Cloud Spanner can abort the transaction for any reason. If a commit
+/// attempt returns ABORTED, Cloud Spanner guarantees that the transaction has
+/// not modified any user data in Cloud Spanner.
+///
+/// Unless the transaction commits, Cloud Spanner makes no guarantees about how
+/// long the transaction's locks were held for. It is an error to use Cloud
+/// Spanner locks for any sort of mutual exclusion other than between Cloud
+/// Spanner transactions themselves.
+///
+/// Aborted transactions
+///
+/// Application code does not need to retry explicitly; RunInTransaction will
+/// automatically retry a transaction if an attempt results in an abort. The lock
+/// priority of a transaction increases after each prior aborted transaction,
+/// meaning that the next attempt has a slightly better chance of success than
+/// before.
+///
+/// Under some circumstances (e.g., many transactions attempting to modify the
+/// same row(s)), a transaction can abort many times in a short period before
+/// successfully committing. Thus, it is not a good idea to cap the number of
+/// retries a transaction can attempt; instead, it is better to limit the total
+/// amount of wall time spent retrying.
 pub struct ReadWriteTransaction {
     base_tx: Transaction,
     tx_id: Vec<u8>,
@@ -218,10 +270,21 @@ impl ReadWriteTransaction {
         };
 
         return match result {
+
             Ok(s) => match self.commit(opt).await {
                 Ok(c) => Ok((c.commit_timestamp, s)),
+                // Retry the transaction using the same session on ABORT error.
+                // Cloud Spanner will create the new transaction with the previous
+                // one's wound-wait priority.
                 Err(e) => Err(E::from(e)),
             },
+
+            // Rollback the transaction unless the error occurred during the
+            // commit. Executing a rollback after a commit has failed will
+            // otherwise cause an error. Note that transient errors, such as
+            // UNAVAILABLE, are already handled in the gRPC layer and do not show
+            // up here. Context errors (deadline exceeded / canceled) during
+            // commits are also not rolled back.
             Err(err) => {
                 let status = match err.as_tonic_status() {
                     Some(status) => status,

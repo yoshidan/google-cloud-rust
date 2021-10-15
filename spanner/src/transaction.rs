@@ -1,6 +1,6 @@
 use crate::apiv1::spanner_client::Client;
 use crate::key::KeySet;
-use crate::reader::{AsyncIterator, StatementReader, StreamReader, TableReader};
+use crate::reader::{AsyncIterator, StatementReader, TableReader, RowIterator};
 use crate::session_pool::ManagedSession;
 use crate::session_pool::{SessionHandle, SessionManager};
 use crate::statement::Statement;
@@ -24,7 +24,7 @@ use tonic::Streaming;
 
 #[derive(Clone)]
 pub struct CallOptions {
-    // Priority is the RPC priority to use for the read operation.
+    /// Priority is the RPC priority to use for the read operation.
     pub priority: Option<Priority>,
     pub call_setting: Option<CallSettings>,
 }
@@ -40,12 +40,12 @@ impl Default for CallOptions {
 
 #[derive(Clone)]
 pub struct ReadOptions {
-    // The index to use for reading. If non-empty, you can only read columns
-    // that are part of the index key, part of the primary key, or stored in the
-    // index due to a STORING clause in the index definition.
+    /// The index to use for reading. If non-empty, you can only read columns
+    /// that are part of the index key, part of the primary key, or stored in the
+    /// index due to a STORING clause in the index definition.
     pub index: String,
 
-    // The maximum number of rows to read. A limit value less than 1 means no limit.
+    /// The maximum number of rows to read. A limit value less than 1 means no limit.
     pub limit: i64,
 
     pub call_options: CallOptions,
@@ -96,12 +96,15 @@ impl Transaction {
         };
     }
 
-    // execute query with SQL statement
+    /// query executes a query against the database. It returns a RowIterator for
+    /// retrieving the resulting rows.
+    ///
+    /// query returns only row data, without a query plan or execution statistics.
     pub async fn query(
         &mut self,
         statement: Statement,
         options: Option<QueryOptions>,
-    ) -> Result<StreamReader<'_>, Status> {
+    ) -> Result<RowIterator<'_>, Status> {
         let opt = match options {
             Some(o) => o,
             None => QueryOptions::default(),
@@ -123,7 +126,7 @@ impl Transaction {
             request_options: Transaction::create_request_options(opt.call_options.priority),
         };
         let session = self.session.deref_mut();
-        return StreamReader::new(
+        return RowIterator::new(
             session,
             Box::new(StatementReader {
                 request,
@@ -133,14 +136,14 @@ impl Transaction {
         .await;
     }
 
-    // read table by specified condition
+    /// read returns a RowIterator for reading multiple rows from the database.
     pub async fn read<T, C, K>(
         &mut self,
         table: T,
         columns: Vec<C>,
         key_set: K,
         options: Option<ReadOptions>,
-    ) -> Result<StreamReader<'_>, Status>
+    ) -> Result<RowIterator<'_>, Status>
     where
         T: Into<String>,
         C: Into<String>,
@@ -165,7 +168,7 @@ impl Transaction {
         };
 
         let session = self.session.deref_mut();
-        return StreamReader::new(
+        return RowIterator::new(
             session,
             Box::new(TableReader {
                 request,
