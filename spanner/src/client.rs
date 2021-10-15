@@ -367,14 +367,14 @@ impl Client {
     /// See https://godoc.org/cloud.google.com/go/spanner#ReadWriteTransaction for
     /// more details.
     /// ```
-    pub async fn read_write_transaction<T, E, F>(
+    pub async fn read_write_transaction<'a, T, E, F>(
         &self,
-        mut f: impl Fn(Arc<Mutex<ReadWriteTransaction>>) -> F,
+        mut f: impl Fn(ReadWriteTransaction) -> F,
         options: Option<ReadWriteTransactionOption>,
     ) -> Result<(Option<prost_types::Timestamp>, T), E>
     where
         E: AsTonicStatus + From<TxError> + From<tonic::Status>,
-        F: Future<Output = Result<T, E>>,
+        F: Future<Output = (ReadWriteTransaction, Result<T, E>)>,
     {
         let (bo, co) = Client::split_read_write_transaction_option(options);
 
@@ -384,11 +384,11 @@ impl Client {
         // must reuse session
         return invoke_reuse(
             |session| async {
-                let mut tx = self.create_read_write_transaction::<E>(session,bo.clone()).await?;
-                let tx = Arc::new(Mutex::new(tx));
-                let mut result = f(tx.clone()).await;
-                let mut locked = tx.lock().await;
-                locked.finish(result, Some(co.clone())).await
+                let mut tx = self
+                    .create_read_write_transaction::<E>(session, bo.clone())
+                    .await?;
+                let (mut tx, result) = f(tx).await;
+                tx.finish(result, Some(co.clone())).await
             },
             session,
             &mut ro,
@@ -412,7 +412,9 @@ impl Client {
         // reuse session
         return invoke_reuse(
             |session| async {
-                let mut tx = self.create_read_write_transaction::<E>(session,bo.clone()).await?;
+                let mut tx = self
+                    .create_read_write_transaction::<E>(session, bo.clone())
+                    .await?;
                 let mut result = f(&mut tx);
                 tx.finish(result, Some(co.clone())).await
             },
@@ -422,8 +424,14 @@ impl Client {
         .await;
     }
 
-    async fn create_read_write_transaction<E>(&self, session: Option<ManagedSession>, bo: CallOptions) -> Result<ReadWriteTransaction, (E,Option<ManagedSession>)>
-        where E: AsTonicStatus + From<TxError> + From<tonic::Status>{
+    async fn create_read_write_transaction<E>(
+        &self,
+        session: Option<ManagedSession>,
+        bo: CallOptions,
+    ) -> Result<ReadWriteTransaction, (E, Option<ManagedSession>)>
+    where
+        E: AsTonicStatus + From<TxError> + From<tonic::Status>,
+    {
         return ReadWriteTransaction::begin(session.unwrap(), bo)
             .await
             .map_err(|e| (E::from(e.status), Some(e.session)));
