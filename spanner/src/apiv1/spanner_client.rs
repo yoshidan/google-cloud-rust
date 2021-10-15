@@ -57,7 +57,7 @@ fn default_setting() -> CallSettings {
     };
 }
 #[derive(Clone, Debug)]
-pub(crate) struct Client {
+pub struct Client {
     inner: SpannerClient<Channel>,
 }
 

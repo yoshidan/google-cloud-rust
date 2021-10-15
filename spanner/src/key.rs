@@ -20,7 +20,9 @@ use prost_types::{value, ListValue, Value};
 /// Keys are easy to construct.  For example, suppose you have a table with a
 /// primary key of username and product ID.  To make a key for this table:
 /// ```
-///	let key = Key::new(vec!["john".to_kind(), 16.to_kind()]);
+///	use google_cloud_spanner::key::Key;
+/// use google_cloud_spanner::statement::ToKind;
+/// let key = Key::new(vec!["john".to_kind(), 16.to_kind()]);
 /// ```
 /// See the description of Row and Mutation types for how Go types are mapped to
 /// Cloud Spanner types. For convenience, Key type supports a range of Rust
@@ -86,8 +88,10 @@ pub enum RangeKind {
 ///  The following keys name rows in this table:
 ///
 ///  ```
-/// 	let key1 = Key::new(vec!["Bob".to_kind(), "2014-09-23".to_kind()]);
-/// 	let key2 = Key::new(vec!["Alfred".to_kind(), "2015-06-12".to_kind()]);
+///	use google_cloud_spanner::key::Key;
+/// use google_cloud_spanner::statement::ToKind;
+/// let key1 = Key::new(vec!["Bob".to_kind(), "2014-09-23".to_kind()]);
+/// let key2 = Key::new(vec!["Alfred".to_kind(), "2015-06-12".to_kind()]);
 ///  ```
 ///
 ///  Since the UserEvents table's PRIMARY KEY clause names two columns, each
@@ -99,11 +103,13 @@ pub enum RangeKind {
 ///  the following range returns all events for user "Bob" that occurred in the
 ///  year 2015:
 ///  ```
-///  	let range = KeyRange::new(
-///         Key::new(vec!["Bob".to_kind(), "2015-01-01".to_kind()]),
-///         Key::new(vec!["Bob".to_kind(), "2015-12-31".to_kind()]),
-/// 		RangeKind::ClosedClosed
-/// 	);
+///	use google_cloud_spanner::key::{Key, KeyRange, RangeKind};
+/// use google_cloud_spanner::statement::ToKind;
+/// let range = KeyRange::new(
+///     Key::new(vec!["Bob".to_kind(), "2015-01-01".to_kind()]),
+///     Key::new(vec!["Bob".to_kind(), "2015-12-31".to_kind()]),
+/// 	RangeKind::ClosedClosed
+/// );
 ///  ```
 ///
 ///  Start and end keys can omit trailing key components. This affects the
@@ -116,11 +122,13 @@ pub enum RangeKind {
 ///  For example, the following range includes all events for "Bob" that occurred
 ///  during and after the year 2000:
 ///  ```
-/// 	KeyRange::new(
-/// 		Key::new(vec!["Bob".to_kind(), "2000-01-01".to_kind()]),
-/// 		Key::one("Bob"),
-/// 		RangeKind::ClosedClosed
-/// 	);
+///	use google_cloud_spanner::key::{Key, KeyRange, RangeKind};
+/// use google_cloud_spanner::statement::ToKind;
+/// KeyRange::new(
+/// 	Key::new(vec!["Bob".to_kind(), "2000-01-01".to_kind()]),
+/// 	Key::one("Bob"),
+/// 	RangeKind::ClosedClosed
+/// );
 ///  ```
 ///
 ///  The next example retrieves all events for "Bob":
@@ -129,12 +137,15 @@ pub enum RangeKind {
 ///
 ///  To retrieve events before the year 2000:
 ///  ```
-/// 	let range = KeyRange::new(
-/// 		Key::one("Bob"),
-/// 		Key::new(vec!["Bob".to_kind(), "2000-01-01".to_kind()]),
+///	use google_cloud_spanner::key::{Key, KeyRange, RangeKind};
+/// use google_cloud_spanner::statement::ToKind;
+/// let range = KeyRange::new(
+/// 	Key::one("Bob"),
+/// 	Key::new(vec!["Bob".to_kind(), "2000-01-01".to_kind()]),
 /// 		RangeKind::ClosedOpen
-/// 	);
+/// );
 ///  ```
+///
 ///  Key ranges honor column sort order. For example, suppose a table is defined
 ///  as follows:
 ///
@@ -147,11 +158,12 @@ pub enum RangeKind {
 ///  inclusive:
 ///
 ///  ```
-/// 	let range = KeyRange::new(
-///         Key::one(100),
-/// 		Key::one(1),
-/// 		RangeKind::ClosedClosed,
-/// 	);
+///	use google_cloud_spanner::key::{Key, KeyRange, RangeKind};
+/// let range = KeyRange::new(
+///       Key::one(100),
+/// 	Key::one(1),
+/// 	RangeKind::ClosedClosed,
+/// );
 ///  ```
 ///
 ///  Note that 100 is passed as the start, and 1 is passed as the end, because
@@ -229,6 +241,8 @@ impl Key {
     /// one creates new Key
     /// # Examples
     /// ```
+    ///	use google_cloud_spanner::key::Key;
+    /// use google_cloud_spanner::statement::ToKind;
     ///  let key1 = Key::one("a");
     ///  let key2 = Key::one(1);
     /// ```
@@ -239,6 +253,8 @@ impl Key {
     /// new creates new Key
     /// # Examples
     /// ```
+    ///	use google_cloud_spanner::key::Key;
+    /// use google_cloud_spanner::statement::ToKind;
     /// let multi_key = Key::new(vec!["a".to_kind(), 1.to_kind()]);
     /// ```
     pub fn new(values: Vec<value::Kind>) -> Key {

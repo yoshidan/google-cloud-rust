@@ -117,12 +117,36 @@ impl Clone for SessionPool {
 }
 
 pub struct SessionConfig {
+    /// max_opened is the maximum number of opened sessions allowed by the session
+    /// pool. If the client tries to open a session and there are already
+    /// max_opened sessions, it will block until one becomes available or the
+    /// context passed to the client method is canceled or times out.
     pub max_opened: usize,
+
+    /// min_opened is the minimum number of opened sessions that the session pool
+    /// tries to maintain. Session pool won't continue to expire sessions if
+    /// number of opened connections drops below min_opened. However, if a session
+    /// is found to be broken, it will still be evicted from the session pool,
+    /// therefore it is posssible that the number of opened sessions drops below
+    /// min_opened.
     pub min_opened: usize,
+
+    /// max_idle is the maximum number of idle sessions, pool is allowed to keep.
     pub max_idle: usize,
+
+    /// idle_timeout is the wait time before discarding an idle session.
+    /// Sessions older than this value since they were last used will be discarded.
+    /// However, if the number of sessions is less than or equal to min_opened, it will not be discarded.
     pub idle_timeout: std::time::Duration,
+
+    /// session_get_timeout is the maximum value of the waiting time that occurs when retrieving from the connection pool when there is no idle session.
     pub session_get_timeout: std::time::Duration,
+
+    /// refresh_interval is the interval of cleanup and health check functions.
     pub refresh_interval: std::time::Duration,
+
+    /// incStep is the number of sessions to create in one batch when at least
+    /// one more session is needed.
     inc_step: usize,
 }
 

@@ -18,7 +18,7 @@ pub(crate) trait ConnPool {
 }
 
 #[derive(Debug)]
-pub(crate) struct ConnectionManager {
+pub struct ConnectionManager {
     index: AtomicI64,
     conns: Vec<SpannerClient<Channel>>,
 }

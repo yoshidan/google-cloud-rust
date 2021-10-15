@@ -6,7 +6,7 @@ use google_cloud_auth::*;
 
 #[tokio::test]
 async fn test_reuse_token_source() -> Result<(), error::Error> {
-    let credentials = credentia::CredentialsFile::new().await?;
+    let credentials = credentials::CredentialsFile::new().await?;
     let audience = "https://spanner.googleapis.com/";
     let ts = ServiceAccountTokenSource::new(&credentials, audience)?;
     let token = ts.token().await?;

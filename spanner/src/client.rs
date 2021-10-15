@@ -114,11 +114,14 @@ fn default_transaction_retry_setting() -> CallSettings {
     }
 }
 
+/// Client is a client for reading and writing data to a Cloud Spanner database.
+/// A client is safe to use concurrently, except for its Close method.
 pub struct Client {
     sessions: SessionManager,
 }
 
 pub struct ChannelConfig {
+    /// num_channels is the number of gRPC channels.
     pub num_channels: usize,
 }
 
@@ -128,8 +131,11 @@ impl Default for ChannelConfig {
     }
 }
 
+/// ClientConfig has configurations for the client.
 pub struct ClientConfig {
+    /// SessionPoolConfig is the configuration for session pool.
     pub session_config: SessionConfig,
+    /// ChannelConfig is the configuration for gRPC connection.
     pub channel_config: ChannelConfig,
 }
 
@@ -175,6 +181,8 @@ impl AsTonicStatus for TxError {
 }
 
 impl Client {
+    /// new creates a client to a database. A valid database name has
+    /// the form projects/PROJECT_ID/instances/INSTANCE_ID/databases/DATABASE_ID.
     pub async fn new(
         database: impl Into<String>,
         options: Option<ClientConfig>,
@@ -201,16 +209,26 @@ impl Client {
         });
     }
 
+    /// Close closes the client.
     pub async fn close(&mut self) {
         self.sessions.close().await;
     }
 
-    pub async fn single(&self) -> Result<ReadOnlyTransaction, TxError> {
+    /// single provides a read-only snapshot transaction optimized for the case
+    /// where only a single read or query is needed.  This is more efficient than
+    /// using read_only_transaction for a single read or query.
+    pub async fn single(&self, tb: Option<TimestampBound>) -> Result<ReadOnlyTransaction, TxError> {
+        let tb = match tb {
+            Some(tb) => tb,
+            None => TimestampBound::strong_read(),
+        };
         let session = self.get_session().await?;
-        let result = ReadOnlyTransaction::single(session, TimestampBound::strong_read()).await?;
+        let result = ReadOnlyTransaction::single(session, tb).await?;
         Ok(result)
     }
 
+    /// read_only_transaction returns a ReadOnlyTransaction that can be used for
+    /// multiple reads from the database.
     pub async fn read_only_transaction(
         &self,
         options: Option<ReadOnlyTransactionOption>,
@@ -225,6 +243,13 @@ impl Client {
         Ok(result)
     }
 
+    /// batch_read_only_transaction returns a BatchReadOnlyTransaction that can be used
+    /// for partitioned reads or queries from a snapshot of the database. This is
+    /// useful in batch processing pipelines where one wants to divide the work of
+    /// reading from the database across multiple machines.
+    ///
+    /// Note: This transaction does not use the underlying session pool but creates a
+    /// new session each time.
     pub async fn batch_read_only_transaction(
         &self,
         options: Option<ReadOnlyTransactionOption>,
@@ -233,12 +258,21 @@ impl Client {
             Some(o) => o,
             None => ReadOnlyTransactionOption::default(),
         };
+        //TODO don't use session pool use and create session each time
         let session = self.get_session().await?;
         let result =
             BatchReadOnlyTransaction::begin(session, opt.timestamp_bound, opt.call_options).await?;
         Ok(result)
     }
 
+    /// partitioned_update executes a DML statement in parallel across the database,
+    /// using separate, internal transactions that commit independently. The DML
+    /// statement must be fully partitionable: it must be expressible as the union
+    /// of many statements each of which accesses only a single row of the table. The
+    /// statement should also be idempotent, because it may be applied more than once.
+    ///
+    /// PartitionedUpdate returns an estimated count of the number of rows affected.
+    /// The actual number of affected rows may be greater than the estimate.
     pub async fn partitioned_update(
         &self,
         stmt: Statement,
@@ -273,6 +307,15 @@ impl Client {
         .await;
     }
 
+    /// apply_at_least_once may attempt to apply mutations more than once; if
+    /// the mutations are not idempotent, this may lead to a failure being reported
+    /// when the mutation was applied more than once. For example, an insert may
+    /// fail with ALREADY_EXISTS even though the row did not exist before Apply was
+    /// called. For this reason, most users of the library will prefer not to use
+    /// this option.  However, ApplyAtLeastOnce requires only a single RPC, whereas
+    /// Apply's default replay protection may require an additional RPC.  So this
+    /// option may be appropriate for latency sensitive and/or high throughput blind
+    /// writing.
     pub async fn apply_at_least_once(
         &self,
         ms: Vec<Mutation>,
@@ -301,27 +344,29 @@ impl Client {
         .await;
     }
 
+    /// Apply applies a list of mutations atomically to the database.
     pub async fn apply(
         &self,
         ms: Vec<Mutation>,
         options: Option<ReadWriteTransactionOption>,
     ) -> Result<Option<Timestamp>, TxError> {
-        let result: Result<(Option<Timestamp>, ()), TxError> = self
-            .run_in_read_write_transaction(
-                |tx| {
-                    let a = ms.to_vec();
-                    async move {
-                        let mut tx = tx.lock().await;
-                        tx.buffer_write(a);
-                        Ok(())
-                    }
-                },
-                options,
-            )
-            .await;
-        return Ok(result?.0);
+        let (ro, bo, co) = Client::split_read_write_transaction_option(options);
+        let result: Result<Option<Timestamp>, TxError> = Client::run_with_retry(
+            || async {
+                let mut tx = self.read_write_transaction(Some(bo.clone())).await?;
+                tx.buffer_write(ms.clone());
+                let result = tx.finish::<(), Status>(Ok(()), Some(co.clone())).await?;
+                Ok(result.0)
+            },
+            Some(ro),
+        )
+        .await;
+        return result;
     }
 
+    /// read_write_transaction returns the ReadWriteTransaction.
+    /// Use ReadWriteTransaction in Client::run_with_retry because a Cloud Spanner transaction may have to be tried multiple times before it commits.
+    /// https://cloud.google.com/spanner/docs/transactions#rw_transaction_interface
     pub async fn read_write_transaction(
         &self,
         options: Option<CallOptions>,
@@ -335,6 +380,31 @@ impl Client {
         Ok(result)
     }
 
+    /// run_with_retry executes a read-write transaction, with retries as necessary.
+    ///
+    /// The function f will be called one or more times. It must not maintain any state between calls.
+    ///
+    /// If the transaction cannot be committed or if f returns an ABORTED error or f returns an 'Session Not Found',
+    /// run_with_retry will call f again. It will continue to call f until the transaction can be committed.
+    /// If f returns an error other than ABORTED, run_with_retry will return the error.
+    /// # Example
+    /// ```
+    /// use google_cloud_spanner::client::Client;
+    /// use google_cloud_spanner::mutation::update;
+    /// use google_cloud_spanner::statement::{ToKind, Statement};
+    /// let result = Client::run_with_retry( || async {
+    ///     let mut tx = client.read_write_transaction(None).await?;
+    ///     let tx_result = async {
+    ///         tx.buffer_write(vec![update( "Table1",vec!["Attr1", "Attr2"],vec!["2".to_kind(), true.to_kind()])]);
+    ///
+    ///         let mut stmt = Statement::new("UPDATE Table2 SET Attr3 = @Attr3 Where Attr4 = @Attr4");
+    ///         stmt.add_param("Attr3", "updating");
+    ///         stmt.add_param("Attr4", "condition");
+    ///         tx.update(stmt,None).await
+    ///     }.await;
+    ///     tx.finish(tx_result, None).await
+    /// }.await, None);
+    /// ```
     pub async fn run_with_retry<T, E, Fut>(
         mut f: impl FnMut() -> Fut,
         retry_setting: Option<CallSettings>,
@@ -350,43 +420,8 @@ impl Client {
         return retryer::invoke(f, &mut o).await;
     }
 
-    pub async fn run_in_read_write_transaction<T, E, F>(
-        &self,
-        mut f: impl Fn(Arc<Mutex<ReadWriteTransaction>>) -> F,
-        options: Option<ReadWriteTransactionOption>,
-    ) -> Result<(Option<prost_types::Timestamp>, T), E>
-    where
-        E: AsTonicStatus + From<TxError> + From<Status>,
-        F: Future<Output = Result<T, E>>,
-    {
-        let (mut ro, bo, co) = Client::split_read_write_transaction_option(options);
-
-        return retryer::invoke(
-            || async {
-                let mut tx = self.get_rw_transaction(bo.clone()).await?;
-
-                let arc = Arc::new(Mutex::new(tx));
-                let result = f(arc.clone()).await;
-
-                let mut tx = arc.lock().await;
-                return tx.finish(result, Some(co.clone())).await;
-            },
-            &mut ro,
-        )
-        .await;
-    }
-
     async fn get_session(&self) -> Result<ManagedSession, SessionError> {
         return self.sessions.get().await;
-    }
-
-    async fn get_rw_transaction(
-        &self,
-        options: CallOptions,
-    ) -> Result<ReadWriteTransaction, TxError> {
-        let session = self.get_session().await?;
-        let result = ReadWriteTransaction::begin(session, options).await?;
-        Ok(result)
     }
 
     fn split_read_write_transaction_option(

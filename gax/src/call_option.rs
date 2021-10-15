@@ -2,13 +2,15 @@ use rand::Rng;
 use std::time::Duration;
 use tonic::{Code, Status};
 
+/// Retryer is used by Invoke to determine retry behavior.
 pub trait Retryer {
-    fn retry(&mut self, err: &tonic::Status) -> (Duration, bool);
+    fn retry(&mut self, status: &Status) -> Option<Duration>;
 }
 
-// The wait time between retries is a random value between 0 and the "retry envelope".
-// The envelope starts at Initial and increases by the factor of Multiplier every retry,
-// but is capped at Max.
+/// Backoff implements exponential backoff.
+/// The wait time between retries is a random value between 0 and the "retry envelope".
+/// The envelope starts at Initial and increases by the factor of Multiplier every retry,
+/// but is capped at Max.
 #[derive(Clone)]
 pub struct Backoff {
     pub initial: Duration,
@@ -18,7 +20,7 @@ pub struct Backoff {
 }
 
 impl Backoff {
-    fn pause(&mut self) -> Duration {
+    fn duration(&mut self) -> Duration {
         // Select a duration between 1ns and the current max. It might seem
         // counterintuitive to have so much jitter, but
         // https://www.awsarchitectureblog.com/2015/03/backoff.html argues that
@@ -34,9 +36,10 @@ impl Backoff {
     }
 }
 
+/// CallSettings allow fine-grained control over how calls are made.
 #[derive(Clone)]
 pub struct BackoffRetryer {
-    pub backoff: Backoff,
+    pub backoff: Backoff, // supports backoff retry only
     pub codes: Vec<tonic::Code>,
     pub check_session_not_found: bool,
 }
@@ -57,8 +60,8 @@ pub struct CallSettings {
     pub retryer: BackoffRetryer,
 }
 
-impl BackoffRetryer {
-    pub fn retry(&mut self, status: &Status) -> Option<Duration> {
+impl Retryer for BackoffRetryer {
+    fn retry(&mut self, status: &Status) -> Option<Duration> {
         let code = status.code();
         if code == Code::Internal
             && !status.message().contains("stream terminated by RST_STREAM")
@@ -78,14 +81,14 @@ impl BackoffRetryer {
         for candidate in self.codes.iter() {
             if *candidate == code {
                 log::debug!("retry {} {}", status.code(), status.message());
-                return Some(self.backoff.pause());
+                return Some(self.backoff.duration());
             }
         }
 
         if self.check_session_not_found {
             if status.message().contains("Session not found:") {
                 log::debug!("retry by session not found");
-                return Some(self.backoff.pause());
+                return Some(self.backoff.duration());
             }
         }
         return None;
