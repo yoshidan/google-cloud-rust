@@ -5,26 +5,29 @@ use tokio::fs;
 const CREDENTIALS_FILE: &str = "application_default_credentials.json";
 
 #[derive(Deserialize)]
-pub struct Format {
-    pub tp: String,
-    pub subject_token_field_name: String,
-}
-
-#[derive(Deserialize)]
-pub struct CredentialSource {
-    pub file: String,
-    pub url: String,
-    pub headers: std::collections::HashMap<String, String>,
-    pub environment_id: String,
-    pub region_url: String,
-    pub regional_cred_verification_url: String,
-    pub cred_verification_url: String,
-    pub format: Format,
+#[allow(dead_code)]
+pub(crate) struct Format {
+    #[allow(dead_code)]
+    tp: String,
+    #[allow(dead_code)]
+    subject_token_field_name: String,
 }
 
 #[derive(Deserialize)]
 #[allow(dead_code)]
-pub struct CredentialsFile {
+pub(crate) struct CredentialSource {
+    file: String,
+    url: String,
+    headers: std::collections::HashMap<String, String>,
+    environment_id: String,
+    region_url: String,
+    regional_cred_verification_url: String,
+    cred_verification_url: String,
+    format: Format,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct CredentialsFile {
     #[serde(rename(deserialize = "type"))]
     pub tp: String,
 
@@ -63,7 +66,7 @@ struct Credentials {
 }
 
 impl CredentialsFile {
-    pub async fn new() -> Result<Self, Error> {
+    pub(crate) async fn new() -> Result<Self, Error> {
         let path = match std::env::var("GOOGLE_APPLICATION_CREDENTIALS") {
             Ok(s) => Ok(std::path::Path::new(s.as_str()).to_path_buf()),
             Err(_e) => {
@@ -87,7 +90,7 @@ impl CredentialsFile {
         return Ok(json::from_slice(credentials_json.as_slice())?);
     }
 
-    pub fn try_to_private_key(&self) -> Result<jwt::EncodingKey, Error> {
+    pub(crate) fn try_to_private_key(&self) -> Result<jwt::EncodingKey, Error> {
         match self.private_key.as_ref() {
             Some(key) => Ok(jwt::EncodingKey::from_rsa_pem(key.as_bytes())?),
             None => Err(Error::NoPrivateKeyFound),

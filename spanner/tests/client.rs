@@ -23,6 +23,6 @@ async fn test_new() -> Result<(), anyhow::Error> {
             None,
         )
         .await;
-    println!("{}", value.is_err());
+    println!("{:?}", value.err());
     Ok(())
 }

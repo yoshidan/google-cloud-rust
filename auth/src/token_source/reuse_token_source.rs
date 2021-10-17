@@ -4,12 +4,12 @@ use crate::token_source::token_source::TokenSource;
 use async_trait::async_trait;
 
 pub struct ReuseTokenSource {
-    pub target: Box<dyn TokenSource>,
-    pub current_token: std::sync::RwLock<Token>,
+    target: Box<dyn TokenSource>,
+    current_token: std::sync::RwLock<Token>,
 }
 
 impl ReuseTokenSource {
-    pub fn new(target: Box<dyn TokenSource>, token: Token) -> ReuseTokenSource {
+    pub(crate) fn new(target: Box<dyn TokenSource>, token: Token) -> ReuseTokenSource {
         return ReuseTokenSource {
             target,
             current_token: std::sync::RwLock::new(token),

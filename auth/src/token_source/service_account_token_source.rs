@@ -32,14 +32,14 @@ impl Claims<'_> {
 // The audience is typically a URL that specifies the scope of the credentials.
 // see golang.org/x/oauth2/gen/jwt.go
 pub struct ServiceAccountTokenSource {
-    pub email: String,
-    pub pk: jwt::EncodingKey,
-    pub pk_id: String,
-    pub audience: String,
+    email: String,
+    pk: jwt::EncodingKey,
+    pk_id: String,
+    audience: String,
 }
 
 impl ServiceAccountTokenSource {
-    pub fn new(
+    pub(crate) fn new(
         cred: &credentials::CredentialsFile,
         audience: &str,
     ) -> Result<ServiceAccountTokenSource, Error> {
@@ -99,7 +99,7 @@ pub struct OAuth2ServiceAccountTokenSource {
 }
 
 impl OAuth2ServiceAccountTokenSource {
-    pub fn new(
+    pub(crate) fn new(
         cred: &credentials::CredentialsFile,
         scopes: &str,
     ) -> Result<OAuth2ServiceAccountTokenSource, Error> {

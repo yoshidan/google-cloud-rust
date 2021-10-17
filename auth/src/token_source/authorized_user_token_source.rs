@@ -10,17 +10,18 @@ use hyper::http::{Method, Request};
 use hyper::{Body, Client};
 
 pub struct UserAccountTokenSource {
-    pub client_id: String,
-    pub client_secret: String,
-    pub token_url: String,
-    pub redirect_url: String,
-    pub refresh_token: String,
+    client_id: String,
+    client_secret: String,
+    token_url: String,
+    #[allow(dead_code)]
+    redirect_url: String,
+    refresh_token: String,
 
-    pub client: Client<hyper_tls::HttpsConnector<HttpConnector>>,
+    client: Client<hyper_tls::HttpsConnector<HttpConnector>>,
 }
 
 impl UserAccountTokenSource {
-    pub fn new(cred: &credentials::CredentialsFile) -> Result<UserAccountTokenSource, Error> {
+    pub(crate) fn new(cred: &credentials::CredentialsFile) -> Result<UserAccountTokenSource, Error> {
         if cred.refresh_token.is_none() {
             return Err(Error::RefreshTokenIsRequired);
         }

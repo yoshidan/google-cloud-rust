@@ -12,12 +12,12 @@ use hyper::http::{Method, Request};
 use urlencoding::encode;
 
 pub struct ComputeTokenSource {
-    pub token_url: String,
-    pub client: hyper::Client<HttpConnector>,
+    token_url: String,
+    client: hyper::Client<HttpConnector>,
 }
 
 impl ComputeTokenSource {
-    pub fn new(scope: &str) -> Result<ComputeTokenSource, Error> {
+    pub(crate) fn new(scope: &str) -> Result<ComputeTokenSource, Error> {
         let host = match std::env::var(METADATA_HOST_ENV) {
             Ok(s) => s,
             Err(_e) => METADATA_IP.to_string(),

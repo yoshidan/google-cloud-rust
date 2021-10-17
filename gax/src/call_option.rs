@@ -1,6 +1,6 @@
 use rand::Rng;
 use std::time::Duration;
-use tonic::{Code, Status};
+use tonic::Status;
 
 /// Backoff implements exponential backoff.
 /// The wait time between retries is a random value between 0 and the "retry envelope".
