@@ -21,7 +21,9 @@ pub struct UserAccountTokenSource {
 }
 
 impl UserAccountTokenSource {
-    pub(crate) fn new(cred: &credentials::CredentialsFile) -> Result<UserAccountTokenSource, Error> {
+    pub(crate) fn new(
+        cred: &credentials::CredentialsFile,
+    ) -> Result<UserAccountTokenSource, Error> {
         if cred.refresh_token.is_none() {
             return Err(Error::RefreshTokenIsRequired);
         }

@@ -1,4 +1,4 @@
-use metadata::on_gce;
+use google_cloud_metadata::on_gce;
 
 #[tokio::test]
 async fn test_on_gce() {
