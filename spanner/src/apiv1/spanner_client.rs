@@ -1,7 +1,7 @@
 use google_cloud_auth::error::Error;
 use google_cloud_auth::token::Token;
 use google_cloud_auth::token_source::token_source::TokenSource;
-use google_cloud_auth::{create_token_source, Config};
+use google_cloud_auth::Config;
 use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer, RetrySettings};
 use google_cloud_gax::invoke::invoke_reuse;
 use google_cloud_googleapis::spanner::v1 as internal;
