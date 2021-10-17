@@ -2,7 +2,7 @@ use parking_lot::Mutex;
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Weak};
 
-use crate::apiv1::conn_pool::{ConnPool, ConnectionManager};
+use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::spanner_client::{ping_query_request, Client};
 use async_trait::async_trait;
 use chrono::{DateTime, NaiveDateTime};
@@ -215,12 +215,8 @@ impl SessionManager {
         let mut sessions = Vec::<SessionHandle>::new();
         for _ in 0..channel_num {
             let next_client = conn_pool.conn();
-            match batch_create_session(
-                Client::new(next_client),
-                database.clone(),
-                creation_count_per_channel,
-            )
-            .await
+            match batch_create_session(next_client, database.clone(), creation_count_per_channel)
+                .await
             {
                 Ok(r) => {
                     for i in r {
@@ -288,13 +284,7 @@ impl SessionManager {
 
         tokio::spawn(async move {
             log::info!("start batch create session {}", creation_count);
-            let result = match batch_create_session(
-                Client::new(next_client),
-                database,
-                creation_count,
-            )
-            .await
-            {
+            let result = match batch_create_session(next_client, database, creation_count).await {
                 Ok(mut fresh_sessions) => {
                     // Register fresh sessions into pool.
                     let result = match idle_sessions.upgrade() {

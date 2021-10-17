@@ -137,7 +137,7 @@ pub enum InitializeError {
     TonicStatus(#[from] Status),
 
     #[error(transparent)]
-    TonicTransport(#[from] tonic::transport::Error),
+    GRPCInitialize(#[from] crate::apiv1::conn_pool::Error),
 
     #[error("invalid config: {0}")]
     InvalidConfig(String),

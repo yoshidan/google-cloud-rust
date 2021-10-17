@@ -53,28 +53,6 @@ preferring the first location found:
    On other systems, $HOME/.config/gcloud/application_default_credentials.json.
 3. On Google Compute Engine, it fetches credentials from the metadata server.
 
-### Async Initialization
-
-```rust
-use gcpauth::*;
-use tokio::sync::OnceCell;
-
-static AUTHENTICATOR: OnceCell<Box<dyn gcpauth::token::TokenSource>> = OnceCell::const_new();
-
-#[tokio::main]
-async fn main() -> Result<(),error::Error> {
-    let ts = AUTHENTICATOR.get_or_try_init(|| {
-        gcpauth::create_token_source(gcpauth::Config {
-            audience: Some("https://spanner.googleapis.com/"),
-            scopes: None,
-        })
-    }).await?;
-    let token = ts.token().await?;
-    println!("token is {}",token.access_token);
-    Ok(())
-}
-```
-
 ## Supported Credentials
 
 - [x] [Service Account(JWT)](https://developers.google.com/identity/protocols/oauth2/service-account#jwt-auth)

@@ -1,3 +1,5 @@
+use google_cloud_auth::error::Error;
+use google_cloud_auth::token::Token;
 use google_cloud_auth::token_source::token_source::TokenSource;
 use google_cloud_auth::{create_token_source, Config};
 use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer, RetrySettings};
@@ -23,14 +25,6 @@ use tonic::metadata::{Ascii, BinaryMetadataValue, KeyAndValueRef, MetadataMap, M
 use tonic::transport::Channel;
 use tonic::{IntoRequest, Request, Response, Status, Streaming};
 
-const AUDIENCE: &str = "https:///spanner.googleapis.com/";
-const SCOPES: [&'static str; 2] = [
-    "https:///www.googleapis.com/auth/cloud-platform",
-    "https:///www.googleapis.com/auth/spanner.data",
-];
-
-static AUTHENTICATOR: OnceCell<Box<dyn TokenSource>> = OnceCell::const_new();
-
 pub(crate) fn ping_query_request(session_name: impl Into<String>) -> internal::ExecuteSqlRequest {
     internal::ExecuteSqlRequest {
         session: session_name.into(),
@@ -55,15 +49,19 @@ fn default_setting() -> BackoffRetrySettings {
         },
     };
 }
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Client {
     inner: SpannerClient<Channel>,
+    token_source: Arc<dyn TokenSource>,
 }
 
 impl Client {
     /// create new spanner client
-    pub fn new(inner: SpannerClient<Channel>) -> Client {
-        return Client { inner };
+    pub fn new(inner: SpannerClient<Channel>, token_source: Arc<dyn TokenSource>) -> Client {
+        return Client {
+            inner,
+            token_source,
+        };
     }
 
     /// merge call setting
@@ -100,7 +98,7 @@ impl Client {
     ) -> Result<Response<Session>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let database = &req.database;
-        let token = get_token().await;
+        let token = map_token_error(self.token_source.token().await)?;
         return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(
@@ -130,7 +128,7 @@ impl Client {
     ) -> Result<tonic::Response<BatchCreateSessionsResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let database = &req.database;
-        let token = get_token().await;
+        let token = map_token_error(self.token_source.token().await)?;
         return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(
@@ -159,7 +157,7 @@ impl Client {
     ) -> Result<Response<Session>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let name = &req.name;
-        let token = get_token().await;
+        let token = map_token_error(self.token_source.token().await)?;
         return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(format!("name={}", name), token.as_str(), req.clone());
@@ -182,7 +180,7 @@ impl Client {
     ) -> Result<Response<ListSessionsResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let database = &req.database;
-        let token = get_token().await;
+        let token = map_token_error(self.token_source.token().await)?;
         return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(
@@ -211,7 +209,7 @@ impl Client {
     ) -> Result<Response<()>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let name = &req.name;
-        let token = get_token().await;
+        let token = map_token_error(self.token_source.token().await)?;
         return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(format!("name={}", name), token.as_str(), req.clone());
@@ -244,7 +242,7 @@ impl Client {
     ) -> Result<Response<ResultSet>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
-        let token = get_token().await;
+        let token = map_token_error(self.token_source.token().await)?;
         return invoke_reuse(
             |spanner_client| async {
                 let request =
@@ -272,7 +270,7 @@ impl Client {
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
-        let token = get_token().await;
+        let token = map_token_error(self.token_source.token().await)?;
         return invoke_reuse(
             |spanner_client| async {
                 let request =
@@ -306,7 +304,7 @@ impl Client {
     ) -> Result<Response<ExecuteBatchDmlResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
-        let token = get_token().await;
+        let token = map_token_error(self.token_source.token().await)?;
         return invoke_reuse(
             |spanner_client| async {
                 let request =
@@ -342,7 +340,7 @@ impl Client {
     ) -> Result<Response<ResultSet>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
-        let token = get_token().await;
+        let token = map_token_error(self.token_source.token().await)?;
         return invoke_reuse(
             |spanner_client| async {
                 let request =
@@ -370,7 +368,7 @@ impl Client {
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
-        let token = get_token().await;
+        let token = map_token_error(self.token_source.token().await)?;
         return invoke_reuse(
             |spanner_client| async {
                 let request =
@@ -397,7 +395,7 @@ impl Client {
     ) -> Result<Response<Transaction>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
-        let token = get_token().await;
+        let token = map_token_error(self.token_source.token().await)?;
         return invoke_reuse(
             |spanner_client| async {
                 let request =
@@ -434,7 +432,7 @@ impl Client {
     ) -> Result<Response<CommitResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
-        let token = get_token().await;
+        let token = map_token_error(self.token_source.token().await)?;
         return invoke_reuse(
             |spanner_client| async {
                 let request =
@@ -465,7 +463,7 @@ impl Client {
     ) -> Result<Response<()>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
-        let token = get_token().await;
+        let token = map_token_error(self.token_source.token().await)?;
         return invoke_reuse(
             |spanner_client| async {
                 let request =
@@ -499,7 +497,7 @@ impl Client {
     ) -> Result<Response<PartitionResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
-        let token = get_token().await;
+        let token = map_token_error(self.token_source.token().await)?;
         return invoke_reuse(
             |spanner_client| async {
                 let request =
@@ -535,7 +533,7 @@ impl Client {
     ) -> Result<Response<PartitionResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
-        let token = get_token().await;
+        let token = map_token_error(self.token_source.token().await)?;
         return invoke_reuse(
             |spanner_client| async {
                 let request =
@@ -552,18 +550,15 @@ impl Client {
     }
 }
 
-/// get_token get authentication token
-async fn get_token() -> String {
-    let ts = AUTHENTICATOR
-        .get_or_try_init(|| {
-            create_token_source(Config {
-                audience: Some(AUDIENCE),
-                scopes: Some(&SCOPES),
-            })
+fn map_token_error(result: Result<Token, Error>) -> Result<String, Status> {
+    result
+        .map_err(|e| {
+            tonic::Status::new(
+                tonic::Code::Unauthenticated,
+                format!("token error: {:?}", e),
+            )
         })
-        .await
-        .unwrap();
-    return ts.token().await.unwrap().value();
+        .map(|v| v.value())
 }
 
 fn create_request<T>(
