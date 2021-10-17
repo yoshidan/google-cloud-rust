@@ -1,15 +1,11 @@
-use crate::apiv1::spanner_client::Client;
-use crate::client::ReadWriteTransactionOption;
-use crate::session_pool::{ManagedSession, SessionHandle, SessionManager};
+use crate::session_pool::ManagedSession;
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, Transaction};
-use async_trait::async_trait;
-use chrono::NaiveDateTime;
-use google_cloud_gax::call_option::{BackoffRetrySettings, RetrySettings};
+
+use google_cloud_gax::call_option::BackoffRetrySettings;
 use google_cloud_gax::invoke::AsTonicStatus;
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::TransactionId;
-use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
-use google_cloud_googleapis::spanner::v1::transaction_options::Mode::ReadWrite;
+
 use google_cloud_googleapis::spanner::v1::{
     commit_request, execute_batch_dml_request, execute_sql_request::QueryMode, request_options,
     result_set_stats, transaction_options, transaction_selector, BeginTransactionRequest,
@@ -18,13 +14,10 @@ use google_cloud_googleapis::spanner::v1::{
     TransactionSelector,
 };
 use prost_types::Struct;
-use std::future::Future;
-use std::net::Shutdown::Read;
+
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::sync::atomic::{AtomicI64, Ordering};
-use std::sync::Arc;
-use tokio::sync::Mutex;
 
 #[derive(Clone)]
 pub struct CommitOptions {
@@ -120,7 +113,7 @@ pub struct BeginError {
 
 impl ReadWriteTransaction {
     pub async fn begin(
-        mut session: ManagedSession,
+        session: ManagedSession,
         options: CallOptions,
     ) -> Result<ReadWriteTransaction, BeginError> {
         return ReadWriteTransaction::begin_internal(
@@ -132,7 +125,7 @@ impl ReadWriteTransaction {
     }
 
     pub async fn begin_partitioned_dml(
-        mut session: ManagedSession,
+        session: ManagedSession,
         options: CallOptions,
     ) -> Result<ReadWriteTransaction, BeginError> {
         return ReadWriteTransaction::begin_internal(

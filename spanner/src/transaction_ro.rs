@@ -1,9 +1,9 @@
-use crate::reader::{AsyncIterator, Reader, RowIterator, StatementReader, TableReader};
-use crate::session_pool::{ManagedSession, SessionHandle, SessionManager};
+use crate::reader::{Reader, RowIterator, StatementReader, TableReader};
+use crate::session_pool::ManagedSession;
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, ReadOptions, Transaction};
 use crate::value::TimestampBound;
-use async_trait::async_trait;
+
 use chrono::NaiveDateTime;
 use google_cloud_googleapis::spanner::v1::{
     commit_request, execute_sql_request::QueryMode, request_options, result_set_stats,
@@ -12,10 +12,10 @@ use google_cloud_googleapis::spanner::v1::{
     PartitionReadRequest, PartitionResponse, ReadRequest, RequestOptions, RollbackRequest, Session,
     TransactionOptions, TransactionSelector,
 };
-use prost_types::Struct;
+
 use std::ops::{Deref, DerefMut};
-use std::sync::atomic::{AtomicI64, Ordering};
-use tonic::{Response, Status};
+use std::sync::atomic::AtomicI64;
+use tonic::Status;
 
 /// ReadOnlyTransaction provides a snapshot transaction with guaranteed
 /// consistency across reads, but does not allow writes.  Read-only transactions
@@ -138,7 +138,7 @@ impl DerefMut for BatchReadOnlyTransaction {
 
 impl BatchReadOnlyTransaction {
     pub async fn begin(
-        mut session: ManagedSession,
+        session: ManagedSession,
         tb: TimestampBound,
         options: CallOptions,
     ) -> Result<BatchReadOnlyTransaction, Status> {

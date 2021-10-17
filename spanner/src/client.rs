@@ -1,40 +1,26 @@
 use crate::apiv1::conn_pool::ConnectionManager;
-use crate::apiv1::spanner_client::Client as SpannerClient;
-use crate::reader;
-use crate::reader::AsyncIterator;
-use crate::retry::{new_default_tx_retry, new_tx_retry_with_codes, TransactionRetryer};
-use crate::session_pool::{
-    ManagedSession, SessionConfig, SessionError, SessionHandle, SessionManager,
-};
+
+use crate::retry::{new_default_tx_retry, new_tx_retry_with_codes};
+use crate::session_pool::{ManagedSession, SessionConfig, SessionError, SessionManager};
 use crate::statement::Statement;
-use crate::statement::ToKind;
-use crate::transaction::{CallOptions, QueryOptions, Transaction};
+
+use crate::transaction::{CallOptions, QueryOptions};
 use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
 use crate::value::TimestampBound;
-use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, TimeZone, Timelike, Utc, Weekday};
-use futures_util::future::BoxFuture;
-use google_cloud_gax::call_option::{Backoff, BackoffRetryer, RetrySettings, Retryer};
+
+use google_cloud_gax::invoke::invoke_reuse;
 use google_cloud_gax::invoke::AsTonicStatus;
-use google_cloud_gax::{call_option, invoke::invoke_reuse};
-use google_cloud_googleapis::spanner::v1::execute_sql_request::QueryMode;
-use google_cloud_googleapis::spanner::v1::mutation::{Operation, Write};
-use google_cloud_googleapis::spanner::v1::request_options::Priority;
-use google_cloud_googleapis::spanner::v1::transaction_options::Mode::ReadOnly;
+
 use google_cloud_googleapis::spanner::v1::{
     commit_request, request_options, result_set_stats, transaction_options, transaction_selector,
     ExecuteSqlRequest, KeySet, Mutation, RequestOptions, RollbackRequest,
     TransactionOptions as TxOptions, TransactionOptions, TransactionSelector,
 };
-use prost_types::value::Kind::StringValue;
+
 use prost_types::{value, ListValue, Timestamp, Value};
 use std::future::Future;
-use std::net::Shutdown::Read;
-use std::ops::{Deref, DerefMut};
-use std::pin::Pin;
-use std::sync::Arc;
-use tokio::sync::{Mutex, MutexGuard, OnceCell};
-use tokio::time::{Duration, Instant, Interval};
+
 use tonic::{Code, Status};
 
 #[derive(Clone)]
@@ -268,7 +254,7 @@ impl Client {
         };
 
         let mut ro = new_tx_retry_with_codes(vec![Code::Aborted, Code::Internal]);
-        let mut session = Some(self.get_session().await?);
+        let session = Some(self.get_session().await?);
 
         // reuse session
         return invoke_reuse(
@@ -369,7 +355,7 @@ impl Client {
     /// ```
     pub async fn read_write_transaction<'a, T, E, F>(
         &self,
-        mut f: impl Fn(ReadWriteTransaction) -> F,
+        f: impl Fn(ReadWriteTransaction) -> F,
         options: Option<ReadWriteTransactionOption>,
     ) -> Result<(Option<prost_types::Timestamp>, T), E>
     where
@@ -379,12 +365,12 @@ impl Client {
         let (bo, co) = Client::split_read_write_transaction_option(options);
 
         let mut ro = new_default_tx_retry();
-        let mut session = Some(self.get_session().await?);
+        let session = Some(self.get_session().await?);
 
         // must reuse session
         return invoke_reuse(
             |session| async {
-                let mut tx = self
+                let tx = self
                     .create_read_write_transaction::<E>(session, bo.clone())
                     .await?;
                 let (mut tx, result) = f(tx).await;
@@ -398,7 +384,7 @@ impl Client {
 
     pub async fn read_write_transaction_sync<T, E>(
         &self,
-        mut f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,
+        f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,
         options: Option<ReadWriteTransactionOption>,
     ) -> Result<(Option<prost_types::Timestamp>, T), E>
     where
@@ -407,7 +393,7 @@ impl Client {
         let (bo, co) = Client::split_read_write_transaction_option(options);
 
         let mut ro = new_default_tx_retry();
-        let mut session = Some(self.get_session().await?);
+        let session = Some(self.get_session().await?);
 
         // reuse session
         return invoke_reuse(
@@ -415,7 +401,7 @@ impl Client {
                 let mut tx = self
                     .create_read_write_transaction::<E>(session, bo.clone())
                     .await?;
-                let mut result = f(&mut tx);
+                let result = f(&mut tx);
                 tx.finish(result, Some(co.clone())).await
             },
             session,

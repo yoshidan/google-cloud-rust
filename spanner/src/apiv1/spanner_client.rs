@@ -1,8 +1,8 @@
 use google_cloud_auth::error::Error;
 use google_cloud_auth::token::Token;
 use google_cloud_auth::token_source::token_source::TokenSource;
-use google_cloud_auth::Config;
-use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer, RetrySettings};
+
+use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
 use google_cloud_gax::invoke::invoke_reuse;
 use google_cloud_googleapis::spanner::v1 as internal;
 use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
@@ -14,14 +14,9 @@ use google_cloud_googleapis::spanner::v1::{
     PartitionReadRequest, PartitionResponse, ReadRequest, ResultSet, RollbackRequest, Session,
     Transaction,
 };
-use once_cell::sync::Lazy;
-use std::any::Any;
-use std::convert::TryInto;
-use std::ops::{Deref, DerefMut};
+
 use std::sync::Arc;
-use tokio::runtime::Handle;
-use tokio::sync::{Mutex, OnceCell};
-use tonic::metadata::{Ascii, BinaryMetadataValue, KeyAndValueRef, MetadataMap, MetadataValue};
+
 use tonic::transport::Channel;
 use tonic::{IntoRequest, Request, Response, Status, Streaming};
 

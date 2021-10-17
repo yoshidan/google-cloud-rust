@@ -4,24 +4,19 @@ use std::sync::{Arc, Weak};
 
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::spanner_client::{ping_query_request, Client};
-use async_trait::async_trait;
-use chrono::{DateTime, NaiveDateTime};
-use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
+
 use google_cloud_googleapis::spanner::v1::{
     BatchCreateSessionsRequest, CreateSessionRequest, DeleteSessionRequest, ExecuteSqlRequest,
     Session,
 };
-use oneshot::{RecvError, Sender};
+use oneshot::Sender;
 use std::collections::VecDeque;
-use std::sync::atomic::{AtomicI64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicI64, Ordering};
 use std::time::Instant;
 use thiserror;
-use tokio::sync::MutexGuard;
-use tokio::task::JoinHandle;
-use tokio::time::error::Elapsed;
-use tokio::time::Interval;
+
 use tonic::metadata::KeyAndValueRef;
-use tonic::transport::Channel;
+
 use tonic::Code;
 use tonic::Status;
 
@@ -54,7 +49,7 @@ impl SessionHandle {
             name: self.session.name.to_string(),
         };
         match self.spanner_client.delete_session(request, None).await {
-            Ok(s) => self.valid = false,
+            Ok(_s) => self.valid = false,
             Err(e) => {
                 log::error!("session remove error {} error={:?}", self.session.name, e);
             }
@@ -365,7 +360,7 @@ impl SessionManager {
                 let removed_count = match sessions.upgrade() {
                     Some(g) => {
                         // First shrink needless idle sessions.
-                        let mut removed_count =
+                        let removed_count =
                             shrink_idle_sessions(now, Arc::clone(&g), max_removing_count).await;
                         // Ping request for alive sessions.
                         removed_count
@@ -417,7 +412,7 @@ async fn health_check(now: Instant, sessions: Arc<Mutex<VecDeque<SessionHandle>>
             now - std::cmp::max(s.last_used_at, s.last_pong_at)
                 + std::time::Duration::from_secs(60 * 15)
         );
-        let mut should_ping = std::cmp::max(s.last_used_at, s.last_pong_at)
+        let should_ping = std::cmp::max(s.last_used_at, s.last_pong_at)
             + std::time::Duration::from_secs(60 * 15)
             < now;
 
@@ -436,10 +431,10 @@ async fn health_check(now: Instant, sessions: Arc<Mutex<VecDeque<SessionHandle>>
                     log::error!("ping session err message = {}", err.message());
                     log::error!("ping session err code = {}", err.code());
                     err.metadata().iter().for_each(|x| match x {
-                        KeyAndValueRef::Ascii(k, v) => {
+                        KeyAndValueRef::Ascii(k, _v) => {
                             log::error!("ping session err metadata ascii key = {}", k.to_string())
                         }
-                        KeyAndValueRef::Binary(k, v) => {
+                        KeyAndValueRef::Binary(k, _v) => {
                             log::error!("ping session err metadata binary key= {}", k.to_string())
                         }
                     });
@@ -486,7 +481,7 @@ async fn shrink_idle_sessions(
             "shrink target session last_used_at = {:?}",
             now - s.last_used_at + std::time::Duration::from_secs(60 * 30)
         );
-        let mut should_remove = s.last_used_at + std::time::Duration::from_secs(60 * 30) < now;
+        let should_remove = s.last_used_at + std::time::Duration::from_secs(60 * 30) < now;
 
         if should_remove {
             removed_count += 1;

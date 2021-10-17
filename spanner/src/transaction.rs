@@ -1,12 +1,10 @@
-use crate::apiv1::spanner_client::Client;
 use crate::key::KeySet;
-use crate::reader::{AsyncIterator, RowIterator, StatementReader, TableReader};
+use crate::reader::{RowIterator, StatementReader, TableReader};
 use crate::session_pool::ManagedSession;
-use crate::session_pool::{SessionHandle, SessionManager};
+
 use crate::statement::Statement;
-use async_trait::async_trait;
-use chrono::NaiveDateTime;
-use google_cloud_gax::call_option::{BackoffRetrySettings, RetrySettings};
+
+use google_cloud_gax::call_option::BackoffRetrySettings;
 use google_cloud_googleapis::spanner::v1::request_options::Priority;
 use google_cloud_googleapis::spanner::v1::{
     commit_request, execute_sql_request::QueryMode,
@@ -15,12 +13,11 @@ use google_cloud_googleapis::spanner::v1::{
     CommitResponse, ExecuteSqlRequest, Mutation, ReadRequest, RequestOptions, RollbackRequest,
     Session, TransactionSelector,
 };
-use prost_types::field::Cardinality::Optional;
+
 use prost_types::Struct;
 use std::ops::DerefMut;
-use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::atomic::AtomicI64;
 use tonic::Status;
-use tonic::Streaming;
 
 #[derive(Clone)]
 pub struct CallOptions {

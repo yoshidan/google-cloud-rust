@@ -1,12 +1,12 @@
 use anyhow::{anyhow, Context, Result};
-use chrono::{NaiveDate, NaiveDateTime, TimeZone, Utc};
+use chrono::{NaiveDate, NaiveDateTime};
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::StructType;
 use prost_types::value::Kind;
-use prost_types::value::Kind::{StringValue, StructValue};
+
 use prost_types::{value, ListValue, Value};
-use std::collections::{BTreeMap, HashMap};
-use std::ops::Deref;
+use std::collections::HashMap;
+
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -196,7 +196,7 @@ where
 {
     fn try_from(item: &Value, field: &Field) -> Result<Self> {
         match as_ref(item, field)? {
-            Kind::NullValue(i) => Ok(None),
+            Kind::NullValue(_i) => Ok(None),
             _ => Ok(Some(T::try_from(item, field)?)),
         }
     }
@@ -251,11 +251,11 @@ fn as_ref<'a>(item: &'a Value, field: &'a Field) -> Result<&'a Kind> {
 
 fn kind_to_error<'a, T>(v: &'a value::Kind, field: &'a Field) -> Result<T> {
     let actual = match v {
-        Kind::StringValue(s) => "StringValue".to_string(),
-        Kind::BoolValue(s) => "BoolValue".to_string(),
-        Kind::NumberValue(s) => "NumberValue".to_string(),
-        Kind::ListValue(s) => "ListValue".to_string(),
-        Kind::StructValue(s) => "StructValue".to_string(),
+        Kind::StringValue(_s) => "StringValue".to_string(),
+        Kind::BoolValue(_s) => "BoolValue".to_string(),
+        Kind::NumberValue(_s) => "NumberValue".to_string(),
+        Kind::ListValue(_s) => "ListValue".to_string(),
+        Kind::StructValue(_s) => "StructValue".to_string(),
         _ => "unknown".to_string(),
     };
     return Err(anyhow!("{} : Illegal Kind={}", field.name, actual));

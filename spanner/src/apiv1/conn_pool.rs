@@ -4,9 +4,7 @@ use google_cloud_auth::{create_token_source, Config};
 use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::Arc;
-use tonic::{
-    transport::{Certificate, Channel, ClientTlsConfig},
-};
+use tonic::transport::{Certificate, Channel, ClientTlsConfig};
 
 const SPANNER: &str = "spanner.googleapis.com";
 const AUDIENCE: &str = "https://spanner.googleapis.com/";
@@ -37,7 +35,7 @@ impl ConnectionManager {
             .ca_certificate(Certificate::from_pem(TLS_CERTS))
             .domain_name(SPANNER);
         let mut conns = Vec::with_capacity(pool_size);
-        for i_ in 0..pool_size {
+        for _i_ in 0..pool_size {
             let con = ConnectionManager::connect(tls_config.clone()).await?;
             conns.push(con);
         }

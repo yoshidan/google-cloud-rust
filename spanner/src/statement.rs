@@ -1,14 +1,14 @@
 use crate::value::CommitTimestamp;
-use base64::encode;
-use chrono::{DateTime, LocalResult, NaiveDate, NaiveDateTime, TimeZone, Utc};
-use chrono_tz::OffsetComponents;
+
+use chrono::{NaiveDate, NaiveDateTime, TimeZone, Utc};
+
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::{StructType, Type, TypeCode};
 use prost_types::value::Kind;
 use prost_types::value::Kind::StringValue;
-use prost_types::NullValue::NullValue;
+
 use prost_types::{value, ListValue, Struct, Value};
-use std::any::Any;
+
 use std::collections::{BTreeMap, HashMap};
 
 /// A Statement is a SQL query with named parameters.

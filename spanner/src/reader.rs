@@ -1,30 +1,20 @@
-use crate::apiv1::spanner_client::Client;
-use crate::row::{Row, TryFromValue};
+use crate::row::Row;
 use crate::session_pool::SessionHandle;
 use async_trait::async_trait;
-use chrono::{FixedOffset, NaiveDate, NaiveDateTime, NaiveTime};
-use google_cloud_gax::call_option::{BackoffRetrySettings, RetrySettings};
-use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
+
+use google_cloud_gax::call_option::BackoffRetrySettings;
+
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::{
     result_set_stats::RowCount, ExecuteSqlRequest, PartialResultSet, ReadRequest,
     ResultSetMetadata, Session,
 };
-use parking_lot::Mutex;
-use prost::encoding::message::merge;
-use prost_types::field_descriptor_proto::Type::Uint32;
-use prost_types::value::Kind::ListValue;
-use prost_types::value::Kind::StringValue;
+
 use prost_types::{value, value::Kind, Type, Value};
 use std::collections::{HashMap, VecDeque};
-use std::convert::TryFrom;
-use std::future::Future;
-use std::num::ParseIntError;
-use std::panic::resume_unwind;
-use std::rc::Rc;
-use std::str::FromStr;
+
 use std::sync::Arc;
-use tonic::{Code, Response, Status, Streaming};
+use tonic::{Response, Status, Streaming};
 
 #[async_trait]
 pub trait AsyncIterator {
