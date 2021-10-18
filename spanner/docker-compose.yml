@@ -1,0 +1,46 @@
+version: "3.8"
+
+services:
+  spanner:
+    image: gcr.io/cloud-spanner-emulator/emulator
+    ports:
+      - "9020:9020"
+      - "9010:9010"
+  spanner-init:
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    links:
+      - spanner
+    command: >
+      bash -c 'gcloud config configurations create emulator &&
+              gcloud config set auth/disable_credentials true &&
+              gcloud config set project local-project &&
+              gcloud config set api_endpoint_overrides/spanner http://spanner:9020/ &&
+              gcloud config set auth/disable_credentials true &&
+              gcloud spanner instances create test-instance --config=emulator-config --description=Emulator --nodes=1'
+  spanner-create:
+    image: mercari/wrench
+    command: create --directory /ddl
+    volumes:
+      - ./tests/ddl:/ddl
+    environment:
+      SPANNER_PROJECT_ID: local-project
+      SPANNER_INSTANCE_ID: test-instance
+      SPANNER_DATABASE_ID: local-database
+      SPANNER_EMULATOR_HOST: spanner:9010
+    links:
+      - spanner
+  spanner-drop:
+    image: mercari/wrench
+    command: drop
+    environment:
+      SPANNER_PROJECT_ID: local-project
+      SPANNER_INSTANCE_ID: test-instance
+      SPANNER_DATABASE_ID: local-database
+      SPANNER_EMULATOR_HOST: spanner:9010
+    links:
+      - spanner
+  spanner-cli:
+    image: sjdaws/spanner-cli:latest
+    environment:
+      SPANNER_EMULATOR_HOST: spanner:9010
+    command: spanner-cli -p local-project -i test-instance -d local-database
