@@ -1,4 +1,3 @@
-use google_cloud_auth::token_source::*;
 use google_cloud_auth::*;
 
 #[tokio::test]

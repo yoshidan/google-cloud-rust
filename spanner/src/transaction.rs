@@ -1,23 +1,20 @@
-use crate::key::KeySet;
-use crate::reader::{RowIterator, StatementReader, TableReader};
-use crate::session_pool::ManagedSession;
+use std::ops::DerefMut;
+use std::sync::atomic::AtomicI64;
 
-use crate::statement::Statement;
+use prost_types::Struct;
+use tonic::Status;
 
 use google_cloud_gax::call_option::BackoffRetrySettings;
 use google_cloud_googleapis::spanner::v1::request_options::Priority;
 use google_cloud_googleapis::spanner::v1::{
-    commit_request, execute_sql_request::QueryMode,
-    execute_sql_request::QueryOptions as ExecuteQueryOptions, request_options, result_set_stats,
-    transaction_options, transaction_selector, BeginTransactionRequest, CommitRequest,
-    CommitResponse, ExecuteSqlRequest, Mutation, ReadRequest, RequestOptions, RollbackRequest,
-    Session, TransactionSelector,
+    execute_sql_request::QueryMode, execute_sql_request::QueryOptions as ExecuteQueryOptions,
+    ExecuteSqlRequest, ReadRequest, RequestOptions, TransactionSelector,
 };
 
-use prost_types::Struct;
-use std::ops::DerefMut;
-use std::sync::atomic::AtomicI64;
-use tonic::Status;
+use crate::key::KeySet;
+use crate::reader::{RowIterator, StatementReader, TableReader};
+use crate::session_pool::ManagedSession;
+use crate::statement::Statement;
 
 #[derive(Clone)]
 pub struct CallOptions {
@@ -76,7 +73,8 @@ impl Default for QueryOptions {
 }
 
 pub struct Transaction {
-    pub session: Option<ManagedSession>, // for returning ownership of session on before destroy
+    pub session: Option<ManagedSession>,
+    // for returning ownership of session on before destroy
     pub sequence_number: AtomicI64,
     pub transaction_selector: TransactionSelector,
 }
@@ -177,10 +175,6 @@ impl Transaction {
 
     pub(crate) fn get_session_name(&self) -> String {
         return self.session.as_ref().unwrap().session.name.to_string();
-    }
-
-    pub(crate) fn as_ref_session(&self) -> &ManagedSession {
-        return self.session.as_ref().unwrap();
     }
 
     pub(crate) fn as_mut_session(&mut self) -> &mut ManagedSession {

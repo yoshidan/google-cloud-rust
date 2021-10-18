@@ -1,8 +1,10 @@
-use crate::statement::ToKind;
+use prost_types::{value, ListValue, Value};
+
 use google_cloud_googleapis::spanner::v1::key_range::{EndKeyType, StartKeyType};
 use google_cloud_googleapis::spanner::v1::KeyRange as InternalKeyRange;
 use google_cloud_googleapis::spanner::v1::KeySet as InternalKeySet;
-use prost_types::{value, ListValue, Value};
+
+use crate::statement::ToKind;
 
 /// A Key can be either a Cloud Spanner row's primary key or a secondary index
 /// key. A Key can be used as:

@@ -1,20 +1,16 @@
-use crate::row::Row;
-use crate::session_pool::SessionHandle;
+use std::collections::{HashMap, VecDeque};
+use std::sync::Arc;
+
 use async_trait::async_trait;
+use prost_types::{value::Kind, Value};
+use tonic::{Response, Status, Streaming};
 
 use google_cloud_gax::call_option::BackoffRetrySettings;
-
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
-use google_cloud_googleapis::spanner::v1::{
-    result_set_stats::RowCount, ExecuteSqlRequest, PartialResultSet, ReadRequest,
-    ResultSetMetadata, Session,
-};
+use google_cloud_googleapis::spanner::v1::{ExecuteSqlRequest, PartialResultSet, ReadRequest};
 
-use prost_types::{value, value::Kind, Type, Value};
-use std::collections::{HashMap, VecDeque};
-
-use std::sync::Arc;
-use tonic::{Response, Status, Streaming};
+use crate::row::Row;
+use crate::session_pool::SessionHandle;
 
 #[async_trait]
 pub trait AsyncIterator {

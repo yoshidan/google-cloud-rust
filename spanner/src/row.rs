@@ -1,13 +1,13 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use anyhow::{anyhow, Context, Result};
 use chrono::{NaiveDate, NaiveDateTime};
+use prost_types::value::Kind;
+use prost_types::{value, ListValue, Value};
+
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::StructType;
-use prost_types::value::Kind;
-
-use prost_types::{value, ListValue, Value};
-use std::collections::HashMap;
-
-use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct Row {
@@ -176,7 +176,7 @@ where
                         return Err(anyhow!(
                             "struct type in array must not be none {}",
                             field.name
-                        ))
+                        ));
                     }
                     Some(struct_type) => Ok(Struct::new(struct_type, s)),
                 };
@@ -226,13 +226,6 @@ where
     T: TryFromValue,
 {
     if values.len() <= column_index {
-        return Err(anyhow!(
-            "invalid column index: index={}, length={}",
-            column_index,
-            values.len()
-        ));
-    }
-    if column_index < 0 {
         return Err(anyhow!(
             "invalid column index: index={}, length={}",
             column_index,

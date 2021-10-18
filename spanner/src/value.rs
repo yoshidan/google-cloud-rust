@@ -1,10 +1,11 @@
-use chrono::NaiveDateTime;
-use google_cloud_googleapis::spanner::v1::transaction_options::read_only::TimestampBound as InternalTimestampBound;
-use google_cloud_googleapis::spanner::v1::transaction_options::ReadOnly;
-
-use prost_types::Timestamp;
 use std::ops::Deref;
 use std::time::Duration;
+
+use chrono::NaiveDateTime;
+use prost_types::Timestamp;
+
+use google_cloud_googleapis::spanner::v1::transaction_options::read_only::TimestampBound as InternalTimestampBound;
+use google_cloud_googleapis::spanner::v1::transaction_options::ReadOnly;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
 pub struct CommitTimestamp {

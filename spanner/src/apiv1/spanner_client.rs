@@ -1,7 +1,11 @@
+use std::sync::Arc;
+
+use tonic::transport::Channel;
+use tonic::{IntoRequest, Request, Response, Status, Streaming};
+
 use google_cloud_auth::error::Error;
 use google_cloud_auth::token::Token;
 use google_cloud_auth::token_source::token_source::TokenSource;
-
 use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
 use google_cloud_gax::invoke::invoke_reuse;
 use google_cloud_googleapis::spanner::v1 as internal;
@@ -14,11 +18,6 @@ use google_cloud_googleapis::spanner::v1::{
     PartitionReadRequest, PartitionResponse, ReadRequest, ResultSet, RollbackRequest, Session,
     Transaction,
 };
-
-use std::sync::Arc;
-
-use tonic::transport::Channel;
-use tonic::{IntoRequest, Request, Response, Status, Streaming};
 
 pub(crate) fn ping_query_request(session_name: impl Into<String>) -> internal::ExecuteSqlRequest {
     internal::ExecuteSqlRequest {
@@ -44,6 +43,7 @@ fn default_setting() -> BackoffRetrySettings {
         },
     };
 }
+
 #[derive(Clone)]
 pub struct Client {
     inner: SpannerClient<Channel>,

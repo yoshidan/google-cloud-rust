@@ -1,23 +1,22 @@
-use crate::session_pool::ManagedSession;
-use crate::statement::Statement;
-use crate::transaction::{CallOptions, QueryOptions, Transaction};
+use std::ops::Deref;
+use std::ops::DerefMut;
+use std::sync::atomic::{AtomicI64, Ordering};
+
+use prost_types::Struct;
 
 use google_cloud_gax::call_option::BackoffRetrySettings;
 use google_cloud_gax::invoke::AsTonicStatus;
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::TransactionId;
-
 use google_cloud_googleapis::spanner::v1::{
-    commit_request, execute_batch_dml_request, execute_sql_request::QueryMode, request_options,
-    result_set_stats, transaction_options, transaction_selector, BeginTransactionRequest,
-    CommitRequest, CommitResponse, ExecuteBatchDmlRequest, ExecuteSqlRequest, Mutation,
-    RequestOptions, ResultSet, ResultSetStats, RollbackRequest, Session, TransactionOptions,
-    TransactionSelector,
+    commit_request, execute_batch_dml_request, result_set_stats, transaction_options,
+    transaction_selector, BeginTransactionRequest, CommitRequest, CommitResponse,
+    ExecuteBatchDmlRequest, ExecuteSqlRequest, Mutation, ResultSetStats, RollbackRequest,
+    TransactionOptions, TransactionSelector,
 };
-use prost_types::Struct;
 
-use std::ops::Deref;
-use std::ops::DerefMut;
-use std::sync::atomic::{AtomicI64, Ordering};
+use crate::session_pool::ManagedSession;
+use crate::statement::Statement;
+use crate::transaction::{CallOptions, QueryOptions, Transaction};
 
 #[derive(Clone)]
 pub struct CommitOptions {
@@ -156,7 +155,7 @@ impl ReadWriteTransaction {
                 return Err(BeginError {
                     status: err,
                     session,
-                })
+                });
             }
         };
         let tx = response.into_inner();
@@ -308,10 +307,7 @@ impl ReadWriteTransaction {
         return commit(session, mutations, TransactionId(tx_id), options).await;
     }
 
-    pub async fn rollback(
-        &mut self,
-        setting: Option<BackoffRetrySettings>,
-    ) -> Result<(), tonic::Status> {
+    pub async fn rollback(&mut self, setting: Option<BackoffRetrySettings>) {
         let request = RollbackRequest {
             transaction_id: self.tx_id.clone(),
             session: self.get_session_name(),
@@ -320,8 +316,8 @@ impl ReadWriteTransaction {
         let result = session.spanner_client.rollback(request, setting).await;
         let response = session.invalidate_if_needed(result).await;
         match response {
-            Ok(r) => Ok(r.into_inner()),
-            Err(e) => Err(e),
+            Ok(_) => {}
+            Err(e) => log::error!("failed to rollback transaction {:?}", e),
         }
     }
 }

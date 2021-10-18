@@ -1,6 +1,7 @@
-use google_cloud_gax::call_option::{Backoff, BackoffRetryer, RetrySettings, Retryer};
 use tokio::time::Duration;
 use tonic::{Code, Status};
+
+use google_cloud_gax::call_option::{Backoff, BackoffRetryer, RetrySettings, Retryer};
 
 pub(crate) type TransactionRetrySettings = RetrySettings<TransactionRetryer>;
 

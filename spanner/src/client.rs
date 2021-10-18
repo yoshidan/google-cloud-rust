@@ -1,27 +1,22 @@
-use crate::apiv1::conn_pool::ConnectionManager;
+use std::future::Future;
 
+use prost_types::Timestamp;
+use tonic::{Code, Status};
+
+use google_cloud_gax::invoke::invoke_reuse;
+use google_cloud_gax::invoke::AsTonicStatus;
+use google_cloud_googleapis::spanner::v1::{
+    commit_request, transaction_options, Mutation, TransactionOptions,
+};
+
+use crate::apiv1::conn_pool::ConnectionManager;
 use crate::retry::{new_default_tx_retry, new_tx_retry_with_codes};
 use crate::session_pool::{ManagedSession, SessionConfig, SessionError, SessionManager};
 use crate::statement::Statement;
-
 use crate::transaction::{CallOptions, QueryOptions};
 use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
 use crate::value::TimestampBound;
-
-use google_cloud_gax::invoke::invoke_reuse;
-use google_cloud_gax::invoke::AsTonicStatus;
-
-use google_cloud_googleapis::spanner::v1::{
-    commit_request, request_options, result_set_stats, transaction_options, transaction_selector,
-    ExecuteSqlRequest, KeySet, Mutation, RequestOptions, RollbackRequest,
-    TransactionOptions as TxOptions, TransactionOptions, TransactionSelector,
-};
-
-use prost_types::{value, ListValue, Timestamp, Value};
-use std::future::Future;
-
-use tonic::{Code, Status};
 
 #[derive(Clone)]
 pub struct PartitionedUpdateOption {

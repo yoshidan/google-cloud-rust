@@ -1,24 +1,22 @@
-use parking_lot::Mutex;
+use std::collections::VecDeque;
 use std::ops::{Deref, DerefMut};
+use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Weak};
+use std::time::Instant;
+
+use oneshot::Sender;
+use parking_lot::Mutex;
+use thiserror;
+use tonic::metadata::KeyAndValueRef;
+use tonic::Code;
+use tonic::Status;
+
+use google_cloud_googleapis::spanner::v1::{
+    BatchCreateSessionsRequest, DeleteSessionRequest, Session,
+};
 
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::spanner_client::{ping_query_request, Client};
-
-use google_cloud_googleapis::spanner::v1::{
-    BatchCreateSessionsRequest, CreateSessionRequest, DeleteSessionRequest, ExecuteSqlRequest,
-    Session,
-};
-use oneshot::Sender;
-use std::collections::VecDeque;
-use std::sync::atomic::{AtomicI64, Ordering};
-use std::time::Instant;
-use thiserror;
-
-use tonic::metadata::KeyAndValueRef;
-
-use tonic::Code;
-use tonic::Status;
 
 /// Session
 pub struct SessionHandle {
@@ -439,9 +437,7 @@ async fn health_check(now: Instant, sessions: Arc<Mutex<VecDeque<SessionHandle>>
                         }
                     });
                     removed_count += 1;
-                    log::info!("delete session {}", session_name);
-                    let request = DeleteSessionRequest { name: session_name };
-                    s.spanner_client.delete_session(request, None).await;
+                    delete_session(s).await;
                 }
             }
         } else {
@@ -495,11 +491,15 @@ async fn shrink_idle_sessions(
 }
 
 async fn delete_session(mut session: SessionHandle) {
-    log::info!("delete session {}", session.session.name);
+    let session_name = session.session.name;
+    log::info!("delete session {}", session_name);
     let request = DeleteSessionRequest {
-        name: session.session.name.clone(),
+        name: session_name.clone(),
     };
-    session.spanner_client.delete_session(request, None).await;
+    match session.spanner_client.delete_session(request, None).await {
+        Ok(_) => {}
+        Err(e) => log::error!("failed to delete session {}, {:?}", session_name, e),
+    }
 }
 
 fn notify_to_waiters(result: bool, waiters: Weak<Mutex<VecDeque<Sender<bool>>>>) {
@@ -507,7 +507,10 @@ fn notify_to_waiters(result: bool, waiters: Weak<Mutex<VecDeque<Sender<bool>>>>)
         Some(g) => {
             let mut locked_waiters = g.lock();
             while let Some(waiter) = locked_waiters.pop_front() {
-                waiter.send(result);
+                match waiter.send(result) {
+                    Ok(()) => {}
+                    Err(e) => log::error!("failed to notify waiter {:?}", e),
+                }
             }
         }
         None => log::error!("waiters already released."),

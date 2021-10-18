@@ -1,21 +1,20 @@
+use std::ops::{Deref, DerefMut};
+use std::sync::atomic::AtomicI64;
+
+use chrono::NaiveDateTime;
+use tonic::Status;
+
+use google_cloud_googleapis::spanner::v1::{
+    transaction_options, transaction_selector, BeginTransactionRequest, ExecuteSqlRequest, KeySet,
+    PartitionOptions, PartitionQueryRequest, PartitionReadRequest, ReadRequest, TransactionOptions,
+    TransactionSelector,
+};
+
 use crate::reader::{Reader, RowIterator, StatementReader, TableReader};
 use crate::session_pool::ManagedSession;
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, ReadOptions, Transaction};
 use crate::value::TimestampBound;
-
-use chrono::NaiveDateTime;
-use google_cloud_googleapis::spanner::v1::{
-    commit_request, execute_sql_request::QueryMode, request_options, result_set_stats,
-    transaction_options, transaction_selector, BeginTransactionRequest, CommitRequest,
-    CommitResponse, ExecuteSqlRequest, KeySet, Mutation, PartitionOptions, PartitionQueryRequest,
-    PartitionReadRequest, PartitionResponse, ReadRequest, RequestOptions, RollbackRequest, Session,
-    TransactionOptions, TransactionSelector,
-};
-
-use std::ops::{Deref, DerefMut};
-use std::sync::atomic::AtomicI64;
-use tonic::Status;
 
 /// ReadOnlyTransaction provides a snapshot transaction with guaranteed
 /// consistency across reads, but does not allow writes.  Read-only transactions
@@ -33,7 +32,7 @@ use tonic::Status;
 /// TimestampBound for more details.
 pub struct ReadOnlyTransaction {
     base_tx: Transaction,
-    rts: Option<NaiveDateTime>,
+    pub rts: Option<NaiveDateTime>,
 }
 
 impl Deref for ReadOnlyTransaction {
@@ -142,10 +141,8 @@ impl BatchReadOnlyTransaction {
         tb: TimestampBound,
         options: CallOptions,
     ) -> Result<BatchReadOnlyTransaction, Status> {
-        match ReadOnlyTransaction::begin(session, tb, options).await {
-            Ok(tx) => Ok(BatchReadOnlyTransaction { base_tx: tx }),
-            Err(e) => Err(e),
-        }
+        let tx = ReadOnlyTransaction::begin(session, tb, options).await?;
+        return Ok(BatchReadOnlyTransaction { base_tx: tx });
     }
 
     /// partition_read returns a list of Partitions that can be used to read rows from

@@ -1,10 +1,13 @@
-use crate::apiv1::spanner_client::Client;
+use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::Arc;
+
+use tonic::transport::{Certificate, Channel, ClientTlsConfig};
+
 use google_cloud_auth::token_source::token_source::TokenSource;
 use google_cloud_auth::{create_token_source, Config};
 use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
-use std::sync::atomic::{AtomicI64, Ordering};
-use std::sync::Arc;
-use tonic::transport::{Certificate, Channel, ClientTlsConfig};
+
+use crate::apiv1::spanner_client::Client;
 
 const SPANNER: &str = "spanner.googleapis.com";
 const AUDIENCE: &str = "https://spanner.googleapis.com/";
