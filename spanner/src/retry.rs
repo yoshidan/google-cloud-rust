@@ -24,14 +24,13 @@ pub(crate) struct TransactionRetryer {
 
 impl TransactionRetryer {
     pub fn new(codes: Vec<Code>) -> TransactionRetryer {
+        let mut backoff = Backoff::default();
+        backoff.initial = Duration::from_millis(20);
+        backoff.max = Duration::from_secs(32);
+        backoff.timeout = Duration::from_secs(32);
         TransactionRetryer {
             retryer: BackoffRetryer {
-                backoff: Backoff {
-                    initial: Duration::from_millis(20),
-                    max: Duration::from_secs(32),
-                    multiplier: 1.3,
-                    cur: Duration::from_nanos(0),
-                },
+                backoff,
                 codes,
             },
         }
@@ -57,5 +56,30 @@ impl Retryer for TransactionRetryer {
         }
         //TODO extract server delay
         return self.retryer.retry(status);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use tonic::{Code, Status};
+    use google_cloud_gax::call_option::Retryer;
+    use crate::retry::TransactionRetryer;
+    use std::time::Duration;
+    use std::thread::sleep;
+
+    #[test]
+    fn test_retry() {
+        let mut retry = TransactionRetryer::new(vec![Code::Aborted]);
+        let mut durations = vec![];
+        retry.retryer.backoff.timeout = Duration::from_millis(100);
+        loop {
+            match retry.retry(&Status::new(Code::Aborted, "test")) {
+                None => break,
+                Some(d) => durations.push(d)
+            };
+            sleep(Duration::from_millis(50));
+        }
+        println!("retry count = {}", durations.len());
+        assert!(!durations.is_empty());
     }
 }

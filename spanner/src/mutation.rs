@@ -85,3 +85,91 @@ pub fn delete<T: Into<String>, F: Into<KeySet>>(table: T, key_set: F) -> Mutatio
         })),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::key::*;
+    use crate::mutation::*;
+    use crate::statement::ToKind;
+    use crate::value::CommitTimestamp;
+    use google_cloud_googleapis::spanner::*;
+    use chrono::Utc;
+
+    #[test]
+    fn test_insert() {
+        let mutation = insert(
+            "Guild",
+            vec!["GuildId", "UserId", "UpdatedAt"],
+            vec!["1".to_kind(), "2".to_kind(), CommitTimestamp::from(Utc::now().naive_utc()).to_kind()]);
+        match mutation.operation.unwrap() {
+            v1::mutation::Operation::Insert(mut w) => {
+                assert_eq!("Guild", w.table);
+                assert_eq!(3, w.values.len());
+                assert_eq!("GuildId", w.columns.pop().unwrap());
+                assert_eq!("UserId", w.columns.pop().unwrap());
+                assert_eq!("UpdatedAt", w.columns.pop().unwrap());
+            }
+            _ => panic!("invalid operation"),
+        }
+    }
+
+    #[test]
+    fn test_update() {
+        let mutation = update(
+            "Guild",
+            vec!["GuildId", "UserId", "UpdatedAt"],
+            vec!["1".to_kind(), "2".to_kind(), CommitTimestamp::from(Utc::now().naive_utc()).to_kind()]);
+        match mutation.operation.unwrap() {
+            v1::mutation::Operation::Update(w) => {
+                assert_eq!("Guild", w.table);
+                assert_eq!(3, w.values.len());
+                assert_eq!(3, w.columns.len());
+            }
+            _ => panic!("invalid operation"),
+        }
+    }
+
+    #[test]
+    fn test_replace() {
+        let mutation = replace(
+            "Guild",
+            vec!["GuildId", "UserId", "UpdatedAt"],
+            vec!["1".to_kind(), "2".to_kind(), CommitTimestamp::from(Utc::now().naive_utc()).to_kind()]);
+        match mutation.operation.unwrap() {
+            v1::mutation::Operation::Replace(w) => {
+                assert_eq!("Guild", w.table);
+                assert_eq!(3, w.values.len());
+                assert_eq!(3, w.columns.len());
+            }
+            _ => panic!("invalid operation"),
+        }
+    }
+
+    #[test]
+    fn test_insert_or_update() {
+        let mutation = insert_or_update(
+            "Guild",
+            vec!["GuildId", "UserId", "UpdatedAt"],
+            vec!["1".to_kind(), "2".to_kind(), CommitTimestamp::from(Utc::now().naive_utc()).to_kind()]);
+        match mutation.operation.unwrap() {
+            v1::mutation::Operation::InsertOrUpdate(w) => {
+                assert_eq!("Guild", w.table);
+                assert_eq!(3, w.values.len());
+                assert_eq!(3, w.columns.len());
+            }
+            _ => panic!("invalid operation"),
+        }
+    }
+
+    #[test]
+    fn test_delete() {
+        let mutation = delete("Guild", all_keys());
+        match mutation.operation.unwrap() {
+            v1::mutation::Operation::Delete(w) => {
+                assert_eq!("Guild", w.table);
+                assert_eq!(true, w.key_set.unwrap().all);
+            }
+            _ => panic!("invalid operation"),
+        }
+    }
+}

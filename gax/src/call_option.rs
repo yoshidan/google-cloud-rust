@@ -1,5 +1,5 @@
 use rand::Rng;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tonic::Status;
 
 /// Backoff implements exponential backoff.
@@ -11,11 +11,32 @@ pub struct Backoff {
     pub initial: Duration,
     pub max: Duration,
     pub multiplier: f64,
-    pub cur: Duration,
+    pub timeout: Duration,
+
+    cur: Duration,
+    elapsed: Option<Instant>,
 }
 
 impl Backoff {
-    pub fn duration(&mut self) -> Duration {
+    pub fn duration(&mut self) -> Option<Duration> {
+        if self.initial.as_nanos() == 0 {
+            self.initial = Duration::from_secs(1);
+        }
+        if self.cur.as_nanos() == 0 {
+            self.cur = self.initial;
+        }
+        if self.max.as_nanos() == 0 {
+            self.max = Duration::from_secs(30)
+        }
+        if self.multiplier < 1.0 {
+            self.multiplier = 2.0
+        }
+        match self.elapsed {
+            None => self.elapsed = Some(Instant::now()),
+            Some(s) => if s.elapsed() > self.timeout {
+               return None
+            }
+        };
         // Select a duration between 1ns and the current max. It might seem
         // counterintuitive to have so much jitter, but
         // https://www.awsarchitectureblog.com/2015/03/backoff.html argues that
@@ -27,17 +48,19 @@ impl Backoff {
         if self.cur > self.max {
             self.cur = self.max;
         }
-        return d;
+        return Some(d);
     }
 }
 
 impl Default for Backoff {
     fn default() -> Self {
         Backoff {
-            initial: Duration::from_micros(250),
-            max: Duration::from_micros(32000),
+            elapsed: None,
+            initial: Duration::from_millis(250),
+            max: Duration::from_millis(32000),
             multiplier: 1.30,
             cur: Duration::from_nanos(0),
+            timeout: Duration::from_millis(32000),
         }
     }
 }
@@ -58,7 +81,7 @@ impl Retryer for BackoffRetryer {
         let code = status.code();
         for candidate in self.codes.iter() {
             if *candidate == code {
-                return Some(self.backoff.duration());
+                return self.backoff.duration();
             }
         }
         return None;
