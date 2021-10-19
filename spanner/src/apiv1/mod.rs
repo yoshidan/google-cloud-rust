@@ -6,19 +6,19 @@ mod tests {
 
     use crate::apiv1::conn_pool::ConnectionManager;
     use crate::apiv1::spanner_client::Client;
-    use google_cloud_googleapis::spanner::v1::{execute_batch_dml_request, KeySet, Mutation};
-    use google_cloud_googleapis::spanner::v1::{
-        commit_request, transaction_options, transaction_selector,
-        BatchCreateSessionsRequest, BeginTransactionRequest, CommitRequest, CreateSessionRequest,
-        DeleteSessionRequest, ExecuteBatchDmlRequest, ExecuteSqlRequest, GetSessionRequest,
-        ListSessionsRequest, PartitionQueryRequest, PartitionReadRequest, ReadRequest,
-        RequestOptions, RollbackRequest, Session, Transaction, TransactionOptions,
-        TransactionSelector,
-    };
     use google_cloud_googleapis::spanner::v1::mutation::{Operation, Write};
-    use prost_types::{ListValue, Value, value::Kind};
+    use google_cloud_googleapis::spanner::v1::{
+        commit_request, transaction_options, transaction_selector, BatchCreateSessionsRequest,
+        BeginTransactionRequest, CommitRequest, CreateSessionRequest, DeleteSessionRequest,
+        ExecuteBatchDmlRequest, ExecuteSqlRequest, GetSessionRequest, ListSessionsRequest,
+        PartitionQueryRequest, PartitionReadRequest, ReadRequest, RequestOptions, RollbackRequest,
+        Session, Transaction, TransactionOptions, TransactionSelector,
+    };
+    use google_cloud_googleapis::spanner::v1::{execute_batch_dml_request, KeySet, Mutation};
+    use prost_types::{value::Kind, ListValue, Value};
 
-    const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
+    const DATABASE: &str =
+        "projects/local-project/instances/test-instance/databases/local-database";
 
     async fn create_spanner_client() -> Client {
         let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
@@ -85,8 +85,8 @@ mod tests {
             Ok(res) => {
                 println!("created session = {}", res.get_ref().name);
                 assert!(!res.get_ref().name.is_empty());
-            },
-            Err(err) => panic!("err: {:?}", err)
+            }
+            Err(err) => panic!("err: {:?}", err),
         };
     }
 
@@ -101,9 +101,14 @@ mod tests {
 
         match client.batch_create_sessions(request, None).await {
             Ok(res) => {
-                assert_eq!(res.get_ref().session.len(), 2, "created session size = {}", res.get_ref().session.len());
-            },
-            Err(err) => panic!("err: {:?}", err)
+                assert_eq!(
+                    res.get_ref().session.len(),
+                    2,
+                    "created session size = {}",
+                    res.get_ref().session.len()
+                );
+            }
+            Err(err) => panic!("err: {:?}", err),
         };
     }
 
@@ -118,8 +123,8 @@ mod tests {
         match client.get_session(request, None).await {
             Ok(res) => {
                 assert_eq!(res.get_ref().name, session.name.to_string());
-            },
-            Err(err) => panic!("err: {:?}", err)
+            }
+            Err(err) => panic!("err: {:?}", err),
         };
     }
 
@@ -136,8 +141,8 @@ mod tests {
         match client.list_sessions(request, None).await {
             Ok(res) => {
                 println!("list session size = {}", res.get_ref().sessions.len());
-            },
-            Err(err) => panic!("err: {:?}", err)
+            }
+            Err(err) => panic!("err: {:?}", err),
         };
     }
 
@@ -164,8 +169,8 @@ mod tests {
             };
 
             match client.delete_session(request, None).await {
-                Ok(_) => {},
-                Err(err) => panic!("err: {:?}", err)
+                Ok(_) => {}
+                Err(err) => panic!("err: {:?}", err),
             };
         }
     }
@@ -191,7 +196,7 @@ mod tests {
             Ok(res) => {
                 assert_eq!(1, res.into_inner().rows.len());
             }
-            Err(err) => panic!("err: {:?}", err)
+            Err(err) => panic!("err: {:?}", err),
         };
     }
 
@@ -222,7 +227,7 @@ mod tests {
                     None
                 }
             }
-            Err(err) => panic!("err: {:?}", err)
+            Err(err) => panic!("err: {:?}", err),
         };
         assert!(resume_token.is_some());
         println!("resume token = {:?}", resume_token.clone().unwrap());
@@ -232,8 +237,8 @@ mod tests {
             Ok(res) => {
                 let mut result = res.into_inner();
                 assert!(!result.message().await.unwrap().unwrap().values.is_empty())
-            },
-            Err(err) => panic!("err: {:?}", err)
+            }
+            Err(err) => panic!("err: {:?}", err),
         }
     }
 
@@ -291,11 +296,25 @@ mod tests {
         };
 
         let result = client.execute_batch_dml(request, None).await;
-        client.rollback(RollbackRequest { session: session.name.to_string(), transaction_id: tx.id }, None).await.unwrap();
-        match result  {
+        client
+            .rollback(
+                RollbackRequest {
+                    session: session.name.to_string(),
+                    transaction_id: tx.id,
+                },
+                None,
+            )
+            .await
+            .unwrap();
+        match result {
             Ok(res) => {
                 let status = res.into_inner().status.unwrap();
-                assert_eq!(tonic::Code::Ok, tonic::Code::from(status.code), "gRPC success but error found : {:?}", status);
+                assert_eq!(
+                    tonic::Code::Ok,
+                    tonic::Code::from(status.code),
+                    "gRPC success but error found : {:?}",
+                    status
+                );
             }
             Err(err) => panic!("err: {:?}", err),
         };
@@ -323,12 +342,29 @@ mod tests {
         };
 
         let result = client.execute_batch_dml(request, None).await;
-        client.rollback(RollbackRequest { session: session.name.to_string(), transaction_id: tx.id }, None).await.unwrap();
-        match result  {
-            Ok(res) => panic!("must be error code = {:?}", res.into_inner().status.unwrap().code),
+        client
+            .rollback(
+                RollbackRequest {
+                    session: session.name.to_string(),
+                    transaction_id: tx.id,
+                },
+                None,
+            )
+            .await
+            .unwrap();
+        match result {
+            Ok(res) => panic!(
+                "must be error code = {:?}",
+                res.into_inner().status.unwrap().code
+            ),
             Err(status) => {
-                assert_eq!(tonic::Code::InvalidArgument, status.code(), "gRPC success but error found : {:?}", status);
-            },
+                assert_eq!(
+                    tonic::Code::InvalidArgument,
+                    status.code(),
+                    "gRPC success but error found : {:?}",
+                    status
+                );
+            }
         };
     }
 
@@ -345,7 +381,7 @@ mod tests {
             key_set: Some(KeySet {
                 keys: vec![],
                 ranges: vec![],
-                all: true
+                all: true,
             }),
             resume_token: vec![],
             partition_token: vec![],
@@ -356,7 +392,7 @@ mod tests {
         match client.read(request, None).await {
             Ok(res) => {
                 println!("row size = {:?}", res.into_inner().rows.len());
-            },
+            }
             Err(err) => panic!("err: {:?}", err),
         };
     }
@@ -374,7 +410,7 @@ mod tests {
             key_set: Some(KeySet {
                 keys: vec![],
                 ranges: vec![],
-                all: true
+                all: true,
             }),
             resume_token: vec![],
             partition_token: vec![],
@@ -384,7 +420,7 @@ mod tests {
 
         match client.streaming_read(request, None).await {
             Ok(res) => match res.into_inner().message().await {
-                Ok(message) => {}
+                Ok(..) => {}
                 Err(err) => panic!("err: {:?}", err),
             },
             Err(err) => panic!("err: {:?}", err),
@@ -398,21 +434,31 @@ mod tests {
         let tx = begin_read_write_transaction(&mut client, &session).await;
         let request = CommitRequest {
             session: session.name.to_string(),
-            mutations: vec![
-                Mutation {
-                    operation: Some(Operation::InsertOrUpdate(Write {
-                        table: "Guild".to_string(),
-                        columns: vec!["GuildId".to_string(), "OwnerUserId".to_string(), "UpdatedAt".to_string()],
-                        values: vec![ListValue {
-                            values: vec![
-                                Value { kind: Some(Kind::StringValue("g1".to_string()))},
-                                Value { kind: Some(Kind::StringValue("u1".to_string()))},
-                                Value { kind: Some(Kind::StringValue("spanner.commit_timestamp()".to_string()))}
-                            ]
-                        }]
-                    }))
-                }
-            ],
+            mutations: vec![Mutation {
+                operation: Some(Operation::InsertOrUpdate(Write {
+                    table: "Guild".to_string(),
+                    columns: vec![
+                        "GuildId".to_string(),
+                        "OwnerUserId".to_string(),
+                        "UpdatedAt".to_string(),
+                    ],
+                    values: vec![ListValue {
+                        values: vec![
+                            Value {
+                                kind: Some(Kind::StringValue("g1".to_string())),
+                            },
+                            Value {
+                                kind: Some(Kind::StringValue("u1".to_string())),
+                            },
+                            Value {
+                                kind: Some(Kind::StringValue(
+                                    "spanner.commit_timestamp()".to_string(),
+                                )),
+                            },
+                        ],
+                    }],
+                })),
+            }],
             transaction: Option::from(commit_request::Transaction::TransactionId(tx.id)),
             request_options: Option::from(RequestOptions {
                 priority: 10,

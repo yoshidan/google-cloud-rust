@@ -58,7 +58,7 @@ pub struct KeySet {
     pub(crate) inner: InternalKeySet,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum RangeKind {
     /// ClosedOpen is closed on the left and open on the right: the Start
     /// key is included, the End key is excluded.
@@ -268,11 +268,6 @@ impl Key {
                     .collect(),
             },
         }
-    }
-
-    /// to_prefix returns a KeyRange for all keys where k is the prefix.
-    pub fn to_prefix(&self) -> KeyRange {
-        KeyRange::new(self.clone(), self.clone(), RangeKind::ClosedClosed)
     }
 }
 
