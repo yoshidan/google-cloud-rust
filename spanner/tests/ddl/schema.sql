@@ -36,3 +36,10 @@ CREATE TABLE UserCharacter
     Level INT64 NOT NULL,
     UpdatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true)
 ) PRIMARY KEY(UserId, CharacterId), INTERLEAVE IN PARENT User ON DELETE CASCADE;
+
+CREATE TABLE Guild
+(
+    GuildId STRING(36) NOT NULL,
+    OwnerUserId STRING(36) NOT NULL,
+    UpdatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY(GuildId);

@@ -58,7 +58,7 @@ impl ConnectionManager {
             // use local spanner emulator
             Some(host) => {
                 let mut conns = Vec::with_capacity(1);
-                let endpoint = Channel::from_shared(host.clone().into_bytes())
+                let endpoint = Channel::from_shared(format!("http://{}",host).into_bytes())
                     .map_err(|_| Error::InvalidSpannerHOST(host))?;
                 let con = ConnectionManager::connect(endpoint).await?;
                 conns.push(con);

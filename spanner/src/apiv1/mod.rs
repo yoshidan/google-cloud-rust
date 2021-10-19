@@ -4,38 +4,24 @@ pub mod spanner_client;
 #[cfg(test)]
 mod tests {
 
-    use crate::apiv1::conn_pool::{ConnectionManager, Error};
+    use crate::apiv1::conn_pool::ConnectionManager;
     use crate::apiv1::spanner_client::Client;
-    use google_cloud_googleapis::spanner::v1::execute_batch_dml_request;
+    use google_cloud_googleapis::spanner::v1::{execute_batch_dml_request, KeySet, Mutation};
     use google_cloud_googleapis::spanner::v1::{
-        commit_request, result_set_stats::RowCount, transaction_options, transaction_selector,
+        commit_request, transaction_options, transaction_selector,
         BatchCreateSessionsRequest, BeginTransactionRequest, CommitRequest, CreateSessionRequest,
         DeleteSessionRequest, ExecuteBatchDmlRequest, ExecuteSqlRequest, GetSessionRequest,
         ListSessionsRequest, PartitionQueryRequest, PartitionReadRequest, ReadRequest,
         RequestOptions, RollbackRequest, Session, Transaction, TransactionOptions,
         TransactionSelector,
     };
-    use prost_types::field_descriptor_proto::Type::Uint32;
-    use prost_types::{value::Kind, ListValue, Value};
-    use std::fs::File;
-    use std::future::Future;
-    use std::sync::Arc;
-    use std::sync::Mutex;
-    use tonic::{
-        metadata::MetadataValue,
-        transport::{Certificate, Channel, ClientTlsConfig},
-        IntoRequest, Request, Response, Status,
-    };
+    use google_cloud_googleapis::spanner::v1::mutation::{Operation, Write};
+    use prost_types::{ListValue, Value, value::Kind};
 
-    const SCOPES: [&'static str; 2] = [
-        "https://www.googleapis.com/auth/cloud-platform",
-        "https://www.googleapis.com/auth/spanner.data",
-    ];
-    const DATABASE: &str =
-        "projects/local-project/instances/test-instance/databases/local-database";
+    const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
     async fn create_spanner_client() -> Client {
-        let cm = ConnectionManager::new(1, Some("http://localhost:9010".to_string()))
+        let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
             .await
             .unwrap();
         return cm.conn();
@@ -89,7 +75,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_session() {
-        //  Init().await;
         let mut client = create_spanner_client().await;
         let request = CreateSessionRequest {
             database: DATABASE.to_string(),
@@ -99,12 +84,9 @@ mod tests {
         match client.create_session(request, None).await {
             Ok(res) => {
                 println!("created session = {}", res.get_ref().name);
-                assert_eq!(true, true);
-            }
-            Err(err) => {
-                println!("error code = {}", err.code());
-                assert_eq!(false, true)
-            }
+                assert!(!res.get_ref().name.is_empty());
+            },
+            Err(err) => panic!("err: {:?}", err)
         };
     }
 
@@ -119,13 +101,9 @@ mod tests {
 
         match client.batch_create_sessions(request, None).await {
             Ok(res) => {
-                println!("created session size = {}", res.get_ref().session.len());
-                assert_eq!(true, true);
-            }
-            Err(err) => {
-                println!("error code = {0}, {1}", err.code(), err.message());
-                assert_eq!(false, true)
-            }
+                assert_eq!(res.get_ref().session.len(), 2, "created session size = {}", res.get_ref().session.len());
+            },
+            Err(err) => panic!("err: {:?}", err)
         };
     }
 
@@ -139,13 +117,9 @@ mod tests {
 
         match client.get_session(request, None).await {
             Ok(res) => {
-                println!("get session = {}", res.get_ref().name);
-                assert_eq!(true, true);
-            }
-            Err(err) => {
-                println!("error code = {0}, {1}", err.code(), err.message());
-                assert_eq!(false, true)
-            }
+                assert_eq!(res.get_ref().name, session.name.to_string());
+            },
+            Err(err) => panic!("err: {:?}", err)
         };
     }
 
@@ -162,12 +136,8 @@ mod tests {
         match client.list_sessions(request, None).await {
             Ok(res) => {
                 println!("list session size = {}", res.get_ref().sessions.len());
-                assert_eq!(true, true);
-            }
-            Err(err) => {
-                println!("error code = {0}, {1}", err.code(), err.message());
-                assert_eq!(false, true)
-            }
+            },
+            Err(err) => panic!("err: {:?}", err)
         };
     }
 
@@ -194,14 +164,8 @@ mod tests {
             };
 
             match client.delete_session(request, None).await {
-                Ok(res) => {
-                    println!("delete session");
-                    assert_eq!(true, true);
-                }
-                Err(err) => {
-                    println!("error code = {0}, {1}", err.code(), err.message());
-                    assert_eq!(false, true)
-                }
+                Ok(_) => {},
+                Err(err) => panic!("err: {:?}", err)
             };
         }
     }
@@ -225,13 +189,9 @@ mod tests {
         };
         match client.execute_sql(request, None).await {
             Ok(res) => {
-                println!("row size {}", res.into_inner().rows.len());
-                assert_eq!(true, true);
+                assert_eq!(1, res.into_inner().rows.len());
             }
-            Err(err) => {
-                println!("error code = {0}, {1}", err.code(), err.message());
-                assert_eq!(false, true)
-            }
+            Err(err) => panic!("err: {:?}", err)
         };
     }
 
@@ -239,10 +199,10 @@ mod tests {
     async fn test_execute_streaming_sql() {
         let mut client = create_spanner_client().await;
         let session = create_session(&mut client).await;
-        let request = ExecuteSqlRequest {
+        let mut request = ExecuteSqlRequest {
             session: session.name.to_string(),
             transaction: None,
-            sql: "select * from User limit 5000".to_string(),
+            sql: "select 1".to_string(),
             params: None,
             param_types: Default::default(),
             resume_token: vec![],
@@ -253,80 +213,27 @@ mod tests {
             request_options: None,
         };
 
-        let resume_token = match client.execute_streaming_sql(request, None).await {
+        let resume_token = match client.execute_streaming_sql(request.clone(), None).await {
             Ok(res) => {
                 let mut result = res.into_inner();
                 if let Some(next_message) = result.message().await.unwrap() {
-                    let mut counter = 0;
-                    for i in next_message.values {
-                        if counter > 0 {
-                            break;
-                        }
-                        counter += 1;
-                        let kind = i.kind.unwrap();
-                        match kind {
-                            Kind::StringValue(s) => println!("string {:?}", s),
-                            Kind::BoolValue(s) => println!("bool {:?}", s),
-                            Kind::NumberValue(s) => println!("number {:?}", s),
-                            Kind::NullValue(s) => println!("null {:?}", s),
-                            _ => {}
-                        }
-                    }
                     Some(next_message.resume_token)
                 } else {
                     None
                 }
             }
-            Err(err) => {
-                println!("error code = {0}, {1}", err.code(), err.message());
-                assert_eq!(false, true);
-                None
-            }
+            Err(err) => panic!("err: {:?}", err)
         };
-        if !resume_token.is_some() {
-            assert_eq!(false, true);
-            return;
-        }
+        assert!(resume_token.is_some());
         println!("resume token = {:?}", resume_token.clone().unwrap());
-        let request2 = ExecuteSqlRequest {
-            session: session.name.to_string(),
-            transaction: None,
-            sql: "select * from User limit 5000 ".to_string(),
-            params: None,
-            param_types: Default::default(),
-            resume_token: resume_token.unwrap(),
-            query_mode: 0,
-            partition_token: vec![],
-            seqno: 0,
-            query_options: None,
-            request_options: None,
-        };
-        match client.execute_streaming_sql(request2, None).await {
+        request.resume_token = resume_token.unwrap();
+
+        match client.execute_streaming_sql(request, None).await {
             Ok(res) => {
                 let mut result = res.into_inner();
-                if let Some(next_message) = result.message().await.unwrap() {
-                    let mut counter = 0;
-                    for i in next_message.values {
-                        counter += 1;
-                        if counter > 1 {
-                            continue;
-                        }
-                        let kind = i.kind.unwrap();
-                        match kind {
-                            Kind::StringValue(s) => println!("string {:?}", s),
-                            Kind::BoolValue(s) => println!("bool {:?}", s),
-                            Kind::NumberValue(s) => println!("number {:?}", s),
-                            Kind::NullValue(s) => println!("null {:?}", s),
-                            _ => {}
-                        }
-                    }
-                    println!("{}", counter)
-                }
-            }
-            Err(err) => {
-                println!("error code = {0}, {1}", err.code(), err.message());
-                assert_eq!(false, true);
-            }
+                assert!(!result.message().await.unwrap().unwrap().values.is_empty())
+            },
+            Err(err) => panic!("err: {:?}", err)
         }
     }
 
@@ -349,13 +256,11 @@ mod tests {
 
         match client.begin_transaction(request, None).await {
             Ok(res) => {
-                println!("tx id {:?}", res.into_inner().id);
-                assert_eq!(true, true);
+                let tx_id = res.into_inner().id;
+                println!("tx id is {:?}", tx_id);
+                assert!(!tx_id.is_empty());
             }
-            Err(err) => {
-                println!("error code = {0}, {1}", err.code(), err.message());
-                assert_eq!(false, true)
-            }
+            Err(err) => panic!("err: {:?}", err),
         };
     }
 
@@ -367,21 +272,16 @@ mod tests {
         let request = ExecuteBatchDmlRequest {
             session: session.name.to_string(),
             transaction: Option::from(TransactionSelector {
-                selector: Option::from(transaction_selector::Selector::Id(tx.id)),
+                selector: Option::from(transaction_selector::Selector::Id(tx.id.clone())),
             }),
             statements: vec![
                 execute_batch_dml_request::Statement {
-                    sql: "INSERT INTO User (ID) VALUES(1)".to_string(),
+                    sql: "INSERT INTO Guild (GuildId,OwnerUserId,UpdatedAt) VALUES('1', 'u1', CURRENT_TIMESTAMP())".to_string(),
                     params: None,
                     param_types: Default::default(),
                 },
                 execute_batch_dml_request::Statement {
-                    sql: "INSERT INTO User (ID2) VALUES(1)".to_string(),
-                    params: None,
-                    param_types: Default::default(),
-                },
-                execute_batch_dml_request::Statement {
-                    sql: "INSERT INTO User (ID3) VALUES(1)".to_string(),
+                    sql: "INSERT INTO Guild (GuildId,OwnerUserId,UpdatedAt) VALUES('2', 'u2', CURRENT_TIMESTAMP())".to_string(),
                     params: None,
                     param_types: Default::default(),
                 },
@@ -390,16 +290,45 @@ mod tests {
             request_options: None,
         };
 
-        match client.execute_batch_dml(request, None).await {
+        let result = client.execute_batch_dml(request, None).await;
+        client.rollback(RollbackRequest { session: session.name.to_string(), transaction_id: tx.id }, None).await.unwrap();
+        match result  {
             Ok(res) => {
                 let status = res.into_inner().status.unwrap();
-                println!("result code {}, {}", status.code, status.message);
-                assert_eq!(true, true);
+                assert_eq!(tonic::Code::Ok, tonic::Code::from(status.code), "gRPC success but error found : {:?}", status);
             }
-            Err(err) => {
-                println!("error code = {0}, {1}", err.code(), err.message());
-                assert_eq!(false, true)
-            }
+            Err(err) => panic!("err: {:?}", err),
+        };
+    }
+
+    #[tokio::test]
+    async fn test_execute_batch_dml_error_as_tonic_check() {
+        let mut client = create_spanner_client().await;
+        let session = create_session(&mut client).await;
+        let tx = begin_read_write_transaction(&mut client, &session).await;
+        let request = ExecuteBatchDmlRequest {
+            session: session.name.to_string(),
+            transaction: Option::from(TransactionSelector {
+                selector: Option::from(transaction_selector::Selector::Id(tx.id.clone())),
+            }),
+            statements: vec![
+                execute_batch_dml_request::Statement {
+                    sql: "INSERT INTO GuildX (GuildId,OwnerUserId,UpdatedAt) VALUES('1', 'u1', CURRENT_TIMESTAMP())".to_string(),
+                    params: None,
+                    param_types: Default::default(),
+                },
+            ],
+            seqno: 0,
+            request_options: None,
+        };
+
+        let result = client.execute_batch_dml(request, None).await;
+        client.rollback(RollbackRequest { session: session.name.to_string(), transaction_id: tx.id }, None).await.unwrap();
+        match result  {
+            Ok(res) => panic!("must be error code = {:?}", res.into_inner().status.unwrap().code),
+            Err(status) => {
+                assert_eq!(tonic::Code::InvalidArgument, status.code(), "gRPC success but error found : {:?}", status);
+            },
         };
     }
 
@@ -410,10 +339,14 @@ mod tests {
         let request = ReadRequest {
             session: session.name.to_string(),
             transaction: None,
-            table: "User".to_string(),
+            table: "Guild".to_string(),
             index: "".to_string(),
-            columns: vec!["UserID".to_string()],
-            key_set: None,
+            columns: vec!["GuildId".to_string()],
+            key_set: Some(KeySet {
+                keys: vec![],
+                ranges: vec![],
+                all: true
+            }),
             resume_token: vec![],
             partition_token: vec![],
             request_options: None,
@@ -422,13 +355,9 @@ mod tests {
 
         match client.read(request, None).await {
             Ok(res) => {
-                println!("row size{:?}", res.into_inner().rows.len());
-                assert_eq!(true, true);
-            }
-            Err(err) => {
-                println!("error code = {0}, {1}", err.code(), err.message());
-                assert_eq!(false, true)
-            }
+                println!("row size = {:?}", res.into_inner().rows.len());
+            },
+            Err(err) => panic!("err: {:?}", err),
         };
     }
 
@@ -441,8 +370,12 @@ mod tests {
             transaction: None,
             table: "User".to_string(),
             index: "".to_string(),
-            columns: vec!["UserID".to_string()],
-            key_set: None,
+            columns: vec!["UserId".to_string()],
+            key_set: Some(KeySet {
+                keys: vec![],
+                ranges: vec![],
+                all: true
+            }),
             resume_token: vec![],
             partition_token: vec![],
             request_options: None,
@@ -451,19 +384,10 @@ mod tests {
 
         match client.streaming_read(request, None).await {
             Ok(res) => match res.into_inner().message().await {
-                Ok(message) => {
-                    println!("token {:?}", message.unwrap().resume_token);
-                    assert_eq!(true, true);
-                }
-                Err(err) => {
-                    println!("internal error code = {0}, {1}", err.code(), err.message());
-                    assert_eq!(false, true)
-                }
+                Ok(message) => {}
+                Err(err) => panic!("err: {:?}", err),
             },
-            Err(err) => {
-                println!("error code = {0}, {1}", err.code(), err.message());
-                assert_eq!(false, true)
-            }
+            Err(err) => panic!("err: {:?}", err),
         };
     }
 
@@ -474,28 +398,35 @@ mod tests {
         let tx = begin_read_write_transaction(&mut client, &session).await;
         let request = CommitRequest {
             session: session.name.to_string(),
-            mutations: vec![],
+            mutations: vec![
+                Mutation {
+                    operation: Some(Operation::InsertOrUpdate(Write {
+                        table: "Guild".to_string(),
+                        columns: vec!["GuildId".to_string(), "OwnerUserId".to_string(), "UpdatedAt".to_string()],
+                        values: vec![ListValue {
+                            values: vec![
+                                Value { kind: Some(Kind::StringValue("g1".to_string()))},
+                                Value { kind: Some(Kind::StringValue("u1".to_string()))},
+                                Value { kind: Some(Kind::StringValue("spanner.commit_timestamp()".to_string()))}
+                            ]
+                        }]
+                    }))
+                }
+            ],
             transaction: Option::from(commit_request::Transaction::TransactionId(tx.id)),
             request_options: Option::from(RequestOptions {
                 priority: 10,
                 request_tag: "".to_string(),
                 transaction_tag: "".to_string(),
             }),
-            return_commit_stats: true,
+            return_commit_stats: false,
         };
 
         match client.commit(request, None).await {
             Ok(res) => {
-                println!(
-                    "mutation count {:?}",
-                    res.into_inner().commit_stats.unwrap().mutation_count
-                );
-                assert_eq!(true, true);
+                assert!(res.into_inner().commit_timestamp.is_some());
             }
-            Err(err) => {
-                println!("error code = {0}, {1}", err.code(), err.message());
-                assert_eq!(false, true)
-            }
+            Err(err) => panic!("err: {:?}", err),
         };
     }
 
@@ -510,14 +441,8 @@ mod tests {
         };
 
         match client.rollback(request, None).await {
-            Ok(res) => {
-                println!("rollback success");
-                assert_eq!(true, true);
-            }
-            Err(err) => {
-                println!("error code = {0}, {1}", err.code(), err.message());
-                assert_eq!(false, true)
-            }
+            Ok(_) => {}
+            Err(err) => panic!("err: {:?}", err),
         };
     }
 

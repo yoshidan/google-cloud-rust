@@ -3,7 +3,7 @@ use google_cloud_spanner::client::{Client, TxError};
 use google_cloud_spanner::mutation::insert;
 use google_cloud_spanner::statement::{Statement, ToKind};
 
-const DATABASE: &str = "projects/atl-dev1/instances/test-instance/databases/local-database";
+const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
 #[tokio::test]
 async fn test_new() -> Result<(), anyhow::Error> {

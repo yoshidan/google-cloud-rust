@@ -1,10 +1,8 @@
 use std::sync::Arc;
 
 use tonic::transport::Channel;
-use tonic::{IntoRequest, Request, Response, Status, Streaming};
+use tonic::{IntoRequest, Request, Response, Status, Streaming, Code};
 
-use google_cloud_auth::error::Error;
-use google_cloud_auth::token::Token;
 use google_cloud_auth::token_source::token_source::TokenSource;
 use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
 use google_cloud_gax::invoke::invoke_reuse;
@@ -292,10 +290,21 @@ impl Client {
         return invoke_reuse(
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), &token, req.clone());
-                spanner_client
-                    .execute_batch_dml(request)
-                    .await
-                    .map_err(|e| (e, spanner_client))
+                let result = spanner_client.execute_batch_dml(request).await;
+                match result {
+                    Ok(response) => match response.get_ref().status.as_ref() {
+                        Some(s) => {
+                            let tonic_code =  Code::from(s.code);
+                            if tonic_code == Code::Ok {
+                                Ok(response)
+                            }else {
+                                Err((Status::new(tonic_code, s.message.to_string()) ,spanner_client))
+                            }
+                        }
+                        None => Ok(response)
+                    },
+                    Err(err) => Err((err, spanner_client))
+                }
             },
             &mut self.inner,
             &mut setting,
