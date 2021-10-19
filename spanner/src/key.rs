@@ -194,6 +194,12 @@ pub fn all_keys() -> KeySet {
     }
 }
 
+impl From<KeySet> for InternalKeySet {
+    fn from(key_set: KeySet) -> Self {
+        key_set.inner
+    }
+}
+
 impl KeyRange {
     pub fn new(start: Key, end: Key, kind: RangeKind) -> KeyRange {
         KeyRange { start, end, kind }
