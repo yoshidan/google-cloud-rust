@@ -161,7 +161,12 @@ impl Client {
             )));
         }
 
-        let conn_pool = ConnectionManager::new(config.channel_config.num_channels as usize).await?;
+        let pool_size = config.channel_config.num_channels as usize;
+        let emulator_host = match std::env::var("SPANNER_EMULATOR_HOST") {
+            Ok(s) => Some(s),
+            Err(_) => None,
+        };
+        let conn_pool = ConnectionManager::new(pool_size, emulator_host).await?;
         let session_manager =
             SessionManager::new(database, conn_pool, config.session_config).await?;
         session_manager.schedule_refresh();

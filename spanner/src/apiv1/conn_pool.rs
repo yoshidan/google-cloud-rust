@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::Arc;
 
-use tonic::transport::{Certificate, Channel, ClientTlsConfig};
+use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint};
 
 use google_cloud_auth::token_source::token_source::TokenSource;
 use google_cloud_auth::{create_token_source, Config};
@@ -19,7 +19,7 @@ pub const TLS_CERTS: &[u8] = include_bytes!("../../roots.pem");
 
 pub struct ConnectionManager {
     index: AtomicI64,
-    token_source: Arc<dyn TokenSource>,
+    token_source: Option<Arc<dyn TokenSource>>,
     conns: Vec<SpannerClient<Channel>>,
 }
 
@@ -30,40 +30,52 @@ pub enum Error {
 
     #[error(transparent)]
     TonicTransport(#[from] tonic::transport::Error),
+
+    #[error("invalid spanner host {0}")]
+    InvalidSpannerHOST(String),
 }
 
 impl ConnectionManager {
-    pub async fn new(pool_size: usize) -> Result<Self, Error> {
-        let tls_config = ClientTlsConfig::new()
-            .ca_certificate(Certificate::from_pem(TLS_CERTS))
-            .domain_name(SPANNER);
-        let mut conns = Vec::with_capacity(pool_size);
-        for _i_ in 0..pool_size {
-            let con = ConnectionManager::connect(tls_config.clone()).await?;
-            conns.push(con);
-        }
-
-        let token_source = create_token_source(Config {
-            audience: Some(AUDIENCE),
-            scopes: Some(&SCOPES),
-        })
-        .await?;
-
+    pub async fn new(pool_size: usize, emulator_host: Option<String>) -> Result<Self, Error> {
+        let (conns, token_source) = match emulator_host {
+            None => {
+                let tls_config = ClientTlsConfig::new()
+                    .ca_certificate(Certificate::from_pem(TLS_CERTS))
+                    .domain_name(SPANNER);
+                let mut conns = Vec::with_capacity(pool_size);
+                for _i_ in 0..pool_size {
+                    let endpoint = Channel::from_static(AUDIENCE).tls_config(tls_config.clone())?;
+                    let con = ConnectionManager::connect(endpoint).await?;
+                    conns.push(con);
+                }
+                let token_source = create_token_source(Config {
+                    audience: Some(AUDIENCE),
+                    scopes: Some(&SCOPES),
+                })
+                .await?;
+                (conns, Some(Arc::from(token_source)))
+            }
+            // use local spanner emulator
+            Some(host) => {
+                let mut conns = Vec::with_capacity(1);
+                let endpoint = Channel::from_shared(host.clone().into_bytes())
+                    .map_err(|_| Error::InvalidSpannerHOST(host))?;
+                let con = ConnectionManager::connect(endpoint).await?;
+                conns.push(con);
+                (conns, None)
+            }
+        };
         return Ok(ConnectionManager {
             index: AtomicI64::new(0),
-            token_source: Arc::from(token_source),
+            token_source,
             conns,
         });
     }
 
     async fn connect(
-        tls_config: ClientTlsConfig,
+        endpoint: Endpoint,
     ) -> Result<SpannerClient<Channel>, tonic::transport::Error> {
-        let channel = Channel::from_static(AUDIENCE)
-            .tls_config(tls_config)
-            .unwrap()
-            .connect()
-            .await?;
+        let channel = endpoint.connect().await?;
         log::debug!("gRPC Connection Created");
         return Ok(SpannerClient::new(channel));
     }
@@ -77,7 +89,10 @@ impl ConnectionManager {
         //clone() reuses http/s connection
         Client::new(
             self.conns[current % self.conns.len()].clone(),
-            Arc::clone(&self.token_source),
+            match self.token_source.as_ref() {
+                Some(s) => Some(Arc::clone(s)),
+                None => None,
+            },
         )
     }
 }

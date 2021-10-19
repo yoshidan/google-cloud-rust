@@ -47,12 +47,15 @@ fn default_setting() -> BackoffRetrySettings {
 #[derive(Clone)]
 pub struct Client {
     inner: SpannerClient<Channel>,
-    token_source: Arc<dyn TokenSource>,
+    token_source: Option<Arc<dyn TokenSource>>,
 }
 
 impl Client {
     /// create new spanner client
-    pub fn new(inner: SpannerClient<Channel>, token_source: Arc<dyn TokenSource>) -> Client {
+    pub fn new(
+        inner: SpannerClient<Channel>,
+        token_source: Option<Arc<dyn TokenSource>>,
+    ) -> Client {
         return Client {
             inner,
             token_source,
@@ -93,14 +96,10 @@ impl Client {
     ) -> Result<Response<Session>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let database = &req.database;
-        let token = map_token_error(self.token_source.token().await)?;
+        let token = self.get_token().await?;
         return invoke_reuse(
             |spanner_client| async {
-                let request = create_request(
-                    format!("database={}", database),
-                    token.as_str(),
-                    req.clone(),
-                );
+                let request = create_request(format!("database={}", database), &token, req.clone());
                 spanner_client
                     .create_session(request)
                     .await
@@ -123,14 +122,10 @@ impl Client {
     ) -> Result<tonic::Response<BatchCreateSessionsResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let database = &req.database;
-        let token = map_token_error(self.token_source.token().await)?;
+        let token = self.get_token().await?;
         return invoke_reuse(
             |spanner_client| async {
-                let request = create_request(
-                    format!("database={}", database),
-                    token.as_str(),
-                    req.clone(),
-                );
+                let request = create_request(format!("database={}", database), &token, req.clone());
                 spanner_client
                     .batch_create_sessions(request)
                     .await
@@ -152,10 +147,10 @@ impl Client {
     ) -> Result<Response<Session>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let name = &req.name;
-        let token = map_token_error(self.token_source.token().await)?;
+        let token = self.get_token().await?;
         return invoke_reuse(
             |spanner_client| async {
-                let request = create_request(format!("name={}", name), token.as_str(), req.clone());
+                let request = create_request(format!("name={}", name), &token, req.clone());
                 spanner_client
                     .get_session(request)
                     .await
@@ -175,14 +170,10 @@ impl Client {
     ) -> Result<Response<ListSessionsResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let database = &req.database;
-        let token = map_token_error(self.token_source.token().await)?;
+        let token = self.get_token().await?;
         return invoke_reuse(
             |spanner_client| async {
-                let request = create_request(
-                    format!("database={}", database),
-                    token.as_str(),
-                    req.clone(),
-                );
+                let request = create_request(format!("database={}", database), &token, req.clone());
                 spanner_client
                     .list_sessions(request)
                     .await
@@ -204,10 +195,10 @@ impl Client {
     ) -> Result<Response<()>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let name = &req.name;
-        let token = map_token_error(self.token_source.token().await)?;
+        let token = self.get_token().await?;
         return invoke_reuse(
             |spanner_client| async {
-                let request = create_request(format!("name={}", name), token.as_str(), req.clone());
+                let request = create_request(format!("name={}", name), &token, req.clone());
                 spanner_client
                     .delete_session(request)
                     .await
@@ -237,11 +228,10 @@ impl Client {
     ) -> Result<Response<ResultSet>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
-        let token = map_token_error(self.token_source.token().await)?;
+        let token = self.get_token().await?;
         return invoke_reuse(
             |spanner_client| async {
-                let request =
-                    create_request(format!("session={}", session), token.as_str(), req.clone());
+                let request = create_request(format!("session={}", session), &token, req.clone());
                 spanner_client
                     .execute_sql(request)
                     .await
@@ -265,11 +255,10 @@ impl Client {
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
-        let token = map_token_error(self.token_source.token().await)?;
+        let token = self.get_token().await?;
         return invoke_reuse(
             |spanner_client| async {
-                let request =
-                    create_request(format!("session={}", session), token.as_str(), req.clone());
+                let request = create_request(format!("session={}", session), &token, req.clone());
                 spanner_client
                     .execute_streaming_sql(request)
                     .await
@@ -299,11 +288,10 @@ impl Client {
     ) -> Result<Response<ExecuteBatchDmlResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
-        let token = map_token_error(self.token_source.token().await)?;
+        let token = self.get_token().await?;
         return invoke_reuse(
             |spanner_client| async {
-                let request =
-                    create_request(format!("session={}", session), token.as_str(), req.clone());
+                let request = create_request(format!("session={}", session), &token, req.clone());
                 spanner_client
                     .execute_batch_dml(request)
                     .await
@@ -335,11 +323,10 @@ impl Client {
     ) -> Result<Response<ResultSet>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
-        let token = map_token_error(self.token_source.token().await)?;
+        let token = self.get_token().await?;
         return invoke_reuse(
             |spanner_client| async {
-                let request =
-                    create_request(format!("session={}", session), token.as_str(), req.clone());
+                let request = create_request(format!("session={}", session), &token, req.clone());
                 spanner_client
                     .read(request)
                     .await
@@ -363,11 +350,10 @@ impl Client {
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
-        let token = map_token_error(self.token_source.token().await)?;
+        let token = self.get_token().await?;
         return invoke_reuse(
             |spanner_client| async {
-                let request =
-                    create_request(format!("session={}", session), token.as_str(), req.clone());
+                let request = create_request(format!("session={}", session), &token, req.clone());
                 spanner_client
                     .streaming_read(request)
                     .await
@@ -390,11 +376,10 @@ impl Client {
     ) -> Result<Response<Transaction>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
-        let token = map_token_error(self.token_source.token().await)?;
+        let token = self.get_token().await?;
         return invoke_reuse(
             |spanner_client| async {
-                let request =
-                    create_request(format!("session={}", session), token.as_str(), req.clone());
+                let request = create_request(format!("session={}", session), &token, req.clone());
                 spanner_client
                     .begin_transaction(request)
                     .await
@@ -427,11 +412,10 @@ impl Client {
     ) -> Result<Response<CommitResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
-        let token = map_token_error(self.token_source.token().await)?;
+        let token = self.get_token().await?;
         return invoke_reuse(
             |spanner_client| async {
-                let request =
-                    create_request(format!("session={}", session), token.as_str(), req.clone());
+                let request = create_request(format!("session={}", session), &token, req.clone());
                 spanner_client
                     .commit(request)
                     .await
@@ -458,11 +442,10 @@ impl Client {
     ) -> Result<Response<()>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
-        let token = map_token_error(self.token_source.token().await)?;
+        let token = self.get_token().await?;
         return invoke_reuse(
             |spanner_client| async {
-                let request =
-                    create_request(format!("session={}", session), token.as_str(), req.clone());
+                let request = create_request(format!("session={}", session), &token, req.clone());
                 spanner_client
                     .rollback(request)
                     .await
@@ -492,11 +475,10 @@ impl Client {
     ) -> Result<Response<PartitionResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
-        let token = map_token_error(self.token_source.token().await)?;
+        let token = self.get_token().await?;
         return invoke_reuse(
             |spanner_client| async {
-                let request =
-                    create_request(format!("session={}", session), token.as_str(), req.clone());
+                let request = create_request(format!("session={}", session), &token, req.clone());
                 spanner_client
                     .partition_query(request)
                     .await
@@ -528,11 +510,10 @@ impl Client {
     ) -> Result<Response<PartitionResponse>, Status> {
         let mut setting = Client::get_call_setting(opt);
         let session = &req.session;
-        let token = map_token_error(self.token_source.token().await)?;
+        let token = self.get_token().await?;
         return invoke_reuse(
             |spanner_client| async {
-                let request =
-                    create_request(format!("session={}", session), token.as_str(), req.clone());
+                let request = create_request(format!("session={}", session), &token, req.clone());
                 spanner_client
                     .partition_read(request)
                     .await
@@ -543,27 +524,34 @@ impl Client {
         )
         .await;
     }
-}
 
-fn map_token_error(result: Result<Token, Error>) -> Result<String, Status> {
-    result
-        .map_err(|e| {
-            tonic::Status::new(
-                tonic::Code::Unauthenticated,
-                format!("token error: {:?}", e),
-            )
-        })
-        .map(|v| v.value())
+    async fn get_token(&self) -> Result<Option<String>, Status> {
+        match &self.token_source {
+            Some(token_source) => token_source
+                .token()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unauthenticated,
+                        format!("token error: {:?}", e),
+                    )
+                })
+                .map(|v| Some(v.value())),
+            None => Ok(None),
+        }
+    }
 }
 
 fn create_request<T>(
     param_string: String,
-    token: &str,
+    token: &Option<String>,
     into_request: impl IntoRequest<T>,
 ) -> Request<T> {
     let mut request = into_request.into_request();
     let target = request.metadata_mut();
     target.append("x-goog-request-params", param_string.parse().unwrap());
-    target.insert("authorization", token.parse().unwrap());
+    if token.is_some() {
+        target.insert("authorization", token.as_ref().unwrap().parse().unwrap());
+    };
     return request;
 }
