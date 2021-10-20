@@ -253,3 +253,83 @@ fn kind_to_error<'a, T>(v: &'a value::Kind, field: &'a Field) -> Result<T> {
     };
     return Err(anyhow!("{} : Illegal Kind={}", field.name, actual));
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::row::{Row, TryFromStruct, Struct as RowStruct};
+    use std::sync::Arc;
+    use google_cloud_googleapis::spanner::v1::struct_type::Field;
+    use google_cloud_googleapis::spanner::v1::{Type, TypeCode, StructType};
+    use prost_types::{Value, ListValue, Struct};
+    use prost_types::value::Kind;
+    use crate::statement::{ToKind, ToStruct, Types, Kinds};
+    use anyhow::{anyhow, Context, Result};
+    use std::collections::HashMap;
+
+    struct TestStruct {
+        pub struct_field: String
+    }
+
+    impl TryFromStruct for TestStruct {
+        fn try_from(s: RowStruct<'_>) -> Result<Self> {
+            Ok(TestStruct {
+                struct_field: s.column_by_name("struct_field")?,
+            })
+        }
+    }
+
+    impl ToStruct for TestStruct {
+        fn to_kinds(&self) -> Kinds {
+            vec![
+                ("struct_field", self.struct_field.to_kind()),
+            ]
+        }
+
+        fn get_types() -> Types {
+            vec![
+                ("struct_field", String::get_type()),
+            ]
+        }
+    }
+
+    #[test]
+    fn test_try_from() {
+        let mut index = HashMap::new();
+        index.insert("value".to_string(), 0);
+        index.insert("array".to_string(), 1);
+        index.insert("struct".to_string(), 2);
+       let row = Row{
+           index: Arc::new(index),
+           fields: Arc::new(vec![
+               Field {
+                   name: "value".to_string(),
+                   r#type: Some(String::get_type())
+               },
+               Field {
+                   name: "array".to_string(),
+                   r#type: Some(Vec::<i64>::get_type())
+               },
+               Field {
+                   name: "struct".to_string(),
+                   r#type: Some(Vec::<TestStruct>::get_type())
+               },
+           ]),
+           values: vec![
+               Value { kind: Some("aaa".to_kind()) },
+               Value { kind: Some(vec![10,100].to_kind())},
+               // struct is used only with array
+               // https://cloud.google.com/spanner/docs/query-syntax?hl=ja#using_structs_with_select
+               Value { kind: Some(vec![TestStruct { struct_field: "hoge".to_string() }].to_kind())},
+           ]
+       };
+
+        let value = row.column_by_name::<String>("value").unwrap();
+        let mut array = row.column_by_name::<Vec<i64>>("array").unwrap();
+        let mut struct_data = row.column_by_name::<Vec<TestStruct>>("struct").unwrap();
+        assert_eq!(value,"aaa");
+        assert_eq!(array.pop().unwrap(),10);
+        assert_eq!(array.pop().unwrap(),100);
+        assert_eq!(struct_data.pop().unwrap().struct_field, "hoge");
+    }
+
+}
