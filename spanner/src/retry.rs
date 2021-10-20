@@ -69,11 +69,11 @@ mod tests {
 
     #[test]
     fn test_retry() {
-        let mut retry = TransactionRetryer::new(vec![Code::Aborted]);
+        let mut retry = TransactionRetryer::new(vec![Code::Internal]);
         let mut durations = vec![];
         retry.retryer.backoff.timeout = Duration::from_millis(100);
         loop {
-            match retry.retry(&Status::new(Code::Aborted, "test")) {
+            match retry.retry(&Status::new(Code::Internal, "stream terminated by RST_STREAM")) {
                 None => break,
                 Some(d) => durations.push(d)
             };
@@ -82,4 +82,21 @@ mod tests {
         println!("retry count = {}", durations.len());
         assert!(!durations.is_empty());
     }
+
+    #[test]
+    fn test_retry_invalid_message() {
+        let mut retry = TransactionRetryer::new(vec![Code::Internal]);
+        let mut durations = vec![];
+        retry.retryer.backoff.timeout = Duration::from_millis(100);
+        loop {
+            match retry.retry(&Status::new(Code::Internal, "test")) {
+                None => break,
+                Some(d) => durations.push(d)
+            };
+            sleep(Duration::from_millis(50));
+        }
+        println!("retry count = {}", durations.len());
+        assert!(durations.is_empty());
+    }
+
 }
