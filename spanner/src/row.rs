@@ -57,11 +57,11 @@ pub trait TryFromStruct: Sized {
 pub struct Struct<'a> {
     index: HashMap<String, usize>,
     metadata: &'a StructType,
-    values: &'a ListValue,
+    values: &'a Vec<Value>,
 }
 
 impl<'a> Struct<'a> {
-    pub fn new(metadata: &'a StructType, values: &'a ListValue) -> Struct<'a> {
+    pub fn new(metadata: &'a StructType, values: &'a Vec<Value>) -> Struct<'a> {
         let mut index = HashMap::new();
         for (i, f) in metadata.fields.iter().enumerate() {
             index.insert(f.name.clone(), i);
@@ -77,7 +77,7 @@ impl<'a> Struct<'a> {
     where
         T: TryFromValue,
     {
-        column(&self.values.values, &self.metadata.fields, column_index)
+        column(&self.values, &self.metadata.fields, column_index)
     }
 
     pub fn column_by_name<T>(&self, column_name: &str) -> Result<T>
@@ -161,29 +161,34 @@ where
     T: TryFromStruct,
 {
     fn try_from(item: &Value, field: &Field) -> Result<Self> {
-        match as_ref(item, field)? {
-            Kind::ListValue(s) => {
-                let maybe_array = match field.r#type.as_ref() {
-                    None => return Err(anyhow!("field type must not be none {}", field.name)),
-                    Some(tp) => tp.array_element_type.as_ref(),
-                };
-                let maybe_struct_type = match maybe_array {
-                    None => return Err(anyhow!("array must not be none {}", field.name)),
-                    Some(tp) => tp.struct_type.as_ref(),
-                };
-                let structured_value = match maybe_struct_type {
-                    None => {
-                        return Err(anyhow!(
+
+        let maybe_array = match field.r#type.as_ref() {
+            None => return Err(anyhow!("field type must not be none {}", field.name)),
+            Some(tp) => tp.array_element_type.as_ref(),
+        };
+        let maybe_struct_type = match maybe_array {
+            None => return Err(anyhow!("array must not be none {}", field.name)),
+            Some(tp) => tp.struct_type.as_ref(),
+        };
+        let struct_type = match maybe_struct_type {
+            None => {
+                return Err(anyhow!(
                             "struct type in array must not be none {}",
                             field.name
                         ));
-                    }
-                    Some(struct_type) => Ok(Struct::new(struct_type, s)),
-                };
-                match structured_value {
-                    Ok(v) => T::try_from(v),
-                    Err(e) => Err(e),
-                }
+            }
+            Some(struct_type) => struct_type
+        };
+
+        match as_ref(item, field)? {
+            Kind::ListValue(s) => {
+                T::try_from(Struct::new(struct_type, &s.values))
+            }
+            Kind::StructValue(s ) => {
+                let mut values = vec![];
+                //TODO cloneは使わないで、Structの中でBTreeMapとVecを分ける
+                s.fields.values().for_each(|x| values.push(x.clone()));
+                T::try_from(Struct::new(struct_type, &values))
             }
             v => kind_to_error(v, field),
         }
@@ -265,15 +270,18 @@ mod tests {
     use crate::statement::{ToKind, ToStruct, Types, Kinds};
     use anyhow::{anyhow, Context, Result};
     use std::collections::HashMap;
+    use chrono::{NaiveDateTime, Utc};
 
     struct TestStruct {
-        pub struct_field: String
+        pub struct_field: String,
+        pub struct_field_time: NaiveDateTime
     }
 
     impl TryFromStruct for TestStruct {
         fn try_from(s: RowStruct<'_>) -> Result<Self> {
             Ok(TestStruct {
                 struct_field: s.column_by_name("struct_field")?,
+                struct_field_time: s.column_by_name("struct_field_time")?,
             })
         }
     }
@@ -282,12 +290,14 @@ mod tests {
         fn to_kinds(&self) -> Kinds {
             vec![
                 ("struct_field", self.struct_field.to_kind()),
+                ("struct_field_time", self.struct_field_time.to_kind()),
             ]
         }
 
         fn get_types() -> Types {
             vec![
                 ("struct_field", String::get_type()),
+                ("struct_field_time", NaiveDateTime::get_type()),
             ]
         }
     }
@@ -298,6 +308,8 @@ mod tests {
         index.insert("value".to_string(), 0);
         index.insert("array".to_string(), 1);
         index.insert("struct".to_string(), 2);
+
+        let now = Utc::now().naive_utc();
        let row = Row{
            index: Arc::new(index),
            fields: Arc::new(vec![
@@ -317,9 +329,13 @@ mod tests {
            values: vec![
                Value { kind: Some("aaa".to_kind()) },
                Value { kind: Some(vec![10,100].to_kind())},
-               // struct is used only with array
+
                // https://cloud.google.com/spanner/docs/query-syntax?hl=ja#using_structs_with_select
-               Value { kind: Some(vec![TestStruct { struct_field: "hoge".to_string() }].to_kind())},
+               // SELECT ARRAY(SELECT AS STRUCT * FROM TestStruct LIMIT 2) as struct
+               Value { kind: Some(vec![
+                   TestStruct { struct_field: "aaa".to_string(), struct_field_time: now},
+                   TestStruct { struct_field: "bbb".to_string(), struct_field_time: now}
+               ].to_kind()) },
            ]
        };
 
@@ -327,9 +343,12 @@ mod tests {
         let mut array = row.column_by_name::<Vec<i64>>("array").unwrap();
         let mut struct_data = row.column_by_name::<Vec<TestStruct>>("struct").unwrap();
         assert_eq!(value,"aaa");
-        assert_eq!(array.pop().unwrap(),10);
-        assert_eq!(array.pop().unwrap(),100);
-        assert_eq!(struct_data.pop().unwrap().struct_field, "hoge");
+        assert_eq!(array[0],10);
+        assert_eq!(array[1],100);
+        assert_eq!(struct_data[0].struct_field, "aaa");
+        assert_eq!(struct_data[0].struct_field_time, now);
+        assert_eq!(struct_data[1].struct_field, "bbb");
+        assert_eq!(struct_data[1].struct_field_time, now);
     }
 
 }
