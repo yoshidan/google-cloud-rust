@@ -6,6 +6,7 @@ use chrono::{NaiveDate, NaiveDateTime};
 use prost_types::value::Kind;
 use prost_types::{value, Value};
 
+use crate::value::CommitTimestamp;
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::StructType;
 
@@ -153,6 +154,13 @@ impl TryFromValue for NaiveDateTime {
     }
 }
 
+impl TryFromValue for CommitTimestamp {
+    fn try_from(item: &Value, field: &Field) -> Result<Self> {
+        let value = NaiveDateTime::try_from(item, field)?;
+        Ok(value.into())
+    }
+}
+
 impl TryFromValue for NaiveDate {
     fn try_from(item: &Value, field: &Field) -> Result<Self> {
         match as_ref(item, field)? {
@@ -276,7 +284,8 @@ fn kind_to_error<'a, T>(v: &'a value::Kind, field: &'a Field) -> Result<T> {
 mod tests {
     use crate::row::{Row, Struct as RowStruct, TryFromStruct};
     use crate::statement::{Kinds, ToKind, ToStruct, Types};
-    use anyhow::{Result};
+    use crate::value::CommitTimestamp;
+    use anyhow::Result;
     use chrono::{NaiveDateTime, Utc};
     use google_cloud_googleapis::spanner::v1::struct_type::Field;
     use prost_types::Value;
@@ -286,6 +295,7 @@ mod tests {
     struct TestStruct {
         pub struct_field: String,
         pub struct_field_time: NaiveDateTime,
+        pub commit_timestamp: CommitTimestamp,
     }
 
     impl TryFromStruct for TestStruct {
@@ -293,6 +303,7 @@ mod tests {
             Ok(TestStruct {
                 struct_field: s.column_by_name("struct_field")?,
                 struct_field_time: s.column_by_name("struct_field_time")?,
+                commit_timestamp: s.column_by_name("commit_timestamp")?,
             })
         }
     }
@@ -302,6 +313,11 @@ mod tests {
             vec![
                 ("struct_field", self.struct_field.to_kind()),
                 ("struct_field_time", self.struct_field_time.to_kind()),
+                // value from DB is timestamp. it's not string 'spanner.commit_timestamp()'.
+                (
+                    "commit_timestamp",
+                    NaiveDateTime::from(self.commit_timestamp).to_kind(),
+                ),
             ]
         }
 
@@ -309,6 +325,7 @@ mod tests {
             vec![
                 ("struct_field", String::get_type()),
                 ("struct_field_time", NaiveDateTime::get_type()),
+                ("commit_timestamp", CommitTimestamp::get_type()),
             ]
         }
     }
@@ -352,10 +369,12 @@ mod tests {
                             TestStruct {
                                 struct_field: "aaa".to_string(),
                                 struct_field_time: now,
+                                commit_timestamp: CommitTimestamp::from(now),
                             },
                             TestStruct {
                                 struct_field: "bbb".to_string(),
                                 struct_field_time: now,
+                                commit_timestamp: CommitTimestamp::from(now),
                             },
                         ]
                         .to_kind(),
@@ -374,5 +393,6 @@ mod tests {
         assert_eq!(struct_data[0].struct_field_time, now);
         assert_eq!(struct_data[1].struct_field, "bbb");
         assert_eq!(struct_data[1].struct_field_time, now);
+        assert_eq!(struct_data[1].commit_timestamp.timestamp, now);
     }
 }
