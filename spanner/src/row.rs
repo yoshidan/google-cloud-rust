@@ -1,10 +1,10 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
 use chrono::{NaiveDate, NaiveDateTime};
 use prost_types::value::Kind;
-use prost_types::{value, ListValue, Value};
+use prost_types::{value, Value};
 
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::StructType;
@@ -57,19 +57,31 @@ pub trait TryFromStruct: Sized {
 pub struct Struct<'a> {
     index: HashMap<String, usize>,
     metadata: &'a StructType,
-    values: &'a Vec<Value>,
+    list_values: Option<&'a Vec<Value>>,
+    struct_values: Option<&'a BTreeMap<String, Value>>,
 }
 
 impl<'a> Struct<'a> {
-    pub fn new(metadata: &'a StructType, values: &'a Vec<Value>) -> Struct<'a> {
+    pub fn new(metadata: &'a StructType, item: &'a Value, field: &'a Field) -> Result<Struct<'a>> {
+        let kind = as_ref(item, field)?;
         let mut index = HashMap::new();
         for (i, f) in metadata.fields.iter().enumerate() {
             index.insert(f.name.clone(), i);
         }
-        Struct {
-            metadata,
-            index,
-            values,
+        match kind {
+            Kind::ListValue(s) => Ok(Struct {
+                metadata,
+                index,
+                list_values: Some(&s.values),
+                struct_values: None,
+            }),
+            Kind::StructValue(s) => Ok(Struct {
+                metadata,
+                index,
+                list_values: None,
+                struct_values: Some(&s.fields),
+            }),
+            _ => kind_to_error(kind, field),
         }
     }
 
@@ -77,7 +89,20 @@ impl<'a> Struct<'a> {
     where
         T: TryFromValue,
     {
-        column(&self.values, &self.metadata.fields, column_index)
+        match self.list_values {
+            Some(values) => column(&values, &self.metadata.fields, column_index),
+            None => match self.struct_values {
+                Some(values) => {
+                    let field = &self.metadata.fields[column_index];
+                    let name = &field.name;
+                    match values.get(name) {
+                        Some(value) => T::try_from(value, field),
+                        None => Err(anyhow!("invalid no data found column_name = {}", name)),
+                    }
+                }
+                None => Err(anyhow!("invalid struct values {}", column_index)),
+            },
+        }
     }
 
     pub fn column_by_name<T>(&self, column_name: &str) -> Result<T>
@@ -161,7 +186,6 @@ where
     T: TryFromStruct,
 {
     fn try_from(item: &Value, field: &Field) -> Result<Self> {
-
         let maybe_array = match field.r#type.as_ref() {
             None => return Err(anyhow!("field type must not be none {}", field.name)),
             Some(tp) => tp.array_element_type.as_ref(),
@@ -173,25 +197,14 @@ where
         let struct_type = match maybe_struct_type {
             None => {
                 return Err(anyhow!(
-                            "struct type in array must not be none {}",
-                            field.name
-                        ));
+                    "struct type in array must not be none {}",
+                    field.name
+                ));
             }
-            Some(struct_type) => struct_type
+            Some(struct_type) => struct_type,
         };
 
-        match as_ref(item, field)? {
-            Kind::ListValue(s) => {
-                T::try_from(Struct::new(struct_type, &s.values))
-            }
-            Kind::StructValue(s ) => {
-                let mut values = vec![];
-                //TODO cloneは使わないで、Structの中でBTreeMapとVecを分ける
-                s.fields.values().for_each(|x| values.push(x.clone()));
-                T::try_from(Struct::new(struct_type, &values))
-            }
-            v => kind_to_error(v, field),
-        }
+        T::try_from(Struct::new(struct_type, item, field)?)
     }
 }
 
@@ -261,20 +274,18 @@ fn kind_to_error<'a, T>(v: &'a value::Kind, field: &'a Field) -> Result<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::row::{Row, TryFromStruct, Struct as RowStruct};
-    use std::sync::Arc;
-    use google_cloud_googleapis::spanner::v1::struct_type::Field;
-    use google_cloud_googleapis::spanner::v1::{Type, TypeCode, StructType};
-    use prost_types::{Value, ListValue, Struct};
-    use prost_types::value::Kind;
-    use crate::statement::{ToKind, ToStruct, Types, Kinds};
-    use anyhow::{anyhow, Context, Result};
-    use std::collections::HashMap;
+    use crate::row::{Row, Struct as RowStruct, TryFromStruct};
+    use crate::statement::{Kinds, ToKind, ToStruct, Types};
+    use anyhow::{Result};
     use chrono::{NaiveDateTime, Utc};
+    use google_cloud_googleapis::spanner::v1::struct_type::Field;
+    use prost_types::Value;
+    use std::collections::HashMap;
+    use std::sync::Arc;
 
     struct TestStruct {
         pub struct_field: String,
-        pub struct_field_time: NaiveDateTime
+        pub struct_field_time: NaiveDateTime,
     }
 
     impl TryFromStruct for TestStruct {
@@ -310,45 +321,58 @@ mod tests {
         index.insert("struct".to_string(), 2);
 
         let now = Utc::now().naive_utc();
-       let row = Row{
-           index: Arc::new(index),
-           fields: Arc::new(vec![
-               Field {
-                   name: "value".to_string(),
-                   r#type: Some(String::get_type())
-               },
-               Field {
-                   name: "array".to_string(),
-                   r#type: Some(Vec::<i64>::get_type())
-               },
-               Field {
-                   name: "struct".to_string(),
-                   r#type: Some(Vec::<TestStruct>::get_type())
-               },
-           ]),
-           values: vec![
-               Value { kind: Some("aaa".to_kind()) },
-               Value { kind: Some(vec![10,100].to_kind())},
-
-               // https://cloud.google.com/spanner/docs/query-syntax?hl=ja#using_structs_with_select
-               // SELECT ARRAY(SELECT AS STRUCT * FROM TestStruct LIMIT 2) as struct
-               Value { kind: Some(vec![
-                   TestStruct { struct_field: "aaa".to_string(), struct_field_time: now},
-                   TestStruct { struct_field: "bbb".to_string(), struct_field_time: now}
-               ].to_kind()) },
-           ]
-       };
+        let row = Row {
+            index: Arc::new(index),
+            fields: Arc::new(vec![
+                Field {
+                    name: "value".to_string(),
+                    r#type: Some(String::get_type()),
+                },
+                Field {
+                    name: "array".to_string(),
+                    r#type: Some(Vec::<i64>::get_type()),
+                },
+                Field {
+                    name: "struct".to_string(),
+                    r#type: Some(Vec::<TestStruct>::get_type()),
+                },
+            ]),
+            values: vec![
+                Value {
+                    kind: Some("aaa".to_kind()),
+                },
+                Value {
+                    kind: Some(vec![10, 100].to_kind()),
+                },
+                // https://cloud.google.com/spanner/docs/query-syntax?hl=ja#using_structs_with_select
+                // SELECT ARRAY(SELECT AS STRUCT * FROM TestStruct LIMIT 2) as struct
+                Value {
+                    kind: Some(
+                        vec![
+                            TestStruct {
+                                struct_field: "aaa".to_string(),
+                                struct_field_time: now,
+                            },
+                            TestStruct {
+                                struct_field: "bbb".to_string(),
+                                struct_field_time: now,
+                            },
+                        ]
+                        .to_kind(),
+                    ),
+                },
+            ],
+        };
 
         let value = row.column_by_name::<String>("value").unwrap();
-        let mut array = row.column_by_name::<Vec<i64>>("array").unwrap();
-        let mut struct_data = row.column_by_name::<Vec<TestStruct>>("struct").unwrap();
-        assert_eq!(value,"aaa");
-        assert_eq!(array[0],10);
-        assert_eq!(array[1],100);
+        let array = row.column_by_name::<Vec<i64>>("array").unwrap();
+        let struct_data = row.column_by_name::<Vec<TestStruct>>("struct").unwrap();
+        assert_eq!(value, "aaa");
+        assert_eq!(array[0], 10);
+        assert_eq!(array[1], 100);
         assert_eq!(struct_data[0].struct_field, "aaa");
         assert_eq!(struct_data[0].struct_field_time, now);
         assert_eq!(struct_data[1].struct_field, "bbb");
         assert_eq!(struct_data[1].struct_field_time, now);
     }
-
 }

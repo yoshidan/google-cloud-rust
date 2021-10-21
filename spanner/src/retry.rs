@@ -29,10 +29,7 @@ impl TransactionRetryer {
         backoff.max = Duration::from_secs(32);
         backoff.timeout = Duration::from_secs(32);
         TransactionRetryer {
-            retryer: BackoffRetryer {
-                backoff,
-                codes,
-            },
+            retryer: BackoffRetryer { backoff, codes },
         }
     }
 }
@@ -61,11 +58,11 @@ impl Retryer for TransactionRetryer {
 
 #[cfg(test)]
 mod tests {
-    use tonic::{Code, Status};
-    use google_cloud_gax::call_option::Retryer;
     use crate::retry::TransactionRetryer;
-    use std::time::Duration;
+    use google_cloud_gax::call_option::Retryer;
     use std::thread::sleep;
+    use std::time::Duration;
+    use tonic::{Code, Status};
 
     #[test]
     fn test_retry() {
@@ -73,9 +70,12 @@ mod tests {
         let mut durations = vec![];
         retry.retryer.backoff.timeout = Duration::from_millis(100);
         loop {
-            match retry.retry(&Status::new(Code::Internal, "stream terminated by RST_STREAM")) {
+            match retry.retry(&Status::new(
+                Code::Internal,
+                "stream terminated by RST_STREAM",
+            )) {
                 None => break,
-                Some(d) => durations.push(d)
+                Some(d) => durations.push(d),
             };
             sleep(Duration::from_millis(50));
         }
@@ -91,12 +91,11 @@ mod tests {
         loop {
             match retry.retry(&Status::new(Code::Internal, "test")) {
                 None => break,
-                Some(d) => durations.push(d)
+                Some(d) => durations.push(d),
             };
             sleep(Duration::from_millis(50));
         }
         println!("retry count = {}", durations.len());
         assert!(durations.is_empty());
     }
-
 }

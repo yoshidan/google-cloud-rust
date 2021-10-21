@@ -92,15 +92,20 @@ mod tests {
     use crate::mutation::*;
     use crate::statement::ToKind;
     use crate::value::CommitTimestamp;
-    use google_cloud_googleapis::spanner::*;
     use chrono::Utc;
+    use google_cloud_googleapis::spanner::*;
 
     #[test]
     fn test_insert() {
         let mutation = insert(
             "Guild",
             vec!["GuildId", "UserId", "UpdatedAt"],
-            vec!["1".to_kind(), "2".to_kind(), CommitTimestamp::from(Utc::now().naive_utc()).to_kind()]);
+            vec![
+                "1".to_kind(),
+                "2".to_kind(),
+                CommitTimestamp::from(Utc::now().naive_utc()).to_kind(),
+            ],
+        );
         match mutation.operation.unwrap() {
             v1::mutation::Operation::Insert(mut w) => {
                 assert_eq!("Guild", w.table);
@@ -118,7 +123,12 @@ mod tests {
         let mutation = update(
             "Guild",
             vec!["GuildId", "UserId", "UpdatedAt"],
-            vec!["1".to_kind(), "2".to_kind(), CommitTimestamp::from(Utc::now().naive_utc()).to_kind()]);
+            vec![
+                "1".to_kind(),
+                "2".to_kind(),
+                CommitTimestamp::from(Utc::now().naive_utc()).to_kind(),
+            ],
+        );
         match mutation.operation.unwrap() {
             v1::mutation::Operation::Update(w) => {
                 assert_eq!("Guild", w.table);
@@ -134,7 +144,12 @@ mod tests {
         let mutation = replace(
             "Guild",
             vec!["GuildId", "UserId", "UpdatedAt"],
-            vec!["1".to_kind(), "2".to_kind(), CommitTimestamp::from(Utc::now().naive_utc()).to_kind()]);
+            vec![
+                "1".to_kind(),
+                "2".to_kind(),
+                CommitTimestamp::from(Utc::now().naive_utc()).to_kind(),
+            ],
+        );
         match mutation.operation.unwrap() {
             v1::mutation::Operation::Replace(w) => {
                 assert_eq!("Guild", w.table);
@@ -150,7 +165,12 @@ mod tests {
         let mutation = insert_or_update(
             "Guild",
             vec!["GuildId", "UserId", "UpdatedAt"],
-            vec!["1".to_kind(), "2".to_kind(), CommitTimestamp::from(Utc::now().naive_utc()).to_kind()]);
+            vec![
+                "1".to_kind(),
+                "2".to_kind(),
+                CommitTimestamp::from(Utc::now().naive_utc()).to_kind(),
+            ],
+        );
         match mutation.operation.unwrap() {
             v1::mutation::Operation::InsertOrUpdate(w) => {
                 assert_eq!("Guild", w.table);
