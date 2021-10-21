@@ -303,6 +303,7 @@ mod tests {
     use google_cloud_googleapis::spanner::v1::{
         CommitRequest, CommitResponse, CreateSessionRequest, TransactionOptions,
     };
+    use rust_decimal::Decimal;
     use std::collections::VecDeque;
     use std::ops::DerefMut;
     use std::str::FromStr;
@@ -338,6 +339,7 @@ mod tests {
     async fn replace_test_data(
         session: &mut SessionHandle,
         user_id: &str,
+        now: &NaiveDateTime,
     ) -> Result<CommitResponse, tonic::Status> {
         session
             .spanner_client
@@ -377,11 +379,11 @@ mod tests {
                             None::<bool>.to_kind(),
                             vec![1 as u8].to_kind(),
                             None::<Vec<u8>>.to_kind(),
-                            rust_decimal::Decimal::from_str("100.24").unwrap().to_kind(),
-                            Some(rust_decimal::Decimal::from_str("1000.42342").unwrap()).to_kind(),
-                            Utc::now().naive_utc().to_kind(),
-                            Some(Utc::now().naive_utc()).to_kind(),
-                            Utc::now().date().naive_utc().to_kind(),
+                            Decimal::from_str("100.24").unwrap().to_kind(),
+                            Some(Decimal::from_str("1000.42342").unwrap()).to_kind(),
+                            now.to_kind(),
+                            Some(now.clone()).to_kind(),
+                            now.date().to_kind(),
                             None::<NaiveDate>.to_kind(),
                             vec![10 as i64, 20 as i64, 30 as i64].to_kind(),
                             None::<Vec<i64>>.to_kind(),
@@ -403,9 +405,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_query() {
+        let now = Utc::now().naive_utc();
         let mut session = create_session().await;
         let user_id = "user_1";
-        replace_test_data(session.deref_mut(), user_id)
+        replace_test_data(session.deref_mut(), user_id, &now)
             .await
             .unwrap();
 
@@ -431,34 +434,53 @@ mod tests {
             Err(status) => panic!("reader aborted {:?}", status),
         };
         assert_eq!(true, maybe_row.is_some(), "row must exists");
-        match get_row(maybe_row.unwrap()) {
+        match get_row(maybe_row.unwrap(), user_id, now) {
             Err(err) => panic!("row error {:?}", err),
             _ => {}
         }
     }
 
-    fn get_row(row: Row) -> Result<(), anyhow::Error> {
-        // get first row
+    fn get_row(row: Row, source_user_id: &str, now: NaiveDateTime) -> Result<(), anyhow::Error> {
         let user_id = row.column_by_name::<String>("UserId")?;
+        assert_eq!(user_id.to_string(), source_user_id);
         let not_null_int64 = row.column_by_name::<i64>("NotNullINT64")?;
+        assert_eq!(not_null_int64, 1);
         let nullable_int64 = row.column_by_name::<Option<i64>>("NullableINT64")?;
+        assert_eq!(nullable_int64, None);
         let not_null_float64 = row.column_by_name::<f64>("NotNullFloat64")?;
+        assert_eq!(not_null_float64, 1.0);
         let nullable_float64 = row.column_by_name::<Option<f64>>("NullableFloat64")?;
+        assert_eq!(nullable_float64, None);
         let not_null_bool = row.column_by_name::<bool>("NotNullBool")?;
+        assert_eq!(not_null_bool, true);
         let nullable_bool = row.column_by_name::<Option<bool>>("NullableBool")?;
-        let not_null_byte_array = row.column_by_name::<Vec<u8>>("NotNullByteArray")?;
+        assert_eq!(nullable_bool, None);
+        let mut not_null_byte_array = row.column_by_name::<Vec<u8>>("NotNullByteArray")?;
+        assert_eq!(not_null_byte_array.pop().unwrap(), 1 as u8);
         let nullable_byte_array = row.column_by_name::<Option<Vec<u8>>>("NullableByteArray")?;
-        let not_null_decimal = row.column_by_name::<rust_decimal::Decimal>("NotNullNumeric")?;
-        let nullable_decimal =
-            row.column_by_name::<Option<rust_decimal::Decimal>>("NullableNumeric")?;
+        assert_eq!(nullable_byte_array, None);
+        let not_null_decimal = row.column_by_name::<Decimal>("NotNullNumeric")?;
+        assert_eq!(not_null_decimal.to_string(), "100.24");
+        let nullable_decimal = row.column_by_name::<Option<Decimal>>("NullableNumeric")?;
+        assert_eq!(nullable_decimal.unwrap().to_string(), "1000.42342");
         let not_null_ts = row.column_by_name::<NaiveDateTime>("NotNullTimestamp")?;
+        assert_eq!(not_null_ts.to_string(), now.to_string());
         let nullable_ts = row.column_by_name::<Option<NaiveDateTime>>("NullableTimestamp")?;
+        assert_eq!(nullable_ts.unwrap().to_string(), now.to_string());
         let not_null_date = row.column_by_name::<NaiveDate>("NotNullDate")?;
+        assert_eq!(not_null_date.to_string(), now.date().to_string());
         let nullable_date = row.column_by_name::<Option<NaiveDate>>("NullableDate")?;
-        let not_null_array = row.column_by_name::<Vec<i64>>("NotNullArray")?;
+        assert_eq!(nullable_date, None);
+        let mut not_null_array = row.column_by_name::<Vec<i64>>("NotNullArray")?;
+        assert_eq!(not_null_array.pop().unwrap(), 30); // from tail
+        assert_eq!(not_null_array.pop().unwrap(), 20);
+        assert_eq!(not_null_array.pop().unwrap(), 10);
         let nullable_array = row.column_by_name::<Option<Vec<i64>>>("NullableArray")?;
-        let not_null_string = row.column_by_name::<Option<String>>("NullableString")?;
+        assert_eq!(nullable_array, None);
+        let nullable_string = row.column_by_name::<Option<String>>("NullableString")?;
+        assert_eq!(nullable_string.unwrap(), user_id);
         let updated_at = row.column_by_name::<CommitTimestamp>("UpdatedAt")?;
+        assert_ne!(updated_at.timestamp, now);
         Ok(())
     }
 }
