@@ -29,6 +29,17 @@ pub struct SessionHandle {
 }
 
 impl SessionHandle {
+    pub(crate) fn new(session: Session, spanner_client: Client, now: Instant) -> SessionHandle {
+        SessionHandle {
+            session,
+            spanner_client,
+            valid: true,
+            last_used_at: now,
+            last_checked_at: now,
+            last_pong_at: now,
+        }
+    }
+
     pub async fn invalidate_if_needed<T>(&mut self, arg: Result<T, Status>) -> Result<T, Status> {
         return match arg {
             Ok(s) => Ok(s),
@@ -98,6 +109,16 @@ impl DerefMut for ManagedSession {
 pub struct SessionPool {
     sessions: Arc<Mutex<VecDeque<SessionHandle>>>,
     num_opened: Arc<AtomicI64>,
+}
+
+impl SessionPool {
+    fn new(init_pool: VecDeque<SessionHandle>) -> Self {
+        let size = init_pool.len() as i64;
+        SessionPool {
+            sessions: Arc::new(Mutex::new(init_pool)),
+            num_opened: Arc::new(AtomicI64::new(size)),
+        }
+    }
 }
 
 impl Clone for SessionPool {
@@ -184,16 +205,12 @@ impl SessionManager {
         let database_name = database.into();
         let init_pool =
             SessionManager::init_pool(database_name.clone(), &conn_pool, config.min_opened).await?;
-        let pool_size = init_pool.len() as i64;
         return Ok(SessionManager {
             database: database_name,
             config,
             conn_pool,
             waiters: Arc::new(Mutex::new(VecDeque::<Sender<bool>>::new())),
-            session_pool: SessionPool {
-                sessions: Arc::new(Mutex::new(init_pool)),
-                num_opened: Arc::new(AtomicI64::new(pool_size)),
-            },
+            session_pool: SessionPool::new(init_pool),
         });
     }
 
@@ -538,13 +555,6 @@ async fn batch_create_session(
     return Ok(response
         .session
         .into_iter()
-        .map(|s| SessionHandle {
-            last_checked_at: now,
-            last_used_at: now,
-            last_pong_at: now,
-            session: s,
-            spanner_client: spanner_client.clone(),
-            valid: true,
-        })
+        .map(|s| SessionHandle::new(s, spanner_client.clone(), now))
         .collect::<Vec<SessionHandle>>());
 }

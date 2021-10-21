@@ -9,6 +9,7 @@ use prost_types::{value, Value};
 use crate::value::CommitTimestamp;
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::StructType;
+use std::str::FromStr;
 
 #[derive(Clone)]
 pub struct Row {
@@ -175,6 +176,16 @@ impl TryFromValue for Vec<u8> {
     fn try_from(item: &Value, field: &Field) -> Result<Self> {
         match as_ref(item, field)? {
             Kind::StringValue(s) => base64::decode(s).map_err(|e| e.into()),
+            v => kind_to_error(v, field),
+        }
+    }
+}
+
+impl TryFromValue for rust_decimal::Decimal {
+    fn try_from(item: &Value, field: &Field) -> Result<Self> {
+        match as_ref(item, field)? {
+            Kind::StringValue(s) => rust_decimal::Decimal::from_str(s)
+                .context(format!("{}: decimal parse error ", field.name)),
             v => kind_to_error(v, field),
         }
     }
@@ -359,7 +370,7 @@ mod tests {
                     kind: Some("aaa".to_kind()),
                 },
                 Value {
-                    kind: Some(vec![10, 100].to_kind()),
+                    kind: Some(vec![10 as i64, 100 as i64].to_kind()),
                 },
                 // https://cloud.google.com/spanner/docs/query-syntax?hl=ja#using_structs_with_select
                 // SELECT ARRAY(SELECT AS STRUCT * FROM TestStruct LIMIT 2) as struct

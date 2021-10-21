@@ -12,6 +12,14 @@ pub struct CommitTimestamp {
     pub timestamp: NaiveDateTime,
 }
 
+impl CommitTimestamp {
+    pub fn new() -> Self {
+        CommitTimestamp {
+            timestamp: NaiveDateTime::from_timestamp(0, 0),
+        }
+    }
+}
+
 impl Deref for CommitTimestamp {
     type Target = NaiveDateTime;
 

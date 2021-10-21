@@ -282,3 +282,183 @@ impl BatchReadOnlyTransaction {
         return RowIterator::new(session, Box::new(partition.reader)).await;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::apiv1::conn_pool::ConnectionManager;
+    use crate::apiv1::spanner_client::Client;
+    use crate::mutation::insert_or_update;
+    use crate::reader::AsyncIterator;
+    use crate::row::Row;
+    use crate::session_pool::{
+        ManagedSession, SessionConfig, SessionHandle, SessionManager, SessionPool,
+    };
+    use crate::statement::{Kinds, Statement, ToKind, ToStruct, Types};
+    use crate::transaction::{CallOptions, QueryOptions};
+    use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
+    use crate::value::{CommitTimestamp, TimestampBound};
+    use chrono::{NaiveDate, NaiveDateTime, Utc};
+    use google_cloud_googleapis::spanner::v1::commit_request::Transaction::SingleUseTransaction;
+    use google_cloud_googleapis::spanner::v1::transaction_options::{Mode, ReadWrite};
+    use google_cloud_googleapis::spanner::v1::{
+        CommitRequest, CommitResponse, CreateSessionRequest, TransactionOptions,
+    };
+    use std::collections::VecDeque;
+    use std::ops::DerefMut;
+    use std::str::FromStr;
+    use std::sync::Arc;
+    use std::time::Instant;
+
+    const DATABASE: &str =
+        "projects/local-project/instances/test-instance/databases/local-database";
+
+    async fn create_session() -> ManagedSession {
+        let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
+            .await
+            .unwrap();
+        let session_request = CreateSessionRequest {
+            database: DATABASE.to_string(),
+            session: None,
+        };
+        let mut client = cm.conn();
+        let session_response = client.create_session(session_request, None).await.unwrap();
+        let session = session_response.into_inner();
+        let handle = SessionHandle::new(session, client, Instant::now());
+        let mut config = SessionConfig::default();
+        config.min_opened = 1;
+        config.max_opened = 1;
+        SessionManager::new(DATABASE, cm, config)
+            .await
+            .unwrap()
+            .get()
+            .await
+            .unwrap()
+    }
+
+    async fn replace_test_data(
+        session: &mut SessionHandle,
+        user_id: &str,
+    ) -> Result<CommitResponse, tonic::Status> {
+        session
+            .spanner_client
+            .commit(
+                CommitRequest {
+                    session: session.session.name.to_string(),
+                    mutations: vec![insert_or_update(
+                        "User",
+                        vec![
+                            "UserId",
+                            "NotNullINT64",
+                            "NullableINT64",
+                            "NotNullFloat64",
+                            "NullableFloat64",
+                            "NotNullBool",
+                            "NullableBool",
+                            "NotNullByteArray",
+                            "NullableByteArray",
+                            "NotNullNumeric",
+                            "NullableNumeric",
+                            "NotNullTimestamp",
+                            "NullableTimestamp",
+                            "NotNullDate",
+                            "NullableDate",
+                            "NotNullArray",
+                            "NullableArray",
+                            "NullableString",
+                            "UpdatedAt",
+                        ],
+                        vec![
+                            user_id.to_kind(),
+                            1.to_kind(),
+                            None::<i64>.to_kind(),
+                            1.0.to_kind(),
+                            None::<f64>.to_kind(),
+                            true.to_kind(),
+                            None::<bool>.to_kind(),
+                            vec![1 as u8].to_kind(),
+                            None::<Vec<u8>>.to_kind(),
+                            rust_decimal::Decimal::from_str("100.24").unwrap().to_kind(),
+                            Some(rust_decimal::Decimal::from_str("1000.42342").unwrap()).to_kind(),
+                            Utc::now().naive_utc().to_kind(),
+                            Some(Utc::now().naive_utc()).to_kind(),
+                            Utc::now().date().naive_utc().to_kind(),
+                            None::<NaiveDate>.to_kind(),
+                            vec![10 as i64, 20 as i64, 30 as i64].to_kind(),
+                            None::<Vec<i64>>.to_kind(),
+                            Some(user_id).to_kind(),
+                            CommitTimestamp::new().to_kind(),
+                        ],
+                    )],
+                    return_commit_stats: false,
+                    request_options: None,
+                    transaction: Some(SingleUseTransaction(TransactionOptions {
+                        mode: Some(Mode::ReadWrite(ReadWrite {})),
+                    })),
+                },
+                None,
+            )
+            .await
+            .map(|x| x.into_inner())
+    }
+
+    #[tokio::test]
+    async fn test_query() {
+        let mut session = create_session().await;
+        let user_id = "user_1";
+        replace_test_data(session.deref_mut(), user_id)
+            .await
+            .unwrap();
+
+        let mut tx = match ReadOnlyTransaction::begin(
+            session,
+            TimestampBound::strong_read(),
+            CallOptions::default(),
+        )
+        .await
+        {
+            Ok(tx) => tx,
+            Err(status) => panic!("begin error {:?}", status),
+        };
+
+        let mut stmt = Statement::new("SELECT * FROM User WHERE UserId = @UserID");
+        stmt.add_param("UserId", user_id);
+        let mut reader = match tx.query(stmt, Some(QueryOptions::default())).await {
+            Ok(tx) => tx,
+            Err(status) => panic!("query error {:?}", status),
+        };
+        let maybe_row = match reader.next().await {
+            Ok(row) => row,
+            Err(status) => panic!("reader aborted {:?}", status),
+        };
+        assert_eq!(true, maybe_row.is_some(), "row must exists");
+        match get_row(maybe_row.unwrap()) {
+            Err(err) => panic!("row error {:?}", err),
+            _ => {}
+        }
+    }
+
+    fn get_row(row: Row) -> Result<(), anyhow::Error> {
+        // get first row
+        let user_id = row.column_by_name::<String>("UserId")?;
+        let not_null_int64 = row.column_by_name::<i64>("NotNullINT64")?;
+        let nullable_int64 = row.column_by_name::<Option<i64>>("NullableINT64")?;
+        let not_null_float64 = row.column_by_name::<f64>("NotNullFloat64")?;
+        let nullable_float64 = row.column_by_name::<Option<f64>>("NullableFloat64")?;
+        let not_null_bool = row.column_by_name::<bool>("NotNullBool")?;
+        let nullable_bool = row.column_by_name::<Option<bool>>("NullableBool")?;
+        let not_null_byte_array = row.column_by_name::<Vec<u8>>("NotNullByteArray")?;
+        let nullable_byte_array = row.column_by_name::<Option<Vec<u8>>>("NullableByteArray")?;
+        let not_null_decimal = row.column_by_name::<rust_decimal::Decimal>("NotNullNumeric")?;
+        let nullable_decimal =
+            row.column_by_name::<Option<rust_decimal::Decimal>>("NullableNumeric")?;
+        let not_null_ts = row.column_by_name::<NaiveDateTime>("NotNullTimestamp")?;
+        let nullable_ts = row.column_by_name::<Option<NaiveDateTime>>("NullableTimestamp")?;
+        let not_null_date = row.column_by_name::<NaiveDate>("NotNullDate")?;
+        let nullable_date = row.column_by_name::<Option<NaiveDate>>("NullableDate")?;
+        let not_null_array = row.column_by_name::<Vec<i64>>("NotNullArray")?;
+        let nullable_array = row.column_by_name::<Option<Vec<i64>>>("NullableArray")?;
+        let not_null_string = row.column_by_name::<Option<String>>("NullableString")?;
+        let updated_at = row.column_by_name::<CommitTimestamp>("UpdatedAt")?;
+        Ok(())
+    }
+}

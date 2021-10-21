@@ -73,10 +73,10 @@ impl Default for QueryOptions {
 }
 
 pub struct Transaction {
-    pub session: Option<ManagedSession>,
+    pub(crate) session: Option<ManagedSession>,
     // for returning ownership of session on before destroy
-    pub sequence_number: AtomicI64,
-    pub transaction_selector: TransactionSelector,
+    pub(crate) sequence_number: AtomicI64,
+    pub(crate) transaction_selector: TransactionSelector,
 }
 
 impl Transaction {

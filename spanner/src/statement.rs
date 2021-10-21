@@ -162,6 +162,15 @@ impl ToKind for &[u8] {
     }
 }
 
+impl ToKind for Vec<u8> {
+    fn to_kind(&self) -> Kind {
+        base64::encode(self).to_kind()
+    }
+    fn get_type() -> Type {
+        single_type(TypeCode::Bytes)
+    }
+}
+
 impl ToKind for rust_decimal::Decimal {
     fn to_kind(&self) -> Kind {
         self.to_string().to_kind()
