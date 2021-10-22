@@ -82,6 +82,38 @@ async fn test_mutation_and_statement() {
 
 #[tokio::test]
 #[serial]
+async fn test_partitioned_dml() {
+    let now = Utc::now().naive_utc();
+    let mut session = create_session().await;
+
+    let user_id = format!("user_{}", now.timestamp());
+    let cr = replace_test_data(&mut session, vec![create_user_mutation(&user_id, &now)]).await.unwrap();
+
+    let mut tx = match ReadWriteTransaction::begin_partitioned_dml(session, CallOptions::default()).await {
+        Ok(tx) => tx,
+        Err(e) => panic!("begin first error {:?}", e.status),
+    };
+    let result = async {
+        let stmt1 = Statement::new("UPDATE User SET NullableString = 'aaa' WHERE NullableString IS NOT NULL");
+        tx.update(stmt1, None).await
+    }.await;
+
+    // partition dml doesn't support commit/rollback
+    assert!(result.is_ok());
+
+    let session = create_session().await;
+    let mut tx = match ReadOnlyTransaction::begin(session, TimestampBound::strong_read(), CallOptions::default()).await {
+        Ok(tx) => tx,
+        Err(e) => panic!("begin second error {:?}", e)
+    };
+    let reader = tx.read("User", vec!["NullableString"], KeySet::from(Key::one(user_id.clone())), None).await.unwrap();
+    let row = all_rows(reader).await.unwrap().pop().unwrap();
+    let value = row.column_by_name::<String>("NullableString").unwrap();
+    assert_eq!(value,"aaa");
+}
+
+#[tokio::test]
+#[serial]
 async fn test_rollback() {
     let now = Utc::now().naive_utc();
     let mut session = create_session().await;
