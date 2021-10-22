@@ -24,9 +24,9 @@ use crate::value::CommitTimestamp;
 /// Spanner types.
 #[derive(Clone)]
 pub struct Statement {
-    pub sql: String,
-    pub params: BTreeMap<String, Value>,
-    pub param_types: HashMap<String, Type>,
+    pub(crate) sql: String,
+    pub(crate) params: BTreeMap<String, Value>,
+    pub(crate) param_types: HashMap<String, Type>,
 }
 
 impl Statement {

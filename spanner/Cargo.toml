@@ -33,3 +33,6 @@ base64 = "0.13.0"
 google-cloud-auth = { path = "../auth" }
 google-cloud-gax = { path = "../gax" }
 google-cloud-googleapis = { path = "../googleapis" }
+
+[dev-dependencies]
+serial_test = "*"

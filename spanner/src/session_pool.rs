@@ -240,7 +240,7 @@ impl SessionManager {
         Ok(sessions.into())
     }
 
-    pub(crate) async fn get(&self) -> Result<ManagedSession, SessionError> {
+    pub async fn get(&self) -> Result<ManagedSession, SessionError> {
         loop {
             {
                 let mut locked = self.session_pool.sessions.lock();

@@ -68,7 +68,7 @@ impl<'a> Struct<'a> {
         let kind = as_ref(item, field)?;
         let mut index = HashMap::new();
         for (i, f) in metadata.fields.iter().enumerate() {
-            index.insert(f.name.clone(), i);
+            index.insert(f.name.to_string(), i);
         }
         match kind {
             Kind::ListValue(s) => Ok(Struct {
