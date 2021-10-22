@@ -88,7 +88,7 @@ impl Default for CommitOptions {
 pub struct ReadWriteTransaction {
     base_tx: Transaction,
     tx_id: Vec<u8>,
-    pub wb: Vec<Mutation>,
+    wb: Vec<Mutation>,
 }
 
 impl Deref for ReadWriteTransaction {
