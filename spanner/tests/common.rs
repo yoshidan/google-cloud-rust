@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::NaiveDateTime;
+use chrono::{NaiveDateTime, NaiveDate};
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::SingleUseTransaction;
 use google_cloud_googleapis::spanner::v1::transaction_options::{Mode, ReadWrite};
 use google_cloud_googleapis::spanner::v1::{
@@ -7,7 +7,6 @@ use google_cloud_googleapis::spanner::v1::{
 };
 use google_cloud_spanner::apiv1::conn_pool::ConnectionManager;
 use google_cloud_spanner::mutation::insert_or_update;
-use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
 use google_cloud_spanner::row::{Row, Struct, TryFromStruct};
 use google_cloud_spanner::session_pool::{
     ManagedSession, SessionConfig, SessionHandle, SessionManager,
@@ -117,22 +116,6 @@ pub async fn replace_test_data(
         .map(|x| x.into_inner())
 }
 
-pub async fn all_rows(mut itr: RowIterator<'_>) -> Vec<Row> {
-    let mut rows = vec![];
-    loop {
-        match itr.next().await {
-            Ok(row) => {
-                if row.is_some() {
-                    rows.push(row.unwrap());
-                } else {
-                    break;
-                }
-            }
-            Err(status) => panic!("reader aborted {:?}", status),
-        };
-    }
-    rows
-}
 
 pub fn create_user_mutation(user_id: &str, now: &NaiveDateTime) -> Mutation {
     insert_or_update(
@@ -160,4 +143,47 @@ pub fn create_user_mutation(user_id: &str, now: &NaiveDateTime) -> Mutation {
             CommitTimestamp::new().to_kind(),
         ],
     )
+}
+
+pub fn assert_user_row(row: &Row, source_user_id: &str, now: &NaiveDateTime, commit_timestamp: &NaiveDateTime)  {
+    let user_id = row.column_by_name::<String>("UserId").unwrap();
+    assert_eq!(user_id.to_string(), source_user_id);
+    let not_null_int64 = row.column_by_name::<i64>("NotNullINT64").unwrap();
+    assert_eq!(not_null_int64, 1);
+    let nullable_int64 = row.column_by_name::<Option<i64>>("NullableINT64").unwrap();
+    assert_eq!(nullable_int64, None);
+    let not_null_float64 = row.column_by_name::<f64>("NotNullFloat64").unwrap();
+    assert_eq!(not_null_float64, 1.0);
+    let nullable_float64 = row.column_by_name::<Option<f64>>("NullableFloat64").unwrap();
+    assert_eq!(nullable_float64, None);
+    let not_null_bool = row.column_by_name::<bool>("NotNullBool").unwrap();
+    assert_eq!(not_null_bool, true);
+    let nullable_bool = row.column_by_name::<Option<bool>>("NullableBool").unwrap();
+    assert_eq!(nullable_bool, None);
+    let mut not_null_byte_array = row.column_by_name::<Vec<u8>>("NotNullByteArray").unwrap();
+    assert_eq!(not_null_byte_array.pop().unwrap(), 1 as u8);
+    let nullable_byte_array = row.column_by_name::<Option<Vec<u8>>>("NullableByteArray").unwrap();
+    assert_eq!(nullable_byte_array, None);
+    let not_null_decimal = row.column_by_name::<Decimal>("NotNullNumeric").unwrap();
+    assert_eq!(not_null_decimal.to_string(), "100.24");
+    let nullable_decimal = row.column_by_name::<Option<Decimal>>("NullableNumeric").unwrap();
+    assert_eq!(nullable_decimal.unwrap().to_string(), "1000.42342");
+    let not_null_ts = row.column_by_name::<NaiveDateTime>("NotNullTimestamp").unwrap();
+    assert_eq!(not_null_ts.to_string(), now.to_string());
+    let nullable_ts = row.column_by_name::<Option<NaiveDateTime>>("NullableTimestamp").unwrap();
+    assert_eq!(nullable_ts.unwrap().to_string(), now.to_string());
+    let not_null_date = row.column_by_name::<NaiveDate>("NotNullDate").unwrap();
+    assert_eq!(not_null_date.to_string(), now.date().to_string());
+    let nullable_date = row.column_by_name::<Option<NaiveDate>>("NullableDate").unwrap();
+    assert_eq!(nullable_date, None);
+    let mut not_null_array = row.column_by_name::<Vec<i64>>("NotNullArray").unwrap();
+    assert_eq!(not_null_array.pop().unwrap(), 30); // from tail
+    assert_eq!(not_null_array.pop().unwrap(), 20);
+    assert_eq!(not_null_array.pop().unwrap(), 10);
+    let nullable_array = row.column_by_name::<Option<Vec<i64>>>("NullableArray").unwrap();
+    assert_eq!(nullable_array, None);
+    let nullable_string = row.column_by_name::<Option<String>>("NullableString").unwrap();
+    assert_eq!(nullable_string.unwrap(), user_id);
+    let updated_at = row.column_by_name::<CommitTimestamp>("UpdatedAt").unwrap();
+    assert_eq!(updated_at.timestamp.to_string(), commit_timestamp.to_string());
 }

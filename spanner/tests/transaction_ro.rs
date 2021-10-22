@@ -1,5 +1,4 @@
-use anyhow::Result;
-use chrono::{NaiveDate, NaiveDateTime, Utc};
+use chrono::{NaiveDateTime, Utc};
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::SingleUseTransaction;
 use google_cloud_googleapis::spanner::v1::Mutation;
 use google_cloud_spanner::key::{Key, KeySet};
@@ -9,13 +8,12 @@ use google_cloud_spanner::statement::{Statement, ToKind};
 use google_cloud_spanner::transaction::{CallOptions, QueryOptions};
 use google_cloud_spanner::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use google_cloud_spanner::value::{CommitTimestamp, TimestampBound};
-use rust_decimal::Decimal;
 use serial_test::serial;
 use std::ops::DerefMut;
-use std::str::FromStr;
 
 mod common;
 use common::*;
+use google_cloud_spanner::reader::{RowIterator, AsyncIterator};
 
 fn create_user_item_mutation(user_id: &str, item_id: i64) -> Mutation {
     insert_or_update(
@@ -43,7 +41,25 @@ fn create_user_character_mutation(user_id: &str, character_id: i64) -> Mutation 
     )
 }
 
-async fn assert_read(tx: &mut ReadOnlyTransaction, user_id: &str, now: &NaiveDateTime) {
+
+pub async fn all_rows(mut itr: RowIterator<'_>) -> Vec<Row> {
+    let mut rows = vec![];
+    loop {
+        match itr.next().await {
+            Ok(row) => {
+                if row.is_some() {
+                    rows.push(row.unwrap());
+                } else {
+                    break;
+                }
+            }
+            Err(status) => panic!("reader aborted {:?}", status),
+        };
+    }
+    rows
+}
+
+async fn assert_read(tx: &mut ReadOnlyTransaction, user_id: &str, now: &NaiveDateTime, cts : &NaiveDateTime) {
     let reader = match tx
         .read(
             "User",
@@ -59,22 +75,16 @@ async fn assert_read(tx: &mut ReadOnlyTransaction, user_id: &str, now: &NaiveDat
     let mut rows = all_rows(reader).await;
     assert_eq!(1, rows.len(), "row must exists");
     let row = rows.pop().unwrap();
-    match get_row(&row, user_id, now) {
-        Err(err) => panic!("row error {:?}", err),
-        _ => {}
-    }
+    assert_user_row(&row, user_id, now, cts);
 }
 
-async fn assert_query(tx: &mut ReadOnlyTransaction, user_id: &str, now: &NaiveDateTime) {
+async fn assert_query(tx: &mut ReadOnlyTransaction, user_id: &str, now: &NaiveDateTime, cts: &NaiveDateTime) {
     let mut stmt = Statement::new("SELECT * FROM User WHERE UserId = @UserID");
     stmt.add_param("UserId", user_id);
     let mut rows = execute_query(tx, stmt).await;
     assert_eq!(1, rows.len(), "row must exists");
     let row = rows.pop().unwrap();
-    match get_row(&row, user_id, now) {
-        Err(err) => panic!("row error {:?}", err),
-        _ => {}
-    }
+    assert_user_row(&row, user_id, now, cts);
 }
 
 async fn execute_query(tx: &mut ReadOnlyTransaction, stmt: Statement) -> Vec<Row> {
@@ -89,15 +99,13 @@ async fn assert_partitioned_query(
     tx: &mut BatchReadOnlyTransaction,
     user_id: &str,
     now: &NaiveDateTime,
+    cts : &NaiveDateTime
 ) {
     let mut stmt = Statement::new("SELECT * FROM User WHERE UserId = @UserID");
     stmt.add_param("UserId", user_id);
     let row = execute_partitioned_query(tx, stmt).await;
     assert_eq!(row.len(), 1);
-    match get_row(row.first().unwrap(), user_id, now) {
-        Err(err) => panic!("row error {:?}", err),
-        _ => {}
-    }
+    assert_user_row(row.first().unwrap(), user_id, now, cts);
 }
 
 async fn execute_partitioned_query(tx: &mut BatchReadOnlyTransaction, stmt: Statement) -> Vec<Row> {
@@ -124,6 +132,7 @@ async fn assert_partitioned_read(
     tx: &mut BatchReadOnlyTransaction,
     user_id: &str,
     now: &NaiveDateTime,
+    cts : &NaiveDateTime
 ) {
     let partitions = match tx
         .partition_read(
@@ -151,54 +160,7 @@ async fn assert_partitioned_read(
         }
     }
     assert_eq!(rows.len(), 1);
-    match get_row(rows.first().unwrap(), user_id, now) {
-        Err(err) => panic!("row error {:?}", err),
-        _ => {}
-    }
-}
-
-fn get_row(row: &Row, source_user_id: &str, now: &NaiveDateTime) -> Result<(), anyhow::Error> {
-    let user_id = row.column_by_name::<String>("UserId")?;
-    assert_eq!(user_id.to_string(), source_user_id);
-    let not_null_int64 = row.column_by_name::<i64>("NotNullINT64")?;
-    assert_eq!(not_null_int64, 1);
-    let nullable_int64 = row.column_by_name::<Option<i64>>("NullableINT64")?;
-    assert_eq!(nullable_int64, None);
-    let not_null_float64 = row.column_by_name::<f64>("NotNullFloat64")?;
-    assert_eq!(not_null_float64, 1.0);
-    let nullable_float64 = row.column_by_name::<Option<f64>>("NullableFloat64")?;
-    assert_eq!(nullable_float64, None);
-    let not_null_bool = row.column_by_name::<bool>("NotNullBool")?;
-    assert_eq!(not_null_bool, true);
-    let nullable_bool = row.column_by_name::<Option<bool>>("NullableBool")?;
-    assert_eq!(nullable_bool, None);
-    let mut not_null_byte_array = row.column_by_name::<Vec<u8>>("NotNullByteArray")?;
-    assert_eq!(not_null_byte_array.pop().unwrap(), 1 as u8);
-    let nullable_byte_array = row.column_by_name::<Option<Vec<u8>>>("NullableByteArray")?;
-    assert_eq!(nullable_byte_array, None);
-    let not_null_decimal = row.column_by_name::<Decimal>("NotNullNumeric")?;
-    assert_eq!(not_null_decimal.to_string(), "100.24");
-    let nullable_decimal = row.column_by_name::<Option<Decimal>>("NullableNumeric")?;
-    assert_eq!(nullable_decimal.unwrap().to_string(), "1000.42342");
-    let not_null_ts = row.column_by_name::<NaiveDateTime>("NotNullTimestamp")?;
-    assert_eq!(not_null_ts.to_string(), now.to_string());
-    let nullable_ts = row.column_by_name::<Option<NaiveDateTime>>("NullableTimestamp")?;
-    assert_eq!(nullable_ts.unwrap().to_string(), now.to_string());
-    let not_null_date = row.column_by_name::<NaiveDate>("NotNullDate")?;
-    assert_eq!(not_null_date.to_string(), now.date().to_string());
-    let nullable_date = row.column_by_name::<Option<NaiveDate>>("NullableDate")?;
-    assert_eq!(nullable_date, None);
-    let mut not_null_array = row.column_by_name::<Vec<i64>>("NotNullArray")?;
-    assert_eq!(not_null_array.pop().unwrap(), 30); // from tail
-    assert_eq!(not_null_array.pop().unwrap(), 20);
-    assert_eq!(not_null_array.pop().unwrap(), 10);
-    let nullable_array = row.column_by_name::<Option<Vec<i64>>>("NullableArray")?;
-    assert_eq!(nullable_array, None);
-    let nullable_string = row.column_by_name::<Option<String>>("NullableString")?;
-    assert_eq!(nullable_string.unwrap(), user_id);
-    let updated_at = row.column_by_name::<CommitTimestamp>("UpdatedAt")?;
-    assert_ne!(updated_at.timestamp.to_string(), now.to_string());
-    Ok(())
+    assert_user_row(rows.first().unwrap(), user_id, now, cts);
 }
 
 #[tokio::test]
@@ -209,7 +171,7 @@ async fn test_query_and_read() {
     let user_id_1 = "user_1";
     let user_id_2 = "user_2";
     let user_id_3 = "user_3";
-    replace_test_data(
+    let cr = replace_test_data(
         session.deref_mut(),
         vec![
             create_user_mutation(&user_id_1, &now),
@@ -231,12 +193,14 @@ async fn test_query_and_read() {
         Err(status) => panic!("begin error {:?}", status),
     };
 
-    assert_query(&mut tx, user_id_1, &now).await;
-    assert_query(&mut tx, user_id_2, &now).await;
-    assert_query(&mut tx, user_id_3, &now).await;
-    assert_read(&mut tx, user_id_1, &now).await;
-    assert_read(&mut tx, user_id_2, &now).await;
-    assert_read(&mut tx, user_id_3, &now).await;
+    let ts = cr.commit_timestamp.as_ref().unwrap();
+    let ts = NaiveDateTime::from_timestamp(ts.seconds, ts.nanos as u32);
+    assert_query(&mut tx, user_id_1, &now, &ts).await;
+    assert_query(&mut tx, user_id_2, &now, &ts).await;
+    assert_query(&mut tx, user_id_3, &now, &ts).await;
+    assert_read(&mut tx, user_id_1, &now, &ts).await;
+    assert_read(&mut tx, user_id_2, &now, &ts).await;
+    assert_read(&mut tx, user_id_3, &now, &ts).await;
 }
 
 #[tokio::test]
@@ -245,7 +209,7 @@ async fn test_complex_query() {
     let now = Utc::now().naive_utc();
     let mut session = create_session().await;
     let user_id_1 = "user_10";
-    replace_test_data(
+    let cr =replace_test_data(
         session.deref_mut(),
         vec![
             create_user_mutation(&user_id_1, &now),
@@ -282,10 +246,9 @@ async fn test_complex_query() {
     let row = rows.pop().unwrap();
 
     // check UserTable
-    match get_row(&row, user_id_1, &now) {
-        Err(err) => panic!("row error {:?}", err),
-        _ => {}
-    }
+    let ts = cr.commit_timestamp.as_ref().unwrap();
+    let ts = NaiveDateTime::from_timestamp(ts.seconds, ts.nanos as u32);
+    assert_user_row(&row, user_id_1, &now, &ts);
 
     let mut user_items = row.column_by_name::<Vec<UserItem>>("UserItem").unwrap();
     let first_item = user_items.pop().unwrap();
@@ -333,7 +296,7 @@ async fn test_batch_partition_query_and_read() {
     let user_id_1 = "user_1";
     let user_id_2 = "user_2";
     let user_id_3 = "user_3";
-    replace_test_data(
+    let cr = replace_test_data(
         session.deref_mut(),
         vec![
             create_user_mutation(&user_id_1, &now),
@@ -355,10 +318,12 @@ async fn test_batch_partition_query_and_read() {
         Err(status) => panic!("begin error {:?}", status),
     };
 
-    assert_partitioned_query(&mut tx, user_id_1, &now).await;
-    assert_partitioned_query(&mut tx, user_id_2, &now).await;
-    assert_partitioned_query(&mut tx, user_id_3, &now).await;
-    assert_partitioned_read(&mut tx, user_id_1, &now).await;
-    assert_partitioned_read(&mut tx, user_id_2, &now).await;
-    assert_partitioned_read(&mut tx, user_id_3, &now).await;
+    let ts = cr.commit_timestamp.as_ref().unwrap();
+    let ts = NaiveDateTime::from_timestamp(ts.seconds, ts.nanos as u32);
+    assert_partitioned_query(&mut tx, user_id_1, &now, &ts).await;
+    assert_partitioned_query(&mut tx, user_id_2, &now, &ts).await;
+    assert_partitioned_query(&mut tx, user_id_3, &now, &ts).await;
+    assert_partitioned_read(&mut tx, user_id_1, &now, &ts).await;
+    assert_partitioned_read(&mut tx, user_id_2, &now, &ts).await;
+    assert_partitioned_read(&mut tx, user_id_3, &now, &ts).await;
 }
