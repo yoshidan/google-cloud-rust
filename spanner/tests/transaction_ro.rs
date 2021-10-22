@@ -1,6 +1,6 @@
 use google_cloud_spanner::apiv1::conn_pool::ConnectionManager;
 use google_cloud_spanner::mutation::insert_or_update;
-use google_cloud_spanner::reader::AsyncIterator;
+use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
 use google_cloud_spanner::row::{Row, TryFromStruct, Struct};
 use google_cloud_spanner::session_pool::{
     ManagedSession, SessionConfig, SessionHandle, SessionManager,
@@ -12,7 +12,7 @@ use google_cloud_spanner::value::{CommitTimestamp, TimestampBound};
 use chrono::{NaiveDate, NaiveDateTime, Utc};
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::SingleUseTransaction;
 use google_cloud_googleapis::spanner::v1::transaction_options::{Mode, ReadWrite};
-use google_cloud_googleapis::spanner::v1::{CommitRequest, CommitResponse, TransactionOptions, Mutation};
+use google_cloud_googleapis::spanner::v1::{CommitRequest, CommitResponse, TransactionOptions, Mutation };
 use rust_decimal::Decimal;
 use std::ops::DerefMut;
 use std::str::FromStr;
@@ -140,16 +140,14 @@ async fn replace_test_data(
 
 
 async fn assert_read(tx: &mut ReadOnlyTransaction, user_id: &str, now: &NaiveDateTime) {
-    let mut reader = match tx.read("User", user_columns(), KeySet::from(Key::one(user_id)), None).await {
+    let reader = match tx.read("User", user_columns(), KeySet::from(Key::one(user_id)), None).await {
         Ok(tx) => tx,
         Err(status) => panic!("read error {:?}", status),
     };
-    let maybe_row = match reader.next().await {
-        Ok(row) => row,
-        Err(status) => panic!("reader aborted {:?}", status),
-    };
-    assert_eq!(true, maybe_row.is_some(), "row must exists");
-    match get_row(&maybe_row.unwrap(), user_id, now) {
+    let mut rows = all_rows(reader).await;
+    assert_eq!(1, rows.len(), "row must exists");
+    let row = rows.pop().unwrap();
+    match get_row(&row, user_id, now) {
         Err(err) => panic!("row error {:?}", err),
         _ => {}
     }
@@ -158,24 +156,94 @@ async fn assert_read(tx: &mut ReadOnlyTransaction, user_id: &str, now: &NaiveDat
 async fn assert_query(tx: &mut ReadOnlyTransaction, user_id: &str, now: &NaiveDateTime) {
     let mut stmt = Statement::new("SELECT * FROM User WHERE UserId = @UserID");
     stmt.add_param("UserId", user_id);
-    let row = execute_query(tx, stmt).await;
+    let mut rows= execute_query(tx, stmt).await;
+    assert_eq!(1, rows.len(), "row must exists");
+    let row = rows.pop().unwrap();
     match get_row(&row, user_id, now) {
         Err(err) => panic!("row error {:?}", err),
         _ => {}
     }
 }
 
-async fn execute_query(tx: &mut ReadOnlyTransaction, stmt: Statement) -> Row {
-    let mut reader = match tx.query(stmt, Some(QueryOptions::default())).await {
+async fn execute_query(tx: &mut ReadOnlyTransaction, stmt: Statement) -> Vec<Row> {
+    let reader = match tx.query(stmt, Some(QueryOptions::default())).await {
         Ok(tx) => tx,
         Err(status) => panic!("query error {:?}", status),
     };
-    let maybe_row = match reader.next().await {
-        Ok(row) => row,
-        Err(status) => panic!("reader aborted {:?}", status),
+    all_rows(reader).await
+}
+
+async fn assert_partitioned_query(tx: &mut BatchReadOnlyTransaction, user_id: &str, now: &NaiveDateTime) {
+    let mut stmt = Statement::new("SELECT * FROM User WHERE UserId = @UserID");
+    stmt.add_param("UserId", user_id);
+    let row = execute_partitioned_query(tx, stmt).await;
+    assert_eq!(row.len(), 1);
+    match get_row(row.first().unwrap(), user_id, now) {
+        Err(err) => panic!("row error {:?}", err),
+        _ => {}
+    }
+}
+
+async fn execute_partitioned_query(tx: &mut BatchReadOnlyTransaction, stmt: Statement) -> Vec<Row> {
+    let partitions = match tx.partition_query(stmt, None, None).await {
+        Ok(tx) => tx,
+        Err(status) => panic!("query error {:?}", status),
     };
-    assert_eq!(true, maybe_row.is_some(), "row must exists");
-    maybe_row.unwrap()
+    println!("partition count = {}", partitions.len());
+    let mut rows = vec![];
+    for p in partitions.into_iter() {
+        let reader = match tx.execute(p).await {
+            Ok(tx) => tx,
+            Err(status) => panic!("query error {:?}", status),
+        };
+        let rows_per_partition = all_rows(reader).await;
+        for x in rows_per_partition {
+           rows.push(x);
+        }
+    }
+    rows
+}
+
+async fn assert_partitioned_read(tx: &mut BatchReadOnlyTransaction, user_id: &str, now: &NaiveDateTime) {
+    let partitions = match tx.partition_read("User", user_columns(), KeySet::from(Key::one(user_id)), None, None).await {
+        Ok(tx) => tx,
+        Err(status) => panic!("query error {:?}", status),
+    };
+    println!("partition count = {}", partitions.len());
+    let mut rows = vec![];
+    for p in partitions.into_iter() {
+        let reader = match tx.execute(p).await {
+            Ok(tx) => tx,
+            Err(status) => panic!("query error {:?}", status),
+        };
+        let rows_per_partition = all_rows(reader).await;
+        for x in rows_per_partition {
+            rows.push(x);
+        }
+    }
+    assert_eq!(rows.len(), 1);
+    match get_row(rows.first().unwrap(), user_id, now) {
+        Err(err) => panic!("row error {:?}", err),
+        _ => {}
+    }
+}
+
+
+async fn all_rows(mut itr: RowIterator<'_>) -> Vec<Row> {
+    let mut rows = vec![];
+    loop {
+        match itr.next().await {
+            Ok(row) => {
+                if row.is_some() {
+                    rows.push(row.unwrap());
+                } else {
+                    break;
+                }
+            },
+            Err(status) => panic!("reader aborted {:?}", status),
+        };
+    }
+    rows
 }
 
 fn get_row(row: &Row, source_user_id: &str, now: &NaiveDateTime) -> Result<(), anyhow::Error> {
@@ -323,7 +391,9 @@ async fn test_complex_query()  {
         FROM User p WHERE UserId = @UserId;
     ");
     stmt.add_param("UserId", user_id_1);
-    let row = execute_query(&mut tx, stmt).await;
+    let mut rows = execute_query(&mut tx, stmt).await;
+    assert_eq!(1, rows.len());
+    let row = rows.pop().unwrap();
 
     // check UserTable
     match get_row(&row, user_id_1, &now) {
@@ -358,3 +428,36 @@ async fn test_complex_query()  {
     assert!(user_characters.is_empty());
 }
 
+
+#[tokio::test]
+#[serial]
+async fn test_batch_partition_query_and_read() {
+    let now = Utc::now().naive_utc();
+    let mut session = create_session().await;
+    let user_id_1= "user_1";
+    let user_id_2= "user_2";
+    let user_id_3= "user_3";
+    replace_test_data(session.deref_mut(), vec![
+        create_user_mutation(&user_id_1, &now),
+        create_user_mutation(&user_id_2 , &now),
+        create_user_mutation(&user_id_3, &now),
+    ]).await.unwrap();
+
+    let mut tx = match BatchReadOnlyTransaction::begin(
+        session,
+        TimestampBound::strong_read(),
+        CallOptions::default(),
+    )
+        .await
+    {
+        Ok(tx) => tx,
+        Err(status) => panic!("begin error {:?}", status),
+    };
+
+    assert_partitioned_query(&mut tx, user_id_1, &now).await;
+    assert_partitioned_query(&mut tx, user_id_2, &now).await;
+    assert_partitioned_query(&mut tx, user_id_3, &now).await;
+    assert_partitioned_read(&mut tx, user_id_1, &now).await;
+    assert_partitioned_read(&mut tx, user_id_2, &now).await;
+    assert_partitioned_read(&mut tx, user_id_3, &now).await;
+}

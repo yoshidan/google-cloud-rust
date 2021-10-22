@@ -152,9 +152,9 @@ impl BatchReadOnlyTransaction {
     pub async fn partition_read<T, C, K>(
         &mut self,
         table: T,
-        keys: K,
         columns: Vec<C>,
-        po: PartitionOptions,
+        keys: K,
+        po: Option<PartitionOptions>,
         ro: Option<ReadOptions>,
     ) -> Result<Vec<Partition<TableReader>>, Status>
     where
@@ -176,7 +176,7 @@ impl BatchReadOnlyTransaction {
             index: opt.index.clone(),
             columns: columns.clone(),
             key_set: Some(keys.clone().into()),
-            partition_options: Some(po),
+            partition_options: po,
         };
         let result = match self
             .as_mut_session()
@@ -217,7 +217,7 @@ impl BatchReadOnlyTransaction {
     pub async fn partition_query(
         &mut self,
         stmt: Statement,
-        po: PartitionOptions,
+        po: Option<PartitionOptions>,
         qo: Option<QueryOptions>,
     ) -> Result<Vec<Partition<StatementReader>>, Status> {
         let opt = match qo {
@@ -233,7 +233,7 @@ impl BatchReadOnlyTransaction {
                 fields: stmt.params.clone(),
             }),
             param_types: stmt.param_types.clone(),
-            partition_options: Some(po),
+            partition_options: po,
         };
         let result = match self
             .as_mut_session()
