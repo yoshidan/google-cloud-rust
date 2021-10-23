@@ -145,6 +145,34 @@ pub fn create_user_mutation(user_id: &str, now: &NaiveDateTime) -> Mutation {
     )
 }
 
+pub fn create_user_item_mutation(user_id: &str, item_id: i64) -> Mutation {
+    insert_or_update(
+        "UserItem",
+        vec!["UserId", "ItemId", "Quantity", "UpdatedAt"],
+        vec![
+            user_id.to_kind(),
+            item_id.to_kind(),
+            100.to_kind(),
+            CommitTimestamp::new().to_kind(),
+        ],
+    )
+}
+
+pub fn create_user_character_mutation(user_id: &str, character_id: i64) -> Mutation {
+    insert_or_update(
+        "UserCharacter",
+        vec!["UserId", "CharacterId", "Level", "UpdatedAt"],
+        vec![
+            user_id.to_kind(),
+            character_id.to_kind(),
+            1.to_kind(),
+            CommitTimestamp::new().to_kind(),
+        ],
+    )
+}
+
+
+
 pub fn assert_user_row(row: &Row, source_user_id: &str, now: &NaiveDateTime, commit_timestamp: &NaiveDateTime)  {
     let user_id = row.column_by_name::<String>("UserId").unwrap();
     assert_eq!(user_id.to_string(), source_user_id);

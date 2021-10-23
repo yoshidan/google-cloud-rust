@@ -15,33 +15,6 @@ mod common;
 use common::*;
 use google_cloud_spanner::reader::{RowIterator, AsyncIterator};
 
-fn create_user_item_mutation(user_id: &str, item_id: i64) -> Mutation {
-    insert_or_update(
-        "UserItem",
-        vec!["UserId", "ItemId", "Quantity", "UpdatedAt"],
-        vec![
-            user_id.to_kind(),
-            item_id.to_kind(),
-            100.to_kind(),
-            CommitTimestamp::new().to_kind(),
-        ],
-    )
-}
-
-fn create_user_character_mutation(user_id: &str, character_id: i64) -> Mutation {
-    insert_or_update(
-        "UserCharacter",
-        vec!["UserId", "CharacterId", "Level", "UpdatedAt"],
-        vec![
-            user_id.to_kind(),
-            character_id.to_kind(),
-            1.to_kind(),
-            CommitTimestamp::new().to_kind(),
-        ],
-    )
-}
-
-
 pub async fn all_rows(mut itr: RowIterator<'_>) -> Vec<Row> {
     let mut rows = vec![];
     loop {
