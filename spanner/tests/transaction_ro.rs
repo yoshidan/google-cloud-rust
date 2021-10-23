@@ -13,9 +13,9 @@ use std::ops::DerefMut;
 
 mod common;
 use common::*;
-use google_cloud_spanner::reader::{RowIterator, AsyncIterator};
+use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
 
-pub async fn all_rows(mut itr: RowIterator<'_>) -> Vec<Row> {
+async fn all_rows(mut itr: RowIterator<'_>) -> Vec<Row> {
     let mut rows = vec![];
     loop {
         match itr.next().await {
@@ -32,7 +32,12 @@ pub async fn all_rows(mut itr: RowIterator<'_>) -> Vec<Row> {
     rows
 }
 
-async fn assert_read(tx: &mut ReadOnlyTransaction, user_id: &str, now: &NaiveDateTime, cts : &NaiveDateTime) {
+async fn assert_read(
+    tx: &mut ReadOnlyTransaction,
+    user_id: &str,
+    now: &NaiveDateTime,
+    cts: &NaiveDateTime,
+) {
     let reader = match tx
         .read(
             "User",
@@ -51,7 +56,12 @@ async fn assert_read(tx: &mut ReadOnlyTransaction, user_id: &str, now: &NaiveDat
     assert_user_row(&row, user_id, now, cts);
 }
 
-async fn assert_query(tx: &mut ReadOnlyTransaction, user_id: &str, now: &NaiveDateTime, cts: &NaiveDateTime) {
+async fn assert_query(
+    tx: &mut ReadOnlyTransaction,
+    user_id: &str,
+    now: &NaiveDateTime,
+    cts: &NaiveDateTime,
+) {
     let mut stmt = Statement::new("SELECT * FROM User WHERE UserId = @UserID");
     stmt.add_param("UserId", user_id);
     let mut rows = execute_query(tx, stmt).await;
@@ -72,7 +82,7 @@ async fn assert_partitioned_query(
     tx: &mut BatchReadOnlyTransaction,
     user_id: &str,
     now: &NaiveDateTime,
-    cts : &NaiveDateTime
+    cts: &NaiveDateTime,
 ) {
     let mut stmt = Statement::new("SELECT * FROM User WHERE UserId = @UserID");
     stmt.add_param("UserId", user_id);
@@ -105,7 +115,7 @@ async fn assert_partitioned_read(
     tx: &mut BatchReadOnlyTransaction,
     user_id: &str,
     now: &NaiveDateTime,
-    cts : &NaiveDateTime
+    cts: &NaiveDateTime,
 ) {
     let partitions = match tx
         .partition_read(
@@ -155,17 +165,7 @@ async fn test_query_and_read() {
     .await
     .unwrap();
 
-    let mut tx = match ReadOnlyTransaction::begin(
-        session,
-        TimestampBound::strong_read(),
-        CallOptions::default(),
-    )
-    .await
-    {
-        Ok(tx) => tx,
-        Err(status) => panic!("begin error {:?}", status),
-    };
-
+    let mut tx = read_only_transaction(session).await;
     let ts = cr.commit_timestamp.as_ref().unwrap();
     let ts = NaiveDateTime::from_timestamp(ts.seconds, ts.nanos as u32);
     assert_query(&mut tx, user_id_1, &now, &ts).await;
@@ -182,7 +182,7 @@ async fn test_complex_query() {
     let now = Utc::now().naive_utc();
     let mut session = create_session().await;
     let user_id_1 = "user_10";
-    let cr =replace_test_data(
+    let cr = replace_test_data(
         session.deref_mut(),
         vec![
             create_user_mutation(&user_id_1, &now),
@@ -195,17 +195,7 @@ async fn test_complex_query() {
     .await
     .unwrap();
 
-    let mut tx = match ReadOnlyTransaction::begin(
-        session,
-        TimestampBound::strong_read(),
-        CallOptions::default(),
-    )
-    .await
-    {
-        Ok(tx) => tx,
-        Err(status) => panic!("begin error {:?}", status),
-    };
-
+    let mut tx = read_only_transaction(session).await;
     let mut stmt = Statement::new(
         "SELECT *,
         ARRAY(SELECT AS STRUCT * FROM UserItem WHERE UserId = p.UserId) as UserItem,
@@ -280,6 +270,11 @@ async fn test_batch_partition_query_and_read() {
     .await
     .unwrap();
 
+    let many = (0..20000)
+        .map(|x| create_user_mutation(&format!("user_partition_{}", x), &now))
+        .collect();
+    let cr2 = replace_test_data(session.deref_mut(), many).await.unwrap();
+
     let mut tx = match BatchReadOnlyTransaction::begin(
         session,
         TimestampBound::strong_read(),
@@ -299,4 +294,65 @@ async fn test_batch_partition_query_and_read() {
     assert_partitioned_read(&mut tx, user_id_1, &now, &ts).await;
     assert_partitioned_read(&mut tx, user_id_2, &now, &ts).await;
     assert_partitioned_read(&mut tx, user_id_3, &now, &ts).await;
+
+    let mut stmt = Statement::new("SELECT * FROM User p WHERE p.UserId LIKE 'user_partition_%'");
+    let rows = execute_partitioned_query(&mut tx, stmt).await;
+    assert_eq!(20000, rows.len());
+}
+
+#[tokio::test]
+#[serial]
+async fn test_many_records() {
+    let now = Utc::now().naive_utc();
+    let mut session = create_session().await;
+    let mutations = (0..20000)
+        .map(|x| create_user_mutation(&format!("user_many_{}", x), &now))
+        .collect();
+    let cr1 = replace_test_data(&mut session, mutations).await.unwrap();
+
+    let mut tx = read_only_transaction(session).await;
+    let mut stmt = Statement::new("SELECT * FROM User p WHERE p.UserId LIKE 'user_many_%'");
+    let rows = execute_query(&mut tx, stmt).await;
+    assert_eq!(20000, rows.len());
+}
+
+#[tokio::test]
+#[serial]
+async fn test_many_records_struct() {
+    let now = Utc::now().naive_utc();
+    let mut session = create_session().await;
+    let user_id = "user_x_3";
+    let mutations = vec![create_user_mutation(user_id, &now)];
+    let _ = replace_test_data(&mut session, mutations).await.unwrap();
+    let item_mutations = (0..5000)
+        .map(|x| create_user_item_mutation(user_id, x))
+        .collect();
+    let _ = replace_test_data(&mut session, item_mutations)
+        .await
+        .unwrap();
+    let characters_mutations = (0..5000)
+        .map(|x| create_user_character_mutation(user_id, x))
+        .collect();
+    let _ = replace_test_data(&mut session, characters_mutations)
+        .await
+        .unwrap();
+
+    let mut tx = read_only_transaction(session).await;
+    let mut stmt = Statement::new(
+        "SELECT *,
+        ARRAY(SELECT AS STRUCT * FROM UserItem WHERE UserId = p.UserId) as UserItem,
+        ARRAY(SELECT AS STRUCT * FROM UserCharacter WHERE UserId = p.UserId) as UserCharacter,
+        FROM User p WHERE UserId = @UserId;",
+    );
+    stmt.add_param("UserId", user_id.clone());
+
+    let mut rows = execute_query(&mut tx, stmt).await;
+    assert_eq!(1, rows.len());
+    let row = rows.pop().unwrap();
+    let items = row.column_by_name::<Vec<UserItem>>("UserItem").unwrap();
+    assert_eq!(5000, items.len());
+    let characters = row
+        .column_by_name::<Vec<UserCharacter>>("UserCharacter")
+        .unwrap();
+    assert_eq!(5000, characters.len());
 }
