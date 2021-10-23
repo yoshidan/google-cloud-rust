@@ -2,8 +2,8 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use prost_types::{value::Kind, Value};
-use tonic::{Response, Status, Streaming};
+use prost_types::{value::Kind, Value, field};
+use tonic::{Response, Status, Streaming, Code};
 
 use google_cloud_gax::call_option::BackoffRetrySettings;
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
@@ -108,110 +108,113 @@ impl<'a> RowIterator<'a> {
         });
     }
 
-    /// merge tries to combine two protobuf Values if possible.
-    fn merge(chunked: Value, first: Value) -> Value {
-        return match chunked.kind.unwrap() {
-            Kind::StringValue(last) => match first.kind.unwrap() {
+    /// Merge tries to combine two protobuf Values if possible.
+    fn merge(previous_last: Value, current_first: Value) -> Result<Value, Status> {
+        return match previous_last.kind.unwrap() {
+            Kind::StringValue(last) => match current_first.kind.unwrap() {
                 Kind::StringValue(first) => {
-                    println!("prev={}, next={}", &last, &first);
-                    let merged = last.to_owned() + &first;
-                    println!("merged={}", &merged);
-                    Value {
+                    log::trace!("previous_last={}, current_first={}", &last, &first);
+                    let merged = last + &first;
+                    Ok(Value {
                         kind: Some(Kind::StringValue(merged)),
-                    }
+                    })
                 }
-                _ => panic!("mismatch"),
+                _ => return Err(Status::new(Code::Internal, "chunks kind mismatch: current_first must be StringKind")),
             },
-            Kind::ListValue(mut last) => match first.kind.unwrap() {
+            Kind::ListValue(mut last) => match current_first.kind.unwrap() {
                 Kind::ListValue(first) => {
-                    println!("list value chunk found");
                     let mut next_list = VecDeque::from(first.values);
-                    let last_value_of_chunked_list = last.values.pop().unwrap();
-                    let first_value_of_next_list = next_list.pop_front().unwrap();
-                    let merged =
-                        RowIterator::merge(last_value_of_chunked_list, first_value_of_next_list);
+                    let last_value_of_previous = last.values.pop().unwrap();
+                    let first_value_of_next = next_list.pop_front().unwrap();
+                    let merged_value =
+                        RowIterator::merge(last_value_of_previous, first_value_of_next)?;
+
                     let mut merged_values = vec![];
+
                     for i in last.values {
                         merged_values.push(i)
                     }
-                    merged_values.push(merged);
-                    while !next_list.is_empty() {
-                        merged_values.push(next_list.pop_front().unwrap());
+                    merged_values.push(merged_value);
+
+                    while let Some(value) = next_list.pop_front() {
+                        merged_values.push(value);
                     }
+
                     last.values = merged_values;
-                    Value {
+                    Ok(Value {
                         kind: Some(Kind::ListValue(last)),
-                    }
+                    })
                 }
-                _ => panic!("mismatch"),
+                _ => return Err(Status::new(Code::Internal, "chunks kind mismatch: current_first must be ListValue")),
             },
-            _ => panic!("unsupported"),
+            _ => return Err(Status::new(Code::Internal, "previous_last kind mismatch: only StringValue and ListValue can be chunked")),
         };
     }
 
+    /// Format PartialResultSet::values and process it into a format that expresses one line of RDB.
+    ///
+    /// The PartialResultSet::values returned from the server does not represent one line of data,
+    /// and may contain multiple lines or the data may be cut off in the middle of the line.
     fn values_to_rows(
         &mut self,
         mut values: VecDeque<Value>,
         chunked_value_found: bool,
-    ) -> VecDeque<Row> {
-        //チャンクが残ってた場合はマージ
-        match self.chunked_value.clone() {
-            Some(chunked) => {
-                let merged = RowIterator::merge(chunked, values.pop_front().unwrap());
-                values.push_front(merged);
-                self.chunked_value = None;
-            }
-            None => {}
+    ) -> Result<VecDeque<Row>, Status> {
+
+        //未マージのデータをサーバから返却されたデータの先頭とマージする。
+        if let Some(chunked_value) =  self.chunked_value.take() {
+            let merged = RowIterator::merge(chunked_value, values.pop_front().unwrap())?;
+            values.push_front(merged);
         }
 
-        //未処理レコードの残を先頭に追加して処理対象にする
-        while !self.chunked_record.is_empty() {
-            values.push_front(self.chunked_record.pop().unwrap());
+        //チャンクされたレコードの残りは処理対象のデータの先頭に突っ込む
+        while let Some(value) = self.chunked_record.pop() {
+            values.push_front(value);
         }
 
         let column_count = self.fields.len();
         let chunked_record_found = values.len() % column_count > 0;
-        let record_count = values.len() / column_count;
+        let expected_total_record_count = values.len() / column_count;
 
-        println!(
-            "datasize={}, column={}, records={}, chunked_record={}, chunked_value={}",
-            values.len(),
-            column_count,
-            record_count,
-            chunked_record_found,
-            chunked_value_found
-        );
+        if chunked_value_found || chunked_record_found {
+            println!(
+                "datasize={}, column={}, records={}, chunked_record={}, chunked_value={}",
+                values.len(),
+                column_count,
+                expected_total_record_count,
+                chunked_record_found,
+                chunked_value_found
+            );
+        }
+
         let mut rows: VecDeque<Row> = VecDeque::new();
-
         while !values.is_empty() {
-            // レコードが不足してる場合 -> 最終行はチャンク行き
-            // データ自体がチャンクしてる場合 -> 最終行はチャンク行き
-            if (chunked_record_found && rows.len() == record_count)
-                || (chunked_value_found && !chunked_record_found && rows.len() == record_count - 1)
+            // レコードが全カラム分のデータを含んでいない場合は、次のfetchで後続のカラムが取得できるのでその行をChunkedRecordとして扱う。
+            if (chunked_record_found && rows.len() == expected_total_record_count)
+                // レコードではなく、そもそも各カラムのデータがChunkの場合にもその行のデータをChunkedRecordとして扱う。
+                || (chunked_value_found && !chunked_record_found && rows.len() == expected_total_record_count - 1)
             {
                 self.chunked_record.push(values.pop_front().unwrap());
             } else {
-                let mut record: Vec<Value> = vec![];
-                for i in 0..column_count {
-                    if values.is_empty() {
-                        println!("illegal data {}, {}", rows.len(), i);
-                        panic!("error");
-                    }
-                    record.push(values.pop_front().unwrap());
+                // 1行のデータを作る。
+                let mut row: Vec<Value> = vec![];
+                for  _ in 0..column_count {
+                    row.push(values.pop_front().unwrap());
                 }
                 rows.push_back(Row::new(
                     Arc::clone(&self.index),
                     Arc::clone(&self.fields),
-                    record,
+                    row,
                 ));
             }
         }
 
+        // カラムがチャンクしてる場合は次のループでマージが必要となるので、マージ対象として保持。
         if chunked_value_found && !self.chunked_record.is_empty() {
             self.chunked_value = Some(self.chunked_record.pop().unwrap());
         }
 
-        return rows;
+        return Ok(rows);
     }
 }
 
@@ -229,26 +232,21 @@ impl<'a> AsyncIterator for RowIterator<'a> {
     /// next returns the next result.
     /// Its second return value is None if there are no more results.
     async fn next(&mut self) -> Result<Option<Row>, tonic::Status> {
+
+        // get next data
         if !self.rows.is_empty() {
             return Ok(self.rows.pop_front());
         }
 
+        // try getting records from server
         let result_set_option = match self.streaming.message().await {
             Ok(s) => s,
             Err(e) => {
-                println!("{}", "streaming message error");
                 if !self.reader.can_retry() {
-                    println!("{}", "resumes");
                     return Err(e);
                 }
-
-                let result = match self.reader.read(&mut self.session).await {
-                    Ok(s) => s,
-                    Err(e) => {
-                        println!("{}", "streaming error");
-                        return Err(e);
-                    }
-                };
+                log::debug!("streaming error: {}. resume reading by resume_token", e);
+                let result = self.reader.read(&mut self.session).await?;
                 self.streaming = result.into_inner();
                 self.streaming.message().await?
             }
@@ -256,30 +254,35 @@ impl<'a> AsyncIterator for RowIterator<'a> {
 
         let result_set = match result_set_option {
             Some(s) => s,
-            None => {
-                self.rows = VecDeque::new();
-                return Ok(None);
-            }
+            None => return Ok(None)
         };
+
         if result_set.values.is_empty() {
             return Ok(None);
         }
 
-        //初回のみメタデータ設定
-        if result_set.metadata.is_some() && self.fields.len() == 0 {
-            // metadata can be found only first call
-            self.fields = Arc::new(result_set.metadata.unwrap().row_type.unwrap().fields);
+        // get metadata only once.
+        if self.fields.is_empty() && result_set.metadata.is_some(){
+            let metadata = result_set.metadata.unwrap();
+            self.fields = match metadata.row_type {
+                Some(row_type) => Arc::new(row_type.fields),
+                None => return Err(Status::new(Code::Internal, "no field metadata found {}"))
+            };
+            // create index for Row::column_by_name("column_name")
             let mut index = HashMap::new();
             for (i, f) in self.fields.iter().enumerate() {
                 index.insert(f.name.clone(), i);
             }
             self.index = Arc::new(index);
         }
+
+        //if resume_token changes set new resume_token
         if !result_set.resume_token.is_empty() {
             self.reader.update_token(result_set.resume_token);
         }
+
         self.rows =
-            self.values_to_rows(VecDeque::from(result_set.values), result_set.chunked_value);
+            self.values_to_rows(VecDeque::from(result_set.values), result_set.chunked_value)?;
         return self.next().await;
     }
 }

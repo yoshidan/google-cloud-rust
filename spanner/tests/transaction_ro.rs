@@ -321,7 +321,7 @@ async fn test_many_records() {
 async fn test_many_records_struct() {
     let now = Utc::now().naive_utc();
     let mut session = create_session().await;
-    let user_id = "user_x_3";
+    let user_id = "user_x_6";
     let mutations = vec![create_user_mutation(user_id, &now)];
     let _ = replace_test_data(&mut session, mutations).await.unwrap();
     let item_mutations = (0..5000)
@@ -341,7 +341,7 @@ async fn test_many_records_struct() {
     let mut stmt = Statement::new(
         "SELECT *,
         ARRAY(SELECT AS STRUCT * FROM UserItem WHERE UserId = p.UserId) as UserItem,
-        ARRAY(SELECT AS STRUCT * FROM UserCharacter WHERE UserId = p.UserId) as UserCharacter,
+        ARRAY(SELECT AS STRUCT * FROM UserCharacter WHERE UserId = p.UserId) as UserCharacter
         FROM User p WHERE UserId = @UserId;",
     );
     stmt.add_param("UserId", user_id.clone());
