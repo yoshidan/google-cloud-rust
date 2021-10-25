@@ -670,4 +670,47 @@ mod tests {
         assert_eq!(removed, 0);
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
     }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_schedule_refresh() {
+        let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
+            .await
+            .unwrap();
+        let mut config = SessionConfig::default();
+        config.idle_timeout = Duration::from_millis(10);
+        config.session_alive_trust_duration = Duration::from_millis(10);
+        config.refresh_interval = Duration::from_millis(250);
+        config.min_opened = 10;
+        config.max_idle = 20;
+        config.max_opened = 45;
+        let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
+        sm.schedule_refresh();
+
+        {
+            let mut sessions = Vec::new();
+            for _ in 0..45 {
+                sessions.push(sm.get().await.unwrap());
+            }
+
+            // all the session are using
+            assert_eq!(sm.idle_sessions(), 45);
+            {
+                let locked = sm.session_pool.sessions.lock();
+                assert_eq!(locked.len(), 0, "all the session are using");
+            }
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        }
+
+        // idle session removed after cleanup
+        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+        {
+            let locked = sm.session_pool.sessions.lock();
+            assert!(
+                locked.len() == 19 || locked.len() == 20,
+                "available sessions are 19 or 20 (when 19 cleaner pop session"
+            );
+        }
+        assert_eq!(sm.idle_sessions(), 20, "num sessions are 20");
+    }
 }
