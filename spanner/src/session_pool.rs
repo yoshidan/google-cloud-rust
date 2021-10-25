@@ -708,9 +708,10 @@ mod tests {
             let locked = sm.session_pool.sessions.lock();
             assert!(
                 locked.len() == 19 || locked.len() == 20,
-                "available sessions are 19 or 20 (when 19 cleaner pop session"
+                "available sessions are 19 or 20 (19 means that the cleaner is popping session)"
             );
         }
         assert_eq!(sm.idle_sessions(), 20, "num sessions are 20");
+        assert_eq!(sm.session_waiters(), 0, "session waiters is 0");
     }
 }
