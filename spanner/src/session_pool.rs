@@ -263,17 +263,19 @@ impl SessionManager {
 
     pub async fn get(&self) -> Result<ManagedSession, SessionError> {
         loop {
-            {
+            let (should_schedule, mut rx) = {
                 let mut locked = self.session_pool.sessions.lock();
-                while let Some(mut s) = locked.pop_front() {
+                if let Some(mut s) = locked.pop_front() {
                     s.last_used_at = Instant::now();
-                    //Found valid session
                     return Ok(ManagedSession::new(self.session_pool.clone(), s));
                 }
+
+                let rx = self.session_waiting_channel.subscribe();
+                (self.session_waiting_channel.receiver_count() == 1, rx)
             };
 
             // Start to create session if not scheduled.
-            if self.session_waiting_channel.receiver_count() == 0 {
+            if should_schedule {
                 self.schedule_batch_create();
             }
 
@@ -284,7 +286,6 @@ impl SessionManager {
                 tokio::time::sleep(session_get_timeout).await;
                 cancel_producer.send(true);
             });
-            let mut rx = self.session_waiting_channel.subscribe();
             tokio::select! {
                 result = rx.recv() => {
                     match result {
