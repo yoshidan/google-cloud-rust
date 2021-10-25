@@ -362,24 +362,15 @@ impl SessionManager {
         let max_idle = self.config.max_idle;
         let start = Instant::now() + self.config.refresh_interval;
         let mut interval = tokio::time::interval_at(start.into(), self.config.refresh_interval);
-        let num_opened = Arc::downgrade(&self.session_pool.num_opened);
+        let num_opened = Arc::clone(&self.session_pool.num_opened);
         let sessions = Arc::downgrade(&self.session_pool.sessions);
+        let session_waiting_channel = Arc::clone(&self.session_waiting_channel);
 
         tokio::spawn(async move {
             loop {
                 let _ = interval.tick().await;
 
-                let max_removing_count = match num_opened.upgrade() {
-                    Some(num) => num.load(Ordering::SeqCst) - max_idle as i64,
-                    None => {
-                        log::error!("no longer exists num_opened");
-                        break;
-                    }
-                };
-                log::info!(
-                    "refresh session pool: max_removing_count={}",
-                    max_removing_count
-                );
+                let max_removing_count = num_opened.load(Ordering::SeqCst) - max_idle as i64;
                 if max_removing_count < 0 {
                     continue;
                 }
@@ -392,7 +383,7 @@ impl SessionManager {
                             shrink_idle_sessions(now, Arc::clone(&g), max_removing_count).await;
                         // Ping request for alive sessions.
                         removed_count
-                            + health_check(now + std::time::Duration::from_nanos(1), g).await
+                            + health_check(now + std::time::Duration::from_nanos(1), g, &session_waiting_channel).await
                     }
                     None => {
                         log::error!("sessions already released");
@@ -402,77 +393,53 @@ impl SessionManager {
 
                 if removed_count > 0 {
                     log::info!("{} idle sessions removed.", removed_count);
-                    match num_opened.upgrade() {
-                        Some(n) => {
-                            let prev = n.fetch_add(-removed_count, Ordering::SeqCst);
-                            let remains = prev - removed_count;
-                            log::info!("{} current idle session remains.", remains);
-                            if remains <= 0 {}
-                        }
-                        None => {
-                            log::error!("failed to update num_opened count");
-                        }
-                    }
+                    num_opened.fetch_add(-removed_count, Ordering::SeqCst);
                 }
             }
         });
     }
 }
 
-async fn health_check(now: Instant, sessions: Arc<Mutex<VecDeque<SessionHandle>>>) -> i64 {
+async fn health_check(now: Instant, sessions: Arc<Mutex<VecDeque<SessionHandle>>>, session_waiting_channel: &tokio::sync::broadcast::Sender<bool>) -> i64 {
     let mut removed_count = 0;
+    let duration = std::time::Duration::from_secs(60 * 15);
+    let sleep_duration = Duration::from_millis(10);
     loop {
+        sleep(sleep_duration).await;
+
         let mut s = {
-            match sessions.lock().pop_front() {
-                Some(s) => s,
+            let mut locked = sessions.lock();
+            match locked.pop_front() {
+                Some(mut s) => {
+                    // all the session check complete.
+                    if s.last_checked_at == now {
+                        locked.push_back(s);
+                        break;
+                    }
+                    if std::cmp::max(s.last_used_at, s.last_pong_at) + duration >= now {
+                        s.last_checked_at = now;
+                        locked.push_back(s);
+                        continue;
+                    }
+                    s
+                },
                 None => break,
             }
         };
-        // Break if the all session checked
-        if s.last_checked_at == now {
-            sessions.lock().push_back(s);
-            break;
-        }
 
-        //後に使ったかpingしてから指定時刻経過
-        log::info!(
-            "session last pong = {:?}",
-            now - std::cmp::max(s.last_used_at, s.last_pong_at)
-                + std::time::Duration::from_secs(60 * 15)
-        );
-        let should_ping = std::cmp::max(s.last_used_at, s.last_pong_at)
-            + std::time::Duration::from_secs(60 * 15)
-            < now;
-
-        if should_ping {
-            let session_name = s.session.name.clone();
-            log::info!("ping session {}", session_name);
-            let request = ping_query_request(session_name.clone());
-            match s.spanner_client.execute_sql(request, None).await {
-                Ok(_) => {
-                    s.last_checked_at = now.clone();
-                    s.last_pong_at = now;
-                    sessions.lock().push_back(s);
-                }
-                Err(err) => {
-                    log::error!("ping session err {}", err);
-                    log::error!("ping session err message = {}", err.message());
-                    log::error!("ping session err code = {}", err.code());
-                    err.metadata().iter().for_each(|x| match x {
-                        KeyAndValueRef::Ascii(k, _v) => {
-                            log::error!("ping session err metadata ascii key = {}", k.to_string())
-                        }
-                        KeyAndValueRef::Binary(k, _v) => {
-                            log::error!("ping session err metadata binary key= {}", k.to_string())
-                        }
-                    });
-                    removed_count += 1;
-                    delete_session(s).await;
-                }
+        let request = ping_query_request( s.session.name.clone());
+        match s.spanner_client.execute_sql(request, None).await {
+            Ok(_) => {
+                s.last_checked_at = now.clone();
+                s.last_pong_at = now;
+                sessions.lock().push_back(s);
+                session_waiting_channel.send(true);
             }
-        } else {
-            s.last_checked_at = now;
-            sessions.lock().push_back(s);
+            Err(err) => {
+                log::error!("ping session err {:?}", err);
+                removed_count += 1;
+                delete_session(s).await;
+            }
         }
     }
     return removed_count;
@@ -484,38 +451,39 @@ async fn shrink_idle_sessions(
     max_shrink_count: i64,
 ) -> i64 {
     let mut removed_count = 0;
+    let idle_duration = std::time::Duration::from_secs(60 * 30);
+    let sleep_duration = Duration::from_millis(10);
     loop {
-        //Break if the sufficient idle session removed.
+
         if removed_count >= max_shrink_count {
             break;
         }
 
+        sleep(sleep_duration).await;
+
+        // get old session
         let mut s = {
-            match sessions.lock().pop_front() {
-                Some(s) => s,
+            let mut locked = sessions.lock();
+            match locked.pop_front() {
+                Some(mut s) => {
+                    // all the session check complete.
+                    if s.last_checked_at == now {
+                        locked.push_back(s);
+                        break;
+                    }
+                    if s.last_used_at + idle_duration >= now {
+                        s.last_checked_at = now;
+                        locked.push_back(s);
+                        continue;
+                    }
+                    s
+                },
                 None => break,
             }
         };
-        // Break if the all session checked
-        if s.last_checked_at == now {
-            sessions.lock().push_back(s);
-            break;
-        }
 
-        //生成 or 最後に使ってから指定時刻経過
-        log::info!(
-            "shrink target session last_used_at = {:?}",
-            now - s.last_used_at + std::time::Duration::from_secs(60 * 30)
-        );
-        let should_remove = s.last_used_at + std::time::Duration::from_secs(60 * 30) < now;
-
-        if should_remove {
-            removed_count += 1;
-            delete_session(s).await;
-        } else {
-            s.last_checked_at = now;
-            sessions.lock().push_back(s);
-        }
+        removed_count += 1;
+        delete_session(s).await;
     }
     return removed_count;
 }
