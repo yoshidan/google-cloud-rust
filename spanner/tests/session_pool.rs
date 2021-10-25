@@ -14,6 +14,7 @@ use common::*;
 use google_cloud_spanner::apiv1::conn_pool::ConnectionManager;
 use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
 use google_cloud_spanner::session_pool::{SessionConfig, SessionError, SessionManager};
+use std::time::{Duration, Instant};
 
 #[tokio::test]
 #[serial]
@@ -95,6 +96,6 @@ async fn test_grow_wait_and_get() {
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
     }
     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-    let idle_sessions = sm.idle_sessions();
-    assert_eq!(idle_sessions, 2);
+    assert_eq!(sm.idle_sessions(), 2);
+    assert_eq!(sm.session_waiters(), 0);
 }
