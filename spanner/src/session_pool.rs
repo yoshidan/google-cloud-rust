@@ -160,6 +160,8 @@ pub struct SessionConfig {
     /// However, if the number of sessions is less than or equal to min_opened, it will not be discarded.
     pub idle_timeout: std::time::Duration,
 
+    pub session_alive_trust_duration: std::time::Duration,
+
     /// session_get_timeout is the maximum value of the waiting time that occurs when retrieving from the connection pool when there is no idle session.
     pub session_get_timeout: std::time::Duration,
 
@@ -179,6 +181,7 @@ impl Default for SessionConfig {
             max_idle: 300,
             inc_step: 25,
             idle_timeout: std::time::Duration::from_secs(30 * 60),
+            session_alive_trust_duration: std::time::Duration::from_secs(55 * 60),
             session_get_timeout: std::time::Duration::from_secs(1),
             refresh_interval: std::time::Duration::from_secs(5 * 60),
         }
@@ -366,6 +369,7 @@ impl SessionManager {
         let sessions = Arc::downgrade(&self.session_pool.sessions);
         let session_waiting_channel = Arc::clone(&self.session_waiting_channel);
         let idle_timeout = self.config.idle_timeout;
+        let session_alive_trust_duration = self.config.session_alive_trust_duration;
 
         tokio::spawn(async move {
             loop {
@@ -382,8 +386,8 @@ impl SessionManager {
                         // First shrink needless idle sessions.
                         let removed_count = shrink_idle_sessions(
                             now,
-                            Arc::clone(&g),
                             idle_timeout,
+                            Arc::clone(&g),
                             max_removing_count,
                         )
                         .await;
@@ -391,6 +395,7 @@ impl SessionManager {
                         removed_count
                             + health_check(
                                 now + std::time::Duration::from_nanos(1),
+                                session_alive_trust_duration,
                                 g,
                                 &session_waiting_channel,
                             )
@@ -413,11 +418,11 @@ impl SessionManager {
 
 async fn health_check(
     now: Instant,
+    session_alive_trust_duration: Duration,
     sessions: Arc<Mutex<VecDeque<SessionHandle>>>,
     session_waiting_channel: &tokio::sync::broadcast::Sender<bool>,
 ) -> i64 {
     let mut removed_count = 0;
-    let duration = std::time::Duration::from_secs(60 * 15);
     let sleep_duration = Duration::from_millis(10);
     loop {
         sleep(sleep_duration).await;
@@ -431,7 +436,9 @@ async fn health_check(
                         locked.push_back(s);
                         break;
                     }
-                    if std::cmp::max(s.last_used_at, s.last_pong_at) + duration >= now {
+                    if std::cmp::max(s.last_used_at, s.last_pong_at) + session_alive_trust_duration
+                        >= now
+                    {
                         s.last_checked_at = now;
                         locked.push_back(s);
                         continue;
@@ -462,8 +469,8 @@ async fn health_check(
 
 async fn shrink_idle_sessions(
     now: Instant,
-    sessions: Arc<Mutex<VecDeque<SessionHandle>>>,
     idle_timeout: Duration,
+    sessions: Arc<Mutex<VecDeque<SessionHandle>>>,
     max_shrink_count: i64,
 ) -> i64 {
     let mut removed_count = 0;
@@ -542,7 +549,7 @@ async fn batch_create_session(
 #[cfg(test)]
 mod tests {
     use crate::apiv1::conn_pool::ConnectionManager;
-    use crate::session_pool::{shrink_idle_sessions, SessionConfig, SessionManager};
+    use crate::session_pool::{health_check, shrink_idle_sessions, SessionConfig, SessionManager};
     use serial_test::serial;
     use std::sync::Arc;
     use std::thread::sleep;
@@ -567,8 +574,8 @@ mod tests {
         sleep(Duration::from_secs(1));
         let removed = shrink_idle_sessions(
             Instant::now(),
-            Arc::clone(&sm.session_pool.sessions),
             idle_timeout,
+            Arc::clone(&sm.session_pool.sessions),
             5,
         )
         .await;
@@ -592,13 +599,75 @@ mod tests {
         sleep(Duration::from_secs(1));
         let removed = shrink_idle_sessions(
             Instant::now(),
-            Arc::clone(&sm.session_pool.sessions),
             idle_timeout,
+            Arc::clone(&sm.session_pool.sessions),
             100,
         )
         .await;
 
         // expired
         assert_eq!(removed, 5);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_health_check_checked() {
+        let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
+            .await
+            .unwrap();
+        let session_alive_trust_duration = Duration::from_millis(10);
+        let mut config = SessionConfig::default();
+        config.min_opened = 5;
+        config.session_alive_trust_duration = session_alive_trust_duration.clone();
+        config.max_opened = 5;
+        let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
+        sleep(Duration::from_secs(1));
+
+        let ch = Arc::clone(&sm.session_waiting_channel);
+        tokio::spawn(async move {
+            let result = ch.subscribe().recv().await.unwrap();
+            assert_eq!(result, true);
+        });
+        let removed = health_check(
+            Instant::now(),
+            session_alive_trust_duration,
+            Arc::clone(&sm.session_pool.sessions),
+            &sm.session_waiting_channel,
+        )
+        .await;
+
+        assert_eq!(removed, 0);
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_health_check_not_checked() {
+        let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
+            .await
+            .unwrap();
+        let session_alive_trust_duration = Duration::from_secs(10);
+        let mut config = SessionConfig::default();
+        config.min_opened = 5;
+        config.session_alive_trust_duration = session_alive_trust_duration.clone();
+        config.max_opened = 5;
+        let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
+        sleep(Duration::from_secs(1));
+
+        let ch = Arc::clone(&sm.session_waiting_channel);
+        tokio::spawn(async move {
+            let result = ch.subscribe().recv().await.unwrap();
+            panic!("expected no session checked");
+        });
+        let removed = health_check(
+            Instant::now(),
+            session_alive_trust_duration,
+            Arc::clone(&sm.session_pool.sessions),
+            &sm.session_waiting_channel,
+        )
+        .await;
+
+        assert_eq!(removed, 0);
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
     }
 }
