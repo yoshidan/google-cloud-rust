@@ -7,7 +7,6 @@ use google_cloud_googleapis::spanner::v1::{
 };
 use google_cloud_spanner::apiv1::conn_pool::ConnectionManager;
 use google_cloud_spanner::mutation::insert_or_update;
-use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
 use google_cloud_spanner::row::{Row, Struct, TryFromStruct};
 use google_cloud_spanner::session_pool::{
     ManagedSession, SessionConfig, SessionHandle, SessionManager,

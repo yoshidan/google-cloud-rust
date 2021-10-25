@@ -1,13 +1,11 @@
 use chrono::{NaiveDateTime, Utc};
-use google_cloud_googleapis::spanner::v1::commit_request::Transaction::SingleUseTransaction;
-use google_cloud_googleapis::spanner::v1::Mutation;
 use google_cloud_spanner::key::{Key, KeySet};
 use google_cloud_spanner::mutation::insert_or_update;
 use google_cloud_spanner::row::Row;
-use google_cloud_spanner::statement::{Statement, ToKind};
+use google_cloud_spanner::statement::Statement;
 use google_cloud_spanner::transaction::{CallOptions, QueryOptions};
 use google_cloud_spanner::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
-use google_cloud_spanner::value::{CommitTimestamp, TimestampBound};
+use google_cloud_spanner::value::TimestampBound;
 use serial_test::serial;
 use std::ops::DerefMut;
 
@@ -273,7 +271,7 @@ async fn test_batch_partition_query_and_read() {
     let many = (0..20000)
         .map(|x| create_user_mutation(&format!("user_partition_{}", x), &now))
         .collect();
-    let cr2 = replace_test_data(session.deref_mut(), many).await.unwrap();
+    let _cr2 = replace_test_data(session.deref_mut(), many).await.unwrap();
 
     let mut tx = match BatchReadOnlyTransaction::begin(
         session,
@@ -295,9 +293,17 @@ async fn test_batch_partition_query_and_read() {
     assert_partitioned_read(&mut tx, user_id_2, &now, &ts).await;
     assert_partitioned_read(&mut tx, user_id_3, &now, &ts).await;
 
-    let mut stmt = Statement::new("SELECT * FROM User p WHERE p.UserId LIKE 'user_partition_%'");
+    let stmt = Statement::new("SELECT * FROM User p WHERE p.UserId LIKE 'user_partition_%'");
     let rows = execute_partitioned_query(&mut tx, stmt).await;
     assert_eq!(20000, rows.len());
+    (0..20000).for_each(|x| {
+        assert_user_row(
+            rows.get(x).unwrap(),
+            &format!("user_partition_{}", x),
+            &now,
+            &ts,
+        )
+    });
 }
 
 #[tokio::test]
@@ -305,15 +311,26 @@ async fn test_batch_partition_query_and_read() {
 async fn test_many_records() {
     let now = Utc::now().naive_utc();
     let mut session = create_session().await;
-    let mutations = (0..20000)
+    let mutations = (0..40000)
         .map(|x| create_user_mutation(&format!("user_many_{}", x), &now))
         .collect();
-    let cr1 = replace_test_data(&mut session, mutations).await.unwrap();
+    let cr = replace_test_data(&mut session, mutations).await.unwrap();
 
     let mut tx = read_only_transaction(session).await;
-    let mut stmt = Statement::new("SELECT * FROM User p WHERE p.UserId LIKE 'user_many_%'");
+    let stmt = Statement::new("SELECT *, Array[UserId,UserId,UserId,UserId,UserId] as UserIds FROM User p WHERE p.UserId LIKE 'user_many_%' ORDER BY UserId ");
     let rows = execute_query(&mut tx, stmt).await;
-    assert_eq!(20000, rows.len());
+    assert_eq!(40000, rows.len());
+
+    let ts = cr.commit_timestamp.as_ref().unwrap();
+    let ts = NaiveDateTime::from_timestamp(ts.seconds, ts.nanos as u32);
+    let mut user_ids: Vec<String> = (0..40000).map(|x| format!("user_many_{}", x)).collect();
+    user_ids.sort();
+    for (x, user_id) in user_ids.iter().enumerate() {
+        let row = rows.get(x).unwrap();
+        assert_user_row(&row, user_id, &now, &ts);
+        let user_ids = row.column_by_name::<Vec<String>>("UserIds").unwrap();
+        user_ids.iter().for_each(|u| assert_eq!(u, user_id));
+    }
 }
 
 #[tokio::test]

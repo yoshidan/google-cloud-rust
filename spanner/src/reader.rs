@@ -2,8 +2,8 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use prost_types::{value::Kind, Value, field};
-use tonic::{Response, Status, Streaming, Code};
+use prost_types::{value::Kind, Value};
+use tonic::{Code, Response, Status, Streaming};
 
 use google_cloud_gax::call_option::BackoffRetrySettings;
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
@@ -114,31 +114,45 @@ impl<'a> RowIterator<'a> {
             Kind::StringValue(last) => match current_first.kind.unwrap() {
                 Kind::StringValue(first) => {
                     log::trace!("previous_last={}, current_first={}", &last, first);
-                    Ok(Value{
-                        kind: Some(Kind::StringValue(last + &first))
+                    Ok(Value {
+                        kind: Some(Kind::StringValue(last + &first)),
                     })
                 }
-                _ => return Err(Status::new(Code::Internal, "chunks kind mismatch: current_first must be StringKind")),
+                _ => {
+                    return Err(Status::new(
+                        Code::Internal,
+                        "chunks kind mismatch: current_first must be StringKind",
+                    ))
+                }
             },
             Kind::ListValue(mut last) => match current_first.kind.unwrap() {
                 Kind::ListValue(mut first) => {
                     let last_value_of_previous = last.values.pop().unwrap();
-                    let first_value_of_next= first.values.remove(0);
+                    let first_value_of_next = first.values.remove(0);
                     let merged = RowIterator::merge(last_value_of_previous, first_value_of_next)?;
                     last.values.push(merged);
                     last.values.extend(first.values);
                     Ok(Value {
-                        kind: Some(Kind::ListValue(last))
+                        kind: Some(Kind::ListValue(last)),
                     })
                 }
-                _ => return Err(Status::new(Code::Internal, "chunks kind mismatch: current_first must be ListValue")),
+                _ => {
+                    return Err(Status::new(
+                        Code::Internal,
+                        "chunks kind mismatch: current_first must be ListValue",
+                    ))
+                }
             },
-            _ => return Err(Status::new(Code::Internal, "previous_last kind mismatch: only StringValue and ListValue can be chunked")),
+            _ => {
+                return Err(Status::new(
+                    Code::Internal,
+                    "previous_last kind mismatch: only StringValue and ListValue can be chunked",
+                ))
+            }
         };
     }
 
-    async fn try_recv(&mut self) -> Result<bool, tonic::Status>{
-
+    async fn try_recv(&mut self) -> Result<bool, tonic::Status> {
         // try getting records from server
         let result_set_option = match self.streaming.message().await {
             Ok(s) => s,
@@ -155,7 +169,7 @@ impl<'a> RowIterator<'a> {
 
         let mut result_set = match result_set_option {
             Some(s) => s,
-            None => return Ok(false)
+            None => return Ok(false),
         };
 
         if result_set.values.is_empty() {
@@ -163,11 +177,11 @@ impl<'a> RowIterator<'a> {
         }
 
         // get metadata only once.
-        if self.fields.is_empty() && result_set.metadata.is_some(){
+        if self.fields.is_empty() && result_set.metadata.is_some() {
             let metadata = result_set.metadata.unwrap();
             self.fields = match metadata.row_type {
                 Some(row_type) => Arc::new(row_type.fields),
-                None => return Err(Status::new(Code::Internal, "no field metadata found {}"))
+                None => return Err(Status::new(Code::Internal, "no field metadata found {}")),
             };
             // create index for Row::column_by_name("column_name")
             let mut index = HashMap::new();
@@ -183,7 +197,7 @@ impl<'a> RowIterator<'a> {
         }
 
         if self.chunked_value {
-            //merge
+            //merge when the chunked value is found.
             let first = result_set.values.remove(0);
             let merged = RowIterator::merge(self.rows.pop_back().unwrap(), first)?;
             self.rows.push_back(merged);
@@ -193,7 +207,6 @@ impl<'a> RowIterator<'a> {
         self.chunked_value = result_set.chunked_value;
         Ok(true)
     }
-
 }
 
 #[async_trait]
@@ -210,11 +223,11 @@ impl<'a> AsyncIterator for RowIterator<'a> {
     /// next returns the next result.
     /// Its second return value is None if there are no more results.
     async fn next(&mut self) -> Result<Option<Row>, tonic::Status> {
-
-        if !self.rows.is_empty(){
+        if !self.rows.is_empty() {
             let column_length = self.fields.len();
-            let target_record_is_chunked= self.rows.len() < column_length;
-            let target_record_contains_chunked_value = self.chunked_value && self.rows.len() == column_length;
+            let target_record_is_chunked = self.rows.len() < column_length;
+            let target_record_contains_chunked_value =
+                self.chunked_value && self.rows.len() == column_length;
 
             if !target_record_is_chunked && !target_record_contains_chunked_value {
                 // get column_length values
@@ -222,7 +235,11 @@ impl<'a> AsyncIterator for RowIterator<'a> {
                 for _ in 0..column_length {
                     values.push(self.rows.pop_front().unwrap());
                 }
-                return Ok(Some(Row::new(Arc::clone(&self.index), Arc::clone(&self.fields), values)))
+                return Ok(Some(Row::new(
+                    Arc::clone(&self.index),
+                    Arc::clone(&self.fields),
+                    values,
+                )));
             }
         }
 
