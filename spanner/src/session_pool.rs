@@ -4,7 +4,6 @@ use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Weak};
 use std::time::Instant;
 
-use oneshot::Sender;
 use parking_lot::Mutex;
 use thiserror;
 use tonic::metadata::KeyAndValueRef;
@@ -17,6 +16,7 @@ use google_cloud_googleapis::spanner::v1::{
 
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::spanner_client::{ping_query_request, Client};
+use tokio::time::{sleep, Duration};
 
 /// Session
 pub struct SessionHandle {
@@ -86,6 +86,7 @@ impl Drop for ManagedSession {
         let session = self.session.take().unwrap();
         if session.valid {
             self.session_pool.sessions.lock().push_back(session);
+            self.session_pool.session_waiting_channel.send(true);
         } else {
             self.session_pool.num_opened.fetch_add(-1, Ordering::SeqCst);
         }
@@ -109,14 +110,19 @@ impl DerefMut for ManagedSession {
 pub struct SessionPool {
     sessions: Arc<Mutex<VecDeque<SessionHandle>>>,
     num_opened: Arc<AtomicI64>,
+    session_waiting_channel: Arc<tokio::sync::broadcast::Sender<bool>>,
 }
 
 impl SessionPool {
-    fn new(init_pool: VecDeque<SessionHandle>) -> Self {
+    fn new(
+        init_pool: VecDeque<SessionHandle>,
+        session_waiting_channel: Arc<tokio::sync::broadcast::Sender<bool>>,
+    ) -> Self {
         let size = init_pool.len() as i64;
         SessionPool {
             sessions: Arc::new(Mutex::new(init_pool)),
             num_opened: Arc::new(AtomicI64::new(size)),
+            session_waiting_channel,
         }
     }
 }
@@ -126,6 +132,7 @@ impl Clone for SessionPool {
         SessionPool {
             sessions: Arc::clone(&self.sessions),
             num_opened: Arc::clone(&self.num_opened),
+            session_waiting_channel: Arc::clone(&self.session_waiting_channel),
         }
     }
 }
@@ -181,9 +188,9 @@ impl Default for SessionConfig {
 pub struct SessionManager {
     database: String,
     conn_pool: ConnectionManager,
-    waiters: Arc<Mutex<VecDeque<Sender<bool>>>>,
     session_pool: SessionPool,
     config: SessionConfig,
+    session_waiting_channel: Arc<tokio::sync::broadcast::Sender<bool>>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -205,13 +212,24 @@ impl SessionManager {
         let database_name = database.into();
         let init_pool =
             SessionManager::init_pool(database_name.clone(), &conn_pool, config.min_opened).await?;
+
+        let (tx, _) = tokio::sync::broadcast::channel(100);
+        let arc_tx = Arc::new(tx);
         return Ok(SessionManager {
             database: database_name,
             config,
             conn_pool,
-            waiters: Arc::new(Mutex::new(VecDeque::<Sender<bool>>::new())),
-            session_pool: SessionPool::new(init_pool),
+            session_pool: SessionPool::new(init_pool, Arc::clone(&arc_tx)),
+            session_waiting_channel: arc_tx,
         });
+    }
+
+    pub fn idle_sessions(&self) -> i64 {
+        self.session_pool.num_opened.load(Ordering::SeqCst)
+    }
+
+    pub fn session_waiters(&self) -> usize {
+        self.session_waiting_channel.receiver_count()
     }
 
     async fn init_pool(
@@ -236,7 +254,7 @@ impl SessionManager {
                 Err(e) => return Err(e),
             }
         }
-        log::info!("initial session created count = {}", sessions.len());
+        log::debug!("initial session created count = {}", sessions.len());
         Ok(sessions.into())
     }
 
@@ -246,36 +264,40 @@ impl SessionManager {
                 let mut locked = self.session_pool.sessions.lock();
                 while let Some(mut s) = locked.pop_front() {
                     s.last_used_at = Instant::now();
-                    log::info!("found session {}", s.session.name);
                     //Found valid session
                     return Ok(ManagedSession::new(self.session_pool.clone(), s));
                 }
             };
 
-            // Create session creation waiter.
-            let (sender, receiver) = oneshot::channel();
-            let is_empty = {
-                let mut waiters = self.waiters.lock();
-                let is_empty = waiters.is_empty();
-                waiters.push_back(sender);
-                is_empty
-            };
-
             // Start to create session if not scheduled.
-            if is_empty {
+            if self.session_waiting_channel.receiver_count() == 0 {
                 self.schedule_batch_create();
             }
 
-            // Wait for the session creation.
-            match tokio::time::timeout(self.config.session_get_timeout, receiver).await {
-                Ok(Ok(result)) => {
-                    log::info!("session creation result received {}", result);
-                    if !result {
-                        return Err(SessionError::FailedToCreateSession);
+            // Wait for session available.
+            let (cancel_producer, cancel_consumer) = tokio::sync::oneshot::channel::<bool>();
+            let session_get_timeout = self.config.session_get_timeout;
+            tokio::spawn(async move {
+                tokio::time::sleep(session_get_timeout).await;
+                cancel_producer.send(true);
+            });
+            let mut rx = self.session_waiting_channel.subscribe();
+            tokio::select! {
+                result = rx.recv() => {
+                    match result {
+                        Ok(s) => {
+                            if !s {
+                                return Err(SessionError::FailedToCreateSession);
+                            }
+                        },
+                        Err(e) => {
+                            log::error!("session creation failure : {:?}", e);
+                            return Err(SessionError::FailedToCreateSession)
+                        }
                     }
                 }
-                _ => return Err(SessionError::SessionGetTimeout),
-            }
+                _ = cancel_consumer => return Err(SessionError::SessionGetTimeout),
+            };
         }
     }
 
@@ -288,53 +310,44 @@ impl SessionManager {
 
         let database = self.database.clone();
         let idle_sessions = Arc::downgrade(&self.session_pool.sessions);
-        let waiters = Arc::downgrade(&self.waiters);
         let next_client = self.conn_pool.conn();
-        let num_opened = Arc::downgrade(&self.session_pool.num_opened);
+        let session_waiting_channel = Arc::clone(&self.session_waiting_channel);
+        let num_opened = Arc::clone(&self.session_pool.num_opened);
+        if creation_count == 0 {
+            log::warn!("maximum session opened");
+            return;
+        }
 
         tokio::spawn(async move {
-            log::info!("start batch create session {}", creation_count);
+            log::debug!("start batch create session {}", creation_count);
             let result = match batch_create_session(next_client, database, creation_count).await {
                 Ok(mut fresh_sessions) => {
                     // Register fresh sessions into pool.
-                    let result = match idle_sessions.upgrade() {
+                    match idle_sessions.upgrade() {
                         Some(g) => {
                             let mut locked_idle_session = g.lock();
                             while let Some(session) = fresh_sessions.pop() {
                                 locked_idle_session.push_back(session);
                             }
+                            //Update idle session cound
+                            num_opened.fetch_add(creation_count as i64, Ordering::SeqCst);
                             true
                         }
                         None => {
                             log::error!("idle session pool already released.");
                             false
                         }
-                    };
-                    // Update idle session count
-                    if result {
-                        match num_opened.upgrade() {
-                            Some(g) => {
-                                g.fetch_add(creation_count as i64, Ordering::SeqCst);
-                                log::info!(
-                                    "current idle session count = {}",
-                                    g.load(Ordering::SeqCst)
-                                );
-                            }
-                            None => {
-                                log::error!("num_opened already released.");
-                            }
-                        }
                     }
-                    result
                 }
                 Err(e) => {
                     log::error!("failed to batch creation request {:?}", e);
                     false
                 }
             };
-
-            // Notify waiters blocking on session creation.
-            notify_to_waiters(result, waiters);
+            match session_waiting_channel.send(result) {
+                Ok(s) => log::trace!("notified to {} receiver", s),
+                Err(e) => log::error!("failed to notify session created {:?}", e),
+            }
         });
     }
 
@@ -517,21 +530,6 @@ async fn delete_session(mut session: SessionHandle) {
         Ok(_) => {}
         Err(e) => log::error!("failed to delete session {}, {:?}", session_name, e),
     }
-}
-
-fn notify_to_waiters(result: bool, waiters: Weak<Mutex<VecDeque<Sender<bool>>>>) {
-    match waiters.upgrade() {
-        Some(g) => {
-            let mut locked_waiters = g.lock();
-            while let Some(waiter) = locked_waiters.pop_front() {
-                match waiter.send(result) {
-                    Ok(()) => {}
-                    Err(e) => log::error!("failed to notify waiter {:?}", e),
-                }
-            }
-        }
-        None => log::error!("waiters already released."),
-    };
 }
 
 async fn batch_create_session(
