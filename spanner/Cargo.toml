@@ -34,4 +34,5 @@ google-cloud-gax = { path = "../gax" }
 google-cloud-googleapis = { path = "../googleapis" }
 
 [dev-dependencies]
+env_logger = "0.9.0"
 serial_test = "*"

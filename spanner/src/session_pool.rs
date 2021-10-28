@@ -1,6 +1,5 @@
 use std::collections::VecDeque;
 use std::ops::{Deref, DerefMut};
-use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Weak};
 use std::time::Instant;
 
@@ -399,14 +398,14 @@ impl SessionManager {
                     creation_count = config.inc_step;
                 }
                 if creation_count == 0 {
-                    println!("maximum session opened");
+                    log::debug!("maximum session opened");
                     continue;
                 }
                 allocation_request_size += creation_count;
 
                 let database = database.clone();
                 let next_client = conn_pool.conn();
-                println!("start batch create session {}", creation_count);
+                log::debug!("start batch create session {}", creation_count);
 
                 match batch_create_session(next_client, database, creation_count).await {
                     Ok(fresh_sessions) => {
@@ -601,6 +600,48 @@ mod tests {
     pub const DATABASE: &str =
         "projects/local-project/instances/test-instance/databases/local-database";
 
+    async fn assert_rush(use_invalidate: bool, config: SessionConfig) {
+        let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
+            .await
+            .unwrap();
+        let max = config.max_opened.clone();
+        let min = config.min_opened.clone();
+        let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
+        sm.schedule_refresh();
+
+        let counter = Arc::new(AtomicI64::new(0));
+        for _ in 0..100 {
+            let sm = sm.clone();
+            let counter = Arc::clone(&counter);
+            tokio::spawn(async move {
+                let mut session = sm.get().await.unwrap();
+                if use_invalidate {
+                   session.invalidate();
+                }
+                counter.fetch_add(1, Ordering::SeqCst);
+            });
+        }
+        while counter.load(Ordering::SeqCst) < 100 {
+            sleep(Duration::from_millis(5)).await;
+        }
+
+        sleep(tokio::time::Duration::from_millis(100)).await;
+        assert_eq!(sm.session_pool.inner.lock().inuse, 0);
+        let num_opened = sm.idle_sessions();
+        assert!(
+            num_opened <= max,
+            "idle session must be lteq {} now is {}",
+            max,
+            num_opened
+        );
+        assert!(
+            num_opened >= min,
+            "idle session must be gteq {} now is {}",
+            min,
+            num_opened
+        );
+    }
+
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_shrink_sessions_not_expired() {
@@ -738,47 +779,51 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_invalidate() {
-        let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
-            .await
-            .unwrap();
+    async fn test_rush_invalidate() {
         let mut config = SessionConfig::default();
         config.session_get_timeout = Duration::from_secs(20);
         config.min_opened = 10;
         config.max_idle = 20;
         config.max_opened = 45;
-        let max = config.max_opened.clone();
-        let min = config.min_opened.clone();
-        let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
+        assert_rush(true, config).await;
+    }
 
-        let counter = Arc::new(AtomicI64::new(0));
-        for _ in 0..100 {
-            let sm = sm.clone();
-            let counter = Arc::clone(&counter);
-            tokio::spawn(async move {
-                let mut session = sm.get().await.unwrap();
-                session.invalidate().await;
-                counter.fetch_add(1, Ordering::SeqCst);
-            });
-        }
-        while counter.load(Ordering::SeqCst) < 100 {
-            sleep(Duration::from_millis(5)).await;
-        }
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_rush_invalidate_with_cleanup() {
+        let mut config = SessionConfig::default();
+        config.idle_timeout = Duration::from_millis(10);
+        config.session_alive_trust_duration = Duration::from_millis(10);
+        config.refresh_interval = Duration::from_millis(250);
+        config.session_get_timeout = Duration::from_secs(20);
+        config.min_opened = 10;
+        config.max_idle = 20;
+        config.max_opened = 45;
+        assert_rush(true, config).await;
+    }
 
-        sleep(tokio::time::Duration::from_millis(100)).await;
-        assert_eq!(sm.session_pool.inner.lock().inuse, 0);
-        let num_opened = sm.idle_sessions();
-        assert!(
-            num_opened <= max,
-            "idle session must be lteq {} now is {}",
-            max,
-            num_opened
-        );
-        assert!(
-            num_opened >= min,
-            "idle session must be gteq {} now is {}",
-            min,
-            num_opened
-        );
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_rush() {
+        let mut config = SessionConfig::default();
+        config.session_get_timeout = Duration::from_secs(20);
+        config.min_opened = 10;
+        config.max_idle = 20;
+        config.max_opened = 45;
+        assert_rush(false, config).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_rush_with_cleanup() {
+        let mut config = SessionConfig::default();
+        config.idle_timeout = Duration::from_millis(10);
+        config.session_alive_trust_duration = Duration::from_millis(10);
+        config.refresh_interval = Duration::from_millis(250);
+        config.session_get_timeout = Duration::from_secs(20);
+        config.min_opened = 10;
+        config.max_idle = 20;
+        config.max_opened = 45;
+        assert_rush(false, config).await;
     }
 }
