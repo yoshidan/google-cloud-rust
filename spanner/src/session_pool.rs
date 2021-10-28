@@ -130,9 +130,8 @@ impl SessionPool {
     }
 
     fn num_opened(&self) -> usize {
-        let v = self.inuse.load(SeqCst);
-        println!("{}",v);
-        v as usize + self.sessions.lock().len()
+        let locked = self.sessions.lock();
+        self.inuse.load(SeqCst) as usize + locked.len()
     }
 
     fn pop(&self) -> Option<SessionHandle>{
@@ -369,10 +368,16 @@ impl SessionManager {
         let conn_pool = Arc::clone(&self.conn_pool);
         tokio::spawn(async move {
 
+            let mut allocation_request_size = 0;
             loop {
                 let _ = rx.recv().await;
 
-                let mut creation_count = config.max_opened - session_pool.num_opened();
+                let num_opened = session_pool.num_opened();
+                if num_opened >= config.min_opened && allocation_request_size >= {session_pool.waiters.lock().len()} {
+                    continue;
+                }
+
+                let mut creation_count = config.max_opened - num_opened;
                 if creation_count > config.inc_step {
                     creation_count = config.inc_step;
                 }
@@ -380,13 +385,17 @@ impl SessionManager {
                     println!("maximum session opened");
                     continue;
                 }
+                allocation_request_size += creation_count;
 
                 let database = database.clone();
                 let next_client = conn_pool.conn();
                 println!("start batch create session {}", creation_count);
 
                 match batch_create_session(next_client, database, creation_count).await {
-                    Ok(fresh_sessions) => session_pool.grow(fresh_sessions),
+                    Ok(fresh_sessions) => {
+                        allocation_request_size -= creation_count;
+                        session_pool.grow(fresh_sessions)
+                    },
                     Err(e) => log::error!("failed to batch creation request {:?}", e)
                 };
             }
@@ -559,6 +568,7 @@ mod tests {
     use std::time::Instant;
     use tokio::time::{sleep, Duration};
     use std::sync::atomic::{AtomicI64, Ordering};
+    use std::sync::atomic::Ordering::SeqCst;
 
     pub const DATABASE: &str =
         "projects/local-project/instances/test-instance/databases/local-database";
@@ -608,8 +618,9 @@ mod tests {
         )
         .await;
 
-        // expired
-        assert_eq!(sm.idle_sessions(), 0);
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+        // expired but created by allocation batch
+        assert_eq!(sm.idle_sessions(), 5);
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -717,6 +728,7 @@ mod tests {
         config.max_idle = 20;
         config.max_opened = 45;
         let max = config.max_opened.clone();
+        let min = config.min_opened.clone();
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
 
         let counter = Arc::new(AtomicI64::new(0));
@@ -733,7 +745,8 @@ mod tests {
             sleep(Duration::from_millis(5)).await;
         }
 
-        assert_eq!(sm.idle_sessions(), max, "idle session max must 45");
-        assert_eq!(sm.session_pool.sessions.lock().len(), max);
+        assert_eq!(sm.session_pool.inuse.load(SeqCst), 0);
+        assert!(sm.idle_sessions() <= max, "idle session must be lteq {}", max);
+        assert!(sm.idle_sessions() >= min, "idle session must be gteq {}", min);
     }
 }
