@@ -117,10 +117,6 @@ impl Sessions {
         self.sessions.push_back(session);
     }
 
-    fn notify_discarded(&mut self) {
-        self.inuse -= 1;
-    }
-
     fn num_opened(&self) -> usize {
         self.inuse + self.sessions.len()
     }
@@ -137,7 +133,9 @@ impl Sessions {
 
     fn release(&mut self, session: SessionHandle) {
         self.inuse -= 1;
-        self.sessions.push_back(session)
+        if session.valid {
+            self.sessions.push_back(session);
+        }
     }
 }
 
@@ -174,7 +172,10 @@ impl SessionPool {
                     let mut inner = self.inner.lock();
                     match c.send(session) {
                         Err(session) => inner.grow(session),
-                        _ => inner.inuse += 1,
+                        _ => {
+                            // Mark as using when notify to waiter directory.
+                            inner.inuse += 1
+                        }
                     };
                 }
                 None => self.inner.lock().grow(session),
@@ -194,7 +195,7 @@ impl SessionPool {
             };
         } else {
             {
-                self.inner.lock().notify_discarded()
+                self.inner.lock().release(session)
             };
 
             // request session creation
@@ -422,7 +423,8 @@ impl SessionManager {
         let mut sessions = self.session_pool.inner.lock();
         while let Some(mut session) = sessions.take() {
             delete_session(&mut session).await;
-            sessions.notify_discarded();
+            session.valid = false;
+            sessions.release(session);
         }
     }
 
@@ -763,16 +765,20 @@ mod tests {
             sleep(Duration::from_millis(5)).await;
         }
 
+        sleep(tokio::time::Duration::from_millis(100)).await;
         assert_eq!(sm.session_pool.inner.lock().inuse, 0);
+        let num_opened = sm.idle_sessions();
         assert!(
-            sm.idle_sessions() <= max,
-            "idle session must be lteq {}",
-            max
+            num_opened <= max,
+            "idle session must be lteq {} now is {}",
+            max,
+            num_opened
         );
         assert!(
-            sm.idle_sessions() >= min,
-            "idle session must be gteq {}",
-            min
+            num_opened >= min,
+            "idle session must be gteq {} now is {}",
+            min,
+            num_opened
         );
     }
 }
