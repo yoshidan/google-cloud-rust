@@ -13,22 +13,6 @@ mod common;
 use common::*;
 use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
 
-async fn all_rows(mut itr: RowIterator<'_>) -> Vec<Row> {
-    let mut rows = vec![];
-    loop {
-        match itr.next().await {
-            Ok(row) => {
-                if row.is_some() {
-                    rows.push(row.unwrap());
-                } else {
-                    break;
-                }
-            }
-            Err(status) => panic!("reader aborted {:?}", status),
-        };
-    }
-    rows
-}
 
 async fn assert_read(
     tx: &mut ReadOnlyTransaction,

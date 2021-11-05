@@ -17,6 +17,7 @@ use google_cloud_spanner::transaction_ro::ReadOnlyTransaction;
 use google_cloud_spanner::value::{CommitTimestamp, TimestampBound};
 use rust_decimal::Decimal;
 use std::str::FromStr;
+use google_cloud_spanner::reader::{RowIterator, AsyncIterator};
 
 pub const DATABASE: &str =
     "projects/local-project/instances/test-instance/databases/local-database";
@@ -250,4 +251,21 @@ pub async fn read_only_transaction(session: ManagedSession) -> ReadOnlyTransacti
         Ok(tx) => tx,
         Err(status) => panic!("begin error {:?}", status),
     }
+}
+
+pub async fn all_rows(mut itr: RowIterator<'_>) -> Vec<Row> {
+    let mut rows = vec![];
+    loop {
+        match itr.next().await {
+            Ok(row) => {
+                if row.is_some() {
+                    rows.push(row.unwrap());
+                } else {
+                    break;
+                }
+            }
+            Err(status) => panic!("reader aborted {:?}", status),
+        };
+    }
+    rows
 }

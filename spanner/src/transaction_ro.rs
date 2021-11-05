@@ -32,7 +32,7 @@ use crate::value::TimestampBound;
 /// TimestampBound for more details.
 pub struct ReadOnlyTransaction {
     base_tx: Transaction,
-    pub rts: Option<NaiveDateTime>,
+    rts: Option<NaiveDateTime>,
 }
 
 impl Deref for ReadOnlyTransaction {
