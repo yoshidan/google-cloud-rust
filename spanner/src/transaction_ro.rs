@@ -11,7 +11,7 @@ use google_cloud_googleapis::spanner::v1::{
 };
 
 use crate::reader::{Reader, RowIterator, StatementReader, TableReader};
-use crate::session_pool::ManagedSession;
+use crate::sessions::ManagedSession;
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, ReadOptions, Transaction};
 use crate::value::TimestampBound;

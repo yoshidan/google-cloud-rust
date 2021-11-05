@@ -13,7 +13,7 @@ use google_cloud_googleapis::spanner::v1::{
 
 use crate::key::KeySet;
 use crate::reader::{RowIterator, StatementReader, TableReader};
-use crate::session_pool::ManagedSession;
+use crate::sessions::ManagedSession;
 use crate::statement::Statement;
 
 #[derive(Clone)]

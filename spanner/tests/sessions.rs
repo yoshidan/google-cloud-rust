@@ -13,7 +13,7 @@ mod common;
 use common::*;
 use google_cloud_spanner::apiv1::conn_pool::ConnectionManager;
 use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
-use google_cloud_spanner::session_pool::{SessionConfig, SessionError, SessionManager};
+use google_cloud_spanner::sessions::{SessionConfig, SessionError, SessionManager};
 use std::time::{Duration, Instant};
 
 #[tokio::test]
@@ -26,7 +26,7 @@ async fn test_init_pool() {
     config.min_opened = 1;
     config.max_opened = 26;
     let sm = SessionManager::new(DATABASE, cm, config).await.unwrap();
-    let idle_sessions = sm.idle_sessions();
+    let idle_sessions = sm.num_opened();
     assert_eq!(idle_sessions, 1);
 }
 
@@ -44,7 +44,7 @@ async fn test_grow_session() {
     for _ in 0..26 {
         sessions.push(sm.get().await.unwrap());
     }
-    let idle_sessions = sm.idle_sessions();
+    let idle_sessions = sm.num_opened();
     assert_eq!(idle_sessions, 26);
 }
 
@@ -67,7 +67,7 @@ async fn test_grow_timeout() {
             oth => panic!("invalid error {:?}", oth),
         },
     };
-    let idle_sessions = sm.idle_sessions();
+    let idle_sessions = sm.num_opened();
     assert_eq!(idle_sessions, 2);
 }
 
@@ -96,6 +96,6 @@ async fn test_grow_wait_and_get() {
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
     }
     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-    assert_eq!(sm.idle_sessions(), 2);
+    assert_eq!(sm.num_opened(), 2);
     assert_eq!(sm.session_waiters(), 0);
 }
