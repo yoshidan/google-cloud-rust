@@ -315,7 +315,7 @@ impl SessionManager {
         Ok(sm)
     }
 
-    pub fn idle_sessions(&self) -> usize {
+    pub fn num_opened(&self) -> usize {
         self.session_pool.num_opened()
     }
 
@@ -412,7 +412,10 @@ impl SessionManager {
                         allocation_request_size -= creation_count;
                         session_pool.grow(fresh_sessions)
                     }
-                    Err(e) => log::error!("failed to batch creation request {:?}", e),
+                    Err(e) => {
+                        allocation_request_size -= creation_count;
+                        log::error!("failed to batch creation request {:?}", e)
+                    }
                 };
             }
         });
@@ -589,7 +592,7 @@ async fn batch_create_session(
 #[cfg(test)]
 mod tests {
     use crate::apiv1::conn_pool::ConnectionManager;
-    use crate::session_pool::{health_check, shrink_idle_sessions, SessionConfig, SessionManager};
+    use crate::sessions::{health_check, shrink_idle_sessions, SessionConfig, SessionManager};
     use serial_test::serial;
     use std::sync::atomic::Ordering::SeqCst;
     use std::sync::atomic::{AtomicI64, Ordering};
@@ -616,7 +619,7 @@ mod tests {
             tokio::spawn(async move {
                 let mut session = sm.get().await.unwrap();
                 if use_invalidate {
-                   session.invalidate();
+                    session.invalidate();
                 }
                 counter.fetch_add(1, Ordering::SeqCst);
             });
@@ -627,7 +630,7 @@ mod tests {
 
         sleep(tokio::time::Duration::from_millis(100)).await;
         assert_eq!(sm.session_pool.inner.lock().inuse, 0);
-        let num_opened = sm.idle_sessions();
+        let num_opened = sm.num_opened();
         assert!(
             num_opened <= max,
             "idle session must be lteq {} now is {}",
@@ -657,7 +660,7 @@ mod tests {
         sleep(Duration::from_secs(1)).await;
         shrink_idle_sessions(Instant::now(), idle_timeout, &sm.session_pool, 5).await;
 
-        assert_eq!(sm.idle_sessions(), 5);
+        assert_eq!(sm.num_opened(), 5);
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -677,7 +680,7 @@ mod tests {
 
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
         // expired but created by allocation batch
-        assert_eq!(sm.idle_sessions(), 5);
+        assert_eq!(sm.num_opened(), 5);
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -701,7 +704,7 @@ mod tests {
         )
         .await;
 
-        assert_eq!(sm.idle_sessions(), 5);
+        assert_eq!(sm.num_opened(), 5);
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
     }
 
@@ -726,7 +729,7 @@ mod tests {
         )
         .await;
 
-        assert_eq!(sm.idle_sessions(), 5);
+        assert_eq!(sm.num_opened(), 5);
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
     }
 
@@ -753,7 +756,7 @@ mod tests {
             }
 
             // all the session are using
-            assert_eq!(sm.idle_sessions(), 45);
+            assert_eq!(sm.num_opened(), 45);
             {
                 assert_eq!(
                     sm.session_pool.inner.lock().inuse,
@@ -773,7 +776,7 @@ mod tests {
                 "available sessions are 19 or 20 (19 means that the cleaner is popping session)"
             );
         }
-        assert_eq!(sm.idle_sessions(), 20, "num sessions are 20");
+        assert_eq!(sm.num_opened(), 20, "num sessions are 20");
         assert_eq!(sm.session_waiters(), 0, "session waiters is 0");
     }
 

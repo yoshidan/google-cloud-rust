@@ -14,7 +14,7 @@ use google_cloud_googleapis::spanner::v1::{
     TransactionOptions, TransactionSelector,
 };
 
-use crate::session_pool::ManagedSession;
+use crate::sessions::ManagedSession;
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, Transaction};
 

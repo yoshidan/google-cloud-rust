@@ -11,7 +11,7 @@ use google_cloud_googleapis::spanner::v1::{
 
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::retry::{new_default_tx_retry, new_tx_retry_with_codes};
-use crate::session_pool::{ManagedSession, SessionConfig, SessionError, SessionManager};
+use crate::sessions::{ManagedSession, SessionConfig, SessionError, SessionManager};
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions};
 use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
