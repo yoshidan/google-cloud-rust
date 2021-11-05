@@ -182,16 +182,14 @@ async fn test_batch_read_only_transaction() -> Result<(), anyhow::Error> {
 
     let mut session = create_session().await;
     let many = (0..20000)
-        .map(|x| create_user_mutation(&format!("user_partition2_{}_{}", x,now.timestamp()), &now))
+        .map(|x| create_user_mutation(&format!("user_partition_{}_{}", now.timestamp(), x), &now))
         .collect();
-    let cr = replace_test_data(&mut session, many).await.unwrap();
+    replace_test_data(&mut session, many).await.unwrap();
 
     let client = Client::new(DATABASE, None).await.context("error")?;
     let mut tx = client.batch_read_only_transaction(None).await.unwrap();
 
-    let ts = cr.commit_timestamp.as_ref().unwrap();
-    let ts = NaiveDateTime::from_timestamp(ts.seconds, ts.nanos as u32);
-    let stmt = Statement::new("SELECT * FROM User p WHERE p.UserId LIKE 'user_partition2_%' ");
+    let stmt = Statement::new(format!("SELECT * FROM User p WHERE p.UserId LIKE 'user_partition_{}_%' ", now.timestamp()));
     let rows = execute_partitioned_query(&mut tx, stmt).await;
     assert_eq!(20000, rows.len());
     Ok(())
