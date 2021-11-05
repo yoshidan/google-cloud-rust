@@ -109,10 +109,10 @@ mod tests {
         match mutation.operation.unwrap() {
             v1::mutation::Operation::Insert(mut w) => {
                 assert_eq!("Guild", w.table);
-                assert_eq!(3, w.values.len());
-                assert_eq!("GuildId", w.columns.pop().unwrap());
-                assert_eq!("UserId", w.columns.pop().unwrap());
+                assert_eq!(3, w.values.pop().unwrap().values.len());
                 assert_eq!("UpdatedAt", w.columns.pop().unwrap());
+                assert_eq!("UserId", w.columns.pop().unwrap());
+                assert_eq!("GuildId", w.columns.pop().unwrap());
             }
             _ => panic!("invalid operation"),
         }
@@ -130,9 +130,9 @@ mod tests {
             ],
         );
         match mutation.operation.unwrap() {
-            v1::mutation::Operation::Update(w) => {
+            v1::mutation::Operation::Update(mut w) => {
                 assert_eq!("Guild", w.table);
-                assert_eq!(3, w.values.len());
+                assert_eq!(3, w.values.pop().unwrap().values.len());
                 assert_eq!(3, w.columns.len());
             }
             _ => panic!("invalid operation"),
@@ -151,9 +151,9 @@ mod tests {
             ],
         );
         match mutation.operation.unwrap() {
-            v1::mutation::Operation::Replace(w) => {
+            v1::mutation::Operation::Replace(mut w) => {
                 assert_eq!("Guild", w.table);
-                assert_eq!(3, w.values.len());
+                assert_eq!(3, w.values.pop().unwrap().values.len());
                 assert_eq!(3, w.columns.len());
             }
             _ => panic!("invalid operation"),
@@ -172,9 +172,9 @@ mod tests {
             ],
         );
         match mutation.operation.unwrap() {
-            v1::mutation::Operation::InsertOrUpdate(w) => {
+            v1::mutation::Operation::InsertOrUpdate(mut w) => {
                 assert_eq!("Guild", w.table);
-                assert_eq!(3, w.values.len());
+                assert_eq!(3, w.values.pop().unwrap().values.len());
                 assert_eq!(3, w.columns.len());
             }
             _ => panic!("invalid operation"),

@@ -6,18 +6,19 @@ use google_cloud_googleapis::spanner::v1::{
     CommitRequest, CommitResponse, Mutation, TransactionOptions,
 };
 use google_cloud_spanner::apiv1::conn_pool::ConnectionManager;
+use google_cloud_spanner::key::{Key, KeySet};
 use google_cloud_spanner::mutation::insert_or_update;
+use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
 use google_cloud_spanner::row::{Row, Struct, TryFromStruct};
 use google_cloud_spanner::sessions::{
     ManagedSession, SessionConfig, SessionHandle, SessionManager,
 };
-use google_cloud_spanner::statement::ToKind;
+use google_cloud_spanner::statement::{Statement, ToKind};
 use google_cloud_spanner::transaction::CallOptions;
-use google_cloud_spanner::transaction_ro::ReadOnlyTransaction;
+use google_cloud_spanner::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use google_cloud_spanner::value::{CommitTimestamp, TimestampBound};
 use rust_decimal::Decimal;
 use std::str::FromStr;
-use google_cloud_spanner::reader::{RowIterator, AsyncIterator};
 
 pub const DATABASE: &str =
     "projects/local-project/instances/test-instance/databases/local-database";
@@ -268,4 +269,75 @@ pub async fn all_rows(mut itr: RowIterator<'_>) -> Vec<Row> {
         };
     }
     rows
+}
+
+pub async fn assert_partitioned_query(
+    tx: &mut BatchReadOnlyTransaction,
+    user_id: &str,
+    now: &NaiveDateTime,
+    cts: &NaiveDateTime,
+) {
+    let mut stmt = Statement::new("SELECT * FROM User WHERE UserId = @UserID");
+    stmt.add_param("UserId", user_id);
+    let row = execute_partitioned_query(tx, stmt).await;
+    assert_eq!(row.len(), 1);
+    assert_user_row(row.first().unwrap(), user_id, now, cts);
+}
+
+pub async fn execute_partitioned_query(
+    tx: &mut BatchReadOnlyTransaction,
+    stmt: Statement,
+) -> Vec<Row> {
+    let partitions = match tx.partition_query(stmt, None, None).await {
+        Ok(tx) => tx,
+        Err(status) => panic!("query error {:?}", status),
+    };
+    println!("partition count = {}", partitions.len());
+    let mut rows = vec![];
+    for p in partitions.into_iter() {
+        let reader = match tx.execute(p).await {
+            Ok(tx) => tx,
+            Err(status) => panic!("query error {:?}", status),
+        };
+        let rows_per_partition = all_rows(reader).await;
+        for x in rows_per_partition {
+            rows.push(x);
+        }
+    }
+    rows
+}
+
+pub async fn assert_partitioned_read(
+    tx: &mut BatchReadOnlyTransaction,
+    user_id: &str,
+    now: &NaiveDateTime,
+    cts: &NaiveDateTime,
+) {
+    let partitions = match tx
+        .partition_read(
+            "User",
+            user_columns(),
+            KeySet::from(Key::one(user_id)),
+            None,
+            None,
+        )
+        .await
+    {
+        Ok(tx) => tx,
+        Err(status) => panic!("query error {:?}", status),
+    };
+    println!("partition count = {}", partitions.len());
+    let mut rows = vec![];
+    for p in partitions.into_iter() {
+        let reader = match tx.execute(p).await {
+            Ok(tx) => tx,
+            Err(status) => panic!("query error {:?}", status),
+        };
+        let rows_per_partition = all_rows(reader).await;
+        for x in rows_per_partition {
+            rows.push(x);
+        }
+    }
+    assert_eq!(rows.len(), 1);
+    assert_user_row(rows.first().unwrap(), user_id, now, cts);
 }

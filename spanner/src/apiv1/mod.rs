@@ -4,6 +4,7 @@ pub mod spanner_client;
 #[cfg(test)]
 mod tests {
 
+    use serial_test::serial;
     use crate::apiv1::conn_pool::ConnectionManager;
     use crate::apiv1::spanner_client::Client;
     use google_cloud_googleapis::spanner::v1::mutation::{Operation, Write};
@@ -74,6 +75,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_create_session() {
         let mut client = create_spanner_client().await;
         let request = CreateSessionRequest {
@@ -91,6 +93,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_batch_create_session() {
         let mut client = create_spanner_client().await;
         let request = BatchCreateSessionsRequest {
@@ -113,6 +116,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_get_session() {
         let mut client = create_spanner_client().await;
         let session = create_session(&mut client).await;
@@ -129,6 +133,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_list_sessions() {
         let mut client = create_spanner_client().await;
         let request = ListSessionsRequest {
@@ -147,6 +152,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_delete_session() {
         let mut client = create_spanner_client().await;
 
@@ -176,6 +182,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_execute_sql() {
         let mut client = create_spanner_client().await;
         let session = create_session(&mut client).await;
@@ -201,6 +208,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_execute_streaming_sql() {
         let mut client = create_spanner_client().await;
         let session = create_session(&mut client).await;
@@ -243,6 +251,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_begin_transaction() {
         let mut client = create_spanner_client().await;
         let session = create_session(&mut client).await;
@@ -270,6 +279,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_execute_batch_dml() {
         let mut client = create_spanner_client().await;
         let session = create_session(&mut client).await;
@@ -321,6 +331,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_execute_batch_dml_error_as_tonic_check() {
         let mut client = create_spanner_client().await;
         let session = create_session(&mut client).await;
@@ -369,6 +380,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_read() {
         let mut client = create_spanner_client().await;
         let session = create_session(&mut client).await;
@@ -398,6 +410,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_streaming_read() {
         let mut client = create_spanner_client().await;
         let session = create_session(&mut client).await;
@@ -428,6 +441,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_commit() {
         let mut client = create_spanner_client().await;
         let session = create_session(&mut client).await;
@@ -477,6 +491,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_rollback() {
         let mut client = create_spanner_client().await;
         let session = create_session(&mut client).await;
@@ -493,6 +508,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_partition_query() {
         let mut client = create_spanner_client().await;
         let session = create_session(&mut client).await;
@@ -521,6 +537,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_partition_read() {
         let mut client = create_spanner_client().await;
         let session = create_session(&mut client).await;

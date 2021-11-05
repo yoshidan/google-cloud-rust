@@ -214,9 +214,6 @@ impl Client {
     /// for partitioned reads or queries from a snapshot of the database. This is
     /// useful in batch processing pipelines where one wants to divide the work of
     /// reading from the database across multiple machines.
-    ///
-    /// Note: This transaction does not use the underlying session pool but creates a
-    /// new session each time.
     pub async fn batch_read_only_transaction(
         &self,
         options: Option<ReadOnlyTransactionOption>,
@@ -225,7 +222,7 @@ impl Client {
             Some(o) => o,
             None => ReadOnlyTransactionOption::default(),
         };
-        //TODO don't use session pool use and create session each time
+
         let session = self.get_session().await?;
         let result =
             BatchReadOnlyTransaction::begin(session, opt.timestamp_bound, opt.call_options).await?;

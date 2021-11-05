@@ -13,7 +13,6 @@ mod common;
 use common::*;
 use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
 
-
 async fn assert_read(
     tx: &mut ReadOnlyTransaction,
     user_id: &str,
@@ -58,74 +57,6 @@ async fn execute_query(tx: &mut ReadOnlyTransaction, stmt: Statement) -> Vec<Row
         Err(status) => panic!("query error {:?}", status),
     };
     all_rows(reader).await
-}
-
-async fn assert_partitioned_query(
-    tx: &mut BatchReadOnlyTransaction,
-    user_id: &str,
-    now: &NaiveDateTime,
-    cts: &NaiveDateTime,
-) {
-    let mut stmt = Statement::new("SELECT * FROM User WHERE UserId = @UserID");
-    stmt.add_param("UserId", user_id);
-    let row = execute_partitioned_query(tx, stmt).await;
-    assert_eq!(row.len(), 1);
-    assert_user_row(row.first().unwrap(), user_id, now, cts);
-}
-
-async fn execute_partitioned_query(tx: &mut BatchReadOnlyTransaction, stmt: Statement) -> Vec<Row> {
-    let partitions = match tx.partition_query(stmt, None, None).await {
-        Ok(tx) => tx,
-        Err(status) => panic!("query error {:?}", status),
-    };
-    println!("partition count = {}", partitions.len());
-    let mut rows = vec![];
-    for p in partitions.into_iter() {
-        let reader = match tx.execute(p).await {
-            Ok(tx) => tx,
-            Err(status) => panic!("query error {:?}", status),
-        };
-        let rows_per_partition = all_rows(reader).await;
-        for x in rows_per_partition {
-            rows.push(x);
-        }
-    }
-    rows
-}
-
-async fn assert_partitioned_read(
-    tx: &mut BatchReadOnlyTransaction,
-    user_id: &str,
-    now: &NaiveDateTime,
-    cts: &NaiveDateTime,
-) {
-    let partitions = match tx
-        .partition_read(
-            "User",
-            user_columns(),
-            KeySet::from(Key::one(user_id)),
-            None,
-            None,
-        )
-        .await
-    {
-        Ok(tx) => tx,
-        Err(status) => panic!("query error {:?}", status),
-    };
-    println!("partition count = {}", partitions.len());
-    let mut rows = vec![];
-    for p in partitions.into_iter() {
-        let reader = match tx.execute(p).await {
-            Ok(tx) => tx,
-            Err(status) => panic!("query error {:?}", status),
-        };
-        let rows_per_partition = all_rows(reader).await;
-        for x in rows_per_partition {
-            rows.push(x);
-        }
-    }
-    assert_eq!(rows.len(), 1);
-    assert_user_row(rows.first().unwrap(), user_id, now, cts);
 }
 
 #[tokio::test]
