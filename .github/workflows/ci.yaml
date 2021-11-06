@@ -49,7 +49,7 @@ jobs:
   spanner:
     name: spanner
     runs-on: ubuntu-latest
-    needs: setup
+    needs: common
     steps:
       - name: setup spanner
         run: |
