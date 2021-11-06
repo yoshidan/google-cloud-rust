@@ -1,11 +1,11 @@
 use std::collections::VecDeque;
 use std::ops::{Deref, DerefMut};
-use std::sync::{Arc, Weak};
+use std::sync::{Arc};
 use std::time::Instant;
 
 use parking_lot::Mutex;
 use thiserror;
-use tonic::metadata::KeyAndValueRef;
+
 use tonic::Code;
 use tonic::Status;
 
@@ -15,7 +15,7 @@ use google_cloud_googleapis::spanner::v1::{
 
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::spanner_client::{ping_query_request, Client};
-use std::sync::atomic::Ordering::SeqCst;
+
 use tokio::sync::broadcast;
 use tokio::sync::oneshot;
 use tokio::time::{sleep, timeout, Duration};
@@ -96,7 +96,7 @@ impl Deref for ManagedSession {
     type Target = SessionHandle;
 
     fn deref(&self) -> &Self::Target {
-        &self.session.as_ref().unwrap()
+        self.session.as_ref().unwrap()
     }
 }
 
@@ -193,9 +193,7 @@ impl SessionPool {
                 None => self.inner.lock().release(session),
             };
         } else {
-            {
-                self.inner.lock().release(session)
-            };
+            self.inner.lock().release(session);
 
             // request session creation
             self.creation_producer.send(true);
@@ -494,7 +492,7 @@ async fn health_check(
         let request = ping_query_request(s.session.name.clone());
         match s.spanner_client.execute_sql(request, None).await {
             Ok(_) => {
-                s.last_checked_at = now.clone();
+                s.last_checked_at = now;
                 s.last_pong_at = now;
                 sessions.recycle(s);
             }
@@ -572,7 +570,7 @@ async fn batch_create_session(
     let request = BatchCreateSessionsRequest {
         database,
         session_template: None,
-        session_count: creation_count.clone() as i32,
+        session_count: creation_count as i32,
     };
 
     let response = spanner_client
@@ -582,11 +580,11 @@ async fn batch_create_session(
     log::info!("batch session created {}", creation_count);
 
     let now = Instant::now();
-    return Ok(response
+    Ok(response
         .session
         .into_iter()
         .map(|s| SessionHandle::new(s, spanner_client.clone(), now))
-        .collect::<Vec<SessionHandle>>());
+        .collect::<Vec<SessionHandle>>())
 }
 
 #[cfg(test)]
@@ -594,7 +592,7 @@ mod tests {
     use crate::apiv1::conn_pool::ConnectionManager;
     use crate::sessions::{health_check, shrink_idle_sessions, SessionConfig, SessionManager};
     use serial_test::serial;
-    use std::sync::atomic::Ordering::SeqCst;
+    
     use std::sync::atomic::{AtomicI64, Ordering};
     use std::sync::Arc;
     use std::time::Instant;
@@ -607,8 +605,8 @@ mod tests {
         let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
             .await
             .unwrap();
-        let max = config.max_opened.clone();
-        let min = config.min_opened.clone();
+        let max = config.max_opened;
+        let min = config.min_opened;
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
         sm.schedule_refresh();
 
@@ -654,7 +652,7 @@ mod tests {
         let idle_timeout = Duration::from_secs(100);
         let mut config = SessionConfig::default();
         config.min_opened = 5;
-        config.idle_timeout = idle_timeout.clone();
+        config.idle_timeout = idle_timeout;
         config.max_opened = 5;
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
         sleep(Duration::from_secs(1)).await;
@@ -672,7 +670,7 @@ mod tests {
         let idle_timeout = Duration::from_millis(1);
         let mut config = SessionConfig::default();
         config.min_opened = 5;
-        config.idle_timeout = idle_timeout.clone();
+        config.idle_timeout = idle_timeout;
         config.max_opened = 5;
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
         sleep(Duration::from_secs(1)).await;
@@ -692,7 +690,7 @@ mod tests {
         let session_alive_trust_duration = Duration::from_millis(10);
         let mut config = SessionConfig::default();
         config.min_opened = 5;
-        config.session_alive_trust_duration = session_alive_trust_duration.clone();
+        config.session_alive_trust_duration = session_alive_trust_duration;
         config.max_opened = 5;
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
         sleep(Duration::from_secs(1)).await;
@@ -717,7 +715,7 @@ mod tests {
         let session_alive_trust_duration = Duration::from_secs(10);
         let mut config = SessionConfig::default();
         config.min_opened = 5;
-        config.session_alive_trust_duration = session_alive_trust_duration.clone();
+        config.session_alive_trust_duration = session_alive_trust_duration;
         config.max_opened = 5;
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
         sleep(Duration::from_secs(1)).await;

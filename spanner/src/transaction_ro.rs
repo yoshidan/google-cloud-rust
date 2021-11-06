@@ -39,13 +39,13 @@ impl Deref for ReadOnlyTransaction {
     type Target = Transaction;
 
     fn deref(&self) -> &Self::Target {
-        return &self.base_tx;
+        &self.base_tx
     }
 }
 
 impl DerefMut for ReadOnlyTransaction {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        return &mut self.base_tx;
+        &mut self.base_tx
     }
 }
 
@@ -54,7 +54,7 @@ impl ReadOnlyTransaction {
         session: ManagedSession,
         tb: TimestampBound,
     ) -> Result<ReadOnlyTransaction, Status> {
-        return Ok(ReadOnlyTransaction {
+        Ok(ReadOnlyTransaction {
             base_tx: Transaction {
                 session: Some(session),
                 sequence_number: AtomicI64::new(0),
@@ -67,7 +67,7 @@ impl ReadOnlyTransaction {
                 },
             },
             rts: None,
-        });
+        })
     }
 
     /// begin starts a snapshot read-only Transaction on Cloud Spanner.
@@ -97,7 +97,7 @@ impl ReadOnlyTransaction {
                         session: Some(session),
                         sequence_number: AtomicI64::new(0),
                         transaction_selector: TransactionSelector {
-                            selector: Some(transaction_selector::Selector::Id(tx.id.clone())),
+                            selector: Some(transaction_selector::Selector::Id(tx.id)),
                         },
                     },
                     rts: Some(NaiveDateTime::from_timestamp(rts.seconds, rts.nanos as u32)),
@@ -125,13 +125,13 @@ impl Deref for BatchReadOnlyTransaction {
     type Target = ReadOnlyTransaction;
 
     fn deref(&self) -> &Self::Target {
-        return &self.base_tx;
+        &self.base_tx
     }
 }
 
 impl DerefMut for BatchReadOnlyTransaction {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        return &mut self.base_tx;
+        &mut self.base_tx
     }
 }
 
@@ -142,7 +142,7 @@ impl BatchReadOnlyTransaction {
         options: CallOptions,
     ) -> Result<BatchReadOnlyTransaction, Status> {
         let tx = ReadOnlyTransaction::begin(session, tb, options).await?;
-        return Ok(BatchReadOnlyTransaction { base_tx: tx });
+        Ok(BatchReadOnlyTransaction { base_tx: tx })
     }
 
     /// partition_read returns a list of Partitions that can be used to read rows from
@@ -194,7 +194,7 @@ impl BatchReadOnlyTransaction {
                             session: self.get_session_name(),
                             transaction: Some(self.transaction_selector.clone()),
                             table: table.clone().into(),
-                            index: opt.index.clone().into(),
+                            index: opt.index.clone(),
                             columns: columns.clone(),
                             key_set: Some(keys.clone().into()),
                             limit: opt.limit,

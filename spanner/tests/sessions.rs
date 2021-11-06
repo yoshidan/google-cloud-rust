@@ -1,20 +1,20 @@
-use chrono::{NaiveDateTime, Utc};
-use google_cloud_spanner::key::{Key, KeySet};
-use google_cloud_spanner::mutation::insert_or_update;
-use google_cloud_spanner::row::Row;
-use google_cloud_spanner::statement::Statement;
-use google_cloud_spanner::transaction::{CallOptions, QueryOptions};
-use google_cloud_spanner::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
-use google_cloud_spanner::value::TimestampBound;
+
+
+
+
+
+
+
+
 use serial_test::serial;
-use std::ops::DerefMut;
+
 
 mod common;
 use common::*;
 use google_cloud_spanner::apiv1::conn_pool::ConnectionManager;
-use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
+
 use google_cloud_spanner::sessions::{SessionConfig, SessionError, SessionManager};
-use std::time::{Duration, Instant};
+
 
 #[tokio::test]
 #[serial]
@@ -58,10 +58,10 @@ async fn test_grow_timeout() {
     config.min_opened = 1;
     config.max_opened = 2;
     let sm = SessionManager::new(DATABASE, cm, config).await.unwrap();
-    let s1 = sm.get().await.unwrap();
-    let s2 = sm.get().await.unwrap();
+    let _s1 = sm.get().await.unwrap();
+    let _s2 = sm.get().await.unwrap();
     match sm.get().await {
-        Ok(s) => panic!("must be error"),
+        Ok(_s) => panic!("must be error"),
         Err(e) => match e {
             SessionError::SessionGetTimeout => {}
             oth => panic!("invalid error {:?}", oth),
@@ -83,11 +83,11 @@ async fn test_grow_wait_and_get() {
     let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
     {
         let cloned = sm.clone();
-        let s1 = cloned.get().await.unwrap();
-        let s2 = cloned.get().await.unwrap();
+        let _s1 = cloned.get().await.unwrap();
+        let _s2 = cloned.get().await.unwrap();
         tokio::spawn(async move {
             match cloned.clone().get().await {
-                Ok(s) => {
+                Ok(_s) => {
                     println!("session available");
                 }
                 Err(e) => panic!("invalid error {:?}", e),

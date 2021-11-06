@@ -92,7 +92,7 @@ impl<'a> Struct<'a> {
         T: TryFromValue,
     {
         match self.list_values {
-            Some(values) => column(&values, &self.metadata.fields, column_index),
+            Some(values) => column(values, &self.metadata.fields, column_index),
             None => match self.struct_values {
                 Some(values) => {
                     let field = &self.metadata.fields[column_index];
@@ -270,7 +270,7 @@ where
         ));
     }
     let value = &values[column_index];
-    return T::try_from(value, &fields[column_index]);
+    T::try_from(value, &fields[column_index])
 }
 
 fn as_ref<'a>(item: &'a Value, field: &'a Field) -> Result<&'a Kind> {
@@ -370,7 +370,7 @@ mod tests {
                     kind: Some("aaa".to_kind()),
                 },
                 Value {
-                    kind: Some(vec![10 as i64, 100 as i64].to_kind()),
+                    kind: Some(vec![10_i64, 100_i64].to_kind()),
                 },
                 // https://cloud.google.com/spanner/docs/query-syntax?hl=ja#using_structs_with_select
                 // SELECT ARRAY(SELECT AS STRUCT * FROM TestStruct LIMIT 2) as struct

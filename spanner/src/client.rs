@@ -108,7 +108,7 @@ impl Default for ClientConfig {
             session_config: Default::default(),
         };
         config.session_config.max_opened = config.channel_config.num_channels * 100;
-        return config;
+        config
     }
 }
 
@@ -171,9 +171,9 @@ impl Client {
             SessionManager::new(database, conn_pool, config.session_config).await?;
         session_manager.schedule_refresh();
 
-        return Ok(Client {
+        Ok(Client {
             sessions: session_manager,
-        });
+        })
     }
 
     /// Close closes the client.
@@ -328,7 +328,7 @@ impl Client {
                 options,
             )
             .await;
-        return Ok(result?.0);
+        Ok(result?.0)
     }
 
     /// ReadWriteTransaction executes a read-write transaction, with retries as

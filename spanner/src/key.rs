@@ -255,7 +255,7 @@ impl Key {
     ///  let key2 = Key::one(1);
     /// ```
     pub fn one(value: impl ToKind) -> Key {
-        return Key::new(vec![value.to_kind()]);
+        Key::new(vec![value.to_kind()])
     }
 
     /// new creates new Key

@@ -52,7 +52,7 @@ impl Retryer for TransactionRetryer {
             return None;
         }
         //TODO extract server delay
-        return self.retryer.retry(status);
+        self.retryer.retry(status)
     }
 }
 

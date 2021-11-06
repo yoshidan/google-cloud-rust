@@ -132,15 +132,15 @@ pub fn create_user_mutation(user_id: &str, now: &NaiveDateTime) -> Mutation {
             None::<f64>.to_kind(),
             true.to_kind(),
             None::<bool>.to_kind(),
-            vec![1 as u8].to_kind(),
+            vec![1_u8].to_kind(),
             None::<Vec<u8>>.to_kind(),
             Decimal::from_str("100.24").unwrap().to_kind(),
             Some(Decimal::from_str("1000.42342").unwrap()).to_kind(),
             now.to_kind(),
-            Some(now.clone()).to_kind(),
+            Some(*now).to_kind(),
             now.date().to_kind(),
             None::<NaiveDateTime>.to_kind(),
-            vec![10 as i64, 20 as i64, 30 as i64].to_kind(),
+            vec![10_i64, 20_i64, 30_i64].to_kind(),
             None::<Vec<i64>>.to_kind(),
             Some(user_id).to_kind(),
             CommitTimestamp::new().to_kind(),
@@ -181,7 +181,7 @@ pub fn assert_user_row(
     commit_timestamp: &NaiveDateTime,
 ) {
     let user_id = row.column_by_name::<String>("UserId").unwrap();
-    assert_eq!(user_id.to_string(), source_user_id);
+    assert_eq!(user_id, source_user_id);
     let not_null_int64 = row.column_by_name::<i64>("NotNullINT64").unwrap();
     assert_eq!(not_null_int64, 1);
     let nullable_int64 = row.column_by_name::<Option<i64>>("NullableINT64").unwrap();
@@ -197,7 +197,7 @@ pub fn assert_user_row(
     let nullable_bool = row.column_by_name::<Option<bool>>("NullableBool").unwrap();
     assert_eq!(nullable_bool, None);
     let mut not_null_byte_array = row.column_by_name::<Vec<u8>>("NotNullByteArray").unwrap();
-    assert_eq!(not_null_byte_array.pop().unwrap(), 1 as u8);
+    assert_eq!(not_null_byte_array.pop().unwrap(), 1_u8);
     let nullable_byte_array = row
         .column_by_name::<Option<Vec<u8>>>("NullableByteArray")
         .unwrap();

@@ -95,13 +95,13 @@ impl Deref for ReadWriteTransaction {
     type Target = Transaction;
 
     fn deref(&self) -> &Self::Target {
-        return &self.base_tx;
+        &self.base_tx
     }
 }
 
 impl DerefMut for ReadWriteTransaction {
     fn deref_mut(&mut self) -> &mut Transaction {
-        return &mut self.base_tx;
+        &mut self.base_tx
     }
 }
 

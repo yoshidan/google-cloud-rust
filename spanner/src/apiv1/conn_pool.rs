@@ -11,7 +11,7 @@ use crate::apiv1::spanner_client::Client;
 
 const SPANNER: &str = "spanner.googleapis.com";
 const AUDIENCE: &str = "https://spanner.googleapis.com/";
-const SCOPES: [&'static str; 2] = [
+const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
     "https://www.googleapis.com/auth/spanner.data",
 ];
@@ -65,11 +65,11 @@ impl ConnectionManager {
                 (conns, None)
             }
         };
-        return Ok(ConnectionManager {
+        Ok(ConnectionManager {
             index: AtomicI64::new(0),
             token_source,
             conns,
-        });
+        })
     }
 
     async fn connect(
@@ -77,7 +77,7 @@ impl ConnectionManager {
     ) -> Result<SpannerClient<Channel>, tonic::transport::Error> {
         let channel = endpoint.connect().await?;
         log::debug!("gRPC Connection Created");
-        return Ok(SpannerClient::new(channel));
+        Ok(SpannerClient::new(channel))
     }
 
     pub fn num(&self) -> usize {

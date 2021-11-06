@@ -47,11 +47,11 @@ pub struct ReadOptions {
 
 impl Default for ReadOptions {
     fn default() -> Self {
-        return ReadOptions {
+        ReadOptions {
             index: "".to_string(),
             limit: 0,
             call_options: CallOptions::default(),
-        };
+        }
     }
 }
 
@@ -64,11 +64,11 @@ pub struct QueryOptions {
 
 impl Default for QueryOptions {
     fn default() -> Self {
-        return QueryOptions {
+        QueryOptions {
             mode: QueryMode::Normal,
             optimizer_options: None,
             call_options: CallOptions::default(),
-        };
+        }
     }
 }
 
@@ -81,14 +81,11 @@ pub struct Transaction {
 
 impl Transaction {
     pub(crate) fn create_request_options(priority: Option<Priority>) -> Option<RequestOptions> {
-        return match priority {
-            None => None,
-            Some(s) => Some(RequestOptions {
+        priority.map(|s| RequestOptions {
                 priority: s.into(),
                 request_tag: "".to_string(),
                 transaction_tag: "".to_string(),
-            }),
-        };
+            })
     }
 
     /// query executes a query against the database. It returns a RowIterator for
@@ -153,7 +150,7 @@ impl Transaction {
             session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
             table: table.into(),
-            index: opt.index.into(),
+            index: opt.index,
             columns: columns.into_iter().map(|x| x.into()).collect(),
             key_set: Some(key_set.into().inner),
             limit: opt.limit,
@@ -184,6 +181,6 @@ impl Transaction {
     /// returns the owner ship of session.
     /// must drop destroy after this method.
     pub(crate) fn take_session(&mut self) -> Option<ManagedSession> {
-        return self.session.take();
+        self.session.take()
     }
 }

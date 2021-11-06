@@ -25,7 +25,7 @@ mod tests {
         let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
             .await
             .unwrap();
-        return cm.conn();
+        cm.conn()
     }
 
     async fn create_session(client: &mut Client) -> Session {
@@ -34,7 +34,7 @@ mod tests {
             session: None,
         };
         let session_response = client.create_session(session_request, None).await.unwrap();
-        return session_response.into_inner();
+        session_response.into_inner()
     }
 
     async fn begin_read_only_transaction(client: &mut Client, session: &Session) -> Transaction {

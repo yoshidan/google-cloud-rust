@@ -63,12 +63,12 @@ impl TimestampBound {
     }
     pub fn min_read_timestamp(t: Timestamp) -> Self {
         TimestampBound {
-            inner: InternalTimestampBound::MinReadTimestamp(t.into()),
+            inner: InternalTimestampBound::MinReadTimestamp(t),
         }
     }
     pub fn read_timestamp(t: Timestamp) -> Self {
         TimestampBound {
-            inner: InternalTimestampBound::ReadTimestamp(t.into()),
+            inner: InternalTimestampBound::ReadTimestamp(t),
         }
     }
 }

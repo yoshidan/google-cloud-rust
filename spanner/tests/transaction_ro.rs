@@ -1,6 +1,6 @@
 use chrono::{NaiveDateTime, Utc};
 use google_cloud_spanner::key::{Key, KeySet};
-use google_cloud_spanner::mutation::insert_or_update;
+
 use google_cloud_spanner::row::Row;
 use google_cloud_spanner::statement::Statement;
 use google_cloud_spanner::transaction::{CallOptions, QueryOptions};
@@ -11,7 +11,7 @@ use std::ops::DerefMut;
 
 mod common;
 use common::*;
-use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
+
 
 async fn assert_read(
     tx: &mut ReadOnlyTransaction,
@@ -70,9 +70,9 @@ async fn test_query_and_read() {
     let cr = replace_test_data(
         session.deref_mut(),
         vec![
-            create_user_mutation(&user_id_1, &now),
-            create_user_mutation(&user_id_2, &now),
-            create_user_mutation(&user_id_3, &now),
+            create_user_mutation(user_id_1, &now),
+            create_user_mutation(user_id_2, &now),
+            create_user_mutation(user_id_3, &now),
         ],
     )
     .await
@@ -98,11 +98,11 @@ async fn test_complex_query() {
     let cr = replace_test_data(
         session.deref_mut(),
         vec![
-            create_user_mutation(&user_id_1, &now),
-            create_user_item_mutation(&user_id_1, 1),
-            create_user_item_mutation(&user_id_1, 2),
-            create_user_character_mutation(&user_id_1, 10),
-            create_user_character_mutation(&user_id_1, 20),
+            create_user_mutation(user_id_1, &now),
+            create_user_item_mutation(user_id_1, 1),
+            create_user_item_mutation(user_id_1, 2),
+            create_user_character_mutation(user_id_1, 10),
+            create_user_character_mutation(user_id_1, 20),
         ],
     )
     .await
@@ -175,9 +175,9 @@ async fn test_batch_partition_query_and_read() {
     let cr = replace_test_data(
         session.deref_mut(),
         vec![
-            create_user_mutation(&user_id_1, &now),
-            create_user_mutation(&user_id_2, &now),
-            create_user_mutation(&user_id_3, &now),
+            create_user_mutation(user_id_1, &now),
+            create_user_mutation(user_id_2, &now),
+            create_user_mutation(user_id_3, &now),
         ],
     )
     .await
@@ -242,7 +242,7 @@ async fn test_many_records() {
     user_ids.sort();
     for (x, user_id) in user_ids.iter().enumerate() {
         let row = rows.get(x).unwrap();
-        assert_user_row(&row, user_id, &now, &ts);
+        assert_user_row(row, user_id, &now, &ts);
         let user_ids = row.column_by_name::<Vec<String>>("UserIds").unwrap();
         user_ids.iter().for_each(|u| assert_eq!(u, user_id));
     }
