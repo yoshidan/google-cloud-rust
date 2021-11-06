@@ -57,10 +57,7 @@ impl InternalToken {
         Token {
             access_token: self.access_token.clone(),
             token_type: self.token_type.clone(),
-            expiry: match self.expires_in {
-                Some(s) => Some(now + chrono::Duration::seconds(s)),
-                None => None,
-            },
+            expiry: self.expires_in.map(|s| now + chrono::Duration::seconds(s)),
         }
     }
 }

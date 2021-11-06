@@ -39,7 +39,7 @@ impl UserAccountTokenSource {
             refresh_token: cred.refresh_token.unwrap_or_empty(),
             client: default_https_client(),
         };
-        return Ok(ts);
+        Ok(ts)
     }
 }
 

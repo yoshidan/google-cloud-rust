@@ -43,8 +43,18 @@ jobs:
           command: fmt
           args: --all -- --check
       - uses: actions-rs/cargo@v1
-        name: clippy
+        name: clippy auth
         with:
+          working-directory: auth
+          command: clippy
+      - uses: actions-rs/cargo@v1
+        name: clippy gax
+        with:
+          working-directory: gax
+      - uses: actions-rs/cargo@v1
+        name: clippy metadata
+        with:
+          working-directory: metadata
           command: clippy
   spanner:
     name: spanner
@@ -69,6 +79,11 @@ jobs:
           SPANNER_INSTANCE_ID: test-instance
           SPANNER_DATABASE_ID: test-database
           SPANNER_EMULATOR_HOST: localhost:9010
+      - uses: actions-rs/cargo@v1
+        name: clippy spanner
+        with:
+          working-directory: spanner
+          command: clippy
       - uses: actions-rs/cargo@v1
         name: test
         with:

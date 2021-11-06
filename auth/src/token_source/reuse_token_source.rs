@@ -10,10 +10,10 @@ pub struct ReuseTokenSource {
 
 impl ReuseTokenSource {
     pub(crate) fn new(target: Box<dyn TokenSource>, token: Token) -> ReuseTokenSource {
-        return ReuseTokenSource {
+        ReuseTokenSource {
             target,
             current_token: std::sync::RwLock::new(token),
-        };
+        }
     }
 }
 
@@ -26,7 +26,7 @@ impl TokenSource for ReuseTokenSource {
                 return Ok(Token {
                     access_token: r_lock.access_token.to_string(),
                     token_type: r_lock.token_type.to_string(),
-                    expiry: r_lock.expiry.clone(),
+                    expiry: r_lock.expiry,
                 });
             }
         }

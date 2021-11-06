@@ -43,7 +43,7 @@ impl ServiceAccountTokenSource {
         cred: &credentials::CredentialsFile,
         audience: &str,
     ) -> Result<ServiceAccountTokenSource, Error> {
-        return Ok(ServiceAccountTokenSource {
+        Ok(ServiceAccountTokenSource {
             email: cred.client_email.unwrap_or_empty(),
             pk: cred.try_to_private_key()?,
             pk_id: cred.private_key_id.unwrap_or_empty(),
@@ -51,7 +51,7 @@ impl ServiceAccountTokenSource {
                 None => audience.to_string(),
                 Some(s) => s.to_string(),
             },
-        });
+        })
     }
 }
 
@@ -103,7 +103,7 @@ impl OAuth2ServiceAccountTokenSource {
         cred: &credentials::CredentialsFile,
         scopes: &str,
     ) -> Result<OAuth2ServiceAccountTokenSource, Error> {
-        return Ok(OAuth2ServiceAccountTokenSource {
+        Ok(OAuth2ServiceAccountTokenSource {
             email: cred.client_email.unwrap_or_empty(),
             pk: cred.try_to_private_key()?,
             pk_id: cred.private_key_id.unwrap_or_empty(),
@@ -113,7 +113,7 @@ impl OAuth2ServiceAccountTokenSource {
                 Some(s) => s.to_string(),
             },
             client: default_https_client(),
-        });
+        })
     }
 }
 
