@@ -2,24 +2,17 @@
 
 Google Cloud Platform server application authentication library.
 
-[![CI](https://github.com/yoshidan/gcpauth/workflows/CI/badge.svg?branch=main)](https://github.com/yoshidan/gcpauth/workflows/CI)
-
 ## Installation
 
 ```
 [dependencies]
-gcpauth = 0.1.2
-```
-or you can get latest branch.
-```
-[dependencies]
-gcpauth = { git = "https://github.com/yoshidan/gcpauth/", branch = "main"}
+google-cloud-auth = 0.1.0
 ```
 
 ## Quickstart
 
 ```rust
-use gcpauth::*;
+use google_cloud_auth::*;
 
 #[tokio::main]
 async fn main() -> Result<(), error::Error> {
