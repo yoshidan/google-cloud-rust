@@ -4,7 +4,6 @@ pub mod spanner_client;
 #[cfg(test)]
 mod tests {
 
-    use serial_test::serial;
     use crate::apiv1::conn_pool::ConnectionManager;
     use crate::apiv1::spanner_client::Client;
     use google_cloud_googleapis::spanner::v1::mutation::{Operation, Write};
@@ -17,6 +16,7 @@ mod tests {
     };
     use google_cloud_googleapis::spanner::v1::{execute_batch_dml_request, KeySet, Mutation};
     use prost_types::{value::Kind, ListValue, Value};
+    use serial_test::serial;
 
     const DATABASE: &str =
         "projects/local-project/instances/test-instance/databases/local-database";

@@ -33,8 +33,10 @@ impl Backoff {
         }
         match self.elapsed {
             None => self.elapsed = Some(Instant::now()),
-            Some(s) => if s.elapsed() > self.timeout {
-               return None
+            Some(s) => {
+                if s.elapsed() > self.timeout {
+                    return None;
+                }
             }
         };
         // Select a duration between 1ns and the current max. It might seem

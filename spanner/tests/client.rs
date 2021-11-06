@@ -189,7 +189,10 @@ async fn test_batch_read_only_transaction() -> Result<(), anyhow::Error> {
     let client = Client::new(DATABASE, None).await.context("error")?;
     let mut tx = client.batch_read_only_transaction(None).await.unwrap();
 
-    let stmt = Statement::new(format!("SELECT * FROM User p WHERE p.UserId LIKE 'user_partition_{}_%' ", now.timestamp()));
+    let stmt = Statement::new(format!(
+        "SELECT * FROM User p WHERE p.UserId LIKE 'user_partition_{}_%' ",
+        now.timestamp()
+    ));
     let rows = execute_partitioned_query(&mut tx, stmt).await;
     assert_eq!(20000, rows.len());
     Ok(())
