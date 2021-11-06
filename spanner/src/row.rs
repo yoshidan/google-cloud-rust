@@ -258,7 +258,7 @@ fn index(index: &HashMap<String, usize>, column_name: &str) -> Result<usize> {
     }
 }
 
-fn column<T>(values: &Vec<Value>, fields: &Vec<Field>, column_index: usize) -> Result<T>
+fn column<T>(values: &[Value], fields: &[Field], column_index: usize) -> Result<T>
 where
     T: TryFromValue,
 {

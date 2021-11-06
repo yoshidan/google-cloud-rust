@@ -196,7 +196,9 @@ impl SessionPool {
             self.inner.lock().release(session);
 
             // request session creation
-            self.creation_producer.send(true);
+            if let Err(e) = self.creation_producer.send(true) {
+                log::trace!("{}", e);
+            }
         }
     }
 }
@@ -359,7 +361,9 @@ impl SessionManager {
         }
 
         // Request for creating batch.
-        self.creation_producer.send(true);
+        if let Err(e) = self.creation_producer.send(true) {
+            log::trace!("{}", e);
+        }
 
         // Wait for the session creation.
         return match timeout(self.config.session_get_timeout, receiver).await {
@@ -438,14 +442,19 @@ impl SessionManager {
             loop {
                 let _ = interval.tick().await;
 
-                let max_removing_count = session_pool.num_opened() - config.max_idle;
+                let max_removing_count = session_pool.num_opened() as i64 - config.max_idle as i64;
                 if max_removing_count < 0 {
                     continue;
                 }
 
                 let now = Instant::now();
-                shrink_idle_sessions(now, config.idle_timeout, &session_pool, max_removing_count)
-                    .await;
+                shrink_idle_sessions(
+                    now,
+                    config.idle_timeout,
+                    &session_pool,
+                    max_removing_count as usize,
+                )
+                .await;
                 health_check(
                     now + Duration::from_nanos(1),
                     config.session_alive_trust_duration,

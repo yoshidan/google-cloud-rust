@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint};
 
-use google_cloud_auth::token_source::token_source::TokenSource;
+use google_cloud_auth::token_source::TokenSource;
 use google_cloud_auth::{create_token_source, Config};
 use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
 

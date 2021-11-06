@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tonic::transport::Channel;
 use tonic::{Code, IntoRequest, Request, Response, Status, Streaming};
 
-use google_cloud_auth::token_source::token_source::TokenSource;
+use google_cloud_auth::token_source::TokenSource;
 use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
 use google_cloud_gax::invoke::invoke_reuse;
 use google_cloud_googleapis::spanner::v1 as internal;

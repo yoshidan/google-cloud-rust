@@ -20,6 +20,12 @@ impl CommitTimestamp {
     }
 }
 
+impl Default for CommitTimestamp {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Deref for CommitTimestamp {
     type Target = NaiveDateTime;
 

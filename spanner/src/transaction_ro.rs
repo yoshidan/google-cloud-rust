@@ -19,12 +19,12 @@ use crate::value::TimestampBound;
 /// ReadOnlyTransaction provides a snapshot transaction with guaranteed
 /// consistency across reads, but does not allow writes.  Read-only transactions
 /// can be configured to read at timestamps in the past.
-//
+///
 /// Read-only transactions do not take locks. Instead, they work by choosing a
 /// Cloud Spanner timestamp, then executing all reads at that timestamp. Since
 /// they do not acquire locks, they do not block concurrent read-write
 /// transactions.
-//
+///
 /// Unlike locking read-write transactions, read-only transactions never abort.
 /// They can fail if the chosen read timestamp is garbage collected; however, the
 /// default garbage collection policy is generous enough that most applications
@@ -32,7 +32,7 @@ use crate::value::TimestampBound;
 /// TimestampBound for more details.
 pub struct ReadOnlyTransaction {
     base_tx: Transaction,
-    rts: Option<NaiveDateTime>,
+    pub rts: Option<NaiveDateTime>,
 }
 
 impl Deref for ReadOnlyTransaction {
