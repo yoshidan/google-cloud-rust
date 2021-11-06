@@ -50,11 +50,9 @@ jobs:
           gcloud config set api_endpoint_overrides/spanner http://localhost:9020/
           gcloud spanner instances create test-instance --config=emulator-config --description="Test Instance" --nodes=1
       - name: migration
-        working-directory: spanner
-        run: |
-          go get -u github.com/cloudspannerecosystem/wrench
-          wrench create --directory ./tests/ddl
-          wrench migrate up --directory ./tests/ddl
+        uses: docker://mercari/wrench:1.0.4
+        with:
+          args: "create --directory spanner/tests/ddl"
         env:
           SPANNER_PROJECT_ID: local-project
           SPANNER_INSTANCE_ID: test-instance
