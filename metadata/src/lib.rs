@@ -1,9 +1,9 @@
-use hyper;
+
 use hyper::client::HttpConnector;
 use hyper::http::{Method, Request};
 use hyper::Client;
 use std::time::Duration;
-use thiserror;
+
 use tokio::net::lookup_host;
 use tokio::sync::OnceCell;
 
@@ -74,5 +74,5 @@ async fn test_on_gce() -> Result<bool, Error> {
         Err(_e) => return Ok(false),
     };
 
-    return Ok(false);
+    Ok(false)
 }
