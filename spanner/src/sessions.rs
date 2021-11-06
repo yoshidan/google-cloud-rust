@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use std::ops::{Deref, DerefMut};
-use std::sync::{Arc};
+use std::sync::Arc;
 use std::time::Instant;
 
 use parking_lot::Mutex;
@@ -592,7 +592,7 @@ mod tests {
     use crate::apiv1::conn_pool::ConnectionManager;
     use crate::sessions::{health_check, shrink_idle_sessions, SessionConfig, SessionManager};
     use serial_test::serial;
-    
+
     use std::sync::atomic::{AtomicI64, Ordering};
     use std::sync::Arc;
     use std::time::Instant;

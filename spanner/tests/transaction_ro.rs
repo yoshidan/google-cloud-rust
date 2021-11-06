@@ -12,7 +12,6 @@ use std::ops::DerefMut;
 mod common;
 use common::*;
 
-
 async fn assert_read(
     tx: &mut ReadOnlyTransaction,
     user_id: &str,

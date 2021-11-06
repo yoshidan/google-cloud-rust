@@ -82,10 +82,10 @@ pub struct Transaction {
 impl Transaction {
     pub(crate) fn create_request_options(priority: Option<Priority>) -> Option<RequestOptions> {
         priority.map(|s| RequestOptions {
-                priority: s.into(),
-                request_tag: "".to_string(),
-                transaction_tag: "".to_string(),
-            })
+            priority: s.into(),
+            request_tag: "".to_string(),
+            transaction_tag: "".to_string(),
+        })
     }
 
     /// query executes a query against the database. It returns a RowIterator for

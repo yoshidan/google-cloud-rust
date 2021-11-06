@@ -1,20 +1,10 @@
-
-
-
-
-
-
-
-
 use serial_test::serial;
-
 
 mod common;
 use common::*;
 use google_cloud_spanner::apiv1::conn_pool::ConnectionManager;
 
 use google_cloud_spanner::sessions::{SessionConfig, SessionError, SessionManager};
-
 
 #[tokio::test]
 #[serial]
