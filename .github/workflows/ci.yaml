@@ -56,6 +56,7 @@ jobs:
           gcloud spanner instances create test-instance --config=emulator-config --description="Test Instance" --nodes=1
       - name: migration
         run: |
+          ls ltr
           cd spanner/tests
           go get -u github.com/cloudspannerecosystem/wrench
           wrench create --directory ./ddl
