@@ -33,7 +33,6 @@ jobs:
   spanner:
     name: spanner
     runs-on: ubuntu-latest
-    needs: common
     services:
       spanner:
         image: gcr.io/cloud-spanner-emulator/emulator
@@ -57,7 +56,7 @@ jobs:
           SPANNER_PROJECT_ID: local-project
           SPANNER_INSTANCE_ID: test-instance
           SPANNER_DATABASE_ID: test-database
-          SPANNER_EMULATOR_HOST: localhost:9010
+          SPANNER_EMULATOR_HOST: host.docker.internal:9010
       - uses: actions-rs/cargo@v1
         name: test
         with:
