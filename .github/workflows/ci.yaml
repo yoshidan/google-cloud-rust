@@ -10,7 +10,7 @@ on:
 
 jobs:
   common:
-    name: set up
+    name: common
     runs-on: ubuntu-latest
     services:
       spanner:
@@ -45,7 +45,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         name: clippy
         with:
-          command: cargo clippy -p google-cloud-auth -p google-cloud-metadata -p google-cloud-gax -- --no-deps
+          command: clippy -p google-cloud-auth -p google-cloud-metadata -p google-cloud-gax -- --no-deps
   spanner:
     name: spanner
     runs-on: ubuntu-latest
