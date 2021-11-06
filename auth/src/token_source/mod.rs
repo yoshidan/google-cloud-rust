@@ -2,7 +2,6 @@ pub mod authorized_user_token_source;
 pub mod compute_token_source;
 pub mod reuse_token_source;
 pub mod service_account_token_source;
-pub mod token_source;
 
 use crate::error::Error;
 use crate::token::Token;
@@ -12,6 +11,11 @@ use hyper::client::HttpConnector;
 use hyper::http::Response;
 use hyper_tls::HttpsConnector;
 use serde::{de, Deserialize};
+
+#[async_trait]
+pub trait TokenSource: Send + Sync {
+    async fn token(&self) -> Result<Token, Error>;
+}
 
 fn default_https_client() -> hyper::Client<HttpsConnector<HttpConnector>> {
     hyper::Client::builder().build(HttpsConnector::new_with_connector(default_http_connector()))

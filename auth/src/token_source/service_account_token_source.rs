@@ -2,7 +2,7 @@ use crate::credentials;
 use crate::error::Error;
 use crate::misc::UnwrapOrEmpty;
 use crate::token::{Token, TOKEN_URL};
-use crate::token_source::token_source::TokenSource;
+use crate::token_source::TokenSource;
 use crate::token_source::{default_https_client, InternalToken, ResponseExtension};
 use async_trait::async_trait;
 use hyper::client::HttpConnector;
