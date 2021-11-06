@@ -45,7 +45,18 @@ jobs:
       - uses: actions-rs/cargo@v1
         name: clippy
         with:
-          command: clippy -p google-cloud-auth -p google-cloud-metadata -p google-cloud-gax -- --no-deps
+          working-directory: metadata
+          command: clippy
+      - uses: actions-rs/cargo@v1
+        name: clippy
+        with:
+          working-directory: gax
+          command: clippy
+      - uses: actions-rs/cargo@v1
+        name: clippy
+        with:
+          working-directory: auth
+          command: clippy
   spanner:
     name: spanner
     runs-on: ubuntu-latest
