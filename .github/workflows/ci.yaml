@@ -64,4 +64,4 @@ jobs:
           command: test
           args: --release --all-features
         env:
-          SPANNER_EMULATOR_HOST: 172.17.0.1:9010
+          SPANNER_EMULATOR_HOST: localhost:9010

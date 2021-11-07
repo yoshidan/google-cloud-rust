@@ -76,7 +76,7 @@ mod tests {
     use crate::token_source::service_account_token_source::{
         OAuth2ServiceAccountTokenSource, ServiceAccountTokenSource,
     };
-    use crate::token_source::token_source::TokenSource;
+    use crate::token_source::TokenSource;
     use std::fs::File;
     use std::io::Write;
 
