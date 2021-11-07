@@ -183,7 +183,7 @@ async fn test_batch_partition_query_and_read() {
     .unwrap();
 
     let many = (0..20000)
-        .map(|x| create_user_mutation(&format!("user_partition_{}", x), &now))
+        .map(|x| create_user_mutation(&format!("user_partitionx_{}", x), &now))
         .collect();
     let _cr2 = replace_test_data(session.deref_mut(), many).await.unwrap();
 
