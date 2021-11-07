@@ -60,8 +60,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         name: test
         with:
-          working-directory: spanner
           command: test
-          args: --release --all-features
+          args: --release --all-features --manifest-path spanner/Cargo.toml
         env:
           SPANNER_EMULATOR_HOST: localhost:9010
