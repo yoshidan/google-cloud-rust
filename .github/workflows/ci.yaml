@@ -41,6 +41,13 @@ jobs:
           - 9010:9010
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: setup spanner
         run: |
           gcloud config configurations create emulator
@@ -55,7 +62,7 @@ jobs:
         env:
           SPANNER_PROJECT_ID: local-project
           SPANNER_INSTANCE_ID: test-instance
-          SPANNER_DATABASE_ID: test-database
+          SPANNER_DATABASE_ID: local-database
           SPANNER_EMULATOR_HOST: 172.17.0.1:9010
       - uses: actions-rs/cargo@v1
         name: test
