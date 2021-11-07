@@ -12,6 +12,7 @@ impl AsTonicStatus for tonic::Status {
     }
 }
 
+/// Repeats retries when the specified error is detected.
 pub async fn invoke<Setting, T, E, Fut>(
     mut f: impl FnMut() -> Fut,
     settings: &mut RetrySettings<Setting>,
@@ -40,6 +41,8 @@ where
     }
 }
 
+/// Repeats retries when the specified error is detected.
+/// The argument specified by 'v' can be reused for each retry.
 pub async fn invoke_reuse<Setting, T, E, V, Fut>(
     mut f: impl FnMut(V) -> Fut,
     mut v: V,

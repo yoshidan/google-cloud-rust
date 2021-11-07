@@ -8,12 +8,23 @@ use tonic::Status;
 /// but is capped at Max.
 #[derive(Clone)]
 pub struct Backoff {
+    /// initial is the initial value of the retry envelope.
     pub initial: Duration,
+
+    /// max is the maximum value of the retry envelope.
     pub max: Duration,
+
+    /// multiplier is the factor by which the retry envelope increases.
+    /// it should be greater than 1 and defaults to 2.
     pub multiplier: f64,
+
+    /// timeout is the duration to terminate the retry.
     pub timeout: Duration,
 
+    /// cur is the current retry envelope.
     cur: Duration,
+
+    /// elapsed is the elapsed time since the first run.
     elapsed: Option<Instant>,
 }
 

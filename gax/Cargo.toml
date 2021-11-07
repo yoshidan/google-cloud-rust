@@ -7,7 +7,7 @@ repository = "https://github.com/yoshidan/google-cloud-rust/gax"
 keywords = ["gcp","googleapis","google-cloud-rust"]
 license-file = "LICENCE"
 readme = "README.md"
-description = "Google API Extensions for Rust."
+description = "Google Cloud Platform gRPC retry library."
 
 [dependencies]
 log = "0.4"

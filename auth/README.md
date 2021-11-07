@@ -1,4 +1,4 @@
-# gcpauth
+# google-cloud-auth
 
 Google Cloud Platform server application authentication library.
 
