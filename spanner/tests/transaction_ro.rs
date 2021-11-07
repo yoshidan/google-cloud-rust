@@ -207,13 +207,13 @@ async fn test_batch_partition_query_and_read() {
     assert_partitioned_read(&mut tx, user_id_2, &now, &ts).await;
     assert_partitioned_read(&mut tx, user_id_3, &now, &ts).await;
 
-    let stmt = Statement::new("SELECT * FROM User p WHERE p.UserId LIKE 'user_partition_%'");
+    let stmt = Statement::new("SELECT * FROM User p WHERE p.UserId LIKE 'user_partitionx_%'");
     let rows = execute_partitioned_query(&mut tx, stmt).await;
     assert_eq!(20000, rows.len());
     (0..20000).for_each(|x| {
         assert_user_row(
             rows.get(x).unwrap(),
-            &format!("user_partition_{}", x),
+            &format!("user_partitionx_{}", x),
             &now,
             &ts,
         )
