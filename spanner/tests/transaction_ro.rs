@@ -11,6 +11,7 @@ use std::ops::DerefMut;
 
 mod common;
 use common::*;
+use std::collections::HashMap;
 
 async fn assert_read(
     tx: &mut ReadOnlyTransaction,
@@ -185,7 +186,7 @@ async fn test_batch_partition_query_and_read() {
     let many = (0..20000)
         .map(|x| create_user_mutation(&format!("user_partitionx_{}", x), &now))
         .collect();
-    let _cr2 = replace_test_data(session.deref_mut(), many).await.unwrap();
+    let cr2 = replace_test_data(session.deref_mut(), many).await.unwrap();
 
     let mut tx = match BatchReadOnlyTransaction::begin(
         session,
@@ -208,15 +209,19 @@ async fn test_batch_partition_query_and_read() {
     assert_partitioned_read(&mut tx, user_id_3, &now, &ts).await;
 
     let stmt = Statement::new("SELECT * FROM User p WHERE p.UserId LIKE 'user_partitionx_%'");
-    let rows = execute_partitioned_query(&mut tx, stmt).await;
+    let mut rows = execute_partitioned_query(&mut tx, stmt).await;
     assert_eq!(20000, rows.len());
+    let mut map = HashMap::<String,Row>::new();
+    while let Some(row) = rows.pop() {
+        let user_id = row.column_by_name("UserId").unwrap();
+        map.insert(user_id, row);
+    }
+
+    let ts = cr2.commit_timestamp.as_ref().unwrap();
+    let ts = NaiveDateTime::from_timestamp(ts.seconds, ts.nanos as u32);
     (0..20000).for_each(|x| {
-        assert_user_row(
-            rows.get(x).unwrap(),
-            &format!("user_partitionx_{}", x),
-            &now,
-            &ts,
-        )
+        let user_id = format!("user_partitionx_{}", x);
+        assert_user_row(map.get(&user_id).unwrap(), &user_id, &now, &ts)
     });
 }
 

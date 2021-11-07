@@ -237,7 +237,8 @@ pub fn assert_user_row(
     let updated_at = row.column_by_name::<CommitTimestamp>("UpdatedAt").unwrap();
     assert_eq!(
         updated_at.timestamp.to_string(),
-        commit_timestamp.to_string()
+        commit_timestamp.to_string(),
+        "commit timestamp"
     );
 }
 
