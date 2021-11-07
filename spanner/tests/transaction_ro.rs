@@ -211,7 +211,7 @@ async fn test_batch_partition_query_and_read() {
     let stmt = Statement::new("SELECT * FROM User p WHERE p.UserId LIKE 'user_partitionx_%'");
     let mut rows = execute_partitioned_query(&mut tx, stmt).await;
     assert_eq!(20000, rows.len());
-    let mut map = HashMap::<String,Row>::new();
+    let mut map = HashMap::<String, Row>::new();
     while let Some(row) = rows.pop() {
         let user_id = row.column_by_name("UserId").unwrap();
         map.insert(user_id, row);
