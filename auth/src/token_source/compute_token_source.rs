@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::token::Token;
-use crate::token_source::token_source::TokenSource;
+use crate::token_source::TokenSource;
 use crate::token_source::{InternalToken, ResponseExtension};
 use async_trait::async_trait;
 use google_cloud_metadata::{

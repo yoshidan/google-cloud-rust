@@ -32,11 +32,11 @@ pub struct Statement {
 impl Statement {
     /// new returns a Statement with the given SQL and an empty Params map.
     pub fn new<T: Into<String>>(sql: T) -> Self {
-        return Statement {
+        Statement {
             sql: sql.into(),
             params: Default::default(),
             param_types: Default::default(),
-        };
+        }
     }
 
     /// add_params add the bind parameter.
@@ -230,7 +230,7 @@ where
     fn to_kind(&self) -> Kind {
         value::Kind::ListValue(ListValue {
             values: self
-                .into_iter()
+                .iter()
                 .map(|x| Value {
                     kind: Some(x.to_kind()),
                 })

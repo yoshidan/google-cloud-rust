@@ -50,7 +50,7 @@ impl Backoff {
         if self.cur > self.max {
             self.cur = self.max;
         }
-        return Some(d);
+        Some(d)
     }
 }
 
@@ -86,7 +86,7 @@ impl Retryer for BackoffRetryer {
                 return self.backoff.duration();
             }
         }
-        return None;
+        None
     }
 }
 

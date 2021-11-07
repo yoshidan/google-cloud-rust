@@ -9,23 +9,11 @@ on:
       - main
 
 jobs:
-  setup:
-    name: set up
+  common:
+    name: common
     runs-on: ubuntu-latest
-    services:
-      spanner:
-        image: gcr.io/cloud-spanner-emulator/emulator
-        ports:
-          - 9020:9020
-          - 9010:9010
     steps:
       - uses: actions/checkout@v2
-      - name: Setup gcloud for Cloud Build
-        uses: google-github-actions/setup-gcloud@master
-        with:
-          project_id: ${{ secrets.TEST_PROJECT_ID }}
-          service_account_key: ${{ secrets.TEST_SA_CREDENTIALS }}
-          export_default_credentials: true
       - uses: actions/cache@v2
         with:
           path: |
@@ -42,15 +30,24 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
-      - uses: actions-rs/cargo@v1
-        name: clippy
-        with:
-          command: clippy
   spanner:
     name: spanner
     runs-on: ubuntu-latest
-    needs: setup
+    services:
+      spanner:
+        image: gcr.io/cloud-spanner-emulator/emulator
+        ports:
+          - 9020:9020
+          - 9010:9010
     steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: setup spanner
         run: |
           gcloud config configurations create emulator
@@ -59,21 +56,18 @@ jobs:
           gcloud config set api_endpoint_overrides/spanner http://localhost:9020/
           gcloud spanner instances create test-instance --config=emulator-config --description="Test Instance" --nodes=1
       - name: migration
-        working-directory: spanner
-        run: |
-          go get -u github.com/cloudspannerecosystem/wrench
-          wrench create --directory ./tests/ddl
-          wrench migrate up --directory ./tests/ddl
+        uses: docker://mercari/wrench:1.0.4
+        with:
+          args: "create --directory spanner/tests/ddl"
         env:
           SPANNER_PROJECT_ID: local-project
           SPANNER_INSTANCE_ID: test-instance
-          SPANNER_DATABASE_ID: test-database
-          SPANNER_EMULATOR_HOST: localhost:9010
+          SPANNER_DATABASE_ID: local-database
+          SPANNER_EMULATOR_HOST: 172.17.0.1:9010
       - uses: actions-rs/cargo@v1
         name: test
         with:
-          working-directory: spanner
           command: test
-          args: --release --all-features
+          args: --release --all-features --manifest-path spanner/Cargo.toml
         env:
           SPANNER_EMULATOR_HOST: localhost:9010

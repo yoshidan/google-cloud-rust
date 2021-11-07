@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tonic::transport::Channel;
 use tonic::{Code, IntoRequest, Request, Response, Status, Streaming};
 
-use google_cloud_auth::token_source::token_source::TokenSource;
+use google_cloud_auth::token_source::TokenSource;
 use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
 use google_cloud_gax::invoke::invoke_reuse;
 use google_cloud_googleapis::spanner::v1 as internal;
@@ -34,12 +34,12 @@ pub(crate) fn ping_query_request(session_name: impl Into<String>) -> internal::E
 }
 
 fn default_setting() -> BackoffRetrySettings {
-    return BackoffRetrySettings {
+    BackoffRetrySettings {
         retryer: BackoffRetryer {
             backoff: Backoff::default(),
             codes: vec![tonic::Code::Unavailable],
         },
-    };
+    }
 }
 
 #[derive(Clone)]
@@ -54,10 +54,10 @@ impl Client {
         inner: SpannerClient<Channel>,
         token_source: Option<Arc<dyn TokenSource>>,
     ) -> Client {
-        return Client {
+        Client {
             inner,
             token_source,
-        };
+        }
     }
 
     /// merge call setting
@@ -565,5 +565,5 @@ fn create_request<T>(
     if token.is_some() {
         target.insert("authorization", token.as_ref().unwrap().parse().unwrap());
     };
-    return request;
+    request
 }

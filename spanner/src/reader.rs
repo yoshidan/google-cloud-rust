@@ -50,7 +50,7 @@ impl Reader for StatementReader {
         self.request.resume_token = resume_token;
     }
     fn can_retry(&self) -> bool {
-        return !self.request.resume_token.is_empty();
+        !self.request.resume_token.is_empty()
     }
 }
 
@@ -75,7 +75,7 @@ impl Reader for TableReader {
         self.request.resume_token = resume_token;
     }
     fn can_retry(&self) -> bool {
-        return !self.request.resume_token.is_empty();
+        !self.request.resume_token.is_empty()
     }
 }
 
@@ -96,7 +96,7 @@ impl<'a> RowIterator<'a> {
         reader: Box<dyn Reader + Sync + Send>,
     ) -> Result<RowIterator<'a>, Status> {
         let streaming = reader.read(session).await?.into_inner();
-        return Ok(Self {
+        Ok(Self {
             streaming,
             session,
             fields: Arc::new(vec![]),
@@ -105,7 +105,7 @@ impl<'a> RowIterator<'a> {
             rows: VecDeque::new(),
             chunked_value: false,
             chunked_record: false,
-        });
+        })
     }
 
     /// Merge tries to combine two protobuf Values if possible.
@@ -217,7 +217,7 @@ impl<'a> AsyncIterator for RowIterator<'a> {
                 return Some((i, val.clone()));
             }
         }
-        return None;
+        None
     }
 
     /// next returns the next result.

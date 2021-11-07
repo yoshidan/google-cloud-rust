@@ -1,19 +1,18 @@
 use anyhow::Result;
-use chrono::{NaiveDate, NaiveDateTime, Utc};
-use google_cloud_googleapis::spanner::v1::commit_request::Transaction::SingleUseTransaction;
-use google_cloud_googleapis::spanner::v1::Mutation;
+use chrono::{NaiveDateTime, Utc};
+
 use google_cloud_spanner::key::{Key, KeySet};
-use google_cloud_spanner::mutation::insert_or_update;
+
 use google_cloud_spanner::row::Row;
-use google_cloud_spanner::statement::{Statement, ToKind};
-use google_cloud_spanner::transaction::{CallOptions, QueryOptions};
+use google_cloud_spanner::statement::Statement;
+use google_cloud_spanner::transaction::CallOptions;
 use serial_test::serial;
 
 mod common;
 use common::*;
 use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
 use google_cloud_spanner::transaction_rw::ReadWriteTransaction;
-use google_cloud_spanner::value::TimestampBound;
+
 use tonic::Status;
 
 pub async fn all_rows(mut itr: RowIterator<'_>) -> Result<Vec<Row>, Status> {
@@ -88,7 +87,7 @@ async fn test_partitioned_dml() {
     let mut session = create_session().await;
 
     let user_id = format!("user_{}", now.timestamp());
-    let cr = replace_test_data(&mut session, vec![create_user_mutation(&user_id, &now)])
+    let _cr = replace_test_data(&mut session, vec![create_user_mutation(&user_id, &now)])
         .await
         .unwrap();
 

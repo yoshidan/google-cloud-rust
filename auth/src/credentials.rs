@@ -27,6 +27,7 @@ pub(crate) struct CredentialSource {
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 pub(crate) struct CredentialsFile {
     #[serde(rename(deserialize = "type"))]
     pub tp: String,

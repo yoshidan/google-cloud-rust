@@ -1,13 +1,13 @@
 use anyhow::Context;
 use google_cloud_spanner::client::{Client, TxError};
-use google_cloud_spanner::mutation::insert;
+
 use google_cloud_spanner::statement::{Statement, ToKind};
 
 mod common;
 use chrono::{NaiveDateTime, Utc};
 use common::*;
 use google_cloud_spanner::key::{Key, KeySet};
-use google_cloud_spanner::value::CommitTimestamp;
+
 use serial_test::serial;
 
 const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
@@ -39,7 +39,7 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
                     tx2.update(stmt, None).await.map_err(TxError::TonicStatus)
                 }
                 .await;
-                return (tx, result);
+                (tx, result)
             },
             None,
         )

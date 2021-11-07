@@ -1,6 +1,6 @@
 use chrono::{NaiveDateTime, Utc};
 use google_cloud_spanner::key::{Key, KeySet};
-use google_cloud_spanner::mutation::insert_or_update;
+
 use google_cloud_spanner::row::Row;
 use google_cloud_spanner::statement::Statement;
 use google_cloud_spanner::transaction::{CallOptions, QueryOptions};
@@ -11,7 +11,7 @@ use std::ops::DerefMut;
 
 mod common;
 use common::*;
-use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
+use std::collections::HashMap;
 
 async fn assert_read(
     tx: &mut ReadOnlyTransaction,
@@ -70,9 +70,9 @@ async fn test_query_and_read() {
     let cr = replace_test_data(
         session.deref_mut(),
         vec![
-            create_user_mutation(&user_id_1, &now),
-            create_user_mutation(&user_id_2, &now),
-            create_user_mutation(&user_id_3, &now),
+            create_user_mutation(user_id_1, &now),
+            create_user_mutation(user_id_2, &now),
+            create_user_mutation(user_id_3, &now),
         ],
     )
     .await
@@ -98,11 +98,11 @@ async fn test_complex_query() {
     let cr = replace_test_data(
         session.deref_mut(),
         vec![
-            create_user_mutation(&user_id_1, &now),
-            create_user_item_mutation(&user_id_1, 1),
-            create_user_item_mutation(&user_id_1, 2),
-            create_user_character_mutation(&user_id_1, 10),
-            create_user_character_mutation(&user_id_1, 20),
+            create_user_mutation(user_id_1, &now),
+            create_user_item_mutation(user_id_1, 1),
+            create_user_item_mutation(user_id_1, 2),
+            create_user_character_mutation(user_id_1, 10),
+            create_user_character_mutation(user_id_1, 20),
         ],
     )
     .await
@@ -175,18 +175,18 @@ async fn test_batch_partition_query_and_read() {
     let cr = replace_test_data(
         session.deref_mut(),
         vec![
-            create_user_mutation(&user_id_1, &now),
-            create_user_mutation(&user_id_2, &now),
-            create_user_mutation(&user_id_3, &now),
+            create_user_mutation(user_id_1, &now),
+            create_user_mutation(user_id_2, &now),
+            create_user_mutation(user_id_3, &now),
         ],
     )
     .await
     .unwrap();
 
     let many = (0..20000)
-        .map(|x| create_user_mutation(&format!("user_partition_{}", x), &now))
+        .map(|x| create_user_mutation(&format!("user_partitionx_{}", x), &now))
         .collect();
-    let _cr2 = replace_test_data(session.deref_mut(), many).await.unwrap();
+    let cr2 = replace_test_data(session.deref_mut(), many).await.unwrap();
 
     let mut tx = match BatchReadOnlyTransaction::begin(
         session,
@@ -208,16 +208,20 @@ async fn test_batch_partition_query_and_read() {
     assert_partitioned_read(&mut tx, user_id_2, &now, &ts).await;
     assert_partitioned_read(&mut tx, user_id_3, &now, &ts).await;
 
-    let stmt = Statement::new("SELECT * FROM User p WHERE p.UserId LIKE 'user_partition_%'");
-    let rows = execute_partitioned_query(&mut tx, stmt).await;
+    let stmt = Statement::new("SELECT * FROM User p WHERE p.UserId LIKE 'user_partitionx_%'");
+    let mut rows = execute_partitioned_query(&mut tx, stmt).await;
     assert_eq!(20000, rows.len());
+    let mut map = HashMap::<String, Row>::new();
+    while let Some(row) = rows.pop() {
+        let user_id = row.column_by_name("UserId").unwrap();
+        map.insert(user_id, row);
+    }
+
+    let ts = cr2.commit_timestamp.as_ref().unwrap();
+    let ts = NaiveDateTime::from_timestamp(ts.seconds, ts.nanos as u32);
     (0..20000).for_each(|x| {
-        assert_user_row(
-            rows.get(x).unwrap(),
-            &format!("user_partition_{}", x),
-            &now,
-            &ts,
-        )
+        let user_id = format!("user_partitionx_{}", x);
+        assert_user_row(map.get(&user_id).unwrap(), &user_id, &now, &ts)
     });
 }
 
@@ -242,7 +246,7 @@ async fn test_many_records() {
     user_ids.sort();
     for (x, user_id) in user_ids.iter().enumerate() {
         let row = rows.get(x).unwrap();
-        assert_user_row(&row, user_id, &now, &ts);
+        assert_user_row(row, user_id, &now, &ts);
         let user_ids = row.column_by_name::<Vec<String>>("UserIds").unwrap();
         user_ids.iter().for_each(|u| assert_eq!(u, user_id));
     }

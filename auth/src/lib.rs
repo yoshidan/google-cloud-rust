@@ -11,7 +11,7 @@ use crate::token_source::compute_token_source::ComputeTokenSource;
 use crate::token_source::reuse_token_source::ReuseTokenSource;
 use crate::token_source::service_account_token_source::OAuth2ServiceAccountTokenSource;
 use crate::token_source::service_account_token_source::ServiceAccountTokenSource;
-use crate::token_source::token_source::TokenSource;
+use crate::token_source::TokenSource;
 use google_cloud_metadata::on_gce;
 
 const SERVICE_ACCOUNT_KEY: &str = "service_account";
