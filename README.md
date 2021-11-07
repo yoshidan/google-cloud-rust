@@ -1,6 +1,5 @@
 # google-cloud-rust
-Google Cloud Client Libraries for Rust.  
-Rust packages for [Google Cloud Platform](https://cloud.google.com/) services.
+Rust packages for [Google Cloud Platform](https://cloud.google.com/) services.  
 Providing a high level API for gRPC API like [Google Cloud Go](https://github.com/googleapis/google-cloud-go).
 
 ![CI](https://github.com/yoshidan/google-cloud-rust/workflows/CI/badge.svg?branch=main)
@@ -8,12 +7,6 @@ Providing a high level API for gRPC API like [Google Cloud Go](https://github.co
 ## Component 
 
 * [google-cloud-spanner](./spanner)
-
-## Utility
-
-* [google-cloud-auth](./auth)
-* [google-cloud-metadata](./metadata)
-* [google-cloud-gax](./metadata)
 
 ## License
 This project is licensed under the [MIT license](./LICENCE).
