@@ -10,19 +10,19 @@ readme = "README.md"
 description = "Google Cloud Platform server application authentication library."
 
 [dependencies]
-hyper = { version = "0.14.9", features = ["full"] }
-hyper-tls = "0.5.0"
-chrono = "0.4.19"
-serde = { version = "1.0.125", features = ["derive"] }
-json = { package = "serde_json", version = "1.0.64" }
-jwt = { package = "jsonwebtoken", version = "7.2.0" }
-thiserror = "1.0.24"
-async-trait = "0.1.50"
-home = "0.5.3"
-urlencoding = "2.1.0"
-tokio = { version = "1.7.0", features = ["fs"]}
+hyper = { version = "0.14", features = ["full"] }
+hyper-tls = "0.5"
+chrono = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+json = { package = "serde_json", version = "1.0" }
+jwt = { package = "jsonwebtoken", version = "7" }
+thiserror = "1.0"
+async-trait = "0.1"
+home = "0.5"
+urlencoding = "2.1"
+tokio = { version = "1.7", features = ["fs"]}
 google-cloud-metadata = { path = "../metadata" }
 
 [dev-dependencies]
-tokio = { version = "1.7.0", features = ["test-util", "rt-multi-thread", "macros"]}
-base64 = "0.13.0"
+tokio = { version = "1.7", features = ["test-util", "rt-multi-thread", "macros"]}
+base64 = "0.13"

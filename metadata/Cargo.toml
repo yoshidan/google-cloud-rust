@@ -5,9 +5,9 @@ authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-tokio = { version = "1.7.0", features = ["sync","net","parking_lot"] }
-hyper = { version = "0.14.9", features = ["full"] }
-thiserror = "1.0.24"
+tokio = { version = "1.7", features = ["sync","net","parking_lot"] }
+hyper = { version = "0.14", features = ["full"] }
+thiserror = "1.0"
 
 [dev-dependencies]
-tokio = { version = "1.7.0", features = ["test-util", "rt-multi-thread", "macros"]}
+tokio = { version = "1.7", features = ["test-util", "rt-multi-thread", "macros"]}
