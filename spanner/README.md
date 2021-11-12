@@ -49,29 +49,29 @@ async fn main() {
 }
 ```
 
-## Documentation
+## <a name="Documentation"></a>Documentation
 
 ### Overview
-* [Creating a Client](./README.md#Creating a Client)
-* [Simple Reads and Writes](./README.md#Simple Reads and Writes)
+* [Creating a Client](#CreatingAClient)
+* [Simple Reads and Writes](./README.md#Simple%20Reads%20and%20Writes)
 * [Keys](./README.md#Keys)
 * [KeyRanges](./README.md#KeyRanges)
 * [KeySets](./README.md#KeySets)
 * [Transactions](./README.md#Transactions)
-* [Single Reads](./README.md#Single Reads)
+* [Single Reads](./README.md#Single%20Reads)
 * [Statements](./README.md#Statements)
 * [Rows](./README.md#Rows)
-* [Multiple Reads](./README.md#Multiple Reads)
-* [Timestamps and Timestamp Bounds](./README.md#Timestamps and Timestamp Bounds)
+* [Multiple Reads](./README.md#Multiple%20Reads)
+* [Timestamps and Timestamp Bounds](./README.md#Timestamps%20and%20Timestamp Bounds)
 * [Mutations](./README.md#Mutations)
 * [Writes](./README.md#Writes)
 * [Structs](./README.md#Structs)
-* [DML and Partitioned DML](./README.md#DML and Partitioned DML)
+* [DML and Partitioned DML](./README.md#DML%20and%20Partitioned%20DML)
 
 Package spanner provides a client for reading and writing to Cloud Spanner databases.   
 See the packages under admin for clients that operate on databases and instances.
 
-### Creating a Client
+### <a name="CreatingAClient"></a>Creating a Client
 
 To start working with this package, create a client that refers to the database of interest:
 
