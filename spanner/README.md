@@ -4,6 +4,9 @@ Google Cloud Platform GCE spanner library.
 
 [![crates.io](https://img.shields.io/crates/v/google-cloud-spanner.svg)](https://crates.io/crates/google-cloud-spanner)
 
+* [About Cloud Spanner](https://cloud.google.com/spanner/)
+* [API Documentation](https://cloud.google.com/spanner/docs)
+
 ## Installation
 
 ```
@@ -13,7 +16,7 @@ google-cloud-spanner = 0.1.0
 
 ## Quick Start
 
-Create `Client` and call transaction API like a [Google Cloud Go](https://github.com/googleapis/google-cloud-go/tree/main/spanner).
+Create `Client` and call transaction API same as [Google Cloud Go](https://github.com/googleapis/google-cloud-go/tree/main/spanner).
 
 ```rust
 use google_cloud_spanner::client::Client;
@@ -29,12 +32,12 @@ async fn main() {
         Err(e) => { /* handle error */ }
     };
     
-    //Start read transaction for read operation.
+    //Reading transactions.
     client.single(); 
     client.read_only_transaction(); 
     client.batch_read_only_transaction();
 
-    //Start read writer transaction for read and write operation.
+    //Reading and writing transactions.
     client.apply();
     client.read_write_transaction();
     client.apply_at_least_once();
@@ -44,3 +47,4 @@ async fn main() {
 
 ## API
 
+### Client 
