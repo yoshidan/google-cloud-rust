@@ -90,6 +90,7 @@ Remember to close the client after use to free up the sessions in the session po
 To use an emulator with this library, you can set the SPANNER_EMULATOR_HOST environment variable to the address at which your emulator is running. This will send requests to that address instead of to Cloud Spanner.   You can then create and use a client as usual:
 
 ```rust
+use google_cloud_spanner::client::Client;
 
 // Set SPANNER_EMULATOR_HOST environment variable.
 std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
@@ -104,3 +105,128 @@ let mut client = match Client::new(DATABASE, None).await {
 
 ### Simple Reads and Writes
 Two Client methods, Apply and Single, work well for simple reads and writes. As a quick introduction, here we write a new row to the database and read it back:
+
+```rust
+use google_cloud_spanner::{mutation,value,key};
+
+let mutation = mutation::insert("User",
+    vec!["UserID", "Name", "UpdatedAt"], // columns 
+    vec![1.to_kind(), "name".to_kind(), value::CommitTimestamp::new().to_kind()]
+);
+let commit_timestamp = client.apply(vec![mutation],None).await?;
+
+let row = client.single(None).await?.read("User",
+    vec!["UserID", "Name", "UpdatedAt"],
+    key::Key::one(1), 
+    None
+).await?;
+```
+
+All the methods used above are discussed in more detail below.
+
+### Keys
+
+Every Cloud Spanner row has a unique key, composed of one or more columns. Construct keys with a literal of type Key:
+
+```rust
+use google_cloud_spanner::{key};
+
+let key1 = key::Key::one("key");
+```
+
+### KeyRanges
+
+The keys of a Cloud Spanner table are ordered. You can specify ranges of keys using the KeyRange type:
+
+```rust
+use google_cloud_spanner::key::{Key,KeyRange,RangeKind};
+
+let start = Key::one(1);
+let end = Key::one(100);
+let range1 = KeyRange::new(start, end, RangeKind::ClosedClosed);
+let range2 = KeyRange::new(start, end, RangeKind::ClosedOpen);
+let range3 = KeyRange::new(start, end, RangeKind::OpenOpen);
+let range4 = KeyRange::new(start, end, RangeKind::OpenClosed);
+```
+
+### KeySets
+
+A KeySet represents a set of keys. A single Key or KeyRange can act as a KeySet.
+
+```rust
+use google_cloud_spanner::key::Key;
+
+let key1 = Key::new(vec!["Bob".to_kind(), "2014-09-23".to_kind()]);
+let key2 = Key::new(vec!["Alfred".to_kind(), "2015-06-12".to_kind()]);
+let ks = vec![key1,key2] ;
+let rows = tx.read("Table", vec!["Name","BirthDay"], ks, None).await;
+```
+
+all_keys returns a KeySet that refers to all the keys in a table:
+
+```rust
+use google_cloud_spanner::key::all_keys;
+
+let ks = all_keys();
+```
+
+### Transactions
+
+All Cloud Spanner reads and writes occur inside transactions. There are two types of transactions, read-only and read-write. Read-only transactions cannot change the database, do not acquire locks, and may access either the current database state or states in the past. Read-write transactions can read the database before writing to it, and always apply to the most recent database state.
+
+### Single Reads
+The simplest and fastest transaction is a ReadOnlyTransaction that supports a single read operation. Use Client.Single to create such a transaction. You can chain the call to Single with a call to a Read method.
+
+When you only want one row whose key you know, use ReadRow. Provide the table name, key, and the columns you want to read:
+
+```rust
+let row = client.single(None).await?.read_row("Table", vec!["col1", "col2"], key::Key::one(1)).await?;
+```
+
+Read multiple rows with the Read method. It takes a table name, KeySet, and list of columns:
+
+```rust
+let iter = client.single(None).await?.read("Table", vec!["col1", "col2"], key::Key::one(1), None).await?;
+```
+
+Read returns a RowIterator. You can call the Do method on the iterator and pass a callback:
+
+```
+TODO 
+```
+
+RowIterator also follows the standard pattern for the Google Cloud Client Libraries:
+
+```
+loop {
+    let row = match iter.next().await? {
+        Some(row) => row,
+        None => break,
+    };
+    
+    //TODO: use row
+};
+```
+
+* The used session is returned to the drop timing session pool, so unlike Go, there is no need to call Stop.  
+
+* To read rows with an index, use `ReadOptions`.
+
+### Statements
+
+The most general form of reading uses SQL statements. Construct a Statement with NewStatement, setting any parameters using the Statement's Params map:
+
+```
+use google_cloud_spanner::statement::Statement;
+
+let mut stmt = Statement::new("SELECT * FROM User WHERE UserId = @UserID");
+stmt.add_param("UserId", user_id);
+```
+
+You can also construct a Statement directly with a struct literal, providing your own map of parameters.
+
+Use the Query method to run the statement and obtain an iterator:
+
+```
+let iter = client.single(None).await?.query(stmt, None).await?;
+```
