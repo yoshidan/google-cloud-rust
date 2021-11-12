@@ -216,7 +216,7 @@ loop {
 
 The most general form of reading uses SQL statements. Construct a Statement with NewStatement, setting any parameters using the Statement's Params map:
 
-```
+```rust
 use google_cloud_spanner::statement::Statement;
 
 let mut stmt = Statement::new("SELECT * FROM User WHERE UserId = @UserID");
@@ -227,6 +227,90 @@ You can also construct a Statement directly with a struct literal, providing you
 
 Use the Query method to run the statement and obtain an iterator:
 
-```
+```rust
 let iter = client.single(None).await?.query(stmt, None).await?;
+```
+
+### Rows
+Once you have a Row, via an iterator or a call to ReadRow, you can extract column values in several ways. Pass in a pointer to a Go variable of the appropriate type when you extract a value.  
+
+You can extract by column position or name:
+
+```
+let value           = row.column::<String>(0)?;
+let nullable_value  = row.column::<Option<String>>(1)?;
+let array_value     = row.column_by_name::<Vec<i64>>("array")?;
+let struct_data     = row.column_by_name::<Vec<TestStruct>>("struct_data")?;
+```
+
+Or you can define a Rust struct that corresponds to your columns, and extract into that:
+* `TryFromStruct` trait is required
+
+```
+struct TestStruct {
+    pub struct_field: String,
+    pub struct_field_time: NaiveDateTime,
+    pub commit_timestamp: CommitTimestamp,
+}
+
+impl TryFromStruct for TestStruct {
+    fn try_from(s: RowStruct<'_>) -> Result<Self> {
+        Ok(TestStruct {
+            struct_field: s.column_by_name("struct_field")?,
+            struct_field_time: s.column_by_name("struct_field_time")?,
+            commit_timestamp: s.column_by_name("commit_timestamp")?,
+        })
+    }
+}
+```
+
+### Multiple Reads
+
+To perform more than one read in a transaction, use ReadOnlyTransaction:
+
+```rust
+let txn = client.read_only_transaction(None).await?;
+let iter1 = txn.query(ctx, stmt1, None).await;
+// ...
+let iter2 =  txn.query(ctx, stmt2, None).await;
+// ...
+```
+
+* The used session is returned to the drop timing session pool, so unlike Go, there is no need to call txn Close.
+
+### Timestamps and Timestamp Bounds
+
+Cloud Spanner read-only transactions conceptually perform all their reads at a single moment in time, called the transaction's read timestamp. Once a read has started, you can call ReadOnlyTransaction's Timestamp method to obtain the read timestamp.
+
+By default, a transaction will pick the most recent time (a time where all previously committed transactions are visible) for its reads. This provides the freshest data, but may involve some delay. You can often get a quicker response if you are willing to tolerate "stale" data. You can control the read timestamp selected by a transaction by calling the WithTimestampBound method on the transaction before using it. For example, to perform a query on data that is at most one minute stale, use
+```
+TODO
+```
+See the documentation of TimestampBound for more details.
+
+### Mutations
+
+To write values to a Cloud Spanner database, construct a Mutation. The spanner package has functions for inserting, updating and deleting rows. Except for the Delete methods, which take a Key or KeyRange, each mutation-building function comes in three varieties.
+
+One takes lists of columns and values along with the table name:
+
+```
+use google_cloud_spanner::{mutation,value,key};
+
+let mutation = mutation::insert("User",
+    vec!["UserID", "Name", "UpdatedAt"], // columns 
+    vec![1.to_kind(), "name".to_kind(), value::CommitTimestamp::new().to_kind()]
+);
+```
+
+One takes a map from column names to values:
+
+```
+TODO 
+```
+
+And the third accepts a struct value, and determines the columns from the struct field names:
+
+```
+
 ```
