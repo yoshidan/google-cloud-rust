@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::{NaiveDate, NaiveDateTime, Utc, FixedOffset, DateTime};
 use prost_types::value::Kind;
 use prost_types::{value, Value};
 
@@ -144,12 +144,13 @@ impl TryFromValue for bool {
     }
 }
 
-impl TryFromValue for NaiveDateTime {
+impl TryFromValue for chrono::DateTime<Utc> {
     fn try_from(item: &Value, field: &Field) -> Result<Self> {
         match as_ref(item, field)? {
-            Kind::StringValue(s) => chrono::DateTime::parse_from_rfc3339(s)
-                .map(|v| v.naive_utc())
-                .context(format!("{}: datetime parse error ", field.name)),
+            Kind::StringValue(s) => {
+                let fixed = chrono::DateTime::parse_from_rfc3339(s).context(format!("{}: datetime parse error ", field.name))?;
+                Ok(DateTime::<Utc>::from(fixed))
+            },
             v => kind_to_error(v, field),
         }
     }
@@ -157,7 +158,7 @@ impl TryFromValue for NaiveDateTime {
 
 impl TryFromValue for CommitTimestamp {
     fn try_from(item: &Value, field: &Field) -> Result<Self> {
-        let value = NaiveDateTime::try_from(item, field)?;
+        let value = chrono::DateTime::try_from(item, field)?;
         Ok(value.into())
     }
 }
@@ -297,7 +298,7 @@ mod tests {
     use crate::statement::{Kinds, ToKind, ToStruct, Types};
     use crate::value::CommitTimestamp;
     use anyhow::Result;
-    use chrono::{NaiveDateTime, Utc};
+    use chrono::{DateTime, Utc, FixedOffset};
     use google_cloud_googleapis::spanner::v1::struct_type::Field;
     use prost_types::Value;
     use std::collections::HashMap;
@@ -305,7 +306,7 @@ mod tests {
 
     struct TestStruct {
         pub struct_field: String,
-        pub struct_field_time: NaiveDateTime,
+        pub struct_field_time: DateTime<Utc>,
         pub commit_timestamp: CommitTimestamp,
     }
 
@@ -327,7 +328,7 @@ mod tests {
                 // value from DB is timestamp. it's not string 'spanner.commit_timestamp()'.
                 (
                     "commit_timestamp",
-                    NaiveDateTime::from(self.commit_timestamp).to_kind(),
+                    DateTime::from(self.commit_timestamp).to_kind(),
                 ),
             ]
         }
@@ -335,7 +336,7 @@ mod tests {
         fn get_types() -> Types {
             vec![
                 ("struct_field", String::get_type()),
-                ("struct_field_time", NaiveDateTime::get_type()),
+                ("struct_field_time", DateTime::<Utc>::get_type()),
                 ("commit_timestamp", CommitTimestamp::get_type()),
             ]
         }
@@ -348,7 +349,7 @@ mod tests {
         index.insert("array".to_string(), 1);
         index.insert("struct".to_string(), 2);
 
-        let now = Utc::now().naive_utc();
+        let now = Utc::now();
         let row = Row {
             index: Arc::new(index),
             fields: Arc::new(vec![

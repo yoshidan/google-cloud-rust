@@ -4,7 +4,7 @@ use google_cloud_spanner::client::{Client, TxError};
 use google_cloud_spanner::statement::{Statement, ToKind};
 
 mod common;
-use chrono::{NaiveDateTime, Utc};
+use chrono::{Utc, TimeZone, DateTime};
 use common::*;
 use google_cloud_spanner::key::{Key, KeySet};
 
@@ -18,7 +18,7 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
     std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
 
     // test data
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
     let mut session = create_session().await;
     let user_id = format!("user_{}", now.timestamp());
     replace_test_data(&mut session, vec![create_user_mutation(&user_id, &now)])
@@ -43,7 +43,7 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
             },
         )
         .await.unwrap().0.unwrap();
-    let ts = NaiveDateTime::from_timestamp(value.seconds, value.nanos as u32);
+    let ts = Utc.timestamp(value.seconds, value.nanos as u32);
 
     let mut ro = client.read_only_transaction().await?;
     let record = ro
@@ -74,7 +74,7 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
         )
         .await?;
     let row = all_rows(record).await.pop().unwrap();
-    let cts = row.column_by_name::<NaiveDateTime>("UpdatedAt").unwrap();
+    let cts = row.column_by_name::<DateTime<Utc>>("UpdatedAt").unwrap();
     assert_eq!(cts.timestamp(), ts.timestamp());
     Ok(())
 }
@@ -85,13 +85,13 @@ async fn test_apply() -> Result<(), anyhow::Error> {
     std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
     let users: Vec<String> = (0..2).map(|x| format!("user_client_{}", x)).collect();
     let client = Client::new(DATABASE).await.context("error")?;
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
     let ms = users
         .iter()
         .map(|id| create_user_mutation(id, &now))
         .collect();
     let value = client.apply(ms).await.unwrap().unwrap();
-    let ts = NaiveDateTime::from_timestamp(value.seconds, value.nanos as u32);
+    let ts = Utc.timestamp(value.seconds, value.nanos as u32);
 
     let mut ro = client.read_only_transaction().await?;
     for x in users {
@@ -110,13 +110,13 @@ async fn test_apply_at_least_once() -> Result<(), anyhow::Error> {
     std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
     let users: Vec<String> = (0..2).map(|x| format!("user_client_x_{}", x)).collect();
     let client = Client::new(DATABASE).await.context("error")?;
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
     let ms = users
         .iter()
         .map(|id| create_user_mutation(id, &now))
         .collect();
     let value = client.apply_at_least_once(ms).await.unwrap().unwrap();
-    let ts = NaiveDateTime::from_timestamp(value.seconds, value.nanos as u32);
+    let ts = Utc.timestamp(value.seconds, value.nanos as u32);
 
     let mut ro = client.read_only_transaction().await?;
     for x in users {
@@ -133,7 +133,7 @@ async fn test_apply_at_least_once() -> Result<(), anyhow::Error> {
 #[serial]
 async fn test_partitioned_update() -> Result<(), anyhow::Error> {
     std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
     let user_id = format!("user_{}", now.timestamp());
     let mut session = create_session().await;
     replace_test_data(&mut session, vec![create_user_mutation(&user_id, &now)])
@@ -163,7 +163,7 @@ async fn test_partitioned_update() -> Result<(), anyhow::Error> {
 #[serial]
 async fn test_batch_read_only_transaction() -> Result<(), anyhow::Error> {
     std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
 
     let mut session = create_session().await;
     let many = (0..20000)

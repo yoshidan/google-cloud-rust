@@ -1,4 +1,4 @@
-use chrono::{NaiveDateTime, Utc};
+use chrono::{NaiveDateTime, Utc, DateTime, TimeZone};
 use google_cloud_spanner::key::{Key, KeySet};
 
 use google_cloud_spanner::row::Row;
@@ -12,12 +12,13 @@ use std::ops::DerefMut;
 mod common;
 use common::*;
 use std::collections::HashMap;
+use std::time::{SystemTime, Instant};
 
 async fn assert_read(
     tx: &mut ReadOnlyTransaction,
     user_id: &str,
-    now: &NaiveDateTime,
-    cts: &NaiveDateTime,
+    now: &DateTime<Utc>,
+    cts: &DateTime<Utc>,
 ) {
     let reader = match tx.read("User", user_columns(), Key::one(user_id)).await {
         Ok(tx) => tx,
@@ -32,8 +33,8 @@ async fn assert_read(
 async fn assert_query(
     tx: &mut ReadOnlyTransaction,
     user_id: &str,
-    now: &NaiveDateTime,
-    cts: &NaiveDateTime,
+    now: &DateTime<Utc>,
+    cts: &DateTime<Utc>,
 ) {
     let mut stmt = Statement::new("SELECT * FROM User WHERE UserId = @UserID");
     stmt.add_param("UserId", user_id);
@@ -54,7 +55,7 @@ async fn execute_query(tx: &mut ReadOnlyTransaction, stmt: Statement) -> Vec<Row
 #[tokio::test]
 #[serial]
 async fn test_query_and_read() {
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
     let mut session = create_session().await;
     let user_id_1 = "user_1";
     let user_id_2 = "user_2";
@@ -72,7 +73,7 @@ async fn test_query_and_read() {
 
     let mut tx = read_only_transaction(session).await;
     let ts = cr.commit_timestamp.as_ref().unwrap();
-    let ts = NaiveDateTime::from_timestamp(ts.seconds, ts.nanos as u32);
+    let ts = Utc.timestamp(ts.seconds, ts.nanos as u32);
     assert_query(&mut tx, user_id_1, &now, &ts).await;
     assert_query(&mut tx, user_id_2, &now, &ts).await;
     assert_query(&mut tx, user_id_3, &now, &ts).await;
@@ -84,7 +85,7 @@ async fn test_query_and_read() {
 #[tokio::test]
 #[serial]
 async fn test_complex_query() {
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
     let mut session = create_session().await;
     let user_id_1 = "user_10";
     let cr = replace_test_data(
@@ -115,7 +116,7 @@ async fn test_complex_query() {
 
     // check UserTable
     let ts = cr.commit_timestamp.as_ref().unwrap();
-    let ts = NaiveDateTime::from_timestamp(ts.seconds, ts.nanos as u32);
+    let ts = Utc.timestamp(ts.seconds, ts.nanos as u32);
     assert_user_row(&row, user_id_1, &now, &ts);
 
     let mut user_items = row.column_by_name::<Vec<UserItem>>("UserItem").unwrap();
@@ -159,7 +160,7 @@ async fn test_complex_query() {
 #[tokio::test]
 #[serial]
 async fn test_batch_partition_query_and_read() {
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
     let mut session = create_session().await;
     let user_id_1 = "user_1";
     let user_id_2 = "user_2";
@@ -192,7 +193,7 @@ async fn test_batch_partition_query_and_read() {
     };
 
     let ts = cr.commit_timestamp.as_ref().unwrap();
-    let ts = NaiveDateTime::from_timestamp(ts.seconds, ts.nanos as u32);
+    let ts = Utc.timestamp(ts.seconds, ts.nanos as u32);
     assert_partitioned_query(&mut tx, user_id_1, &now, &ts).await;
     assert_partitioned_query(&mut tx, user_id_2, &now, &ts).await;
     assert_partitioned_query(&mut tx, user_id_3, &now, &ts).await;
@@ -210,7 +211,7 @@ async fn test_batch_partition_query_and_read() {
     }
 
     let ts = cr2.commit_timestamp.as_ref().unwrap();
-    let ts = NaiveDateTime::from_timestamp(ts.seconds, ts.nanos as u32);
+    let ts = Utc.timestamp(ts.seconds, ts.nanos as u32);
     (0..20000).for_each(|x| {
         let user_id = format!("user_partitionx_{}", x);
         assert_user_row(map.get(&user_id).unwrap(), &user_id, &now, &ts)
@@ -220,7 +221,7 @@ async fn test_batch_partition_query_and_read() {
 #[tokio::test]
 #[serial]
 async fn test_many_records() {
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
     let mut session = create_session().await;
     let mutations = (0..40000)
         .map(|x| create_user_mutation(&format!("user_many_{}", x), &now))
@@ -233,7 +234,7 @@ async fn test_many_records() {
     assert_eq!(40000, rows.len());
 
     let ts = cr.commit_timestamp.as_ref().unwrap();
-    let ts = NaiveDateTime::from_timestamp(ts.seconds, ts.nanos as u32);
+    let ts = Utc.timestamp(ts.seconds, ts.nanos as u32);
     let mut user_ids: Vec<String> = (0..40000).map(|x| format!("user_many_{}", x)).collect();
     user_ids.sort();
     for (x, user_id) in user_ids.iter().enumerate() {
@@ -247,7 +248,7 @@ async fn test_many_records() {
 #[tokio::test]
 #[serial]
 async fn test_many_records_struct() {
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
     let mut session = create_session().await;
     let user_id = "user_x_6";
     let mutations = vec![create_user_mutation(user_id, &now)];
@@ -288,7 +289,7 @@ async fn test_many_records_struct() {
 #[tokio::test]
 #[serial]
 async fn test_read_row() {
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
     let mut session = create_session().await;
     let user_id = "user_x_x";
     let mutations = vec![create_user_mutation(user_id, &now)];

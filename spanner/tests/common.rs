@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::{NaiveDate, Utc, DateTime};
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::SingleUseTransaction;
 use google_cloud_googleapis::spanner::v1::transaction_options::{Mode, ReadWrite};
 use google_cloud_googleapis::spanner::v1::{
@@ -120,7 +120,7 @@ pub async fn replace_test_data(
         .map(|x| x.into_inner())
 }
 
-pub fn create_user_mutation(user_id: &str, now: &NaiveDateTime) -> Mutation {
+pub fn create_user_mutation(user_id: &str, now: &DateTime<Utc>) -> Mutation {
     insert_or_update(
         "User",
         user_columns(),
@@ -138,8 +138,8 @@ pub fn create_user_mutation(user_id: &str, now: &NaiveDateTime) -> Mutation {
             Some(Decimal::from_str("1000.42342").unwrap()).to_kind(),
             now.to_kind(),
             Some(*now).to_kind(),
-            now.date().to_kind(),
-            None::<NaiveDateTime>.to_kind(),
+            now.naive_utc().date().to_kind(),
+            None::<DateTime<Utc>>.to_kind(),
             vec![10_i64, 20_i64, 30_i64].to_kind(),
             None::<Vec<i64>>.to_kind(),
             Some(user_id).to_kind(),
@@ -177,8 +177,8 @@ pub fn create_user_character_mutation(user_id: &str, character_id: i64) -> Mutat
 pub fn assert_user_row(
     row: &Row,
     source_user_id: &str,
-    now: &NaiveDateTime,
-    commit_timestamp: &NaiveDateTime,
+    now: &DateTime<Utc>,
+    commit_timestamp: &DateTime<Utc>,
 ) {
     let user_id = row.column_by_name::<String>("UserId").unwrap();
     assert_eq!(user_id, source_user_id);
@@ -209,15 +209,15 @@ pub fn assert_user_row(
         .unwrap();
     assert_eq!(nullable_decimal.unwrap().to_string(), "1000.42342");
     let not_null_ts = row
-        .column_by_name::<NaiveDateTime>("NotNullTimestamp")
+        .column_by_name::<DateTime<Utc>>("NotNullTimestamp")
         .unwrap();
     assert_eq!(not_null_ts.to_string(), now.to_string());
     let nullable_ts = row
-        .column_by_name::<Option<NaiveDateTime>>("NullableTimestamp")
+        .column_by_name::<Option<DateTime<Utc>>>("NullableTimestamp")
         .unwrap();
     assert_eq!(nullable_ts.unwrap().to_string(), now.to_string());
     let not_null_date = row.column_by_name::<NaiveDate>("NotNullDate").unwrap();
-    assert_eq!(not_null_date.to_string(), now.date().to_string());
+    assert_eq!(not_null_date.to_string(), now.naive_utc().date().to_string());
     let nullable_date = row
         .column_by_name::<Option<NaiveDate>>("NullableDate")
         .unwrap();
@@ -275,8 +275,8 @@ pub async fn all_rows(mut itr: RowIterator<'_>) -> Vec<Row> {
 pub async fn assert_partitioned_query(
     tx: &mut BatchReadOnlyTransaction,
     user_id: &str,
-    now: &NaiveDateTime,
-    cts: &NaiveDateTime,
+    now: &DateTime<Utc>,
+    cts: &DateTime<Utc>,
 ) {
     let mut stmt = Statement::new("SELECT * FROM User WHERE UserId = @UserID");
     stmt.add_param("UserId", user_id);
@@ -311,8 +311,8 @@ pub async fn execute_partitioned_query(
 pub async fn assert_partitioned_read(
     tx: &mut BatchReadOnlyTransaction,
     user_id: &str,
-    now: &NaiveDateTime,
-    cts: &NaiveDateTime,
+    now: &DateTime<Utc>,
+    cts: &DateTime<Utc>,
 ) {
     let partitions = match tx
         .partition_read("User", user_columns(), KeySet::from(Key::one(user_id)))

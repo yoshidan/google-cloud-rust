@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{NaiveDateTime, Utc};
+use chrono::{NaiveDateTime, Utc, TimeZone, DateTime};
 
 use google_cloud_spanner::key::{Key, KeySet};
 
@@ -35,7 +35,7 @@ pub async fn all_rows(mut itr: RowIterator<'_>) -> Result<Vec<Row>, Status> {
 #[tokio::test]
 #[serial]
 async fn test_mutation_and_statement() {
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
     let mut session = create_session().await;
 
     let past_user = format!("user_{}", now.timestamp());
@@ -68,7 +68,7 @@ async fn test_mutation_and_statement() {
         Ok(s) => {
             assert!(s.0.is_some());
             let ts = s.0.unwrap();
-            let naive = NaiveDateTime::from_timestamp(ts.seconds, ts.nanos as u32);
+            let naive = Utc.timestamp(ts.seconds, ts.nanos as u32);
             println!("commit time stamp is {}", naive.to_string());
             naive
         }
@@ -76,14 +76,14 @@ async fn test_mutation_and_statement() {
     };
 
     let ts = cr.commit_timestamp.as_ref().unwrap();
-    let ts = NaiveDateTime::from_timestamp(ts.seconds, ts.nanos as u32);
+    let ts = Utc.timestamp(ts.seconds, ts.nanos as u32);
     assert_data(&past_user, &now, &ts, &commit_timestamp).await;
 }
 
 #[tokio::test]
 #[serial]
 async fn test_partitioned_dml() {
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
     let mut session = create_session().await;
 
     let user_id = format!("user_{}", now.timestamp());
@@ -125,7 +125,7 @@ async fn test_partitioned_dml() {
 #[tokio::test]
 #[serial]
 async fn test_rollback() {
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
     let mut session = create_session().await;
 
     let past_user = format!("user_{}", now.timestamp());
@@ -161,15 +161,15 @@ async fn test_rollback() {
         .unwrap();
     let row = all_rows(reader).await.unwrap().pop().unwrap();
     let ts = cr.commit_timestamp.as_ref().unwrap();
-    let ts = NaiveDateTime::from_timestamp(ts.seconds, ts.nanos as u32);
+    let ts = Utc.timestamp(ts.seconds, ts.nanos as u32);
     assert_user_row(&row, &past_user, &now, &ts);
 }
 
 async fn assert_data(
     user_id: &String,
-    now: &NaiveDateTime,
-    user_commit_timestamp: &NaiveDateTime,
-    commit_timestamp: &NaiveDateTime,
+    now: &DateTime<Utc>,
+    user_commit_timestamp: &DateTime<Utc>,
+    commit_timestamp: &DateTime<Utc>,
 ) {
     // get by another transaction
     let session = create_session().await;

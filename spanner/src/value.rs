@@ -1,21 +1,22 @@
 use std::ops::Deref;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
-use chrono::NaiveDateTime;
+use chrono::{NaiveDateTime, DateTime, Utc, FixedOffset, TimeZone};
 use prost_types::Timestamp;
 
 use google_cloud_googleapis::spanner::v1::transaction_options::read_only::TimestampBound as InternalTimestampBound;
 use google_cloud_googleapis::spanner::v1::transaction_options::ReadOnly;
+use std::fmt::Display;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
 pub struct CommitTimestamp {
-    pub timestamp: NaiveDateTime,
+    pub timestamp: DateTime<Utc>,
 }
 
 impl CommitTimestamp {
     pub fn new() -> Self {
         CommitTimestamp {
-            timestamp: NaiveDateTime::from_timestamp(0, 0),
+            timestamp: DateTime::<Utc>::from(SystemTime::now())
         }
     }
 }
@@ -27,22 +28,22 @@ impl Default for CommitTimestamp {
 }
 
 impl Deref for CommitTimestamp {
-    type Target = NaiveDateTime;
+    type Target = DateTime<Utc>;
 
     fn deref(&self) -> &Self::Target {
         &self.timestamp
     }
 }
 
-impl From<CommitTimestamp> for NaiveDateTime {
+impl From<CommitTimestamp> for DateTime<Utc> {
     fn from(s: CommitTimestamp) -> Self {
         s.timestamp
     }
 }
 
-impl From<NaiveDateTime> for CommitTimestamp {
-    fn from(s: NaiveDateTime) -> Self {
-        CommitTimestamp { timestamp: s }
+impl From<DateTime<Utc>> for CommitTimestamp {
+    fn from(s: DateTime<Utc>) -> Self {
+        CommitTimestamp { timestamp: s.into() }
     }
 }
 
