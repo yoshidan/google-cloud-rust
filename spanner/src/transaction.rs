@@ -11,8 +11,9 @@ use google_cloud_googleapis::spanner::v1::{
     ExecuteSqlRequest, ReadRequest, RequestOptions, TransactionSelector,
 };
 
-use crate::key::KeySet;
-use crate::reader::{RowIterator, StatementReader, TableReader};
+use crate::key::{Key, KeySet};
+use crate::reader::{AsyncIterator, RowIterator, StatementReader, TableReader};
+use crate::row::Row;
 use crate::sessions::ManagedSession;
 use crate::statement::Statement;
 
@@ -168,6 +169,24 @@ impl Transaction {
             }),
         )
         .await;
+    }
+
+    /// read returns a RowIterator for reading multiple rows from the database.
+    pub async fn read_row<T, C>(
+        &mut self,
+        table: T,
+        columns: Vec<C>,
+        key: Key,
+        options: Option<ReadOptions>,
+    ) -> Result<Option<Row>, Status>
+    where
+        T: Into<String>,
+        C: Into<String>,
+    {
+        let mut reader = self
+            .read(table, columns, KeySet::from(key), options)
+            .await?;
+        return reader.next().await;
     }
 
     pub(crate) fn get_session_name(&self) -> String {

@@ -292,3 +292,20 @@ async fn test_many_records_struct() {
         .unwrap();
     assert_eq!(5000, characters.len());
 }
+
+#[tokio::test]
+#[serial]
+async fn test_read_row() {
+    let now = Utc::now().naive_utc();
+    let mut session = create_session().await;
+    let user_id = "user_x_x";
+    let mutations = vec![create_user_mutation(user_id, &now)];
+    let _ = replace_test_data(&mut session, mutations).await.unwrap();
+
+    let mut tx = read_only_transaction(session).await;
+    let row = tx
+        .read_row("User", vec!["UserId"], Key::one(user_id.clone()), None)
+        .await
+        .unwrap();
+    assert!(row.is_some())
+}

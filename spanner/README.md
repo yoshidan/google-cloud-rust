@@ -359,19 +359,32 @@ If you need to read before writing in a single transaction, use a ReadWriteTrans
 
             // The buffered mutation will be committed.  If the commit
             // fails with an Aborted error, this function will be called again.
-            let m1 = mutation::insert("User", vec![], vec![1.to_kind(), CommitTimestamp::new().to_kind()])
-            let m2 = mutation::insert("User", vec![], vec![2.to_kind(), CommitTimestamp::new().to_kind()])
+            let m1 = mutation::insert("User", vec!["UserId","UpdatedAt"], vec![1.to_kind(), CommitTimestamp::new().to_kind()])
+            let m2 = mutation::insert("User", vec!["UserId","UpdatedAt"], vec![2.to_kind(), CommitTimestamp::new().to_kind()])
             tx.buffer_write(vec![m1,m2]);
 
             // The transaction function will be called again if the error code
             // of this error is Aborted. The backend may automatically abort
             // any read/write transaction if it detects a deadlock or other problems.
-            tx.read_row("User", vec!["UserId"], vec![Key::one(*user_id_ref.clone())], None).await
-        }
-        .await;
+            tx.read_row("User", vec!["UserId"], Key::one(100), None).await
+        }.await.map_err(|x| TxError::TonicStatus(x));
         //return owner ship of read_write_transaction
         (tx, result)
     },
     None
 ).await?;
 ```
+
+### Structs
+Cloud Spanner STRUCT (aka STRUCT) values (https://cloud.google.com/spanner/docs/data-types#struct-type) can be represented by a Go struct value.
+
+A proto StructType is built from the field types and field tag information of the Go struct. If a field in the struct type definition has a "spanner:<field_name>" tag, then the value of the "spanner" key in the tag is used as the name for that field in the built StructType, otherwise the field name in the struct definition is used. To specify a field with an empty field name in a Cloud Spanner STRUCT type, use the `spanner:""` tag annotation against the corresponding field in the Go struct's type definition.
+
+A STRUCT value can contain STRUCT-typed and Array-of-STRUCT typed fields and these can be specified using named struct-typed and []struct-typed fields inside a Go struct. However, embedded struct fields are not allowed. Unexported struct fields are ignored.
+
+NULL STRUCT values in Cloud Spanner are typed. A nil pointer to a Go struct value can be used to specify a NULL STRUCT value of the corresponding StructType. Nil and empty slices of a Go STRUCT type can be used to specify NULL and empty array values respectively of the corresponding StructType. A slice of pointers to a Go struct type can be used to specify an array of NULL-able STRUCT values.
+
+### DML and Partitioned DML
+Spanner supports DML statements like INSERT, UPDATE and DELETE. Use ReadWriteTransaction.Update to run DML statements. It returns the number of rows affected. (You can call use ReadWriteTransaction.Query with a DML statement. The first call to Next on the resulting RowIterator will return iterator.Done, and the RowCount field of the iterator will hold the number of affected rows.)
+
+For large databases, it may be more efficient to partition the DML statement. Use client.PartitionedUpdate to run a DML statement in this way. Not all DML statements can be partitioned.
