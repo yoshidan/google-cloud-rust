@@ -28,7 +28,7 @@ async fn main() {
     const DATABASE: &str = "projects/your_projects/instances/your-instance/databases/your-database";
    
     // Create spanner client
-    let mut client = match Client::new(DATABASE, None).await {
+    let mut client = match Client::new(DATABASE).await {
         Ok(client) => client,
         Err(e) => { /* handle error */ }
     };
@@ -53,20 +53,20 @@ async fn main() {
 
 ### Overview
 * [Creating a Client](#CreatingAClient)
-* [Simple Reads and Writes](./README.md#Simple%20Reads%20and%20Writes)
+* [Simple Reads and Writes](#SimpleReadsAndWrites)
 * [Keys](./README.md#Keys)
 * [KeyRanges](./README.md#KeyRanges)
 * [KeySets](./README.md#KeySets)
 * [Transactions](./README.md#Transactions)
-* [Single Reads](./README.md#Single%20Reads)
+* [Single Reads](#SingleReads)
 * [Statements](./README.md#Statements)
 * [Rows](./README.md#Rows)
-* [Multiple Reads](./README.md#Multiple%20Reads)
-* [Timestamps and Timestamp Bounds](./README.md#Timestamps%20and%20Timestamp Bounds)
+* [Multiple Reads](#MultipleReads)
+* [Timestamps and Timestamp Bounds](#TimestampsAndTimestampBounds)
 * [Mutations](./README.md#Mutations)
 * [Writes](./README.md#Writes)
 * [Structs](./README.md#Structs)
-* [DML and Partitioned DML](./README.md#DML%20and%20Partitioned%20DML)
+* [DML and Partitioned DML](#DMLAndPartitionedDML)
 
 Package spanner provides a client for reading and writing to Cloud Spanner databases.   
 See the packages under admin for clients that operate on databases and instances.
@@ -77,7 +77,7 @@ To start working with this package, create a client that refers to the database 
 
 ```rust
 const DATABASE: &str = "projects/your_projects/instances/your-instance/databases/your-database";
-let mut client = match Client::new(DATABASE, None).await {
+let mut client = match Client::new(DATABASE).await {
     Ok(client) => client,
     Err(e) => { /* handle error */ }
 };
@@ -97,13 +97,13 @@ std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
 
 // Create client as usual.
 const DATABASE: &str = "projects/your_projects/instances/your-instance/databases/your-database";
-let mut client = match Client::new(DATABASE, None).await {
+let mut client = match Client::new(DATABASE).await {
     Ok(client) => client,
     Err(e) => { /* handle error */ }
 };
 ```
 
-### Simple Reads and Writes
+### <a name="SimpleReadsAndWrites"></a>Simple Reads and Writes
 Two Client methods, Apply and Single, work well for simple reads and writes. As a quick introduction, here we write a new row to the database and read it back:
 
 ```rust
@@ -113,12 +113,11 @@ let mutation = mutation::insert("User",
     vec!["UserID", "Name", "UpdatedAt"], // columns 
     vec![1.to_kind(), "name".to_kind(), value::CommitTimestamp::new().to_kind()]
 );
-let commit_timestamp = client.apply(vec![mutation],None).await?;
+let commit_timestamp = client.apply(vec![mutation]).await?;
 
-let row = client.single(None).await?.read("User",
+let row = client.single().await?.read("User",
     vec!["UserID", "Name", "UpdatedAt"],
     key::Key::one(1), 
-    None
 ).await?;
 ```
 
@@ -159,7 +158,7 @@ use google_cloud_spanner::key::Key;
 let key1 = Key::new(vec!["Bob".to_kind(), "2014-09-23".to_kind()]);
 let key2 = Key::new(vec!["Alfred".to_kind(), "2015-06-12".to_kind()]);
 let ks = vec![key1,key2] ;
-let rows = tx.read("Table", vec!["Name","BirthDay"], ks, None).await;
+let rows = tx.read("Table", vec!["Name","BirthDay"], ks).await;
 ```
 
 all_keys returns a KeySet that refers to all the keys in a table:
@@ -174,19 +173,19 @@ let ks = all_keys();
 
 All Cloud Spanner reads and writes occur inside transactions. There are two types of transactions, read-only and read-write. Read-only transactions cannot change the database, do not acquire locks, and may access either the current database state or states in the past. Read-write transactions can read the database before writing to it, and always apply to the most recent database state.
 
-### Single Reads
+### <a name="SingleReads"></a>Single Reads
 The simplest and fastest transaction is a ReadOnlyTransaction that supports a single read operation. Use Client.Single to create such a transaction. You can chain the call to Single with a call to a Read method.
 
 When you only want one row whose key you know, use ReadRow. Provide the table name, key, and the columns you want to read:
 
 ```rust
-let row = client.single(None).await?.read_row("Table", vec!["col1", "col2"], key::Key::one(1)).await?;
+let row = client.single().await?.read_row("Table", vec!["col1", "col2"], key::Key::one(1)).await?;
 ```
 
 Read multiple rows with the Read method. It takes a table name, KeySet, and list of columns:
 
 ```rust
-let iter = client.single(None).await?.read("Table", vec!["col1", "col2"], key::Key::one(1), None).await?;
+let iter = client.single().await?.read("Table", vec!["col1", "col2"], key::Key::one(1)).await?;
 ```
 
 Read returns a RowIterator. You can call the Do method on the iterator and pass a callback:
@@ -197,7 +196,7 @@ TODO
 
 RowIterator also follows the standard pattern for the Google Cloud Client Libraries:
 
-```
+```rust
 loop {
     let row = match iter.next().await? {
         Some(row) => row,
@@ -228,7 +227,7 @@ You can also construct a Statement directly with a struct literal, providing you
 Use the Query method to run the statement and obtain an iterator:
 
 ```rust
-let iter = client.single(None).await?.query(stmt, None).await?;
+let iter = client.single().await?.query(stmt).await?;
 ```
 
 ### Rows
@@ -264,21 +263,21 @@ impl TryFromStruct for TestStruct {
 }
 ```
 
-### Multiple Reads
+### <a name="MultipleReads"></a>Multiple Reads
 
 To perform more than one read in a transaction, use ReadOnlyTransaction:
 
 ```rust
-let txn = client.read_only_transaction(None).await?;
-let iter1 = txn.query(ctx, stmt1, None).await;
+let txn = client.read_only_transaction().await?;
+let iter1 = txn.query(ctx, stmt1).await;
 // ...
-let iter2 = txn.query(ctx, stmt2, None).await;
+let iter2 = txn.query(ctx, stmt2).await;
 // ...
 ```
 
 * The used session is returned to the drop timing session pool, so unlike Go, there is no need to call txn Close.
 
-### Timestamps and Timestamp Bounds
+### <a name="TimestampsAndTimestampBounds"></a>Timestamps and Timestamp Bounds
 
 Cloud Spanner read-only transactions conceptually perform all their reads at a single moment in time, called the transaction's read timestamp. Once a read has started, you can call ReadOnlyTransaction's Timestamp method to obtain the read timestamp.
 
@@ -295,11 +294,12 @@ To write values to a Cloud Spanner database, construct a Mutation. The spanner p
 One takes lists of columns and values along with the table name:
 
 ```rust
-use google_cloud_spanner::{mutation,value,key};
+use google_cloud_spanner::mutation::insert;
+use google_cloud_spanner::value::CommitTimestamp;
 
-let mutation = mutation::insert("User",
+let mutation = insert("User",
     vec!["UserID", "Name", "UpdatedAt"], // columns 
-    vec![1.to_kind(), "name".to_kind(), value::CommitTimestamp::new().to_kind()]
+    vec![1.to_kind(), "name".to_kind(), CommitTimestamp::new().to_kind()]
 );
 ```
 
@@ -331,7 +331,7 @@ impl ToStruct for TestStruct {
     }
 }
 
-use google_cloud_spanner::mutation;
+use google_cloud_spanner::mutation::insert_struct;
 
 let ms = insert_struct("Guild", TestStruct {
     struct_field: "abc".to_string(),
@@ -343,11 +343,13 @@ let ms = insert_struct("Guild", TestStruct {
 
 To apply a list of mutations to the database, use Apply:
 ```rust
-use google_cloud_spanner::{mutation,key};
+use google_cloud_spanner::mutation::insert;
+use google_cloud_spanner::mutation::delete;
+use google_cloud_spanner::key::all_keys;
 
-let m1 = mutation::delete("Table", key::all_keys());
-let m2 = mutation::insert("Table", key::all_keys());
-let commit_timestamp = client.apply(vec![m1,m2],None).await?;
+let m1 = delete("Table", all_keys());
+let m2 = insert("Table", all_keys());
+let commit_timestamp = client.apply(vec![m1,m2]).await?;
 ```
 
 If you need to read before writing in a single transaction, use a ReadWriteTransaction. ReadWriteTransactions may be aborted automatically by the backend and need to be retried. You pass in a function to ReadWriteTransaction, and the client will handle the retries automatically. Use the transaction's BufferWrite method to buffer mutations, which will all be executed at the end of the transaction:
@@ -366,12 +368,11 @@ If you need to read before writing in a single transaction, use a ReadWriteTrans
             // The transaction function will be called again if the error code
             // of this error is Aborted. The backend may automatically abort
             // any read/write transaction if it detects a deadlock or other problems.
-            tx.read_row("User", vec!["UserId"], Key::one(100), None).await
+            tx.read_row("User", vec!["UserId"], Key::one(100)).await
         }.await.map_err(|x| TxError::TonicStatus(x));
         //return owner ship of read_write_transaction
         (tx, result)
     },
-    None
 ).await?;
 ```
 
@@ -384,7 +385,7 @@ A STRUCT value can contain STRUCT-typed and Array-of-STRUCT typed fields and the
 
 NULL STRUCT values in Cloud Spanner are typed. A nil pointer to a Go struct value can be used to specify a NULL STRUCT value of the corresponding StructType. Nil and empty slices of a Go STRUCT type can be used to specify NULL and empty array values respectively of the corresponding StructType. A slice of pointers to a Go struct type can be used to specify an array of NULL-able STRUCT values.
 
-### DML and Partitioned DML
+### <a name="DMLAndPartitionedDML"></a>DML and Partitioned DML
 Spanner supports DML statements like INSERT, UPDATE and DELETE. Use ReadWriteTransaction.Update to run DML statements. It returns the number of rows affected. (You can call use ReadWriteTransaction.Query with a DML statement. The first call to Next on the resulting RowIterator will return iterator.Done, and the RowCount field of the iterator will hold the number of affected rows.)
 
 For large databases, it may be more efficient to partition the DML statement. Use client.PartitionedUpdate to run a DML statement in this way. Not all DML statements can be partitioned.
