@@ -278,10 +278,10 @@ impl Client {
                     Ok(tx) => tx,
                     Err(e) => return Err((TxError::TonicStatus(e.status), Some(e.session))),
                 };
-                let qo = options
-                    .query_options
-                    .clone()
-                    .unwrap_or(QueryOptions::default());
+                let qo = match options.query_options.clone() {
+                    Some(o) => o,
+                    None => QueryOptions::default(),
+                };
                 tx.update_with_option(stmt.clone(), qo)
                     .await
                     .map_err(|e| (TxError::TonicStatus(e), tx.take_session()))
@@ -547,6 +547,6 @@ impl Client {
     fn split_read_write_transaction_option(
         options: ReadWriteTransactionOption,
     ) -> (CallOptions, CommitOptions) {
-        return (options.begin_options, options.commit_options);
+        (options.begin_options, options.commit_options)
     }
 }

@@ -179,19 +179,13 @@ The simplest and fastest transaction is a ReadOnlyTransaction that supports a si
 When you only want one row whose key you know, use ReadRow. Provide the table name, key, and the columns you want to read:
 
 ```rust
-let row = client.single().await?.read_row("Table", vec!["col1", "col2"], key::Key::one(1)).await?;
+let row = client.single().await?.read_row("Table", vec!["col1", "col2"], Key::one(1)).await?;
 ```
 
 Read multiple rows with the Read method. It takes a table name, KeySet, and list of columns:
 
 ```rust
-let iter = client.single().await?.read("Table", vec!["col1", "col2"], key::Key::one(1)).await?;
-```
-
-Read returns a RowIterator. You can call the Do method on the iterator and pass a callback:
-
-```
-TODO 
+let iter = client.single().await?.read("Table", vec!["col1", "col2"], vec![Key::one(1), Key::one(2)]).await?;
 ```
 
 RowIterator also follows the standard pattern for the Google Cloud Client Libraries:
@@ -209,7 +203,7 @@ loop {
 
 * The used session is returned to the drop timing session pool, so unlike Go, there is no need to call Stop.  
 
-* To read rows with an index, use `ReadOptions`.
+* To read rows with an index, use `client.read_with_option`.
 
 ### Statements
 

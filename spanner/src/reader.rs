@@ -25,7 +25,9 @@ pub trait Reader {
         &self,
         session: &mut SessionHandle,
     ) -> Result<Response<Streaming<PartialResultSet>>, Status>;
+
     fn update_token(&mut self, resume_token: Vec<u8>);
+
     fn can_retry(&self) -> bool;
 }
 
@@ -46,9 +48,11 @@ impl Reader for StatementReader {
             .await;
         return session.invalidate_if_needed(result).await;
     }
+
     fn update_token(&mut self, resume_token: Vec<u8>) {
         self.request.resume_token = resume_token;
     }
+
     fn can_retry(&self) -> bool {
         !self.request.resume_token.is_empty()
     }
@@ -71,9 +75,11 @@ impl Reader for TableReader {
             .await;
         return session.invalidate_if_needed(result).await;
     }
+
     fn update_token(&mut self, resume_token: Vec<u8>) {
         self.request.resume_token = resume_token;
     }
+
     fn can_retry(&self) -> bool {
         !self.request.resume_token.is_empty()
     }

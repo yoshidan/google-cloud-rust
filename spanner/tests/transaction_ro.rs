@@ -19,10 +19,7 @@ async fn assert_read(
     now: &NaiveDateTime,
     cts: &NaiveDateTime,
 ) {
-    let reader = match tx
-        .read("User", user_columns(), KeySet::from(Key::one(user_id)))
-        .await
-    {
+    let reader = match tx.read("User", user_columns(), Key::one(user_id)).await {
         Ok(tx) => tx,
         Err(status) => panic!("read error {:?}", status),
     };
