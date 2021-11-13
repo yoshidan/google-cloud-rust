@@ -63,19 +63,6 @@ impl Default for ReadWriteTransactionOption {
     }
 }
 
-#[derive(Clone)]
-pub struct ApplyOptions {
-    pub commit_options: CommitOptions,
-}
-
-impl Default for ApplyOptions {
-    fn default() -> Self {
-        ApplyOptions {
-            commit_options: CommitOptions::default(),
-        }
-    }
-}
-
 /// Client is a client for reading and writing data to a Cloud Spanner database.
 /// A client is safe to use concurrently, except for its Close method.
 pub struct Client {
@@ -145,15 +132,16 @@ impl AsTonicStatus for TxError {
 impl Client {
     /// new creates a client to a database. A valid database name has
     /// the form projects/PROJECT_ID/instances/INSTANCE_ID/databases/DATABASE_ID.
-    pub async fn new(
-        database: impl Into<String>,
-        options: Option<ClientConfig>,
-    ) -> Result<Self, InitializeError> {
-        let config = match options {
-            Some(o) => o,
-            None => Default::default(),
-        };
+    pub async fn new(database: impl Into<String>) -> Result<Self, InitializeError> {
+        return Client::new_with_config(database, Default::default()).await;
+    }
 
+    /// new creates a client to a database. A valid database name has
+    /// the form projects/PROJECT_ID/instances/INSTANCE_ID/databases/DATABASE_ID.
+    pub async fn new_with_config(
+        database: impl Into<String>,
+        config: ClientConfig,
+    ) -> Result<Self, InitializeError> {
         if config.session_config.max_opened > config.channel_config.num_channels * 100 {
             return Err(InitializeError::InvalidConfig(format!(
                 "max session size is {} because max session size is 100 per gRPC connection",
@@ -184,11 +172,19 @@ impl Client {
     /// single provides a read-only snapshot transaction optimized for the case
     /// where only a single read or query is needed.  This is more efficient than
     /// using read_only_transaction for a single read or query.
-    pub async fn single(&self, tb: Option<TimestampBound>) -> Result<ReadOnlyTransaction, TxError> {
-        let tb = match tb {
-            Some(tb) => tb,
-            None => TimestampBound::strong_read(),
-        };
+    pub async fn single(&self) -> Result<ReadOnlyTransaction, TxError> {
+        return self
+            .single_with_timestamp_bound(TimestampBound::strong_read())
+            .await;
+    }
+
+    /// single provides a read-only snapshot transaction optimized for the case
+    /// where only a single read or query is needed.  This is more efficient than
+    /// using read_only_transaction for a single read or query.
+    pub async fn single_with_timestamp_bound(
+        &self,
+        tb: TimestampBound,
+    ) -> Result<ReadOnlyTransaction, TxError> {
         let session = self.get_session().await?;
         let result = ReadOnlyTransaction::single(session, tb).await?;
         Ok(result)
@@ -196,17 +192,22 @@ impl Client {
 
     /// read_only_transaction returns a ReadOnlyTransaction that can be used for
     /// multiple reads from the database.
-    pub async fn read_only_transaction(
+    pub async fn read_only_transaction(&self) -> Result<ReadOnlyTransaction, TxError> {
+        return self
+            .read_only_transaction_with_option(ReadOnlyTransactionOption::default())
+            .await;
+    }
+
+    /// read_only_transaction returns a ReadOnlyTransaction that can be used for
+    /// multiple reads from the database.
+    pub async fn read_only_transaction_with_option(
         &self,
-        options: Option<ReadOnlyTransactionOption>,
+        options: ReadOnlyTransactionOption,
     ) -> Result<ReadOnlyTransaction, TxError> {
-        let opt = match options {
-            Some(o) => o,
-            None => ReadOnlyTransactionOption::default(),
-        };
         let session = self.get_session().await?;
         let result =
-            ReadOnlyTransaction::begin(session, opt.timestamp_bound, opt.call_options).await?;
+            ReadOnlyTransaction::begin(session, options.timestamp_bound, options.call_options)
+                .await?;
         Ok(result)
     }
 
@@ -214,18 +215,24 @@ impl Client {
     /// for partitioned reads or queries from a snapshot of the database. This is
     /// useful in batch processing pipelines where one wants to divide the work of
     /// reading from the database across multiple machines.
-    pub async fn batch_read_only_transaction(
-        &self,
-        options: Option<ReadOnlyTransactionOption>,
-    ) -> Result<BatchReadOnlyTransaction, TxError> {
-        let opt = match options {
-            Some(o) => o,
-            None => ReadOnlyTransactionOption::default(),
-        };
+    pub async fn batch_read_only_transaction(&self) -> Result<BatchReadOnlyTransaction, TxError> {
+        return self
+            .batch_read_only_transaction_with_option(ReadOnlyTransactionOption::default())
+            .await;
+    }
 
+    /// batch_read_only_transaction returns a BatchReadOnlyTransaction that can be used
+    /// for partitioned reads or queries from a snapshot of the database. This is
+    /// useful in batch processing pipelines where one wants to divide the work of
+    /// reading from the database across multiple machines.
+    pub async fn batch_read_only_transaction_with_option(
+        &self,
+        options: ReadOnlyTransactionOption,
+    ) -> Result<BatchReadOnlyTransaction, TxError> {
         let session = self.get_session().await?;
         let result =
-            BatchReadOnlyTransaction::begin(session, opt.timestamp_bound, opt.call_options).await?;
+            BatchReadOnlyTransaction::begin(session, options.timestamp_bound, options.call_options)
+                .await?;
         Ok(result)
     }
 
@@ -237,36 +244,47 @@ impl Client {
     ///
     /// PartitionedUpdate returns an estimated count of the number of rows affected.
     /// The actual number of affected rows may be greater than the estimate.
-    pub async fn partitioned_update(
+    pub async fn partitioned_update(&self, stmt: Statement) -> Result<i64, TxError> {
+        return self
+            .partitioned_update_with_option(stmt, PartitionedUpdateOption::default())
+            .await;
+    }
+
+    /// partitioned_update executes a DML statement in parallel across the database,
+    /// using separate, internal transactions that commit independently. The DML
+    /// statement must be fully partitionable: it must be expressible as the union
+    /// of many statements each of which accesses only a single row of the table. The
+    /// statement should also be idempotent, because it may be applied more than once.
+    ///
+    /// PartitionedUpdate returns an estimated count of the number of rows affected.
+    /// The actual number of affected rows may be greater than the estimate.
+    pub async fn partitioned_update_with_option(
         &self,
         stmt: Statement,
-        options: Option<PartitionedUpdateOption>,
+        options: PartitionedUpdateOption,
     ) -> Result<i64, TxError> {
-        let (bo, qo) = match options {
-            Some(o) => (o.begin_options, o.query_options),
-            None => {
-                let o = PartitionedUpdateOption::default();
-                (o.begin_options, o.query_options)
-            }
-        };
-
         let mut ro = new_tx_retry_with_codes(vec![Code::Aborted, Code::Internal]);
         let session = Some(self.get_session().await?);
 
         // reuse session
         return invoke_reuse(
             |session| async {
-                let mut tx =
-                    match ReadWriteTransaction::begin_partitioned_dml(session.unwrap(), bo.clone())
-                        .await
-                    {
-                        Ok(tx) => tx,
-                        Err(e) => return Err((TxError::TonicStatus(e.status), Some(e.session))),
-                    };
-                match tx.update(stmt.clone(), qo.clone()).await {
-                    Ok(s) => Ok(s),
-                    Err(e) => Err((TxError::TonicStatus(e), tx.take_session())),
-                }
+                let mut tx = match ReadWriteTransaction::begin_partitioned_dml(
+                    session.unwrap(),
+                    options.begin_options.clone(),
+                )
+                .await
+                {
+                    Ok(tx) => tx,
+                    Err(e) => return Err((TxError::TonicStatus(e.status), Some(e.session))),
+                };
+                let qo = options
+                    .query_options
+                    .clone()
+                    .unwrap_or(QueryOptions::default());
+                tx.update_with_option(stmt.clone(), qo)
+                    .await
+                    .map_err(|e| (TxError::TonicStatus(e), tx.take_session()))
             },
             session,
             &mut ro,
@@ -286,12 +304,26 @@ impl Client {
     pub async fn apply_at_least_once(
         &self,
         ms: Vec<Mutation>,
-        options: Option<ApplyOptions>,
     ) -> Result<Option<prost_types::Timestamp>, TxError> {
-        let co = match options {
-            Some(s) => s.commit_options,
-            None => CommitOptions::default(),
-        };
+        return self
+            .apply_at_least_once_with_option(ms, CommitOptions::default())
+            .await;
+    }
+
+    /// apply_at_least_once may attempt to apply mutations more than once; if
+    /// the mutations are not idempotent, this may lead to a failure being reported
+    /// when the mutation was applied more than once. For example, an insert may
+    /// fail with ALREADY_EXISTS even though the row did not exist before Apply was
+    /// called. For this reason, most users of the library will prefer not to use
+    /// this option.  However, apply_at_least_once requires only a single RPC, whereas
+    /// apply's default replay protection may require an additional RPC.  So this
+    /// method may be appropriate for latency sensitive and/or high throughput blind
+    /// writing.
+    pub async fn apply_at_least_once_with_option(
+        &self,
+        ms: Vec<Mutation>,
+        options: CommitOptions,
+    ) -> Result<Option<prost_types::Timestamp>, TxError> {
         let mut ro = new_default_tx_retry();
         let mut session = self.get_session().await?;
 
@@ -302,7 +334,7 @@ impl Client {
                         transaction_options::ReadWrite {},
                     )),
                 });
-                match commit(session, ms.clone(), tx, co.clone()).await {
+                match commit(session, ms.clone(), tx, options.clone()).await {
                     Ok(s) => Ok(s.commit_timestamp),
                     Err(e) => Err((TxError::TonicStatus(e), session)),
                 }
@@ -314,13 +346,19 @@ impl Client {
     }
 
     /// Apply applies a list of mutations atomically to the database.
-    pub async fn apply(
+    pub async fn apply(&self, ms: Vec<Mutation>) -> Result<Option<Timestamp>, TxError> {
+        return self
+            .apply_with_option(ms, ReadWriteTransactionOption::default())
+            .await;
+    }
+
+    pub async fn apply_with_option(
         &self,
         ms: Vec<Mutation>,
-        options: Option<ReadWriteTransactionOption>,
+        options: ReadWriteTransactionOption,
     ) -> Result<Option<Timestamp>, TxError> {
         let result: Result<(Option<Timestamp>, ()), TxError> = self
-            .read_write_transaction_sync(
+            .read_write_transaction_sync_with_option(
                 |tx| {
                     tx.buffer_write(ms.to_vec());
                     Ok(())
@@ -353,7 +391,39 @@ impl Client {
     pub async fn read_write_transaction<'a, T, E, F>(
         &self,
         f: impl Fn(ReadWriteTransaction) -> F,
-        options: Option<ReadWriteTransactionOption>,
+    ) -> Result<(Option<prost_types::Timestamp>, T), E>
+    where
+        E: AsTonicStatus + From<TxError> + From<tonic::Status>,
+        F: Future<Output = (ReadWriteTransaction, Result<T, E>)>,
+    {
+        return self
+            .read_write_transaction_with_option(f, ReadWriteTransactionOption::default())
+            .await;
+    }
+
+    /// ReadWriteTransaction executes a read-write transaction, with retries as
+    /// necessary.
+    ///
+    /// The function f will be called one or more times. It must not maintain
+    /// any state between calls.
+    ///
+    /// If the transaction cannot be committed or if f returns an ABORTED error,
+    /// ReadWriteTransaction will call f again. It will continue to call f until the
+    /// transaction can be committed or the Context times out or is cancelled.  If f
+    /// returns an error other than ABORTED, ReadWriteTransaction will abort the
+    /// transaction and return the error.
+    ///
+    /// To limit the number of retries, set a deadline on the Context rather than
+    /// using a fixed limit on the number of attempts. ReadWriteTransaction will
+    /// retry as needed until that deadline is met.
+    ///
+    /// See https://godoc.org/cloud.google.com/go/spanner#ReadWriteTransaction for
+    /// more details.
+    /// ```
+    pub async fn read_write_transaction_with_option<'a, T, E, F>(
+        &self,
+        f: impl Fn(ReadWriteTransaction) -> F,
+        options: ReadWriteTransactionOption,
     ) -> Result<(Option<prost_types::Timestamp>, T), E>
     where
         E: AsTonicStatus + From<TxError> + From<tonic::Status>,
@@ -379,10 +449,60 @@ impl Client {
         .await;
     }
 
+    /// ReadWriteTransaction executes a read-write transaction, with retries as
+    /// necessary.
+    ///
+    /// The function f will be called one or more times. It must not maintain
+    /// any state between calls.
+    ///
+    /// If the transaction cannot be committed or if f returns an ABORTED error,
+    /// ReadWriteTransaction will call f again. It will continue to call f until the
+    /// transaction can be committed or the Context times out or is cancelled.  If f
+    /// returns an error other than ABORTED, ReadWriteTransaction will abort the
+    /// transaction and return the error.
+    ///
+    /// To limit the number of retries, set a deadline on the Context rather than
+    /// using a fixed limit on the number of attempts. ReadWriteTransaction will
+    /// retry as needed until that deadline is met.
+    ///
+    /// See https://godoc.org/cloud.google.com/go/spanner#ReadWriteTransaction for
+    /// more details.
+    /// ```
     pub async fn read_write_transaction_sync<T, E>(
         &self,
         f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,
-        options: Option<ReadWriteTransactionOption>,
+    ) -> Result<(Option<prost_types::Timestamp>, T), E>
+    where
+        E: AsTonicStatus + From<TxError> + From<tonic::Status>,
+    {
+        return self
+            .read_write_transaction_sync_with_option(f, ReadWriteTransactionOption::default())
+            .await;
+    }
+
+    /// ReadWriteTransaction executes a read-write transaction, with retries as
+    /// necessary.
+    ///
+    /// The function f will be called one or more times. It must not maintain
+    /// any state between calls.
+    ///
+    /// If the transaction cannot be committed or if f returns an ABORTED error,
+    /// ReadWriteTransaction will call f again. It will continue to call f until the
+    /// transaction can be committed or the Context times out or is cancelled.  If f
+    /// returns an error other than ABORTED, ReadWriteTransaction will abort the
+    /// transaction and return the error.
+    ///
+    /// To limit the number of retries, set a deadline on the Context rather than
+    /// using a fixed limit on the number of attempts. ReadWriteTransaction will
+    /// retry as needed until that deadline is met.
+    ///
+    /// See https://godoc.org/cloud.google.com/go/spanner#ReadWriteTransaction for
+    /// more details.
+    /// ```
+    pub async fn read_write_transaction_sync_with_option<T, E>(
+        &self,
+        f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,
+        options: ReadWriteTransactionOption,
     ) -> Result<(Option<prost_types::Timestamp>, T), E>
     where
         E: AsTonicStatus + From<TxError> + From<tonic::Status>,
@@ -425,14 +545,8 @@ impl Client {
     }
 
     fn split_read_write_transaction_option(
-        options: Option<ReadWriteTransactionOption>,
+        options: ReadWriteTransactionOption,
     ) -> (CallOptions, CommitOptions) {
-        match options {
-            Some(s) => (s.begin_options, s.commit_options),
-            None => {
-                let s = ReadWriteTransactionOption::default();
-                (s.begin_options, s.commit_options)
-            }
-        }
+        return (options.begin_options, options.commit_options);
     }
 }

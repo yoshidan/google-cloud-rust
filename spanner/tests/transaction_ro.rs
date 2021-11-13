@@ -20,12 +20,7 @@ async fn assert_read(
     cts: &NaiveDateTime,
 ) {
     let reader = match tx
-        .read(
-            "User",
-            user_columns(),
-            KeySet::from(Key::one(user_id)),
-            None,
-        )
+        .read("User", user_columns(), KeySet::from(Key::one(user_id)))
         .await
     {
         Ok(tx) => tx,
@@ -52,7 +47,7 @@ async fn assert_query(
 }
 
 async fn execute_query(tx: &mut ReadOnlyTransaction, stmt: Statement) -> Vec<Row> {
-    let reader = match tx.query(stmt, Some(QueryOptions::default())).await {
+    let reader = match tx.query(stmt).await {
         Ok(tx) => tx,
         Err(status) => panic!("query error {:?}", status),
     };
@@ -304,7 +299,7 @@ async fn test_read_row() {
 
     let mut tx = read_only_transaction(session).await;
     let row = tx
-        .read_row("User", vec!["UserId"], Key::one(user_id.clone()), None)
+        .read_row("User", vec!["UserId"], Key::one(user_id.clone()))
         .await
         .unwrap();
     assert!(row.is_some())

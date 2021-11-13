@@ -154,8 +154,28 @@ impl BatchReadOnlyTransaction {
         table: T,
         columns: Vec<C>,
         keys: K,
+    ) -> Result<Vec<Partition<TableReader>>, Status>
+    where
+        T: Into<String> + Clone,
+        C: Into<String>,
+        K: Into<KeySet> + Clone,
+    {
+        return self
+            .partition_read_with_option(table, columns, keys, None, ReadOptions::default())
+            .await;
+    }
+
+    /// partition_read returns a list of Partitions that can be used to read rows from
+    /// the database. These partitions can be executed across multiple processes,
+    /// even across different machines. The partition size and count hints can be
+    /// configured using PartitionOptions.
+    pub async fn partition_read_with_option<T, C, K>(
+        &mut self,
+        table: T,
+        columns: Vec<C>,
+        keys: K,
         po: Option<PartitionOptions>,
-        ro: Option<ReadOptions>,
+        ro: ReadOptions,
     ) -> Result<Vec<Partition<TableReader>>, Status>
     where
         T: Into<String> + Clone,
@@ -164,16 +184,11 @@ impl BatchReadOnlyTransaction {
     {
         let columns: Vec<String> = columns.into_iter().map(|x| x.into()).collect();
 
-        let opt = match ro {
-            Some(o) => o,
-            None => ReadOptions::default(),
-        };
-
         let request = PartitionReadRequest {
             session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
             table: table.clone().into(),
-            index: opt.index.clone(),
+            index: ro.index.clone(),
             columns: columns.clone(),
             key_set: Some(keys.clone().into()),
             partition_options: po,
@@ -194,17 +209,17 @@ impl BatchReadOnlyTransaction {
                             session: self.get_session_name(),
                             transaction: Some(self.transaction_selector.clone()),
                             table: table.clone().into(),
-                            index: opt.index.clone(),
+                            index: ro.index.clone(),
                             columns: columns.clone(),
                             key_set: Some(keys.clone().into()),
-                            limit: opt.limit,
+                            limit: ro.limit,
                             resume_token: vec![],
                             partition_token: x.partition_token,
                             request_options: Transaction::create_request_options(
-                                opt.call_options.priority,
+                                ro.call_options.priority,
                             ),
                         },
-                        call_setting: opt.call_options.call_setting.clone(),
+                        call_setting: ro.call_options.call_setting.clone(),
                     },
                 })
                 .collect()),
@@ -217,14 +232,19 @@ impl BatchReadOnlyTransaction {
     pub async fn partition_query(
         &mut self,
         stmt: Statement,
-        po: Option<PartitionOptions>,
-        qo: Option<QueryOptions>,
     ) -> Result<Vec<Partition<StatementReader>>, Status> {
-        let opt = match qo {
-            Some(o) => o,
-            None => QueryOptions::default(),
-        };
+        return self
+            .partition_query_with_option(stmt, None, QueryOptions::default())
+            .await;
+    }
 
+    /// partition_query returns a list of Partitions that can be used to execute a query against the database.
+    pub async fn partition_query_with_option(
+        &mut self,
+        stmt: Statement,
+        po: Option<PartitionOptions>,
+        qo: QueryOptions,
+    ) -> Result<Vec<Partition<StatementReader>>, Status> {
         let request = PartitionQueryRequest {
             session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
@@ -259,12 +279,12 @@ impl BatchReadOnlyTransaction {
                             query_mode: 0,
                             partition_token: x.partition_token,
                             seqno: 0,
-                            query_options: opt.optimizer_options.clone(),
+                            query_options: qo.optimizer_options.clone(),
                             request_options: Transaction::create_request_options(
-                                opt.call_options.priority,
+                                qo.call_options.priority,
                             ),
                         },
-                        call_setting: opt.call_options.call_setting.clone(),
+                        call_setting: qo.call_options.call_setting.clone(),
                     },
                 })
                 .collect()),
@@ -273,7 +293,7 @@ impl BatchReadOnlyTransaction {
         return self.as_mut_session().invalidate_if_needed(result).await;
     }
 
-    // execute runs a single Partition obtained from partition_read or partition_query.
+    /// execute runs a single Partition obtained from partition_read or partition_query.
     pub async fn execute<T: Reader + Sync + Send + 'static>(
         &mut self,
         partition: Partition<T>,

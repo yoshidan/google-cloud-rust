@@ -289,7 +289,7 @@ pub async fn execute_partitioned_query(
     tx: &mut BatchReadOnlyTransaction,
     stmt: Statement,
 ) -> Vec<Row> {
-    let partitions = match tx.partition_query(stmt, None, None).await {
+    let partitions = match tx.partition_query(stmt).await {
         Ok(tx) => tx,
         Err(status) => panic!("query error {:?}", status),
     };
@@ -315,13 +315,7 @@ pub async fn assert_partitioned_read(
     cts: &NaiveDateTime,
 ) {
     let partitions = match tx
-        .partition_read(
-            "User",
-            user_columns(),
-            KeySet::from(Key::one(user_id)),
-            None,
-            None,
-        )
+        .partition_read("User", user_columns(), KeySet::from(Key::one(user_id)))
         .await
     {
         Ok(tx) => tx,

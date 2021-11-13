@@ -59,8 +59,8 @@ async fn test_mutation_and_statement() {
         stmt1.add_param("UserId", past_user.clone());
         let mut stmt2 = Statement::new("INSERT INTO UserItem (UserId,ItemId,Quantity,UpdatedAt) VALUES(@UserId,10,1000,PENDING_COMMIT_TIMESTAMP())");
         stmt2.add_param("UserId", past_user.clone());
-        tx.update(stmt1, None).await?;
-        return tx.update(stmt2, None).await;
+        tx.update(stmt1).await?;
+        return tx.update(stmt2).await;
     }.await;
 
     let result = tx.finish(result, None).await;
@@ -100,7 +100,7 @@ async fn test_partitioned_dml() {
         let stmt1 = Statement::new(
             "UPDATE User SET NullableString = 'aaa' WHERE NullableString IS NOT NULL",
         );
-        tx.update(stmt1, None).await
+        tx.update(stmt1).await
     }
     .await;
 
@@ -114,7 +114,6 @@ async fn test_partitioned_dml() {
             "User",
             vec!["NullableString"],
             KeySet::from(Key::one(user_id.clone())),
-            None,
         )
         .await
         .unwrap();
@@ -142,10 +141,10 @@ async fn test_rollback() {
         let mut stmt1 =
             Statement::new("UPDATE User SET NullableString = 'aaaaaaa' WHERE UserId = @UserId");
         stmt1.add_param("UserId", past_user.clone());
-        tx.update(stmt1, None).await?;
+        tx.update(stmt1).await?;
 
         let stmt2 = Statement::new("UPDATE UserNoteFound SET Quantity = 10000");
-        tx.update(stmt2, None).await
+        tx.update(stmt2).await
     }
     .await;
 
@@ -157,7 +156,6 @@ async fn test_rollback() {
             "User",
             user_columns(),
             KeySet::from(Key::one(past_user.clone())),
-            None,
         )
         .await
         .unwrap();
@@ -188,7 +186,7 @@ async fn assert_data(
     ",
         );
         stmt.add_param("UserId", user_id.clone());
-        let result = tx.query(stmt, None).await?;
+        let result = tx.query(stmt).await?;
         all_rows(result).await
     }
     .await;

@@ -176,16 +176,15 @@ impl ReadWriteTransaction {
         self.wb.extend_from_slice(&ms)
     }
 
-    pub async fn update(
+    pub async fn update(&mut self, stmt: Statement) -> Result<i64, tonic::Status> {
+        return self.update_with_option(stmt, QueryOptions::default()).await;
+    }
+
+    pub async fn update_with_option(
         &mut self,
         stmt: Statement,
-        options: Option<QueryOptions>,
+        options: QueryOptions,
     ) -> Result<i64, tonic::Status> {
-        let opt = match options {
-            Some(o) => o,
-            None => QueryOptions::default(),
-        };
-
         let request = ExecuteSqlRequest {
             session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
@@ -195,37 +194,38 @@ impl ReadWriteTransaction {
             }),
             param_types: stmt.param_types,
             resume_token: vec![],
-            query_mode: opt.mode.into(),
+            query_mode: options.mode.into(),
             partition_token: vec![],
             seqno: self.sequence_number.fetch_add(1, Ordering::Relaxed),
-            query_options: opt.optimizer_options,
-            request_options: Transaction::create_request_options(opt.call_options.priority),
+            query_options: options.optimizer_options,
+            request_options: Transaction::create_request_options(options.call_options.priority),
         };
 
         let session = self.as_mut_session();
         let result = session
             .spanner_client
-            .execute_sql(request, opt.call_options.call_setting)
+            .execute_sql(request, options.call_options.call_setting)
             .await;
         let response = session.invalidate_if_needed(result).await?;
         Ok(extract_row_count(response.into_inner().stats))
     }
 
-    pub async fn batch_update(
+    pub async fn batch_update(&mut self, stmt: Vec<Statement>) -> Result<Vec<i64>, tonic::Status> {
+        return self
+            .batch_update_with_option(stmt, QueryOptions::default())
+            .await;
+    }
+
+    pub async fn batch_update_with_option(
         &mut self,
         stmt: Vec<Statement>,
-        options: Option<QueryOptions>,
+        options: QueryOptions,
     ) -> Result<Vec<i64>, tonic::Status> {
-        let opt = match options {
-            Some(o) => o,
-            None => QueryOptions::default(),
-        };
-
         let request = ExecuteBatchDmlRequest {
             session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
             seqno: self.sequence_number.fetch_add(1, Ordering::Relaxed),
-            request_options: Transaction::create_request_options(opt.call_options.priority),
+            request_options: Transaction::create_request_options(options.call_options.priority),
             statements: stmt
                 .into_iter()
                 .map(|x| execute_batch_dml_request::Statement {
@@ -239,7 +239,7 @@ impl ReadWriteTransaction {
         let session = self.as_mut_session();
         let result = session
             .spanner_client
-            .execute_batch_dml(request, opt.call_options.call_setting)
+            .execute_batch_dml(request, options.call_options.call_setting)
             .await;
         let response = session.invalidate_if_needed(result).await?;
         Ok(response

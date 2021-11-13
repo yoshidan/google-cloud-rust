@@ -26,7 +26,7 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
         .unwrap();
 
     let user_id_ref = &user_id;
-    let client = Client::new(DATABASE, None).await.context("error")?;
+    let client = Client::new(DATABASE).await.context("error")?;
     let value = client
         .read_write_transaction(
             |mut tx| async move {
@@ -36,23 +36,21 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
                     tx2.buffer_write(ms);
                     let mut stmt = Statement::new("Insert Into UserItem (UserId,ItemId,Quantity,UpdatedAt) VALUES(@UserId,1,1,PENDING_COMMIT_TIMESTAMP())");
                     stmt.add_param("UserId",(*user_id_ref).clone());
-                    tx2.update(stmt, None).await.map_err(TxError::TonicStatus)
+                    tx2.update(stmt).await.map_err(TxError::TonicStatus)
                 }
                 .await;
                 (tx, result)
             },
-            None,
         )
         .await.unwrap().0.unwrap();
     let ts = NaiveDateTime::from_timestamp(value.seconds, value.nanos as u32);
 
-    let mut ro = client.read_only_transaction(None).await?;
+    let mut ro = client.read_only_transaction().await?;
     let record = ro
         .read(
             "User",
             user_columns(),
             KeySet::from(Key::one("user_client_1x")),
-            None,
         )
         .await?;
     let row = all_rows(record).await.pop().unwrap();
@@ -63,7 +61,6 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
             "User",
             user_columns(),
             KeySet::from(Key::one("user_client_2x")),
-            None,
         )
         .await?;
     let row = all_rows(record).await.pop().unwrap();
@@ -74,7 +71,6 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
             "UserItem",
             vec!["UpdatedAt"],
             KeySet::from(Key::new(vec![user_id.to_kind(), 1.to_kind()])),
-            None,
         )
         .await?;
     let row = all_rows(record).await.pop().unwrap();
@@ -88,24 +84,19 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
 async fn test_apply() -> Result<(), anyhow::Error> {
     std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
     let users: Vec<String> = (0..2).map(|x| format!("user_client_{}", x)).collect();
-    let client = Client::new(DATABASE, None).await.context("error")?;
+    let client = Client::new(DATABASE).await.context("error")?;
     let now = Utc::now().naive_utc();
     let ms = users
         .iter()
         .map(|id| create_user_mutation(id, &now))
         .collect();
-    let value = client.apply(ms, None).await.unwrap().unwrap();
+    let value = client.apply(ms).await.unwrap().unwrap();
     let ts = NaiveDateTime::from_timestamp(value.seconds, value.nanos as u32);
 
-    let mut ro = client.read_only_transaction(None).await?;
+    let mut ro = client.read_only_transaction().await?;
     for x in users {
         let record = ro
-            .read(
-                "User",
-                user_columns(),
-                KeySet::from(Key::one(x.clone())),
-                None,
-            )
+            .read("User", user_columns(), KeySet::from(Key::one(x.clone())))
             .await?;
         let row = all_rows(record).await.pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
@@ -118,24 +109,19 @@ async fn test_apply() -> Result<(), anyhow::Error> {
 async fn test_apply_at_least_once() -> Result<(), anyhow::Error> {
     std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
     let users: Vec<String> = (0..2).map(|x| format!("user_client_x_{}", x)).collect();
-    let client = Client::new(DATABASE, None).await.context("error")?;
+    let client = Client::new(DATABASE).await.context("error")?;
     let now = Utc::now().naive_utc();
     let ms = users
         .iter()
         .map(|id| create_user_mutation(id, &now))
         .collect();
-    let value = client.apply_at_least_once(ms, None).await.unwrap().unwrap();
+    let value = client.apply_at_least_once(ms).await.unwrap().unwrap();
     let ts = NaiveDateTime::from_timestamp(value.seconds, value.nanos as u32);
 
-    let mut ro = client.read_only_transaction(None).await?;
+    let mut ro = client.read_only_transaction().await?;
     for x in users {
         let record = ro
-            .read(
-                "User",
-                user_columns(),
-                KeySet::from(Key::one(x.clone())),
-                None,
-            )
+            .read("User", user_columns(), KeySet::from(Key::one(x.clone())))
             .await?;
         let row = all_rows(record).await.pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
@@ -153,18 +139,17 @@ async fn test_partitioned_update() -> Result<(), anyhow::Error> {
     replace_test_data(&mut session, vec![create_user_mutation(&user_id, &now)])
         .await
         .unwrap();
-    let client = Client::new(DATABASE, None).await.context("error")?;
+    let client = Client::new(DATABASE).await.context("error")?;
     let stmt =
         Statement::new("UPDATE User SET NullableString = 'aaa' WHERE NullableString IS NOT NULL");
-    client.partitioned_update(stmt, None).await.unwrap();
+    client.partitioned_update(stmt).await.unwrap();
 
-    let mut single = client.single(None).await.unwrap();
+    let mut single = client.single().await.unwrap();
     let rows = single
         .read(
             "User",
             vec!["NullableString"],
             KeySet::from(Key::one(user_id.clone())),
-            None,
         )
         .await
         .unwrap();
@@ -186,8 +171,8 @@ async fn test_batch_read_only_transaction() -> Result<(), anyhow::Error> {
         .collect();
     replace_test_data(&mut session, many).await.unwrap();
 
-    let client = Client::new(DATABASE, None).await.context("error")?;
-    let mut tx = client.batch_read_only_transaction(None).await.unwrap();
+    let client = Client::new(DATABASE).await.context("error")?;
+    let mut tx = client.batch_read_only_transaction().await.unwrap();
 
     let stmt = Statement::new(format!(
         "SELECT * FROM User p WHERE p.UserId LIKE 'user_partition_{}_%' ",
