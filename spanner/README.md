@@ -311,6 +311,67 @@ TODO
 
 And the third accepts a struct value, and determines the columns from the struct field names:
 
+```rust
+struct TestStruct {
+        pub struct_field: String,
+        pub struct_field_time: NaiveDateTime,
+        pub commit_timestamp: CommitTimestamp,
+    }
+
+impl ToStruct for TestStruct {
+    fn to_kinds(&self) -> Kinds {
+        vec![
+            ("struct_field", self.struct_field.to_kind()),
+            ("struct_field_time", self.struct_field_time.to_kind()),
+            ("commit_timestamp",NaiveDateTime::from(self.commit_timestamp).to_kind()),
+        ]
+    }
+
+    fn get_types() -> Types {
+        vec![
+            ("struct_field", String::get_type()),
+            ("struct_field_time", NaiveDateTime::get_type()),
+            ("commit_timestamp", CommitTimestamp::get_type()),
+        ]
+    }
+}
+
+TODO InsertStruct
 ```
 
+### Writes
+
+To apply a list of mutations to the database, use Apply:
+```rust
+use google_cloud_spanner::{mutation,key};
+
+let m1 = mutation::delete("Table", key::all_keys());
+let m2 = mutation::insert("Table", key::all_keys());
+let commit_timestamp = client.apply(vec![m1,m2],None).await?;
+```
+
+If you need to read before writing in a single transaction, use a ReadWriteTransaction. ReadWriteTransactions may be aborted automatically by the backend and need to be retried. You pass in a function to ReadWriteTransaction, and the client will handle the retries automatically. Use the transaction's BufferWrite method to buffer mutations, which will all be executed at the end of the transaction:
+
+```rust
+ let (commit_timestamp, row) = client.read_write_transaction(
+    |mut tx| async move {
+        let result = async {
+
+            // The buffered mutation will be committed.  If the commit
+            // fails with an Aborted error, this function will be called again.
+            let m1 = mutation::insert("User", vec![], vec![1.to_kind(), CommitTimestamp::new().to_kind()])
+            let m2 = mutation::insert("User", vec![], vec![2.to_kind(), CommitTimestamp::new().to_kind()])
+            tx.buffer_write(vec![m1,m2]);
+
+            // The transaction function will be called again if the error code
+            // of this error is Aborted. The backend may automatically abort
+            // any read/write transaction if it detects a deadlock or other problems.
+            tx.read_row("User", vec!["UserId"], vec![Key::one(*user_id_ref.clone())], None).await
+        }
+        .await;
+        //return owner ship of read_write_transaction
+        (tx, result)
+    },
+    None
+).await?;
 ```
