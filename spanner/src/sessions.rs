@@ -626,7 +626,7 @@ mod tests {
             tokio::spawn(async move {
                 let mut session = sm.get().await.unwrap();
                 if use_invalidate {
-                    session.invalidate();
+                    session.invalidate().await;
                 }
                 counter.fetch_add(1, Ordering::SeqCst);
             });

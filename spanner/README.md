@@ -272,7 +272,7 @@ To perform more than one read in a transaction, use ReadOnlyTransaction:
 let txn = client.read_only_transaction(None).await?;
 let iter1 = txn.query(ctx, stmt1, None).await;
 // ...
-let iter2 =  txn.query(ctx, stmt2, None).await;
+let iter2 = txn.query(ctx, stmt2, None).await;
 // ...
 ```
 
@@ -294,7 +294,7 @@ To write values to a Cloud Spanner database, construct a Mutation. The spanner p
 
 One takes lists of columns and values along with the table name:
 
-```
+```rust
 use google_cloud_spanner::{mutation,value,key};
 
 let mutation = mutation::insert("User",
@@ -303,27 +303,22 @@ let mutation = mutation::insert("User",
 );
 ```
 
-One takes a map from column names to values:
-
-```
-TODO 
-```
-
 And the third accepts a struct value, and determines the columns from the struct field names:
+
+* `ToStruct` trait is required
 
 ```rust
 struct TestStruct {
-        pub struct_field: String,
-        pub struct_field_time: NaiveDateTime,
-        pub commit_timestamp: CommitTimestamp,
-    }
+    pub struct_field: String,
+    pub struct_field_time: NaiveDateTime,
+}
 
 impl ToStruct for TestStruct {
     fn to_kinds(&self) -> Kinds {
         vec![
             ("struct_field", self.struct_field.to_kind()),
             ("struct_field_time", self.struct_field_time.to_kind()),
-            ("commit_timestamp",NaiveDateTime::from(self.commit_timestamp).to_kind()),
+            ("commit_timestamp", CommitTimestamp::new().to_kind()),
         ]
     }
 
@@ -336,7 +331,12 @@ impl ToStruct for TestStruct {
     }
 }
 
-TODO InsertStruct
+use google_cloud_spanner::mutation;
+
+let ms = insert_struct("Guild", TestStruct {
+    struct_field: "abc".to_string(),
+    struct_field_time: Utc::now().naive_utc(),
+});
 ```
 
 ### Writes
