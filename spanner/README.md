@@ -225,11 +225,11 @@ let iter = client.single().await?.query(stmt).await?;
 ```
 
 ### Rows
-Once you have a Row, via an iterator or a call to ReadRow, you can extract column values in several ways. Pass in a pointer to a Go variable of the appropriate type when you extract a value.  
+Once you have a Row, via an iterator or a call to read_row, you can extract column values in several ways. Pass in a pointer to a Rust variable of the appropriate type when you extract a value.  
 
 You can extract by column position or name:
 
-```
+```rust
 let value           = row.column::<String>(0)?;
 let nullable_value  = row.column::<Option<String>>(1)?;
 let array_value     = row.column_by_name::<Vec<i64>>("array")?;
@@ -239,7 +239,7 @@ let struct_data     = row.column_by_name::<Vec<TestStruct>>("struct_data")?;
 Or you can define a Rust struct that corresponds to your columns, and extract into that:
 * `TryFromStruct` trait is required
 
-```
+```rust
 struct TestStruct {
     pub struct_field: String,
     pub struct_field_time: NaiveDateTime,
@@ -276,8 +276,10 @@ let iter2 = txn.query(ctx, stmt2).await;
 Cloud Spanner read-only transactions conceptually perform all their reads at a single moment in time, called the transaction's read timestamp. Once a read has started, you can call ReadOnlyTransaction's Timestamp method to obtain the read timestamp.
 
 By default, a transaction will pick the most recent time (a time where all previously committed transactions are visible) for its reads. This provides the freshest data, but may involve some delay. You can often get a quicker response if you are willing to tolerate "stale" data. You can control the read timestamp selected by a transaction by calling the WithTimestampBound method on the transaction before using it. For example, to perform a query on data that is at most one minute stale, use
-```
-TODO
+```rust 
+use google_cloud_spanner::value::TimestampBound;
+
+let tx = client.single(TimestampBound::max_staleness(Duration::from_secs(60)).await;
 ```
 See the documentation of TimestampBound for more details.
 
@@ -369,15 +371,6 @@ If you need to read before writing in a single transaction, use a ReadWriteTrans
     },
 ).await?;
 ```
-
-### Structs
-Cloud Spanner STRUCT (aka STRUCT) values (https://cloud.google.com/spanner/docs/data-types#struct-type) can be represented by a Go struct value.
-
-A proto StructType is built from the field types and field tag information of the Go struct. If a field in the struct type definition has a "spanner:<field_name>" tag, then the value of the "spanner" key in the tag is used as the name for that field in the built StructType, otherwise the field name in the struct definition is used. To specify a field with an empty field name in a Cloud Spanner STRUCT type, use the `spanner:""` tag annotation against the corresponding field in the Go struct's type definition.
-
-A STRUCT value can contain STRUCT-typed and Array-of-STRUCT typed fields and these can be specified using named struct-typed and []struct-typed fields inside a Go struct. However, embedded struct fields are not allowed. Unexported struct fields are ignored.
-
-NULL STRUCT values in Cloud Spanner are typed. A nil pointer to a Go struct value can be used to specify a NULL STRUCT value of the corresponding StructType. Nil and empty slices of a Go STRUCT type can be used to specify NULL and empty array values respectively of the corresponding StructType. A slice of pointers to a Go struct type can be used to specify an array of NULL-able STRUCT values.
 
 ### <a name="DMLAndPartitionedDML"></a>DML and Partitioned DML
 Spanner supports DML statements like INSERT, UPDATE and DELETE. Use ReadWriteTransaction.Update to run DML statements. It returns the number of rows affected. (You can call use ReadWriteTransaction.Query with a DML statement. The first call to Next on the resulting RowIterator will return iterator.Done, and the RowCount field of the iterator will hold the number of affected rows.)
