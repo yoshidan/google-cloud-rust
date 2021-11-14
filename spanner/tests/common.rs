@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{NaiveDate, Utc, DateTime};
+use chrono::{DateTime, NaiveDate, Utc};
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::SingleUseTransaction;
 use google_cloud_googleapis::spanner::v1::transaction_options::{Mode, ReadWrite};
 use google_cloud_googleapis::spanner::v1::{
@@ -217,7 +217,10 @@ pub fn assert_user_row(
         .unwrap();
     assert_eq!(nullable_ts.unwrap().to_string(), now.to_string());
     let not_null_date = row.column_by_name::<NaiveDate>("NotNullDate").unwrap();
-    assert_eq!(not_null_date.to_string(), now.naive_utc().date().to_string());
+    assert_eq!(
+        not_null_date.to_string(),
+        now.naive_utc().date().to_string()
+    );
     let nullable_date = row
         .column_by_name::<Option<NaiveDate>>("NullableDate")
         .unwrap();

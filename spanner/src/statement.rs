@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use chrono::{NaiveDate, TimeZone, Utc, DateTime, FixedOffset, Offset};
+use chrono::{DateTime, FixedOffset, NaiveDate, Offset, TimeZone, Utc};
 use prost_types::value::Kind;
 use prost_types::value::Kind::StringValue;
 use prost_types::{value, ListValue, Struct, Value};
@@ -134,9 +134,13 @@ impl ToKind for NaiveDate {
     }
 }
 
-impl<Tz: TimeZone> ToKind for DateTime<Tz> where Tz::Offset: Display{
+impl<Tz: TimeZone> ToKind for DateTime<Tz>
+where
+    Tz::Offset: Display,
+{
     fn to_kind(&self) -> Kind {
-        self.to_rfc3339_opts(chrono::SecondsFormat::Nanos, true).to_kind()
+        self.to_rfc3339_opts(chrono::SecondsFormat::Nanos, true)
+            .to_kind()
     }
     fn get_type() -> Type {
         single_type(TypeCode::Timestamp)

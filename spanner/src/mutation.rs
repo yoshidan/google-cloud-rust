@@ -181,7 +181,10 @@ mod tests {
             vec![
                 "1".to_kind(),
                 "2".to_kind(),
-                CommitTimestamp::from(Utc::now()).to_kind(),
+                CommitTimestamp {
+                    timestamp: Utc::now(),
+                }
+                .to_kind(),
             ],
         );
         match mutation.operation.unwrap() {
@@ -218,7 +221,10 @@ mod tests {
             vec![
                 "1".to_kind(),
                 "2".to_kind(),
-                CommitTimestamp::from(Utc::now()).to_kind(),
+                CommitTimestamp {
+                    timestamp: Utc::now(),
+                }
+                .to_kind(),
             ],
         );
         match mutation.operation.unwrap() {
@@ -253,7 +259,10 @@ mod tests {
             vec![
                 "1".to_kind(),
                 "2".to_kind(),
-                CommitTimestamp::from(Utc::now()).to_kind(),
+                CommitTimestamp {
+                    timestamp: Utc::now(),
+                }
+                .to_kind(),
             ],
         );
         match mutation.operation.unwrap() {
@@ -288,7 +297,10 @@ mod tests {
             vec![
                 "1".to_kind(),
                 "2".to_kind(),
-                CommitTimestamp::from(Utc::now()).to_kind(),
+                CommitTimestamp {
+                    timestamp: Utc::now(),
+                }
+                .to_kind(),
             ],
         );
         match mutation.operation.unwrap() {

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{NaiveDateTime, Utc, TimeZone, DateTime};
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 
 use google_cloud_spanner::key::{Key, KeySet};
 

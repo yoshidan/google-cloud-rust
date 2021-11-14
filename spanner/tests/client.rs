@@ -4,7 +4,7 @@ use google_cloud_spanner::client::{Client, TxError};
 use google_cloud_spanner::statement::{Statement, ToKind};
 
 mod common;
-use chrono::{Utc, TimeZone, DateTime};
+use chrono::{DateTime, TimeZone, Utc};
 use common::*;
 use google_cloud_spanner::key::{Key, KeySet};
 

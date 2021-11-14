@@ -1,7 +1,7 @@
 use std::ops::Deref;
 use std::time::{Duration, SystemTime};
 
-use chrono::{NaiveDateTime, DateTime, Utc, FixedOffset, TimeZone};
+use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone, Utc};
 use prost_types::Timestamp;
 
 use google_cloud_googleapis::spanner::v1::transaction_options::read_only::TimestampBound as InternalTimestampBound;
@@ -10,20 +10,14 @@ use std::fmt::Display;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
 pub struct CommitTimestamp {
-    pub timestamp: DateTime<Utc>,
+    pub(crate) timestamp: DateTime<Utc>,
 }
 
 impl CommitTimestamp {
     pub fn new() -> Self {
         CommitTimestamp {
-            timestamp: DateTime::<Utc>::from(SystemTime::now())
+            timestamp: Utc.timestamp(0, 0),
         }
-    }
-}
-
-impl Default for CommitTimestamp {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -38,12 +32,6 @@ impl Deref for CommitTimestamp {
 impl From<CommitTimestamp> for DateTime<Utc> {
     fn from(s: CommitTimestamp) -> Self {
         s.timestamp
-    }
-}
-
-impl From<DateTime<Utc>> for CommitTimestamp {
-    fn from(s: DateTime<Utc>) -> Self {
-        CommitTimestamp { timestamp: s.into() }
     }
 }
 

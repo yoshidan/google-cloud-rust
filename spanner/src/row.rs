@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
-use chrono::{NaiveDate, NaiveDateTime, Utc, FixedOffset, DateTime};
+use chrono::{DateTime, FixedOffset, NaiveDate, NaiveDateTime, Utc};
 use prost_types::value::Kind;
 use prost_types::{value, Value};
 
@@ -148,9 +148,10 @@ impl TryFromValue for chrono::DateTime<Utc> {
     fn try_from(item: &Value, field: &Field) -> Result<Self> {
         match as_ref(item, field)? {
             Kind::StringValue(s) => {
-                let fixed = chrono::DateTime::parse_from_rfc3339(s).context(format!("{}: datetime parse error ", field.name))?;
+                let fixed = chrono::DateTime::parse_from_rfc3339(s)
+                    .context(format!("{}: datetime parse error ", field.name))?;
                 Ok(DateTime::<Utc>::from(fixed))
-            },
+            }
             v => kind_to_error(v, field),
         }
     }
@@ -158,8 +159,9 @@ impl TryFromValue for chrono::DateTime<Utc> {
 
 impl TryFromValue for CommitTimestamp {
     fn try_from(item: &Value, field: &Field) -> Result<Self> {
-        let value = chrono::DateTime::try_from(item, field)?;
-        Ok(value.into())
+        Ok(CommitTimestamp {
+            timestamp: chrono::DateTime::try_from(item, field)?,
+        })
     }
 }
 
@@ -298,7 +300,7 @@ mod tests {
     use crate::statement::{Kinds, ToKind, ToStruct, Types};
     use crate::value::CommitTimestamp;
     use anyhow::Result;
-    use chrono::{DateTime, Utc, FixedOffset};
+    use chrono::{DateTime, FixedOffset, Utc};
     use google_cloud_googleapis::spanner::v1::struct_type::Field;
     use prost_types::Value;
     use std::collections::HashMap;
@@ -381,12 +383,12 @@ mod tests {
                             TestStruct {
                                 struct_field: "aaa".to_string(),
                                 struct_field_time: now,
-                                commit_timestamp: CommitTimestamp::from(now),
+                                commit_timestamp: CommitTimestamp { timestamp: now },
                             },
                             TestStruct {
                                 struct_field: "bbb".to_string(),
                                 struct_field_time: now,
-                                commit_timestamp: CommitTimestamp::from(now),
+                                commit_timestamp: CommitTimestamp { timestamp: now },
                             },
                         ]
                         .to_kind(),
