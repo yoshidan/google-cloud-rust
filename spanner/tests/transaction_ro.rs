@@ -129,10 +129,7 @@ async fn test_complex_query() {
     assert_eq!(second_item.user_id, user_id_1);
     assert_eq!(second_item.item_id, 1);
     assert_eq!(second_item.quantity, 100);
-    assert_ne!(
-        &(second_item.updated_at).to_string(),
-        now.to_string()
-    );
+    assert_ne!(&(second_item.updated_at).to_string(), now.to_string());
     assert!(user_items.is_empty());
 
     let mut user_characters = row
