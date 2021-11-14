@@ -5,7 +5,7 @@ authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-log = "0.4"
+log = "0.4.0"
 tonic = { version = "0.5", features = ["tls", "prost"] }
 prost = "0.8"
 prost-types = "0.8"

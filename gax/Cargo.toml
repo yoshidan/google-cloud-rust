@@ -10,7 +10,7 @@ readme = "README.md"
 description = "Google Cloud Platform gRPC retry library."
 
 [dependencies]
-log = "^0.4"
-rand = "^0.8"
-tonic = { version = "^0.5", features = ["tls", "prost"] }
-tokio = { version = "^1.7" }
+log = "0.4"
+rand = "0.8"
+tonic = { version = "0.5", features = ["tls", "prost"] }
+tokio = { version = "1.7" }
