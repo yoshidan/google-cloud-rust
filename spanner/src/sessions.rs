@@ -6,8 +6,7 @@ use std::time::Instant;
 use parking_lot::Mutex;
 use thiserror;
 
-use tonic::Code;
-use tonic::Status;
+use google_cloud_googleapis::{Code, Status};
 
 use google_cloud_googleapis::spanner::v1::{
     BatchCreateSessionsRequest, DeleteSessionRequest, Session,

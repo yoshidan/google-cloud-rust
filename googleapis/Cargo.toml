@@ -5,6 +5,7 @@ authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/yoshidan/google-cloud-rust"
 keywords = ["gcp","googleapis","google-cloud-rust"]
+license-file = "LICENCE"
 readme = "README.md"
 description = "Google Cloud Platform rust client."
 

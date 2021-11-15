@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
+use google_cloud_googleapis::{Code, Status};
 use tonic::transport::Channel;
-use tonic::{Code, IntoRequest, Request, Response, Status, Streaming};
+use tonic::{IntoRequest, Request, Response, Streaming};
 
 use google_cloud_auth::token_source::TokenSource;
 use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
@@ -16,6 +17,8 @@ use google_cloud_googleapis::spanner::v1::{
     PartitionReadRequest, PartitionResponse, ReadRequest, ResultSet, RollbackRequest, Session,
     Transaction,
 };
+
+//TODO tonic他dependencyがcrate外に漏れ出ないようにする
 
 pub(crate) fn ping_query_request(session_name: impl Into<String>) -> internal::ExecuteSqlRequest {
     internal::ExecuteSqlRequest {
@@ -37,7 +40,7 @@ fn default_setting() -> BackoffRetrySettings {
     BackoffRetrySettings {
         retryer: BackoffRetryer {
             backoff: Backoff::default(),
-            codes: vec![tonic::Code::Unavailable],
+            codes: vec![Code::Unavailable],
         },
     }
 }
@@ -101,7 +104,7 @@ impl Client {
                 spanner_client
                     .create_session(request)
                     .await
-                    .map_err(|e| (e, spanner_client))
+                    .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -127,7 +130,7 @@ impl Client {
                 spanner_client
                     .batch_create_sessions(request)
                     .await
-                    .map_err(|e| (e, spanner_client))
+                    .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -152,7 +155,7 @@ impl Client {
                 spanner_client
                     .get_session(request)
                     .await
-                    .map_err(|e| (e, spanner_client))
+                    .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -175,7 +178,7 @@ impl Client {
                 spanner_client
                     .list_sessions(request)
                     .await
-                    .map_err(|e| (e, spanner_client))
+                    .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -200,7 +203,7 @@ impl Client {
                 spanner_client
                     .delete_session(request)
                     .await
-                    .map_err(|e| (e, spanner_client))
+                    .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -233,7 +236,7 @@ impl Client {
                 spanner_client
                     .execute_sql(request)
                     .await
-                    .map_err(|e| (e, spanner_client))
+                    .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -260,7 +263,7 @@ impl Client {
                 spanner_client
                     .execute_streaming_sql(request)
                     .await
-                    .map_err(|e| (e, spanner_client))
+                    .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -294,19 +297,19 @@ impl Client {
                 match result {
                     Ok(response) => match response.get_ref().status.as_ref() {
                         Some(s) => {
-                            let tonic_code = Code::from(s.code);
-                            if tonic_code == Code::Ok {
+                            let tonic_code = tonic::Code::from(s.code);
+                            if tonic_code == tonic::Code::Ok {
                                 Ok(response)
                             } else {
                                 Err((
-                                    Status::new(tonic_code, s.message.to_string()),
+                                    tonic::Status::new(tonic_code, s.message.to_string()).into(),
                                     spanner_client,
                                 ))
                             }
                         }
                         None => Ok(response),
                     },
-                    Err(err) => Err((err, spanner_client)),
+                    Err(err) => Err((err.into(), spanner_client)),
                 }
             },
             &mut self.inner,
@@ -342,7 +345,7 @@ impl Client {
                 spanner_client
                     .read(request)
                     .await
-                    .map_err(|e| (e, spanner_client))
+                    .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -369,7 +372,7 @@ impl Client {
                 spanner_client
                     .streaming_read(request)
                     .await
-                    .map_err(|e| (e, spanner_client))
+                    .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -395,7 +398,7 @@ impl Client {
                 spanner_client
                     .begin_transaction(request)
                     .await
-                    .map_err(|e| (e, spanner_client))
+                    .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -431,7 +434,7 @@ impl Client {
                 spanner_client
                     .commit(request)
                     .await
-                    .map_err(|e| (e, spanner_client))
+                    .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -461,7 +464,7 @@ impl Client {
                 spanner_client
                     .rollback(request)
                     .await
-                    .map_err(|e| (e, spanner_client))
+                    .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -494,7 +497,7 @@ impl Client {
                 spanner_client
                     .partition_query(request)
                     .await
-                    .map_err(|e| (e, spanner_client))
+                    .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -529,7 +532,7 @@ impl Client {
                 spanner_client
                     .partition_read(request)
                     .await
-                    .map_err(|e| (e, spanner_client))
+                    .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
             &mut setting,
@@ -543,10 +546,10 @@ impl Client {
                 .token()
                 .await
                 .map_err(|e| {
-                    tonic::Status::new(
+                    Status::new(tonic::Status::new(
                         tonic::Code::Unauthenticated,
                         format!("token error: {:?}", e),
-                    )
+                    ))
                 })
                 .map(|v| Some(v.value())),
             None => Ok(None),

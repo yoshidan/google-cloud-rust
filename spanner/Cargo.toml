@@ -34,3 +34,4 @@ google-cloud-googleapis = { path = "../googleapis" }
 [dev-dependencies]
 env_logger = "0.9"
 serial_test = "*"
+anyhow = "*"

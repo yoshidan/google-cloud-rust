@@ -1,8 +1,7 @@
 use std::ops::{Deref, DerefMut};
 use std::sync::atomic::AtomicI64;
 
-use chrono::NaiveDateTime;
-use tonic::Status;
+use google_cloud_googleapis::Status;
 
 use google_cloud_googleapis::spanner::v1::{
     transaction_options, transaction_selector, BeginTransactionRequest, ExecuteSqlRequest, KeySet,
@@ -15,6 +14,7 @@ use crate::sessions::ManagedSession;
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, ReadOptions, Transaction};
 use crate::value::TimestampBound;
+use chrono::{DateTime, TimeZone, Utc};
 
 /// ReadOnlyTransaction provides a snapshot transaction with guaranteed
 /// consistency across reads, but does not allow writes.  Read-only transactions
@@ -32,7 +32,7 @@ use crate::value::TimestampBound;
 /// TimestampBound for more details.
 pub struct ReadOnlyTransaction {
     base_tx: Transaction,
-    pub rts: Option<NaiveDateTime>,
+    pub rts: Option<DateTime<Utc>>,
 }
 
 impl Deref for ReadOnlyTransaction {
@@ -100,7 +100,7 @@ impl ReadOnlyTransaction {
                             selector: Some(transaction_selector::Selector::Id(tx.id)),
                         },
                     },
-                    rts: Some(NaiveDateTime::from_timestamp(rts.seconds, rts.nanos as u32)),
+                    rts: Some(Utc.timestamp(rts.seconds, rts.nanos as u32)),
                 })
             }
             Err(e) => Err(e),

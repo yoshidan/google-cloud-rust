@@ -1,8 +1,8 @@
 use std::ops::DerefMut;
 use std::sync::atomic::AtomicI64;
 
+use google_cloud_googleapis::Status;
 use prost_types::Struct;
-use tonic::Status;
 
 use google_cloud_gax::call_option::BackoffRetrySettings;
 use google_cloud_googleapis::spanner::v1::request_options::Priority;

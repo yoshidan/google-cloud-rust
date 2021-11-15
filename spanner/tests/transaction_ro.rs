@@ -124,12 +124,18 @@ async fn test_complex_query() {
     assert_eq!(first_item.user_id, user_id_1);
     assert_eq!(first_item.item_id, 2);
     assert_eq!(first_item.quantity, 100);
-    assert_ne!(&(first_item.updated_at).to_string(), now.to_string());
+    assert_ne!(
+        DateTime::<Utc>::from(first_item.updated_at).to_string(),
+        now.to_string()
+    );
     let second_item = user_items.pop().unwrap();
     assert_eq!(second_item.user_id, user_id_1);
     assert_eq!(second_item.item_id, 1);
     assert_eq!(second_item.quantity, 100);
-    assert_ne!(&(second_item.updated_at).to_string(), now.to_string());
+    assert_ne!(
+        DateTime::<Utc>::from(second_item.updated_at).to_string(),
+        now.to_string()
+    );
     assert!(user_items.is_empty());
 
     let mut user_characters = row
@@ -140,7 +146,7 @@ async fn test_complex_query() {
     assert_eq!(first_character.character_id, 20);
     assert_eq!(first_character.level, 1);
     assert_ne!(
-        first_character.updated_at.timestamp.to_string(),
+        DateTime::<Utc>::from(first_character.updated_at).to_string(),
         now.to_string()
     );
     let second_character = user_characters.pop().unwrap();
@@ -148,7 +154,7 @@ async fn test_complex_query() {
     assert_eq!(second_character.character_id, 10);
     assert_eq!(second_character.level, 1);
     assert_ne!(
-        second_character.updated_at.timestamp.to_string(),
+        DateTime::<Utc>::from(second_character.updated_at).to_string(),
         now.to_string()
     );
     assert!(user_characters.is_empty());

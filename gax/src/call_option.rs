@@ -1,6 +1,6 @@
+use google_cloud_googleapis::{Code, Status};
 use rand::Rng;
 use std::time::{Duration, Instant};
-use tonic::Status;
 
 /// Backoff implements exponential backoff.
 /// The wait time between retries is a random value between 0 and the "retry envelope".
@@ -86,7 +86,7 @@ pub trait Retryer {
 #[derive(Clone)]
 pub struct BackoffRetryer {
     pub backoff: Backoff, // supports backoff retry only
-    pub codes: Vec<tonic::Code>,
+    pub codes: Vec<Code>,
 }
 
 impl Retryer for BackoffRetryer {

@@ -1,10 +1,10 @@
 use std::future::Future;
 
+use google_cloud_googleapis::{Code, Status};
 use prost_types::Timestamp;
-use tonic::{Code, Status};
 
 use google_cloud_gax::invoke::invoke_reuse;
-use google_cloud_gax::invoke::AsTonicStatus;
+use google_cloud_gax::invoke::AsGrpcStatus;
 use google_cloud_googleapis::spanner::v1::{
     commit_request, transaction_options, Mutation, TransactionOptions,
 };
@@ -120,8 +120,8 @@ pub enum TxError {
     SessionError(#[from] SessionError),
 }
 
-impl AsTonicStatus for TxError {
-    fn as_tonic_status(&self) -> Option<&Status> {
+impl AsGrpcStatus for TxError {
+    fn as_status(&self) -> Option<&Status> {
         match self {
             TxError::TonicStatus(s) => Some(s),
             _ => None,
@@ -393,7 +393,7 @@ impl Client {
         f: impl Fn(ReadWriteTransaction) -> F,
     ) -> Result<(Option<prost_types::Timestamp>, T), E>
     where
-        E: AsTonicStatus + From<TxError> + From<tonic::Status>,
+        E: AsGrpcStatus + From<TxError> + From<Status>,
         F: Future<Output = (ReadWriteTransaction, Result<T, E>)>,
     {
         return self
@@ -426,7 +426,7 @@ impl Client {
         options: ReadWriteTransactionOption,
     ) -> Result<(Option<prost_types::Timestamp>, T), E>
     where
-        E: AsTonicStatus + From<TxError> + From<tonic::Status>,
+        E: AsGrpcStatus + From<TxError> + From<Status>,
         F: Future<Output = (ReadWriteTransaction, Result<T, E>)>,
     {
         let (bo, co) = Client::split_read_write_transaction_option(options);
@@ -473,7 +473,7 @@ impl Client {
         f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,
     ) -> Result<(Option<prost_types::Timestamp>, T), E>
     where
-        E: AsTonicStatus + From<TxError> + From<tonic::Status>,
+        E: AsGrpcStatus + From<TxError> + From<Status>,
     {
         return self
             .read_write_transaction_sync_with_option(f, ReadWriteTransactionOption::default())
@@ -505,7 +505,7 @@ impl Client {
         options: ReadWriteTransactionOption,
     ) -> Result<(Option<prost_types::Timestamp>, T), E>
     where
-        E: AsTonicStatus + From<TxError> + From<tonic::Status>,
+        E: AsGrpcStatus + From<TxError> + From<Status>,
     {
         let (bo, co) = Client::split_read_write_transaction_option(options);
 
@@ -533,7 +533,7 @@ impl Client {
         bo: CallOptions,
     ) -> Result<ReadWriteTransaction, (E, Option<ManagedSession>)>
     where
-        E: AsTonicStatus + From<TxError> + From<tonic::Status>,
+        E: AsGrpcStatus + From<TxError> + From<Status>,
     {
         return ReadWriteTransaction::begin(session.unwrap(), bo)
             .await

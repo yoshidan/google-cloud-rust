@@ -13,7 +13,7 @@ use common::*;
 use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
 use google_cloud_spanner::transaction_rw::ReadWriteTransaction;
 
-use tonic::Status;
+use google_cloud_googleapis::Status;
 
 pub async fn all_rows(mut itr: RowIterator<'_>) -> Result<Vec<Row>, Status> {
     let mut rows = vec![];
@@ -207,7 +207,7 @@ async fn assert_data(
     assert_eq!(first_item.item_id, 10);
     assert_eq!(first_item.quantity, 1000);
     assert_eq!(
-        first_item.updated_at.timestamp.to_string(),
+        DateTime::<Utc>::from(first_item.updated_at).to_string(),
         commit_timestamp.to_string()
     );
     assert!(user_items.is_empty());
@@ -220,7 +220,7 @@ async fn assert_data(
     assert_eq!(first_character.character_id, 1);
     assert_eq!(first_character.level, 1);
     assert_eq!(
-        first_character.updated_at.timestamp.to_string(),
+        DateTime::<Utc>::from(first_character.updated_at).to_string(),
         commit_timestamp.to_string()
     );
     assert!(user_characters.is_empty());

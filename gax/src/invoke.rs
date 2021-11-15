@@ -1,13 +1,13 @@
 use crate::call_option::{RetrySettings, Retryer};
+use google_cloud_googleapis::Status;
 use std::future::Future;
-use tonic::Status;
 
-pub trait AsTonicStatus {
-    fn as_tonic_status(&self) -> Option<&tonic::Status>;
+pub trait AsGrpcStatus {
+    fn as_status(&self) -> Option<&Status>;
 }
 
-impl AsTonicStatus for tonic::Status {
-    fn as_tonic_status(&self) -> Option<&Status> {
+impl AsGrpcStatus for Status {
+    fn as_status(&self) -> Option<&Status> {
         Some(self)
     }
 }
@@ -18,7 +18,7 @@ pub async fn invoke<Setting, T, E, Fut>(
     settings: &mut RetrySettings<Setting>,
 ) -> Result<T, E>
 where
-    E: AsTonicStatus,
+    E: AsGrpcStatus,
     Fut: Future<Output = Result<T, E>>,
     Setting: Retryer + Clone,
 {
@@ -29,7 +29,7 @@ where
             Err(e) => e,
         };
 
-        let status = match err.as_tonic_status() {
+        let status = match err.as_status() {
             Some(s) => s,
             None => return Err(err),
         };
@@ -49,7 +49,7 @@ pub async fn invoke_reuse<Setting, T, E, V, Fut>(
     settings: &mut RetrySettings<Setting>,
 ) -> Result<T, E>
 where
-    E: AsTonicStatus,
+    E: AsGrpcStatus,
     Fut: Future<Output = Result<T, (E, V)>>,
     Setting: Retryer + Clone,
 {
@@ -63,7 +63,7 @@ where
                 e.0
             }
         };
-        let status = match err.as_tonic_status() {
+        let status = match err.as_status() {
             Some(s) => s,
             None => return Err(err),
         };

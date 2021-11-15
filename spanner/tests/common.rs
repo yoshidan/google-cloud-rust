@@ -5,11 +5,12 @@ use google_cloud_googleapis::spanner::v1::transaction_options::{Mode, ReadWrite}
 use google_cloud_googleapis::spanner::v1::{
     CommitRequest, CommitResponse, Mutation, TransactionOptions,
 };
+use google_cloud_googleapis::Status;
 use google_cloud_spanner::apiv1::conn_pool::ConnectionManager;
 use google_cloud_spanner::key::{Key, KeySet};
 use google_cloud_spanner::mutation::insert_or_update;
 use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
-use google_cloud_spanner::row::{Row, Struct, TryFromStruct};
+use google_cloud_spanner::row::{Error as RowError, Row, Struct, TryFromStruct};
 use google_cloud_spanner::sessions::{
     ManagedSession, SessionConfig, SessionHandle, SessionManager,
 };
@@ -31,7 +32,7 @@ pub struct UserCharacter {
 }
 
 impl TryFromStruct for UserCharacter {
-    fn try_from(s: Struct<'_>) -> Result<Self> {
+    fn try_from(s: Struct<'_>) -> Result<Self, RowError> {
         Ok(UserCharacter {
             user_id: s.column_by_name("UserId")?,
             character_id: s.column_by_name("CharacterId")?,
@@ -49,7 +50,7 @@ pub struct UserItem {
 }
 
 impl TryFromStruct for UserItem {
-    fn try_from(s: Struct<'_>) -> Result<Self> {
+    fn try_from(s: Struct<'_>) -> Result<Self, RowError> {
         Ok(UserItem {
             user_id: s.column_by_name("UserId")?,
             item_id: s.column_by_name("ItemId")?,
@@ -101,7 +102,7 @@ pub async fn create_session() -> ManagedSession {
 pub async fn replace_test_data(
     session: &mut SessionHandle,
     mutations: Vec<Mutation>,
-) -> Result<CommitResponse, tonic::Status> {
+) -> Result<CommitResponse, Status> {
     session
         .spanner_client
         .commit(
@@ -239,7 +240,7 @@ pub fn assert_user_row(
     assert_eq!(nullable_string.unwrap(), user_id);
     let updated_at = row.column_by_name::<CommitTimestamp>("UpdatedAt").unwrap();
     assert_eq!(
-        updated_at.timestamp.to_string(),
+        DateTime::<Utc>::from(updated_at).to_string(),
         commit_timestamp.to_string(),
         "commit timestamp"
     );
