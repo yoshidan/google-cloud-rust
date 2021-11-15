@@ -527,6 +527,11 @@ impl Client {
         .await;
     }
 
+    /// Get open session count.
+    pub fn session_count(&self) -> usize {
+        self.sessions.num_opened()
+    }
+
     async fn create_read_write_transaction<E>(
         &self,
         session: Option<ManagedSession>,

@@ -183,7 +183,7 @@ impl SessionPool {
 
     fn recycle(&self, session: SessionHandle) {
         if session.valid {
-            log::info!("recycled name={}", session.session.name.to_string());
+            log::debug!("recycled name={}", session.session.name.to_string());
             match { self.waiters.lock().pop_front() } {
                 Some(c) => {
                     if let Err(session) = c.send(session) {
@@ -561,7 +561,7 @@ async fn shrink_idle_sessions(
 
 async fn delete_session(session: &mut SessionHandle) {
     let session_name = &session.session.name;
-    log::info!("delete session {}", session_name);
+    log::debug!("delete session {}", session_name);
     let request = DeleteSessionRequest {
         name: session_name.to_string(),
     };
