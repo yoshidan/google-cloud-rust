@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
-use chrono::{DateTime, FixedOffset, NaiveDate, NaiveDateTime, ParseError, Utc};
+use chrono::{DateTime, NaiveDate, ParseError, Utc};
 use prost_types::value::Kind;
 use prost_types::{value, Value};
 
@@ -341,7 +341,7 @@ mod tests {
     use crate::row::{Error, Row, Struct as RowStruct, TryFromStruct};
     use crate::statement::{Kinds, ToKind, ToStruct, Types};
     use crate::value::CommitTimestamp;
-    use chrono::{DateTime, FixedOffset, Utc};
+    use chrono::{DateTime, Utc};
     use google_cloud_googleapis::spanner::v1::struct_type::Field;
     use prost_types::Value;
     use std::collections::HashMap;

@@ -1,9 +1,9 @@
-use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
-use google_cloud_spanner::key::{Key, KeySet};
+use chrono::{DateTime, TimeZone, Utc};
+use google_cloud_spanner::key::Key;
 
 use google_cloud_spanner::row::Row;
 use google_cloud_spanner::statement::Statement;
-use google_cloud_spanner::transaction::{CallOptions, QueryOptions};
+use google_cloud_spanner::transaction::CallOptions;
 use google_cloud_spanner::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use google_cloud_spanner::value::TimestampBound;
 use serial_test::serial;
@@ -12,7 +12,6 @@ use std::ops::DerefMut;
 mod common;
 use common::*;
 use std::collections::HashMap;
-use std::time::{Instant, SystemTime};
 
 async fn assert_read(
     tx: &mut ReadOnlyTransaction,

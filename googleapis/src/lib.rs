@@ -7,7 +7,6 @@ pub mod spanner {
     pub mod v1;
 }
 
-use prost::Message;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 

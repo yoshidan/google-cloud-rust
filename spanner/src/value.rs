@@ -1,12 +1,11 @@
 use std::ops::Deref;
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 
-use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use prost_types::Timestamp;
 
 use google_cloud_googleapis::spanner::v1::transaction_options::read_only::TimestampBound as InternalTimestampBound;
 use google_cloud_googleapis::spanner::v1::transaction_options::ReadOnly;
-use std::fmt::Display;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
 pub struct CommitTimestamp {

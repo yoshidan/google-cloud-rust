@@ -208,7 +208,7 @@ mod tests {
             },
         );
         match mutation.operation.unwrap() {
-            v1::mutation::Operation::Insert(mut w) => assert_struct(w),
+            v1::mutation::Operation::Insert(w) => assert_struct(w),
             _ => panic!("invalid operation"),
         }
     }
@@ -246,7 +246,7 @@ mod tests {
             },
         );
         match mutation.operation.unwrap() {
-            v1::mutation::Operation::Update(mut w) => assert_struct(w),
+            v1::mutation::Operation::Update(w) => assert_struct(w),
             _ => panic!("invalid operation"),
         }
     }
@@ -284,7 +284,7 @@ mod tests {
             },
         );
         match mutation.operation.unwrap() {
-            v1::mutation::Operation::Replace(mut w) => assert_struct(w),
+            v1::mutation::Operation::Replace(w) => assert_struct(w),
             _ => panic!("invalid operation"),
         }
     }
@@ -322,7 +322,7 @@ mod tests {
             },
         );
         match mutation.operation.unwrap() {
-            v1::mutation::Operation::InsertOrUpdate(mut w) => assert_struct(w),
+            v1::mutation::Operation::InsertOrUpdate(w) => assert_struct(w),
             _ => panic!("invalid operation"),
         }
     }

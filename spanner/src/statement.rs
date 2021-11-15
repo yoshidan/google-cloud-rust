@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use chrono::{DateTime, FixedOffset, NaiveDate, Offset, TimeZone, Utc};
+use chrono::{DateTime, NaiveDate, TimeZone};
 use prost_types::value::Kind;
 use prost_types::value::Kind::StringValue;
 use prost_types::{value, ListValue, Struct, Value};

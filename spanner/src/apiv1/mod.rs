@@ -15,7 +15,7 @@ mod tests {
         Session, Transaction, TransactionOptions, TransactionSelector,
     };
     use google_cloud_googleapis::spanner::v1::{execute_batch_dml_request, KeySet, Mutation};
-    use google_cloud_googleapis::{Code, Status};
+    use google_cloud_googleapis::Code;
     use prost_types::{value::Kind, ListValue, Value};
     use serial_test::serial;
 

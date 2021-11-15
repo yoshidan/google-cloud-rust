@@ -2,7 +2,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use google_cloud_googleapis::{Code, Status};
+use google_cloud_googleapis::Status;
 use prost_types::{value::Kind, Value};
 use tonic::{Response, Streaming};
 
