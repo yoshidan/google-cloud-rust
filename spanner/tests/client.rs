@@ -36,7 +36,7 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
                     tx2.buffer_write(ms);
                     let mut stmt = Statement::new("Insert Into UserItem (UserId,ItemId,Quantity,UpdatedAt) VALUES(@UserId,1,1,PENDING_COMMIT_TIMESTAMP())");
                     stmt.add_param("UserId",(*user_id_ref).clone());
-                    tx2.update(stmt).await.map_err(TxError::TonicStatus)
+                    tx2.update(stmt).await.map_err(TxError::GRPC)
                 }
                 .await;
                 (tx, result)

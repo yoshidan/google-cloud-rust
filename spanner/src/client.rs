@@ -102,7 +102,7 @@ impl Default for ClientConfig {
 #[derive(thiserror::Error, Debug)]
 pub enum InitializeError {
     #[error(transparent)]
-    TonicStatus(#[from] Status),
+    GRPC(#[from] Status),
 
     #[error(transparent)]
     GRPCInitialize(#[from] crate::apiv1::conn_pool::Error),
@@ -114,7 +114,7 @@ pub enum InitializeError {
 #[derive(thiserror::Error, Debug)]
 pub enum TxError {
     #[error(transparent)]
-    TonicStatus(#[from] Status),
+    GRPC(#[from] Status),
 
     #[error(transparent)]
     SessionError(#[from] SessionError),
@@ -123,7 +123,7 @@ pub enum TxError {
 impl AsGrpcStatus for TxError {
     fn as_status(&self) -> Option<&Status> {
         match self {
-            TxError::TonicStatus(s) => Some(s),
+            TxError::GRPC(s) => Some(s),
             _ => None,
         }
     }
@@ -276,7 +276,7 @@ impl Client {
                 .await
                 {
                     Ok(tx) => tx,
-                    Err(e) => return Err((TxError::TonicStatus(e.status), Some(e.session))),
+                    Err(e) => return Err((TxError::GRPC(e.status), Some(e.session))),
                 };
                 let qo = match options.query_options.clone() {
                     Some(o) => o,
@@ -284,7 +284,7 @@ impl Client {
                 };
                 tx.update_with_option(stmt.clone(), qo)
                     .await
-                    .map_err(|e| (TxError::TonicStatus(e), tx.take_session()))
+                    .map_err(|e| (TxError::GRPC(e), tx.take_session()))
             },
             session,
             &mut ro,
@@ -336,7 +336,7 @@ impl Client {
                 });
                 match commit(session, ms.clone(), tx, options.clone()).await {
                     Ok(s) => Ok(s.commit_timestamp),
-                    Err(e) => Err((TxError::TonicStatus(e), session)),
+                    Err(e) => Err((TxError::GRPC(e), session)),
                 }
             },
             &mut session,

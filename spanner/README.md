@@ -365,7 +365,7 @@ If you need to read before writing in a single transaction, use a ReadWriteTrans
             // of this error is Aborted. The backend may automatically abort
             // any read/write transaction if it detects a deadlock or other problems.
             tx.read_row("User", vec!["UserId"], Key::one(100)).await
-        }.await.map_err(|x| TxError::TonicStatus(x));
+        }.await.map_err(|x| TxError::GRPC(x));
         //return owner ship of read_write_transaction
         (tx, result)
     },
