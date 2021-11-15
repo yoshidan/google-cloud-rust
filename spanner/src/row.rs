@@ -45,8 +45,6 @@ pub enum Error {
     NoColumnFoundInStruct(String),
 }
 
-type ParseResult<T> = Result<T, Error>;
-
 impl Row {
     pub fn new(
         index: Arc<HashMap<String, usize>>,
@@ -60,14 +58,14 @@ impl Row {
         }
     }
 
-    pub fn column<T>(&self, column_index: usize) -> ParseResult<T>
+    pub fn column<T>(&self, column_index: usize) -> Result<T, Error>
     where
         T: TryFromValue,
     {
         column(&self.values, &self.fields, column_index)
     }
 
-    pub fn column_by_name<T>(&self, column_name: &str) -> ParseResult<T>
+    pub fn column_by_name<T>(&self, column_name: &str) -> Result<T, Error>
     where
         T: TryFromValue,
     {
@@ -78,11 +76,11 @@ impl Row {
 //don't use TryFrom trait to avoid the conflict
 //https://github.com/rust-lang/rust/issues/50133
 pub trait TryFromValue: Sized {
-    fn try_from(value: &Value, field: &Field) -> ParseResult<Self>;
+    fn try_from(value: &Value, field: &Field) -> Result<Self, Error>;
 }
 
 pub trait TryFromStruct: Sized {
-    fn try_from(s: Struct<'_>) -> ParseResult<Self>;
+    fn try_from(s: Struct<'_>) -> Result<Self, Error>;
 }
 
 pub struct Struct<'a> {
@@ -97,7 +95,7 @@ impl<'a> Struct<'a> {
         metadata: &'a StructType,
         item: &'a Value,
         field: &'a Field,
-    ) -> ParseResult<Struct<'a>> {
+    ) -> Result<Struct<'a>, Error> {
         let kind = as_ref(item, field)?;
         let mut index = HashMap::new();
         for (i, f) in metadata.fields.iter().enumerate() {
@@ -120,7 +118,7 @@ impl<'a> Struct<'a> {
         }
     }
 
-    pub fn column<T>(&self, column_index: usize) -> ParseResult<T>
+    pub fn column<T>(&self, column_index: usize) -> Result<T, Error>
     where
         T: TryFromValue,
     {
@@ -140,7 +138,7 @@ impl<'a> Struct<'a> {
         }
     }
 
-    pub fn column_by_name<T>(&self, column_name: &str) -> ParseResult<T>
+    pub fn column_by_name<T>(&self, column_name: &str) -> Result<T, Error>
     where
         T: TryFromValue,
     {
@@ -149,7 +147,7 @@ impl<'a> Struct<'a> {
 }
 
 impl TryFromValue for i64 {
-    fn try_from(item: &Value, field: &Field) -> ParseResult<Self> {
+    fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
             Kind::StringValue(s) => s
                 .parse()
@@ -160,7 +158,7 @@ impl TryFromValue for i64 {
 }
 
 impl TryFromValue for f64 {
-    fn try_from(item: &Value, field: &Field) -> ParseResult<Self> {
+    fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
             Kind::NumberValue(s) => Ok(*s),
             v => kind_to_error(v, field),
@@ -169,7 +167,7 @@ impl TryFromValue for f64 {
 }
 
 impl TryFromValue for bool {
-    fn try_from(item: &Value, field: &Field) -> ParseResult<Self> {
+    fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
             Kind::BoolValue(s) => Ok(*s),
             v => kind_to_error(v, field),
@@ -178,7 +176,7 @@ impl TryFromValue for bool {
 }
 
 impl TryFromValue for DateTime<Utc> {
-    fn try_from(item: &Value, field: &Field) -> ParseResult<Self> {
+    fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
             Kind::StringValue(s) => {
                 let fixed = DateTime::parse_from_rfc3339(&s)
@@ -191,7 +189,7 @@ impl TryFromValue for DateTime<Utc> {
 }
 
 impl TryFromValue for CommitTimestamp {
-    fn try_from(item: &Value, field: &Field) -> ParseResult<Self> {
+    fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         Ok(CommitTimestamp {
             timestamp: DateTime::try_from(item, field)?,
         })
@@ -199,7 +197,7 @@ impl TryFromValue for CommitTimestamp {
 }
 
 impl TryFromValue for NaiveDate {
-    fn try_from(item: &Value, field: &Field) -> ParseResult<Self> {
+    fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
             Kind::StringValue(s) => NaiveDate::parse_from_str(&s, "%Y-%m-%d")
                 .map_err(|e| Error::DateParseError(field.name.to_string(), e)),
@@ -209,7 +207,7 @@ impl TryFromValue for NaiveDate {
 }
 
 impl TryFromValue for Vec<u8> {
-    fn try_from(item: &Value, field: &Field) -> ParseResult<Self> {
+    fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
             Kind::StringValue(s) => {
                 base64::decode(s).map_err(|e| Error::ByteParseError(field.name.to_string(), e))
@@ -220,7 +218,7 @@ impl TryFromValue for Vec<u8> {
 }
 
 impl TryFromValue for rust_decimal::Decimal {
-    fn try_from(item: &Value, field: &Field) -> ParseResult<Self> {
+    fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
             Kind::StringValue(s) => rust_decimal::Decimal::from_str(&s)
                 .map_err(|e| Error::DecimalParseError(field.name.to_string(), e)),
@@ -230,7 +228,7 @@ impl TryFromValue for rust_decimal::Decimal {
 }
 
 impl TryFromValue for String {
-    fn try_from(item: &Value, field: &Field) -> ParseResult<Self> {
+    fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
             Kind::StringValue(s) => Ok(s.to_string()),
             v => kind_to_error(v, field),
@@ -242,7 +240,7 @@ impl<T> TryFromValue for T
 where
     T: TryFromStruct,
 {
-    fn try_from(item: &Value, field: &Field) -> ParseResult<Self> {
+    fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         let maybe_array = match field.r#type.as_ref() {
             None => {
                 return Err(Error::StructParseError(
@@ -279,7 +277,7 @@ impl<T> TryFromValue for Option<T>
 where
     T: TryFromValue,
 {
-    fn try_from(item: &Value, field: &Field) -> ParseResult<Self> {
+    fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
             Kind::NullValue(_i) => Ok(None),
             _ => Ok(Some(T::try_from(item, field)?)),
@@ -291,7 +289,7 @@ impl<T> TryFromValue for Vec<T>
 where
     T: TryFromValue,
 {
-    fn try_from(item: &Value, field: &Field) -> ParseResult<Self> {
+    fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
             Kind::ListValue(s) => s.values.iter().map(|v| T::try_from(v, field)).collect(),
             v => kind_to_error(v, field),
@@ -299,14 +297,14 @@ where
     }
 }
 
-fn index(index: &HashMap<String, usize>, column_name: &str) -> ParseResult<usize> {
+fn index(index: &HashMap<String, usize>, column_name: &str) -> Result<usize, Error> {
     match index.get(column_name) {
         Some(column_index) => Ok(*column_index),
         None => Err(Error::NoColumnFound(column_name.to_string())),
     }
 }
 
-fn column<T>(values: &[Value], fields: &[Field], column_index: usize) -> ParseResult<T>
+fn column<T>(values: &[Value], fields: &[Field], column_index: usize) -> Result<T, Error>
 where
     T: TryFromValue,
 {
@@ -317,14 +315,14 @@ where
     T::try_from(value, &fields[column_index])
 }
 
-fn as_ref<'a>(item: &'a Value, field: &'a Field) -> ParseResult<&'a Kind> {
+fn as_ref<'a>(item: &'a Value, field: &'a Field) -> Result<&'a Kind, Error> {
     return match item.kind.as_ref() {
         Some(v) => Ok(v),
         None => Err(Error::NoKind(field.name.to_string())),
     };
 }
 
-fn kind_to_error<'a, T>(v: &'a value::Kind, field: &'a Field) -> ParseResult<T> {
+fn kind_to_error<'a, T>(v: &'a value::Kind, field: &'a Field) -> Result<T, Error> {
     let actual = match v {
         Kind::StringValue(_s) => "StringValue".to_string(),
         Kind::BoolValue(_s) => "BoolValue".to_string(),
