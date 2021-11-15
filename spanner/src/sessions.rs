@@ -407,7 +407,6 @@ impl SessionManager {
 
                 let database = database.clone();
                 let next_client = conn_pool.conn();
-                log::debug!("start batch create session {}", creation_count);
 
                 match batch_create_session(next_client, database, creation_count).await {
                     Ok(fresh_sessions) => {
@@ -586,7 +585,7 @@ async fn batch_create_session(
         .batch_create_sessions(request, None)
         .await?
         .into_inner();
-    log::info!("batch session created {}", creation_count);
+    log::debug!("batch session created {}", creation_count);
 
     let now = Instant::now();
     Ok(response
