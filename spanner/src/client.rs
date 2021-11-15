@@ -94,6 +94,7 @@ impl Default for ClientConfig {
             channel_config: Default::default(),
             session_config: Default::default(),
         };
+        config.session_config.min_opened = config.channel_config.num_channels * 4;
         config.session_config.max_opened = config.channel_config.num_channels * 100;
         config
     }
