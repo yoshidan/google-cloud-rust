@@ -1,23 +1,19 @@
 # google-cloud-rust
-Google Cloud Client Libraries for Rust.  
-This Libraries are based on the [Google Cloud Go](https://github.com/googleapis/google-cloud-go) implementation.
+Rust packages for [Google Cloud Platform](https://cloud.google.com/) services.  
+Providing a high level API for gRPC API like [Google Cloud Go](https://github.com/googleapis/google-cloud-go).
 
 ![CI](https://github.com/yoshidan/google-cloud-rust/workflows/CI/badge.svg?branch=main)
 
 ## Component 
 
-Currently only Google Cloud Spanner is supported. We will add other components in the future.
-
-|  Name   | Installations | 
-| -------- | -------------- | 
-| [spanner](./spanner) | google-cloud-spanner = 0.1.0 | 
-
-## Utilities 
-|  Name   | Installations |
-| -------- | -------------- |
-| [auth](./auth) | google-cloud-auth = 0.1.0 | 
-| [metadata](./metadata) | google-cloud-metadata = 0.1.0 | 
-| [gax](./gax) | google-cloud-gax = 0.1.0 | 
+* [google-cloud-spanner](./spanner)
 
 ## License
 This project is licensed under the [MIT license](./LICENCE).
+
+## Contributing
+Contributions are welcome.
+1. Fork this repository.
+2. Make changes, commit to your fork.
+3. Send a pull request with your changes.
+4. Confirm the success of CI.

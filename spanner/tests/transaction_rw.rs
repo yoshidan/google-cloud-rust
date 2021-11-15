@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{NaiveDateTime, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 
 use google_cloud_spanner::key::{Key, KeySet};
 
@@ -13,7 +13,7 @@ use common::*;
 use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
 use google_cloud_spanner::transaction_rw::ReadWriteTransaction;
 
-use tonic::Status;
+use google_cloud_googleapis::Status;
 
 pub async fn all_rows(mut itr: RowIterator<'_>) -> Result<Vec<Row>, Status> {
     let mut rows = vec![];
@@ -35,7 +35,7 @@ pub async fn all_rows(mut itr: RowIterator<'_>) -> Result<Vec<Row>, Status> {
 #[tokio::test]
 #[serial]
 async fn test_mutation_and_statement() {
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
     let mut session = create_session().await;
 
     let past_user = format!("user_{}", now.timestamp());
@@ -59,8 +59,8 @@ async fn test_mutation_and_statement() {
         stmt1.add_param("UserId", past_user.clone());
         let mut stmt2 = Statement::new("INSERT INTO UserItem (UserId,ItemId,Quantity,UpdatedAt) VALUES(@UserId,10,1000,PENDING_COMMIT_TIMESTAMP())");
         stmt2.add_param("UserId", past_user.clone());
-        tx.update(stmt1, None).await?;
-        return tx.update(stmt2, None).await;
+        tx.update(stmt1).await?;
+        return tx.update(stmt2).await;
     }.await;
 
     let result = tx.finish(result, None).await;
@@ -68,7 +68,7 @@ async fn test_mutation_and_statement() {
         Ok(s) => {
             assert!(s.0.is_some());
             let ts = s.0.unwrap();
-            let naive = NaiveDateTime::from_timestamp(ts.seconds, ts.nanos as u32);
+            let naive = Utc.timestamp(ts.seconds, ts.nanos as u32);
             println!("commit time stamp is {}", naive.to_string());
             naive
         }
@@ -76,14 +76,14 @@ async fn test_mutation_and_statement() {
     };
 
     let ts = cr.commit_timestamp.as_ref().unwrap();
-    let ts = NaiveDateTime::from_timestamp(ts.seconds, ts.nanos as u32);
+    let ts = Utc.timestamp(ts.seconds, ts.nanos as u32);
     assert_data(&past_user, &now, &ts, &commit_timestamp).await;
 }
 
 #[tokio::test]
 #[serial]
 async fn test_partitioned_dml() {
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
     let mut session = create_session().await;
 
     let user_id = format!("user_{}", now.timestamp());
@@ -100,7 +100,7 @@ async fn test_partitioned_dml() {
         let stmt1 = Statement::new(
             "UPDATE User SET NullableString = 'aaa' WHERE NullableString IS NOT NULL",
         );
-        tx.update(stmt1, None).await
+        tx.update(stmt1).await
     }
     .await;
 
@@ -114,7 +114,6 @@ async fn test_partitioned_dml() {
             "User",
             vec!["NullableString"],
             KeySet::from(Key::one(user_id.clone())),
-            None,
         )
         .await
         .unwrap();
@@ -126,7 +125,7 @@ async fn test_partitioned_dml() {
 #[tokio::test]
 #[serial]
 async fn test_rollback() {
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
     let mut session = create_session().await;
 
     let past_user = format!("user_{}", now.timestamp());
@@ -142,10 +141,10 @@ async fn test_rollback() {
         let mut stmt1 =
             Statement::new("UPDATE User SET NullableString = 'aaaaaaa' WHERE UserId = @UserId");
         stmt1.add_param("UserId", past_user.clone());
-        tx.update(stmt1, None).await?;
+        tx.update(stmt1).await?;
 
         let stmt2 = Statement::new("UPDATE UserNoteFound SET Quantity = 10000");
-        tx.update(stmt2, None).await
+        tx.update(stmt2).await
     }
     .await;
 
@@ -157,21 +156,20 @@ async fn test_rollback() {
             "User",
             user_columns(),
             KeySet::from(Key::one(past_user.clone())),
-            None,
         )
         .await
         .unwrap();
     let row = all_rows(reader).await.unwrap().pop().unwrap();
     let ts = cr.commit_timestamp.as_ref().unwrap();
-    let ts = NaiveDateTime::from_timestamp(ts.seconds, ts.nanos as u32);
+    let ts = Utc.timestamp(ts.seconds, ts.nanos as u32);
     assert_user_row(&row, &past_user, &now, &ts);
 }
 
 async fn assert_data(
     user_id: &String,
-    now: &NaiveDateTime,
-    user_commit_timestamp: &NaiveDateTime,
-    commit_timestamp: &NaiveDateTime,
+    now: &DateTime<Utc>,
+    user_commit_timestamp: &DateTime<Utc>,
+    commit_timestamp: &DateTime<Utc>,
 ) {
     // get by another transaction
     let session = create_session().await;
@@ -188,7 +186,7 @@ async fn assert_data(
     ",
         );
         stmt.add_param("UserId", user_id.clone());
-        let result = tx.query(stmt, None).await?;
+        let result = tx.query(stmt).await?;
         all_rows(result).await
     }
     .await;
@@ -209,7 +207,7 @@ async fn assert_data(
     assert_eq!(first_item.item_id, 10);
     assert_eq!(first_item.quantity, 1000);
     assert_eq!(
-        first_item.updated_at.timestamp.to_string(),
+        DateTime::<Utc>::from(first_item.updated_at).to_string(),
         commit_timestamp.to_string()
     );
     assert!(user_items.is_empty());
@@ -222,7 +220,7 @@ async fn assert_data(
     assert_eq!(first_character.character_id, 1);
     assert_eq!(first_character.level, 1);
     assert_eq!(
-        first_character.updated_at.timestamp.to_string(),
+        DateTime::<Utc>::from(first_character.updated_at).to_string(),
         commit_timestamp.to_string()
     );
     assert!(user_characters.is_empty());

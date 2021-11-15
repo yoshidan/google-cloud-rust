@@ -6,8 +6,7 @@ use std::time::Instant;
 use parking_lot::Mutex;
 use thiserror;
 
-use tonic::Code;
-use tonic::Status;
+use google_cloud_googleapis::{Code, Status};
 
 use google_cloud_googleapis::spanner::v1::{
     BatchCreateSessionsRequest, DeleteSessionRequest, Session,
@@ -48,7 +47,7 @@ impl SessionHandle {
         return match arg {
             Ok(s) => Ok(s),
             Err(e) => {
-                if e.code() == Code::NotFound {
+                if e.code() == Code::NotFound && e.message().contains("Session not found:") {
                     self.invalidate().await;
                 }
                 Err(e)
@@ -184,6 +183,7 @@ impl SessionPool {
 
     fn recycle(&self, session: SessionHandle) {
         if session.valid {
+            log::debug!("recycled name={}", session.session.name.to_string());
             match { self.waiters.lock().pop_front() } {
                 Some(c) => {
                     if let Err(session) = c.send(session) {
@@ -407,7 +407,6 @@ impl SessionManager {
 
                 let database = database.clone();
                 let next_client = conn_pool.conn();
-                log::debug!("start batch create session {}", creation_count);
 
                 match batch_create_session(next_client, database, creation_count).await {
                     Ok(fresh_sessions) => {
@@ -561,7 +560,7 @@ async fn shrink_idle_sessions(
 
 async fn delete_session(session: &mut SessionHandle) {
     let session_name = &session.session.name;
-    log::info!("delete session {}", session_name);
+    log::debug!("delete session {}", session_name);
     let request = DeleteSessionRequest {
         name: session_name.to_string(),
     };
@@ -586,7 +585,7 @@ async fn batch_create_session(
         .batch_create_sessions(request, None)
         .await?
         .into_inner();
-    log::info!("batch session created {}", creation_count);
+    log::debug!("batch session created {}", creation_count);
 
     let now = Instant::now();
     Ok(response
@@ -626,7 +625,7 @@ mod tests {
             tokio::spawn(async move {
                 let mut session = sm.get().await.unwrap();
                 if use_invalidate {
-                    session.invalidate();
+                    session.invalidate().await;
                 }
                 counter.fetch_add(1, Ordering::SeqCst);
             });

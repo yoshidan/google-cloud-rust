@@ -1,8 +1,8 @@
 use std::ops::DerefMut;
 use std::sync::atomic::AtomicI64;
 
+use google_cloud_googleapis::Status;
 use prost_types::Struct;
-use tonic::Status;
 
 use google_cloud_gax::call_option::BackoffRetrySettings;
 use google_cloud_googleapis::spanner::v1::request_options::Priority;
@@ -11,8 +11,9 @@ use google_cloud_googleapis::spanner::v1::{
     ExecuteSqlRequest, ReadRequest, RequestOptions, TransactionSelector,
 };
 
-use crate::key::KeySet;
-use crate::reader::{RowIterator, StatementReader, TableReader};
+use crate::key::{Key, KeySet};
+use crate::reader::{AsyncIterator, RowIterator, StatementReader, TableReader};
+use crate::row::Row;
 use crate::sessions::ManagedSession;
 use crate::statement::Statement;
 
@@ -92,16 +93,21 @@ impl Transaction {
     /// retrieving the resulting rows.
     ///
     /// query returns only row data, without a query plan or execution statistics.
-    pub async fn query(
+    pub async fn query(&mut self, statement: Statement) -> Result<RowIterator<'_>, Status> {
+        return self
+            .query_with_option(statement, QueryOptions::default())
+            .await;
+    }
+
+    /// query executes a query against the database. It returns a RowIterator for
+    /// retrieving the resulting rows.
+    ///
+    /// query returns only row data, without a query plan or execution statistics.
+    pub async fn query_with_option(
         &mut self,
         statement: Statement,
-        options: Option<QueryOptions>,
+        options: QueryOptions,
     ) -> Result<RowIterator<'_>, Status> {
-        let opt = match options {
-            Some(o) => o,
-            None => QueryOptions::default(),
-        };
-
         let request = ExecuteSqlRequest {
             session: self.session.as_ref().unwrap().session.name.to_string(),
             transaction: Some(self.transaction_selector.clone()),
@@ -111,18 +117,18 @@ impl Transaction {
             }),
             param_types: statement.param_types,
             resume_token: vec![],
-            query_mode: opt.mode.into(),
+            query_mode: options.mode.into(),
             partition_token: vec![],
             seqno: 0,
-            query_options: opt.optimizer_options,
-            request_options: Transaction::create_request_options(opt.call_options.priority),
+            query_options: options.optimizer_options,
+            request_options: Transaction::create_request_options(options.call_options.priority),
         };
         let session = self.session.as_mut().unwrap().deref_mut();
         return RowIterator::new(
             session,
             Box::new(StatementReader {
                 request,
-                call_setting: opt.call_options.call_setting,
+                call_setting: options.call_options.call_setting,
             }),
         )
         .await;
@@ -134,29 +140,41 @@ impl Transaction {
         table: T,
         columns: Vec<C>,
         key_set: K,
-        options: Option<ReadOptions>,
     ) -> Result<RowIterator<'_>, Status>
     where
         T: Into<String>,
         C: Into<String>,
         K: Into<KeySet>,
     {
-        let opt = match options {
-            Some(o) => o,
-            None => ReadOptions::default(),
-        };
+        return self
+            .read_with_option(table, columns, key_set, ReadOptions::default())
+            .await;
+    }
 
+    /// read returns a RowIterator for reading multiple rows from the database.
+    pub async fn read_with_option<T, C, K>(
+        &mut self,
+        table: T,
+        columns: Vec<C>,
+        key_set: K,
+        options: ReadOptions,
+    ) -> Result<RowIterator<'_>, Status>
+    where
+        T: Into<String>,
+        C: Into<String>,
+        K: Into<KeySet>,
+    {
         let request = ReadRequest {
             session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
             table: table.into(),
-            index: opt.index,
+            index: options.index,
             columns: columns.into_iter().map(|x| x.into()).collect(),
             key_set: Some(key_set.into().inner),
-            limit: opt.limit,
+            limit: options.limit,
             resume_token: vec![],
             partition_token: vec![],
-            request_options: Transaction::create_request_options(opt.call_options.priority),
+            request_options: Transaction::create_request_options(options.call_options.priority),
         };
 
         let session = self.as_mut_session();
@@ -164,10 +182,44 @@ impl Transaction {
             session,
             Box::new(TableReader {
                 request,
-                call_setting: opt.call_options.call_setting,
+                call_setting: options.call_options.call_setting,
             }),
         )
         .await;
+    }
+
+    /// read returns a RowIterator for reading multiple rows from the database.
+    pub async fn read_row<T, C>(
+        &mut self,
+        table: T,
+        columns: Vec<C>,
+        key: Key,
+    ) -> Result<Option<Row>, Status>
+    where
+        T: Into<String>,
+        C: Into<String>,
+    {
+        return self
+            .read_row_with_option(table, columns, key, ReadOptions::default())
+            .await;
+    }
+
+    /// read returns a RowIterator for reading multiple rows from the database.
+    pub async fn read_row_with_option<T, C>(
+        &mut self,
+        table: T,
+        columns: Vec<C>,
+        key: Key,
+        options: ReadOptions,
+    ) -> Result<Option<Row>, Status>
+    where
+        T: Into<String>,
+        C: Into<String>,
+    {
+        let mut reader = self
+            .read_with_option(table, columns, KeySet::from(key), options)
+            .await?;
+        return reader.next().await;
     }
 
     pub(crate) fn get_session_name(&self) -> String {

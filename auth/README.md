@@ -1,6 +1,8 @@
-# gcpauth
+# google-cloud-auth
 
 Google Cloud Platform server application authentication library.
+
+[![crates.io](https://img.shields.io/crates/v/google-cloud-auth.svg)](https://crates.io/crates/google-cloud-auth)
 
 ## Installation
 

@@ -3,13 +3,18 @@ name = "google-cloud-googleapis"
 version = "0.1.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2018"
+repository = "https://github.com/yoshidan/google-cloud-rust"
+keywords = ["gcp","googleapis","google-cloud-rust"]
+license-file = "LICENCE"
+readme = "README.md"
+description = "Google Cloud Platform rust client."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tonic = "0.5.2"
-prost = "0.8.0"
-prost-types = "0.8.0"
+tonic = "0.5"
+prost = "0.8"
+prost-types = "0.8"
 
 [build-dependencies]
-tonic-build = "0.5.2"
+tonic-build = "0.5"

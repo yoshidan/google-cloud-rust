@@ -1,5 +1,5 @@
+use google_cloud_googleapis::{Code, Status};
 use tokio::time::Duration;
-use tonic::{Code, Status};
 
 use google_cloud_gax::call_option::{Backoff, BackoffRetryer, RetrySettings, Retryer};
 
@@ -60,9 +60,9 @@ impl Retryer for TransactionRetryer {
 mod tests {
     use crate::retry::TransactionRetryer;
     use google_cloud_gax::call_option::Retryer;
+    use google_cloud_googleapis::{Code, Status};
     use std::thread::sleep;
     use std::time::Duration;
-    use tonic::{Code, Status};
 
     #[test]
     fn test_retry() {
@@ -70,10 +70,10 @@ mod tests {
         let mut durations = vec![];
         retry.retryer.backoff.timeout = Duration::from_millis(100);
         loop {
-            match retry.retry(&Status::new(
-                Code::Internal,
+            match retry.retry(&Status::new(tonic::Status::new(
+                tonic::Code::Internal,
                 "stream terminated by RST_STREAM",
-            )) {
+            ))) {
                 None => break,
                 Some(d) => durations.push(d),
             };
@@ -89,7 +89,10 @@ mod tests {
         let mut durations = vec![];
         retry.retryer.backoff.timeout = Duration::from_millis(100);
         loop {
-            match retry.retry(&Status::new(Code::Internal, "test")) {
+            match retry.retry(&Status::new(tonic::Status::new(
+                tonic::Code::Internal,
+                "test",
+            ))) {
                 None => break,
                 Some(d) => durations.push(d),
             };

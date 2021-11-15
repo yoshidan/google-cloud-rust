@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicI64, Ordering};
 use prost_types::Struct;
 
 use google_cloud_gax::call_option::BackoffRetrySettings;
-use google_cloud_gax::invoke::AsTonicStatus;
+use google_cloud_gax::invoke::AsGrpcStatus;
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::TransactionId;
 use google_cloud_googleapis::spanner::v1::{
     commit_request, execute_batch_dml_request, result_set_stats, transaction_options,
@@ -13,6 +13,7 @@ use google_cloud_googleapis::spanner::v1::{
     ExecuteBatchDmlRequest, ExecuteSqlRequest, Mutation, ResultSetStats, RollbackRequest,
     TransactionOptions, TransactionSelector,
 };
+use google_cloud_googleapis::{Code, Status};
 
 use crate::sessions::ManagedSession;
 use crate::statement::Statement;
@@ -106,7 +107,7 @@ impl DerefMut for ReadWriteTransaction {
 }
 
 pub struct BeginError {
-    pub status: tonic::Status,
+    pub status: Status,
     pub session: ManagedSession,
 }
 
@@ -176,16 +177,15 @@ impl ReadWriteTransaction {
         self.wb.extend_from_slice(&ms)
     }
 
-    pub async fn update(
+    pub async fn update(&mut self, stmt: Statement) -> Result<i64, Status> {
+        return self.update_with_option(stmt, QueryOptions::default()).await;
+    }
+
+    pub async fn update_with_option(
         &mut self,
         stmt: Statement,
-        options: Option<QueryOptions>,
-    ) -> Result<i64, tonic::Status> {
-        let opt = match options {
-            Some(o) => o,
-            None => QueryOptions::default(),
-        };
-
+        options: QueryOptions,
+    ) -> Result<i64, Status> {
         let request = ExecuteSqlRequest {
             session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
@@ -195,37 +195,38 @@ impl ReadWriteTransaction {
             }),
             param_types: stmt.param_types,
             resume_token: vec![],
-            query_mode: opt.mode.into(),
+            query_mode: options.mode.into(),
             partition_token: vec![],
             seqno: self.sequence_number.fetch_add(1, Ordering::Relaxed),
-            query_options: opt.optimizer_options,
-            request_options: Transaction::create_request_options(opt.call_options.priority),
+            query_options: options.optimizer_options,
+            request_options: Transaction::create_request_options(options.call_options.priority),
         };
 
         let session = self.as_mut_session();
         let result = session
             .spanner_client
-            .execute_sql(request, opt.call_options.call_setting)
+            .execute_sql(request, options.call_options.call_setting)
             .await;
         let response = session.invalidate_if_needed(result).await?;
         Ok(extract_row_count(response.into_inner().stats))
     }
 
-    pub async fn batch_update(
+    pub async fn batch_update(&mut self, stmt: Vec<Statement>) -> Result<Vec<i64>, Status> {
+        return self
+            .batch_update_with_option(stmt, QueryOptions::default())
+            .await;
+    }
+
+    pub async fn batch_update_with_option(
         &mut self,
         stmt: Vec<Statement>,
-        options: Option<QueryOptions>,
-    ) -> Result<Vec<i64>, tonic::Status> {
-        let opt = match options {
-            Some(o) => o,
-            None => QueryOptions::default(),
-        };
-
+        options: QueryOptions,
+    ) -> Result<Vec<i64>, Status> {
         let request = ExecuteBatchDmlRequest {
             session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
             seqno: self.sequence_number.fetch_add(1, Ordering::Relaxed),
-            request_options: Transaction::create_request_options(opt.call_options.priority),
+            request_options: Transaction::create_request_options(options.call_options.priority),
             statements: stmt
                 .into_iter()
                 .map(|x| execute_batch_dml_request::Statement {
@@ -239,7 +240,7 @@ impl ReadWriteTransaction {
         let session = self.as_mut_session();
         let result = session
             .spanner_client
-            .execute_batch_dml(request, opt.call_options.call_setting)
+            .execute_batch_dml(request, options.call_options.call_setting)
             .await;
         let response = session.invalidate_if_needed(result).await?;
         Ok(response
@@ -256,7 +257,7 @@ impl ReadWriteTransaction {
         options: Option<CommitOptions>,
     ) -> Result<(Option<prost_types::Timestamp>, T), (E, Option<ManagedSession>)>
     where
-        E: AsTonicStatus + From<tonic::Status>,
+        E: AsGrpcStatus + From<Status>,
     {
         let opt = match options {
             Some(o) => o,
@@ -279,7 +280,7 @@ impl ReadWriteTransaction {
             // up here. Context errors (deadline exceeded / canceled) during
             // commits are also not rolled back.
             Err(err) => {
-                let status = match err.as_tonic_status() {
+                let status = match err.as_status() {
                     Some(status) => status,
                     None => {
                         self.rollback(opt.call_options.call_setting).await;
@@ -287,7 +288,7 @@ impl ReadWriteTransaction {
                     }
                 };
                 match status.code() {
-                    tonic::Code::Aborted => Err((err, self.take_session())),
+                    Code::Aborted => Err((err, self.take_session())),
                     _ => {
                         self.rollback(opt.call_options.call_setting).await;
                         return Err((err, self.take_session()));
@@ -297,10 +298,7 @@ impl ReadWriteTransaction {
         };
     }
 
-    pub async fn commit(
-        &mut self,
-        options: CommitOptions,
-    ) -> Result<CommitResponse, tonic::Status> {
+    pub async fn commit(&mut self, options: CommitOptions) -> Result<CommitResponse, Status> {
         let tx_id = self.tx_id.clone();
         let mutations = self.wb.to_vec();
         let session = self.as_mut_session();
@@ -327,7 +325,7 @@ pub async fn commit(
     ms: Vec<Mutation>,
     tx: commit_request::Transaction,
     commit_options: CommitOptions,
-) -> Result<CommitResponse, tonic::Status> {
+) -> Result<CommitResponse, Status> {
     let request = CommitRequest {
         session: session.session.name.to_string(),
         mutations: ms,

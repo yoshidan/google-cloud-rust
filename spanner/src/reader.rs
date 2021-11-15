@@ -2,8 +2,9 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use google_cloud_googleapis::Status;
 use prost_types::{value::Kind, Value};
-use tonic::{Code, Response, Status, Streaming};
+use tonic::{Response, Streaming};
 
 use google_cloud_gax::call_option::BackoffRetrySettings;
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
@@ -16,7 +17,7 @@ use crate::sessions::SessionHandle;
 pub trait AsyncIterator {
     fn column_metadata(&self, column_name: &str) -> Option<(usize, Field)>;
 
-    async fn next(&mut self) -> Result<Option<Row>, tonic::Status>;
+    async fn next(&mut self) -> Result<Option<Row>, Status>;
 }
 
 #[async_trait]
@@ -25,7 +26,9 @@ pub trait Reader {
         &self,
         session: &mut SessionHandle,
     ) -> Result<Response<Streaming<PartialResultSet>>, Status>;
+
     fn update_token(&mut self, resume_token: Vec<u8>);
+
     fn can_retry(&self) -> bool;
 }
 
@@ -46,9 +49,11 @@ impl Reader for StatementReader {
             .await;
         return session.invalidate_if_needed(result).await;
     }
+
     fn update_token(&mut self, resume_token: Vec<u8>) {
         self.request.resume_token = resume_token;
     }
+
     fn can_retry(&self) -> bool {
         !self.request.resume_token.is_empty()
     }
@@ -71,9 +76,11 @@ impl Reader for TableReader {
             .await;
         return session.invalidate_if_needed(result).await;
     }
+
     fn update_token(&mut self, resume_token: Vec<u8>) {
         self.request.resume_token = resume_token;
     }
+
     fn can_retry(&self) -> bool {
         !self.request.resume_token.is_empty()
     }
@@ -119,10 +126,10 @@ impl<'a> RowIterator<'a> {
                     })
                 }
                 _ => {
-                    return Err(Status::new(
-                        Code::Internal,
+                    return Err(Status::new(tonic::Status::new(
+                        tonic::Code::Internal,
                         "chunks kind mismatch: current_first must be StringKind",
-                    ))
+                    )))
                 }
             },
             Kind::ListValue(mut last) => match current_first.kind.unwrap() {
@@ -137,28 +144,28 @@ impl<'a> RowIterator<'a> {
                     })
                 }
                 _ => {
-                    return Err(Status::new(
-                        Code::Internal,
+                    return Err(Status::new(tonic::Status::new(
+                        tonic::Code::Internal,
                         "chunks kind mismatch: current_first must be ListValue",
-                    ))
+                    )))
                 }
             },
             _ => {
-                return Err(Status::new(
-                    Code::Internal,
+                return Err(Status::new(tonic::Status::new(
+                    tonic::Code::Internal,
                     "previous_last kind mismatch: only StringValue and ListValue can be chunked",
-                ))
+                )))
             }
         };
     }
 
-    async fn try_recv(&mut self) -> Result<bool, tonic::Status> {
+    async fn try_recv(&mut self) -> Result<bool, Status> {
         // try getting records from server
         let result_set_option = match self.streaming.message().await {
             Ok(s) => s,
             Err(e) => {
                 if !self.reader.can_retry() {
-                    return Err(e);
+                    return Err(e.into());
                 }
                 log::debug!("streaming error: {}. resume reading by resume_token", e);
                 let result = self.reader.read(&mut self.session).await?;
@@ -181,7 +188,12 @@ impl<'a> RowIterator<'a> {
             let metadata = result_set.metadata.unwrap();
             self.fields = match metadata.row_type {
                 Some(row_type) => Arc::new(row_type.fields),
-                None => return Err(Status::new(Code::Internal, "no field metadata found {}")),
+                None => {
+                    return Err(Status::new(tonic::Status::new(
+                        tonic::Code::Internal,
+                        "no field metadata found {}",
+                    )))
+                }
             };
             // create index for Row::column_by_name("column_name")
             let mut index = HashMap::new();
@@ -222,7 +234,7 @@ impl<'a> AsyncIterator for RowIterator<'a> {
 
     /// next returns the next result.
     /// Its second return value is None if there are no more results.
-    async fn next(&mut self) -> Result<Option<Row>, tonic::Status> {
+    async fn next(&mut self) -> Result<Option<Row>, Status> {
         if !self.rows.is_empty() {
             let column_length = self.fields.len();
             let target_record_is_chunked = self.rows.len() < column_length;

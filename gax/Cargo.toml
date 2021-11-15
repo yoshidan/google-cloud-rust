@@ -3,14 +3,14 @@ name = "google-cloud-gax"
 version = "0.1.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2018"
-repository = "https://github.com/yoshidan/google-cloud-rust/gax"
+repository = "https://github.com/yoshidan/google-cloud-rust"
 keywords = ["gcp","googleapis","google-cloud-rust"]
 license-file = "LICENCE"
 readme = "README.md"
-description = "Google API Extensions for Rust."
+description = "Google Cloud Platform gRPC retry library."
 
 [dependencies]
 log = "0.4"
-rand = "0.8.4"
-tonic = { version = "0.5.2", features = ["tls", "prost"] }
-tokio = { version = "1.7.0" }
+rand = "0.8"
+tokio = { version = "1.7" }
+google-cloud-googleapis = { path = "../googleapis" }

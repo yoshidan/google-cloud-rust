@@ -15,6 +15,7 @@ mod tests {
         Session, Transaction, TransactionOptions, TransactionSelector,
     };
     use google_cloud_googleapis::spanner::v1::{execute_batch_dml_request, KeySet, Mutation};
+    use google_cloud_googleapis::Code;
     use prost_types::{value::Kind, ListValue, Value};
     use serial_test::serial;
 
@@ -320,8 +321,8 @@ mod tests {
             Ok(res) => {
                 let status = res.into_inner().status.unwrap();
                 assert_eq!(
-                    tonic::Code::Ok,
-                    tonic::Code::from(status.code),
+                    Code::Ok,
+                    Code::from(tonic::Code::from(status.code)),
                     "gRPC success but error found : {:?}",
                     status
                 );
@@ -370,7 +371,7 @@ mod tests {
             ),
             Err(status) => {
                 assert_eq!(
-                    tonic::Code::InvalidArgument,
+                    Code::InvalidArgument,
                     status.code(),
                     "gRPC success but error found : {:?}",
                     status

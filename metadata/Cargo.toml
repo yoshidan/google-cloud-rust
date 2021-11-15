@@ -3,11 +3,15 @@ name = "google-cloud-metadata"
 version = "0.1.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2018"
+repository = "https://github.com/yoshidan/google-cloud-rust"
+keywords = ["gcp","googleapis","google-cloud-rust"]
+readme = "README.md"
+description = "Google Cloud Platform rust client."
 
 [dependencies]
-tokio = { version = "1.7.0", features = ["sync","net","parking_lot"] }
-hyper = { version = "0.14.9", features = ["full"] }
-thiserror = "1.0.24"
+tokio = { version = "1.7", features = ["sync","net","parking_lot"] }
+hyper = { version = "0.14", features = ["full"] }
+thiserror = "1.0"
 
 [dev-dependencies]
-tokio = { version = "1.7.0", features = ["test-util", "rt-multi-thread", "macros"]}
+tokio = { version = "1.7", features = ["test-util", "rt-multi-thread", "macros"]}
