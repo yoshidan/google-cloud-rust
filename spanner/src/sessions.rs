@@ -47,7 +47,7 @@ impl SessionHandle {
         return match arg {
             Ok(s) => Ok(s),
             Err(e) => {
-                if e.code() == Code::NotFound && e.message().contains("Session not found:"){
+                if e.code() == Code::NotFound && e.message().contains("Session not found:") {
                     self.invalidate().await;
                 }
                 Err(e)
