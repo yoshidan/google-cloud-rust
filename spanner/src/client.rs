@@ -1,7 +1,6 @@
 use std::future::Future;
 
 use google_cloud_googleapis::{Code, Status};
-use prost_types::Timestamp;
 
 use google_cloud_gax::invoke::invoke_reuse;
 use google_cloud_gax::invoke::AsGrpcStatus;
@@ -16,7 +15,7 @@ use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions};
 use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
-use crate::value::TimestampBound;
+use crate::value::{Timestamp, TimestampBound};
 
 #[derive(Clone)]
 pub struct PartitionedUpdateOption {
@@ -305,7 +304,7 @@ impl Client {
     pub async fn apply_at_least_once(
         &self,
         ms: Vec<Mutation>,
-    ) -> Result<Option<prost_types::Timestamp>, TxError> {
+    ) -> Result<Option<Timestamp>, TxError> {
         return self
             .apply_at_least_once_with_option(ms, CommitOptions::default())
             .await;
@@ -324,7 +323,7 @@ impl Client {
         &self,
         ms: Vec<Mutation>,
         options: CommitOptions,
-    ) -> Result<Option<prost_types::Timestamp>, TxError> {
+    ) -> Result<Option<Timestamp>, TxError> {
         let mut ro = new_default_tx_retry();
         let mut session = self.get_session().await?;
 
@@ -336,7 +335,7 @@ impl Client {
                     )),
                 });
                 match commit(session, ms.clone(), tx, options.clone()).await {
-                    Ok(s) => Ok(s.commit_timestamp),
+                    Ok(s) => Ok(s.commit_timestamp.into()),
                     Err(e) => Err((TxError::GRPC(e), session)),
                 }
             },
@@ -392,7 +391,7 @@ impl Client {
     pub async fn read_write_transaction<'a, T, E, F>(
         &self,
         f: impl Fn(ReadWriteTransaction) -> F,
-    ) -> Result<(Option<prost_types::Timestamp>, T), E>
+    ) -> Result<(Option<Timestamp>, T), E>
     where
         E: AsGrpcStatus + From<TxError> + From<Status>,
         F: Future<Output = (ReadWriteTransaction, Result<T, E>)>,
@@ -425,7 +424,7 @@ impl Client {
         &self,
         f: impl Fn(ReadWriteTransaction) -> F,
         options: ReadWriteTransactionOption,
-    ) -> Result<(Option<prost_types::Timestamp>, T), E>
+    ) -> Result<(Option<Timestamp>, T), E>
     where
         E: AsGrpcStatus + From<TxError> + From<Status>,
         F: Future<Output = (ReadWriteTransaction, Result<T, E>)>,
@@ -472,7 +471,7 @@ impl Client {
     pub async fn read_write_transaction_sync<T, E>(
         &self,
         f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,
-    ) -> Result<(Option<prost_types::Timestamp>, T), E>
+    ) -> Result<(Option<Timestamp>, T), E>
     where
         E: AsGrpcStatus + From<TxError> + From<Status>,
     {
@@ -504,7 +503,7 @@ impl Client {
         &self,
         f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,
         options: ReadWriteTransactionOption,
-    ) -> Result<(Option<prost_types::Timestamp>, T), E>
+    ) -> Result<(Option<Timestamp>, T), E>
     where
         E: AsGrpcStatus + From<TxError> + From<Status>,
     {

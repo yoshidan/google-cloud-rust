@@ -18,6 +18,7 @@ use google_cloud_googleapis::{Code, Status};
 use crate::sessions::ManagedSession;
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, Transaction};
+use crate::value::Timestamp;
 
 #[derive(Clone)]
 pub struct CommitOptions {
@@ -255,7 +256,7 @@ impl ReadWriteTransaction {
         &mut self,
         result: Result<T, E>,
         options: Option<CommitOptions>,
-    ) -> Result<(Option<prost_types::Timestamp>, T), (E, Option<ManagedSession>)>
+    ) -> Result<(Option<Timestamp>, T), (E, Option<ManagedSession>)>
     where
         E: AsGrpcStatus + From<Status>,
     {
@@ -266,7 +267,7 @@ impl ReadWriteTransaction {
 
         return match result {
             Ok(s) => match self.commit(opt).await {
-                Ok(c) => Ok((c.commit_timestamp, s)),
+                Ok(c) => Ok((c.commit_timestamp.into(), s)),
                 // Retry the transaction using the same session on ABORT error.
                 // Cloud Spanner will create the new transaction with the previous
                 // one's wound-wait priority.
