@@ -267,7 +267,7 @@ impl ReadWriteTransaction {
 
         return match result {
             Ok(s) => match self.commit(opt).await {
-                Ok(c) => Ok((match c {
+                Ok(c) => Ok((match c.commit_timestamp {
                     Some(ts) => Some(ts.into()),
                     None => None
                 }, s)),
