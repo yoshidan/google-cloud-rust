@@ -140,17 +140,20 @@ let mut client = match Client::new(DATABASE).await {
 Two Client methods, Apply and Single, work well for simple reads and writes. As a quick introduction, here we write a new row to the database and read it back:
 
 ```rust
-use google_cloud_spanner::{mutation,value,key};
+use google_cloud_spanner::mutation::insert;
+use google_cloud_spanner::key::Key;
+use google_cloud_spanner::value::CommitTimestamp;
 
-let mutation = mutation::insert("User",
+let mutation = insert("User",
     vec!["UserID", "Name", "UpdatedAt"], // columns 
-    vec![1.to_kind(), "name".to_kind(), value::CommitTimestamp::new().to_kind()]
+    vec![1.to_kind(), "name".to_kind(), CommitTimestamp::new().to_kind()]
 );
 let commit_timestamp = client.apply(vec![mutation]).await?;
 
-let row = client.single().await?.read("User",
+let row = client.single().await?.read(
+    "User",
     vec!["UserID", "Name", "UpdatedAt"],
-    key::Key::one(1), 
+    Key::one(1), 
 ).await?;
 ```
 
@@ -161,9 +164,9 @@ All the methods used above are discussed in more detail below.
 Every Cloud Spanner row has a unique key, composed of one or more columns. Construct keys with a literal of type Key:
 
 ```rust
-use google_cloud_spanner::{key};
+use google_cloud_spanner::key::Key;
 
-let key1 = key::Key::one("key");
+let key1 = Key::one("key");
 ```
 
 ### KeyRanges
@@ -218,7 +221,15 @@ let row = client.single().await?.read_row("Table", vec!["col1", "col2"], Key::on
 Read multiple rows with the Read method. It takes a table name, KeySet, and list of columns:
 
 ```rust
-let iter = client.single().await?.read("Table", vec!["col1", "col2"], vec![Key::one(1), Key::one(2)]).await?;
+let iter1 = client.single().await?.read("Table", vec!["col1", "col2"], vec![
+    Key::one(1), 
+    Key::one(2)
+]).await?;
+
+let iter2 = client.single().await?.read("Table", vec!["col1", "col2"], vec![
+    Key::new(vec!["composite1-1".to_kind(),"composite1-2".to_kind()]),
+    Key::new(vec!["composite2-1".to_kind(),"composite2-1".to_kind()])
+]).await?;
 ```
 
 RowIterator also follows the standard pattern for the Google Cloud Client Libraries:
@@ -266,25 +277,25 @@ You can extract by column position or name:
 let value           = row.column::<String>(0)?;
 let nullable_value  = row.column::<Option<String>>(1)?;
 let array_value     = row.column_by_name::<Vec<i64>>("array")?;
-let struct_data     = row.column_by_name::<Vec<TestStruct>>("struct_data")?;
+let struct_data     = row.column_by_name::<Vec<User>>("struct_data")?;
 ```
 
 Or you can define a Rust struct that corresponds to your columns, and extract into that:
 * `TryFromStruct` trait is required
 
 ```rust
-struct TestStruct {
-    pub struct_field: String,
-    pub struct_field_time: NaiveDateTime,
-    pub commit_timestamp: CommitTimestamp,
+pub struct User {
+    pub user_id: String,
+    pub premium: bool,
+    pub updated_at: DateTime<Utc>
 }
 
-impl TryFromStruct for TestStruct {
-    fn try_from(s: RowStruct<'_>) -> Result<Self> {
-        Ok(TestStruct {
-            struct_field: s.column_by_name("struct_field")?,
-            struct_field_time: s.column_by_name("struct_field_time")?,
-            commit_timestamp: s.column_by_name("commit_timestamp")?,
+impl TryFromStruct for User {
+    fn try_from(s: Struct<'_>) -> Result<Self, RowError> {
+        Ok(User {
+            user_id: s.column_by_name("UserId")?,
+            premium: s.column_by_name("Premium")?,
+            updated_at: s.column_by_name("UpdatedAt")?,
         })
     }
 }
@@ -295,11 +306,35 @@ impl TryFromStruct for TestStruct {
 To perform more than one read in a transaction, use ReadOnlyTransaction:
 
 ```rust
-let txn = client.read_only_transaction().await?;
-let iter1 = txn.query(ctx, stmt1).await;
+let tx = client.read_only_transaction().await?;
+
+let mut stmt = Statement::new("SELECT * , \
+            ARRAY (SELECT AS STRUCT * FROM UserItem WHERE UserId = @Param1 ) AS UserItem, \
+            ARRAY (SELECT AS STRUCT * FROM UserCharacter WHERE UserId = @Param1 ) AS UserCharacter  \
+            FROM User \
+            WHERE UserId = @Param1");
+
+stmt.add_param("Param1", user_id);
+let mut reader = tx.query(stmt).await?;
+loop {
+    let row = match reader.next().await.map_err(|e| Error::GRPC(e))?{
+        Some(row) => row,
+        None => println!("end of record")
+    };
+    let user_id= row.column_by_name::<String>("UserId")?
+    let user_items= row.column_by_name::<Vec<model::UserItem>>("UserItem")?
+    let user_characters = row.column_by_name::<Vec<model::UserCharacter>>("UserCharacter")?
+    data.push(user_id);
+}
+
+let reader2 = tx.read("User", vec!["UserID"], vec![
+    Key::new(vec!["composite1-1".to_kind(),"composite1-2".to_kind()]),
+    Key::new(vec!["composite2-1".to_kind(),"composite2-1".to_kind()])
+]).await?;
+
 // ...
-let iter2 = txn.query(ctx, stmt2).await;
-// ...
+
+};
 ```
 
 * The used session is returned to the drop timing session pool, so unlike Go, there is no need to call txn Close.
@@ -308,12 +343,15 @@ let iter2 = txn.query(ctx, stmt2).await;
 
 Cloud Spanner read-only transactions conceptually perform all their reads at a single moment in time, called the transaction's read timestamp. Once a read has started, you can call ReadOnlyTransaction's Timestamp method to obtain the read timestamp.
 
-By default, a transaction will pick the most recent time (a time where all previously committed transactions are visible) for its reads. This provides the freshest data, but may involve some delay. You can often get a quicker response if you are willing to tolerate "stale" data. You can control the read timestamp selected by a transaction by calling the WithTimestampBound method on the transaction before using it. For example, to perform a query on data that is at most one minute stale, use
+By default, a transaction will pick the most recent time (a time where all previously committed transactions are visible) for its reads. This provides the freshest data, but may involve some delay. You can often get a quicker response if you are willing to tolerate "stale" data.   
+You can control the read timestamp selected by a transaction. For example, to perform a query on data that is at most one minute stale, use
+
 ```rust 
 use google_cloud_spanner::value::TimestampBound;
 
-let tx = client.single(TimestampBound::max_staleness(Duration::from_secs(60)).await;
+let tx = client.single(TimestampBound::max_staleness(Duration::from_secs(60)).await?;
 ```
+
 See the documentation of TimestampBound for more details.
 
 ### Mutations
@@ -337,35 +375,47 @@ And the third accepts a struct value, and determines the columns from the struct
 * `ToStruct` trait is required
 
 ```rust
-struct TestStruct {
-    pub struct_field: String,
-    pub struct_field_time: NaiveDateTime,
+pub struct User {
+    pub user_id: String,
+    pub premium: bool,
+    pub updated_at: DateTime<Utc>
 }
 
-impl ToStruct for TestStruct {
+impl ToStruct for User {
     fn to_kinds(&self) -> Kinds {
         vec![
-            ("struct_field", self.struct_field.to_kind()),
-            ("struct_field_time", self.struct_field_time.to_kind()),
-            ("commit_timestamp", CommitTimestamp::new().to_kind()),
+            ("UserId", self.user_id.to_kind()),
+            ("Premium", self.premium.to_kind()),
+            ("UpdatedAt", CommitTimestamp::new().to_kind())
         ]
     }
 
     fn get_types() -> Types {
         vec![
-            ("struct_field", String::get_type()),
-            ("struct_field_time", NaiveDateTime::get_type()),
-            ("commit_timestamp", CommitTimestamp::get_type()),
+            ("UserId", String::get_type()),
+            ("Premium", bool::get_type()),
+            ("UpdatedAt", CommitTimestamp::get_type())
         ]
     }
 }
+```
 
+```rust
+use uuid::Uuid;
 use google_cloud_spanner::mutation::insert_struct;
 
-let ms = insert_struct("Guild", TestStruct {
-    struct_field: "abc".to_string(),
-    struct_field_time: Utc::now().naive_utc(),
-});
+let new_user = model::User {
+    user_id: Uuid::new_v4().to_string(),
+    premium: true,
+    updated_at: Utc::now(),
+};
+let new_user2 = model::User {
+    user_id: Uuid::new_v4().to_string(),
+    premium: false,
+    updated_at: Utc::now(),
+};
+let m1 = insert_or_update_struct("User", new_user);
+let m2 = insert_or_update_struct("User", new_user2);
 ```
 
 ### Writes
@@ -384,6 +434,10 @@ let commit_timestamp = client.apply(vec![m1,m2]).await?;
 If you need to read before writing in a single transaction, use a ReadWriteTransaction. ReadWriteTransactions may be aborted automatically by the backend and need to be retried. You pass in a function to ReadWriteTransaction, and the client will handle the retries automatically. Use the transaction's BufferWrite method to buffer mutations, which will all be executed at the end of the transaction:
 
 ```rust
+use google_cloud_spanner::client::TxError;
+use google_cloud_spanner::mutation;
+use google_cloud_spanner::key::Key;
+
  let (commit_timestamp, row) = client.read_write_transaction(
     |mut tx| async move {
         let result = async {
@@ -409,3 +463,9 @@ If you need to read before writing in a single transaction, use a ReadWriteTrans
 Spanner supports DML statements like INSERT, UPDATE and DELETE. Use ReadWriteTransaction.Update to run DML statements. It returns the number of rows affected. (You can call use ReadWriteTransaction.Query with a DML statement. The first call to Next on the resulting RowIterator will return iterator.Done, and the RowCount field of the iterator will hold the number of affected rows.)
 
 For large databases, it may be more efficient to partition the DML statement. Use client.PartitionedUpdate to run a DML statement in this way. Not all DML statements can be partitioned.
+
+```rust
+let client = Client::new(DATABASE).await.context("error")?;
+let stmt = Statement::new("UPDATE User SET Value = 'aaa' WHERE Value IS NOT NULL");
+let result = client.partitioned_update(stmt).await?;
+```
