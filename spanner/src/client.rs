@@ -336,7 +336,7 @@ impl Client {
                 });
                 match commit(session, ms.clone(), tx, options.clone()).await {
                     Ok(s) => match s.commit_timestamp {
-                        Some(s) => Some(s.into),
+                        Some(s) => Some(s.into()),
                         None => None,
                     },
                     Err(e) => Err((TxError::GRPC(e), session)),
