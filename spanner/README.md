@@ -366,7 +366,7 @@ use google_cloud_spanner::value::CommitTimestamp;
 
 let mutation = insert("User",
     vec!["UserID", "Name", "UpdatedAt"], // columns 
-    vec![1.to_kind(), "name".to_kind(), CommitTimestamp::new().to_kind()]
+    vec![1.to_kind(), "name".to_kind(), CommitTimestamp::new().to_kind()] // values
 );
 ```
 
