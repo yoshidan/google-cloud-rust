@@ -38,7 +38,7 @@ async fn main() {
 }
 ```
 
-Using With warp.
+Use with warp.
 
 ```rust
 use google_cloud_spanner::client::Client;
@@ -76,8 +76,9 @@ async fn main() {
 
     tokio::signal::ctrl_c().await;
     let _ = tx.send(());
-   
-    // Spanner sessions will automatically be closed by Client#drop.
+    
+    client.close().await;
+    log::info!("All the spanner sessions are deleted.");
 }
 ```
 
