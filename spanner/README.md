@@ -64,7 +64,20 @@ async fn main() {
 
     let routes = warp::get().and(handler1.or(handler2));
 
-    warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let (_, server) = warp::serve(routes)
+        .bind_with_graceful_shutdown(([127, 0, 0, 1], 3031), async {
+            log::info!("Listening on http://127.0.0.1:3031");
+            rx.await.ok();
+            log::info!("Shutdown server");
+        });;
+
+    tokio::spawn(server);
+
+    tokio::signal::ctrl_c().await;
+    let _ = tx.send(());
+   
+    // Spanner sessions will automatically be closed by Client#drop.
 }
 ```
 
