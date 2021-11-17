@@ -130,6 +130,13 @@ impl AsGrpcStatus for TxError {
     }
 }
 
+impl Drop for Client {
+    fn drop(&mut self) {
+        self.close();
+        log::info!("close all sessions on drop");
+    }
+}
+
 impl Client {
     /// new creates a client to a database. A valid database name has
     /// the form projects/PROJECT_ID/instances/INSTANCE_ID/databases/DATABASE_ID.
