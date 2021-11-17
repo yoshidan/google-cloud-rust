@@ -268,7 +268,7 @@ impl ReadWriteTransaction {
         return match result {
             Ok(s) => match self.commit(opt).await {
                 Ok(c) => Ok((match c {
-                    Some(c) => Some(c.into()),
+                    Some(ts) => Some(ts.into()),
                     None => None
                 }, s)),
                 // Retry the transaction using the same session on ABORT error.
