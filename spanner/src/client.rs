@@ -166,7 +166,7 @@ impl Client {
     }
 
     /// Close closes the client.
-    pub async fn close(&mut self) {
+    pub async fn close(&self) {
         self.sessions.close().await;
     }
 

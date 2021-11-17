@@ -33,19 +33,38 @@ async fn main() {
         Err(e) => { /* handle error */ }
     };
     
-    //Reading transactions.
-    client.single(); 
-    client.read_only_transaction(); 
-    client.batch_read_only_transaction();
+    //call client api
+    client.xxx
+}
+```
 
-    //Reading and writing transactions.
-    client.apply();
-    client.read_write_transaction();
-    client.apply_at_least_once();
-    client.partitioned_update();
+Using With warp.
+
+```rust
+use google_cloud_spanner::client::Client;
+
+fn with_db(client: Arc<Client>) -> impl Filter<Extract = (Arc<Client>,), Error = Infallible> + Clone {
+    warp::any().map(move || client.clone())
+}
+
+#[tokio::main(flavor = "multi_thread")]
+async fn main() {
+
+    const DATABASE: &str = "projects/your-project/instances/your-instance/databases/your-database";
     
-    //close  
-    client.close();
+    let client = Arc::new(Client::new(DATABASE).await.unwrap());
+    
+    let handler1 = warp::path!("path1" / String)
+        .and(with_db(client.clone()))
+        .and_then(move |user_id, cl| path1_handler(user_id, cl));
+    
+    let handler2 = warp::path!("path2")
+        .and(with_db(client.clone()))
+        .and_then(move |cl| path2_handler(cl));
+
+    let routes = warp::get().and(handler1.or(handler2));
+
+    warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 }
 ```
 
