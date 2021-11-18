@@ -396,7 +396,7 @@ impl Client {
         f: impl Fn(ReadWriteTransaction) -> F,
     ) -> Result<(Option<Timestamp>, T), E>
     where
-        E: AsGrpcStatus + From<TxError> + From<Status>,
+        E: AsGrpcStatus + From<SessionError> + From<Status>,
         F: Future<Output = (ReadWriteTransaction, Result<T, E>)>,
     {
         return self
@@ -429,7 +429,7 @@ impl Client {
         options: ReadWriteTransactionOption,
     ) -> Result<(Option<Timestamp>, T), E>
     where
-        E: AsGrpcStatus + From<TxError> + From<Status>,
+        E: AsGrpcStatus + From<SessionError> + From<Status>,
         F: Future<Output = (ReadWriteTransaction, Result<T, E>)>,
     {
         let (bo, co) = Client::split_read_write_transaction_option(options);
@@ -476,7 +476,7 @@ impl Client {
         f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,
     ) -> Result<(Option<Timestamp>, T), E>
     where
-        E: AsGrpcStatus + From<TxError> + From<Status>,
+        E: AsGrpcStatus + From<SessionError> + From<Status>,
     {
         return self
             .read_write_transaction_sync_with_option(f, ReadWriteTransactionOption::default())
@@ -508,7 +508,7 @@ impl Client {
         options: ReadWriteTransactionOption,
     ) -> Result<(Option<Timestamp>, T), E>
     where
-        E: AsGrpcStatus + From<TxError> + From<Status>,
+        E: AsGrpcStatus + From<SessionError> + From<Status>,
     {
         let (bo, co) = Client::split_read_write_transaction_option(options);
 
@@ -541,15 +541,15 @@ impl Client {
         bo: CallOptions,
     ) -> Result<ReadWriteTransaction, (E, Option<ManagedSession>)>
     where
-        E: AsGrpcStatus + From<TxError> + From<Status>,
+        E: AsGrpcStatus + From<SessionError> + From<Status>,
     {
         return ReadWriteTransaction::begin(session.unwrap(), bo)
             .await
             .map_err(|e| (E::from(e.status), Some(e.session)));
     }
 
-    async fn get_session(&self) -> Result<ManagedSession, TxError> {
-        return self.sessions.get().await.map_err(TxError::SessionError);
+    async fn get_session(&self) -> Result<ManagedSession, SessionError> {
+        return self.sessions.get().await;
     }
 
     fn split_read_write_transaction_option(
