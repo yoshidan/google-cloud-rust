@@ -2,8 +2,7 @@ use std::future::Future;
 
 use google_cloud_googleapis::{Code, Status};
 
-use google_cloud_gax::invoke::invoke_reuse;
-use google_cloud_gax::invoke::AsGrpcStatus;
+use google_cloud_gax::invoke::{invoke_reuse, TryAs};
 use google_cloud_googleapis::spanner::v1::{
     commit_request, transaction_options, Mutation, TransactionOptions,
 };
@@ -120,11 +119,11 @@ pub enum TxError {
     SessionError(#[from] SessionError),
 }
 
-impl AsGrpcStatus for TxError {
-    fn as_status(&self) -> Option<&Status> {
+impl TryAs<Status> for TxError {
+    fn try_as(&self) -> Result<&Status, ()> {
         match self {
-            TxError::GRPC(s) => Some(s),
-            _ => None,
+            TxError::GRPC(s) => Ok(s),
+            _ => Err(()),
         }
     }
 }
@@ -396,7 +395,7 @@ impl Client {
         f: impl Fn(ReadWriteTransaction) -> F,
     ) -> Result<(Option<Timestamp>, T), E>
     where
-        E: AsGrpcStatus + From<SessionError> + From<Status>,
+        E: TryAs<Status> + From<SessionError> + From<Status>,
         F: Future<Output = (ReadWriteTransaction, Result<T, E>)>,
     {
         return self
@@ -429,7 +428,7 @@ impl Client {
         options: ReadWriteTransactionOption,
     ) -> Result<(Option<Timestamp>, T), E>
     where
-        E: AsGrpcStatus + From<SessionError> + From<Status>,
+        E: TryAs<Status> + From<SessionError> + From<Status>,
         F: Future<Output = (ReadWriteTransaction, Result<T, E>)>,
     {
         let (bo, co) = Client::split_read_write_transaction_option(options);
@@ -476,7 +475,7 @@ impl Client {
         f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,
     ) -> Result<(Option<Timestamp>, T), E>
     where
-        E: AsGrpcStatus + From<SessionError> + From<Status>,
+        E: TryAs<Status> + From<SessionError> + From<Status>,
     {
         return self
             .read_write_transaction_sync_with_option(f, ReadWriteTransactionOption::default())
@@ -508,7 +507,7 @@ impl Client {
         options: ReadWriteTransactionOption,
     ) -> Result<(Option<Timestamp>, T), E>
     where
-        E: AsGrpcStatus + From<SessionError> + From<Status>,
+        E: TryAs<Status> + From<SessionError> + From<Status>,
     {
         let (bo, co) = Client::split_read_write_transaction_option(options);
 
@@ -541,7 +540,7 @@ impl Client {
         bo: CallOptions,
     ) -> Result<ReadWriteTransaction, (E, Option<ManagedSession>)>
     where
-        E: AsGrpcStatus + From<SessionError> + From<Status>,
+        E: TryAs<Status> + From<SessionError> + From<Status>,
     {
         return ReadWriteTransaction::begin(session.unwrap(), bo)
             .await

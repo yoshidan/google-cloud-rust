@@ -5,7 +5,6 @@ use std::sync::atomic::{AtomicI64, Ordering};
 use prost_types::Struct;
 
 use google_cloud_gax::call_option::BackoffRetrySettings;
-use google_cloud_gax::invoke::AsGrpcStatus;
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::TransactionId;
 use google_cloud_googleapis::spanner::v1::{
     commit_request, execute_batch_dml_request, result_set_stats, transaction_options,
@@ -19,6 +18,7 @@ use crate::sessions::ManagedSession;
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, Transaction};
 use crate::value::Timestamp;
+use google_cloud_gax::invoke::TryAs;
 
 #[derive(Clone)]
 pub struct CommitOptions {
@@ -258,7 +258,7 @@ impl ReadWriteTransaction {
         options: Option<CommitOptions>,
     ) -> Result<(Option<Timestamp>, T), (E, Option<ManagedSession>)>
     where
-        E: AsGrpcStatus + From<Status>,
+        E: TryAs<Status> + From<Status>,
     {
         let opt = match options {
             Some(o) => o,
@@ -287,9 +287,9 @@ impl ReadWriteTransaction {
             // up here. Context errors (deadline exceeded / canceled) during
             // commits are also not rolled back.
             Err(err) => {
-                let status = match err.as_status() {
-                    Some(status) => status,
-                    None => {
+                let status = match err.try_as() {
+                    Ok(status) => status,
+                    _ => {
                         self.rollback(opt.call_options.call_setting).await;
                         return Err((err, self.take_session()));
                     }
