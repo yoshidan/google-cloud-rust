@@ -62,12 +62,6 @@ impl Default for ReadWriteTransactionOption {
     }
 }
 
-/// Client is a client for reading and writing data to a Cloud Spanner database.
-/// A client is safe to use concurrently, except for its Close method.
-pub struct Client {
-    sessions: Arc<SessionManager>,
-}
-
 pub struct ChannelConfig {
     /// num_channels is the number of gRPC channels.
     pub num_channels: usize,
@@ -100,12 +94,12 @@ impl Default for ClientConfig {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum InitializeError {
+pub enum Error {
     #[error(transparent)]
-    GRPC(#[from] Status),
+    FailedToCreateSessionPool(#[from] Status),
 
     #[error(transparent)]
-    GRPCInitialize(#[from] crate::apiv1::conn_pool::Error),
+    FailedToCreateChannelPool(#[from] crate::apiv1::conn_pool::Error),
 
     #[error("invalid config: {0}")]
     InvalidConfig(String),
@@ -117,7 +111,7 @@ pub enum TxError {
     GRPC(#[from] Status),
 
     #[error(transparent)]
-    SessionError(#[from] SessionError),
+    InvalidSession(#[from] SessionError),
 }
 
 impl TryAs<Status> for TxError {
@@ -129,10 +123,17 @@ impl TryAs<Status> for TxError {
     }
 }
 
+/// Client is a client for reading and writing data to a Cloud Spanner database.
+/// A client is safe to use concurrently, except for its Close method.
+#[derive(Clone)]
+pub struct Client {
+    sessions: Arc<SessionManager>,
+}
+
 impl Client {
     /// new creates a client to a database. A valid database name has
     /// the form projects/PROJECT_ID/instances/INSTANCE_ID/databases/DATABASE_ID.
-    pub async fn new(database: impl Into<String>) -> Result<Self, InitializeError> {
+    pub async fn new(database: impl Into<String>) -> Result<Self, Error> {
         return Client::new_with_config(database, Default::default()).await;
     }
 
@@ -141,9 +142,9 @@ impl Client {
     pub async fn new_with_config(
         database: impl Into<String>,
         config: ClientConfig,
-    ) -> Result<Self, InitializeError> {
+    ) -> Result<Self, Error> {
         if config.session_config.max_opened > config.channel_config.num_channels * 100 {
-            return Err(InitializeError::InvalidConfig(format!(
+            return Err(Error::InvalidConfig(format!(
                 "max session size is {} because max session size is 100 per gRPC connection",
                 config.channel_config.num_channels * 100
             )));

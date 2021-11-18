@@ -280,7 +280,7 @@ pub enum SessionError {
     #[error("failed to create session")]
     FailedToCreateSession,
     #[error(transparent)]
-    TonicError(#[from] Status),
+    GRPC(#[from] Status),
 }
 
 impl SessionManager {
