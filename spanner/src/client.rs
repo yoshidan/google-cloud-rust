@@ -15,6 +15,7 @@ use crate::transaction::{CallOptions, QueryOptions};
 use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
 use crate::value::{Timestamp, TimestampBound};
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct PartitionedUpdateOption {
@@ -64,7 +65,7 @@ impl Default for ReadWriteTransactionOption {
 /// Client is a client for reading and writing data to a Cloud Spanner database.
 /// A client is safe to use concurrently, except for its Close method.
 pub struct Client {
-    sessions: SessionManager,
+    sessions: Arc<SessionManager>,
 }
 
 pub struct ChannelConfig {
@@ -159,7 +160,7 @@ impl Client {
         session_manager.schedule_refresh();
 
         Ok(Client {
-            sessions: session_manager,
+            sessions: Arc::new(session_manager),
         })
     }
 
