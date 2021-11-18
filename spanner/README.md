@@ -43,10 +43,6 @@ Use with warp.
 ```rust
 use google_cloud_spanner::client::Client;
 
-fn with_client(client: Client) -> impl Filter<Extract = (Client,), Error = Infallible> + Clone {
-    warp::any().map(move || client.clone())
-}
-
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
 
@@ -63,16 +59,11 @@ async fn main() {
     let client = Client::new(database).await.unwrap();
 
     // Routes
-    let read_inventory_handler= warp::path!("ReadInventory" / String)
+    let h1 = warp::path!("ReadInventory" / String)
         .and( with_client(client.clone()))
         .and_then(move |user_id, cl| handler::read_inventory_handler(cl, user_id));
-    let create_user_handler = warp::path!("CreateUser")
-        .and( with_client(client.clone()))
-        .and_then(move |cl| handler::create_user_handler(cl));
-    let update_inventory_handler = warp::path!("UpdateInventory" / String)
-        .and( with_client(client.clone()))
-        .and_then(move |user_id, cl| handler::update_inventory_handler(cl, user_id));
-    let routes = warp::get().and(read_inventory_handler.or(create_user_handler).or(update_inventory_handler));
+    
+    let routes = warp::get().and(h1);
 
     // Launch server.
     let (tx, rx) = tokio::sync::oneshot::channel();
@@ -92,7 +83,11 @@ async fn main() {
     };
     let _ = tx.send(());
     client.close().await;
-    log::info!("All the spanner sessions are deleted.");
+    log::info!("All the spanner sessions were deleted.");
+}
+
+fn with_client(client: Client) -> impl Filter<Extract = (Client,), Error = Infallible> + Clone {
+    warp::any().map(move || client.clone())
 }
 ```
 
