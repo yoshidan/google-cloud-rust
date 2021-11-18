@@ -452,25 +452,64 @@ use google_cloud_spanner::client::TxError;
 use google_cloud_spanner::mutation;
 use google_cloud_spanner::key::Key;
 
- let (commit_timestamp, row) = client.read_write_transaction(
-    |mut tx| async move {
-        let result = async {
+let tx_result: Result<(Option<Timestamp>,()), Error> = client.read_write_transaction(|mut tx| async {
+    // The transaction function will be called again if the error code
+    // of this error is Aborted. The backend may automatically abort
+    // any read/write transaction if it detects a deadlock or other problems.
+    let result: Result<(), Error> = async {
+        let mut reader = tx.read("UserItem", vec!["UserId", "ItemId", "Quantity"], Key::one(user_id.to_string())).await?;
+        let ms  = loop {
+            let mut ms = vec![];
+            let row = reader.next().await?;
+            match row {
+                Some(row) => {
+                    let item_id = row.column_by_name::<i64>("ItemId")?;
+                    let quantity = row.column_by_name::<i64>("Quantity")?;
+                    ms.push(update("UserItem", vec!["Quantity"], vec![
+                        user_id.to_string().to_kind(),
+                        item_id.to_kind(),
+                        (quantity + 1).to_kind(),
+                    ]));
+                },
+                None => break ms
+            }
+        };
 
-            // The buffered mutation will be committed.  If the commit
-            // fails with an Aborted error, this function will be called again.
-            let m1 = mutation::insert("User", vec!["UserId","UpdatedAt"], vec![1.to_kind(), CommitTimestamp::new().to_kind()])
-            let m2 = mutation::insert("User", vec!["UserId","UpdatedAt"], vec![2.to_kind(), CommitTimestamp::new().to_kind()])
-            tx.buffer_write(vec![m1,m2]);
+        // The buffered mutation will be committed.  If the commit
+        // fails with an Aborted error, this function will be called again
+        tx.buffer_write(ms);
+        Ok(())
+    }.await;
 
-            // The transaction function will be called again if the error code
-            // of this error is Aborted. The backend may automatically abort
-            // any read/write transaction if it detects a deadlock or other problems.
-            tx.read_row("User", vec!["UserId"], Key::one(100)).await
-        }.await.map_err(|x| TxError::GRPC(x));
-        //return owner ship of read_write_transaction
-        (tx, result)
-    },
-).await?;
+    //return owner ship of read_write_transaction
+    (tx, result)
+}).await;
+```
+
+The Error of the `read_write_transaction` must implements 
+* From<google_cloud_googleapis::Status>
+* From<google_cloud_spanner::session::SessionError>
+* google_cloud_gax::TryAs<google_cloud_googleapis::Status>
+
+```rust
+#[derive(thiserror::Error, Debug)]
+enum Error {
+    #[error(transparent)]
+    ParseError(#[from] google_cloud_spanner::row::Error),
+    #[error(transparent)]
+    GRPC(#[from] google_cloud_googleapis::Status),
+    #[error(transparent)]
+    SessionError(#[from] google_cloud_spanner::session::SessionError),
+}
+
+impl TryAs<Status> for Error {
+    fn try_as(&self) -> Result<&Status,()> {
+        match self {
+            Error::GRPC(s) => Ok(s),
+            _ => Err(())
+        }
+    }
+}
 ```
 
 ### <a name="DMLAndPartitionedDML"></a>DML and Partitioned DML
