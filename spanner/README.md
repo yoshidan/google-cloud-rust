@@ -43,27 +43,38 @@ Use with warp.
 ```rust
 use google_cloud_spanner::client::Client;
 
-fn with_db(client: Arc<Client>) -> impl Filter<Extract = (Arc<Client>,), Error = Infallible> + Clone {
+fn with_client(client: Client) -> impl Filter<Extract = (Client,), Error = Infallible> + Clone {
     warp::any().map(move || client.clone())
 }
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
 
-    const DATABASE: &str = "projects/your-project/instances/your-instance/databases/your-database";
-    
-    let client = Arc::new(Client::new(DATABASE).await.unwrap());
-    
-    let handler1 = warp::path!("path1" / String)
-        .and(with_db(client.clone()))
-        .and_then(move |user_id, cl| path1_handler(user_id, cl));
-    
-    let handler2 = warp::path!("path2")
-        .and(with_db(client.clone()))
-        .and_then(move |cl| path2_handler(cl));
+    let database = std::env::var("SPANNER_DSN").unwrap();
 
-    let routes = warp::get().and(handler1.or(handler2));
+    env_logger::init();
+    log::info!("Start server.");
 
+    let mut sigint = signal(SignalKind::interrupt()).unwrap();
+    let mut sigterm= signal(SignalKind::terminate()).unwrap();
+
+    // Create client.
+    // Don't have to use Arc::new for Client
+    let client = Client::new(database).await.unwrap();
+
+    // Routes
+    let read_inventory_handler= warp::path!("ReadInventory" / String)
+        .and( with_client(client.clone()))
+        .and_then(move |user_id, cl| handler::read_inventory_handler(cl, user_id));
+    let create_user_handler = warp::path!("CreateUser")
+        .and( with_client(client.clone()))
+        .and_then(move |cl| handler::create_user_handler(cl));
+    let update_inventory_handler = warp::path!("UpdateInventory" / String)
+        .and( with_client(client.clone()))
+        .and_then(move |user_id, cl| handler::update_inventory_handler(cl, user_id));
+    let routes = warp::get().and(read_inventory_handler.or(create_user_handler).or(update_inventory_handler));
+
+    // Launch server.
     let (tx, rx) = tokio::sync::oneshot::channel();
     let (_, server) = warp::serve(routes)
         .bind_with_graceful_shutdown(([127, 0, 0, 1], 3031), async {
@@ -74,9 +85,12 @@ async fn main() {
 
     tokio::spawn(server);
 
-    tokio::signal::ctrl_c().await;
+    // Wait for signal
+    tokio::select! {
+        _ = sigint.recv() => println!("SIGINT"),
+        _ = sigterm.recv() => println!("SIGTERM"),
+    };
     let _ = tx.send(());
-    
     client.close().await;
     log::info!("All the spanner sessions are deleted.");
 }
