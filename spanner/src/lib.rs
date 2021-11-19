@@ -5,7 +5,7 @@ pub mod mutation;
 pub mod reader;
 pub mod retry;
 pub mod row;
-pub mod sessions;
+pub mod session;
 pub mod statement;
 pub mod transaction;
 pub mod transaction_ro;

@@ -4,7 +4,7 @@ mod common;
 use common::*;
 use google_cloud_spanner::apiv1::conn_pool::ConnectionManager;
 
-use google_cloud_spanner::sessions::{SessionConfig, SessionError, SessionManager};
+use google_cloud_spanner::session::{SessionConfig, SessionError, SessionManager};
 
 #[tokio::test]
 #[serial]

@@ -14,7 +14,7 @@ use google_cloud_googleapis::spanner::v1::{
 use crate::key::{Key, KeySet};
 use crate::reader::{AsyncIterator, RowIterator, StatementReader, TableReader};
 use crate::row::Row;
-use crate::sessions::ManagedSession;
+use crate::session::ManagedSession;
 use crate::statement::Statement;
 
 #[derive(Clone)]

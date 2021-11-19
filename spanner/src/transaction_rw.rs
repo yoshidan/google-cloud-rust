@@ -14,7 +14,7 @@ use google_cloud_googleapis::spanner::v1::{
 };
 use google_cloud_googleapis::{Code, Status};
 
-use crate::sessions::ManagedSession;
+use crate::session::ManagedSession;
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, Transaction};
 use crate::value::Timestamp;

@@ -36,10 +36,7 @@ where
 
         match retryer.retry(status) {
             Some(duration) => tokio::time::sleep(duration).await,
-            None => {
-                log::info!("the end of retry {:?}", status);
-                return Err(err)
-            },
+            None => return Err(err),
         };
     }
 }
@@ -72,11 +69,7 @@ where
         };
         match retryer.retry(status) {
             Some(duration) => tokio::time::sleep(duration).await,
-            None => {
-                log::info!("the end of retry {:?}", status);
-                return Err(err)
-            },
-
+            None => return Err(err),
         };
     }
 }

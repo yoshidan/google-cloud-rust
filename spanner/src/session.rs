@@ -183,7 +183,7 @@ impl SessionPool {
 
     fn recycle(&self, session: SessionHandle) {
         if session.valid {
-            log::debug!("recycled name={}", session.session.name.to_string());
+            log::trace!("recycled name={}", session.session.name.to_string());
             match { self.waiters.lock().pop_front() } {
                 Some(c) => {
                     if let Err(session) = c.send(session) {
@@ -196,9 +196,7 @@ impl SessionPool {
             self.inner.lock().release(session);
 
             // request session creation
-            if let Err(e) = self.creation_producer.send(true) {
-                log::trace!("{}", e);
-            }
+            let _ = self.creation_producer.send(true);
         }
     }
 }
@@ -361,9 +359,7 @@ impl SessionManager {
         }
 
         // Request for creating batch.
-        if let Err(e) = self.creation_producer.send(true) {
-            log::trace!("{}", e);
-        }
+        let _ = self.creation_producer.send(true);
 
         // Wait for the session creation.
         return match timeout(self.config.session_get_timeout, receiver).await {
@@ -400,7 +396,6 @@ impl SessionManager {
                     creation_count = config.inc_step;
                 }
                 if creation_count == 0 {
-                    log::debug!("maximum session opened");
                     continue;
                 }
                 allocation_request_size += creation_count;
@@ -415,7 +410,7 @@ impl SessionManager {
                     }
                     Err(e) => {
                         allocation_request_size -= creation_count;
-                        log::error!("failed to batch creation request {:?}", e)
+                        log::error!("failed to create new sessions {:?}", e)
                     }
                 };
             }
@@ -504,8 +499,7 @@ async fn health_check(
                 s.last_pong_at = now;
                 sessions.recycle(s);
             }
-            Err(err) => {
-                log::error!("ping session err {:?}", err);
+            Err(_) => {
                 delete_session(&mut s).await;
                 s.valid = false;
                 sessions.recycle(s);
@@ -560,7 +554,6 @@ async fn shrink_idle_sessions(
 
 async fn delete_session(session: &mut SessionHandle) {
     let session_name = &session.session.name;
-    log::debug!("delete session {}", session_name);
     let request = DeleteSessionRequest {
         name: session_name.to_string(),
     };
@@ -581,11 +574,14 @@ async fn batch_create_session(
         session_count: creation_count as i32,
     };
 
+    log::debug!(
+        "spawn session creation request : count to create = {}",
+        creation_count
+    );
     let response = spanner_client
         .batch_create_sessions(request, None)
         .await?
         .into_inner();
-    log::debug!("batch session created {}", creation_count);
 
     let now = Instant::now();
     Ok(response
@@ -598,7 +594,7 @@ async fn batch_create_session(
 #[cfg(test)]
 mod tests {
     use crate::apiv1::conn_pool::ConnectionManager;
-    use crate::sessions::{health_check, shrink_idle_sessions, SessionConfig, SessionManager};
+    use crate::session::{health_check, shrink_idle_sessions, SessionConfig, SessionManager};
     use serial_test::serial;
 
     use std::sync::atomic::{AtomicI64, Ordering};
