@@ -40,7 +40,8 @@ fn default_setting() -> BackoffRetrySettings {
     BackoffRetrySettings {
         retryer: BackoffRetryer {
             backoff: Backoff::default(),
-            codes: vec![Code::Unavailable],
+            //handle gRPC stream error (Status { code: Unknown, message: "transport error", source: None })
+            codes: vec![Code::Unavailable, Code::Unknown],
         },
     }
 }
