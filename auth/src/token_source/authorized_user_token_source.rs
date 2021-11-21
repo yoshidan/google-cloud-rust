@@ -28,6 +28,7 @@ impl UserAccountTokenSource {
             return Err(Error::RefreshTokenIsRequired);
         }
 
+        log::debug!("TokenSource = UserAccountTokenSource");
         let ts = UserAccountTokenSource {
             client_id: cred.client_id.unwrap_or_empty(),
             client_secret: cred.client_secret.unwrap_or_empty(),
