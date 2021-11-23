@@ -30,7 +30,7 @@
 //!
 //! ## Example
 //! Here is the example with using Warp.
-//! * https://github.com/yoshidan/google-cloud-rust-example/tree/main/spanner/rust
+//! * <https://github.com/yoshidan/google-cloud-rust-example/tree/main/spanner/rust>
 //!
 //! ## <a name="Documentation"></a>Documentation
 //!
