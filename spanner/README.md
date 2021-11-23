@@ -25,71 +25,37 @@ use google_cloud_spanner::client::Client;
 #[tokio::main]
 async fn main() {
 
-    const DATABASE: &str = "projects/your_projects/instances/your-instance/databases/your-database";
+    const DATABASE: &str = "projects/your_project/instances/your-instance/databases/your-database";
    
     // Create spanner client
     let mut client = match Client::new(DATABASE).await {
         Ok(client) => client,
         Err(e) => { /* handle error */ }
     };
-    
-    //call client api
-    client.xxx
 }
 ```
 
-Use with warp.
+## Example
+Here is the example with using Warp.
+* https://github.com/yoshidan/google-cloud-rust-example/tree/main/spanner/rust
 
-```rust
-use google_cloud_spanner::client::Client;
+## Performance 
 
-#[tokio::main(flavor = "multi_thread")]
-async fn main() {
+Result of the 24 hours Load Test.
 
-    let database = std::env::var("SPANNER_DSN").unwrap();
+| Metrics | This library | Google Cloud Go | 
+| -------- | ----------------| ----------------- |
+| RPS | [439.5](https://storage.googleapis.com/0432808zbaeatxa/report_1637587806.875014.html) |  |
+| Used vCPU | [0.35~0.38](https://storage.googleapis.com/0432808zbaeatxa/CPU%20(3).png) |  |
 
-    env_logger::init();
-    log::info!("Start server.");
+* [Rust report](https://storage.googleapis.com/0432808zbaeatxa/report_1637587806.875014.html)
+* [Go report](.)
 
-    let mut sigint = signal(SignalKind::interrupt()).unwrap();
-    let mut sigterm= signal(SignalKind::terminate()).unwrap();
-
-    // Create client.
-    // Don't have to use Arc::new for Client
-    let client = Client::new(database).await.unwrap();
-
-    // Routes
-    let h1 = warp::path!("ReadInventory" / String)
-        .and( with_client(client.clone()))
-        .and_then(move |user_id, cl| handler::read_inventory_handler(cl, user_id));
-    
-    let routes = warp::get().and(h1);
-
-    // Launch server.
-    let (tx, rx) = tokio::sync::oneshot::channel();
-    let (_, server) = warp::serve(routes)
-        .bind_with_graceful_shutdown(([127, 0, 0, 1], 3031), async {
-            log::info!("Listening on http://127.0.0.1:3031");
-            rx.await.ok();
-            log::info!("Shutdown server");
-        });;
-
-    tokio::spawn(server);
-
-    // Wait for signal
-    tokio::select! {
-        _ = sigint.recv() => println!("SIGINT"),
-        _ = sigterm.recv() => println!("SIGTERM"),
-    };
-    let _ = tx.send(());
-    client.close().await;
-    log::info!("All the spanner sessions were deleted.");
-}
-
-fn with_client(client: Client) -> impl Filter<Extract = (Client,), Error = Infallible> + Clone {
-    warp::any().map(move || client.clone())
-}
-```
+Test Condition 
+* 2.0 vCPU limited GKE Autopilot Pod
+* 1 Node spanner database server
+* 100 Users
+* [Here](https://github.com/yoshidan/google-cloud-rust-example/tree/main/spanner) is the application for Load Test.
 
 ## <a name="Documentation"></a>Documentation
 
