@@ -129,12 +129,10 @@
 //! ```rust
 //! use google_cloud_spanner::key::{Key,KeyRange,RangeKind};
 //!
-//! let start = Key::one(1);
-//! let end = Key::one(100);
-//! let range1 = KeyRange::new(start, end, RangeKind::ClosedClosed);
-//! let range2 = KeyRange::new(start, end, RangeKind::ClosedOpen);
-//! let range3 = KeyRange::new(start, end, RangeKind::OpenOpen);
-//! let range4 = KeyRange::new(start, end, RangeKind::OpenClosed);
+//! let range1 = KeyRange::new(Key::one(1), Key::one(100), RangeKind::ClosedClosed);
+//! let range2 = KeyRange::new(Key::one(1), Key::one(100), RangeKind::ClosedOpen);
+//! let range3 = KeyRange::new(Key::one(1), Key::one(100), RangeKind::OpenOpen);
+//! let range4 = KeyRange::new(Key::one(1), Key::one(100), RangeKind::OpenClosed);
 //! ```
 //!
 //! ### <a name="KeySets"></a>KeySets
@@ -194,11 +192,18 @@
 //! RowIterator also follows the standard pattern for the Google Cloud Client Libraries:
 //!
 //! ```rust
+//! use google_cloud_spanner::key::Key;
+//!
+//! let iter = client.single().await?.read("Table", vec!["col1", "col2"], vec![
+//!     Key::one("pk1"),
+//!     Key::one("pk2")
+//! ]).await?;
+//!
 //! loop {
-//! let row = match iter.next().await? {
-//!     Some(row) => row,
-//!     None => break,
-//! };
+//!     let row = match iter.next().await? {
+//!         Some(row) => row,
+//!         None => break,
+//!     };
 //!
 //! // use row
 //! };
@@ -249,7 +254,7 @@
 //! pub struct User {
 //!     pub user_id: String,
 //!     pub premium: bool,
-//!     pub updated_at: DateTime<Utc>
+//!     pub updated_at: chrono::DateTime<chrono::Utc>
 //! }
 //!
 //! impl TryFromStruct for User {
@@ -286,9 +291,9 @@
 //!         Some(row) => row,
 //!         None => println!("end of record")
 //!     };
-//!     let user_id= row.column_by_name::<String>("UserId")?
-//!     let user_items= row.column_by_name::<Vec<model::UserItem>>("UserItem")?
-//!     let user_characters = row.column_by_name::<Vec<model::UserCharacter>>("UserCharacter")?
+//!     let user_id= row.column_by_name::<String>("UserId")?;
+//!     let user_items= row.column_by_name::<Vec<model::UserItem>>("UserItem")?;
+//!     let user_characters = row.column_by_name::<Vec<model::UserCharacter>>("UserCharacter")?;
 //!     data.push(user_id);
 //! }
 //!
@@ -299,7 +304,6 @@
 //!
 //! // ...
 //!
-//! };
 //! ```
 //!
 //! * The used session is returned to the drop timing session pool, so unlike Go, there is no need to call txn Close.
@@ -314,7 +318,7 @@
 //! ```rust
 //! use google_cloud_spanner::value::TimestampBound;
 //!
-//! let tx = client.single(TimestampBound::max_staleness(Duration::from_secs(60)).await?;
+//! let tx = client.single(TimestampBound::max_staleness(chrono::Duration::from_secs(60))).await?;
 //! ```
 //!
 //! See the documentation of TimestampBound for more details.
@@ -331,8 +335,8 @@
 //! use google_cloud_spanner::statement::ToKind;
 //!
 //! let mutation = insert("User",
-//! vec!["UserID", "Name", "UpdatedAt"], // columns
-//! vec![1.to_kind(), "name".to_kind(), CommitTimestamp::new().to_kind()] // values
+//!     vec!["UserID", "Name", "UpdatedAt"], // columns
+//!     vec![1.to_kind(), "name".to_kind(), CommitTimestamp::new().to_kind()] // values
 //! );
 //! ```
 //!
@@ -350,7 +354,7 @@
 //! pub struct User {
 //!     pub user_id: String,
 //!     pub premium: bool,
-//!     pub updated_at: DateTime<Utc>
+//!     pub updated_at: chrono::DateTime<chrono::Utc>
 //! }
 //!
 //! impl ToStruct for User {
@@ -379,12 +383,12 @@
 //! let new_user = model::User {
 //!     user_id: Uuid::new_v4().to_string(),
 //!     premium: true,
-//!     updated_at: Utc::now(),
+//!     updated_at: chrono::Utc::now(),
 //! };
 //! let new_user2 = model::User {
 //!     user_id: Uuid::new_v4().to_string(),
 //!     premium: false,
-//!     updated_at: Utc::now(),
+//!     updated_at: chrono::Utc::now(),
 //! };
 //! let m1 = insert_or_update_struct("User", new_user);
 //! let m2 = insert_or_update_struct("User", new_user2);
@@ -406,45 +410,6 @@
 //!
 //! If you need to read before writing in a single transaction, use a ReadWriteTransaction. ReadWriteTransactions may be aborted automatically by the backend and need to be retried. You pass in a function to ReadWriteTransaction, and the client will handle the retries automatically. Use the transaction's BufferWrite method to buffer mutations, which will all be executed at the end of the transaction:
 //!
-//! ```rust
-//! use google_cloud_spanner::mutation::update;
-//! use google_cloud_spanner::key::Key;
-//! use google_cloud_spanner::value::Timestamp;
-//!
-//! let tx_result: Result<(Option<Timestamp>,()), Error> = client.read_write_transaction(|mut tx| async {
-//!     // The transaction function will be called again if the error code
-//!     // of this error is Aborted. The backend may automatically abort
-//!     // any read/write transaction if it detects a deadlock or other problems.
-//!     let result: Result<(), Error> = async {
-//!         let mut reader = tx.read("UserItem", vec!["UserId", "ItemId", "Quantity"], Key::one(user_id.to_string())).await?;
-//!         let ms  = loop {
-//!             let mut ms = vec![];
-//!             let row = reader.next().await?;
-//!             match row {
-//!                 Some(row) => {
-//!                     let item_id = row.column_by_name::<i64>("ItemId")?;
-//!                     let quantity = row.column_by_name::<i64>("Quantity")?;
-//!                     ms.push(update("UserItem", vec!["Quantity"], vec![
-//!                         user_id.to_string().to_kind(),
-//!                         item_id.to_kind(),
-//!                         (quantity + 1).to_kind(),
-//!                     ]));
-//!                 },
-//!                 None => break ms
-//!             }
-//!         };
-//!
-//!        // The buffered mutation will be committed.  If the commit
-//!         // fails with an Aborted error, this function will be called again
-//!        tx.buffer_write(ms);
-//!        Ok(())
-//!     }.await;
-//!
-//!     //return owner ship of read_write_transaction
-//!     (tx, result)
-//! }).await;
-//! ```
-//!
 //! The Error of the `read_write_transaction` must implements
 //! * From<google_cloud_googleapis::Status>
 //! * From<google_cloud_spanner::session::SessionError>
@@ -453,6 +418,10 @@
 //! ```rust
 //! use google_cloud_gax::invoke::TryAs;
 //! use google_cloud_googleapis::Status;
+//!
+//! use google_cloud_spanner::mutation::update;
+//! use google_cloud_spanner::key::Key;
+//! use google_cloud_spanner::value::Timestamp;
 //!
 //! #[derive(thiserror::Error, Debug)]
 //! enum Error {
@@ -472,6 +441,39 @@
 //!         }
 //!     }
 //! }
+//!
+//! let tx_result: Result<(Option<Timestamp>,()), Error> = client.read_write_transaction(|mut tx| async {
+//!     // The transaction function will be called again if the error code
+//!     // of this error is Aborted. The backend may automatically abort
+//!     // any read/write transaction if it detects a deadlock or other problems.
+//!     let result: Result<(), Error> = async {
+//!         let mut reader = tx.read("UserItem", vec!["UserId", "ItemId", "Quantity"], Key::one(user_id.to_string())).await?;
+//!         let ms  = loop {
+//!             let mut ms = vec![];
+//!             let row = reader.next().await?;
+//!             match row {
+//!                 Some(row) => {
+//!                     let item_id = row.column_by_name::<i64>("ItemId")?;
+//!                     let quantity = row.column_by_name::<i64>("Quantity")?;
+//!                     ms.push(update("UserItem", vec!["Quantity"], vec![
+//!                         user_id.to_string().to_kind(),
+//!                         item_id.to_kind(),
+//!                         (quantity + 1).to_kind(),
+//!                     ]));
+//!                 }
+//!                 None => break ms
+//!             }
+//!         };
+//!
+//!        // The buffered mutation will be committed.  If the commit
+//!         // fails with an Aborted error, this function will be called again
+//!        tx.buffer_write(ms);
+//!        Ok(())
+//!     }.await;
+//!
+//!     //return owner ship of read_write_transaction
+//!     (tx, result)
+//! }).await;
 //! ```
 //!
 //! ### <a name="DMLAndPartitionedDML"></a>DML and Partitioned DML
