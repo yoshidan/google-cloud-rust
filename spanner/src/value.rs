@@ -2,10 +2,40 @@ use std::ops::Deref;
 use std::time::Duration;
 
 use chrono::{DateTime, TimeZone, Utc};
-use prost_types::Timestamp;
 
 use google_cloud_googleapis::spanner::v1::transaction_options::read_only::TimestampBound as InternalTimestampBound;
 use google_cloud_googleapis::spanner::v1::transaction_options::ReadOnly;
+
+#[derive(Clone, PartialEq)]
+pub struct Timestamp {
+    /// Represents seconds of UTC time since Unix epoch
+    /// 1970-01-01T00:00:00Z. Must be from 0001-01-01T00:00:00Z to
+    /// 9999-12-31T23:59:59Z inclusive.
+    pub seconds: i64,
+    /// Non-negative fractions of a second at nanosecond resolution. Negative
+    /// second values with fractions must still have non-negative nanos values
+    /// that count forward in time. Must be from 0 to 999,999,999
+    /// inclusive.
+    pub nanos: i32,
+}
+
+impl From<Timestamp> for prost_types::Timestamp {
+    fn from(t: Timestamp) -> Self {
+        return prost_types::Timestamp {
+            seconds: t.seconds,
+            nanos: t.nanos,
+        };
+    }
+}
+
+impl From<prost_types::Timestamp> for Timestamp {
+    fn from(t: prost_types::Timestamp) -> Self {
+        return Timestamp {
+            seconds: t.seconds,
+            nanos: t.nanos,
+        };
+    }
+}
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
 pub struct CommitTimestamp {
@@ -57,12 +87,12 @@ impl TimestampBound {
     }
     pub fn min_read_timestamp(t: Timestamp) -> Self {
         TimestampBound {
-            inner: InternalTimestampBound::MinReadTimestamp(t),
+            inner: InternalTimestampBound::MinReadTimestamp(t.into()),
         }
     }
     pub fn read_timestamp(t: Timestamp) -> Self {
         TimestampBound {
-            inner: InternalTimestampBound::ReadTimestamp(t),
+            inner: InternalTimestampBound::ReadTimestamp(t.into()),
         }
     }
 }

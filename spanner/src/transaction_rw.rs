@@ -5,7 +5,6 @@ use std::sync::atomic::{AtomicI64, Ordering};
 use prost_types::Struct;
 
 use google_cloud_gax::call_option::BackoffRetrySettings;
-use google_cloud_gax::invoke::AsGrpcStatus;
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::TransactionId;
 use google_cloud_googleapis::spanner::v1::{
     commit_request, execute_batch_dml_request, result_set_stats, transaction_options,
@@ -15,9 +14,11 @@ use google_cloud_googleapis::spanner::v1::{
 };
 use google_cloud_googleapis::{Code, Status};
 
-use crate::sessions::ManagedSession;
+use crate::session::ManagedSession;
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, Transaction};
+use crate::value::Timestamp;
+use google_cloud_gax::invoke::TryAs;
 
 #[derive(Clone)]
 pub struct CommitOptions {
@@ -255,9 +256,9 @@ impl ReadWriteTransaction {
         &mut self,
         result: Result<T, E>,
         options: Option<CommitOptions>,
-    ) -> Result<(Option<prost_types::Timestamp>, T), (E, Option<ManagedSession>)>
+    ) -> Result<(Option<Timestamp>, T), (E, Option<ManagedSession>)>
     where
-        E: AsGrpcStatus + From<Status>,
+        E: TryAs<Status> + From<Status>,
     {
         let opt = match options {
             Some(o) => o,
@@ -266,7 +267,13 @@ impl ReadWriteTransaction {
 
         return match result {
             Ok(s) => match self.commit(opt).await {
-                Ok(c) => Ok((c.commit_timestamp, s)),
+                Ok(c) => Ok((
+                    match c.commit_timestamp {
+                        Some(ts) => Some(ts.into()),
+                        None => None,
+                    },
+                    s,
+                )),
                 // Retry the transaction using the same session on ABORT error.
                 // Cloud Spanner will create the new transaction with the previous
                 // one's wound-wait priority.
@@ -280,9 +287,9 @@ impl ReadWriteTransaction {
             // up here. Context errors (deadline exceeded / canceled) during
             // commits are also not rolled back.
             Err(err) => {
-                let status = match err.as_status() {
-                    Some(status) => status,
-                    None => {
+                let status = match err.try_as() {
+                    Ok(status) => status,
+                    _ => {
                         self.rollback(opt.call_options.call_setting).await;
                         return Err((err, self.take_session()));
                     }

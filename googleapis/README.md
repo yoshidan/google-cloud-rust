@@ -4,5 +4,5 @@
 
 ```
 git clone https://github.com/googleapis/googleapis
-GEN=true && cargo build
+GEN=true cargo build
 ```

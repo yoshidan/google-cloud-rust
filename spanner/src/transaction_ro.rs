@@ -10,7 +10,7 @@ use google_cloud_googleapis::spanner::v1::{
 };
 
 use crate::reader::{Reader, RowIterator, StatementReader, TableReader};
-use crate::sessions::ManagedSession;
+use crate::session::ManagedSession;
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, ReadOptions, Transaction};
 use crate::value::TimestampBound;

@@ -1,4 +1,4 @@
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, TimeZone, Timelike, Utc};
 use google_cloud_spanner::key::Key;
 
 use google_cloud_spanner::row::Row;
@@ -303,4 +303,29 @@ async fn test_read_row() {
         .await
         .unwrap();
     assert!(row.is_some())
+}
+
+#[tokio::test]
+#[serial]
+async fn test_read_multi_row() {
+    let now = Utc::now();
+    let mut session = create_session().await;
+    let user_id = format!("user_x_{}", &now.second());
+    let user_id2 = format!("user_x_{}", &now.second() + 1);
+    let mutations = vec![
+        create_user_mutation(&user_id, &now),
+        create_user_mutation(&user_id2, &now),
+    ];
+    let _ = replace_test_data(&mut session, mutations).await.unwrap();
+
+    let mut tx = read_only_transaction(session).await;
+    let row = tx
+        .read(
+            "User",
+            vec!["UserId"],
+            vec![Key::one(user_id), Key::one(user_id2)],
+        )
+        .await
+        .unwrap();
+    assert_eq!(2, all_rows(row).await.len());
 }

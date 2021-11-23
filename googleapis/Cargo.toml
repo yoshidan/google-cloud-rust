@@ -2,7 +2,7 @@
 name = "google-cloud-googleapis"
 version = "0.1.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
-edition = "2018"
+edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust"
 keywords = ["gcp","googleapis","google-cloud-rust"]
 license-file = "LICENCE"
@@ -12,9 +12,9 @@ description = "Google Cloud Platform rust client."
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tonic = "0.5"
-prost = "0.8"
-prost-types = "0.8"
+tonic = { version = "0.6", features = ["tls", "prost"] }
+prost = "0.9"
+prost-types = "0.9"
 
 [build-dependencies]
-tonic-build = "0.5"
+tonic-build = "0.6"

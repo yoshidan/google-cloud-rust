@@ -191,7 +191,7 @@ impl TryFromValue for DateTime<Utc> {
 impl TryFromValue for CommitTimestamp {
     fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         Ok(CommitTimestamp {
-            timestamp: DateTime::try_from(item, field)?,
+            timestamp: TryFromValue::try_from(item, field)?,
         })
     }
 }

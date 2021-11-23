@@ -15,7 +15,8 @@ const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
     "https://www.googleapis.com/auth/spanner.data",
 ];
-pub const TLS_CERTS: &[u8] = include_bytes!("../../roots.pem");
+
+const TLS_CERTS: &[u8] = include_bytes!("roots.pem");
 
 pub struct ConnectionManager {
     index: AtomicI64,

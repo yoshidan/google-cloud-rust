@@ -11,7 +11,7 @@ use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::{ExecuteSqlRequest, PartialResultSet, ReadRequest};
 
 use crate::row::Row;
-use crate::sessions::SessionHandle;
+use crate::session::SessionHandle;
 
 #[async_trait]
 pub trait AsyncIterator {

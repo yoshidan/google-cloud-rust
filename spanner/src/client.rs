@@ -1,22 +1,21 @@
 use std::future::Future;
 
 use google_cloud_googleapis::{Code, Status};
-use prost_types::Timestamp;
 
-use google_cloud_gax::invoke::invoke_reuse;
-use google_cloud_gax::invoke::AsGrpcStatus;
+use google_cloud_gax::invoke::{invoke_reuse, TryAs};
 use google_cloud_googleapis::spanner::v1::{
     commit_request, transaction_options, Mutation, TransactionOptions,
 };
 
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::retry::{new_default_tx_retry, new_tx_retry_with_codes};
-use crate::sessions::{ManagedSession, SessionConfig, SessionError, SessionManager};
+use crate::session::{ManagedSession, SessionConfig, SessionError, SessionManager};
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions};
 use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
-use crate::value::TimestampBound;
+use crate::value::{Timestamp, TimestampBound};
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct PartitionedUpdateOption {
@@ -63,12 +62,6 @@ impl Default for ReadWriteTransactionOption {
     }
 }
 
-/// Client is a client for reading and writing data to a Cloud Spanner database.
-/// A client is safe to use concurrently, except for its Close method.
-pub struct Client {
-    sessions: SessionManager,
-}
-
 pub struct ChannelConfig {
     /// num_channels is the number of gRPC channels.
     pub num_channels: usize,
@@ -101,12 +94,12 @@ impl Default for ClientConfig {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum InitializeError {
+pub enum Error {
     #[error(transparent)]
-    GRPC(#[from] Status),
+    FailedToCreateSessionPool(#[from] Status),
 
     #[error(transparent)]
-    GRPCInitialize(#[from] crate::apiv1::conn_pool::Error),
+    FailedToCreateChannelPool(#[from] crate::apiv1::conn_pool::Error),
 
     #[error("invalid config: {0}")]
     InvalidConfig(String),
@@ -118,22 +111,29 @@ pub enum TxError {
     GRPC(#[from] Status),
 
     #[error(transparent)]
-    SessionError(#[from] SessionError),
+    InvalidSession(#[from] SessionError),
 }
 
-impl AsGrpcStatus for TxError {
-    fn as_status(&self) -> Option<&Status> {
+impl TryAs<Status> for TxError {
+    fn try_as(&self) -> Result<&Status, ()> {
         match self {
-            TxError::GRPC(s) => Some(s),
-            _ => None,
+            TxError::GRPC(s) => Ok(s),
+            _ => Err(()),
         }
     }
+}
+
+/// Client is a client for reading and writing data to a Cloud Spanner database.
+/// A client is safe to use concurrently, except for its Close method.
+#[derive(Clone)]
+pub struct Client {
+    sessions: Arc<SessionManager>,
 }
 
 impl Client {
     /// new creates a client to a database. A valid database name has
     /// the form projects/PROJECT_ID/instances/INSTANCE_ID/databases/DATABASE_ID.
-    pub async fn new(database: impl Into<String>) -> Result<Self, InitializeError> {
+    pub async fn new(database: impl Into<String>) -> Result<Self, Error> {
         return Client::new_with_config(database, Default::default()).await;
     }
 
@@ -142,9 +142,9 @@ impl Client {
     pub async fn new_with_config(
         database: impl Into<String>,
         config: ClientConfig,
-    ) -> Result<Self, InitializeError> {
+    ) -> Result<Self, Error> {
         if config.session_config.max_opened > config.channel_config.num_channels * 100 {
-            return Err(InitializeError::InvalidConfig(format!(
+            return Err(Error::InvalidConfig(format!(
                 "max session size is {} because max session size is 100 per gRPC connection",
                 config.channel_config.num_channels * 100
             )));
@@ -161,12 +161,12 @@ impl Client {
         session_manager.schedule_refresh();
 
         Ok(Client {
-            sessions: session_manager,
+            sessions: Arc::new(session_manager),
         })
     }
 
     /// Close closes the client.
-    pub async fn close(&mut self) {
+    pub async fn close(&self) {
         self.sessions.close().await;
     }
 
@@ -305,7 +305,7 @@ impl Client {
     pub async fn apply_at_least_once(
         &self,
         ms: Vec<Mutation>,
-    ) -> Result<Option<prost_types::Timestamp>, TxError> {
+    ) -> Result<Option<Timestamp>, TxError> {
         return self
             .apply_at_least_once_with_option(ms, CommitOptions::default())
             .await;
@@ -324,7 +324,7 @@ impl Client {
         &self,
         ms: Vec<Mutation>,
         options: CommitOptions,
-    ) -> Result<Option<prost_types::Timestamp>, TxError> {
+    ) -> Result<Option<Timestamp>, TxError> {
         let mut ro = new_default_tx_retry();
         let mut session = self.get_session().await?;
 
@@ -336,7 +336,10 @@ impl Client {
                     )),
                 });
                 match commit(session, ms.clone(), tx, options.clone()).await {
-                    Ok(s) => Ok(s.commit_timestamp),
+                    Ok(s) => Ok(match s.commit_timestamp {
+                        Some(s) => Some(s.into()),
+                        None => None,
+                    }),
                     Err(e) => Err((TxError::GRPC(e), session)),
                 }
             },
@@ -392,9 +395,9 @@ impl Client {
     pub async fn read_write_transaction<'a, T, E, F>(
         &self,
         f: impl Fn(ReadWriteTransaction) -> F,
-    ) -> Result<(Option<prost_types::Timestamp>, T), E>
+    ) -> Result<(Option<Timestamp>, T), E>
     where
-        E: AsGrpcStatus + From<TxError> + From<Status>,
+        E: TryAs<Status> + From<SessionError> + From<Status>,
         F: Future<Output = (ReadWriteTransaction, Result<T, E>)>,
     {
         return self
@@ -425,9 +428,9 @@ impl Client {
         &self,
         f: impl Fn(ReadWriteTransaction) -> F,
         options: ReadWriteTransactionOption,
-    ) -> Result<(Option<prost_types::Timestamp>, T), E>
+    ) -> Result<(Option<Timestamp>, T), E>
     where
-        E: AsGrpcStatus + From<TxError> + From<Status>,
+        E: TryAs<Status> + From<SessionError> + From<Status>,
         F: Future<Output = (ReadWriteTransaction, Result<T, E>)>,
     {
         let (bo, co) = Client::split_read_write_transaction_option(options);
@@ -472,9 +475,9 @@ impl Client {
     pub async fn read_write_transaction_sync<T, E>(
         &self,
         f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,
-    ) -> Result<(Option<prost_types::Timestamp>, T), E>
+    ) -> Result<(Option<Timestamp>, T), E>
     where
-        E: AsGrpcStatus + From<TxError> + From<Status>,
+        E: TryAs<Status> + From<SessionError> + From<Status>,
     {
         return self
             .read_write_transaction_sync_with_option(f, ReadWriteTransactionOption::default())
@@ -504,9 +507,9 @@ impl Client {
         &self,
         f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,
         options: ReadWriteTransactionOption,
-    ) -> Result<(Option<prost_types::Timestamp>, T), E>
+    ) -> Result<(Option<Timestamp>, T), E>
     where
-        E: AsGrpcStatus + From<TxError> + From<Status>,
+        E: TryAs<Status> + From<SessionError> + From<Status>,
     {
         let (bo, co) = Client::split_read_write_transaction_option(options);
 
@@ -539,15 +542,15 @@ impl Client {
         bo: CallOptions,
     ) -> Result<ReadWriteTransaction, (E, Option<ManagedSession>)>
     where
-        E: AsGrpcStatus + From<TxError> + From<Status>,
+        E: TryAs<Status> + From<SessionError> + From<Status>,
     {
         return ReadWriteTransaction::begin(session.unwrap(), bo)
             .await
             .map_err(|e| (E::from(e.status), Some(e.session)));
     }
 
-    async fn get_session(&self) -> Result<ManagedSession, TxError> {
-        return self.sessions.get().await.map_err(TxError::SessionError);
+    async fn get_session(&self) -> Result<ManagedSession, SessionError> {
+        return self.sessions.get().await;
     }
 
     fn split_read_write_transaction_option(
