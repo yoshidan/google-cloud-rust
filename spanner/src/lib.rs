@@ -12,7 +12,7 @@
 //!
 //! Create `Client` and call transaction API same as [Google Cloud Go](https://github.com/googleapis/google-cloud-go/tree/main/spanner).
 //!
-//! ```no_run
+//! ```
 //! use google_cloud_spanner::client::Client;
 //!
 //! #[tokio::main]
@@ -58,7 +58,7 @@
 //!
 //! To start working with this package, create a client that refers to the database of interest:
 //!
-//! ```no_run
+//! ```
 //! use google_cloud_spanner::client::Client;
 //!
 //! const DATABASE: &str = "projects/your_projects/instances/your-instance/databases/your-database";
@@ -74,7 +74,7 @@
 //!
 //! To use an emulator with this library, you can set the SPANNER_EMULATOR_HOST environment variable to the address at which your emulator is running. This will send requests to that address instead of to Cloud Spanner.   You can then create and use a client as usual:
 //!
-//! ```no_run
+//! ```
 //! use google_cloud_spanner::client::Client;
 //!
 //! // Set SPANNER_EMULATOR_HOST environment variable.
@@ -91,7 +91,7 @@
 //! ### <a name="SimpleReadsAndWrites"></a>Simple Reads and Writes
 //! Two Client methods, Apply and Single, work well for simple reads and writes. As a quick introduction, here we write a new row to the database and read it back:
 //!
-//! ```no_run
+//! ```
 //! use google_cloud_spanner::mutation::insert;
 //! use google_cloud_spanner::key::Key;
 //! use google_cloud_spanner::value::CommitTimestamp;
@@ -116,7 +116,7 @@
 //!
 //! Every Cloud Spanner row has a unique key, composed of one or more columns. Construct keys with a literal of type Key:
 //!
-//! ```no_run
+//! ```
 //! use google_cloud_spanner::key::Key;
 //!
 //! let key1 = Key::one("key");
@@ -126,7 +126,7 @@
 //!
 //! The keys of a Cloud Spanner table are ordered. You can specify ranges of keys using the KeyRange type:
 //!
-//! ```no_run
+//! ```
 //! use google_cloud_spanner::key::{Key,KeyRange,RangeKind};
 //!
 //! let range1 = KeyRange::new(Key::one(1), Key::one(100), RangeKind::ClosedClosed);
@@ -139,7 +139,7 @@
 //!
 //! A KeySet represents a set of keys. A single Key or KeyRange can act as a KeySet.
 //!
-//! ```no_run
+//! ```
 //! use google_cloud_spanner::key::Key;
 //! use google_cloud_spanner::statement::ToKind;
 //!
@@ -151,7 +151,7 @@
 //!
 //! all_keys returns a KeySet that refers to all the keys in a table:
 //!
-//! ```no_run
+//! ```
 //! use google_cloud_spanner::key::all_keys;
 //!
 //! let ks = all_keys();
@@ -166,7 +166,7 @@
 //!
 //! When you only want one row whose key you know, use ReadRow. Provide the table name, key, and the columns you want to read:
 //!
-//! ```no_run
+//! ```
 //! use google_cloud_spanner::key::Key;
 //!
 //! let row = client.single().await?.read_row("Table", vec!["col1", "col2"], Key::one(1)).await?;
@@ -174,7 +174,7 @@
 //!
 //! Read multiple rows with the Read method. It takes a table name, KeySet, and list of columns:
 //!
-//! ```no_run
+//! ```
 //! use google_cloud_spanner::key::Key;
 //! use google_cloud_spanner::statement::ToKind;
 //!
@@ -191,7 +191,7 @@
 //!
 //! RowIterator also follows the standard pattern for the Google Cloud Client Libraries:
 //!
-//! ```no_run
+//! ```
 //! use google_cloud_spanner::key::Key;
 //!
 //! let iter = client.single().await?.read("Table", vec!["col1", "col2"], vec![
@@ -217,7 +217,7 @@
 //!
 //! The most general form of reading uses SQL statements. Construct a Statement with NewStatement, setting any parameters using the Statement's Params map:
 //!
-//! ```no_run
+//! ```
 //! use google_cloud_spanner::statement::Statement;
 //!
 //! let mut stmt = Statement::new("SELECT * FROM User WHERE UserId = @UserID");
@@ -228,7 +228,7 @@
 //!
 //! Use the Query method to run the statement and obtain an iterator:
 //!
-//! ```no_run
+//! ```
 //! let iter = client.single().await?.query(stmt).await?;
 //! ```
 //!
@@ -237,7 +237,7 @@
 //!
 //! You can extract by column position or name:
 //!
-//! ```no_run
+//! ```
 //! let value           = row.column::<String>(0)?;
 //! let nullable_value  = row.column::<Option<String>>(1)?;
 //! let array_value     = row.column_by_name::<Vec<i64>>("array")?;
@@ -247,7 +247,7 @@
 //! Or you can define a Rust struct that corresponds to your columns, and extract into that:
 //! * `TryFromStruct` trait is required
 //!
-//! ```no_run
+//! ```
 //! use google_cloud_spanner::row::TryFromStruct;
 //! use google_cloud_spanner::row::Struct;
 //!
@@ -272,7 +272,7 @@
 //!
 //! To perform more than one read in a transaction, use ReadOnlyTransaction:
 //!
-//! ```no_run
+//! ```
 //! use google_cloud_spanner::statement::Statement;
 //! use google_cloud_spanner::key::Key;
 //!
@@ -315,7 +315,7 @@
 //! By default, a transaction will pick the most recent time (a time where all previously committed transactions are visible) for its reads. This provides the freshest data, but may involve some delay. You can often get a quicker response if you are willing to tolerate "stale" data.
 //! You can control the read timestamp selected by a transaction. For example, to perform a query on data that is at most one minute stale, use
 //!
-//! ```no_run
+//! ```
 //! use google_cloud_spanner::value::TimestampBound;
 //!
 //! let tx = client.single(TimestampBound::max_staleness(chrono::Duration::from_secs(60))).await?;
@@ -329,7 +329,7 @@
 //!
 //! One takes lists of columns and values along with the table name:
 //!
-//! ```no_run
+//! ```
 //! use google_cloud_spanner::mutation::insert;
 //! use google_cloud_spanner::value::CommitTimestamp;
 //! use google_cloud_spanner::statement::ToKind;
@@ -344,7 +344,7 @@
 //!
 //! * `ToStruct` trait is required
 //!
-//! ```no_run
+//! ```
 //! use google_cloud_spanner::statement::Kinds;
 //! use google_cloud_spanner::statement::Types;
 //! use google_cloud_spanner::statement::ToStruct;
@@ -376,7 +376,7 @@
 //! }
 //! ```
 //!
-//! ```no_run
+//! ```
 //! use uuid::Uuid;
 //! use google_cloud_spanner::mutation::insert_or_update_struct;
 //!
@@ -397,7 +397,7 @@
 //! ### <a name="Writes"></a>Writes
 //!
 //! To apply a list of mutations to the database, use Apply:
-//! ```no_run
+//! ```
 //! use google_cloud_spanner::mutation::insert;
 //! use google_cloud_spanner::mutation::delete;
 //! use google_cloud_spanner::key::all_keys;
@@ -410,7 +410,7 @@
 //!
 //! If you need to read before writing in a single transaction, use a ReadWriteTransaction. ReadWriteTransactions may be aborted automatically by the backend and need to be retried. You pass in a function to ReadWriteTransaction, and the client will handle the retries automatically. Use the transaction's BufferWrite method to buffer mutations, which will all be executed at the end of the transaction:
 //!
-//! ```no_run
+//! ```
 //! use google_cloud_spanner::mutation::update;
 //! use google_cloud_spanner::key::Key;
 //! use google_cloud_spanner::value::Timestamp;
@@ -454,7 +454,7 @@
 //! * From<google_cloud_spanner::session::SessionError>
 //! * google_cloud_gax::invoke::TryAs<google_cloud_googleapis::Status>
 //!
-//! ```no_run
+//! ```
 //! use google_cloud_gax::invoke::TryAs;
 //! use google_cloud_googleapis::Status;
 //!
@@ -483,7 +483,7 @@
 //!
 //! For large databases, it may be more efficient to partition the DML statement. Use client.PartitionedUpdate to run a DML statement in this way. Not all DML statements can be partitioned.
 //!
-//! ```no_run
+//! ```
 //! use google_cloud_spanner::client::Client;
 //! use google_cloud_spanner::statement::Statement;
 //!
