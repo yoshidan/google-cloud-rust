@@ -18,8 +18,6 @@ use google_cloud_googleapis::spanner::v1::{
     Transaction,
 };
 
-//TODO tonic他dependencyがcrate外に漏れ出ないようにする
-
 pub(crate) fn ping_query_request(session_name: impl Into<String>) -> internal::ExecuteSqlRequest {
     internal::ExecuteSqlRequest {
         session: session_name.into(),
