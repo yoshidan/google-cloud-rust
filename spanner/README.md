@@ -6,7 +6,7 @@ Google Cloud Platform GCE spanner library.
 
 * [About Cloud Spanner](https://cloud.google.com/spanner/)
 * [API Documentation](https://cloud.google.com/spanner/docs)
-* [Rust client Documentation](./README.md#Documentation)
+* [Rust client Documentation](#Documentation)
 
 ## Installation
 
@@ -43,7 +43,7 @@ Here is the example with using Warp.
 
 Result of the 24 hours Load Test.
 
-| Metrics | This library | Google Cloud Go | 
+| Metrics | This library | [Google Cloud Go](https://github.com/googleapis/google-cloud-go/tree/main/spanner) | 
 | -------- | ----------------| ----------------- |
 | RPS | [439.5](https://storage.googleapis.com/0432808zbaeatxa/report_1637587806.875014.html) |  |
 | Used vCPU | [0.35~0.38](https://storage.googleapis.com/0432808zbaeatxa/CPU%20(3).png) |  |
@@ -62,18 +62,18 @@ Test Condition
 ### Overview
 * [Creating a Client](#CreatingAClient)
 * [Simple Reads and Writes](#SimpleReadsAndWrites)
-* [Keys](./README.md#Keys)
-* [KeyRanges](./README.md#KeyRanges)
-* [KeySets](./README.md#KeySets)
-* [Transactions](./README.md#Transactions)
+* [Keys](#Keys)
+* [KeyRanges](#KeyRanges)
+* [KeySets](#KeySets)
+* [Transactions](#Transactions)
 * [Single Reads](#SingleReads)
-* [Statements](./README.md#Statements)
-* [Rows](./README.md#Rows)
+* [Statements](#Statements)
+* [Rows](#Rows)
 * [Multiple Reads](#MultipleReads)
 * [Timestamps and Timestamp Bounds](#TimestampsAndTimestampBounds)
-* [Mutations](./README.md#Mutations)
-* [Writes](./README.md#Writes)
-* [Structs](./README.md#Structs)
+* [Mutations](#Mutations)
+* [Writes](#Writes)
+* [Structs](#Structs)
 * [DML and Partitioned DML](#DMLAndPartitionedDML)
 
 Package spanner provides a client for reading and writing to Cloud Spanner databases.   
@@ -84,6 +84,8 @@ See the packages under admin for clients that operate on databases and instances
 To start working with this package, create a client that refers to the database of interest:
 
 ```rust
+use google_cloud_spanner::client::Client;
+
 const DATABASE: &str = "projects/your_projects/instances/your-instance/databases/your-database";
 let mut client = match Client::new(DATABASE).await {
     Ok(client) => client,
@@ -121,7 +123,7 @@ use google_cloud_spanner::value::CommitTimestamp;
 
 let mutation = insert("User",
     vec!["UserID", "Name", "UpdatedAt"], // columns 
-    vec![1.to_kind(), "name".to_kind(), CommitTimestamp::new().to_kind()]
+    vec![1.to_kind(), "name".to_kind(), CommitTimestamp::new().to_kind()] // values
 );
 let commit_timestamp = client.apply(vec![mutation]).await?;
 
@@ -134,7 +136,7 @@ let row = client.single().await?.read(
 
 All the methods used above are discussed in more detail below.
 
-### Keys
+### <a name="Keys"></a>Keys
 
 Every Cloud Spanner row has a unique key, composed of one or more columns. Construct keys with a literal of type Key:
 
@@ -144,7 +146,7 @@ use google_cloud_spanner::key::Key;
 let key1 = Key::one("key");
 ```
 
-### KeyRanges
+### <a name="KeyRanges"></a>KeyRanges
 
 The keys of a Cloud Spanner table are ordered. You can specify ranges of keys using the KeyRange type:
 
@@ -159,12 +161,13 @@ let range3 = KeyRange::new(start, end, RangeKind::OpenOpen);
 let range4 = KeyRange::new(start, end, RangeKind::OpenClosed);
 ```
 
-### KeySets
+### <a name="KeySets"></a>KeySets
 
 A KeySet represents a set of keys. A single Key or KeyRange can act as a KeySet.
 
 ```rust
 use google_cloud_spanner::key::Key;
+use google_cloud_spanner::statement::ToKind;
 
 let key1 = Key::new(vec!["Bob".to_kind(), "2014-09-23".to_kind()]);
 let key2 = Key::new(vec!["Alfred".to_kind(), "2015-06-12".to_kind()]);
@@ -180,7 +183,7 @@ use google_cloud_spanner::key::all_keys;
 let ks = all_keys();
 ```
 
-### Transactions
+### <a name="Transactions"></a>Transactions
 
 All Cloud Spanner reads and writes occur inside transactions. There are two types of transactions, read-only and read-write. Read-only transactions cannot change the database, do not acquire locks, and may access either the current database state or states in the past. Read-write transactions can read the database before writing to it, and always apply to the most recent database state.
 
@@ -190,20 +193,25 @@ The simplest and fastest transaction is a ReadOnlyTransaction that supports a si
 When you only want one row whose key you know, use ReadRow. Provide the table name, key, and the columns you want to read:
 
 ```rust
+use google_cloud_spanner::key::Key;
+
 let row = client.single().await?.read_row("Table", vec!["col1", "col2"], Key::one(1)).await?;
 ```
 
 Read multiple rows with the Read method. It takes a table name, KeySet, and list of columns:
 
 ```rust
+use google_cloud_spanner::key::Key;
+use google_cloud_spanner::statement::ToKind;
+
 let iter1 = client.single().await?.read("Table", vec!["col1", "col2"], vec![
-    Key::one(1), 
-    Key::one(2)
+    Key::one("pk1"), 
+    Key::one("pk2")
 ]).await?;
 
 let iter2 = client.single().await?.read("Table", vec!["col1", "col2"], vec![
-    Key::new(vec!["composite1-1".to_kind(),"composite1-2".to_kind()]),
-    Key::new(vec!["composite2-1".to_kind(),"composite2-1".to_kind()])
+    Key::new(vec!["composite-pk-1-1".to_kind(),"composite-pk-1-2".to_kind()]),
+    Key::new(vec!["composite-pk-2-1".to_kind(),"composite-pk-2-2".to_kind()])
 ]).await?;
 ```
 
@@ -216,7 +224,7 @@ loop {
         None => break,
     };
     
-    //TODO: use row
+    // use row
 };
 ```
 
@@ -224,7 +232,7 @@ loop {
 
 * To read rows with an index, use `client.read_with_option`.
 
-### Statements
+### <a name="Statements"></a>Statements
 
 The most general form of reading uses SQL statements. Construct a Statement with NewStatement, setting any parameters using the Statement's Params map:
 
@@ -243,7 +251,7 @@ Use the Query method to run the statement and obtain an iterator:
 let iter = client.single().await?.query(stmt).await?;
 ```
 
-### Rows
+### <a name="Rows"></a>Rows
 Once you have a Row, via an iterator or a call to read_row, you can extract column values in several ways. Pass in a pointer to a Rust variable of the appropriate type when you extract a value.  
 
 You can extract by column position or name:
@@ -259,6 +267,9 @@ Or you can define a Rust struct that corresponds to your columns, and extract in
 * `TryFromStruct` trait is required
 
 ```rust
+use google_cloud_spanner::row::TryFromStruct;
+use google_cloud_spanner::row::Struct;
+
 pub struct User {
     pub user_id: String,
     pub premium: bool,
@@ -281,6 +292,8 @@ impl TryFromStruct for User {
 To perform more than one read in a transaction, use ReadOnlyTransaction:
 
 ```rust
+use google_cloud_spanner::statement::Statement;
+
 let tx = client.read_only_transaction().await?;
 
 let mut stmt = Statement::new("SELECT * , \
@@ -292,7 +305,7 @@ let mut stmt = Statement::new("SELECT * , \
 stmt.add_param("Param1", user_id);
 let mut reader = tx.query(stmt).await?;
 loop {
-    let row = match reader.next().await.map_err(|e| Error::GRPC(e))?{
+    let row = match reader.next().await?{
         Some(row) => row,
         None => println!("end of record")
     };
@@ -302,9 +315,9 @@ loop {
     data.push(user_id);
 }
 
-let reader2 = tx.read("User", vec!["UserID"], vec![
-    Key::new(vec!["composite1-1".to_kind(),"composite1-2".to_kind()]),
-    Key::new(vec!["composite2-1".to_kind(),"composite2-1".to_kind()])
+let mut reader2 = tx.read("User", vec!["UserId"], vec![
+    Key::one("user-1"),
+    Key::one("user-2")
 ]).await?;
 
 // ...
@@ -329,7 +342,7 @@ let tx = client.single(TimestampBound::max_staleness(Duration::from_secs(60)).aw
 
 See the documentation of TimestampBound for more details.
 
-### Mutations
+### <a name="Mutations"></a>Mutations
 
 To write values to a Cloud Spanner database, construct a Mutation. The spanner package has functions for inserting, updating and deleting rows. Except for the Delete methods, which take a Key or KeyRange, each mutation-building function comes in three varieties.
 
@@ -338,6 +351,7 @@ One takes lists of columns and values along with the table name:
 ```rust
 use google_cloud_spanner::mutation::insert;
 use google_cloud_spanner::value::CommitTimestamp;
+use google_cloud_spanner::statement::ToKind;
 
 let mutation = insert("User",
     vec!["UserID", "Name", "UpdatedAt"], // columns 
@@ -350,6 +364,12 @@ And the third accepts a struct value, and determines the columns from the struct
 * `ToStruct` trait is required
 
 ```rust
+use google_cloud_spanner::statement::Kinds;
+use google_cloud_spanner::statement::Types;
+use google_cloud_spanner::statement::ToStruct;
+use google_cloud_spanner::statement::ToKind;
+use google_cloud_spanner::value::CommitTimestamp;
+
 pub struct User {
     pub user_id: String,
     pub premium: bool,
@@ -393,25 +413,26 @@ let m1 = insert_or_update_struct("User", new_user);
 let m2 = insert_or_update_struct("User", new_user2);
 ```
 
-### Writes
+### <a name="Writes"></a>Writes
 
 To apply a list of mutations to the database, use Apply:
 ```rust
 use google_cloud_spanner::mutation::insert;
 use google_cloud_spanner::mutation::delete;
 use google_cloud_spanner::key::all_keys;
+use google_cloud_spanner::statement::ToKind;
 
 let m1 = delete("Table", all_keys());
-let m2 = insert("Table", all_keys());
+let m2 = insert("Table", vec!["col1", "col2"], vec!["1".to_kind(), "2".to_kind()]);
 let commit_timestamp = client.apply(vec![m1,m2]).await?;
 ```
 
 If you need to read before writing in a single transaction, use a ReadWriteTransaction. ReadWriteTransactions may be aborted automatically by the backend and need to be retried. You pass in a function to ReadWriteTransaction, and the client will handle the retries automatically. Use the transaction's BufferWrite method to buffer mutations, which will all be executed at the end of the transaction:
 
 ```rust
-use google_cloud_spanner::client::TxError;
-use google_cloud_spanner::mutation;
+use google_cloud_spanner::mutation::update;
 use google_cloud_spanner::key::Key;
+use google_cloud_spanner::value::Timestamp;
 
 let tx_result: Result<(Option<Timestamp>,()), Error> = client.read_write_transaction(|mut tx| async {
     // The transaction function will be called again if the error code
@@ -450,15 +471,18 @@ let tx_result: Result<(Option<Timestamp>,()), Error> = client.read_write_transac
 The Error of the `read_write_transaction` must implements 
 * From<google_cloud_googleapis::Status>
 * From<google_cloud_spanner::session::SessionError>
-* google_cloud_gax::TryAs<google_cloud_googleapis::Status>
+* google_cloud_gax::invoke::TryAs<google_cloud_googleapis::Status>
 
 ```rust
+use google_cloud_gax::invoke::TryAs;
+use google_cloud_googleapis::Status;
+
 #[derive(thiserror::Error, Debug)]
 enum Error {
     #[error(transparent)]
     ParseError(#[from] google_cloud_spanner::row::Error),
     #[error(transparent)]
-    GRPC(#[from] google_cloud_googleapis::Status),
+    GRPC(#[from] Status),
     #[error(transparent)]
     SessionError(#[from] google_cloud_spanner::session::SessionError),
 }
@@ -479,7 +503,10 @@ Spanner supports DML statements like INSERT, UPDATE and DELETE. Use ReadWriteTra
 For large databases, it may be more efficient to partition the DML statement. Use client.PartitionedUpdate to run a DML statement in this way. Not all DML statements can be partitioned.
 
 ```rust
-let client = Client::new(DATABASE).await.context("error")?;
+use google_cloud_spanner::client::Client;
+use google_cloud_spanner::statement::Statement;
+
+let client = Client::new(DATABASE).await?;
 let stmt = Statement::new("UPDATE User SET Value = 'aaa' WHERE Value IS NOT NULL");
 let result = client.partitioned_update(stmt).await?;
 ```
