@@ -2,8 +2,6 @@
 //!
 //! Google Cloud Platform GCE spanner library.
 //!
-//! [![crates.io](https://img.shields.io/crates/v/google-cloud-spanner.svg)](https://crates.io/crates/google-cloud-spanner)
-//!
 //! * [About Cloud Spanner](https://cloud.google.com/spanner/)
 //! * [API Documentation](https://cloud.google.com/spanner/docs)
 //! * [Rust client Documentation](#Documentation)
