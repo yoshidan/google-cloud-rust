@@ -45,11 +45,11 @@ Result of the 24 hours Load Test.
 
 | Metrics | This library | [Google Cloud Go](https://github.com/googleapis/google-cloud-go/tree/main/spanner) | 
 | -------- | ----------------| ----------------- |
-| RPS | [439.5](https://storage.googleapis.com/0432808zbaeatxa/report_1637760853.008414.html) | [443.4](https://storage.googleapis.com/0432808zbaeatxa/report_1637673736.2540932.html) |
-| Used vCPU | [0.35 ~ 0.38](https://storage.googleapis.com/0432808zbaeatxa/CPU%20(6).png) | [0.65 ~ 0.70](https://storage.googleapis.com/0432808zbaeatxa/CPU%20(5).png) |
+| RPS | 438.4 | 443.4 |
+| Used vCPU | [0.37 ~ 0.42](https://storage.googleapis.com/0432808zbaeatxa/CPU%20(6).png) | [0.65 ~ 0.70](https://storage.googleapis.com/0432808zbaeatxa/CPU%20(5).png) |
 
-* [Rust report](https://storage.googleapis.com/0432808zbaeatxa/report_1637587806.875014.html)
-* [Go report](.)
+* [Rust report](https://storage.googleapis.com/0432808zbaeatxa/report_1637760853.008414.html)
+* [Go report](https://storage.googleapis.com/0432808zbaeatxa/report_1637673736.2540932.html)
 
 Test Condition 
 * 2.0 vCPU GKE Autopilot Pod
