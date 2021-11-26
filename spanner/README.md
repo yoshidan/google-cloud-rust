@@ -348,7 +348,7 @@ You can control the read timestamp selected by a transaction. For example, to pe
 ```rust
 use google_cloud_spanner::value::TimestampBound;
 
-let tx = client.single(TimestampBound::max_staleness(chrono::Duration::from_secs(60))).await?;
+let tx = client.single_with_timestamp_bound(TimestampBound::max_staleness(std::time::Duration::from_secs(60))).await?;
 ```
 
 See the documentation of TimestampBound for more details.
