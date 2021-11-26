@@ -5,7 +5,7 @@ authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/gax"
 keywords = ["gcp","googleapis","google-cloud-rust"]
-license-file = "LICENCE"
+license-file = "LICENSE"
 readme = "README.md"
 description = "Google Cloud Platform gRPC retry library."
 
