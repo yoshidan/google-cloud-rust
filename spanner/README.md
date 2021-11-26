@@ -1,6 +1,6 @@
 # google-cloud-spanner
 
-Google Cloud Platform GCE spanner library.
+Google Cloud Platform spanner library.
 
 [![crates.io](https://img.shields.io/crates/v/google-cloud-spanner.svg)](https://crates.io/crates/google-cloud-spanner)
 
