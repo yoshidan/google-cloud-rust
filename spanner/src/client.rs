@@ -125,9 +125,16 @@ impl TryAs<Status> for TxError {
 
 /// Client is a client for reading and writing data to a Cloud Spanner database.
 /// A client is safe to use concurrently, except for its Close method.
-#[derive(Clone)]
 pub struct Client {
     sessions: Arc<SessionManager>,
+}
+
+impl Clone for Client {
+    fn clone(&self) -> Self {
+        Client {
+            sessions: Arc::clone(&self.sessions),
+        }
+    }
 }
 
 impl Client {

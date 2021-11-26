@@ -128,7 +128,7 @@ let mutation = insert("User",
 );
 let commit_timestamp = client.apply(vec![mutation]).await?;
 
-let row = client.single().await?.read(
+let row = client.single().await?.read_row(
     "User",
     vec!["UserID", "Name", "UpdatedAt"],
     Key::one(1),

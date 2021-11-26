@@ -96,15 +96,15 @@
 //! use google_cloud_spanner::statement::ToKind;
 //!
 //! let mutation = insert("User",
-//! vec!["UserID", "Name", "UpdatedAt"], // columns
-//! vec![1.to_kind(), "name".to_kind(), CommitTimestamp::new().to_kind()] // values
+//!     vec!["UserID", "Name", "UpdatedAt"], // columns
+//!     vec![1.to_kind(), "name".to_kind(), CommitTimestamp::new().to_kind()] // values
 //! );
 //! let commit_timestamp = client.apply(vec![mutation]).await?;
 //!
-//! let row = client.single().await?.read(
-//! "User",
-//! vec!["UserID", "Name", "UpdatedAt"],
-//! Key::one(1),
+//! let row = client.single().await?.read_row(
+//!     "User",
+//!     vec!["UserID", "Name", "UpdatedAt"],
+//!     Key::one(1),
 //! ).await?;
 //! ```
 //!
