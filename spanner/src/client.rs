@@ -389,9 +389,8 @@ impl Client {
     /// using a fixed limit on the number of attempts. ReadWriteTransaction will
     /// retry as needed until that deadline is met.
     ///
-    /// See https://godoc.org/cloud.google.com/go/spanner#ReadWriteTransaction for
+    /// See <https://godoc.org/cloud.google.com/go/spanner#ReadWriteTransaction> for
     /// more details.
-    /// ```
     pub async fn read_write_transaction<'a, T, E, F>(
         &self,
         f: impl Fn(ReadWriteTransaction) -> F,
@@ -421,9 +420,8 @@ impl Client {
     /// using a fixed limit on the number of attempts. ReadWriteTransaction will
     /// retry as needed until that deadline is met.
     ///
-    /// See https://godoc.org/cloud.google.com/go/spanner#ReadWriteTransaction for
+    /// See <https://godoc.org/cloud.google.com/go/spanner#ReadWriteTransaction> for
     /// more details.
-    /// ```
     pub async fn read_write_transaction_with_option<'a, T, E, F>(
         &self,
         f: impl Fn(ReadWriteTransaction) -> F,
@@ -469,9 +467,8 @@ impl Client {
     /// using a fixed limit on the number of attempts. ReadWriteTransaction will
     /// retry as needed until that deadline is met.
     ///
-    /// See https://godoc.org/cloud.google.com/go/spanner#ReadWriteTransaction for
+    /// See <https://godoc.org/cloud.google.com/go/spanner#ReadWriteTransaction> for
     /// more details.
-    /// ```
     pub async fn read_write_transaction_sync<T, E>(
         &self,
         f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,
@@ -500,9 +497,8 @@ impl Client {
     /// using a fixed limit on the number of attempts. ReadWriteTransaction will
     /// retry as needed until that deadline is met.
     ///
-    /// See https://godoc.org/cloud.google.com/go/spanner#ReadWriteTransaction for
+    /// See <https://godoc.org/cloud.google.com/go/spanner#ReadWriteTransaction> for
     /// more details.
-    /// ```
     pub async fn read_write_transaction_sync_with_option<T, E>(
         &self,
         f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,

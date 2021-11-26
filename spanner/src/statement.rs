@@ -15,7 +15,7 @@ use std::fmt::Display;
 ///
 /// A parameter placeholder consists of '@' followed by the parameter name.
 /// The parameter name is an identifier which must conform to the naming
-/// requirements in https://cloud.google.com/spanner/docs/lexical#identifiers.
+/// requirements in <https://cloud.google.com/spanner/docs/lexical#identifiers>.
 /// Parameters may appear anywhere that a literal value is expected. The same
 /// parameter name may be used more than once.  It is an error to execute a
 /// statement with unbound parameters. On the other hand, it is allowable to

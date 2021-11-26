@@ -45,14 +45,14 @@ Result of the 24 hours Load Test.
 
 | Metrics | This library | [Google Cloud Go](https://github.com/googleapis/google-cloud-go/tree/main/spanner) | 
 | -------- | ----------------| ----------------- |
-| RPS | [439.5](https://storage.googleapis.com/0432808zbaeatxa/report_1637587806.875014.html) |  |
-| Used vCPU | [0.35~0.38](https://storage.googleapis.com/0432808zbaeatxa/CPU%20(3).png) |  |
+| RPS | 438.4 | 443.4 |
+| Used vCPU | 0.37 ~ 0.42 | 0.65 ~ 0.70 |
 
-* [Rust report](https://storage.googleapis.com/0432808zbaeatxa/report_1637587806.875014.html)
-* [Go report](.)
+* This Library : [Performance report](https://storage.googleapis.com/0432808zbaeatxa/report_1637760853.008414.html) / [CPU Usage](https://storage.googleapis.com/0432808zbaeatxa/CPU%20(6).png)
+* Google Cloud Go : [Performance report](https://storage.googleapis.com/0432808zbaeatxa/report_1637673736.2540932.html) / [CPU Usage](https://storage.googleapis.com/0432808zbaeatxa/CPU%20(5).png)
 
-Test Condition 
-* 2.0 vCPU limited GKE Autopilot Pod
+Test condition 
+* 2.0 vCPU GKE Autopilot Pod
 * 1 Node spanner database server
 * 100 Users
 * [Here](https://github.com/yoshidan/google-cloud-rust-example/tree/main/spanner) is the application for Load Test.
@@ -123,15 +123,15 @@ use google_cloud_spanner::value::CommitTimestamp;
 use google_cloud_spanner::statement::ToKind;
 
 let mutation = insert("User",
-vec!["UserID", "Name", "UpdatedAt"], // columns
-vec![1.to_kind(), "name".to_kind(), CommitTimestamp::new().to_kind()] // values
+    vec!["UserID", "Name", "UpdatedAt"], // columns
+    vec![1.to_kind(), "name".to_kind(), CommitTimestamp::new().to_kind()] // values
 );
 let commit_timestamp = client.apply(vec![mutation]).await?;
 
 let row = client.single().await?.read(
-"User",
-vec!["UserID", "Name", "UpdatedAt"],
-Key::one(1),
+    "User",
+    vec!["UserID", "Name", "UpdatedAt"],
+    Key::one(1),
 ).await?;
 ```
 
@@ -170,8 +170,12 @@ use google_cloud_spanner::statement::ToKind;
 
 let key1 = Key::new(vec!["Bob".to_kind(), "2014-09-23".to_kind()]);
 let key2 = Key::new(vec!["Alfred".to_kind(), "2015-06-12".to_kind()]);
-let ks = vec![key1,key2] ;
-let rows = tx.read("Table", vec!["Name","BirthDay"], ks).await;
+let keys  = vec![key1,key2] ;
+
+let composite_keys = vec![
+    Key::new(vec!["composite-pk-1-1".to_kind(),"composite-pk-1-2".to_kind()]),
+    Key::new(vec!["composite-pk-2-1".to_kind(),"composite-pk-2-2".to_kind()])
+];
 ```
 
 all_keys returns a KeySet that refers to all the keys in a table:
@@ -206,11 +210,6 @@ use google_cloud_spanner::statement::ToKind;
 let iter1 = client.single().await?.read("Table", vec!["col1", "col2"], vec![
     Key::one("pk1"),
     Key::one("pk2")
-]).await?;
-
-let iter2 = client.single().await?.read("Table", vec!["col1", "col2"], vec![
-    Key::new(vec!["composite-pk-1-1".to_kind(),"composite-pk-1-2".to_kind()]),
-    Key::new(vec!["composite-pk-2-1".to_kind(),"composite-pk-2-2".to_kind()])
 ]).await?;
 ```
 
@@ -327,8 +326,14 @@ let mut reader2 = tx.read("User", vec!["UserId"], vec![
     Key::one("user-2")
 ]).await?;
 
-// ...
+// iterate reader2 ...
 
+let mut reader3 = tx.read("Table", vec!["col1", "col2"], vec![
+    Key::new(vec!["composite-pk-1-1".to_kind(),"composite-pk-1-2".to_kind()]),
+    Key::new(vec!["composite-pk-2-1".to_kind(),"composite-pk-2-2".to_kind()])
+]).await?;
+
+// iterate reader3 ...
 ```
 
 * The used session is returned to the drop timing session pool, so unlike Go, there is no need to call txn Close.
