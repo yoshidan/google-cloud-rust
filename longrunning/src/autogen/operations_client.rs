@@ -25,6 +25,7 @@ fn default_setting() -> BackoffRetrySettings {
     }
 }
 
+#[derive(Clone)]
 pub struct OperationsClient {
     inner: InternalOperationsClient<Channel>,
     token_source: TokenSource,
@@ -143,7 +144,6 @@ impl OperationsClient {
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Operation>, Status> {
         let mut setting = Self::get_call_setting(opt);
-        let name = &req.name;
         let token = self.token_source.token().await?;
         return invoke_reuse(
             |client| async {

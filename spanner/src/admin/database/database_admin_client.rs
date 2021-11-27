@@ -7,7 +7,6 @@ use google_cloud_googleapis::iam::v1::{
     GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest,
     TestIamPermissionsResponse,
 };
-use google_cloud_googleapis::longrunning::Operation;
 use google_cloud_googleapis::spanner::admin::database::v1::database_admin_client::DatabaseAdminClient as InternalDatabaseAdminClient;
 use google_cloud_googleapis::spanner::admin::database::v1::{
     Backup, CreateBackupRequest, CreateDatabaseRequest, Database, DeleteBackupRequest,
@@ -18,6 +17,8 @@ use google_cloud_googleapis::{Code, Status};
 
 use crate::admin::SCOPES;
 use google_cloud_grpc::conn::{ConnectionManager, Error, TokenSource};
+use google_cloud_longrunning::autogen::operations_client::OperationsClient;
+use google_cloud_longrunning::longrunning::Operation;
 use tonic::transport::Channel;
 use tonic::Response;
 
@@ -33,11 +34,24 @@ fn default_setting() -> BackoffRetrySettings {
 #[derive(Clone)]
 pub struct DatabaseAdminClient {
     inner: InternalDatabaseAdminClient<Channel>,
+    lro_client: OperationsClient,
     token_source: TokenSource,
 }
 
 impl DatabaseAdminClient {
-    pub async fn new() -> Result<Self, Error> {
+    pub fn new(
+        inner: InternalDatabaseAdminClient<Channel>,
+        lro_client: OperationsClient,
+        token_source: TokenSource,
+    ) -> Self {
+        Self {
+            inner,
+            lro_client,
+            token_source,
+        }
+    }
+
+    pub async fn default() -> Result<Self, Error> {
         let emulator_host = match std::env::var("SPANNER_EMULATOR_HOST") {
             Ok(s) => Some(s),
             Err(_) => None,
@@ -45,10 +59,13 @@ impl DatabaseAdminClient {
         let conn_pool =
             ConnectionManager::new(1, SPANNER, AUDIENCE, Some(&SCOPES), emulator_host).await?;
         let (conn, token_source) = conn_pool.conn();
-        Ok(DatabaseAdminClient {
-            inner: InternalDatabaseAdminClient::new(conn),
+        let lro_client = OperationsClient::new(conn, token_source).await?;
+        let (conn, token_source) = conn_pool.conn();
+        Ok(Self::new(
+            InternalDatabaseAdminClient::new(conn),
+            lro_client,
             token_source,
-        })
+        ))
     }
 
     /// merge call setting
@@ -68,7 +85,7 @@ impl DatabaseAdminClient {
         &mut self,
         req: CreateDatabaseRequest,
         opt: Option<BackoffRetrySettings>,
-    ) -> Result<Response<Operation>, Status> {
+    ) -> Result<Operation, Status> {
         let mut setting = DatabaseAdminClient::get_call_setting(opt);
         let parent = &req.parent;
         let token = self.token_source.token().await?;
@@ -83,7 +100,8 @@ impl DatabaseAdminClient {
             &mut self.inner,
             &mut setting,
         )
-        .await;
+        .await
+        .map(|d| Operation::new(self.lro_client.clone(), d.into_inner()));
     }
 
     /// get_database gets the state of a Cloud Spanner database.
@@ -121,7 +139,7 @@ impl DatabaseAdminClient {
         &mut self,
         req: UpdateDatabaseDdlRequest,
         opt: Option<BackoffRetrySettings>,
-    ) -> Result<Response<Operation>, Status> {
+    ) -> Result<Operation, Status> {
         let mut setting = DatabaseAdminClient::get_call_setting(opt);
         let database = &req.database;
         let token = self.token_source.token().await?;
@@ -136,7 +154,8 @@ impl DatabaseAdminClient {
             &mut self.inner,
             &mut setting,
         )
-        .await;
+        .await
+        .map(|d| Operation::new(self.lro_client.clone(), d.into_inner()));
     }
 
     /// drop_database drops (aka deletes) a Cloud Spanner database.
@@ -296,7 +315,7 @@ impl DatabaseAdminClient {
         &mut self,
         req: CreateBackupRequest,
         opt: Option<BackoffRetrySettings>,
-    ) -> Result<Response<Operation>, Status> {
+    ) -> Result<Operation, Status> {
         let mut setting = DatabaseAdminClient::get_call_setting(opt);
         let parent = &req.parent;
         let token = self.token_source.token().await?;
@@ -311,7 +330,8 @@ impl DatabaseAdminClient {
             &mut self.inner,
             &mut setting,
         )
-        .await;
+        .await
+        .map(|d| Operation::new(self.lro_client.clone(), d.into_inner()));
     }
 
     /// get_backup gets metadata on a pending or completed Backup.
@@ -404,7 +424,7 @@ impl DatabaseAdminClient {
         &mut self,
         req: RestoreDatabaseRequest,
         opt: Option<BackoffRetrySettings>,
-    ) -> Result<Response<Operation>, Status> {
+    ) -> Result<Operation, Status> {
         let mut setting = DatabaseAdminClient::get_call_setting(opt);
         let parent = &req.parent;
         let token = self.token_source.token().await?;
@@ -419,7 +439,8 @@ impl DatabaseAdminClient {
             &mut self.inner,
             &mut setting,
         )
-        .await;
+        .await
+        .map(|d| Operation::new(self.lro_client.clone(), d.into_inner()));
     }
 }
 

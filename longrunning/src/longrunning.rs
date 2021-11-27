@@ -5,7 +5,7 @@ use google_cloud_googleapis::longrunning::{
     operation, CancelOperationRequest, DeleteOperationRequest, GetOperationRequest,
     Operation as InternalOperation,
 };
-use google_cloud_googleapis::{Status, Code};
+use google_cloud_googleapis::{Code, Status};
 
 pub struct Operation {
     inner: InternalOperation,
@@ -62,7 +62,7 @@ impl Operation {
                 //TODO avoid unwrap
                 let decoded = T::decode(message.value.as_slice()).unwrap();
                 Ok(Some(decoded))
-            },
+            }
             operation::Result::Error(status) => {
                 let tonic_code = tonic::Code::from(status.code);
                 Err(tonic::Status::new(tonic_code, status.message.to_string()).into())
@@ -80,17 +80,21 @@ impl Operation {
             |me| async {
                 let poll_result: Option<T> = match me.poll().await {
                     Ok(s) => s,
-                    Err(e) => return Err((e, me))
+                    Err(e) => return Err((e, me)),
                 };
                 if me.done() {
                     Ok(poll_result)
-                }else {
-                    Err((tonic::Status::new(tonic::Code::DeadlineExceeded, "wait timeout").into(), me))
+                } else {
+                    Err((
+                        tonic::Status::new(tonic::Code::DeadlineExceeded, "wait timeout").into(),
+                        me,
+                    ))
                 }
             },
             self,
             &mut settings,
-        ).await;
+        )
+        .await;
     }
 
     /// Cancel starts asynchronous cancellation on a long-running operation. The server
