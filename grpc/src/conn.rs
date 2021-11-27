@@ -1,9 +1,10 @@
-use google_cloud_auth::token_source::TokenSource;
+use google_cloud_auth::token_source::TokenSource as InternalTokenSource;
 use google_cloud_auth::{create_token_source, Config};
 use std::sync::Arc;
 
 use crate::inner::{InternalConnectionManager, Error as InternalConnectionError};
 use tonic::transport::Channel;
+use tonic::{Request, Status, IntoRequest};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -16,7 +17,25 @@ pub enum Error {
 
 pub struct ConnectionManager {
     inner: InternalConnectionManager,
-    token_source: Option<Arc<dyn TokenSource>>,
+    token_source: Option<Arc<dyn InternalTokenSource>>,
+}
+
+#[derive(Clone)]
+pub struct TokenSource {
+    inner: Option<Arc<dyn InternalTokenSource>>
+}
+
+impl TokenSource {
+    pub async fn token(&self) -> Result<Option<String>, Status> {
+        match self.inner.as_ref() {
+            Some(token_source) => {
+                token_source.token().await.map_err(|e| {
+                    Status::new(tonic::Code::Unauthenticated, format!("token error: {:?}", e))
+                }).map(|v| Some(v.value()))
+            },
+            None => Ok(None),
+        }
+    }
 }
 
 impl ConnectionManager {
@@ -38,12 +57,14 @@ impl ConnectionManager {
         self.inner.num()
     }
 
-    pub fn conn(&self) -> (Channel, Option<Arc<dyn TokenSource>>) {
+    pub fn conn(&self) -> (Channel, TokenSource) {
         let token_source = match self.token_source.as_ref() {
             Some(s) => Some(Arc::clone(s)),
             None => None,
         };
         //clone() reuses http/s connection
-        (self.inner.conn(), token_source)
+        (self.inner.conn(), TokenSource {
+                inner: token_source
+        })
     }
 }

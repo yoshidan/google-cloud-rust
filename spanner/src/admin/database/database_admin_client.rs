@@ -1,7 +1,5 @@
 use crate::apiv1::conn_pool::{SPANNER, AUDIENCE};
-use google_cloud_auth::token_source::TokenSource;
 
-use crate::apiv1::spanner_client::get_token;
 use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
 use google_cloud_gax::invoke::invoke_reuse;
 use google_cloud_gax::util::create_request;
@@ -20,7 +18,7 @@ use google_cloud_googleapis::{Code, Status};
 use std::sync::Arc;
 use tonic::transport::Channel;
 use tonic::Response;
-use google_cloud_grpc::conn::{ConnectionManager, Error};
+use google_cloud_grpc::conn::{ConnectionManager, Error, TokenSource};
 use crate::admin::SCOPES;
 
 fn default_setting() -> BackoffRetrySettings {
@@ -35,7 +33,7 @@ fn default_setting() -> BackoffRetrySettings {
 #[derive(Clone)]
 pub struct DatabaseAdminClient {
     inner: InternalDatabaseAdminClient<Channel>,
-    token_source: Option<Arc<dyn TokenSource>>,
+    token_source: TokenSource,
 }
 
 impl DatabaseAdminClient {
@@ -72,7 +70,7 @@ impl DatabaseAdminClient {
     ) -> Result<Response<Operation>, Status> {
         let mut setting = DatabaseAdminClient::get_call_setting(opt);
         let parent = &req.parent;
-        let token = self.get_token().await?;
+        let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
                 let request = create_request(format!("parent={}", parent), &token, req.clone());
@@ -95,7 +93,7 @@ impl DatabaseAdminClient {
     ) -> Result<Response<Database>, Status> {
         let mut setting = DatabaseAdminClient::get_call_setting(opt);
         let name = &req.name;
-        let token = self.get_token().await?;
+         let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
                 let request = create_request(format!("name={}", name), &token, req.clone());
@@ -125,7 +123,7 @@ impl DatabaseAdminClient {
     ) -> Result<Response<Operation>, Status> {
         let mut setting = DatabaseAdminClient::get_call_setting(opt);
         let database = &req.database;
-        let token = self.get_token().await?;
+         let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
                 let request = create_request(format!("database={}", database), &token, req.clone());
@@ -150,7 +148,7 @@ impl DatabaseAdminClient {
     ) -> Result<Response<()>, Status> {
         let mut setting = DatabaseAdminClient::get_call_setting(opt);
         let database = &req.database;
-        let token = self.get_token().await?;
+         let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
                 let request = create_request(format!("database={}", database), &token, req.clone());
@@ -175,7 +173,7 @@ impl DatabaseAdminClient {
     ) -> Result<Response<GetDatabaseDdlResponse>, Status> {
         let mut setting = DatabaseAdminClient::get_call_setting(opt);
         let database = &req.database;
-        let token = self.get_token().await?;
+         let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
                 let request = create_request(format!("database={}", database), &token, req.clone());
@@ -204,7 +202,7 @@ impl DatabaseAdminClient {
     ) -> Result<Response<Policy>, Status> {
         let mut setting = DatabaseAdminClient::get_call_setting(opt);
         let resource = &req.resource;
-        let token = self.get_token().await?;
+         let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
                 let request = create_request(format!("resource={}", resource), &token, req.clone());
@@ -234,7 +232,7 @@ impl DatabaseAdminClient {
     ) -> Result<Response<Policy>, Status> {
         let mut setting = DatabaseAdminClient::get_call_setting(opt);
         let resource = &req.resource;
-        let token = self.get_token().await?;
+         let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
                 let request = create_request(format!("resource={}", resource), &token, req.clone());
@@ -266,7 +264,7 @@ impl DatabaseAdminClient {
     ) -> Result<Response<TestIamPermissionsResponse>, Status> {
         let mut setting = DatabaseAdminClient::get_call_setting(opt);
         let resource = &req.resource;
-        let token = self.get_token().await?;
+         let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
                 let request = create_request(format!("resource={}", resource), &token, req.clone());
@@ -300,7 +298,7 @@ impl DatabaseAdminClient {
     ) -> Result<Response<Operation>, Status> {
         let mut setting = DatabaseAdminClient::get_call_setting(opt);
         let parent = &req.parent;
-        let token = self.get_token().await?;
+         let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
                 let request = create_request(format!("parent={}", parent), &token, req.clone());
@@ -323,7 +321,7 @@ impl DatabaseAdminClient {
     ) -> Result<Response<Backup>, Status> {
         let mut setting = DatabaseAdminClient::get_call_setting(opt);
         let name = &req.name;
-        let token = self.get_token().await?;
+         let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
                 let request = create_request(format!("name={}", name), &token, req.clone());
@@ -346,7 +344,7 @@ impl DatabaseAdminClient {
     ) -> Result<Response<Backup>, Status> {
         let mut setting = DatabaseAdminClient::get_call_setting(opt);
         let name = &req.backup.as_ref().unwrap().name;
-        let token = self.get_token().await?;
+         let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
                 let request = create_request(format!("backup.name={}", name), &token, req.clone());
@@ -369,7 +367,7 @@ impl DatabaseAdminClient {
     ) -> Result<Response<()>, Status> {
         let mut setting = DatabaseAdminClient::get_call_setting(opt);
         let name = &req.name;
-        let token = self.get_token().await?;
+         let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
                 let request = create_request(format!("name={}", name), &token, req.clone());
@@ -408,7 +406,7 @@ impl DatabaseAdminClient {
     ) -> Result<Response<Operation>, Status> {
         let mut setting = DatabaseAdminClient::get_call_setting(opt);
         let parent = &req.parent;
-        let token = self.get_token().await?;
+         let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
                 let request = create_request(format!("parent={}", parent), &token, req.clone());
@@ -421,10 +419,6 @@ impl DatabaseAdminClient {
             &mut setting,
         )
         .await;
-    }
-
-    async fn get_token(&self) -> Result<Option<String>, Status> {
-        get_token(&self.token_source).await
     }
 }
 
