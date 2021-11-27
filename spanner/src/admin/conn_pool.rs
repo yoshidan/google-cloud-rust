@@ -3,37 +3,25 @@ use std::sync::Arc;
 
 use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint};
 
-use crate::grpc::conn_pool::{
-    Error as InternalConnectionError, InternalConnectionManager, AUDIENCE,
-};
+use crate::grpc::conn_pool::{InternalConnectionManager, AUDIENCE};
 use google_cloud_auth::token_source::TokenSource;
 use google_cloud_auth::{create_token_source, Config};
-use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
 
-use crate::apiv1::spanner_client::Client;
+use crate::apiv1::conn_pool::Error;
 
 const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
-    "https://www.googleapis.com/auth/spanner.data",
+    "https://www.googleapis.com/auth/spanner.admin",
 ];
 
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-    #[error(transparent)]
-    AuthInitialize(#[from] google_cloud_auth::error::Error),
-
-    #[error(transparent)]
-    InternalConnection(#[from] InternalConnectionError),
-}
-
-pub struct ConnectionManager {
+pub struct AdminConnectionManager {
     inner: InternalConnectionManager,
     token_source: Option<Arc<dyn TokenSource>>,
 }
 
-impl ConnectionManager {
+impl AdminConnectionManager {
     pub async fn new(pool_size: usize, emulator_host: Option<String>) -> Result<Self, Error> {
-        Ok(ConnectionManager {
+        Ok(AdminConnectionManager {
             inner: InternalConnectionManager::new(pool_size, emulator_host).await?,
             token_source: Some(Arc::from(
                 create_token_source(Config {
@@ -49,14 +37,12 @@ impl ConnectionManager {
         self.inner.num()
     }
 
-    pub fn conn(&self) -> Client {
+    pub fn conn(&self) -> (Channel, Option<Arc<dyn TokenSource>>) {
+        let token_source = match self.token_source.as_ref() {
+            Some(s) => Some(Arc::clone(s)),
+            None => None,
+        };
         //clone() reuses http/s connection
-        Client::new(
-            SpannerClient::new(self.inner.conn()),
-            match self.token_source.as_ref() {
-                Some(s) => Some(Arc::clone(s)),
-                None => None,
-            },
-        )
+        (self.inner.conn(), token_source)
     }
 }
