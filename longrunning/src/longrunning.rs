@@ -1,5 +1,4 @@
 use crate::autogen::operations_client::OperationsClient;
-use bytes::BytesMut;
 use google_cloud_gax::call_option::{BackoffRetrySettings, RetrySettings};
 use google_cloud_gax::invoke::invoke_reuse;
 use google_cloud_googleapis::longrunning::{
@@ -7,7 +6,6 @@ use google_cloud_googleapis::longrunning::{
     Operation as InternalOperation,
 };
 use google_cloud_googleapis::{Status, Code};
-use tonic::codec::{Codec, DecodeBuf, Decoder, ProstCodec};
 
 pub struct Operation {
     inner: InternalOperation,
@@ -41,7 +39,7 @@ impl Operation {
     /// is stored in resp.
     pub async fn poll<T>(&mut self) -> Result<Option<T>, Status>
     where
-        T: prost::Message + From<prost_types::Any>,
+        T: prost::Message + Default,
     {
         if !self.done() {
             let operation = self
@@ -60,7 +58,11 @@ impl Operation {
         }
         let operation_result = self.inner.result.clone().unwrap();
         match operation_result {
-            operation::Result::Response(message) => Ok(Some(message.into())),
+            operation::Result::Response(message) => {
+                //TODO avoid unwrap
+                let decoded = T::decode(message.value.as_slice()).unwrap();
+                Ok(Some(decoded))
+            },
             operation::Result::Error(status) => {
                 let tonic_code = tonic::Code::from(status.code);
                 Err(tonic::Status::new(tonic_code, status.message.to_string()).into())
@@ -71,7 +73,7 @@ impl Operation {
     /// wait implements Wait, taking exponentialBackoff and sleeper arguments for testing.
     pub async fn wait<T>(&mut self, mut settings: BackoffRetrySettings) -> Result<Option<T>, Status>
     where
-        T: prost::Message + From<prost_types::Any>,
+        T: prost::Message + Default,
     {
         settings.retryer.codes.push(Code::DeadlineExceeded);
         return invoke_reuse(
