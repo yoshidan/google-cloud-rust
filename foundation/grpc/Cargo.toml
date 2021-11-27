@@ -3,11 +3,11 @@ name = "google-cloud-grpc"
 version = "0.1.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
-repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/grpc"
+repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/foundation/grpc"
 keywords = ["gcp","grpc","googleapis","google-cloud-rust"]
 license-file = "LICENSE"
 readme = "README.md"
-description = "Google Cloud Platform server gRPC library."
+description = "Google Cloud Platform gRPC library."
 
 [dependencies]
 thiserror = "1.0"

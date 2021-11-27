@@ -27,10 +27,10 @@ futures-util = "0.3"
 futures-channel = "0.3"
 base64 = "0.13"
 
-google-cloud-longrunning= { version = "0.1.0", path = "../longrunning" }
-google-cloud-grpc = { version = "0.1.0", path = "../grpc" }
-google-cloud-auth = { version = "0.1.0", path = "../auth" }
-google-cloud-gax = { version = "0.2.0", path = "../gax" }
+google-cloud-longrunning= { version = "0.1.0", path = "../foundation/longrunning" }
+google-cloud-grpc = { version = "0.1.0", path = "../foundation/grpc" }
+google-cloud-auth = { version = "0.1.1", path = "../foundation/auth" }
+google-cloud-gax = { version = "0.2.0", path = "../foundation/gax" }
 google-cloud-googleapis = { version = "0.2.0", path = "../googleapis" }
 
 [dev-dependencies]

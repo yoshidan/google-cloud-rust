@@ -1,9 +1,9 @@
 [package]
 name = "google-cloud-auth"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
-repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/auth"
+repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/foundation/auth"
 keywords = ["gcp","auth","googleapis","google-cloud-rust"]
 license-file = "LICENSE"
 readme = "README.md"
@@ -22,7 +22,7 @@ async-trait = "0.1"
 home = "0.5"
 urlencoding = "2.1"
 tokio = { version = "1.7", features = ["fs"]}
-google-cloud-metadata = { version = "0.1.0", path = "../metadata" }
+google-cloud-metadata = { version = "0.1.1", path = "../metadata" }
 
 [dev-dependencies]
 tokio = { version = "1.7", features = ["test-util", "rt-multi-thread", "macros"]}

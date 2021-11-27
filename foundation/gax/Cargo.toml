@@ -3,7 +3,7 @@ name = "google-cloud-gax"
 version = "0.2.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2018"
-repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/gax"
+repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/foundation/gax"
 keywords = ["gcp","googleapis","google-cloud-rust"]
 license-file = "LICENSE"
 readme = "README.md"
@@ -14,4 +14,4 @@ log = "0.4"
 rand = "0.8"
 tokio = { version = "1.7" }
 tonic = { version = "0.6", features = ["tls", "prost"] }
-google-cloud-googleapis = { version = "0.2.0", path = "../googleapis" }
+google-cloud-googleapis = { version = "0.2.0", path = "../../googleapis" }
