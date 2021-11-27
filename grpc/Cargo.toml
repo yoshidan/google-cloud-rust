@@ -14,3 +14,4 @@ thiserror = "1.0"
 tonic = { version = "0.6", features = ["tls", "prost"] }
 prost = "0.9"
 prost-types = "0.9"
+google-cloud-auth= { version = "0.1.0", path = "../auth" }

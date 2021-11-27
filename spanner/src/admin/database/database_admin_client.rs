@@ -1,5 +1,4 @@
-use crate::admin::conn_pool::AdminConnectionManager;
-use crate::apiv1::conn_pool::Error;
+use crate::apiv1::conn_pool::{SPANNER, AUDIENCE};
 use google_cloud_auth::token_source::TokenSource;
 
 use crate::apiv1::spanner_client::get_token;
@@ -21,6 +20,8 @@ use google_cloud_googleapis::{Code, Status};
 use std::sync::Arc;
 use tonic::transport::Channel;
 use tonic::Response;
+use google_cloud_grpc::conn::{ConnectionManager, Error};
+use crate::admin::SCOPES;
 
 fn default_setting() -> BackoffRetrySettings {
     BackoffRetrySettings {
@@ -43,7 +44,7 @@ impl DatabaseAdminClient {
             Ok(s) => Some(s),
             Err(_) => None,
         };
-        let conn_pool = AdminConnectionManager::new(1, emulator_host).await?;
+        let conn_pool = ConnectionManager::new(1, SPANNER, AUDIENCE, Some(&SCOPES), emulator_host).await?;
         let (conn, token_source) = conn_pool.conn();
         Ok(DatabaseAdminClient {
             inner: InternalDatabaseAdminClient::new(conn),

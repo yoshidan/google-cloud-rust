@@ -1,71 +1,49 @@
-use std::sync::atomic::{AtomicI64, Ordering};
+use google_cloud_auth::token_source::TokenSource;
+use google_cloud_auth::{create_token_source, Config};
+use std::sync::Arc;
 
-use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint};
-
-const TLS_CERTS: &[u8] = include_bytes!("roots.pem");
+use crate::inner::{InternalConnectionManager, Error as InternalConnectionError};
+use tonic::transport::Channel;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
-    TonicTransport(#[from] tonic::transport::Error),
+    AuthInitialize(#[from] google_cloud_auth::error::Error),
 
-    #[error("invalid spanner host {0}")]
-    InvalidSpannerHOST(String),
+    #[error(transparent)]
+    InternalConnection(#[from] InternalConnectionError),
 }
 
 pub struct ConnectionManager {
-    index: AtomicI64,
-    conns: Vec<Channel>,
+    inner: InternalConnectionManager,
+    token_source: Option<Arc<dyn TokenSource>>,
 }
 
 impl ConnectionManager {
-    pub async fn new(
-        pool_size: usize,
-        domain_name: &'static str,
-        audience: &'static str,
-        emulator_host: Option<String>,
-    ) -> Result<Self, Error> {
-        let conns = match emulator_host {
-            None => {
-                let tls_config = ClientTlsConfig::new()
-                    .ca_certificate(Certificate::from_pem(TLS_CERTS))
-                    .domain_name(domain_name);
-                let mut conns = Vec::with_capacity(pool_size);
-                for _i_ in 0..pool_size {
-                    let endpoint = Channel::from_static(audience).tls_config(tls_config.clone())?;
-                    let con = Self::connect(endpoint).await?;
-                    conns.push(con);
-                }
-                conns
-            }
-            // use local spanner emulator
-            Some(host) => {
-                let mut conns = Vec::with_capacity(1);
-                let endpoint = Channel::from_shared(format!("http://{}", host).into_bytes())
-                    .map_err(|_| Error::InvalidSpannerHOST(host))?;
-                let con = Self::connect(endpoint).await?;
-                conns.push(con);
-                conns
-            }
-        };
+    pub async fn new(pool_size: usize, domain_name: &'static str, audience: &'static str, scopes: Option<&'static [&'static str]>, emulator_host: Option<String>) -> Result<Self, Error> {
         Ok(Self {
-            index: AtomicI64::new(0),
-            conns,
+            inner: InternalConnectionManager::new(pool_size, domain_name, audience, emulator_host)
+                .await?,
+            token_source: Some(Arc::from(
+                create_token_source(Config {
+                    audience: Some(audience),
+                    scopes: scopes,
+                })
+                    .await?,
+            )),
         })
     }
 
-    async fn connect(endpoint: Endpoint) -> Result<Channel, tonic::transport::Error> {
-        let channel = endpoint.connect().await?;
-        Ok(channel)
-    }
-
     pub fn num(&self) -> usize {
-        self.conns.len()
+        self.inner.num()
     }
 
-    pub fn conn(&self) -> Channel {
-        let current = self.index.fetch_add(1, Ordering::SeqCst) as usize;
-        //clone() reuses http/2 connection
-        self.conns[current % self.conns.len()].clone()
+    pub fn conn(&self) -> (Channel, Option<Arc<dyn TokenSource>>) {
+        let token_source = match self.token_source.as_ref() {
+            Some(s) => Some(Arc::clone(s)),
+            None => None,
+        };
+        //clone() reuses http/s connection
+        (self.inner.conn(), token_source)
     }
 }
