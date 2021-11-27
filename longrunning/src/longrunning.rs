@@ -1,5 +1,5 @@
 use crate::autogen::operations_client::OperationsClient;
-use google_cloud_gax::call_option::{BackoffRetrySettings, RetrySettings};
+use google_cloud_gax::call_option::{BackoffRetrySettings};
 use google_cloud_gax::invoke::invoke_reuse;
 use google_cloud_googleapis::longrunning::{
     operation, CancelOperationRequest, DeleteOperationRequest, GetOperationRequest,
@@ -114,7 +114,7 @@ impl Operation {
                 None,
             )
             .await
-            .map(|x| ())
+            .map(|_x| ())
     }
 
     /// Delete deletes a long-running operation. This method indicates that the client is
@@ -129,6 +129,6 @@ impl Operation {
                 None,
             )
             .await
-            .map(|x| ())
+            .map(|_x| ())
     }
 }
