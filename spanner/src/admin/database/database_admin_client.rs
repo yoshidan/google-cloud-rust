@@ -7,11 +7,14 @@ use google_cloud_googleapis::iam::v1::{
     GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest,
     TestIamPermissionsResponse,
 };
+use google_cloud_googleapis::longrunning::Operation as InternalOperation;
 use google_cloud_googleapis::spanner::admin::database::v1::database_admin_client::DatabaseAdminClient as InternalDatabaseAdminClient;
 use google_cloud_googleapis::spanner::admin::database::v1::{
     Backup, CreateBackupRequest, CreateDatabaseRequest, Database, DeleteBackupRequest,
     DropDatabaseRequest, GetBackupRequest, GetDatabaseDdlRequest, GetDatabaseDdlResponse,
-    GetDatabaseRequest, RestoreDatabaseRequest, UpdateBackupRequest, UpdateDatabaseDdlRequest,
+    GetDatabaseRequest, ListBackupOperationsRequest, ListBackupsRequest,
+    ListDatabaseOperationsRequest, ListDatabasesRequest, RestoreDatabaseRequest,
+    UpdateBackupRequest, UpdateDatabaseDdlRequest,
 };
 use google_cloud_googleapis::{Code, Status};
 
@@ -76,6 +79,39 @@ impl DatabaseAdminClient {
         }
     }
 
+    /// list_databases lists Cloud Spanner databases.
+    pub async fn list_databases(
+        &mut self,
+        mut req: ListDatabasesRequest,
+        opt: Option<BackoffRetrySettings>,
+    ) -> Result<Vec<Database>, Status> {
+        let mut setting = Self::get_call_setting(opt);
+        let parent = &req.parent;
+        let token = self.token_source.token().await?;
+        let mut all_databases = vec![];
+        //eager loading
+        loop {
+            let response = invoke_reuse(
+                |database_admin_client| async {
+                    let request = create_request(format!("parent={}", parent), &token, req.clone());
+                    database_admin_client
+                        .list_databases(request)
+                        .await
+                        .map_err(|e| (Status::from(e), database_admin_client))
+                        .map(|d| d.into_inner())
+                },
+                &mut self.inner,
+                &mut setting,
+            )
+            .await?;
+            if response.databases.is_empty() {
+                return Ok(all_databases);
+            }
+            all_databases.extend(response.databases.into_iter());
+            req.page_token = response.next_page_token;
+        }
+    }
+
     /// create_database creates a new Cloud Spanner database and starts to prepare it for serving.
     /// The returned [long-running operation][google.longrunning.Operation] will
     /// have a name of the format <database_name>/operations/<operation_id> and
@@ -86,7 +122,7 @@ impl DatabaseAdminClient {
         req: CreateDatabaseRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Operation, Status> {
-        let mut setting = DatabaseAdminClient::get_call_setting(opt);
+        let mut setting = Self::get_call_setting(opt);
         let parent = &req.parent;
         let token = self.token_source.token().await?;
         return invoke_reuse(
@@ -110,7 +146,7 @@ impl DatabaseAdminClient {
         req: GetDatabaseRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Database>, Status> {
-        let mut setting = DatabaseAdminClient::get_call_setting(opt);
+        let mut setting = Self::get_call_setting(opt);
         let name = &req.name;
         let token = self.token_source.token().await?;
         return invoke_reuse(
@@ -140,7 +176,7 @@ impl DatabaseAdminClient {
         req: UpdateDatabaseDdlRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Operation, Status> {
-        let mut setting = DatabaseAdminClient::get_call_setting(opt);
+        let mut setting = Self::get_call_setting(opt);
         let database = &req.database;
         let token = self.token_source.token().await?;
         return invoke_reuse(
@@ -166,7 +202,7 @@ impl DatabaseAdminClient {
         req: DropDatabaseRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<()>, Status> {
-        let mut setting = DatabaseAdminClient::get_call_setting(opt);
+        let mut setting = Self::get_call_setting(opt);
         let database = &req.database;
         let token = self.token_source.token().await?;
         return invoke_reuse(
@@ -191,7 +227,7 @@ impl DatabaseAdminClient {
         req: GetDatabaseDdlRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<GetDatabaseDdlResponse>, Status> {
-        let mut setting = DatabaseAdminClient::get_call_setting(opt);
+        let mut setting = Self::get_call_setting(opt);
         let database = &req.database;
         let token = self.token_source.token().await?;
         return invoke_reuse(
@@ -220,7 +256,7 @@ impl DatabaseAdminClient {
         req: SetIamPolicyRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Policy>, Status> {
-        let mut setting = DatabaseAdminClient::get_call_setting(opt);
+        let mut setting = Self::get_call_setting(opt);
         let resource = &req.resource;
         let token = self.token_source.token().await?;
         return invoke_reuse(
@@ -250,7 +286,7 @@ impl DatabaseAdminClient {
         req: GetIamPolicyRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Policy>, Status> {
-        let mut setting = DatabaseAdminClient::get_call_setting(opt);
+        let mut setting = Self::get_call_setting(opt);
         let resource = &req.resource;
         let token = self.token_source.token().await?;
         return invoke_reuse(
@@ -282,7 +318,7 @@ impl DatabaseAdminClient {
         req: TestIamPermissionsRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<TestIamPermissionsResponse>, Status> {
-        let mut setting = DatabaseAdminClient::get_call_setting(opt);
+        let mut setting = Self::get_call_setting(opt);
         let resource = &req.resource;
         let token = self.token_source.token().await?;
         return invoke_reuse(
@@ -316,7 +352,7 @@ impl DatabaseAdminClient {
         req: CreateBackupRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Operation, Status> {
-        let mut setting = DatabaseAdminClient::get_call_setting(opt);
+        let mut setting = Self::get_call_setting(opt);
         let parent = &req.parent;
         let token = self.token_source.token().await?;
         return invoke_reuse(
@@ -340,7 +376,7 @@ impl DatabaseAdminClient {
         req: GetBackupRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Backup>, Status> {
-        let mut setting = DatabaseAdminClient::get_call_setting(opt);
+        let mut setting = Self::get_call_setting(opt);
         let name = &req.name;
         let token = self.token_source.token().await?;
         return invoke_reuse(
@@ -363,7 +399,7 @@ impl DatabaseAdminClient {
         req: UpdateBackupRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Backup>, Status> {
-        let mut setting = DatabaseAdminClient::get_call_setting(opt);
+        let mut setting = Self::get_call_setting(opt);
         let name = &req.backup.as_ref().unwrap().name;
         let token = self.token_source.token().await?;
         return invoke_reuse(
@@ -386,7 +422,7 @@ impl DatabaseAdminClient {
         req: DeleteBackupRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<()>, Status> {
-        let mut setting = DatabaseAdminClient::get_call_setting(opt);
+        let mut setting = Self::get_call_setting(opt);
         let name = &req.name;
         let token = self.token_source.token().await?;
         return invoke_reuse(
@@ -401,6 +437,41 @@ impl DatabaseAdminClient {
             &mut setting,
         )
         .await;
+    }
+
+    /// list_backups lists completed and pending backups.
+    /// Backups returned are ordered by create_time in descending order,
+    /// starting from the most recent create_time.
+    pub async fn list_backups(
+        &mut self,
+        mut req: ListBackupsRequest,
+        opt: Option<BackoffRetrySettings>,
+    ) -> Result<Vec<Backup>, Status> {
+        let mut setting = Self::get_call_setting(opt);
+        let parent = &req.parent;
+        let token = self.token_source.token().await?;
+        let mut all_backups = vec![];
+        //eager loading
+        loop {
+            let response = invoke_reuse(
+                |client| async {
+                    let request = create_request(format!("parent={}", parent), &token, req.clone());
+                    client
+                        .list_backups(request)
+                        .await
+                        .map_err(|e| (Status::from(e), client))
+                        .map(|d| d.into_inner())
+                },
+                &mut self.inner,
+                &mut setting,
+            )
+            .await?;
+            if response.backups.is_empty() {
+                return Ok(all_backups);
+            }
+            all_backups.extend(response.backups.into_iter());
+            req.page_token = response.next_page_token;
+        }
     }
 
     /// restore_database create a new database by restoring from a completed backup. The new
@@ -425,7 +496,7 @@ impl DatabaseAdminClient {
         req: RestoreDatabaseRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Operation, Status> {
-        let mut setting = DatabaseAdminClient::get_call_setting(opt);
+        let mut setting = Self::get_call_setting(opt);
         let parent = &req.parent;
         let token = self.token_source.token().await?;
         return invoke_reuse(
@@ -442,8 +513,86 @@ impl DatabaseAdminClient {
         .await
         .map(|d| Operation::new(self.lro_client.clone(), d.into_inner()));
     }
-}
 
-pub struct CreateDatabaseOperation {
-    lro: Operation,
+    /// list_backup_operations lists the backup [long-running operations][google.longrunning.Operation] in
+    /// the given instance. A backup operation has a name of the form
+    /// projects/<project>/instances/<instance>/backups/<backup>/operations/<operation>.
+    /// The long-running operation
+    /// metadata field type
+    /// metadata.type_url describes the type of the metadata. Operations returned
+    /// include those that have completed/failed/canceled within the last 7 days,
+    /// and pending operations. Operations returned are ordered by
+    /// operation.metadata.value.progress.start_time in descending order starting
+    /// from the most recently started operation.
+    pub async fn list_backup_operations(
+        &mut self,
+        mut req: ListBackupOperationsRequest,
+        opt: Option<BackoffRetrySettings>,
+    ) -> Result<Vec<InternalOperation>, Status> {
+        let mut setting = Self::get_call_setting(opt);
+        let parent = &req.parent;
+        let token = self.token_source.token().await?;
+        let mut all_operations = vec![];
+        //eager loading
+        loop {
+            let response = invoke_reuse(
+                |client| async {
+                    let request = create_request(format!("parent={}", parent), &token, req.clone());
+                    client
+                        .list_backup_operations(request)
+                        .await
+                        .map_err(|e| (Status::from(e), client))
+                        .map(|d| d.into_inner())
+                },
+                &mut self.inner,
+                &mut setting,
+            )
+            .await?;
+            if response.operations.is_empty() {
+                return Ok(all_operations);
+            }
+            all_operations.extend(response.operations.into_iter());
+            req.page_token = response.next_page_token;
+        }
+    }
+
+    /// list_database_operations lists database [longrunning-operations][google.longrunning.Operation].
+    /// A database operation has a name of the form
+    /// projects/<project>/instances/<instance>/databases/<database>/operations/<operation>.
+    /// The long-running operation
+    /// metadata field type
+    /// metadata.type_url describes the type of the metadata. Operations returned
+    /// include those that have completed/failed/canceled within the last 7 days,
+    /// and pending operations.
+    pub async fn list_database_operations(
+        &mut self,
+        mut req: ListDatabaseOperationsRequest,
+        opt: Option<BackoffRetrySettings>,
+    ) -> Result<Vec<InternalOperation>, Status> {
+        let mut setting = Self::get_call_setting(opt);
+        let parent = &req.parent;
+        let token = self.token_source.token().await?;
+        let mut all_operations = vec![];
+        //eager loading
+        loop {
+            let response = invoke_reuse(
+                |client| async {
+                    let request = create_request(format!("parent={}", parent), &token, req.clone());
+                    client
+                        .list_database_operations(request)
+                        .await
+                        .map_err(|e| (Status::from(e), client))
+                        .map(|d| d.into_inner())
+                },
+                &mut self.inner,
+                &mut setting,
+            )
+            .await?;
+            if response.operations.is_empty() {
+                return Ok(all_operations);
+            }
+            all_operations.extend(response.operations.into_iter());
+            req.page_token = response.next_page_token;
+        }
+    }
 }

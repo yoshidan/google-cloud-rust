@@ -1,5 +1,5 @@
 use crate::autogen::operations_client::OperationsClient;
-use google_cloud_gax::call_option::{BackoffRetrySettings};
+use google_cloud_gax::call_option::BackoffRetrySettings;
 use google_cloud_gax::invoke::invoke_reuse;
 use google_cloud_googleapis::longrunning::{
     operation, CancelOperationRequest, DeleteOperationRequest, GetOperationRequest,
