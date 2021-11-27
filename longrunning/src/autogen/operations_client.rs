@@ -53,7 +53,7 @@ impl OperationsClient {
         req: GetOperationRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Operation>, Status> {
-        let mut setting = DatabaseAdminClient::get_call_setting(opt);
+        let mut setting = Self::get_call_setting(opt);
         let name = &req.name;
         let token = self.token_source.token().await?;
         return invoke_reuse(
@@ -79,7 +79,7 @@ impl OperationsClient {
         req: DeleteOperationRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<()>, Status> {
-        let mut setting = DatabaseAdminClient::get_call_setting(opt);
+        let mut setting = Self::get_call_setting(opt);
         let name = &req.name;
         let token = self.token_source.token().await?;
         return invoke_reuse(
@@ -111,7 +111,7 @@ impl OperationsClient {
         req: CancelOperationRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<()>, Status> {
-        let mut setting = DatabaseAdminClient::get_call_setting(opt);
+        let mut setting = Self::get_call_setting(opt);
         let name = &req.name;
         let token = self.token_source.token().await?;
         return invoke_reuse(
@@ -142,7 +142,7 @@ impl OperationsClient {
         req: WaitOperationRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Operation>, Status> {
-        let mut setting = DatabaseAdminClient::get_call_setting(opt);
+        let mut setting = Self::get_call_setting(opt);
         let name = &req.name;
         let token = self.token_source.token().await?;
         return invoke_reuse(

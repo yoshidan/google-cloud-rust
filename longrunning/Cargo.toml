@@ -16,3 +16,6 @@ google-cloud-googleapis = { version = "0.2.0", path = "../googleapis" }
 google-cloud-gax = { version = "0.2.0", path = "../gax" }
 google-cloud-grpc= { version = "0.1.0", path = "../grpc" }
 tonic = { version = "0.6", features = ["tls", "prost"] }
+prost = "0.9"
+bytes = "1.1"
+prost-types = "0.9"
