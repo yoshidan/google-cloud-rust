@@ -1,17 +1,15 @@
-
-use std::sync::Arc;
-
-
-
-use crate::grpc::conn_pool::{
-    Error as InternalConnectionError, InternalConnectionManager, AUDIENCE,
-};
 use google_cloud_auth::token_source::TokenSource;
 use google_cloud_auth::{create_token_source, Config};
 use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
+use google_cloud_grpc::conn::{
+    ConnectionManager as InternalConnectionManager, Error as InternalConnectionError,
+};
+use std::sync::Arc;
 
 use crate::apiv1::spanner_client::Client;
 
+pub const AUDIENCE: &str = "https://spanner.googleapis.com/";
+pub const SPANNER: &str = "spanner.googleapis.com";
 const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
     "https://www.googleapis.com/auth/spanner.data",
@@ -34,7 +32,8 @@ pub struct ConnectionManager {
 impl ConnectionManager {
     pub async fn new(pool_size: usize, emulator_host: Option<String>) -> Result<Self, Error> {
         Ok(ConnectionManager {
-            inner: InternalConnectionManager::new(pool_size, emulator_host).await?,
+            inner: InternalConnectionManager::new(pool_size, SPANNER, AUDIENCE, emulator_host)
+                .await?,
             token_source: Some(Arc::from(
                 create_token_source(Config {
                     audience: Some(AUDIENCE),

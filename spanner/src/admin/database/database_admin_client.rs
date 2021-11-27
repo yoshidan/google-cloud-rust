@@ -2,17 +2,25 @@ use crate::admin::conn_pool::AdminConnectionManager;
 use crate::apiv1::conn_pool::Error;
 use google_cloud_auth::token_source::TokenSource;
 
-use google_cloud_googleapis::spanner::admin::database::v1::database_admin_client::DatabaseAdminClient as InternalDatabaseAdminClient;
-use std::sync::Arc;
-use tonic::transport::Channel;
-use google_cloud_googleapis::spanner::admin::database::v1::{CreateDatabaseRequest, Database, GetDatabaseRequest, UpdateDatabaseDdlRequest, DropDatabaseRequest, GetDatabaseDdlRequest, GetDatabaseDdlResponse, CreateBackupRequest, GetBackupRequest, Backup, UpdateBackupRequest, DeleteBackupRequest, RestoreDatabaseRequest};
-use google_cloud_gax::call_option::{BackoffRetrySettings, BackoffRetryer, Backoff};
-use google_cloud_googleapis::longrunning::Operation;
-use tonic::Response;
-use google_cloud_googleapis::{Status, Code};
+use crate::apiv1::spanner_client::get_token;
+use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
 use google_cloud_gax::invoke::invoke_reuse;
 use google_cloud_gax::util::create_request;
-use google_cloud_googleapis::iam::v1::{SetIamPolicyRequest, Policy, GetIamPolicyRequest, TestIamPermissionsRequest, TestIamPermissionsResponse};
+use google_cloud_googleapis::iam::v1::{
+    GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest,
+    TestIamPermissionsResponse,
+};
+use google_cloud_googleapis::longrunning::Operation;
+use google_cloud_googleapis::spanner::admin::database::v1::database_admin_client::DatabaseAdminClient as InternalDatabaseAdminClient;
+use google_cloud_googleapis::spanner::admin::database::v1::{
+    Backup, CreateBackupRequest, CreateDatabaseRequest, Database, DeleteBackupRequest,
+    DropDatabaseRequest, GetBackupRequest, GetDatabaseDdlRequest, GetDatabaseDdlResponse,
+    GetDatabaseRequest, RestoreDatabaseRequest, UpdateBackupRequest, UpdateDatabaseDdlRequest,
+};
+use google_cloud_googleapis::{Code, Status};
+use std::sync::Arc;
+use tonic::transport::Channel;
+use tonic::Response;
 
 fn default_setting() -> BackoffRetrySettings {
     BackoffRetrySettings {
@@ -22,7 +30,6 @@ fn default_setting() -> BackoffRetrySettings {
         },
     }
 }
-
 
 #[derive(Clone)]
 pub struct DatabaseAdminClient {
@@ -76,7 +83,7 @@ impl DatabaseAdminClient {
             &mut self.inner,
             &mut setting,
         )
-            .await;
+        .await;
     }
 
     /// get_database gets the state of a Cloud Spanner database.
@@ -99,7 +106,7 @@ impl DatabaseAdminClient {
             &mut self.inner,
             &mut setting,
         )
-            .await;
+        .await;
     }
 
     /// update_database_ddl updates the schema of a Cloud Spanner database by
@@ -129,7 +136,7 @@ impl DatabaseAdminClient {
             &mut self.inner,
             &mut setting,
         )
-            .await;
+        .await;
     }
 
     /// drop_database drops (aka deletes) a Cloud Spanner database.
@@ -154,7 +161,7 @@ impl DatabaseAdminClient {
             &mut self.inner,
             &mut setting,
         )
-            .await;
+        .await;
     }
 
     /// get_database_ddl returns the schema of a Cloud Spanner database as a list of formatted
@@ -179,7 +186,7 @@ impl DatabaseAdminClient {
             &mut self.inner,
             &mut setting,
         )
-            .await;
+        .await;
     }
 
     /// set_iam_policy sets the access control policy on a database or backup resource.
@@ -208,7 +215,7 @@ impl DatabaseAdminClient {
             &mut self.inner,
             &mut setting,
         )
-            .await;
+        .await;
     }
 
     /// get_iam_policy gets the access control policy for a database or backup resource.
@@ -238,7 +245,7 @@ impl DatabaseAdminClient {
             &mut self.inner,
             &mut setting,
         )
-            .await;
+        .await;
     }
 
     /// TestIamPermissions returns permissions that the caller has on the specified database or backup
@@ -270,7 +277,7 @@ impl DatabaseAdminClient {
             &mut self.inner,
             &mut setting,
         )
-            .await;
+        .await;
     }
 
     /// create_backup starts creating a new Cloud Spanner Backup.
@@ -304,7 +311,7 @@ impl DatabaseAdminClient {
             &mut self.inner,
             &mut setting,
         )
-            .await;
+        .await;
     }
 
     /// get_backup gets metadata on a pending or completed Backup.
@@ -327,7 +334,7 @@ impl DatabaseAdminClient {
             &mut self.inner,
             &mut setting,
         )
-            .await;
+        .await;
     }
 
     /// update_backup updates a pending or completed Backup.
@@ -337,7 +344,7 @@ impl DatabaseAdminClient {
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Backup>, Status> {
         let mut setting = DatabaseAdminClient::get_call_setting(opt);
-        let name = &req.backup.unwrap().name;
+        let name = &req.backup.as_ref().unwrap().name;
         let token = self.get_token().await?;
         return invoke_reuse(
             |database_admin_client| async {
@@ -350,7 +357,7 @@ impl DatabaseAdminClient {
             &mut self.inner,
             &mut setting,
         )
-            .await;
+        .await;
     }
 
     /// delete_backup deletes a pending or completed Backup.
@@ -373,7 +380,7 @@ impl DatabaseAdminClient {
             &mut self.inner,
             &mut setting,
         )
-            .await;
+        .await;
     }
 
     /// restore_database create a new database by restoring from a completed backup. The new
@@ -412,10 +419,14 @@ impl DatabaseAdminClient {
             &mut self.inner,
             &mut setting,
         )
-            .await;
+        .await;
+    }
+
+    async fn get_token(&self) -> Result<Option<String>, Status> {
+        get_token(&self.token_source).await
     }
 }
 
 pub struct CreateDatabaseOperation {
-    lro : Operation
+    lro: Operation,
 }

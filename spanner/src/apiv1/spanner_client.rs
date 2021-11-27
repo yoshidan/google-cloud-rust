@@ -541,19 +541,24 @@ impl Client {
     }
 
     async fn get_token(&self) -> Result<Option<String>, Status> {
-        match &self.token_source {
-            Some(token_source) => token_source
-                .token()
-                .await
-                .map_err(|e| {
-                    Status::new(tonic::Status::new(
-                        tonic::Code::Unauthenticated,
-                        format!("token error: {:?}", e),
-                    ))
-                })
-                .map(|v| Some(v.value())),
-            None => Ok(None),
-        }
+        get_token(&self.token_source).await
     }
 }
 
+pub(crate) async fn get_token(
+    token_source: &Option<Arc<dyn TokenSource>>,
+) -> Result<Option<String>, Status> {
+    match token_source {
+        Some(token_source) => token_source
+            .token()
+            .await
+            .map_err(|e| {
+                Status::new(tonic::Status::new(
+                    tonic::Code::Unauthenticated,
+                    format!("token error: {:?}", e),
+                ))
+            })
+            .map(|v| Some(v.value())),
+        None => Ok(None),
+    }
+}

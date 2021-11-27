@@ -1,3 +1,5 @@
+use tonic::{IntoRequest, Request};
+
 pub fn create_request<T>(
     param_string: String,
     token: &Option<String>,

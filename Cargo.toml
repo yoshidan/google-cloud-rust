@@ -1,8 +1,10 @@
 [workspace]
 members = [
+    "grpc",
     "metadata",
-    "auth",
     "gax",
+    "longrunning",
+    "auth",
     "googleapis",
     "spanner",
 ]

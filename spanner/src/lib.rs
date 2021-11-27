@@ -496,7 +496,6 @@
 pub mod admin;
 pub mod apiv1;
 pub mod client;
-pub mod grpc;
 pub mod key;
 pub mod mutation;
 pub mod reader;

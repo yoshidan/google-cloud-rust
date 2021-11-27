@@ -7,7 +7,7 @@ fn main() {
                 &[
                     "googleapis/google/spanner/v1/spanner.proto",
                     "googleapis/google/spanner/admin/database/v1/spanner_database_admin.proto",
-                    "googleapis/google/spanner/admin/instance/v1/spanner_instance_admin.proto"
+                    "googleapis/google/spanner/admin/instance/v1/spanner_instance_admin.proto",
                 ],
                 &["googleapis"], // specify the root location to search proto dependencies
             )

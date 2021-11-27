@@ -1,13 +1,12 @@
-
 use std::sync::Arc;
 
-use tonic::transport::{Channel};
+use tonic::transport::Channel;
 
-use crate::grpc::conn_pool::{InternalConnectionManager, AUDIENCE};
 use google_cloud_auth::token_source::TokenSource;
 use google_cloud_auth::{create_token_source, Config};
+use google_cloud_grpc::conn::ConnectionManager as InternalConnectionManager;
 
-use crate::apiv1::conn_pool::Error;
+use crate::apiv1::conn_pool::{Error, AUDIENCE, SPANNER};
 
 const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
@@ -22,7 +21,8 @@ pub struct AdminConnectionManager {
 impl AdminConnectionManager {
     pub async fn new(pool_size: usize, emulator_host: Option<String>) -> Result<Self, Error> {
         Ok(AdminConnectionManager {
-            inner: InternalConnectionManager::new(pool_size, emulator_host).await?,
+            inner: InternalConnectionManager::new(pool_size, SPANNER, AUDIENCE, emulator_host)
+                .await?,
             token_source: Some(Arc::from(
                 create_token_source(Config {
                     audience: Some(AUDIENCE),
