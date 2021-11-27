@@ -1,7 +1,7 @@
-use std::sync::atomic::{AtomicI64, Ordering};
+
 use std::sync::Arc;
 
-use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint};
+use tonic::transport::{Channel};
 
 use crate::grpc::conn_pool::{InternalConnectionManager, AUDIENCE};
 use google_cloud_auth::token_source::TokenSource;

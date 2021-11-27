@@ -1,7 +1,7 @@
-use std::sync::atomic::{AtomicI64, Ordering};
+
 use std::sync::Arc;
 
-use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint};
+
 
 use crate::grpc::conn_pool::{
     Error as InternalConnectionError, InternalConnectionManager, AUDIENCE,

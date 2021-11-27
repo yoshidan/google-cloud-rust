@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicI64, Ordering};
-use std::sync::Arc;
 
-use google_cloud_auth::token_source::TokenSource;
+
+
 use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint};
 
 pub const AUDIENCE: &str = "https://spanner.googleapis.com/";
