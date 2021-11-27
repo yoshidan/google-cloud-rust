@@ -1,7 +1,6 @@
 use crate::call_option::{RetrySettings, Retryer};
 use google_cloud_googleapis::Status;
 use std::future::Future;
-use tonic::Request;
 
 pub trait TryAs<T> {
     fn try_as(&self) -> Result<&T, ()>;

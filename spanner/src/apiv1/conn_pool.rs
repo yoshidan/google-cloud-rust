@@ -1,10 +1,5 @@
-use google_cloud_auth::token_source::TokenSource;
-use google_cloud_auth::{create_token_source, Config};
 use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
-use google_cloud_grpc::conn::{
-    ConnectionManager as GRPCConnectionManager, Error,
-};
-use std::sync::Arc;
+use google_cloud_grpc::conn::{ConnectionManager as GRPCConnectionManager, Error};
 
 use crate::apiv1::spanner_client::Client;
 
@@ -22,7 +17,14 @@ pub struct ConnectionManager {
 impl ConnectionManager {
     pub async fn new(pool_size: usize, emulator_host: Option<String>) -> Result<Self, Error> {
         Ok(ConnectionManager {
-            inner: GRPCConnectionManager::new(pool_size, SPANNER, AUDIENCE, Some(&SCOPES), emulator_host).await?,
+            inner: GRPCConnectionManager::new(
+                pool_size,
+                SPANNER,
+                AUDIENCE,
+                Some(&SCOPES),
+                emulator_host,
+            )
+            .await?,
         })
     }
 

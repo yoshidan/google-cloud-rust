@@ -2,9 +2,9 @@ use google_cloud_auth::token_source::TokenSource as InternalTokenSource;
 use google_cloud_auth::{create_token_source, Config};
 use std::sync::Arc;
 
-use crate::inner::{InternalConnectionManager, Error as InternalConnectionError};
+use crate::inner::{Error as InternalConnectionError, InternalConnectionManager};
 use tonic::transport::Channel;
-use tonic::{Request, Status, IntoRequest};
+use tonic::Status;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -22,33 +22,44 @@ pub struct ConnectionManager {
 
 #[derive(Clone)]
 pub struct TokenSource {
-    inner: Option<Arc<dyn InternalTokenSource>>
+    inner: Option<Arc<dyn InternalTokenSource>>,
 }
 
 impl TokenSource {
     pub async fn token(&self) -> Result<Option<String>, Status> {
         match self.inner.as_ref() {
-            Some(token_source) => {
-                token_source.token().await.map_err(|e| {
-                    Status::new(tonic::Code::Unauthenticated, format!("token error: {:?}", e))
-                }).map(|v| Some(v.value()))
-            },
+            Some(token_source) => token_source
+                .token()
+                .await
+                .map_err(|e| {
+                    Status::new(
+                        tonic::Code::Unauthenticated,
+                        format!("token error: {:?}", e),
+                    )
+                })
+                .map(|v| Some(v.value())),
             None => Ok(None),
         }
     }
 }
 
 impl ConnectionManager {
-    pub async fn new(pool_size: usize, domain_name: &'static str, audience: &'static str, scopes: Option<&'static [&'static str]>, emulator_host: Option<String>) -> Result<Self, Error> {
+    pub async fn new(
+        pool_size: usize,
+        domain_name: &'static str,
+        audience: &'static str,
+        scopes: Option<&'static [&'static str]>,
+        emulator_host: Option<String>,
+    ) -> Result<Self, Error> {
         Ok(Self {
             inner: InternalConnectionManager::new(pool_size, domain_name, audience, emulator_host)
                 .await?,
             token_source: Some(Arc::from(
                 create_token_source(Config {
                     audience: Some(audience),
-                    scopes: scopes,
+                    scopes,
                 })
-                    .await?,
+                .await?,
             )),
         })
     }
@@ -63,8 +74,11 @@ impl ConnectionManager {
             None => None,
         };
         //clone() reuses http/s connection
-        (self.inner.conn(), TokenSource {
-                inner: token_source
-        })
+        (
+            self.inner.conn(),
+            TokenSource {
+                inner: token_source,
+            },
+        )
     }
 }
