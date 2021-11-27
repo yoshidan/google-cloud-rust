@@ -28,8 +28,8 @@ futures-channel = "0.3"
 base64 = "0.13"
 
 google-cloud-auth = { version = "0.1.0", path = "../auth" }
-google-cloud-gax = { version = "0.1.0", path = "../gax" }
-google-cloud-googleapis = { version = "0.1.0", path = "../googleapis" }
+google-cloud-gax = { version = "0.2.0", path = "../gax" }
+google-cloud-googleapis = { version = "0.2.0", path = "../googleapis" }
 
 [dev-dependencies]
 env_logger = "0.9"
