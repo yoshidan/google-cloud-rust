@@ -1,14 +1,13 @@
 use crate::autogen::operations_client::OperationsClient;
 use bytes::BytesMut;
 use google_cloud_gax::call_option::{BackoffRetrySettings, RetrySettings};
-use google_cloud_gax::invoke::invoke;
+use google_cloud_gax::invoke::invoke_reuse;
 use google_cloud_googleapis::longrunning::{
     operation, CancelOperationRequest, DeleteOperationRequest, GetOperationRequest,
     Operation as InternalOperation,
 };
-use google_cloud_googleapis::Status;
+use google_cloud_googleapis::{Status, Code};
 use tonic::codec::{Codec, DecodeBuf, Decoder, ProstCodec};
-use tonic::Code;
 
 pub struct Operation {
     inner: InternalOperation,
@@ -70,21 +69,26 @@ impl Operation {
     }
 
     /// wait implements Wait, taking exponentialBackoff and sleeper arguments for testing.
-    pub fn wait<T>(&mut self, mut settings: BackoffRetrySettings) -> Result<Option<T>, Status>
+    pub async fn wait<T>(&mut self, mut settings: BackoffRetrySettings) -> Result<Option<T>, Status>
     where
         T: prost::Message + From<prost_types::Any>,
     {
-        settings.retryer.codes.extend(vec![Code::DeadlineExceeded]);
-        invoke(
-            || async {
-                let poll_result: Option<T> = self.poll().await?;
-                if self.done() {
-                    return Ok(poll_result);
+        settings.retryer.codes.push(Code::DeadlineExceeded);
+        return invoke_reuse(
+            |me| async {
+                let poll_result: Option<T> = match me.poll().await {
+                    Ok(s) => s,
+                    Err(e) => return Err((e, me))
+                };
+                if me.done() {
+                    Ok(poll_result)
+                }else {
+                    Err((tonic::Status::new(tonic::Code::DeadlineExceeded, "wait timeout").into(), me))
                 }
-                return Err(tonic::Status::new(Code::DeadlineExceeded, "wait timeout").into());
             },
+            self,
             &mut settings,
-        )
+        ).await;
     }
 
     /// Cancel starts asynchronous cancellation on a long-running operation. The server
@@ -95,7 +99,7 @@ impl Operation {
     /// operation completed despite cancellation. On successful cancellation,
     /// the operation is not deleted; instead, op.Poll returns an error
     /// with code Canceled.
-    pub fn cancel(&mut self) -> Result<(), Status> {
+    pub async fn cancel(&mut self) -> Result<(), Status> {
         self.client
             .cancel_operation(
                 CancelOperationRequest {
@@ -110,7 +114,7 @@ impl Operation {
     /// Delete deletes a long-running operation. This method indicates that the client is
     /// no longer interested in the operation result. It does not cancel the
     /// operation. If the server doesn't support this method, status.Code(err) == codes.Unimplemented.
-    pub fn delete(&mut self) -> Result<(), Status> {
+    pub async fn delete(&mut self) -> Result<(), Status> {
         self.client
             .delete_operation(
                 DeleteOperationRequest {
