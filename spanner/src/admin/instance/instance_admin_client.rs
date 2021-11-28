@@ -232,7 +232,7 @@ impl InstanceAdminClient {
         &mut self,
         req: CreateInstanceRequest,
         opt: Option<BackoffRetrySettings>,
-    ) -> Result<Operation, Status> {
+    ) -> Result<Operation<Instance>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let parent = &req.parent;
         let token = self.token_source.token().await?;
@@ -299,7 +299,7 @@ impl InstanceAdminClient {
         &mut self,
         req: UpdateInstanceRequest,
         opt: Option<BackoffRetrySettings>,
-    ) -> Result<Operation, Status> {
+    ) -> Result<Operation<Instance>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let instance_name = &req.instance.as_ref().unwrap().name;
         let token = self.token_source.token().await?;

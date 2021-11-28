@@ -6,15 +6,17 @@ use google_cloud_googleapis::longrunning::{
     Operation as InternalOperation,
 };
 use google_cloud_googleapis::{Code, Status};
+use std::marker::PhantomData;
 
-pub struct Operation {
+pub struct Operation<T: prost::Message + Default> {
     inner: InternalOperation,
     client: OperationsClient,
+    _marker: PhantomData<T>,
 }
 
-impl Operation {
+impl<T: prost::Message + Default> Operation<T> {
     pub fn new(client: OperationsClient, inner: InternalOperation) -> Self {
-        Self { client, inner }
+        Self { client, inner , _marker: PhantomData::default()}
     }
 
     /// Name returns the name of the long-running operation.
@@ -37,10 +39,7 @@ impl Operation {
     /// If Poll succeeds and the operation has completed successfully,
     /// op.Done will return true; if resp != nil, the response of the operation
     /// is stored in resp.
-    pub async fn poll<T>(&mut self) -> Result<Option<T>, Status>
-    where
-        T: prost::Message + Default,
-    {
+    pub async fn poll(&mut self) -> Result<Option<T>, Status> {
         if !self.done() {
             let operation = self
                 .client
@@ -71,9 +70,7 @@ impl Operation {
     }
 
     /// wait implements Wait, taking exponentialBackoff and sleeper arguments for testing.
-    pub async fn wait<T>(&mut self, mut settings: BackoffRetrySettings) -> Result<Option<T>, Status>
-    where
-        T: prost::Message + Default,
+    pub async fn wait(&mut self, mut settings: BackoffRetrySettings) -> Result<Option<T>, Status>
     {
         settings.retryer.codes.push(Code::DeadlineExceeded);
         return invoke_reuse(

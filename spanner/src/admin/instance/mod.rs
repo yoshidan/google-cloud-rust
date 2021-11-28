@@ -7,17 +7,21 @@ mod tests {
     use serial_test::serial;
     use google_cloud_googleapis::spanner::admin::instance::v1::{Instance, CreateInstanceRequest};
     use google_cloud_gax::call_option::{BackoffRetrySettings, BackoffRetryer};
+    use chrono::{Utc, Timelike};
+    use google_cloud_googleapis::spanner::admin::instance::v1::instance::State;
 
     #[tokio::test]
     #[serial]
     async fn test_create_instance() {
         std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
         let mut client = InstanceAdminClient::default().await.unwrap();
+        let instance_id = format!("test{}ut",Utc::now().second());
+        let name = format!("projects/local-project/instances/{}", instance_id);
         let request = CreateInstanceRequest {
             parent: "projects/local-project".to_string(),
-            instance_id: "test-instance2".to_string(),
+            instance_id: instance_id.to_string(),
             instance: Some(Instance {
-                name: "projects/local-project/instances/test-instance2".to_string(),
+                name: name.to_string(),
                 config: "".to_string(),
                 display_name: "test-instance-ut".to_string(),
                 node_count: 0,
@@ -33,13 +37,15 @@ mod tests {
                 let config = BackoffRetrySettings {
                     retryer: BackoffRetryer { backoff: Default::default(), codes: vec![Code::DeadlineExceeded] }
                 };
-                res.wait::<Instance>(config).await
+                res.wait(config).await
             }
             Err(err) => panic!("err: {:?}", err),
         };
         match creation_result {
             Ok(res) => {
-                println!("{:?}", res.unwrap().name);
+                let instance = res.unwrap();
+                assert_eq!(instance.name, name);
+                assert_eq!(instance.state, State::Ready as i32)
             }
             Err(err) => panic!("err: {:?}", err),
         }

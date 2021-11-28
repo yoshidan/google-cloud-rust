@@ -121,7 +121,7 @@ impl DatabaseAdminClient {
         &mut self,
         req: CreateDatabaseRequest,
         opt: Option<BackoffRetrySettings>,
-    ) -> Result<Operation, Status> {
+    ) -> Result<Operation<Database>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let parent = &req.parent;
         let token = self.token_source.token().await?;
@@ -175,7 +175,7 @@ impl DatabaseAdminClient {
         &mut self,
         req: UpdateDatabaseDdlRequest,
         opt: Option<BackoffRetrySettings>,
-    ) -> Result<Operation, Status> {
+    ) -> Result<Operation<Database>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let database = &req.database;
         let token = self.token_source.token().await?;
@@ -351,7 +351,7 @@ impl DatabaseAdminClient {
         &mut self,
         req: CreateBackupRequest,
         opt: Option<BackoffRetrySettings>,
-    ) -> Result<Operation, Status> {
+    ) -> Result<Operation<Backup>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let parent = &req.parent;
         let token = self.token_source.token().await?;
@@ -495,7 +495,7 @@ impl DatabaseAdminClient {
         &mut self,
         req: RestoreDatabaseRequest,
         opt: Option<BackoffRetrySettings>,
-    ) -> Result<Operation, Status> {
+    ) -> Result<Operation<Database>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let parent = &req.parent;
         let token = self.token_source.token().await?;
