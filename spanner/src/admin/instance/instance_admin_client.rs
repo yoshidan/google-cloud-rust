@@ -102,10 +102,10 @@ impl InstanceAdminClient {
                 &mut setting,
             )
             .await?;
-            if response.instance_configs.is_empty() {
+            all.extend(response.instance_configs.into_iter());
+            if response.next_page_token.is_empty() {
                 return Ok(all);
             }
-            all.extend(response.instance_configs.into_iter());
             req.page_token = response.next_page_token;
         }
     }
@@ -158,10 +158,10 @@ impl InstanceAdminClient {
                 &mut setting,
             )
             .await?;
-            if response.instances.is_empty() {
+            all.extend(response.instances.into_iter());
+            if response.next_page_token.is_empty() {
                 return Ok(all);
             }
-            all.extend(response.instances.into_iter());
             req.page_token = response.next_page_token;
         }
     }

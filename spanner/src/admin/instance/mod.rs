@@ -6,9 +6,7 @@ mod tests {
     use chrono::{Utc};
     
     use google_cloud_googleapis::spanner::admin::instance::v1::instance::State;
-    use google_cloud_googleapis::spanner::admin::instance::v1::{
-        CreateInstanceRequest, DeleteInstanceRequest, GetInstanceRequest, Instance,
-    };
+    use google_cloud_googleapis::spanner::admin::instance::v1::{CreateInstanceRequest, DeleteInstanceRequest, GetInstanceRequest, Instance, GetInstanceConfigRequest, ListInstancesRequest, ListInstanceConfigsRequest};
     
     use serial_test::serial;
 
@@ -79,6 +77,67 @@ mod tests {
         };
         match client.delete_instance(request, None).await {
             Ok(_res) => assert!(true),
+            Err(err) => panic!("err: {:?}", err),
+        };
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_list_instances() {
+        std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
+        let mut client = InstanceAdminClient::default().await.unwrap();
+        let request = ListInstancesRequest {
+            parent: "projects/local-project".to_string(),
+            page_size: 1,
+            page_token: "".to_string(),
+            filter: "".to_string()
+        };
+
+        match client.list_instances(request, None).await {
+            Ok(res) => {
+                println!("size = {}", res.len());
+                assert!(res.len() > 0);
+            }
+            Err(err) => panic!("err: {:?}", err),
+        };
+    }
+
+
+    #[tokio::test]
+    #[serial]
+    async fn test_list_instance_configs() {
+        std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
+        let mut client = InstanceAdminClient::default().await.unwrap();
+        let request = ListInstanceConfigsRequest {
+            parent: "projects/local-project".to_string(),
+            page_size: 1,
+            page_token: "".to_string(),
+        };
+
+        match client.list_instance_configs(request, None).await {
+            Ok(res) => {
+                println!("size = {}", res.len());
+                assert!(res.len() > 0);
+            }
+            Err(err) => panic!("err: {:?}", err),
+        };
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_get_instance_config() {
+        std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
+        let mut client = InstanceAdminClient::default().await.unwrap();
+        let name = "projects/local-project/instanceConfigs/emulator-config".to_string();
+        let request = GetInstanceConfigRequest {
+            name: name.clone(),
+        };
+
+        match client.get_instance_config(request, None).await {
+            Ok(res) => {
+                let instance = res.into_inner();
+                assert_eq!(instance.name, name);
+            }
             Err(err) => panic!("err: {:?}", err),
         };
     }
