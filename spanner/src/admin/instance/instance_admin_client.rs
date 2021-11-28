@@ -102,7 +102,7 @@ impl InstanceAdminClient {
                 &mut setting,
             )
             .await?;
-            if response.is_empty() {
+            if response.instance_configs.is_empty() {
                 return Ok(all);
             }
             all.extend(response.instance_configs.into_iter());
@@ -158,7 +158,7 @@ impl InstanceAdminClient {
                 &mut setting,
             )
             .await?;
-            if response.is_empty() {
+            if response.instances.is_empty() {
                 return Ok(all);
             }
             all.extend(response.instances.into_iter());
@@ -301,7 +301,7 @@ impl InstanceAdminClient {
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Operation, Status> {
         let mut setting = Self::get_call_setting(opt);
-        let instance_name = &req.instance.unwrap().name;
+        let instance_name = &req.instance.as_ref().unwrap().name;
         let token = self.token_source.token().await?;
         return invoke_reuse(
             |client| async {
