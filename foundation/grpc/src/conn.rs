@@ -51,20 +51,22 @@ impl ConnectionManager {
         scopes: Option<&'static [&'static str]>,
         emulator_host: Option<String>,
     ) -> Result<Self, Error> {
-        let token_source = match emulator_host{
+        let token_source = match emulator_host {
             None => None,
             Some(_) => {
                 let ts = create_token_source(Config {
                     audience: Some(audience),
                     scopes,
-                }).await?;
+                })
+                .await?;
                 Some(Arc::from(ts))
             }
         };
-        let inner=  InternalConnectionManager::new(pool_size, domain_name, audience, emulator_host).await?;
+        let inner =
+            InternalConnectionManager::new(pool_size, domain_name, audience, emulator_host).await?;
         Ok(Self {
             inner,
-            token_source
+            token_source,
         })
     }
 
