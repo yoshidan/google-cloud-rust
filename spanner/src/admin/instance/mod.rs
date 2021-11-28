@@ -3,11 +3,14 @@ pub mod instance_admin_client;
 #[cfg(test)]
 mod tests {
     use crate::admin::instance::instance_admin_client::InstanceAdminClient;
-    use chrono::{Utc};
-    
+    use chrono::Utc;
+
     use google_cloud_googleapis::spanner::admin::instance::v1::instance::State;
-    use google_cloud_googleapis::spanner::admin::instance::v1::{CreateInstanceRequest, DeleteInstanceRequest, GetInstanceRequest, Instance, GetInstanceConfigRequest, ListInstancesRequest, ListInstanceConfigsRequest};
-    
+    use google_cloud_googleapis::spanner::admin::instance::v1::{
+        CreateInstanceRequest, DeleteInstanceRequest, GetInstanceConfigRequest, GetInstanceRequest,
+        Instance, ListInstanceConfigsRequest, ListInstancesRequest,
+    };
+
     use serial_test::serial;
 
     async fn create_instance() -> Instance {
@@ -90,7 +93,7 @@ mod tests {
             parent: "projects/local-project".to_string(),
             page_size: 1,
             page_token: "".to_string(),
-            filter: "".to_string()
+            filter: "".to_string(),
         };
 
         match client.list_instances(request, None).await {
@@ -101,7 +104,6 @@ mod tests {
             Err(err) => panic!("err: {:?}", err),
         };
     }
-
 
     #[tokio::test]
     #[serial]
@@ -129,9 +131,7 @@ mod tests {
         std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
         let mut client = InstanceAdminClient::default().await.unwrap();
         let name = "projects/local-project/instanceConfigs/emulator-config".to_string();
-        let request = GetInstanceConfigRequest {
-            name: name.clone(),
-        };
+        let request = GetInstanceConfigRequest { name: name.clone() };
 
         match client.get_instance_config(request, None).await {
             Ok(res) => {
