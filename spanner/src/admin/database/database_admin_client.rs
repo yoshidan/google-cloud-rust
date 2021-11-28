@@ -175,7 +175,7 @@ impl DatabaseAdminClient {
         &mut self,
         req: UpdateDatabaseDdlRequest,
         opt: Option<BackoffRetrySettings>,
-    ) -> Result<Operation<Database>, Status> {
+    ) -> Result<Operation<()>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let database = &req.database;
         let token = self.token_source.token().await?;

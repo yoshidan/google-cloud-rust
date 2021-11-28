@@ -8,7 +8,7 @@ mod tests {
     use google_cloud_googleapis::spanner::admin::database::v1::database::State;
     use google_cloud_googleapis::spanner::admin::database::v1::{
         CreateDatabaseRequest, Database, DropDatabaseRequest, GetDatabaseDdlRequest,
-        GetDatabaseRequest, ListDatabasesRequest,
+        GetDatabaseRequest, ListDatabasesRequest, UpdateDatabaseDdlRequest,
     };
 
     use serial_test::serial;
@@ -109,5 +109,27 @@ mod tests {
             }
             Err(err) => panic!("err: {:?}", err),
         };
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_update_database_ddl() {
+        let database = create_database().await;
+        std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
+        let mut client = DatabaseAdminClient::default().await.unwrap();
+        let request = UpdateDatabaseDdlRequest {
+            database: database.name.to_string(),
+            statements: vec!["CREATE TABLE Tbl1 (ID INT64) PRIMARY KEY(ID)".to_string()],
+            operation_id: "".to_string(),
+        };
+
+        let update_result = match client.update_database_ddl(request, None).await {
+            Ok(mut res) => res.wait(None).await,
+            Err(err) => panic!("err: {:?}", err),
+        };
+        match update_result {
+            Ok(_) => assert!(true),
+            Err(err) => panic!("err: {:?}", err),
+        }
     }
 }
