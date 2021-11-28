@@ -3,13 +3,13 @@ pub mod instance_admin_client;
 #[cfg(test)]
 mod tests {
     use crate::admin::instance::instance_admin_client::InstanceAdminClient;
-    use chrono::{Timelike, Utc};
-    use google_cloud_gax::call_option::{BackoffRetrySettings, BackoffRetryer};
+    use chrono::{Utc};
+    
     use google_cloud_googleapis::spanner::admin::instance::v1::instance::State;
     use google_cloud_googleapis::spanner::admin::instance::v1::{
         CreateInstanceRequest, DeleteInstanceRequest, GetInstanceRequest, Instance,
     };
-    use google_cloud_googleapis::Code;
+    
     use serial_test::serial;
 
     async fn create_instance() -> Instance {
@@ -78,7 +78,7 @@ mod tests {
             name: instance.name.to_string(),
         };
         match client.delete_instance(request, None).await {
-            Ok(res) => assert!(true),
+            Ok(_res) => assert!(true),
             Err(err) => panic!("err: {:?}", err),
         };
     }
