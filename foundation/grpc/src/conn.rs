@@ -52,8 +52,8 @@ impl ConnectionManager {
         emulator_host: Option<String>,
     ) -> Result<Self, Error> {
         let token_source = match emulator_host {
-            None => None,
-            Some(_) => {
+            Some(_) => None,
+            None => {
                 let ts = create_token_source(Config {
                     audience: Some(audience),
                     scopes,
