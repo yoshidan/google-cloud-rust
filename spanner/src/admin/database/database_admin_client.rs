@@ -303,7 +303,7 @@ impl DatabaseAdminClient {
         .await;
     }
 
-    /// TestIamPermissions returns permissions that the caller has on the specified database or backup
+    /// test_iam_permissions returns permissions that the caller has on the specified database or backup
     /// resource.
     ///
     /// Attempting this RPC on a non-existent Cloud Spanner database will
