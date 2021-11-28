@@ -493,6 +493,7 @@
 //! let result = client.partitioned_update(stmt).await?;
 //! ```
 
+pub mod admin;
 pub mod apiv1;
 pub mod client;
 pub mod key;

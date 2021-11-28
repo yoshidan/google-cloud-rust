@@ -8,7 +8,7 @@ Google Cloud Platform GCE check library.
 
 ```
 [dependencies]
-google-cloud-metadata = 0.1.0
+google-cloud-metadata = 0.1.1
 ```
 
 ## Usage 

@@ -99,7 +99,7 @@ pub enum Error {
     FailedToCreateSessionPool(#[from] Status),
 
     #[error(transparent)]
-    FailedToCreateChannelPool(#[from] crate::apiv1::conn_pool::Error),
+    FailedToCreateChannelPool(#[from] google_cloud_grpc::conn::Error),
 
     #[error("invalid config: {0}")]
     InvalidConfig(String),

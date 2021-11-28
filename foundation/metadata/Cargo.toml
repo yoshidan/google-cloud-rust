@@ -1,9 +1,9 @@
 [package]
 name = "google-cloud-metadata"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
-repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/metadata"
+repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/foundation/metadata"
 keywords = ["gcp","googleapis","google-cloud-rust"]
 license-file = "LICENSE"
 readme = "README.md"
