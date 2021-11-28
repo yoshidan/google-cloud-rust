@@ -8,7 +8,7 @@ Google Cloud Platform server application authentication library.
 
 ```
 [dependencies]
-google-cloud-auth = 0.1.0
+google-cloud-auth = 0.1.1
 ```
 
 ## Quickstart

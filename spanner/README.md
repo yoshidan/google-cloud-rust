@@ -12,7 +12,7 @@ Google Cloud Platform spanner library.
 
 ```
 [dependencies]
-google-cloud-spanner = 0.1.0
+google-cloud-spanner = 0.2.0
 ```
 
 ## Quick Start

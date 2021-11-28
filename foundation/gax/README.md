@@ -8,7 +8,7 @@ Google Cloud Platform gRPC retry library.
 
 ```
 [dependencies]
-google-cloud-gax = 0.1.0
+google-cloud-gax = 0.2.0
 ```
 
 ## Usage 
