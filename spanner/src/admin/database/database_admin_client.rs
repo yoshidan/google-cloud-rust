@@ -104,10 +104,10 @@ impl DatabaseAdminClient {
                 &mut setting,
             )
             .await?;
-            if response.databases.is_empty() {
+            all_databases.extend(response.databases.into_iter());
+            if response.next_page_token.is_empty() {
                 return Ok(all_databases);
             }
-            all_databases.extend(response.databases.into_iter());
             req.page_token = response.next_page_token;
         }
     }
@@ -466,10 +466,10 @@ impl DatabaseAdminClient {
                 &mut setting,
             )
             .await?;
-            if response.backups.is_empty() {
+            all_backups.extend(response.backups.into_iter());
+            if response.next_page_token.is_empty() {
                 return Ok(all_backups);
             }
-            all_backups.extend(response.backups.into_iter());
             req.page_token = response.next_page_token;
         }
     }
@@ -548,10 +548,10 @@ impl DatabaseAdminClient {
                 &mut setting,
             )
             .await?;
-            if response.operations.is_empty() {
+            all_operations.extend(response.operations.into_iter());
+            if response.next_page_token.is_empty() {
                 return Ok(all_operations);
             }
-            all_operations.extend(response.operations.into_iter());
             req.page_token = response.next_page_token;
         }
     }
@@ -588,10 +588,10 @@ impl DatabaseAdminClient {
                 &mut setting,
             )
             .await?;
-            if response.operations.is_empty() {
+            all_operations.extend(response.operations.into_iter());
+            if response.next_page_token.is_empty() {
                 return Ok(all_operations);
             }
-            all_operations.extend(response.operations.into_iter());
             req.page_token = response.next_page_token;
         }
     }
