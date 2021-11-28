@@ -1,5 +1,5 @@
 use crate::autogen::operations_client::OperationsClient;
-use google_cloud_gax::call_option::BackoffRetrySettings;
+use google_cloud_gax::call_option::{BackoffRetrySettings, BackoffRetryer};
 use google_cloud_gax::invoke::invoke_reuse;
 use google_cloud_googleapis::longrunning::{
     operation, CancelOperationRequest, DeleteOperationRequest, GetOperationRequest,
@@ -16,7 +16,11 @@ pub struct Operation<T: prost::Message + Default> {
 
 impl<T: prost::Message + Default> Operation<T> {
     pub fn new(client: OperationsClient, inner: InternalOperation) -> Self {
-        Self { client, inner , _marker: PhantomData::default()}
+        Self {
+            client,
+            inner,
+            _marker: PhantomData::default(),
+        }
     }
 
     /// Name returns the name of the long-running operation.
@@ -70,9 +74,19 @@ impl<T: prost::Message + Default> Operation<T> {
     }
 
     /// wait implements Wait, taking exponentialBackoff and sleeper arguments for testing.
-    pub async fn wait(&mut self, mut settings: BackoffRetrySettings) -> Result<Option<T>, Status>
-    {
-        settings.retryer.codes.push(Code::DeadlineExceeded);
+    pub async fn wait(
+        &mut self,
+        option: Option<BackoffRetrySettings>,
+    ) -> Result<Option<T>, Status> {
+        let mut settings = match option {
+            Some(s) => s,
+            None => BackoffRetrySettings {
+                retryer: BackoffRetryer {
+                    backoff: Default::default(),
+                    codes: vec![Code::DeadlineExceeded],
+                },
+            },
+        };
         return invoke_reuse(
             |me| async {
                 let poll_result: Option<T> = match me.poll().await {
