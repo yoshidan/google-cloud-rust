@@ -1,4 +1,4 @@
-use prost_types::value::Kind;
+
 use prost_types::{ListValue, Value};
 
 use crate::statement::{ToKind, ToStruct};
@@ -187,6 +187,7 @@ mod tests {
     use crate::value::CommitTimestamp;
     use chrono::Utc;
     use google_cloud_googleapis::spanner::*;
+    use prost_types::value::Kind;
 
     struct TestStruct {
         pub struct_field: String,

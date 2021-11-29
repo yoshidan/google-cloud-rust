@@ -1,4 +1,4 @@
-use prost_types::{value, ListValue, Value};
+use prost_types::{ListValue, Value};
 
 use google_cloud_googleapis::spanner::v1::key_range::{EndKeyType, StartKeyType};
 use google_cloud_googleapis::spanner::v1::KeyRange as InternalKeyRange;
@@ -313,7 +313,7 @@ mod tests {
 
     #[test]
     fn test_key_new() {
-        let mut key = Key::keys(vec![true.to_kind()]);
+        let mut key = Key::key(true);
         match key.values.values.pop().unwrap().kind.unwrap() {
             Kind::BoolValue(s) => assert_eq!(s, true),
             _ => panic!("invalid kind"),
