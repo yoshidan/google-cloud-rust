@@ -185,7 +185,7 @@ mod tests {
     use crate::mutation::*;
     use crate::statement::{Kinds, ToKind, Types};
     use crate::value::CommitTimestamp;
-    use chrono::Utc;
+    
     use google_cloud_googleapis::spanner::*;
     use prost_types::value::Kind;
 

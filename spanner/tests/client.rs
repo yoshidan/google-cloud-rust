@@ -28,7 +28,7 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
     let client = Client::new(DATABASE).await.context("error")?;
     let value = client
         .read_write_transaction(
-            |mut tx| async move {
+            |mut tx| async {
                 let result = async {
                     let tx2 = &mut tx;
                     let ms = vec![create_user_mutation("user_client_1x", &now), create_user_mutation("user_client_2x", &now)];
