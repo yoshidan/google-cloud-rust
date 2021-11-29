@@ -258,6 +258,24 @@ impl Key {
         Key::new(vec![value.to_kind()])
     }
 
+    /// one creates new Key
+   /// # Examples
+   /// ```
+   ///    use google_cloud_spanner::key::Key;
+   ///    use google_cloud_spanner::statement::ToKind;
+   ///    let multi_key = Key::keys(&[&"a", &1]);
+   /// ```
+    pub fn keys(values: &[&dyn ToKind]) -> Key {
+        Key {
+            values: ListValue {
+                values: values
+                    .into_iter()
+                    .map(|x| Value { kind: Some(x.to_kind()) })
+                    .collect(),
+            },
+        }
+    }
+
     /// new creates new Key
     /// # Examples
     /// ```
@@ -319,8 +337,25 @@ mod tests {
     }
 
     #[test]
+    fn test_key_keys() {
+        let mut key = Key::keys(&[&true, &1, &"aaa"]);
+        match key.values.values.pop().unwrap().kind.unwrap() {
+            Kind::StringValue(s) => assert_eq!(s, "aaa"),
+            _ => panic!("invalid kind"),
+        }
+    }
+
+    #[test]
     fn test_key_one() {
         let mut key = Key::one(1);
+        match key.values.values.pop().unwrap().kind.unwrap() {
+            Kind::StringValue(s) => assert_eq!(s, "1"),
+            _ => panic!("invalid kind"),
+        }
+    }
+    #[test]
+    fn test_key_one_ref() {
+        let mut key = Key::one(&1);
         match key.values.values.pop().unwrap().kind.unwrap() {
             Kind::StringValue(s) => assert_eq!(s, "1"),
             _ => panic!("invalid kind"),

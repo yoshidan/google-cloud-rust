@@ -185,7 +185,7 @@ async fn assert_data(
         FROM User p WHERE UserId = @UserId;
     ",
         );
-        stmt.add_param("UserId", user_id.clone());
+        stmt.add_param("UserId", user_id);
         let result = tx.query(stmt).await?;
         all_rows(result).await
     }

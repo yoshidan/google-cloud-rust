@@ -127,6 +127,15 @@ impl ToKind for &str {
     }
 }
 
+impl ToKind for &&str {
+    fn to_kind(&self) -> Kind {
+        (*self).to_kind()
+    }
+    fn get_type() -> Type {
+        single_type(TypeCode::String)
+    }
+}
+
 impl ToKind for i64 {
     fn to_kind(&self) -> Kind {
         self.to_string().to_kind()
