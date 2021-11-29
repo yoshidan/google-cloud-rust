@@ -135,16 +135,12 @@ impl Transaction {
     }
 
     /// read returns a RowIterator for reading multiple rows from the database.
-    pub async fn read<T, C, K>(
+    pub async fn read(
         &mut self,
-        table: T,
-        columns: Vec<C>,
-        key_set: K,
+        table: &str,
+        columns: &[&str],
+        key_set: impl Into<KeySet>,
     ) -> Result<RowIterator<'_>, Status>
-    where
-        T: Into<String>,
-        C: Into<String>,
-        K: Into<KeySet>,
     {
         return self
             .read_with_option(table, columns, key_set, ReadOptions::default())
@@ -152,24 +148,20 @@ impl Transaction {
     }
 
     /// read returns a RowIterator for reading multiple rows from the database.
-    pub async fn read_with_option<T, C, K>(
+    pub async fn read_with_option(
         &mut self,
-        table: T,
-        columns: Vec<C>,
-        key_set: K,
+        table: &str,
+        columns: &[&str],
+        key_set: impl Into<KeySet>,
         options: ReadOptions,
     ) -> Result<RowIterator<'_>, Status>
-    where
-        T: Into<String>,
-        C: Into<String>,
-        K: Into<KeySet>,
     {
         let request = ReadRequest {
             session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
-            table: table.into(),
+            table: table.to_string(),
             index: options.index,
-            columns: columns.into_iter().map(|x| x.into()).collect(),
+            columns: columns.iter().map(|x| x.to_string()).collect(),
             key_set: Some(key_set.into().inner),
             limit: options.limit,
             resume_token: vec![],
@@ -189,15 +181,12 @@ impl Transaction {
     }
 
     /// read returns a RowIterator for reading multiple rows from the database.
-    pub async fn read_row<T, C>(
+    pub async fn read_row(
         &mut self,
-        table: T,
-        columns: Vec<C>,
+        table: &str,
+        columns: &[&str],
         key: Key,
     ) -> Result<Option<Row>, Status>
-    where
-        T: Into<String>,
-        C: Into<String>,
     {
         return self
             .read_row_with_option(table, columns, key, ReadOptions::default())
@@ -205,16 +194,13 @@ impl Transaction {
     }
 
     /// read returns a RowIterator for reading multiple rows from the database.
-    pub async fn read_row_with_option<T, C>(
+    pub async fn read_row_with_option(
         &mut self,
-        table: T,
-        columns: Vec<C>,
+        table: &str,
+        columns: &[&str],
         key: Key,
         options: ReadOptions,
     ) -> Result<Option<Row>, Status>
-    where
-        T: Into<String>,
-        C: Into<String>,
     {
         let mut reader = self
             .read_with_option(table, columns, KeySet::from(key), options)

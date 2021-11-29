@@ -141,12 +141,12 @@
 //! use google_cloud_spanner::key::Key;
 //! use google_cloud_spanner::statement::ToKind;
 //!
-//! let key1 = Key::keys(vec!["Bob".to_kind(), "2014-09-23".to_kind()]);
-//! let key2 = Key::keys(vec!["Alfred".to_kind(), "2015-06-12".to_kind()]);
+//! let key1 = Key::composite(vec!["Bob".to_kind(), "2014-09-23".to_kind()]);
+//! let key2 = Key::composite(vec!["Alfred".to_kind(), "2015-06-12".to_kind()]);
 //! let keys  = vec![key1,key2] ;
 //! let composite_keys = vec![
-//!     Key::keys(vec!["composite-pk-1-1".to_kind(),"composite-pk-1-2".to_kind()]),
-//!     Key::keys(vec!["composite-pk-2-1".to_kind(),"composite-pk-2-2".to_kind()])
+//!     Key::composite(vec!["composite-pk-1-1".to_kind(),"composite-pk-1-2".to_kind()]),
+//!     Key::composite(vec!["composite-pk-2-1".to_kind(),"composite-pk-2-2".to_kind()])
 //! ];
 //! ```
 //!
@@ -301,8 +301,8 @@
 //! // iterate reader2 ...
 //!
 //! let mut reader3 = tx.read("Table", vec!["col1", "col2"], vec![
-//!     Key::keys(vec!["composite-pk-1-1".to_kind(),"composite-pk-1-2".to_kind()]),
-//!     Key::keys(vec!["composite-pk-2-1".to_kind(),"composite-pk-2-2".to_kind()])
+//!     Key::composite(vec!["composite-pk-1-1".to_kind(),"composite-pk-1-2".to_kind()]),
+//!     Key::composite(vec!["composite-pk-2-1".to_kind(),"composite-pk-2-2".to_kind()])
 //! ]).await?;
 //! // iterate reader3 ...
 //! ```

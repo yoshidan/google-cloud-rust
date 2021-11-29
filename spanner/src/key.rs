@@ -24,7 +24,7 @@ use crate::statement::ToKind;
 /// ```
 ///    use google_cloud_spanner::key::Key;
 ///    use google_cloud_spanner::statement::ToKind;
-///    let key = Key::keys(vec!["john".to_kind(), 16.to_kind()]);
+///    let key = Key::composite(vec!["john".to_kind(), 16.to_kind()]);
 /// ```
 /// See the description of Row and Mutation types for how Go types are mapped to
 /// Cloud Spanner types. For convenience, Key type supports a range of Rust
@@ -92,8 +92,8 @@ pub enum RangeKind {
 ///  ```
 ///    use google_cloud_spanner::key::Key;
 ///    use google_cloud_spanner::statement::ToKind;
-///    let key1 = Key::keys(vec!["Bob".to_kind(), "2014-09-23".to_kind()]);
-///    let key2 = Key::keys(vec!["Alfred".to_kind(), "2015-06-12".to_kind()]);
+///    let key1 = Key::composite(vec!["Bob".to_kind(), "2014-09-23".to_kind()]);
+///    let key2 = Key::composite(vec!["Alfred".to_kind(), "2015-06-12".to_kind()]);
 ///  ```
 ///
 ///  Since the UserEvents table's PRIMARY KEY clause names two columns, each
@@ -108,8 +108,8 @@ pub enum RangeKind {
 ///    use google_cloud_spanner::key::{Key, KeyRange, RangeKind};
 ///    use google_cloud_spanner::statement::ToKind;
 ///    let range = KeyRange::new(
-///        Key::keys(vec!["Bob".to_kind(), "2015-01-01".to_kind()]),
-///        Key::keys(vec!["Bob".to_kind(), "2015-12-31".to_kind()]),
+///        Key::composite(vec!["Bob".to_kind(), "2015-01-01".to_kind()]),
+///        Key::composite(vec!["Bob".to_kind(), "2015-12-31".to_kind()]),
 ///        RangeKind::ClosedClosed
 ///    );
 ///  ```
@@ -127,7 +127,7 @@ pub enum RangeKind {
 ///    use google_cloud_spanner::key::{Key, KeyRange, RangeKind};
 ///    use google_cloud_spanner::statement::ToKind;
 ///    KeyRange::new(
-///     Key::keys(vec!["Bob".to_kind(), "2000-01-01".to_kind()]),
+///     Key::composite(vec!["Bob".to_kind(), "2000-01-01".to_kind()]),
 ///     Key::key("Bob"),
 ///     RangeKind::ClosedClosed
 ///    );
@@ -143,7 +143,7 @@ pub enum RangeKind {
 ///    use google_cloud_spanner::statement::ToKind;
 ///    let range = KeyRange::new(
 ///     Key::key("Bob"),
-///     Key::keys(vec!["Bob".to_kind(), "2000-01-01".to_kind()]),
+///     Key::composite(vec!["Bob".to_kind(), "2000-01-01".to_kind()]),
 ///     RangeKind::ClosedOpen
 ///    );
 ///  ```
@@ -255,7 +255,7 @@ impl Key {
     ///    let key2 = Key::key(1);
     /// ```
     pub fn key(value: impl ToKind) -> Key {
-        Key::keys(&[&value])
+        Key::composite(&[&value])
     }
 
     /// one creates new Key
@@ -263,13 +263,13 @@ impl Key {
     /// ```
     ///    use google_cloud_spanner::key::Key;
     ///    use google_cloud_spanner::statement::ToKind;
-    ///    let multi_key = Key::keys(&[&"a", &1]);
+    ///    let multi_key = Key::composite(&[&"a", &1]);
     /// ```
-    pub fn keys(values: &[&dyn ToKind]) -> Key {
+    pub fn composite(values: &[&dyn ToKind]) -> Key {
         Key {
             values: ListValue {
                 values: values
-                    .into_iter()
+                    .iter()
                     .map(|x| Value {
                         kind: Some(x.to_kind()),
                     })
@@ -322,7 +322,7 @@ mod tests {
 
     #[test]
     fn test_key_keys() {
-        let mut key = Key::keys(&[&true, &1, &"aaa"]);
+        let mut key = Key::composite(&[&true, &1, &"aaa"]);
         match key.values.values.pop().unwrap().kind.unwrap() {
             Kind::StringValue(s) => assert_eq!(s, "aaa"),
             _ => panic!("invalid kind"),
