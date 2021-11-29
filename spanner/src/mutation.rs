@@ -5,30 +5,55 @@ use crate::statement::{ToKind, ToStruct};
 use google_cloud_googleapis::spanner::v1::mutation::{Delete, Operation, Write};
 use google_cloud_googleapis::spanner::v1::{KeySet, Mutation};
 
-fn write<T, C>(table: T, columns: Vec<C>, values: Vec<Kind>) -> Write
-where
-    T: Into<String>,
-    C: Into<String>,
-{
+fn write(table: &str, columns: &[&str], values: &[&dyn ToKind]) -> Write {
     let values = values
-        .into_iter()
-        .map(|x| Value { kind: Some(x) })
+        .iter()
+        .map(|x| Value {
+            kind: Some(x.to_kind()),
+        })
         .collect();
 
     Write {
-        table: table.into(),
-        columns: columns.into_iter().map(|x| x.into()).collect(),
+        table: table.to_string(),
+        columns: columns.iter().map(|x| x.to_string()).collect(),
+        values: vec![ListValue { values }],
+    }
+}
+
+fn write_map(table: &str, columns_ans_values: &[(&str, &dyn ToKind)]) -> Write {
+    let mut columns = Vec::with_capacity(columns_ans_values.len());
+    let mut values = Vec::with_capacity(columns_ans_values.len());
+    columns_ans_values.into_iter().for_each(|x| {
+        columns.push(x.0.to_string());
+        values.push(Value {
+            kind: Some(x.1.to_kind()),
+        })
+    });
+    Write {
+        table: table.to_string(),
+        columns,
+        values: vec![ListValue { values }],
+    }
+}
+
+fn write_struct(table: &str, to_struct: impl ToStruct) -> Write {
+    let kinds = to_struct.to_kinds();
+    let mut columns = Vec::with_capacity(kinds.len());
+    let mut values = Vec::with_capacity(kinds.len());
+    kinds.into_iter().for_each(|x| {
+        columns.push(x.0.to_string());
+        values.push(Value { kind: Some(x.1) })
+    });
+    Write {
+        table: table.to_string(),
+        columns,
         values: vec![ListValue { values }],
     }
 }
 
 /// Insert returns a Mutation to insert a row into a table. If the row already
 /// exists, the write or transaction fails with codes.AlreadyExists.
-pub fn insert<T, C>(table: T, columns: Vec<C>, values: Vec<Kind>) -> Mutation
-where
-    T: Into<String>,
-    C: Into<String>,
-{
+pub fn insert(table: &str, columns: &[&str], values: &[&dyn ToKind]) -> Mutation {
     Mutation {
         operation: Some(Operation::Insert(write(table, columns, values))),
     }
@@ -37,33 +62,24 @@ where
 /// insert_map returns a Mutation to insert a row into a table, specified by
 /// a map of column name to value. If the row already exists, the write or
 /// transaction fails with codes.AlreadyExists.
-pub fn insert_map<T, C>(table: T, columns_ans_values: Vec<(C, &(dyn ToKind))>) -> Mutation
-where
-    T: Into<String>,
-    C: Into<String>,
-{
-    let (columns, values) = map_to_columns_values(columns_ans_values);
-    insert(table, columns, values)
+pub fn insert_map(table: &str, columns_ans_values: &[(&str, &dyn ToKind)]) -> Mutation {
+    Mutation {
+        operation: Some(Operation::Insert(write_map(table, columns_ans_values))),
+    }
 }
 
 /// insert_struct returns a Mutation to insert a row into a table, specified by
 /// a Rust struct.  If the row already exists, the write or transaction fails with
 /// codes.AlreadyExists.
-pub fn insert_struct<T>(table: T, to_struct: impl ToStruct) -> Mutation
-where
-    T: Into<String>,
-{
-    let (columns, values) = struct_to_columns_values(&to_struct);
-    insert(table, columns, values)
+pub fn insert_struct(table: &str, to_struct: impl ToStruct) -> Mutation {
+    Mutation {
+        operation: Some(Operation::Insert(write_struct(table, to_struct))),
+    }
 }
 
 /// update returns a Mutation to update a row in a table. If the row does not
 /// already exist, the write or transaction fails.
-pub fn update<T, C>(table: T, columns: Vec<C>, values: Vec<Kind>) -> Mutation
-where
-    T: Into<String>,
-    C: Into<String>,
-{
+pub fn update(table: &str, columns: &[&str], values: &[&dyn ToKind]) -> Mutation {
     Mutation {
         operation: Some(Operation::Update(write(table, columns, values))),
     }
@@ -72,23 +88,18 @@ where
 /// update_map returns a Mutation to update a row in a table, specified by
 /// a map of column to value. If the row does not already exist, the write or
 /// transaction fails.
-pub fn update_map<T, C>(table: T, columns_ans_values: Vec<(C, &(dyn ToKind))>) -> Mutation
-where
-    T: Into<String>,
-    C: Into<String>,
-{
-    let (columns, values) = map_to_columns_values(columns_ans_values);
-    update(table, columns, values)
+pub fn update_map(table: &str, columns_ans_values: &[(&str, &dyn ToKind)]) -> Mutation {
+    Mutation {
+        operation: Some(Operation::Update(write_map(table, columns_ans_values))),
+    }
 }
 
 /// update_struct returns a Mutation to update a row in a table, specified by a Go
 /// struct. If the row does not already exist, the write or transaction fails.
-pub fn update_struct<T>(table: T, to_struct: impl ToStruct) -> Mutation
-where
-    T: Into<String>,
-{
-    let (columns, values) = struct_to_columns_values(&to_struct);
-    update(table, columns, values)
+pub fn update_struct(table: &str, to_struct: impl ToStruct) -> Mutation {
+    Mutation {
+        operation: Some(Operation::Update(write_struct(table, to_struct))),
+    }
 }
 
 /// replace returns a Mutation to insert a row into a table, deleting any
@@ -96,11 +107,7 @@ where
 /// written become NULL.
 ///
 /// For a similar example, See Update.
-pub fn replace<T, C>(table: T, columns: Vec<C>, values: Vec<Kind>) -> Mutation
-where
-    T: Into<String>,
-    C: Into<String>,
-{
+pub fn replace(table: &str, columns: &[&str], values: &[&dyn ToKind]) -> Mutation {
     Mutation {
         operation: Some(Operation::Replace(write(table, columns, values))),
     }
@@ -111,24 +118,19 @@ where
 /// written become NULL.  The row is specified by a map of column to value.
 ///
 /// For a similar example, See update_map.
-pub fn replace_map<T, C>(table: T, columns_ans_values: Vec<(C, &(dyn ToKind))>) -> Mutation
-where
-    T: Into<String>,
-    C: Into<String>,
-{
-    let (columns, values) = map_to_columns_values(columns_ans_values);
-    replace(table, columns, values)
+pub fn replace_map(table: &str, columns_ans_values: &[(&str, &dyn ToKind)]) -> Mutation {
+    Mutation {
+        operation: Some(Operation::Replace(write_map(table, columns_ans_values))),
+    }
 }
 
 /// replace_struct returns a Mutation to insert a row into a table, deleting any existing row.
 ///
 /// For a similar example, See update_struct.
-pub fn replace_struct<T>(table: T, to_struct: impl ToStruct) -> Mutation
-where
-    T: Into<String>,
-{
-    let (columns, values) = struct_to_columns_values(&to_struct);
-    replace(table, columns, values)
+pub fn replace_struct(table: &str, to_struct: impl ToStruct) -> Mutation {
+    Mutation {
+        operation: Some(Operation::Replace(write_struct(table, to_struct))),
+    }
 }
 
 /// insert_or_update returns a Mutation to insert a row into a table. If the row
@@ -136,13 +138,23 @@ where
 /// written are preserved.
 ///
 /// For a similar example, See update.
-pub fn insert_or_update<T, C>(table: T, columns: Vec<C>, values: Vec<Kind>) -> Mutation
-where
-    T: Into<String>,
-    C: Into<String>,
-{
+pub fn insert_or_update(table: &str, columns: &[&str], values: &[&dyn ToKind]) -> Mutation {
     Mutation {
         operation: Some(Operation::InsertOrUpdate(write(table, columns, values))),
+    }
+}
+
+/// insert_or_update returns a Mutation to insert a row into a table. If the row
+/// already exists, it updates it instead. Any column values not explicitly
+/// written are preserved.
+///
+/// For a similar example, See update.
+pub fn insert_or_update_map(table: &str, columns_ans_values: &[(&str, &dyn ToKind)]) -> Mutation {
+    Mutation {
+        operation: Some(Operation::InsertOrUpdate(write_map(
+            table,
+            columns_ans_values,
+        ))),
     }
 }
 
@@ -150,42 +162,21 @@ where
 /// specified by a Go struct. If the row already exists, it updates it instead.
 /// Any column values not explicitly written are preserved.
 /// For a similar example, See update_struct.
-pub fn insert_or_update_struct<T>(table: T, to_struct: impl ToStruct) -> Mutation
-where
-    T: Into<String>,
-{
-    let (columns, values) = struct_to_columns_values(&to_struct);
-    insert_or_update(table, columns, values)
+pub fn insert_or_update_struct(table: &str, to_struct: impl ToStruct) -> Mutation {
+    Mutation {
+        operation: Some(Operation::InsertOrUpdate(write_struct(table, to_struct))),
+    }
 }
 
 /// delete removes the rows described by the KeySet from the table. It succeeds
 /// whether or not the keys were present.
-pub fn delete<T: Into<String>, F: Into<KeySet>>(table: T, key_set: F) -> Mutation {
+pub fn delete(table: &str, key_set: impl Into<KeySet>) -> Mutation {
     Mutation {
         operation: Some(Operation::Delete(Delete {
-            table: table.into(),
+            table: table.to_string(),
             key_set: Some(key_set.into()),
         })),
     }
-}
-
-fn struct_to_columns_values<'a>(to_struct: impl ToStruct) -> (Vec<&'a str>, Vec<Kind>) {
-    let kind = to_struct.to_kinds();
-    let columns = kind.iter().map(|x| x.0).collect();
-    let values = kind.into_iter().map(|x| x.1).collect();
-    (columns, values)
-}
-
-fn map_to_columns_values<T: Into<String>>(
-    columns_ans_values: Vec<(T, &(dyn ToKind))>,
-) -> (Vec<T>, Vec<Kind>) {
-    let mut columns = Vec::with_capacity(columns_ans_values.len());
-    let mut values = Vec::with_capacity(columns_ans_values.len());
-    columns_ans_values.into_iter().for_each(|x| {
-        columns.push(x.0);
-        values.push(x.1.to_kind())
-    });
-    (columns, values)
 }
 
 #[cfg(test)]
@@ -215,15 +206,8 @@ mod tests {
     fn test_insert() {
         let mutation = insert(
             "Guild",
-            vec!["GuildId", "UserId", "UpdatedAt"],
-            vec![
-                "1".to_kind(),
-                "2".to_kind(),
-                CommitTimestamp {
-                    timestamp: Utc::now(),
-                }
-                .to_kind(),
-            ],
+            &["GuildId", "UserId", "UpdatedAt"],
+            &[&"1", &"2", &CommitTimestamp::new()],
         );
         match mutation.operation.unwrap() {
             v1::mutation::Operation::Insert(mut w) => {
@@ -242,7 +226,7 @@ mod tests {
         let user_id = 1;
         let mutation = insert_map(
             "Guild",
-            vec![
+            &[
                 ("UserId", &"aa"),
                 ("GuildId", &user_id),
                 ("updatedAt", &CommitTimestamp::new()),
@@ -290,15 +274,8 @@ mod tests {
     fn test_update() {
         let mutation = update(
             "Guild",
-            vec!["GuildId", "UserId", "UpdatedAt"],
-            vec![
-                "1".to_kind(),
-                "2".to_kind(),
-                CommitTimestamp {
-                    timestamp: Utc::now(),
-                }
-                .to_kind(),
-            ],
+            &["GuildId", "UserId", "UpdatedAt"],
+            &[&"1", &"2", &CommitTimestamp::new()],
         );
         match mutation.operation.unwrap() {
             v1::mutation::Operation::Update(mut w) => {
@@ -340,15 +317,8 @@ mod tests {
     fn test_replace() {
         let mutation = replace(
             "Guild",
-            vec!["GuildId", "UserId", "UpdatedAt"],
-            vec![
-                "1".to_kind(),
-                "2".to_kind(),
-                CommitTimestamp {
-                    timestamp: Utc::now(),
-                }
-                .to_kind(),
-            ],
+            &["GuildId", "UserId", "UpdatedAt"],
+            &[&"1", &"2", &CommitTimestamp::new()],
         );
         match mutation.operation.unwrap() {
             v1::mutation::Operation::Replace(mut w) => {
@@ -378,15 +348,8 @@ mod tests {
     fn test_insert_or_update() {
         let mutation = insert_or_update(
             "Guild",
-            vec!["GuildId", "UserId", "UpdatedAt"],
-            vec![
-                "1".to_kind(),
-                "2".to_kind(),
-                CommitTimestamp {
-                    timestamp: Utc::now(),
-                }
-                .to_kind(),
-            ],
+            &["GuildId", "UserId", "UpdatedAt"],
+            &[&"1", &"2", &CommitTimestamp::new()],
         );
         match mutation.operation.unwrap() {
             v1::mutation::Operation::InsertOrUpdate(mut w) => {

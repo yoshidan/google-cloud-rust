@@ -104,7 +104,7 @@
 //! let row = client.single().await?.read_row(
 //!     "User",
 //!     vec!["UserID", "Name", "UpdatedAt"],
-//!     Key::one(1),
+//!     Key::key(1),
 //! ).await?;
 //! ```
 //!
@@ -117,7 +117,7 @@
 //! ```
 //! use google_cloud_spanner::key::Key;
 //!
-//! let key1 = Key::one("key");
+//! let key1 = Key::key("key");
 //! ```
 //!
 //! ### <a name="KeyRanges"></a>KeyRanges
@@ -127,10 +127,10 @@
 //! ```
 //! use google_cloud_spanner::key::{Key,KeyRange,RangeKind};
 //!
-//! let range1 = KeyRange::new(Key::one(1), Key::one(100), RangeKind::ClosedClosed);
-//! let range2 = KeyRange::new(Key::one(1), Key::one(100), RangeKind::ClosedOpen);
-//! let range3 = KeyRange::new(Key::one(1), Key::one(100), RangeKind::OpenOpen);
-//! let range4 = KeyRange::new(Key::one(1), Key::one(100), RangeKind::OpenClosed);
+//! let range1 = KeyRange::new(Key::key(1), Key::key(100), RangeKind::ClosedClosed);
+//! let range2 = KeyRange::new(Key::key(1), Key::key(100), RangeKind::ClosedOpen);
+//! let range3 = KeyRange::new(Key::key(1), Key::key(100), RangeKind::OpenOpen);
+//! let range4 = KeyRange::new(Key::key(1), Key::key(100), RangeKind::OpenClosed);
 //! ```
 //!
 //! ### <a name="KeySets"></a>KeySets
@@ -141,12 +141,12 @@
 //! use google_cloud_spanner::key::Key;
 //! use google_cloud_spanner::statement::ToKind;
 //!
-//! let key1 = Key::new(vec!["Bob".to_kind(), "2014-09-23".to_kind()]);
-//! let key2 = Key::new(vec!["Alfred".to_kind(), "2015-06-12".to_kind()]);
+//! let key1 = Key::keys(vec!["Bob".to_kind(), "2014-09-23".to_kind()]);
+//! let key2 = Key::keys(vec!["Alfred".to_kind(), "2015-06-12".to_kind()]);
 //! let keys  = vec![key1,key2] ;
 //! let composite_keys = vec![
-//!     Key::new(vec!["composite-pk-1-1".to_kind(),"composite-pk-1-2".to_kind()]),
-//!     Key::new(vec!["composite-pk-2-1".to_kind(),"composite-pk-2-2".to_kind()])
+//!     Key::keys(vec!["composite-pk-1-1".to_kind(),"composite-pk-1-2".to_kind()]),
+//!     Key::keys(vec!["composite-pk-2-1".to_kind(),"composite-pk-2-2".to_kind()])
 //! ];
 //! ```
 //!
@@ -170,7 +170,7 @@
 //! ```
 //! use google_cloud_spanner::key::Key;
 //!
-//! let row = client.single().await?.read_row("Table", vec!["col1", "col2"], Key::one(1)).await?;
+//! let row = client.single().await?.read_row("Table", vec!["col1", "col2"], Key::key(1)).await?;
 //! ```
 //!
 //! Read multiple rows with the Read method. It takes a table name, KeySet, and list of columns:
@@ -180,8 +180,8 @@
 //! use google_cloud_spanner::statement::ToKind;
 //!
 //! let iter1 = client.single().await?.read("Table", vec!["col1", "col2"], vec![
-//!     Key::one("pk1"),
-//!     Key::one("pk2")
+//!     Key::key("pk1"),
+//!     Key::key("pk2")
 //! ]).await?;
 //! ```
 //!
@@ -191,8 +191,8 @@
 //! use google_cloud_spanner::key::Key;
 //!
 //! let iter = client.single().await?.read("Table", vec!["col1", "col2"], vec![
-//!     Key::one("pk1"),
-//!     Key::one("pk2")
+//!     Key::key("pk1"),
+//!     Key::key("pk2")
 //! ]).await?;
 //!
 //! loop {
@@ -294,15 +294,15 @@
 //! }
 //!
 //! let mut reader2 = tx.read("User", vec!["UserId"], vec![
-//!     Key::one("user-1"),
-//!     Key::one("user-2")
+//!     Key::key("user-1"),
+//!     Key::key("user-2")
 //! ]).await?;
 //!
 //! // iterate reader2 ...
 //!
 //! let mut reader3 = tx.read("Table", vec!["col1", "col2"], vec![
-//!     Key::new(vec!["composite-pk-1-1".to_kind(),"composite-pk-1-2".to_kind()]),
-//!     Key::new(vec!["composite-pk-2-1".to_kind(),"composite-pk-2-2".to_kind()])
+//!     Key::keys(vec!["composite-pk-1-1".to_kind(),"composite-pk-1-2".to_kind()]),
+//!     Key::keys(vec!["composite-pk-2-1".to_kind(),"composite-pk-2-2".to_kind()])
 //! ]).await?;
 //! // iterate reader3 ...
 //! ```
@@ -421,7 +421,7 @@
 //!     // of this error is Aborted. The backend may automatically abort
 //!     // any read/write transaction if it detects a deadlock or other problems.
 //!     let result: Result<(), Error> = async {
-//!         let mut reader = tx.read("UserItem", vec!["UserId", "ItemId", "Quantity"], Key::one(user_id.to_string())).await?;
+//!         let mut reader = tx.read("UserItem", vec!["UserId", "ItemId", "Quantity"], Key::key(user_id.to_string())).await?;
 //!         let ms  = loop {
 //!             let mut ms = vec![];
 //!             let row = reader.next().await?;

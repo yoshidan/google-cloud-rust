@@ -19,7 +19,7 @@ async fn assert_read(
     now: &DateTime<Utc>,
     cts: &DateTime<Utc>,
 ) {
-    let reader = match tx.read("User", user_columns(), Key::one(user_id)).await {
+    let reader = match tx.read("User", user_columns(), Key::key(user_id)).await {
         Ok(tx) => tx,
         Err(status) => panic!("read error {:?}", status),
     };
@@ -299,7 +299,7 @@ async fn test_read_row() {
 
     let mut tx = read_only_transaction(session).await;
     let row = tx
-        .read_row("User", vec!["UserId"], Key::one(user_id.clone()))
+        .read_row("User", vec!["UserId"], Key::key(user_id.clone()))
         .await
         .unwrap();
     assert!(row.is_some())
@@ -323,7 +323,7 @@ async fn test_read_multi_row() {
         .read(
             "User",
             vec!["UserId"],
-            vec![Key::one(user_id), Key::one(user_id2)],
+            vec![Key::key(user_id), Key::key(user_id2)],
         )
         .await
         .unwrap();

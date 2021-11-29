@@ -25,7 +25,6 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
         .await
         .unwrap();
 
-    let user_id_ref = &user_id;
     let client = Client::new(DATABASE).await.context("error")?;
     let value = client
         .read_write_transaction(
@@ -35,7 +34,7 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
                     let ms = vec![create_user_mutation("user_client_1x", &now), create_user_mutation("user_client_2x", &now)];
                     tx2.buffer_write(ms);
                     let mut stmt = Statement::new("Insert Into UserItem (UserId,ItemId,Quantity,UpdatedAt) VALUES(@UserId,1,1,PENDING_COMMIT_TIMESTAMP())");
-                    stmt.add_param("UserId",(*user_id_ref).clone());
+                    stmt.add_param("UserId",&user_id);
                     tx2.update(stmt).await.map_err(TxError::GRPC)
                 }
                 .await;
@@ -47,31 +46,19 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
 
     let mut ro = client.read_only_transaction().await?;
     let record = ro
-        .read(
-            "User",
-            user_columns(),
-            KeySet::from(Key::one("user_client_1x")),
-        )
+        .read("User", user_columns(), Key::key("user_client_1x"))
         .await?;
     let row = all_rows(record).await.pop().unwrap();
     assert_user_row(&row, "user_client_1x", &now, &ts);
 
     let record = ro
-        .read(
-            "User",
-            user_columns(),
-            KeySet::from(Key::one("user_client_2x")),
-        )
+        .read("User", user_columns(), Key::key("user_client_2x"))
         .await?;
     let row = all_rows(record).await.pop().unwrap();
     assert_user_row(&row, "user_client_2x", &now, &ts);
 
     let record = ro
-        .read(
-            "UserItem",
-            vec!["UpdatedAt"],
-            KeySet::from(Key::new(vec![user_id.to_kind(), 1.to_kind()])),
-        )
+        .read("UserItem", vec!["UpdatedAt"], Key::keys(&[&user_id, &1]))
         .await?;
     let row = all_rows(record).await.pop().unwrap();
     let cts = row.column_by_name::<DateTime<Utc>>("UpdatedAt").unwrap();
@@ -96,7 +83,7 @@ async fn test_apply() -> Result<(), anyhow::Error> {
     let mut ro = client.read_only_transaction().await?;
     for x in users {
         let record = ro
-            .read("User", user_columns(), KeySet::from(Key::one(x.clone())))
+            .read("User", user_columns(), KeySet::from(Key::key(x.clone())))
             .await?;
         let row = all_rows(record).await.pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
@@ -121,7 +108,7 @@ async fn test_apply_at_least_once() -> Result<(), anyhow::Error> {
     let mut ro = client.read_only_transaction().await?;
     for x in users {
         let record = ro
-            .read("User", user_columns(), KeySet::from(Key::one(x.clone())))
+            .read("User", user_columns(), KeySet::from(Key::key(x.clone())))
             .await?;
         let row = all_rows(record).await.pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
@@ -149,7 +136,7 @@ async fn test_partitioned_update() -> Result<(), anyhow::Error> {
         .read(
             "User",
             vec!["NullableString"],
-            KeySet::from(Key::one(user_id.clone())),
+            KeySet::from(Key::key(user_id.clone())),
         )
         .await
         .unwrap();

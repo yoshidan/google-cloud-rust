@@ -113,7 +113,7 @@ async fn test_partitioned_dml() {
         .read(
             "User",
             vec!["NullableString"],
-            KeySet::from(Key::one(user_id.clone())),
+            KeySet::from(Key::key(user_id.clone())),
         )
         .await
         .unwrap();
@@ -155,7 +155,7 @@ async fn test_rollback() {
         .read(
             "User",
             user_columns(),
-            KeySet::from(Key::one(past_user.clone())),
+            KeySet::from(Key::key(past_user.clone())),
         )
         .await
         .unwrap();
