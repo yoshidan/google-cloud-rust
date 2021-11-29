@@ -53,7 +53,7 @@ pub fn insert_struct<T>(table: T, to_struct: impl ToStruct) -> Mutation
 where
     T: Into<String>,
 {
-    let (columns, values) = struct_to_columns_values(to_struct);
+    let (columns, values) = struct_to_columns_values(&to_struct);
     insert(table, columns, values)
 }
 
@@ -87,7 +87,7 @@ pub fn update_struct<T>(table: T, to_struct: impl ToStruct) -> Mutation
 where
     T: Into<String>,
 {
-    let (columns, values) = struct_to_columns_values(to_struct);
+    let (columns, values) = struct_to_columns_values(&to_struct);
     update(table, columns, values)
 }
 
@@ -120,14 +120,14 @@ where
     replace(table, columns, values)
 }
 
-/// ReplaceStruct returns a Mutation to insert a row into a table, deleting any existing row.
+/// replace_struct returns a Mutation to insert a row into a table, deleting any existing row.
 ///
 /// For a similar example, See update_struct.
 pub fn replace_struct<T>(table: T, to_struct: impl ToStruct) -> Mutation
 where
     T: Into<String>,
 {
-    let (columns, values) = struct_to_columns_values(to_struct);
+    let (columns, values) = struct_to_columns_values(&to_struct);
     replace(table, columns, values)
 }
 
@@ -146,20 +146,6 @@ where
     }
 }
 
-/// insert_or_update_map returns a Mutation to insert a row into a table,
-/// specified by a map of column to value. If the row already exists, it
-/// updates it instead. Any column values not explicitly written are preserved.
-///
-/// For a similar example, See update_map.
-pub fn insert_or_update_map<T, C>(table: T, columns_ans_values: Vec<(C, &(dyn ToKind))>) -> Mutation
-where
-    T: Into<String>,
-    C: Into<String>,
-{
-    let (columns, values) = map_to_columns_values(columns_ans_values);
-    insert_or_update(table, columns, values)
-}
-
 /// insert_or_update_struct returns a Mutation to insert a row into a table,
 /// specified by a Go struct. If the row already exists, it updates it instead.
 /// Any column values not explicitly written are preserved.
@@ -168,7 +154,7 @@ pub fn insert_or_update_struct<T>(table: T, to_struct: impl ToStruct) -> Mutatio
 where
     T: Into<String>,
 {
-    let (columns, values) = struct_to_columns_values(to_struct);
+    let (columns, values) = struct_to_columns_values(&to_struct);
     insert_or_update(table, columns, values)
 }
 
@@ -251,23 +237,23 @@ mod tests {
         }
     }
 
-
     #[test]
     fn test_insert_map() {
+        let user_id = 1;
         let mutation = insert_map(
             "Guild",
             vec![
                 ("UserId", &"aa"),
-                ("GuildId", &1),
+                ("GuildId", &user_id),
                 ("updatedAt", &CommitTimestamp::new()),
-            ]
+            ],
         );
         match mutation.operation.unwrap() {
             v1::mutation::Operation::Insert(mut w) => {
                 assert_eq!("Guild", w.table);
                 assert_eq!(3, w.values.pop().unwrap().values.len());
                 assert_eq!(3, w.columns.len());
-            },
+            }
             _ => panic!("invalid operation"),
         }
     }
@@ -277,6 +263,20 @@ mod tests {
         let mutation = insert_struct(
             "Guild",
             TestStruct {
+                struct_field: "abc".to_string(),
+            },
+        );
+        match mutation.operation.unwrap() {
+            v1::mutation::Operation::Insert(w) => assert_struct(w),
+            _ => panic!("invalid operation"),
+        }
+    }
+
+    #[test]
+    fn test_insert_struct_ref() {
+        let mutation = insert_struct(
+            "Guild",
+            &TestStruct {
                 struct_field: "abc".to_string(),
             },
         );
@@ -318,6 +318,18 @@ mod tests {
                 struct_field: "abc".to_string(),
             },
         );
+        match mutation.operation.unwrap() {
+            v1::mutation::Operation::Update(w) => assert_struct(w),
+            _ => panic!("invalid operation"),
+        }
+    }
+
+    #[test]
+    fn test_update_struct_ref() {
+        let st = TestStruct {
+            struct_field: "abc".to_string(),
+        };
+        let mutation = update_struct("Guild", &st);
         match mutation.operation.unwrap() {
             v1::mutation::Operation::Update(w) => assert_struct(w),
             _ => panic!("invalid operation"),
