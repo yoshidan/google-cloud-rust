@@ -1,7 +1,7 @@
 use anyhow::Context;
 use google_cloud_spanner::client::{Client, TxError};
 
-use google_cloud_spanner::statement::{Statement, ToKind};
+use google_cloud_spanner::statement::{Statement};
 
 mod common;
 use chrono::{DateTime, TimeZone, Utc};
