@@ -109,6 +109,15 @@ impl ToKind for String {
     }
 }
 
+impl ToKind for &String {
+    fn to_kind(&self) -> Kind {
+        (*self).to_kind()
+    }
+    fn get_type() -> Type {
+        String::get_type()
+    }
+}
+
 impl ToKind for &str {
     fn to_kind(&self) -> Kind {
         StringValue(self.to_string())
@@ -127,12 +136,30 @@ impl ToKind for i64 {
     }
 }
 
+impl ToKind for &i64 {
+    fn to_kind(&self) -> Kind {
+        (*self).to_kind()
+    }
+    fn get_type() -> Type {
+        i64::get_type()
+    }
+}
+
 impl ToKind for f64 {
     fn to_kind(&self) -> Kind {
         value::Kind::NumberValue(*self)
     }
     fn get_type() -> Type {
         single_type(TypeCode::Float64)
+    }
+}
+
+impl ToKind for &f64 {
+    fn to_kind(&self) -> Kind {
+        (*self).to_kind()
+    }
+    fn get_type() -> Type {
+        f64::get_type()
     }
 }
 
@@ -145,12 +172,30 @@ impl ToKind for bool {
     }
 }
 
+impl ToKind for &bool {
+    fn to_kind(&self) -> Kind {
+        (*self).to_kind()
+    }
+    fn get_type() -> Type {
+        bool::get_type()
+    }
+}
+
 impl ToKind for NaiveDate {
     fn to_kind(&self) -> Kind {
         self.format("%Y-%m-%d").to_string().to_kind()
     }
     fn get_type() -> Type {
         single_type(TypeCode::Date)
+    }
+}
+
+impl ToKind for &NaiveDate {
+    fn to_kind(&self) -> Kind {
+        (*self).to_kind()
+    }
+    fn get_type() -> Type {
+        NaiveDate::get_type()
     }
 }
 
@@ -167,6 +212,18 @@ where
     }
 }
 
+impl<Tz: TimeZone> ToKind for &DateTime<Tz>
+where
+    Tz::Offset: Display,
+{
+    fn to_kind(&self) -> Kind {
+        (*self).to_kind()
+    }
+    fn get_type() -> Type {
+        single_type(TypeCode::Timestamp)
+    }
+}
+
 impl ToKind for CommitTimestamp {
     fn to_kind(&self) -> Kind {
         "spanner.commit_timestamp()".to_kind()
@@ -176,9 +233,27 @@ impl ToKind for CommitTimestamp {
     }
 }
 
+impl ToKind for &CommitTimestamp {
+    fn to_kind(&self) -> Kind {
+        (*self).to_kind()
+    }
+    fn get_type() -> Type {
+        CommitTimestamp::get_type()
+    }
+}
+
 impl ToKind for &[u8] {
     fn to_kind(&self) -> Kind {
         base64::encode(self).to_kind()
+    }
+    fn get_type() -> Type {
+        single_type(TypeCode::Bytes)
+    }
+}
+
+impl ToKind for &&[u8] {
+    fn to_kind(&self) -> Kind {
+        (*self).to_kind()
     }
     fn get_type() -> Type {
         single_type(TypeCode::Bytes)
@@ -194,12 +269,30 @@ impl ToKind for Vec<u8> {
     }
 }
 
+impl ToKind for &Vec<u8> {
+    fn to_kind(&self) -> Kind {
+        (*self).to_kind()
+    }
+    fn get_type() -> Type {
+        Vec::<u8>::get_type()
+    }
+}
+
 impl ToKind for rust_decimal::Decimal {
     fn to_kind(&self) -> Kind {
         self.to_string().to_kind()
     }
     fn get_type() -> Type {
         single_type(TypeCode::Numeric)
+    }
+}
+
+impl ToKind for &rust_decimal::Decimal {
+    fn to_kind(&self) -> Kind {
+        (*self).to_kind()
+    }
+    fn get_type() -> Type {
+        rust_decimal::Decimal::get_type()
     }
 }
 
