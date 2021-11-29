@@ -135,7 +135,7 @@ pub fn create_user_mutation(user_id: &str, now: &DateTime<Utc>) -> Mutation {
             &None::<Vec<u8>>,
             &Decimal::from_str("100.24").unwrap(),
             &Some(Decimal::from_str("1000.42342").unwrap()),
-            &now,
+            now,
             &Some(*now),
             &now.naive_utc().date(),
             &None::<DateTime<Utc>>,
@@ -271,7 +271,7 @@ pub async fn assert_partitioned_query(
     cts: &DateTime<Utc>,
 ) {
     let mut stmt = Statement::new("SELECT * FROM User WHERE UserId = @UserID");
-    stmt.add_param("UserId", user_id);
+    stmt.add_param("UserId", &user_id);
     let row = execute_partitioned_query(tx, stmt).await;
     assert_eq!(row.len(), 1);
     assert_user_row(row.first().unwrap(), user_id, now, cts);
@@ -307,7 +307,7 @@ pub async fn assert_partitioned_read(
     cts: &DateTime<Utc>,
 ) {
     let partitions = match tx
-        .partition_read("User", &user_columns(), vec![Key::key(user_id)])
+        .partition_read("User", &user_columns(), vec![Key::key(&user_id)])
         .await
     {
         Ok(tx) => tx,

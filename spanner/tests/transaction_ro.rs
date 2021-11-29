@@ -19,7 +19,7 @@ async fn assert_read(
     now: &DateTime<Utc>,
     cts: &DateTime<Utc>,
 ) {
-    let reader = match tx.read("User", &user_columns(), Key::key(user_id)).await {
+    let reader = match tx.read("User", &user_columns(), Key::key(&user_id)).await {
         Ok(tx) => tx,
         Err(status) => panic!("read error {:?}", status),
     };
@@ -36,7 +36,7 @@ async fn assert_query(
     cts: &DateTime<Utc>,
 ) {
     let mut stmt = Statement::new("SELECT * FROM User WHERE UserId = @UserID");
-    stmt.add_param("UserId", user_id);
+    stmt.add_param("UserId", &user_id);
     let mut rows = execute_query(tx, stmt).await;
     assert_eq!(1, rows.len(), "row must exists");
     let row = rows.pop().unwrap();
@@ -108,7 +108,7 @@ async fn test_complex_query() {
         FROM User p WHERE UserId = @UserId;
     ",
     );
-    stmt.add_param("UserId", user_id_1);
+    stmt.add_param("UserId", &user_id_1);
     let mut rows = execute_query(&mut tx, stmt).await;
     assert_eq!(1, rows.len());
     let row = rows.pop().unwrap();
@@ -275,7 +275,7 @@ async fn test_many_records_struct() {
         ARRAY(SELECT AS STRUCT * FROM UserCharacter WHERE UserId = p.UserId) as UserCharacter
         FROM User p WHERE UserId = @UserId;",
     );
-    stmt.add_param("UserId", user_id.clone());
+    stmt.add_param("UserId", &user_id);
 
     let mut rows = execute_query(&mut tx, stmt).await;
     assert_eq!(1, rows.len());
@@ -299,7 +299,7 @@ async fn test_read_row() {
 
     let mut tx = read_only_transaction(session).await;
     let row = tx
-        .read_row("User", &["UserId"], Key::key(user_id.clone()))
+        .read_row("User", &["UserId"], Key::key(&user_id))
         .await
         .unwrap();
     assert!(row.is_some())
@@ -323,7 +323,7 @@ async fn test_read_multi_row() {
         .read(
             "User",
             &["UserId"],
-            vec![Key::key(user_id), Key::key(user_id2)],
+            vec![Key::key(&user_id), Key::key(&user_id2)],
         )
         .await
         .unwrap();

@@ -46,13 +46,13 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
 
     let mut ro = client.read_only_transaction().await?;
     let record = ro
-        .read("User", &user_columns(), Key::key("user_client_1x"))
+        .read("User", &user_columns(), Key::key(&"user_client_1x"))
         .await?;
     let row = all_rows(record).await.pop().unwrap();
     assert_user_row(&row, "user_client_1x", &now, &ts);
 
     let record = ro
-        .read("User", &user_columns(), Key::key("user_client_2x"))
+        .read("User", &user_columns(), Key::key(&"user_client_2x"))
         .await?;
     let row = all_rows(record).await.pop().unwrap();
     assert_user_row(&row, "user_client_2x", &now, &ts);
@@ -83,7 +83,7 @@ async fn test_apply() -> Result<(), anyhow::Error> {
     let mut ro = client.read_only_transaction().await?;
     for x in users {
         let record = ro
-            .read("User", &user_columns(), Key::key(x.clone()))
+            .read("User", &user_columns(), Key::key(&x))
             .await?;
         let row = all_rows(record).await.pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
@@ -108,7 +108,7 @@ async fn test_apply_at_least_once() -> Result<(), anyhow::Error> {
     let mut ro = client.read_only_transaction().await?;
     for x in users {
         let record = ro
-            .read("User", &user_columns(), Key::key(x.clone()))
+            .read("User", &user_columns(), Key::key(&x))
             .await?;
         let row = all_rows(record).await.pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
@@ -136,7 +136,7 @@ async fn test_partitioned_update() -> Result<(), anyhow::Error> {
         .read(
             "User",
             &["NullableString"],
-            Key::key(user_id.clone()),
+            Key::key(&user_id),
         )
         .await
         .unwrap();

@@ -245,6 +245,7 @@ impl From<KeyRange> for KeySet {
     }
 }
 
+//TODO AsKeyが欲しい
 impl Key {
     /// one creates new Key
     /// # Examples
@@ -254,8 +255,8 @@ impl Key {
     ///    let key1 = Key::key("a");
     ///    let key2 = Key::key(1);
     /// ```
-    pub fn key(value: impl ToKind) -> Key {
-        Key::composite(&[&value])
+    pub fn key(value: &dyn ToKind) -> Key {
+        Key::composite(&[value])
     }
 
     /// one creates new Key
@@ -313,7 +314,7 @@ mod tests {
 
     #[test]
     fn test_key_new() {
-        let mut key = Key::key(true);
+        let mut key = Key::key(&true);
         match key.values.values.pop().unwrap().kind.unwrap() {
             Kind::BoolValue(s) => assert_eq!(s, true),
             _ => panic!("invalid kind"),
@@ -331,14 +332,6 @@ mod tests {
 
     #[test]
     fn test_key_one() {
-        let mut key = Key::key(1);
-        match key.values.values.pop().unwrap().kind.unwrap() {
-            Kind::StringValue(s) => assert_eq!(s, "1"),
-            _ => panic!("invalid kind"),
-        }
-    }
-    #[test]
-    fn test_key_one_ref() {
         let mut key = Key::key(&1);
         match key.values.values.pop().unwrap().kind.unwrap() {
             Kind::StringValue(s) => assert_eq!(s, "1"),
@@ -348,8 +341,8 @@ mod tests {
 
     #[test]
     fn test_key_range() {
-        let start = Key::key(1);
-        let end = Key::key(100);
+        let start = Key::key(&1);
+        let end = Key::key(&100);
         let range = KeyRange::new(start, end, RangeKind::ClosedClosed);
         let raw_range: v1::KeyRange = range.into();
         match raw_range.start_key_type.unwrap() {
