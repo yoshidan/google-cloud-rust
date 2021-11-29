@@ -19,7 +19,7 @@ async fn assert_read(
     now: &DateTime<Utc>,
     cts: &DateTime<Utc>,
 ) {
-    let reader = match tx.read("User", user_columns(), Key::key(user_id)).await {
+    let reader = match tx.read("User", &user_columns(), Key::key(user_id)).await {
         Ok(tx) => tx,
         Err(status) => panic!("read error {:?}", status),
     };

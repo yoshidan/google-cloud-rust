@@ -112,8 +112,8 @@ async fn test_partitioned_dml() {
     let reader = tx
         .read(
             "User",
-            vec!["NullableString"],
-            KeySet::from(Key::key(user_id.clone())),
+            &["NullableString"],
+            Key::key(user_id.clone()),
         )
         .await
         .unwrap();
@@ -154,8 +154,8 @@ async fn test_rollback() {
     let reader = tx
         .read(
             "User",
-            user_columns(),
-            KeySet::from(Key::key(past_user.clone())),
+            &user_columns(),
+            Key::key(past_user.clone()),
         )
         .await
         .unwrap();
