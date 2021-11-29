@@ -37,7 +37,7 @@ where
 /// insert_map returns a Mutation to insert a row into a table, specified by
 /// a map of column name to value. If the row already exists, the write or
 /// transaction fails with codes.AlreadyExists.
-pub fn insert_map<T, C>(table: T, columns_ans_values: Vec<(T, impl ToKind)>) -> Mutation
+pub fn insert_map<T, C>(table: T, columns_ans_values: Vec<(C, &(dyn ToKind))>) -> Mutation
 where
     T: Into<String>,
     C: Into<String>,
@@ -72,7 +72,7 @@ where
 /// update_map returns a Mutation to update a row in a table, specified by
 /// a map of column to value. If the row does not already exist, the write or
 /// transaction fails.
-pub fn update_map<T, C>(table: T, columns_ans_values: Vec<(T, impl ToKind)>) -> Mutation
+pub fn update_map<T, C>(table: T, columns_ans_values: Vec<(C, &(dyn ToKind))>) -> Mutation
 where
     T: Into<String>,
     C: Into<String>,
@@ -111,7 +111,7 @@ where
 /// written become NULL.  The row is specified by a map of column to value.
 ///
 /// For a similar example, See update_map.
-pub fn replace_map<T, C>(table: T, columns_ans_values: Vec<(T, impl ToKind)>) -> Mutation
+pub fn replace_map<T, C>(table: T, columns_ans_values: Vec<(C, &(dyn ToKind))>) -> Mutation
 where
     T: Into<String>,
     C: Into<String>,
@@ -151,7 +151,7 @@ where
 /// updates it instead. Any column values not explicitly written are preserved.
 ///
 /// For a similar example, See update_map.
-pub fn insert_or_update_map<T, C>(table: T, columns_ans_values: Vec<(T, impl ToKind)>) -> Mutation
+pub fn insert_or_update_map<T, C>(table: T, columns_ans_values: Vec<(C, &(dyn ToKind))>) -> Mutation
 where
     T: Into<String>,
     C: Into<String>,
@@ -191,7 +191,7 @@ fn struct_to_columns_values<'a>(to_struct: impl ToStruct) -> (Vec<&'a str>, Vec<
 }
 
 fn map_to_columns_values<T: Into<String>>(
-    columns_ans_values: Vec<(T, impl ToKind)>,
+    columns_ans_values: Vec<(T, &(dyn ToKind))>,
 ) -> (Vec<T>, Vec<Kind>) {
     let mut columns = Vec::with_capacity(columns_ans_values.len());
     let mut values = Vec::with_capacity(columns_ans_values.len());
@@ -247,6 +247,27 @@ mod tests {
                 assert_eq!("UserId", w.columns.pop().unwrap());
                 assert_eq!("GuildId", w.columns.pop().unwrap());
             }
+            _ => panic!("invalid operation"),
+        }
+    }
+
+
+    #[test]
+    fn test_insert_map() {
+        let mutation = insert_map(
+            "Guild",
+            vec![
+                ("UserId", &"aa"),
+                ("GuildId", &1),
+                ("updatedAt", &CommitTimestamp::new()),
+            ]
+        );
+        match mutation.operation.unwrap() {
+            v1::mutation::Operation::Insert(mut w) => {
+                assert_eq!("Guild", w.table);
+                assert_eq!(3, w.values.pop().unwrap().values.len());
+                assert_eq!(3, w.columns.len());
+            },
             _ => panic!("invalid operation"),
         }
     }

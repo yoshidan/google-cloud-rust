@@ -69,7 +69,7 @@ where
 
 pub trait ToKind {
     fn to_kind(&self) -> value::Kind;
-    fn get_type() -> Type;
+    fn get_type() -> Type where Self: Sized;
 }
 
 pub type Kinds = Vec<(&'static str, Kind)>;
