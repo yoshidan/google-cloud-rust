@@ -231,22 +231,6 @@ where
     T: ToKind,
 {
     fn to_kind(&self) -> Kind {
-        self.as_ref().to_kind()
-    }
-    fn get_type() -> Type {
-        Type {
-            code: TypeCode::Array.into(),
-            array_element_type: Some(Box::new(T::get_type())),
-            struct_type: None,
-        }
-    }
-}
-
-impl<T> ToKind for &[T]
-    where
-        T: ToKind,
-{
-    fn to_kind(&self) -> Kind {
         value::Kind::ListValue(ListValue {
             values: self
                 .iter()

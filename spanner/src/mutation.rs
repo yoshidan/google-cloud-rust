@@ -1,7 +1,7 @@
 use prost_types::value::Kind;
 use prost_types::{ListValue, Value};
 
-use crate::statement::ToStruct;
+use crate::statement::{ToKind, ToStruct};
 use google_cloud_googleapis::spanner::v1::mutation::{Delete, Operation, Write};
 use google_cloud_googleapis::spanner::v1::{KeySet, Mutation};
 
@@ -34,6 +34,18 @@ where
     }
 }
 
+/// insert_map returns a Mutation to insert a row into a table, specified by
+/// a map of column name to value. If the row already exists, the write or
+/// transaction fails with codes.AlreadyExists.
+pub fn insert_map<T, C>(table: T, columns_ans_values: Vec<(T, impl ToKind)>) -> Mutation
+where
+    T: Into<String>,
+    C: Into<String>,
+{
+    let (columns, values) = map_to_columns_values(columns_ans_values);
+    insert(table, columns, values)
+}
+
 /// insert_struct returns a Mutation to insert a row into a table, specified by
 /// a Rust struct.  If the row already exists, the write or transaction fails with
 /// codes.AlreadyExists.
@@ -41,11 +53,8 @@ pub fn insert_struct<T>(table: T, to_struct: impl ToStruct) -> Mutation
 where
     T: Into<String>,
 {
-    let (columns, values) = to_columns_values(to_struct);
-
-    Mutation {
-        operation: Some(Operation::Insert(write(table, columns, values))),
-    }
+    let (columns, values) = struct_to_columns_values(to_struct);
+    insert(table, columns, values)
 }
 
 /// update returns a Mutation to update a row in a table. If the row does not
@@ -60,17 +69,26 @@ where
     }
 }
 
+/// update_map returns a Mutation to update a row in a table, specified by
+/// a map of column to value. If the row does not already exist, the write or
+/// transaction fails.
+pub fn update_map<T, C>(table: T, columns_ans_values: Vec<(T, impl ToKind)>) -> Mutation
+where
+    T: Into<String>,
+    C: Into<String>,
+{
+    let (columns, values) = map_to_columns_values(columns_ans_values);
+    update(table, columns, values)
+}
+
 /// update_struct returns a Mutation to update a row in a table, specified by a Go
 /// struct. If the row does not already exist, the write or transaction fails.
 pub fn update_struct<T>(table: T, to_struct: impl ToStruct) -> Mutation
 where
     T: Into<String>,
 {
-    let (columns, values) = to_columns_values(to_struct);
-
-    Mutation {
-        operation: Some(Operation::Update(write(table, columns, values))),
-    }
+    let (columns, values) = struct_to_columns_values(to_struct);
+    update(table, columns, values)
 }
 
 /// replace returns a Mutation to insert a row into a table, deleting any
@@ -88,6 +106,20 @@ where
     }
 }
 
+/// replace_map returns a Mutation to insert a row into a table, deleting any
+/// existing row. Unlike InsertOrUpdateMap, this means any values not explicitly
+/// written become NULL.  The row is specified by a map of column to value.
+///
+/// For a similar example, See update_map.
+pub fn replace_map<T, C>(table: T, columns_ans_values: Vec<(T, impl ToKind)>) -> Mutation
+where
+    T: Into<String>,
+    C: Into<String>,
+{
+    let (columns, values) = map_to_columns_values(columns_ans_values);
+    replace(table, columns, values)
+}
+
 /// ReplaceStruct returns a Mutation to insert a row into a table, deleting any existing row.
 ///
 /// For a similar example, See update_struct.
@@ -95,11 +127,8 @@ pub fn replace_struct<T>(table: T, to_struct: impl ToStruct) -> Mutation
 where
     T: Into<String>,
 {
-    let (columns, values) = to_columns_values(to_struct);
-
-    Mutation {
-        operation: Some(Operation::Replace(write(table, columns, values))),
-    }
+    let (columns, values) = struct_to_columns_values(to_struct);
+    replace(table, columns, values)
 }
 
 /// insert_or_update returns a Mutation to insert a row into a table. If the row
@@ -117,6 +146,20 @@ where
     }
 }
 
+/// insert_or_update_map returns a Mutation to insert a row into a table,
+/// specified by a map of column to value. If the row already exists, it
+/// updates it instead. Any column values not explicitly written are preserved.
+///
+/// For a similar example, See update_map.
+pub fn insert_or_update_map<T, C>(table: T, columns_ans_values: Vec<(T, impl ToKind)>) -> Mutation
+where
+    T: Into<String>,
+    C: Into<String>,
+{
+    let (columns, values) = map_to_columns_values(columns_ans_values);
+    insert_or_update(table, columns, values)
+}
+
 /// insert_or_update_struct returns a Mutation to insert a row into a table,
 /// specified by a Go struct. If the row already exists, it updates it instead.
 /// Any column values not explicitly written are preserved.
@@ -125,11 +168,8 @@ pub fn insert_or_update_struct<T>(table: T, to_struct: impl ToStruct) -> Mutatio
 where
     T: Into<String>,
 {
-    let (columns, values) = to_columns_values(to_struct);
-
-    Mutation {
-        operation: Some(Operation::InsertOrUpdate(write(table, columns, values))),
-    }
+    let (columns, values) = struct_to_columns_values(to_struct);
+    insert_or_update(table, columns, values)
 }
 
 /// delete removes the rows described by the KeySet from the table. It succeeds
@@ -143,10 +183,22 @@ pub fn delete<T: Into<String>, F: Into<KeySet>>(table: T, key_set: F) -> Mutatio
     }
 }
 
-fn to_columns_values<'a>(to_struct: impl ToStruct) -> (Vec<&'a str>, Vec<Kind>) {
+fn struct_to_columns_values<'a>(to_struct: impl ToStruct) -> (Vec<&'a str>, Vec<Kind>) {
     let kind = to_struct.to_kinds();
     let columns = kind.iter().map(|x| x.0).collect();
     let values = kind.into_iter().map(|x| x.1).collect();
+    (columns, values)
+}
+
+fn map_to_columns_values<T: Into<String>>(
+    columns_ans_values: Vec<(T, impl ToKind)>,
+) -> (Vec<T>, Vec<Kind>) {
+    let mut columns = Vec::with_capacity(columns_ans_values.len());
+    let mut values = Vec::with_capacity(columns_ans_values.len());
+    columns_ans_values.into_iter().for_each(|x| {
+        columns.push(x.0);
+        values.push(x.1.to_kind())
+    });
     (columns, values)
 }
 
