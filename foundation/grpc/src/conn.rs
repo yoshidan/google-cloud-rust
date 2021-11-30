@@ -12,6 +12,7 @@ use tower::{BoxError, ServiceBuilder};
 use google_cloud_auth::token_source::TokenSource;
 use tower::util::Either;
 use http::header::AUTHORIZATION;
+use tonic::{Status, Code};
 
 const TLS_CERTS: &[u8] = include_bytes!("roots.pem");
 
@@ -37,9 +38,12 @@ impl AsyncPredicate<Request<BoxBody>> for AsyncAuthInterceptor {
     fn check(&mut self, request: Request<BoxBody>) -> Self::Future {
         let ts = self.token_source.clone();
         Box::pin(async move {
-            let token = ts.token().await?;
+            let token = ts.token().await
+                .map_err(|e| Status::new(Code::Unauthenticated,format!("token error: {:?}", e)))?;
+            let token_header = HeaderValue::from_str(token.value().as_ref())
+                .map_err(|e| Status::new(Code::Unauthenticated,format!("token error: {:?}", e)))?;
             let (mut parts, body) = request.into_parts();
-            parts.headers.insert(AUTHORIZATION,  HeaderValue::from_str(token.value().as_ref())?);
+            parts.headers.insert(AUTHORIZATION,token_header  );
             Ok(Request::from_parts(parts, body))
         })
     }
