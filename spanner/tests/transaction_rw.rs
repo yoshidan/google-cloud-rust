@@ -110,11 +110,7 @@ async fn test_partitioned_dml() {
     let session = create_session().await;
     let mut tx = read_only_transaction(session).await;
     let reader = tx
-        .read(
-            "User",
-            &["NullableString"],
-            Key::key(&user_id),
-        )
+        .read("User", &["NullableString"], Key::key(&user_id))
         .await
         .unwrap();
     let row = all_rows(reader).await.unwrap().pop().unwrap();
@@ -152,11 +148,7 @@ async fn test_rollback() {
     let session = create_session().await;
     let mut tx = read_only_transaction(session).await;
     let reader = tx
-        .read(
-            "User",
-            &user_columns(),
-            Key::key(&past_user),
-        )
+        .read("User", &user_columns(), Key::key(&past_user))
         .await
         .unwrap();
     let row = all_rows(reader).await.unwrap().pop().unwrap();

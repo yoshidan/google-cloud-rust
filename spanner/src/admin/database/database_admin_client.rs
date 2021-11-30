@@ -19,10 +19,9 @@ use google_cloud_googleapis::spanner::admin::database::v1::{
 use google_cloud_googleapis::{Code, Status};
 
 use crate::admin::SCOPES;
-use google_cloud_grpc::conn::{ConnectionManager, Error, TokenSource};
+use google_cloud_grpc::conn::{Channel, ConnectionManager, Error};
 use google_cloud_longrunning::autogen::operations_client::OperationsClient;
 use google_cloud_longrunning::longrunning::Operation;
-use tonic::transport::Channel;
 use tonic::Response;
 
 fn default_setting() -> BackoffRetrySettings {
@@ -38,20 +37,11 @@ fn default_setting() -> BackoffRetrySettings {
 pub struct DatabaseAdminClient {
     inner: InternalDatabaseAdminClient<Channel>,
     lro_client: OperationsClient,
-    token_source: TokenSource,
 }
 
 impl DatabaseAdminClient {
-    pub fn new(
-        inner: InternalDatabaseAdminClient<Channel>,
-        lro_client: OperationsClient,
-        token_source: TokenSource,
-    ) -> Self {
-        Self {
-            inner,
-            lro_client,
-            token_source,
-        }
+    pub fn new(inner: InternalDatabaseAdminClient<Channel>, lro_client: OperationsClient) -> Self {
+        Self { inner, lro_client }
     }
 
     pub async fn default() -> Result<Self, Error> {
@@ -61,13 +51,12 @@ impl DatabaseAdminClient {
         };
         let conn_pool =
             ConnectionManager::new(1, SPANNER, AUDIENCE, Some(&SCOPES), emulator_host).await?;
-        let (conn, token_source) = conn_pool.conn();
-        let lro_client = OperationsClient::new(conn, token_source).await?;
-        let (conn, token_source) = conn_pool.conn();
+        let conn = conn_pool.conn();
+        let lro_client = OperationsClient::new(conn).await?;
+        let conn = conn_pool.conn();
         Ok(Self::new(
             InternalDatabaseAdminClient::new(conn),
             lro_client,
-            token_source,
         ))
     }
 
@@ -87,13 +76,12 @@ impl DatabaseAdminClient {
     ) -> Result<Vec<Database>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let parent = &req.parent;
-        let token = self.token_source.token().await?;
         let mut all_databases = vec![];
         //eager loading
         loop {
             let response = invoke_reuse(
                 |database_admin_client| async {
-                    let request = create_request(format!("parent={}", parent), &token, req.clone());
+                    let request = create_request(format!("parent={}", parent), req.clone());
                     database_admin_client
                         .list_databases(request)
                         .await
@@ -124,10 +112,9 @@ impl DatabaseAdminClient {
     ) -> Result<Operation<Database>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let parent = &req.parent;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
-                let request = create_request(format!("parent={}", parent), &token, req.clone());
+                let request = create_request(format!("parent={}", parent), req.clone());
                 database_admin_client
                     .create_database(request)
                     .await
@@ -148,10 +135,9 @@ impl DatabaseAdminClient {
     ) -> Result<Response<Database>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let name = &req.name;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
-                let request = create_request(format!("name={}", name), &token, req.clone());
+                let request = create_request(format!("name={}", name), req.clone());
                 database_admin_client
                     .get_database(request)
                     .await
@@ -178,10 +164,9 @@ impl DatabaseAdminClient {
     ) -> Result<Operation<()>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let database = &req.database;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
-                let request = create_request(format!("database={}", database), &token, req.clone());
+                let request = create_request(format!("database={}", database), req.clone());
                 database_admin_client
                     .update_database_ddl(request)
                     .await
@@ -204,10 +189,9 @@ impl DatabaseAdminClient {
     ) -> Result<Response<()>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let database = &req.database;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
-                let request = create_request(format!("database={}", database), &token, req.clone());
+                let request = create_request(format!("database={}", database), req.clone());
                 database_admin_client
                     .drop_database(request)
                     .await
@@ -229,10 +213,9 @@ impl DatabaseAdminClient {
     ) -> Result<Response<GetDatabaseDdlResponse>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let database = &req.database;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
-                let request = create_request(format!("database={}", database), &token, req.clone());
+                let request = create_request(format!("database={}", database), req.clone());
                 database_admin_client
                     .get_database_ddl(request)
                     .await
@@ -258,10 +241,9 @@ impl DatabaseAdminClient {
     ) -> Result<Response<Policy>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let resource = &req.resource;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
-                let request = create_request(format!("resource={}", resource), &token, req.clone());
+                let request = create_request(format!("resource={}", resource), req.clone());
                 database_admin_client
                     .set_iam_policy(request)
                     .await
@@ -288,10 +270,9 @@ impl DatabaseAdminClient {
     ) -> Result<Response<Policy>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let resource = &req.resource;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
-                let request = create_request(format!("resource={}", resource), &token, req.clone());
+                let request = create_request(format!("resource={}", resource), req.clone());
                 database_admin_client
                     .get_iam_policy(request)
                     .await
@@ -320,10 +301,9 @@ impl DatabaseAdminClient {
     ) -> Result<Response<TestIamPermissionsResponse>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let resource = &req.resource;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
-                let request = create_request(format!("resource={}", resource), &token, req.clone());
+                let request = create_request(format!("resource={}", resource), req.clone());
                 database_admin_client
                     .test_iam_permissions(request)
                     .await
@@ -354,10 +334,9 @@ impl DatabaseAdminClient {
     ) -> Result<Operation<Backup>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let parent = &req.parent;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
-                let request = create_request(format!("parent={}", parent), &token, req.clone());
+                let request = create_request(format!("parent={}", parent), req.clone());
                 database_admin_client
                     .create_backup(request)
                     .await
@@ -378,10 +357,9 @@ impl DatabaseAdminClient {
     ) -> Result<Response<Backup>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let name = &req.name;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
-                let request = create_request(format!("name={}", name), &token, req.clone());
+                let request = create_request(format!("name={}", name), req.clone());
                 database_admin_client
                     .get_backup(request)
                     .await
@@ -401,10 +379,9 @@ impl DatabaseAdminClient {
     ) -> Result<Response<Backup>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let name = &req.backup.as_ref().unwrap().name;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
-                let request = create_request(format!("backup.name={}", name), &token, req.clone());
+                let request = create_request(format!("backup.name={}", name), req.clone());
                 database_admin_client
                     .update_backup(request)
                     .await
@@ -424,10 +401,9 @@ impl DatabaseAdminClient {
     ) -> Result<Response<()>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let name = &req.name;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
-                let request = create_request(format!("name={}", name), &token, req.clone());
+                let request = create_request(format!("name={}", name), req.clone());
                 database_admin_client
                     .delete_backup(request)
                     .await
@@ -449,13 +425,12 @@ impl DatabaseAdminClient {
     ) -> Result<Vec<Backup>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let parent = &req.parent;
-        let token = self.token_source.token().await?;
         let mut all_backups = vec![];
         //eager loading
         loop {
             let response = invoke_reuse(
                 |client| async {
-                    let request = create_request(format!("parent={}", parent), &token, req.clone());
+                    let request = create_request(format!("parent={}", parent), req.clone());
                     client
                         .list_backups(request)
                         .await
@@ -498,10 +473,9 @@ impl DatabaseAdminClient {
     ) -> Result<Operation<Database>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let parent = &req.parent;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |database_admin_client| async {
-                let request = create_request(format!("parent={}", parent), &token, req.clone());
+                let request = create_request(format!("parent={}", parent), req.clone());
                 database_admin_client
                     .restore_database(request)
                     .await
@@ -531,13 +505,12 @@ impl DatabaseAdminClient {
     ) -> Result<Vec<InternalOperation>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let parent = &req.parent;
-        let token = self.token_source.token().await?;
         let mut all_operations = vec![];
         //eager loading
         loop {
             let response = invoke_reuse(
                 |client| async {
-                    let request = create_request(format!("parent={}", parent), &token, req.clone());
+                    let request = create_request(format!("parent={}", parent), req.clone());
                     client
                         .list_backup_operations(request)
                         .await
@@ -571,13 +544,12 @@ impl DatabaseAdminClient {
     ) -> Result<Vec<InternalOperation>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let parent = &req.parent;
-        let token = self.token_source.token().await?;
         let mut all_operations = vec![];
         //eager loading
         loop {
             let response = invoke_reuse(
                 |client| async {
-                    let request = create_request(format!("parent={}", parent), &token, req.clone());
+                    let request = create_request(format!("parent={}", parent), req.clone());
                     client
                         .list_database_operations(request)
                         .await

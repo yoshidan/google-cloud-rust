@@ -154,7 +154,6 @@ impl ToKind for NaiveDate {
     }
 }
 
-
 impl<Tz: TimeZone> ToKind for DateTime<Tz>
 where
     Tz::Offset: Display,

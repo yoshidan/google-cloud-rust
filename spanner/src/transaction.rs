@@ -140,8 +140,7 @@ impl Transaction {
         table: &str,
         columns: &[&str],
         key_set: impl Into<KeySet>,
-    ) -> Result<RowIterator<'_>, Status>
-    {
+    ) -> Result<RowIterator<'_>, Status> {
         return self
             .read_with_option(table, columns, key_set, ReadOptions::default())
             .await;
@@ -154,8 +153,7 @@ impl Transaction {
         columns: &[&str],
         key_set: impl Into<KeySet>,
         options: ReadOptions,
-    ) -> Result<RowIterator<'_>, Status>
-    {
+    ) -> Result<RowIterator<'_>, Status> {
         let request = ReadRequest {
             session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
@@ -186,8 +184,7 @@ impl Transaction {
         table: &str,
         columns: &[&str],
         key: Key,
-    ) -> Result<Option<Row>, Status>
-    {
+    ) -> Result<Option<Row>, Status> {
         return self
             .read_row_with_option(table, columns, key, ReadOptions::default())
             .await;
@@ -200,8 +197,7 @@ impl Transaction {
         columns: &[&str],
         key: Key,
         options: ReadOptions,
-    ) -> Result<Option<Row>, Status>
-    {
+    ) -> Result<Option<Row>, Status> {
         let mut reader = self
             .read_with_option(table, columns, KeySet::from(key), options)
             .await?;

@@ -1,7 +1,7 @@
 use anyhow::Context;
 use google_cloud_spanner::client::{Client, TxError};
 
-use google_cloud_spanner::statement::{Statement};
+use google_cloud_spanner::statement::Statement;
 
 mod common;
 use chrono::{DateTime, TimeZone, Utc};
@@ -82,9 +82,7 @@ async fn test_apply() -> Result<(), anyhow::Error> {
 
     let mut ro = client.read_only_transaction().await?;
     for x in users {
-        let record = ro
-            .read("User", &user_columns(), Key::key(&x))
-            .await?;
+        let record = ro.read("User", &user_columns(), Key::key(&x)).await?;
         let row = all_rows(record).await.pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
     }
@@ -107,9 +105,7 @@ async fn test_apply_at_least_once() -> Result<(), anyhow::Error> {
 
     let mut ro = client.read_only_transaction().await?;
     for x in users {
-        let record = ro
-            .read("User", &user_columns(), Key::key(&x))
-            .await?;
+        let record = ro.read("User", &user_columns(), Key::key(&x)).await?;
         let row = all_rows(record).await.pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
     }
@@ -133,11 +129,7 @@ async fn test_partitioned_update() -> Result<(), anyhow::Error> {
 
     let mut single = client.single().await.unwrap();
     let rows = single
-        .read(
-            "User",
-            &["NullableString"],
-            Key::key(&user_id),
-        )
+        .read("User", &["NullableString"], Key::key(&user_id))
         .await
         .unwrap();
     let row = all_rows(rows).await.pop().unwrap();

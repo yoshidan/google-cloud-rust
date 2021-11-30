@@ -9,13 +9,13 @@ use google_cloud_googleapis::spanner::v1::{
     TransactionSelector,
 };
 
+use crate::key::KeySet;
 use crate::reader::{Reader, RowIterator, StatementReader, TableReader};
 use crate::session::ManagedSession;
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, ReadOptions, Transaction};
 use crate::value::TimestampBound;
 use chrono::{DateTime, TimeZone, Utc};
-use crate::key::KeySet;
 
 /// ReadOnlyTransaction provides a snapshot transaction with guaranteed
 /// consistency across reads, but does not allow writes.  Read-only transactions
@@ -155,8 +155,7 @@ impl BatchReadOnlyTransaction {
         table: &str,
         columns: &[&str],
         keys: impl Into<KeySet> + Clone,
-    ) -> Result<Vec<Partition<TableReader>>, Status>
-    {
+    ) -> Result<Vec<Partition<TableReader>>, Status> {
         return self
             .partition_read_with_option(table, columns, keys, None, ReadOptions::default())
             .await;
@@ -173,8 +172,7 @@ impl BatchReadOnlyTransaction {
         keys: impl Into<KeySet> + Clone,
         po: Option<PartitionOptions>,
         ro: ReadOptions,
-    ) -> Result<Vec<Partition<TableReader>>, Status>
-    {
+    ) -> Result<Vec<Partition<TableReader>>, Status> {
         let columns: Vec<String> = columns.iter().map(|x| x.to_string()).collect();
         let inner_keyset = keys.into().inner;
         let request = PartitionReadRequest {

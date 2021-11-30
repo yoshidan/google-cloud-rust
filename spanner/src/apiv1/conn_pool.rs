@@ -33,7 +33,7 @@ impl ConnectionManager {
     }
 
     pub fn conn(&self) -> Client {
-        let (conn, ts) = self.inner.conn();
-        Client::new(SpannerClient::new(conn), ts)
+        let conn = self.inner.conn();
+        Client::new(SpannerClient::new(conn))
     }
 }
