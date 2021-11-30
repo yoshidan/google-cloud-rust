@@ -1,18 +1,18 @@
 use std::sync::atomic::{AtomicI64, Ordering};
 
-use tonic::transport::{Certificate, Channel as TonicChannel, ClientTlsConfig, Endpoint};
+use google_cloud_auth::token_source::TokenSource;
 use google_cloud_auth::{create_token_source, Config};
-use tower::filter::{AsyncFilterLayer, AsyncPredicate, AsyncFilter};
+use http::header::AUTHORIZATION;
+use http::{HeaderValue, Request};
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use tonic::body::BoxBody;
-use std::pin::Pin;
-use std::future::Future;
-use http::{Request, HeaderValue};
-use tower::{BoxError, ServiceBuilder};
-use google_cloud_auth::token_source::TokenSource;
+use tonic::transport::{Certificate, Channel as TonicChannel, ClientTlsConfig, Endpoint};
+use tonic::{Code, Status};
+use tower::filter::{AsyncFilter, AsyncFilterLayer, AsyncPredicate};
 use tower::util::Either;
-use http::header::AUTHORIZATION;
-use tonic::{Status, Code};
+use tower::{BoxError, ServiceBuilder};
 
 const TLS_CERTS: &[u8] = include_bytes!("roots.pem");
 
@@ -25,9 +25,7 @@ pub struct AsyncAuthInterceptor {
 
 impl AsyncAuthInterceptor {
     fn new(token_source: Arc<dyn TokenSource>) -> Self {
-        Self {
-            token_source
-        }
+        Self { token_source }
     }
 }
 
@@ -38,17 +36,18 @@ impl AsyncPredicate<Request<BoxBody>> for AsyncAuthInterceptor {
     fn check(&mut self, request: Request<BoxBody>) -> Self::Future {
         let ts = self.token_source.clone();
         Box::pin(async move {
-            let token = ts.token().await
-                .map_err(|e| Status::new(Code::Unauthenticated,format!("token error: {:?}", e)))?;
+            let token = ts
+                .token()
+                .await
+                .map_err(|e| Status::new(Code::Unauthenticated, format!("token error: {:?}", e)))?;
             let token_header = HeaderValue::from_str(token.value().as_ref())
-                .map_err(|e| Status::new(Code::Unauthenticated,format!("token error: {:?}", e)))?;
+                .map_err(|e| Status::new(Code::Unauthenticated, format!("token error: {:?}", e)))?;
             let (mut parts, body) = request.into_parts();
-            parts.headers.insert(AUTHORIZATION,token_header  );
+            parts.headers.insert(AUTHORIZATION, token_header);
             Ok(Request::from_parts(parts, body))
         })
     }
 }
-
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -75,9 +74,8 @@ impl ConnectionManager {
         scopes: Option<&'static [&'static str]>,
         emulator_host: Option<String>,
     ) -> Result<Self, Error> {
-
         let conns = match emulator_host {
-            None =>  Self::create_connections(pool_size, domain_name, audience, scopes).await?,
+            None => Self::create_connections(pool_size, domain_name, audience, scopes).await?,
             Some(host) => Self::create_emulator_connections(&host).await?,
         };
         Ok(Self {
@@ -86,10 +84,12 @@ impl ConnectionManager {
         })
     }
 
-    async fn create_connections( pool_size: usize,
-                      domain_name: &'static str,
-                      audience: &'static str,
-                      scopes: Option<&'static [&'static str]>) -> Result<Vec<Channel>, Error> {
+    async fn create_connections(
+        pool_size: usize,
+        domain_name: &'static str,
+        audience: &'static str,
+        scopes: Option<&'static [&'static str]>,
+    ) -> Result<Vec<Channel>, Error> {
         let tls_config = ClientTlsConfig::new()
             .ca_certificate(Certificate::from_pem(TLS_CERTS))
             .domain_name(domain_name);
@@ -98,13 +98,17 @@ impl ConnectionManager {
         let ts = create_token_source(Config {
             audience: Some(audience),
             scopes,
-        }).await.map(|e| Arc::from(e) )?;
+        })
+        .await
+        .map(|e| Arc::from(e))?;
 
         for _i_ in 0..pool_size {
             let endpoint = TonicChannel::from_static(audience).tls_config(tls_config.clone())?;
             let con = Self::connect(endpoint).await?;
             // use GCP token per call
-            let auth_layer = Some(AsyncFilterLayer::new(AsyncAuthInterceptor::new(Arc::clone(&ts))));
+            let auth_layer = Some(AsyncFilterLayer::new(AsyncAuthInterceptor::new(
+                Arc::clone(&ts),
+            )));
             let auth_con = ServiceBuilder::new().option_layer(auth_layer).service(con);
             conns.push(auth_con);
         }
@@ -116,7 +120,11 @@ impl ConnectionManager {
         let endpoint = TonicChannel::from_shared(format!("http://{}", host).into_bytes())
             .map_err(|_| Error::InvalidSpannerHOST(host.to_string()))?;
         let con = Self::connect(endpoint).await?;
-        conns.push( ServiceBuilder::new().option_layer::<AsyncFilterLayer<AsyncAuthInterceptor>>(None).service(con));
+        conns.push(
+            ServiceBuilder::new()
+                .option_layer::<AsyncFilterLayer<AsyncAuthInterceptor>>(None)
+                .service(con),
+        );
         Ok(conns)
     }
 

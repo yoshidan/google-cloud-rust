@@ -6,7 +6,7 @@ use google_cloud_spanner::statement::Statement;
 mod common;
 use chrono::{DateTime, TimeZone, Utc};
 use common::*;
-use google_cloud_spanner::key::{Key};
+use google_cloud_spanner::key::Key;
 
 use serial_test::serial;
 

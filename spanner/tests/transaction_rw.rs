@@ -1,7 +1,7 @@
 use anyhow::Result;
 use chrono::{DateTime, TimeZone, Utc};
 
-use google_cloud_spanner::key::{Key};
+use google_cloud_spanner::key::Key;
 
 use google_cloud_spanner::row::Row;
 use google_cloud_spanner::statement::Statement;

@@ -7,7 +7,7 @@ use google_cloud_googleapis::longrunning::{
     WaitOperationRequest,
 };
 use google_cloud_googleapis::{Code, Status};
-use google_cloud_grpc::conn::{Error, Channel};
+use google_cloud_grpc::conn::{Channel, Error};
 use std::time::Duration;
 use tonic::Response;
 
@@ -55,7 +55,7 @@ impl OperationsClient {
         let name = &req.name;
         return invoke_reuse(
             |client| async {
-                let request = create_request(format!("name={}", name),  req.clone());
+                let request = create_request(format!("name={}", name), req.clone());
                 client
                     .get_operation(request)
                     .await

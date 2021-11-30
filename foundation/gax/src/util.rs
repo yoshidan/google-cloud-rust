@@ -1,9 +1,6 @@
 use tonic::{IntoRequest, Request};
 
-pub fn create_request<T>(
-    param_string: String,
-    into_request: impl IntoRequest<T>,
-) -> Request<T> {
+pub fn create_request<T>(param_string: String, into_request: impl IntoRequest<T>) -> Request<T> {
     let mut request = into_request.into_request();
     let target = request.metadata_mut();
     if !param_string.is_empty() {

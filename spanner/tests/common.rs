@@ -7,7 +7,7 @@ use google_cloud_googleapis::spanner::v1::{
 };
 use google_cloud_googleapis::Status;
 use google_cloud_spanner::apiv1::conn_pool::ConnectionManager;
-use google_cloud_spanner::key::{Key};
+use google_cloud_spanner::key::Key;
 use google_cloud_spanner::mutation::insert_or_update;
 use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
 use google_cloud_spanner::row::{Error as RowError, Row, Struct, TryFromStruct};
