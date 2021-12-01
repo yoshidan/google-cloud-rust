@@ -218,18 +218,13 @@ RowIterator also follows the standard pattern for the Google Cloud Client Librar
 ```rust
 use google_cloud_spanner::key::Key;
 
-let iter = client.single().await?.read("Table", vec!["col1", "col2"], vec![
+let mut iter = client.single().await?.read("Table", vec!["col1", "col2"], vec![
     Key::key("pk1"),
     Key::key("pk2")
 ]).await?;
 
-loop {
-    let row = match iter.next().await? {
-        Some(row) => row,
-        None => break,
-    };
-
-// use row
+while let Some(row) = iter.next().await? {
+    // use row
 };
 ```
 
@@ -310,13 +305,9 @@ let mut stmt = Statement::new("SELECT * , \
 
 stmt.add_param("Param1", user_id);
 let mut reader = tx.query(stmt).await?;
-loop {
-    let row = match reader.next().await?{
-        Some(row) => row,
-        None => println!("end of record")
-    };
-    let user_id= row.column_by_name::<String>("UserId")?;
-    let user_items= row.column_by_name::<Vec<model::UserItem>>("UserItem")?;
+while let Some(row) = reader.next().await? {
+    let user_id = row.column_by_name::<String>("UserId")?;
+    let user_items = row.column_by_name::<Vec<model::UserItem>>("UserItem")?;
     let user_characters = row.column_by_name::<Vec<model::UserCharacter>>("UserCharacter")?;
     data.push(user_id);
 }
