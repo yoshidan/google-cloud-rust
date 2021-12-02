@@ -6,13 +6,13 @@ Google Cloud Platform spanner library.
 
 * [About Cloud Spanner](https://cloud.google.com/spanner/)
 * [Spanner API Documentation](https://cloud.google.com/spanner/docs)
-* [Rust client Documentation]("https://docs.rs/google-cloud-spanner/0.3.0/google-cloud-spanner/")
+* [Rust client Documentation](https://docs.rs/google-cloud-spanner/latest/google-cloud-spanner/)
 
 ## Installation
 
 ```
 [dependencies]
-google-cloud-spanner = 0.3.0
+google-cloud-spanner = <version>
 ```
 
 ## Quick Start

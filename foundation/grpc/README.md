@@ -8,6 +8,6 @@ Google Cloud Platform server gRPC library.
 
 ```
 [dependencies]
-google-cloud-grpc = 0.1.0
+google-cloud-grpc = <version>
 ```
 
