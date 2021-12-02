@@ -22,9 +22,9 @@ use crate::statement::ToKind;
 /// Keys are easy to construct.  For example, suppose you have a table with a
 /// primary key of username and product ID.  To make a key for this table:
 /// ```
-///    use google_cloud_spanner::key::Key;
-///    use google_cloud_spanner::statement::ToKind;
-///    let key = Key::composite(vec!["john".to_kind(), 16.to_kind()]);
+/// use google_cloud_spanner::key::Key;
+///
+/// let key = Key::composite(&[&"john", &16]);
 /// ```
 /// See the description of Row and Mutation types for how Go types are mapped to
 /// Cloud Spanner types. For convenience, Key type supports a range of Rust
@@ -92,8 +92,8 @@ pub enum RangeKind {
 ///  ```
 ///    use google_cloud_spanner::key::Key;
 ///    use google_cloud_spanner::statement::ToKind;
-///    let key1 = Key::composite(vec!["Bob".to_kind(), "2014-09-23".to_kind()]);
-///    let key2 = Key::composite(vec!["Alfred".to_kind(), "2015-06-12".to_kind()]);
+///    let key1 = Key::composite(&[&"Bob", &"2014-09-23"]);
+///    let key2 = Key::composite(&[&"Alfred", &"2015-06-12"]);
 ///  ```
 ///
 ///  Since the UserEvents table's PRIMARY KEY clause names two columns, each
@@ -108,8 +108,8 @@ pub enum RangeKind {
 ///    use google_cloud_spanner::key::{Key, KeyRange, RangeKind};
 ///    use google_cloud_spanner::statement::ToKind;
 ///    let range = KeyRange::new(
-///        Key::composite(vec!["Bob".to_kind(), "2015-01-01".to_kind()]),
-///        Key::composite(vec!["Bob".to_kind(), "2015-12-31".to_kind()]),
+///        Key::composite(&[&"Bob", &"2015-01-01"]),
+///        Key::composite(&[&"Bob", &"2015-12-31"]),
 ///        RangeKind::ClosedClosed
 ///    );
 ///  ```
@@ -127,8 +127,8 @@ pub enum RangeKind {
 ///    use google_cloud_spanner::key::{Key, KeyRange, RangeKind};
 ///    use google_cloud_spanner::statement::ToKind;
 ///    KeyRange::new(
-///     Key::composite(vec!["Bob".to_kind(), "2000-01-01".to_kind()]),
-///     Key::key("Bob"),
+///     Key::composite(&[&"Bob", &"2000-01-01"]),
+///     Key::key(&"Bob"),
 ///     RangeKind::ClosedClosed
 ///    );
 ///  ```
@@ -142,8 +142,8 @@ pub enum RangeKind {
 ///    use google_cloud_spanner::key::{Key, KeyRange, RangeKind};
 ///    use google_cloud_spanner::statement::ToKind;
 ///    let range = KeyRange::new(
-///     Key::key("Bob"),
-///     Key::composite(vec!["Bob".to_kind(), "2000-01-01".to_kind()]),
+///     Key::key(&"Bob"),
+///     Key::composite(&[&"Bob", &"2000-01-01"]),
 ///     RangeKind::ClosedOpen
 ///    );
 ///  ```
@@ -162,8 +162,8 @@ pub enum RangeKind {
 ///  ```
 ///    use google_cloud_spanner::key::{Key, KeyRange, RangeKind};
 ///    let range = KeyRange::new(
-///         Key::key(100),
-///         Key::key(1),
+///         Key::key(&100),
+///         Key::key(&1),
 ///    RangeKind::ClosedClosed,
 ///    );
 ///  ```
@@ -245,15 +245,14 @@ impl From<KeyRange> for KeySet {
     }
 }
 
-//TODO AsKeyが欲しい
 impl Key {
     /// one creates new Key
     /// # Examples
     /// ```
     ///    use google_cloud_spanner::key::Key;
     ///    use google_cloud_spanner::statement::ToKind;
-    ///    let key1 = Key::key("a");
-    ///    let key2 = Key::key(1);
+    ///    let key1 = Key::key(&"a");
+    ///    let key2 = Key::key(&1);
     /// ```
     pub fn key(value: &dyn ToKind) -> Key {
         Key::composite(&[value])
