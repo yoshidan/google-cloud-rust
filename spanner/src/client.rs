@@ -15,6 +15,8 @@ use crate::transaction::{CallOptions, QueryOptions};
 use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
 use crate::value::{Timestamp, TimestampBound};
+use futures_util::future::BoxFuture;
+use std::pin::Pin;
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -94,7 +96,7 @@ impl Default for ClientConfig {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum Error {
+pub enum InitializationError {
     #[error(transparent)]
     FailedToCreateSessionPool(#[from] Status),
 
@@ -123,6 +125,30 @@ impl TryAs<Status> for TxError {
     }
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum RunInTxError {
+    #[error(transparent)]
+    GRPC(#[from] Status),
+
+    #[error(transparent)]
+    InvalidSession(#[from] SessionError),
+
+    #[error(transparent)]
+    ParseError(#[from] crate::row::Error),
+
+    #[error(transparent)]
+    Any(#[from] anyhow::Error),
+}
+
+impl TryAs<Status> for RunInTxError {
+    fn try_as(&self) -> Result<&Status, ()> {
+        match self {
+            RunInTxError::GRPC(e) => Ok(e),
+            _ => Err(()),
+        }
+    }
+}
+
 /// Client is a client for reading and writing data to a Cloud Spanner database.
 /// A client is safe to use concurrently, except for its Close method.
 pub struct Client {
@@ -140,7 +166,7 @@ impl Clone for Client {
 impl Client {
     /// new creates a client to a database. A valid database name has
     /// the form projects/PROJECT_ID/instances/INSTANCE_ID/databases/DATABASE_ID.
-    pub async fn new(database: impl Into<String>) -> Result<Self, Error> {
+    pub async fn new(database: impl Into<String>) -> Result<Self, InitializationError> {
         return Client::new_with_config(database, Default::default()).await;
     }
 
@@ -149,9 +175,9 @@ impl Client {
     pub async fn new_with_config(
         database: impl Into<String>,
         config: ClientConfig,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, InitializationError> {
         if config.session_config.max_opened > config.channel_config.num_channels * 100 {
-            return Err(Error::InvalidConfig(format!(
+            return Err(InitializationError::InvalidConfig(format!(
                 "max session size is {} because max session size is 100 per gRPC connection",
                 config.channel_config.num_channels * 100
             )));
@@ -400,11 +426,11 @@ impl Client {
     /// more details.
     pub async fn read_write_transaction<'a, T, E, F>(
         &self,
-        f: impl Fn(ReadWriteTransaction) -> F,
+        mut f: F,
     ) -> Result<(Option<Timestamp>, T), E>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
-        F: Future<Output = (ReadWriteTransaction, Result<T, E>)>,
+        F: for<'tx> Fn(&'tx mut ReadWriteTransaction) -> BoxFuture<'tx, Result<T, E>>,
     {
         return self
             .read_write_transaction_with_option(f, ReadWriteTransactionOption::default())
@@ -430,13 +456,13 @@ impl Client {
     /// See <https://godoc.org/cloud.google.com/go/spanner#ReadWriteTransaction> for
     /// more details.
     pub async fn read_write_transaction_with_option<'a, T, E, F>(
-        &self,
-        f: impl Fn(ReadWriteTransaction) -> F,
+        &'a self,
+        mut f: F,
         options: ReadWriteTransactionOption,
     ) -> Result<(Option<Timestamp>, T), E>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
-        F: Future<Output = (ReadWriteTransaction, Result<T, E>)>,
+        F: for<'tx> Fn(&'tx mut ReadWriteTransaction) -> BoxFuture<'tx, Result<T, E>>,
     {
         let (bo, co) = Client::split_read_write_transaction_option(options);
 
@@ -446,10 +472,10 @@ impl Client {
         // must reuse session
         return invoke_reuse(
             |session| async {
-                let tx = self
+                let mut tx = self
                     .create_read_write_transaction::<E>(session, bo.clone())
                     .await?;
-                let (mut tx, result) = f(tx).await;
+                let result = f(&mut tx).await;
                 tx.finish(result, Some(co.clone())).await
             },
             session,
@@ -458,55 +484,12 @@ impl Client {
         .await;
     }
 
-    /// ReadWriteTransaction executes a read-write transaction, with retries as
-    /// necessary.
-    ///
-    /// The function f will be called one or more times. It must not maintain
-    /// any state between calls.
-    ///
-    /// If the transaction cannot be committed or if f returns an ABORTED error,
-    /// ReadWriteTransaction will call f again. It will continue to call f until the
-    /// transaction can be committed or the Context times out or is cancelled.  If f
-    /// returns an error other than ABORTED, ReadWriteTransaction will abort the
-    /// transaction and return the error.
-    ///
-    /// To limit the number of retries, set a deadline on the Context rather than
-    /// using a fixed limit on the number of attempts. ReadWriteTransaction will
-    /// retry as needed until that deadline is met.
-    ///
-    /// See <https://godoc.org/cloud.google.com/go/spanner#ReadWriteTransaction> for
-    /// more details.
-    pub async fn read_write_transaction_sync<T, E>(
-        &self,
-        f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,
-    ) -> Result<(Option<Timestamp>, T), E>
-    where
-        E: TryAs<Status> + From<SessionError> + From<Status>,
-    {
-        return self
-            .read_write_transaction_sync_with_option(f, ReadWriteTransactionOption::default())
-            .await;
+    /// Get open session count.
+    pub fn session_count(&self) -> usize {
+        self.sessions.num_opened()
     }
 
-    /// ReadWriteTransaction executes a read-write transaction, with retries as
-    /// necessary.
-    ///
-    /// The function f will be called one or more times. It must not maintain
-    /// any state between calls.
-    ///
-    /// If the transaction cannot be committed or if f returns an ABORTED error,
-    /// ReadWriteTransaction will call f again. It will continue to call f until the
-    /// transaction can be committed or the Context times out or is cancelled.  If f
-    /// returns an error other than ABORTED, ReadWriteTransaction will abort the
-    /// transaction and return the error.
-    ///
-    /// To limit the number of retries, set a deadline on the Context rather than
-    /// using a fixed limit on the number of attempts. ReadWriteTransaction will
-    /// retry as needed until that deadline is met.
-    ///
-    /// See <https://godoc.org/cloud.google.com/go/spanner#ReadWriteTransaction> for
-    /// more details.
-    pub async fn read_write_transaction_sync_with_option<T, E>(
+    async fn read_write_transaction_sync_with_option<T, E>(
         &self,
         f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,
         options: ReadWriteTransactionOption,
@@ -532,11 +515,6 @@ impl Client {
             &mut ro,
         )
         .await;
-    }
-
-    /// Get open session count.
-    pub fn session_count(&self) -> usize {
-        self.sessions.num_opened()
     }
 
     async fn create_read_write_transaction<E>(

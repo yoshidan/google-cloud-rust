@@ -431,10 +431,6 @@ let commit_timestamp = client.apply(vec![m1,m2]).await?;
 
 If you need to read before writing in a single transaction, use a ReadWriteTransaction. ReadWriteTransactions may be aborted automatically by the backend and need to be retried. You pass in a function to ReadWriteTransaction, and the client will handle the retries automatically. Use the transaction's BufferWrite method to buffer mutations, which will all be executed at the end of the transaction:
 
-The Error of the `read_write_transaction` must implements
-* From<google_cloud_googleapis::Status>
-* From<google_cloud_spanner::session::SessionError>
-* google_cloud_gax::invoke::TryAs<google_cloud_googleapis::Status>
 
 ```rust
 use google_cloud_gax::invoke::TryAs;
@@ -443,59 +439,33 @@ use google_cloud_googleapis::Status;
 use google_cloud_spanner::mutation::update;
 use google_cloud_spanner::key::Key;
 use google_cloud_spanner::value::Timestamp;
+use google_cloud_spanner::client::TxError;
 
-#[derive(thiserror::Error, Debug)]
-enum Error {
-    #[error(transparent)]
-    ParseError(#[from] google_cloud_spanner::row::Error),
-    #[error(transparent)]
-    GRPC(#[from] Status),
-    #[error(transparent)]
-    SessionError(#[from] google_cloud_spanner::session::SessionError),
-}
-
-impl TryAs<Status> for Error {
-    fn try_as(&self) -> Result<&Status,()> {
-        match self {
-            Error::GRPC(s) => Ok(s),
-            _ => Err(())
-        }
-    }
-}
-
-let tx_result: Result<(Option<Timestamp>,()), Error> = client.read_write_transaction(|mut tx| async {
-    // The transaction function will be called again if the error code
-    // of this error is Aborted. The backend may automatically abort
-    // any read/write transaction if it detects a deadlock or other problems.
-    let result: Result<(), Error> = async {
-        let mut reader = tx.read("UserItem", vec!["UserId", "ItemId", "Quantity"], Key::key(user_id.to_string())).await?;
-        let ms  = loop {
-            let mut ms = vec![];
-            let row = reader.next().await?;
-            match row {
-                Some(row) => {
-                    let item_id = row.column_by_name::<i64>("ItemId")?;
-                    let quantity = row.column_by_name::<i64>("Quantity")?;
-                    ms.push(update("UserItem", vec!["Quantity"], vec![
-                        user_id.to_string().to_kind(),
-                        item_id.to_kind(),
-                        (quantity + 1).to_kind(),
-                    ]));
-                }
-                None => break ms
-            }
+let tx_result: Result<(Option<Timestamp>,()), TxError> = client.read_write_transaction(|tx| {
+    async move {
+        // The transaction function will be called again if the error code
+        // of this error is Aborted. The backend may automatically abort
+        // any read/write transaction if it detects a deadlock or other problems.
+        let mut reader = tx.read("UserItem", &["UserId", "ItemId", "Quantity"], Key::key(&user_id)).await?;
+        let mut ms = vec![];
+        while let Some(row) = reader.next().await? {
+            let item_id = row.column_by_name::<i64>("ItemId")?;
+            let quantity = row.column_by_name::<i64>("Quantity")? + 1;
+            let m = update("UserItem", &["Quantity"], &[&user_id, &item_id, quantity + 1]));}
+            ms.push(m);
         };
-
        // The buffered mutation will be committed.  If the commit
-        // fails with an Aborted error, this function will be called again
+       // fails with an Aborted error, this function will be called again
        tx.buffer_write(ms);
        Ok(())
-    }.await;
-
-    //return owner ship of read_write_transaction
-    (tx, result)
+    }.boxed()
 }).await;
 ```
+
+You can customize error. The Error of the `read_write_transaction` must implements
+* `From<google_cloud_googleapis::Status>`
+* `From<google_cloud_spanner::session::SessionError>`
+* `google_cloud_gax::invoke::TryAs<google_cloud_googleapis::Status>`
 
 ### <a name="DMLAndPartitionedDML"></a>DML and Partitioned DML
 Spanner supports DML statements like INSERT, UPDATE and DELETE. Use ReadWriteTransaction.Update to run DML statements. It returns the number of rows affected. (You can call use ReadWriteTransaction.Query with a DML statement. The first call to Next on the resulting RowIterator will return iterator.Done, and the RowCount field of the iterator will hold the number of affected rows.)

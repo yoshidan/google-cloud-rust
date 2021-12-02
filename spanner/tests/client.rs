@@ -1,5 +1,5 @@
 use anyhow::Context;
-use google_cloud_spanner::client::{Client, TxError};
+use google_cloud_spanner::client::{Client, RunInTxError, TxError};
 
 use google_cloud_spanner::statement::Statement;
 
@@ -8,9 +8,18 @@ use chrono::{DateTime, TimeZone, Utc};
 use common::*;
 use google_cloud_spanner::key::Key;
 
+use futures_util::FutureExt;
+use google_cloud_spanner::value::Timestamp;
 use serial_test::serial;
+use std::sync::Arc;
 
 const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
+
+#[derive(thiserror::Error, Debug)]
+pub enum DomainError {
+    #[error("invalid")]
+    UpdateInvalid(),
+}
 
 #[tokio::test]
 #[serial]
@@ -26,22 +35,26 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
         .unwrap();
 
     let client = Client::new(DATABASE).await.context("error")?;
-    let value = client
+    let result: Result<(Option<Timestamp>, i64), RunInTxError> = client
         .read_write_transaction(
-            |mut tx| async {
-                let result = async {
-                    let tx2 = &mut tx;
+            |mut tx| {
+                let user_id= user_id.to_string();
+                async move {
                     let ms = vec![create_user_mutation("user_client_1x", &now), create_user_mutation("user_client_2x", &now)];
-                    tx2.buffer_write(ms);
+                    tx.buffer_write(ms);
                     let mut stmt = Statement::new("Insert Into UserItem (UserId,ItemId,Quantity,UpdatedAt) VALUES(@UserId,1,1,PENDING_COMMIT_TIMESTAMP())");
-                    stmt.add_param("UserId",&user_id);
-                    tx2.update(stmt).await.map_err(TxError::GRPC)
-                }
-                .await;
-                (tx, result)
+                    stmt.add_param("UserId", &user_id);
+                    let updated = tx.update(stmt).await?;
+                    if updated == 0 {
+                        Err(anyhow::Error::msg("error").into())
+                    }else {
+                        Ok(updated)
+                    }
+                }.boxed()
             },
         )
-        .await.unwrap().0.unwrap();
+        .await;
+    let value = result.unwrap().0.unwrap();
     let ts = Utc.timestamp(value.seconds, value.nanos as u32);
 
     let mut ro = client.read_only_transaction().await?;
