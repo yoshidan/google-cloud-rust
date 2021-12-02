@@ -407,67 +407,31 @@
 //! use google_cloud_spanner::key::Key;
 //! use google_cloud_spanner::value::Timestamp;
 //!
-//! let tx_result: Result<(Option<Timestamp>,()), Error> = client.read_write_transaction(|mut tx| async {
-//!     // The transaction function will be called again if the error code
-//!     // of this error is Aborted. The backend may automatically abort
-//!     // any read/write transaction if it detects a deadlock or other problems.
-//!     let result: Result<(), Error> = async {
-//!         let mut reader = tx.read("UserItem", vec!["UserId", "ItemId", "Quantity"], Key::key(user_id.to_string())).await?;
-//!         let ms  = loop {
-//!             let mut ms = vec![];
-//!             let row = reader.next().await?;
-//!             match row {
-//!                 Some(row) => {
-//!                     let item_id = row.column_by_name::<i64>("ItemId")?;
-//!                     let quantity = row.column_by_name::<i64>("Quantity")?;
-//!                     ms.push(update("UserItem", vec!["Quantity"], vec![
-//!                         user_id.to_string().to_kind(),
-//!                         item_id.to_kind(),
-//!                         (quantity + 1).to_kind(),
-//!                     ]));
-//!                 }
-//!                 None => break ms
-//!             }
+//! let tx_result: Result<(Option<Timestamp>,()), RunInTxError> = client.read_write_transaction(|tx| {
+//!     async move {
+//!         // The transaction function will be called again if the error code
+//!         // of this error is Aborted. The backend may automatically abort
+//!         // any read/write transaction if it detects a deadlock or other problems.
+//!         let mut reader = tx.read("UserItem", &["UserId", "ItemId", "Quantity"], Key::key(&user_id)).await?;
+//!         let mut ms = vec![];
+//!         while let Some(row) = reader.next().await? {
+//!             let item_id = row.column_by_name::<i64>("ItemId")?;
+//!             let quantity = row.column_by_name::<i64>("Quantity")? + 1;
+//!             let m = update("UserItem", &["Quantity"], &[&user_id, &item_id, quantity + 1]));}
+//!             ms.push(m);
 //!         };
-//!
-//!        // The buffered mutation will be committed.  If the commit
+//!         // The buffered mutation will be committed.  If the commit
 //!         // fails with an Aborted error, this function will be called again
-//!        tx.buffer_write(ms);
-//!        Ok(())
-//!     }.await;
-//!
-//!     //return owner ship of read_write_transaction
-//!     (tx, result)
+//!         tx.buffer_write(ms);
+//!         Ok(())
+//!     }.boxed()
 //! }).await;
 //! ```
 //!
-//! The Error of the `read_write_transaction` must implements
-//! * From<google_cloud_googleapis::Status>
-//! * From<google_cloud_spanner::session::SessionError>
-//! * google_cloud_gax::invoke::TryAs<google_cloud_googleapis::Status>
-//!
-//! ```
-//! use google_cloud_gax::invoke::TryAs;
-//! use google_cloud_googleapis::Status;
-//!
-//! #[derive(thiserror::Error, Debug)]
-//! enum Error {
-//!     #[error(transparent)]
-//!     ParseError(#[from] google_cloud_spanner::row::Error),
-//!     #[error(transparent)]
-//!     GRPC(#[from] Status),
-//!     #[error(transparent)]
-//!     SessionError(#[from] google_cloud_spanner::session::SessionError),
-//! }
-//!
-//! impl TryAs<Status> for Error {
-//!     fn try_as(&self) -> Result<&Status,()> {
-//!         match self {
-//!             Error::GRPC(s) => Ok(s),
-//!             _ => Err(())
-//!         }
-//!     }
-//! }
+//! You can customize error. The Error of the `read_write_transaction` must implements
+//! * `From<google_cloud_googleapis::Status>`
+//! * `From<google_cloud_spanner::session::SessionError>`
+//! * `google_cloud_gax::invoke::TryAs<google_cloud_googleapis::Status>`
 //! ```
 //!
 //! ### <a name="DMLAndPartitionedDML"></a>DML and Partitioned DML
