@@ -442,7 +442,7 @@ use google_cloud_spanner::value::Timestamp;
 use google_cloud_spanner::client::RunInTxError;
 
 let tx_result: Result<(Option<Timestamp>,()), RunInTxError> = client.read_write_transaction(|tx| {
-    async move {
+    Box::pin(async move {
         // The transaction function will be called again if the error code
         // of this error is Aborted. The backend may automatically abort
         // any read/write transaction if it detects a deadlock or other problems.
@@ -458,7 +458,7 @@ let tx_result: Result<(Option<Timestamp>,()), RunInTxError> = client.read_write_
        // fails with an Aborted error, this function will be called again
        tx.buffer_write(ms);
        Ok(())
-    }.boxed()
+    })
 }).await;
 ```
 

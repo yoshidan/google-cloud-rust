@@ -1,5 +1,3 @@
-
-
 use google_cloud_googleapis::{Code, Status};
 
 use google_cloud_gax::invoke::{invoke_reuse, TryAs};
@@ -15,8 +13,9 @@ use crate::transaction::{CallOptions, QueryOptions};
 use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
 use crate::value::{Timestamp, TimestampBound};
-use futures_util::future::BoxFuture;
 
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -430,7 +429,9 @@ impl Client {
     ) -> Result<(Option<Timestamp>, T), E>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
-        F: for<'tx> Fn(&'tx mut ReadWriteTransaction) -> BoxFuture<'tx, Result<T, E>>,
+        F: for<'tx> Fn(
+            &'tx mut ReadWriteTransaction,
+        ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'tx>>,
     {
         return self
             .read_write_transaction_with_option(f, ReadWriteTransactionOption::default())
@@ -462,7 +463,9 @@ impl Client {
     ) -> Result<(Option<Timestamp>, T), E>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
-        F: for<'tx> Fn(&'tx mut ReadWriteTransaction) -> BoxFuture<'tx, Result<T, E>>,
+        F: for<'tx> Fn(
+            &'tx mut ReadWriteTransaction,
+        ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'tx>>,
     {
         let (bo, co) = Client::split_read_write_transaction_option(options);
 
