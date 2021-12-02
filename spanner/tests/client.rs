@@ -1,5 +1,5 @@
 use anyhow::Context;
-use google_cloud_spanner::client::{Client, RunInTxError, TxError};
+use google_cloud_spanner::client::{Client, RunInTxError};
 
 use google_cloud_spanner::statement::Statement;
 
@@ -11,7 +11,7 @@ use google_cloud_spanner::key::Key;
 use futures_util::FutureExt;
 use google_cloud_spanner::value::Timestamp;
 use serial_test::serial;
-use std::sync::Arc;
+
 
 const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
@@ -37,7 +37,7 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
     let client = Client::new(DATABASE).await.context("error")?;
     let result: Result<(Option<Timestamp>, i64), RunInTxError> = client
         .read_write_transaction(
-            |mut tx| {
+            |tx| {
                 let user_id= user_id.to_string();
                 async move {
                     let ms = vec![create_user_mutation("user_client_1x", &now), create_user_mutation("user_client_2x", &now)];

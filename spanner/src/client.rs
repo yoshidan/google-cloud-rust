@@ -1,4 +1,4 @@
-use std::future::Future;
+
 
 use google_cloud_googleapis::{Code, Status};
 
@@ -16,7 +16,7 @@ use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
 use crate::value::{Timestamp, TimestampBound};
 use futures_util::future::BoxFuture;
-use std::pin::Pin;
+
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -426,7 +426,7 @@ impl Client {
     /// more details.
     pub async fn read_write_transaction<'a, T, E, F>(
         &self,
-        mut f: F,
+        f: F,
     ) -> Result<(Option<Timestamp>, T), E>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
@@ -457,7 +457,7 @@ impl Client {
     /// more details.
     pub async fn read_write_transaction_with_option<'a, T, E, F>(
         &'a self,
-        mut f: F,
+        f: F,
         options: ReadWriteTransactionOption,
     ) -> Result<(Option<Timestamp>, T), E>
     where
