@@ -16,4 +16,4 @@ tower = { version = "0.4", features = ["filter"]}
 http = "0.2"
 prost = "0.9"
 prost-types = "0.9"
-google-cloud-auth= { version = "0.1.0", path = "../auth" }
+google-cloud-auth= { version = "0.1.1", path = "../auth" }
