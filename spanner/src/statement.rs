@@ -42,7 +42,7 @@ impl Statement {
 
     /// add_params add the bind parameter.
     /// Implement the ToKind trait to use non-predefined types.
-    pub fn add_param<T>(&mut self, name: &str, value: T)
+    pub fn add_param<T>(&mut self, name: &str, value: &T)
     where
         T: ToKind,
     {
@@ -69,15 +69,35 @@ where
 
 pub trait ToKind {
     fn to_kind(&self) -> value::Kind;
-    fn get_type() -> Type;
+    fn get_type() -> Type
+    where
+        Self: Sized;
 }
 
 pub type Kinds = Vec<(&'static str, Kind)>;
 pub type Types = Vec<(&'static str, Type)>;
 
-pub trait ToStruct: Sized {
+pub trait ToStruct {
     fn to_kinds(&self) -> Kinds;
-    fn get_types() -> Types;
+    fn get_types() -> Types
+    where
+        Self: Sized;
+}
+
+impl<T> ToStruct for &T
+where
+    T: ToStruct,
+{
+    fn to_kinds(&self) -> Kinds {
+        (*self).to_kinds()
+    }
+
+    fn get_types() -> Types
+    where
+        Self: Sized,
+    {
+        T::get_types()
+    }
 }
 
 impl ToKind for String {

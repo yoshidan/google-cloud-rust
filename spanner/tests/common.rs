@@ -7,12 +7,12 @@ use google_cloud_googleapis::spanner::v1::{
 };
 use google_cloud_googleapis::Status;
 use google_cloud_spanner::apiv1::conn_pool::ConnectionManager;
-use google_cloud_spanner::key::{Key, KeySet};
+use google_cloud_spanner::key::Key;
 use google_cloud_spanner::mutation::insert_or_update;
 use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
 use google_cloud_spanner::row::{Error as RowError, Row, Struct, TryFromStruct};
 use google_cloud_spanner::session::{ManagedSession, SessionConfig, SessionHandle, SessionManager};
-use google_cloud_spanner::statement::{Statement, ToKind};
+use google_cloud_spanner::statement::Statement;
 use google_cloud_spanner::transaction::CallOptions;
 use google_cloud_spanner::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use google_cloud_spanner::value::{CommitTimestamp, TimestampBound};
@@ -122,27 +122,27 @@ pub async fn replace_test_data(
 pub fn create_user_mutation(user_id: &str, now: &DateTime<Utc>) -> Mutation {
     insert_or_update(
         "User",
-        user_columns(),
-        vec![
-            user_id.to_kind(),
-            1.to_kind(),
-            None::<i64>.to_kind(),
-            1.0.to_kind(),
-            None::<f64>.to_kind(),
-            true.to_kind(),
-            None::<bool>.to_kind(),
-            vec![1_u8].to_kind(),
-            None::<Vec<u8>>.to_kind(),
-            Decimal::from_str("100.24").unwrap().to_kind(),
-            Some(Decimal::from_str("1000.42342").unwrap()).to_kind(),
-            now.to_kind(),
-            Some(*now).to_kind(),
-            now.naive_utc().date().to_kind(),
-            None::<DateTime<Utc>>.to_kind(),
-            vec![10_i64, 20_i64, 30_i64].to_kind(),
-            None::<Vec<i64>>.to_kind(),
-            Some(user_id).to_kind(),
-            CommitTimestamp::new().to_kind(),
+        &user_columns(),
+        &[
+            &user_id,
+            &1,
+            &None::<i64>,
+            &1.0,
+            &None::<f64>,
+            &true,
+            &None::<bool>,
+            &vec![1_u8],
+            &None::<Vec<u8>>,
+            &Decimal::from_str("100.24").unwrap(),
+            &Some(Decimal::from_str("1000.42342").unwrap()),
+            now,
+            &Some(*now),
+            &now.naive_utc().date(),
+            &None::<DateTime<Utc>>,
+            &vec![10_i64, 20_i64, 30_i64],
+            &None::<Vec<i64>>,
+            &Some(user_id),
+            &CommitTimestamp::new(),
         ],
     )
 }
@@ -150,26 +150,16 @@ pub fn create_user_mutation(user_id: &str, now: &DateTime<Utc>) -> Mutation {
 pub fn create_user_item_mutation(user_id: &str, item_id: i64) -> Mutation {
     insert_or_update(
         "UserItem",
-        vec!["UserId", "ItemId", "Quantity", "UpdatedAt"],
-        vec![
-            user_id.to_kind(),
-            item_id.to_kind(),
-            100.to_kind(),
-            CommitTimestamp::new().to_kind(),
-        ],
+        &["UserId", "ItemId", "Quantity", "UpdatedAt"],
+        &[&user_id, &item_id, &100, &CommitTimestamp::new()],
     )
 }
 
 pub fn create_user_character_mutation(user_id: &str, character_id: i64) -> Mutation {
     insert_or_update(
         "UserCharacter",
-        vec!["UserId", "CharacterId", "Level", "UpdatedAt"],
-        vec![
-            user_id.to_kind(),
-            character_id.to_kind(),
-            1.to_kind(),
-            CommitTimestamp::new().to_kind(),
-        ],
+        &["UserId", "CharacterId", "Level", "UpdatedAt"],
+        &[&user_id, &character_id, &1, &CommitTimestamp::new()],
     )
 }
 
@@ -281,7 +271,7 @@ pub async fn assert_partitioned_query(
     cts: &DateTime<Utc>,
 ) {
     let mut stmt = Statement::new("SELECT * FROM User WHERE UserId = @UserID");
-    stmt.add_param("UserId", user_id);
+    stmt.add_param("UserId", &user_id);
     let row = execute_partitioned_query(tx, stmt).await;
     assert_eq!(row.len(), 1);
     assert_user_row(row.first().unwrap(), user_id, now, cts);
@@ -317,7 +307,7 @@ pub async fn assert_partitioned_read(
     cts: &DateTime<Utc>,
 ) {
     let partitions = match tx
-        .partition_read("User", user_columns(), KeySet::from(Key::one(user_id)))
+        .partition_read("User", &user_columns(), vec![Key::key(&user_id)])
         .await
     {
         Ok(tx) => tx,

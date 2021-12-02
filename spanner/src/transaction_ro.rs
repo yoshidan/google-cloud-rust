@@ -4,11 +4,12 @@ use std::sync::atomic::AtomicI64;
 use google_cloud_googleapis::Status;
 
 use google_cloud_googleapis::spanner::v1::{
-    transaction_options, transaction_selector, BeginTransactionRequest, ExecuteSqlRequest, KeySet,
+    transaction_options, transaction_selector, BeginTransactionRequest, ExecuteSqlRequest,
     PartitionOptions, PartitionQueryRequest, PartitionReadRequest, ReadRequest, TransactionOptions,
     TransactionSelector,
 };
 
+use crate::key::KeySet;
 use crate::reader::{Reader, RowIterator, StatementReader, TableReader};
 use crate::session::ManagedSession;
 use crate::statement::Statement;
@@ -149,17 +150,12 @@ impl BatchReadOnlyTransaction {
     /// the database. These partitions can be executed across multiple processes,
     /// even across different machines. The partition size and count hints can be
     /// configured using PartitionOptions.
-    pub async fn partition_read<T, C, K>(
+    pub async fn partition_read(
         &mut self,
-        table: T,
-        columns: Vec<C>,
-        keys: K,
-    ) -> Result<Vec<Partition<TableReader>>, Status>
-    where
-        T: Into<String> + Clone,
-        C: Into<String>,
-        K: Into<KeySet> + Clone,
-    {
+        table: &str,
+        columns: &[&str],
+        keys: impl Into<KeySet> + Clone,
+    ) -> Result<Vec<Partition<TableReader>>, Status> {
         return self
             .partition_read_with_option(table, columns, keys, None, ReadOptions::default())
             .await;
@@ -169,28 +165,23 @@ impl BatchReadOnlyTransaction {
     /// the database. These partitions can be executed across multiple processes,
     /// even across different machines. The partition size and count hints can be
     /// configured using PartitionOptions.
-    pub async fn partition_read_with_option<T, C, K>(
+    pub async fn partition_read_with_option(
         &mut self,
-        table: T,
-        columns: Vec<C>,
-        keys: K,
+        table: &str,
+        columns: &[&str],
+        keys: impl Into<KeySet> + Clone,
         po: Option<PartitionOptions>,
         ro: ReadOptions,
-    ) -> Result<Vec<Partition<TableReader>>, Status>
-    where
-        T: Into<String> + Clone,
-        C: Into<String>,
-        K: Into<KeySet> + Clone,
-    {
-        let columns: Vec<String> = columns.into_iter().map(|x| x.into()).collect();
-
+    ) -> Result<Vec<Partition<TableReader>>, Status> {
+        let columns: Vec<String> = columns.iter().map(|x| x.to_string()).collect();
+        let inner_keyset = keys.into().inner;
         let request = PartitionReadRequest {
             session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
-            table: table.clone().into(),
+            table: table.to_string(),
             index: ro.index.clone(),
             columns: columns.clone(),
-            key_set: Some(keys.clone().into()),
+            key_set: Some(inner_keyset.clone()),
             partition_options: po,
         };
         let result = match self
@@ -208,10 +199,10 @@ impl BatchReadOnlyTransaction {
                         request: ReadRequest {
                             session: self.get_session_name(),
                             transaction: Some(self.transaction_selector.clone()),
-                            table: table.clone().into(),
+                            table: table.to_string(),
                             index: ro.index.clone(),
                             columns: columns.clone(),
-                            key_set: Some(keys.clone().into()),
+                            key_set: Some(inner_keyset.clone()),
                             limit: ro.limit,
                             resume_token: vec![],
                             partition_token: x.partition_token,

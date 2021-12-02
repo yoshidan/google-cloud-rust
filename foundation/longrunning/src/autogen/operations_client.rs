@@ -7,9 +7,8 @@ use google_cloud_googleapis::longrunning::{
     WaitOperationRequest,
 };
 use google_cloud_googleapis::{Code, Status};
-use google_cloud_grpc::conn::{Error, TokenSource};
+use google_cloud_grpc::conn::{Channel, Error};
 use std::time::Duration;
-use tonic::transport::Channel;
 use tonic::Response;
 
 fn default_setting() -> BackoffRetrySettings {
@@ -28,14 +27,12 @@ fn default_setting() -> BackoffRetrySettings {
 #[derive(Clone)]
 pub struct OperationsClient {
     inner: InternalOperationsClient<Channel>,
-    token_source: TokenSource,
 }
 
 impl OperationsClient {
-    pub async fn new(channel: Channel, token_source: TokenSource) -> Result<Self, Error> {
+    pub async fn new(channel: Channel) -> Result<Self, Error> {
         Ok(OperationsClient {
             inner: InternalOperationsClient::new(channel),
-            token_source,
         })
     }
 
@@ -56,10 +53,9 @@ impl OperationsClient {
     ) -> Result<Response<Operation>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let name = &req.name;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |client| async {
-                let request = create_request(format!("name={}", name), &token, req.clone());
+                let request = create_request(format!("name={}", name), req.clone());
                 client
                     .get_operation(request)
                     .await
@@ -82,10 +78,9 @@ impl OperationsClient {
     ) -> Result<Response<()>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let name = &req.name;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |client| async {
-                let request = create_request(format!("name={}", name), &token, req.clone());
+                let request = create_request(format!("name={}", name), req.clone());
                 client
                     .delete_operation(request)
                     .await
@@ -114,10 +109,9 @@ impl OperationsClient {
     ) -> Result<Response<()>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let name = &req.name;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |client| async {
-                let request = create_request(format!("name={}", name), &token, req.clone());
+                let request = create_request(format!("name={}", name), req.clone());
                 client
                     .cancel_operation(request)
                     .await
@@ -144,10 +138,9 @@ impl OperationsClient {
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Operation>, Status> {
         let mut setting = Self::get_call_setting(opt);
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |client| async {
-                let request = create_request("".to_string(), &token, req.clone());
+                let request = create_request("".to_string(), req.clone());
                 client
                     .wait_operation(request)
                     .await

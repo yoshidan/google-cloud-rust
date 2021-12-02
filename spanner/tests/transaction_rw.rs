@@ -1,7 +1,7 @@
 use anyhow::Result;
 use chrono::{DateTime, TimeZone, Utc};
 
-use google_cloud_spanner::key::{Key, KeySet};
+use google_cloud_spanner::key::Key;
 
 use google_cloud_spanner::row::Row;
 use google_cloud_spanner::statement::Statement;
@@ -56,9 +56,9 @@ async fn test_mutation_and_statement() {
         tx.buffer_write(vec![create_user_mutation(user_id_3, &now)]);
 
         let mut stmt1 = Statement::new("INSERT INTO UserCharacter (UserId,CharacterId,Level,UpdatedAt) VALUES(@UserId,1,1,PENDING_COMMIT_TIMESTAMP())");
-        stmt1.add_param("UserId", past_user.clone());
+        stmt1.add_param("UserId", &past_user);
         let mut stmt2 = Statement::new("INSERT INTO UserItem (UserId,ItemId,Quantity,UpdatedAt) VALUES(@UserId,10,1000,PENDING_COMMIT_TIMESTAMP())");
-        stmt2.add_param("UserId", past_user.clone());
+        stmt2.add_param("UserId", &past_user);
         tx.update(stmt1).await?;
         return tx.update(stmt2).await;
     }.await;
@@ -110,11 +110,7 @@ async fn test_partitioned_dml() {
     let session = create_session().await;
     let mut tx = read_only_transaction(session).await;
     let reader = tx
-        .read(
-            "User",
-            vec!["NullableString"],
-            KeySet::from(Key::one(user_id.clone())),
-        )
+        .read("User", &["NullableString"], Key::key(&user_id))
         .await
         .unwrap();
     let row = all_rows(reader).await.unwrap().pop().unwrap();
@@ -140,7 +136,7 @@ async fn test_rollback() {
     let result = async {
         let mut stmt1 =
             Statement::new("UPDATE User SET NullableString = 'aaaaaaa' WHERE UserId = @UserId");
-        stmt1.add_param("UserId", past_user.clone());
+        stmt1.add_param("UserId", &past_user);
         tx.update(stmt1).await?;
 
         let stmt2 = Statement::new("UPDATE UserNoteFound SET Quantity = 10000");
@@ -152,11 +148,7 @@ async fn test_rollback() {
     let session = create_session().await;
     let mut tx = read_only_transaction(session).await;
     let reader = tx
-        .read(
-            "User",
-            user_columns(),
-            KeySet::from(Key::one(past_user.clone())),
-        )
+        .read("User", &user_columns(), Key::key(&past_user))
         .await
         .unwrap();
     let row = all_rows(reader).await.unwrap().pop().unwrap();
@@ -185,7 +177,7 @@ async fn assert_data(
         FROM User p WHERE UserId = @UserId;
     ",
         );
-        stmt.add_param("UserId", user_id.clone());
+        stmt.add_param("UserId", user_id);
         let result = tx.query(stmt).await?;
         all_rows(result).await
     }

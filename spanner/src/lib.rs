@@ -1,28 +1,40 @@
 //! # google-cloud-spanner
 //!
-//! Google Cloud Platform GCE spanner library.
+//! Google Cloud Platform spanner library.
 //!
 //! * [About Cloud Spanner](https://cloud.google.com/spanner/)
-//! * [API Documentation](https://cloud.google.com/spanner/docs)
+//! * [Spanner API Documentation](https://cloud.google.com/spanner/docs)
 //! * [Rust client Documentation](#Documentation)
-//!
 //! ## Quick Start
 //!
 //! Create `Client` and call transaction API same as [Google Cloud Go](https://github.com/googleapis/google-cloud-go/tree/main/spanner).
 //!
-//! ```
+//! ```ignore
 //! use google_cloud_spanner::client::Client;
+//! use google_cloud_spanner::mutation::insert;
+//! use google_cloud_spanner::statement::Statement;
+//! use google_cloud_spanner::reader::AsyncIterator;
+//! use google_cloud_spanner::value::CommitTimestamp;
 //!
 //! #[tokio::main]
-//! async fn main() {
+//! async fn main() -> Result<(), Error> {
 //!
 //!     const DATABASE: &str = "projects/your_project/instances/your-instance/databases/your-database";
 //!
 //!     // Create spanner client
-//!     let mut client = match Client::new(DATABASE).await {
-//!         Ok(client) => client,
-//!         Err(e) => { /* handle error */ }
-//!     };
+//!     let mut client = Client::new(DATABASE).await?;
+//!
+//!     // Insert
+//!     let mutation = insert("Table", &["col1", "col2", "col3"], &[&1, &"strvalue", &CommitTimestamp::new()]);
+//!     let commit_timestamp = client.apply(vec![m1,m2]).await?;
+//!
+//!     // Read with query
+//!     let mut stmt = Statement::new("SELECT col2 FROM Table WHERE col1 = @col1");
+//!     stmt.add_param("col1",&1);
+//!     let iter = client.single().await?.query(stmt).await?;
+//!     while let some(row) = iter.next().await? {
+//!         let col2 = row.column_by_name::<String>("col2");
+//!     }
 //! }
 //! ```
 //!
@@ -56,7 +68,7 @@
 //!
 //! To start working with this package, create a client that refers to the database of interest:
 //!
-//! ```
+//! ```ignore
 //! use google_cloud_spanner::client::Client;
 //!
 //! const DATABASE: &str = "projects/your_projects/instances/your-instance/databases/your-database";
@@ -72,7 +84,7 @@
 //!
 //! To use an emulator with this library, you can set the SPANNER_EMULATOR_HOST environment variable to the address at which your emulator is running. This will send requests to that address instead of to Cloud Spanner.   You can then create and use a client as usual:
 //!
-//! ```
+//! ```ignore
 //! use google_cloud_spanner::client::Client;
 //!
 //! // Set SPANNER_EMULATOR_HOST environment variable.
@@ -89,23 +101,19 @@
 //! ### <a name="SimpleReadsAndWrites"></a>Simple Reads and Writes
 //! Two Client methods, Apply and Single, work well for simple reads and writes. As a quick introduction, here we write a new row to the database and read it back:
 //!
-//! ```
+//! ```ignore
 //! use google_cloud_spanner::mutation::insert;
 //! use google_cloud_spanner::key::Key;
 //! use google_cloud_spanner::value::CommitTimestamp;
 //! use google_cloud_spanner::statement::ToKind;
 //!
 //! let mutation = insert("User",
-//!     vec!["UserID", "Name", "UpdatedAt"], // columns
-//!     vec![1.to_kind(), "name".to_kind(), CommitTimestamp::new().to_kind()] // values
+//!     &["UserID", "Name", "UpdatedAt"], // columns
+//!     &[&1, &"name", &CommitTimestamp::new()] // values
 //! );
 //! let commit_timestamp = client.apply(vec![mutation]).await?;
 //!
-//! let row = client.single().await?.read_row(
-//!     "User",
-//!     vec!["UserID", "Name", "UpdatedAt"],
-//!     Key::one(1),
-//! ).await?;
+//! let row = client.single().await?.read_row( "User", &["UserID", "Name", "UpdatedAt"], Key::key(&1)).await?;
 //! ```
 //!
 //! All the methods used above are discussed in more detail below.
@@ -117,7 +125,7 @@
 //! ```
 //! use google_cloud_spanner::key::Key;
 //!
-//! let key1 = Key::one("key");
+//! let key1 = Key::key(&"key");
 //! ```
 //!
 //! ### <a name="KeyRanges"></a>KeyRanges
@@ -127,10 +135,10 @@
 //! ```
 //! use google_cloud_spanner::key::{Key,KeyRange,RangeKind};
 //!
-//! let range1 = KeyRange::new(Key::one(1), Key::one(100), RangeKind::ClosedClosed);
-//! let range2 = KeyRange::new(Key::one(1), Key::one(100), RangeKind::ClosedOpen);
-//! let range3 = KeyRange::new(Key::one(1), Key::one(100), RangeKind::OpenOpen);
-//! let range4 = KeyRange::new(Key::one(1), Key::one(100), RangeKind::OpenClosed);
+//! let range1 = KeyRange::new(Key::key(&1), Key::key(&100), RangeKind::ClosedClosed);
+//! let range2 = KeyRange::new(Key::key(&1), Key::key(&100), RangeKind::ClosedOpen);
+//! let range3 = KeyRange::new(Key::key(&1), Key::key(&100), RangeKind::OpenOpen);
+//! let range4 = KeyRange::new(Key::key(&1), Key::key(&100), RangeKind::OpenClosed);
 //! ```
 //!
 //! ### <a name="KeySets"></a>KeySets
@@ -141,12 +149,12 @@
 //! use google_cloud_spanner::key::Key;
 //! use google_cloud_spanner::statement::ToKind;
 //!
-//! let key1 = Key::new(vec!["Bob".to_kind(), "2014-09-23".to_kind()]);
-//! let key2 = Key::new(vec!["Alfred".to_kind(), "2015-06-12".to_kind()]);
+//! let key1 = Key::composite(&[&"Bob", &"2014-09-23"]);
+//! let key2 = Key::composite(&[&"Alfred", &"2015-06-12"]);
 //! let keys  = vec![key1,key2] ;
 //! let composite_keys = vec![
-//!     Key::new(vec!["composite-pk-1-1".to_kind(),"composite-pk-1-2".to_kind()]),
-//!     Key::new(vec!["composite-pk-2-1".to_kind(),"composite-pk-2-2".to_kind()])
+//!     Key::composite(&[&"composite-pk-1-1",&"composite-pk-1-2"]),
+//!     Key::composite(&[&"composite-pk-2-1",&"composite-pk-2-2"])
 //! ];
 //! ```
 //!
@@ -167,41 +175,36 @@
 //!
 //! When you only want one row whose key you know, use ReadRow. Provide the table name, key, and the columns you want to read:
 //!
-//! ```
+//! ```ignore
 //! use google_cloud_spanner::key::Key;
 //!
-//! let row = client.single().await?.read_row("Table", vec!["col1", "col2"], Key::one(1)).await?;
+//! let row = client.single().await?.read_row("Table", &["col1", "col2"], Key::key(&1)).await?;
 //! ```
 //!
 //! Read multiple rows with the Read method. It takes a table name, KeySet, and list of columns:
 //!
-//! ```
+//! ```ignore
 //! use google_cloud_spanner::key::Key;
 //! use google_cloud_spanner::statement::ToKind;
 //!
-//! let iter1 = client.single().await?.read("Table", vec!["col1", "col2"], vec![
-//!     Key::one("pk1"),
-//!     Key::one("pk2")
+//! let iter1 = client.single().await?.read("Table",&["col1", "col2"], vec![
+//!     Key::key(&"pk1"),
+//!     Key::key(&"pk2")
 //! ]).await?;
 //! ```
 //!
 //! RowIterator also follows the standard pattern for the Google Cloud Client Libraries:
 //!
-//! ```
+//! ```ignore
 //! use google_cloud_spanner::key::Key;
 //!
-//! let iter = client.single().await?.read("Table", vec!["col1", "col2"], vec![
-//!     Key::one("pk1"),
-//!     Key::one("pk2")
+//! let mut iter = client.single().await?.read("Table", &["col1", "col2"], vec![
+//!     Key::key(&"pk1"),
+//!     Key::key(&"pk2")
 //! ]).await?;
 //!
-//! loop {
-//!     let row = match iter.next().await? {
-//!         Some(row) => row,
-//!         None => break,
-//!     };
-//!
-//! // use row
+//! while let Some(row) = iter.next().await? {
+//!     // use row
 //! };
 //! ```
 //!
@@ -217,14 +220,14 @@
 //! use google_cloud_spanner::statement::Statement;
 //!
 //! let mut stmt = Statement::new("SELECT * FROM User WHERE UserId = @UserID");
-//! stmt.add_param("UserId", user_id);
+//! stmt.add_param("UserId", &"user_id");
 //! ```
 //!
 //! You can also construct a Statement directly with a struct literal, providing your own map of parameters.
 //!
 //! Use the Query method to run the statement and obtain an iterator:
 //!
-//! ```
+//! ```ignore
 //! let iter = client.single().await?.query(stmt).await?;
 //! ```
 //!
@@ -233,7 +236,7 @@
 //!
 //! You can extract by column position or name:
 //!
-//! ```
+//! ```ignore
 //! let value           = row.column::<String>(0)?;
 //! let nullable_value  = row.column::<Option<String>>(1)?;
 //! let array_value     = row.column_by_name::<Vec<i64>>("array")?;
@@ -246,6 +249,7 @@
 //! ```
 //! use google_cloud_spanner::row::TryFromStruct;
 //! use google_cloud_spanner::row::Struct;
+//! use google_cloud_spanner::row::Error;
 //!
 //! pub struct User {
 //!     pub user_id: String,
@@ -254,7 +258,7 @@
 //! }
 //!
 //! impl TryFromStruct for User {
-//!     fn try_from(s: Struct<'_>) -> Result<Self, RowError> {
+//!     fn try_from(s: Struct<'_>) -> Result<Self, Error> {
 //!         Ok(User {
 //!             user_id: s.column_by_name("UserId")?,
 //!             premium: s.column_by_name("Premium")?,
@@ -268,7 +272,7 @@
 //!
 //! To perform more than one read in a transaction, use ReadOnlyTransaction:
 //!
-//! ```
+//! ```ignore
 //! use google_cloud_spanner::statement::Statement;
 //! use google_cloud_spanner::key::Key;
 //!
@@ -282,27 +286,23 @@
 //!
 //! stmt.add_param("Param1", user_id);
 //! let mut reader = tx.query(stmt).await?;
-//! loop {
-//!     let row = match reader.next().await?{
-//!         Some(row) => row,
-//!         None => println!("end of record")
-//!     };
+//! while let Some(row) = reader.next().await? {
 //!     let user_id= row.column_by_name::<String>("UserId")?;
 //!     let user_items= row.column_by_name::<Vec<model::UserItem>>("UserItem")?;
 //!     let user_characters = row.column_by_name::<Vec<model::UserCharacter>>("UserCharacter")?;
 //!     data.push(user_id);
 //! }
 //!
-//! let mut reader2 = tx.read("User", vec!["UserId"], vec![
-//!     Key::one("user-1"),
-//!     Key::one("user-2")
+//! let mut reader2 = tx.read("User", &["UserId"], vec![
+//!     Key::key(&"user-1"),
+//!     Key::key(&"user-2")
 //! ]).await?;
 //!
 //! // iterate reader2 ...
 //!
-//! let mut reader3 = tx.read("Table", vec!["col1", "col2"], vec![
-//!     Key::new(vec!["composite-pk-1-1".to_kind(),"composite-pk-1-2".to_kind()]),
-//!     Key::new(vec!["composite-pk-2-1".to_kind(),"composite-pk-2-2".to_kind()])
+//! let mut reader3 = tx.read("Table", &["col1", "col2"], vec![
+//!     Key::composite(&[&"composite-pk-1-1",&"composite-pk-1-2"]),
+//!     Key::composite(&[&"composite-pk-2-1",&"composite-pk-2-2"])
 //! ]).await?;
 //! // iterate reader3 ...
 //! ```
@@ -316,7 +316,7 @@
 //! By default, a transaction will pick the most recent time (a time where all previously committed transactions are visible) for its reads. This provides the freshest data, but may involve some delay. You can often get a quicker response if you are willing to tolerate "stale" data.
 //! You can control the read timestamp selected by a transaction. For example, to perform a query on data that is at most one minute stale, use
 //!
-//! ```
+//! ```ignore
 //! use google_cloud_spanner::value::TimestampBound;
 //!
 //! let tx = client.single_with_timestamp_bound(TimestampBound::max_staleness(std::time::Duration::from_secs(60))).await?;
@@ -332,13 +332,16 @@
 //!
 //! ```
 //! use google_cloud_spanner::mutation::insert;
+//! use google_cloud_spanner::mutation::insert_map;
 //! use google_cloud_spanner::value::CommitTimestamp;
-//! use google_cloud_spanner::statement::ToKind;
 //!
 //! let mutation = insert("User",
-//!     vec!["UserID", "Name", "UpdatedAt"], // columns
-//!     vec![1.to_kind(), "name".to_kind(), CommitTimestamp::new().to_kind()] // values
+//!     &[&"UserID", &"Name", &"UpdatedAt"], // columns
+//!     &[&1, &"name", &CommitTimestamp::new()] // values
 //! );
+//! // or use insert_map
+//! let mutation2 = insert_map("User",
+//!     &[("UserID", &2), ("UserID", &"name2"), (&"UpdatedAt",&CommitTimestamp::new())]);
 //! ```
 //!
 //! And the third accepts a struct value, and determines the columns from the struct field names:
@@ -351,6 +354,7 @@
 //! use google_cloud_spanner::statement::ToStruct;
 //! use google_cloud_spanner::statement::ToKind;
 //! use google_cloud_spanner::value::CommitTimestamp;
+//! use google_cloud_spanner::mutation::insert_or_update_struct;
 //!
 //! pub struct User {
 //!     pub user_id: String,
@@ -375,116 +379,68 @@
 //!         ]
 //!     }
 //! }
-//! ```
 //!
-//! ```
-//! use uuid::Uuid;
-//! use google_cloud_spanner::mutation::insert_or_update_struct;
-//!
-//! let new_user = model::User {
-//!     user_id: Uuid::new_v4().to_string(),
+//! let new_user = User {
+//!     user_id: "user_id".to_string(),
 //!     premium: true,
 //!     updated_at: chrono::Utc::now(),
 //! };
-//! let new_user2 = model::User {
-//!     user_id: Uuid::new_v4().to_string(),
-//!     premium: false,
-//!     updated_at: chrono::Utc::now(),
-//! };
-//! let m1 = insert_or_update_struct("User", new_user);
-//! let m2 = insert_or_update_struct("User", new_user2);
+//! let m1 = insert_or_update_struct("User", &new_user);
 //! ```
 //!
 //! ### <a name="Writes"></a>Writes
 //!
 //! To apply a list of mutations to the database, use Apply:
-//! ```
+//! ```ignore
 //! use google_cloud_spanner::mutation::insert;
 //! use google_cloud_spanner::mutation::delete;
 //! use google_cloud_spanner::key::all_keys;
 //! use google_cloud_spanner::statement::ToKind;
 //!
 //! let m1 = delete("Table", all_keys());
-//! let m2 = insert("Table", vec!["col1", "col2"], vec!["1".to_kind(), "2".to_kind()]);
+//! let m2 = insert("Table", &["col1", "col2"], &[&"1", &"2"]);
 //! let commit_timestamp = client.apply(vec![m1,m2]).await?;
 //! ```
 //!
 //! If you need to read before writing in a single transaction, use a ReadWriteTransaction. ReadWriteTransactions may be aborted automatically by the backend and need to be retried. You pass in a function to ReadWriteTransaction, and the client will handle the retries automatically. Use the transaction's BufferWrite method to buffer mutations, which will all be executed at the end of the transaction:
 //!
-//! ```
+//! ```ignore
 //! use google_cloud_spanner::mutation::update;
 //! use google_cloud_spanner::key::Key;
 //! use google_cloud_spanner::value::Timestamp;
+//! use google_cloud_spanner::client::RunInTxError;
 //!
-//! let tx_result: Result<(Option<Timestamp>,()), Error> = client.read_write_transaction(|mut tx| async {
-//!     // The transaction function will be called again if the error code
-//!     // of this error is Aborted. The backend may automatically abort
-//!     // any read/write transaction if it detects a deadlock or other problems.
-//!     let result: Result<(), Error> = async {
-//!         let mut reader = tx.read("UserItem", vec!["UserId", "ItemId", "Quantity"], Key::one(user_id.to_string())).await?;
-//!         let ms  = loop {
-//!             let mut ms = vec![];
-//!             let row = reader.next().await?;
-//!             match row {
-//!                 Some(row) => {
-//!                     let item_id = row.column_by_name::<i64>("ItemId")?;
-//!                     let quantity = row.column_by_name::<i64>("Quantity")?;
-//!                     ms.push(update("UserItem", vec!["Quantity"], vec![
-//!                         user_id.to_string().to_kind(),
-//!                         item_id.to_kind(),
-//!                         (quantity + 1).to_kind(),
-//!                     ]));
-//!                 }
-//!                 None => break ms
-//!             }
-//!         };
-//!
-//!        // The buffered mutation will be committed.  If the commit
+//! let tx_result: Result<(Option<Timestamp>,()), RunInTxError> = client.read_write_transaction(|tx| {
+//!     Box::pin(async move {
+//!         // The transaction function will be called again if the error code
+//!         // of this error is Aborted. The backend may automatically abort
+//!         // any read/write transaction if it detects a deadlock or other problems.
+//!         let mut reader = tx.read("UserItem", &["UserId", "ItemId", "Quantity"], Key::key(&"user1")).await?;
+//!         let mut ms = vec![];
+//!         while let Some(row) = reader.next().await? {
+//!             let item_id = row.column_by_name::<i64>("ItemId")?;
+//!             let quantity = row.column_by_name::<i64>("Quantity")? + 1;
+//!             let m = update("UserItem", &["Quantity"], &[&user_id, &item_id, quantity + 1]);
+//!             ms.push(m);
+//!         }
+//!         // The buffered mutation will be committed.  If the commit
 //!         // fails with an Aborted error, this function will be called again
-//!        tx.buffer_write(ms);
-//!        Ok(())
-//!     }.await;
-//!
-//!     //return owner ship of read_write_transaction
-//!     (tx, result)
+//!         tx.buffer_write(ms);
+//!         Ok(())
+//!     })
 //! }).await;
 //! ```
 //!
-//! The Error of the `read_write_transaction` must implements
-//! * From<google_cloud_googleapis::Status>
-//! * From<google_cloud_spanner::session::SessionError>
-//! * google_cloud_gax::invoke::TryAs<google_cloud_googleapis::Status>
-//!
-//! ```
-//! use google_cloud_gax::invoke::TryAs;
-//! use google_cloud_googleapis::Status;
-//!
-//! #[derive(thiserror::Error, Debug)]
-//! enum Error {
-//!     #[error(transparent)]
-//!     ParseError(#[from] google_cloud_spanner::row::Error),
-//!     #[error(transparent)]
-//!     GRPC(#[from] Status),
-//!     #[error(transparent)]
-//!     SessionError(#[from] google_cloud_spanner::session::SessionError),
-//! }
-//!
-//! impl TryAs<Status> for Error {
-//!     fn try_as(&self) -> Result<&Status,()> {
-//!         match self {
-//!             Error::GRPC(s) => Ok(s),
-//!             _ => Err(())
-//!         }
-//!     }
-//! }
-//! ```
+//! You can customize error. The Error of the `read_write_transaction` must implements
+//! * `From<google_cloud_googleapis::Status>`
+//! * `From<google_cloud_spanner::session::SessionError>`
+//! * `google_cloud_gax::invoke::TryAs<google_cloud_googleapis::Status>`
 //!
 //! ### <a name="DMLAndPartitionedDML"></a>DML and Partitioned DML
-//! Spanner supports DML statements like INSERT, UPDATE and DELETE. Use ReadWriteTransaction.Update to run DML statements. It returns the number of rows affected. (You can call use ReadWriteTransaction.Query with a DML statement. The first call to Next on the resulting RowIterator will return iterator.Done, and the RowCount field of the iterator will hold the number of affected rows.)
+//! For large databases, it may be more efficient to partition the DML statement.
+//! Use client.partitioned_update to run a DML statement in this way. Not all DML statements can be partitioned.
 //!
-//! For large databases, it may be more efficient to partition the DML statement. Use client.PartitionedUpdate to run a DML statement in this way. Not all DML statements can be partitioned.
-//!
-//! ```
+//! ```ignore
 //! use google_cloud_spanner::client::Client;
 //! use google_cloud_spanner::statement::Statement;
 //!

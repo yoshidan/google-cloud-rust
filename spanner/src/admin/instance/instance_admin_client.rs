@@ -17,10 +17,9 @@ use google_cloud_googleapis::spanner::admin::instance::v1::{
     Instance, InstanceConfig, ListInstanceConfigsRequest, ListInstancesRequest,
     UpdateInstanceRequest,
 };
-use google_cloud_grpc::conn::{ConnectionManager, Error, TokenSource};
+use google_cloud_grpc::conn::{Channel, ConnectionManager, Error};
 use google_cloud_longrunning::autogen::operations_client::OperationsClient;
 use google_cloud_longrunning::longrunning::Operation;
-use tonic::transport::Channel;
 use tonic::Response;
 
 fn default_setting() -> BackoffRetrySettings {
@@ -36,20 +35,11 @@ fn default_setting() -> BackoffRetrySettings {
 pub struct InstanceAdminClient {
     inner: InternalInstanceAdminClient<Channel>,
     lro_client: OperationsClient,
-    token_source: TokenSource,
 }
 
 impl InstanceAdminClient {
-    pub fn new(
-        inner: InternalInstanceAdminClient<Channel>,
-        lro_client: OperationsClient,
-        token_source: TokenSource,
-    ) -> Self {
-        Self {
-            inner,
-            lro_client,
-            token_source,
-        }
+    pub fn new(inner: InternalInstanceAdminClient<Channel>, lro_client: OperationsClient) -> Self {
+        Self { inner, lro_client }
     }
 
     pub async fn default() -> Result<Self, Error> {
@@ -59,13 +49,12 @@ impl InstanceAdminClient {
         };
         let conn_pool =
             ConnectionManager::new(1, SPANNER, AUDIENCE, Some(&SCOPES), emulator_host).await?;
-        let (conn, token_source) = conn_pool.conn();
-        let lro_client = OperationsClient::new(conn, token_source).await?;
-        let (conn, token_source) = conn_pool.conn();
+        let conn = conn_pool.conn();
+        let lro_client = OperationsClient::new(conn).await?;
+        let conn = conn_pool.conn();
         Ok(Self::new(
             InternalInstanceAdminClient::new(conn),
             lro_client,
-            token_source,
         ))
     }
 
@@ -85,13 +74,12 @@ impl InstanceAdminClient {
     ) -> Result<Vec<InstanceConfig>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let parent = &req.parent;
-        let token = self.token_source.token().await?;
         let mut all = vec![];
         //eager loading
         loop {
             let response = invoke_reuse(
                 |client| async {
-                    let request = create_request(format!("parent={}", parent), &token, req.clone());
+                    let request = create_request(format!("parent={}", parent), req.clone());
                     client
                         .list_instance_configs(request)
                         .await
@@ -118,10 +106,9 @@ impl InstanceAdminClient {
     ) -> Result<Response<InstanceConfig>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let name = &req.name;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |client| async {
-                let request = create_request(format!("name={}", name), &token, req.clone());
+                let request = create_request(format!("name={}", name), req.clone());
                 client
                     .get_instance_config(request)
                     .await
@@ -141,13 +128,12 @@ impl InstanceAdminClient {
     ) -> Result<Vec<Instance>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let parent = &req.parent;
-        let token = self.token_source.token().await?;
         let mut all = vec![];
         //eager loading
         loop {
             let response = invoke_reuse(
                 |client| async {
-                    let request = create_request(format!("parent={}", parent), &token, req.clone());
+                    let request = create_request(format!("parent={}", parent), req.clone());
                     client
                         .list_instances(request)
                         .await
@@ -174,10 +160,9 @@ impl InstanceAdminClient {
     ) -> Result<Response<Instance>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let name = &req.name;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |client| async {
-                let request = create_request(format!("name={}", name), &token, req.clone());
+                let request = create_request(format!("name={}", name), req.clone());
                 client
                     .get_instance(request)
                     .await
@@ -235,10 +220,9 @@ impl InstanceAdminClient {
     ) -> Result<Operation<Instance>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let parent = &req.parent;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |client| async {
-                let request = create_request(format!("parent={}", parent), &token, req.clone());
+                let request = create_request(format!("parent={}", parent), req.clone());
                 client
                     .create_instance(request)
                     .await
@@ -302,14 +286,10 @@ impl InstanceAdminClient {
     ) -> Result<Operation<Instance>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let instance_name = &req.instance.as_ref().unwrap().name;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |client| async {
-                let request = create_request(
-                    format!("instance.name={}", instance_name),
-                    &token,
-                    req.clone(),
-                );
+                let request =
+                    create_request(format!("instance.name={}", instance_name), req.clone());
                 client
                     .update_instance(request)
                     .await
@@ -340,10 +320,9 @@ impl InstanceAdminClient {
     ) -> Result<Response<()>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let name = &req.name;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |client| async {
-                let request = create_request(format!("parent={}", name), &token, req.clone());
+                let request = create_request(format!("parent={}", name), req.clone());
                 client
                     .delete_instance(request)
                     .await
@@ -366,10 +345,9 @@ impl InstanceAdminClient {
     ) -> Result<Response<Policy>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let resource = &req.resource;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |client| async {
-                let request = create_request(format!("resource={}", resource), &token, req.clone());
+                let request = create_request(format!("resource={}", resource), req.clone());
                 client
                     .set_iam_policy(request)
                     .await
@@ -392,10 +370,9 @@ impl InstanceAdminClient {
     ) -> Result<Response<Policy>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let resource = &req.resource;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |client| async {
-                let request = create_request(format!("resource={}", resource), &token, req.clone());
+                let request = create_request(format!("resource={}", resource), req.clone());
                 client
                     .get_iam_policy(request)
                     .await
@@ -420,10 +397,9 @@ impl InstanceAdminClient {
     ) -> Result<Response<TestIamPermissionsResponse>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let resource = &req.resource;
-        let token = self.token_source.token().await?;
         return invoke_reuse(
             |client| async {
-                let request = create_request(format!("resource={}", resource), &token, req.clone());
+                let request = create_request(format!("resource={}", resource), req.clone());
                 client
                     .test_iam_permissions(request)
                     .await

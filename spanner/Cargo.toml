@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-spanner"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/spanner"
@@ -8,27 +8,24 @@ keywords = ["gcp","spanner","googleapis","google-cloud-rust"]
 license-file = "LICENSE"
 readme = "README.md"
 description = "Google Cloud Platform spanner client library."
-documentation = "https://docs.rs/google-cloud-spanner/0.2.0/google-cloud-spanner/"
+documentation = "https://docs.rs/google-cloud-spanner/0.3.0/google-cloud-spanner/"
 
 [dependencies]
 log = "0.4"
 tonic = { version = "0.6", features = ["tls", "prost"] }
 prost = "0.9"
 prost-types = "0.9"
-hyper = { version = "0.14", features = ["full"] }
-hyper-tls = "0.5"
 tokio = { version = "1.7", features = ["full"] }
 chrono = "0.4"
 thiserror = "1.0"
 async-trait = "0.1"
 rust_decimal = "1.15"
 parking_lot = "0.11"
-futures-util = "0.3"
-futures-channel = "0.3"
 base64 = "0.13"
+anyhow = "1.0"
 
-google-cloud-longrunning= { version = "0.1.0", path = "../foundation/longrunning" }
-google-cloud-grpc = { version = "0.1.0", path = "../foundation/grpc" }
+google-cloud-longrunning= { version = "0.2.0", path = "../foundation/longrunning" }
+google-cloud-grpc = { version = "0.2.0", path = "../foundation/grpc" }
 google-cloud-auth = { version = "0.1.1", path = "../foundation/auth" }
 google-cloud-gax = { version = "0.2.0", path = "../foundation/gax" }
 google-cloud-googleapis = { version = "0.2.0", path = "../googleapis" }
@@ -37,6 +34,3 @@ google-cloud-googleapis = { version = "0.2.0", path = "../googleapis" }
 env_logger = "0.9"
 serial_test = "0.5.1"
 anyhow = "1.0.48"
-
-[lib]
-doctest = false
