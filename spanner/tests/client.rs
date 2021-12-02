@@ -8,7 +8,6 @@ use chrono::{DateTime, TimeZone, Utc};
 use common::*;
 use google_cloud_spanner::key::Key;
 
-use futures_util::FutureExt;
 use google_cloud_spanner::value::Timestamp;
 use serial_test::serial;
 
@@ -38,7 +37,7 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
         .read_write_transaction(
             |tx| {
                 let user_id= user_id.to_string();
-                async move {
+                Box::pin(async move {
                     let ms = vec![create_user_mutation("user_client_1x", &now), create_user_mutation("user_client_2x", &now)];
                     tx.buffer_write(ms);
                     let mut stmt = Statement::new("Insert Into UserItem (UserId,ItemId,Quantity,UpdatedAt) VALUES(@UserId,1,1,PENDING_COMMIT_TIMESTAMP())");
@@ -49,7 +48,7 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
                     }else {
                         Ok(updated)
                     }
-                }.boxed()
+                })
             },
         )
         .await;
