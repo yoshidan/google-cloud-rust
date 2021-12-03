@@ -26,7 +26,7 @@
 //!
 //!     // Insert
 //!     let mutation = insert("Table", &["col1", "col2", "col3"], &[&1, &"strvalue", &CommitTimestamp::new()]);
-//!     let commit_timestamp = client.apply(vec![m1,m2]).await?;
+//!     let commit_timestamp = client.apply(vec![mutation]).await?;
 //!
 //!     // Read with query
 //!     let mut stmt = Statement::new("SELECT col2 FROM Table WHERE col1 = @col1");
