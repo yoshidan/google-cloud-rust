@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-longrunning"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/foundation/longrunning"
@@ -8,6 +8,7 @@ keywords = ["gcp","longrunning","googleapis","google-cloud-rust"]
 license-file = "LICENSE"
 readme = "README.md"
 description = "Google Cloud Platform longrunning library."
+documentation = ""
 
 [dependencies]
 log = "0.4"

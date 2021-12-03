@@ -1,4 +1,4 @@
-# google-cloud-auth
+# google-cloud-longrunning
 
 Google Cloud Platform long running operation library.
 
