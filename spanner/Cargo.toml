@@ -26,7 +26,7 @@ anyhow = "1.0"
 
 google-cloud-longrunning= { version = "0.2.0", path = "../foundation/longrunning" }
 google-cloud-grpc = { version = "0.2.0", path = "../foundation/grpc" }
-google-cloud-gax = { version = "0.2.0", path = "../foundation/gax" }
+google-cloud-gax = { version = "0.3.0", path = "../foundation/gax" }
 google-cloud-googleapis = { version = "0.2.0", path = "../googleapis" }
 
 [dev-dependencies]
