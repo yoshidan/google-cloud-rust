@@ -13,7 +13,7 @@ description = "Google Cloud Platform longrunning library."
 log = "0.4"
 tokio = { version = "1.7" }
 google-cloud-googleapis = { version = "0.2.0", path = "../../googleapis" }
-google-cloud-gax = { version = "0.2.0", path = "../gax" }
+google-cloud-gax = { version = "0.3.0", path = "../gax" }
 google-cloud-grpc= { version = "0.2.0", path = "../grpc" }
 tonic = { version = "0.6", features = ["tls", "prost"] }
 prost = "0.9"
