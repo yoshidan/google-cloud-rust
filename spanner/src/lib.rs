@@ -31,7 +31,8 @@
 //!     // Read with query
 //!     let mut stmt = Statement::new("SELECT col2 FROM Table WHERE col1 = @col1");
 //!     stmt.add_param("col1",&1);
-//!     let iter = client.single().await?.query(stmt).await?;
+//!     let mut tx = client.single().await?;
+//!     let mut iter = tx.query(stmt).await?;
 //!     while let some(row) = iter.next().await? {
 //!         let col2 = row.column_by_name::<String>("col2");
 //!     }
@@ -113,7 +114,8 @@
 //! );
 //! let commit_timestamp = client.apply(vec![mutation]).await?;
 //!
-//! let row = client.single().await?.read_row( "User", &["UserID", "Name", "UpdatedAt"], Key::key(&1)).await?;
+//! let mut tx = client.single().await?;
+//! let row = tx.read_row( "User", &["UserID", "Name", "UpdatedAt"], Key::key(&1)).await?;
 //! ```
 //!
 //! All the methods used above are discussed in more detail below.
@@ -178,7 +180,8 @@
 //! ```ignore
 //! use google_cloud_spanner::key::Key;
 //!
-//! let row = client.single().await?.read_row("Table", &["col1", "col2"], Key::key(&1)).await?;
+//! let mut tx = client.single().await?;
+//! let row = tx.read_row("Table", &["col1", "col2"], Key::key(&1)).await?;
 //! ```
 //!
 //! Read multiple rows with the Read method. It takes a table name, KeySet, and list of columns:
@@ -187,7 +190,8 @@
 //! use google_cloud_spanner::key::Key;
 //! use google_cloud_spanner::statement::ToKind;
 //!
-//! let iter1 = client.single().await?.read("Table",&["col1", "col2"], vec![
+//! let mut tx = client.single().await?;
+//! let iter1 = tx.read("Table",&["col1", "col2"], vec![
 //!     Key::key(&"pk1"),
 //!     Key::key(&"pk2")
 //! ]).await?;
@@ -198,7 +202,8 @@
 //! ```ignore
 //! use google_cloud_spanner::key::Key;
 //!
-//! let mut iter = client.single().await?.read("Table", &["col1", "col2"], vec![
+//! let mut tx = client.single().await?;
+//! let mut iter = tx.read("Table", &["col1", "col2"], vec![
 //!     Key::key(&"pk1"),
 //!     Key::key(&"pk2")
 //! ]).await?;
@@ -228,7 +233,8 @@
 //! Use the Query method to run the statement and obtain an iterator:
 //!
 //! ```ignore
-//! let iter = client.single().await?.query(stmt).await?;
+//! let mut tx = client.single().await?;
+//! let iter = tx.query(stmt).await?;
 //! ```
 //!
 //! ### <a name="Rows"></a>Rows

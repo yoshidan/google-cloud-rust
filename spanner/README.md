@@ -42,7 +42,8 @@ async fn main() -> Result<(), Error> {
     // Read with query
     let mut stmt = Statement::new("SELECT col2 FROM Table WHERE col1 = @col1");
     stmt.add_param("col1",&1);
-    let iter = client.single().await?.query(stmt).await?;
+    let mut tx = client.single().await?;
+    let mut iter = tx.query(stmt).await?;
     while let some(row) = iter.next().await? {
         let col2 = row.column_by_name::<String>("col2");
     }
