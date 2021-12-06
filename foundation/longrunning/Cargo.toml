@@ -8,7 +8,6 @@ keywords = ["gcp","longrunning","googleapis","google-cloud-rust"]
 license = "MIT"
 readme = "README.md"
 description = "Google Cloud Platform longrunning library."
-documentation = ""
 
 [dependencies]
 log = "0.4"
