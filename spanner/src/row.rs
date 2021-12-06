@@ -80,7 +80,7 @@ pub trait TryFromValue: Sized {
 }
 
 pub trait TryFromStruct: Sized {
-    fn try_from(s: Struct<'_>) -> Result<Self, Error>;
+    fn try_from_struct(s: Struct<'_>) -> Result<Self, Error>;
 }
 
 pub struct Struct<'a> {
@@ -269,7 +269,7 @@ where
             Some(struct_type) => struct_type,
         };
 
-        T::try_from(Struct::new(struct_type, item, field)?)
+        T::try_from_struct(Struct::new(struct_type, item, field)?)
     }
 }
 
@@ -352,7 +352,7 @@ mod tests {
     }
 
     impl TryFromStruct for TestStruct {
-        fn try_from(s: RowStruct<'_>) -> Result<Self, Error> {
+        fn try_from_struct(s: RowStruct<'_>) -> Result<Self, Error> {
             Ok(TestStruct {
                 struct_field: s.column_by_name("struct_field")?,
                 struct_field_time: s.column_by_name("struct_field_time")?,

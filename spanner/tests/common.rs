@@ -30,7 +30,7 @@ pub struct UserCharacter {
 }
 
 impl TryFromStruct for UserCharacter {
-    fn try_from(s: Struct<'_>) -> Result<Self, RowError> {
+    fn try_from_struct(s: Struct<'_>) -> Result<Self, RowError> {
         Ok(UserCharacter {
             user_id: s.column_by_name("UserId")?,
             character_id: s.column_by_name("CharacterId")?,
@@ -48,7 +48,7 @@ pub struct UserItem {
 }
 
 impl TryFromStruct for UserItem {
-    fn try_from(s: Struct<'_>) -> Result<Self, RowError> {
+    fn try_from_struct(s: Struct<'_>) -> Result<Self, RowError> {
         Ok(UserItem {
             user_id: s.column_by_name("UserId")?,
             item_id: s.column_by_name("ItemId")?,
