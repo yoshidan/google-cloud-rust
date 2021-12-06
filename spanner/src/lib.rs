@@ -264,7 +264,7 @@
 //! }
 //!
 //! impl TryFromStruct for User {
-//!     fn try_from(s: Struct<'_>) -> Result<Self, Error> {
+//!     fn try_from_struct(s: Struct<'_>) -> Result<Self, Error> {
 //!         Ok(User {
 //!             user_id: s.column_by_name("UserId")?,
 //!             premium: s.column_by_name("Premium")?,
