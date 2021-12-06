@@ -1,8 +1,9 @@
 use prost_types::{ListValue, Value};
 
+use crate::key::KeySet;
 use crate::statement::{ToKind, ToStruct};
 use google_cloud_googleapis::spanner::v1::mutation::{Delete, Operation, Write};
-use google_cloud_googleapis::spanner::v1::{KeySet, Mutation};
+use google_cloud_googleapis::spanner::v1::Mutation;
 
 fn write(table: &str, columns: &[&str], values: &[&dyn ToKind]) -> Write {
     let values = values
@@ -169,11 +170,11 @@ pub fn insert_or_update_struct(table: &str, to_struct: impl ToStruct) -> Mutatio
 
 /// delete removes the rows described by the KeySet from the table. It succeeds
 /// whether or not the keys were present.
-pub fn delete(table: &str, key_set: impl Into<KeySet>) -> Mutation {
+pub fn delete(table: &str, key_set: KeySet) -> Mutation {
     Mutation {
         operation: Some(Operation::Delete(Delete {
             table: table.to_string(),
-            key_set: Some(key_set.into()),
+            key_set: Some(key_set.inner),
         })),
     }
 }
