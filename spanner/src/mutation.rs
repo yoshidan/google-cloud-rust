@@ -170,11 +170,11 @@ pub fn insert_or_update_struct(table: &str, to_struct: impl ToStruct) -> Mutatio
 
 /// delete removes the rows described by the KeySet from the table. It succeeds
 /// whether or not the keys were present.
-pub fn delete(table: &str, key_set: KeySet) -> Mutation {
+pub fn delete(table: &str, key_set: impl Into<KeySet>) -> Mutation {
     Mutation {
         operation: Some(Operation::Delete(Delete {
             table: table.to_string(),
-            key_set: Some(key_set.inner),
+            key_set: Some(key_set.into().inner),
         })),
     }
 }
