@@ -34,6 +34,12 @@ pub mod spanner {
     }
 }
 
+#[path = ""]
+pub mod pubsub {
+    #[path = "google.pubsub.v1.rs"]
+    pub mod v1;
+}
+
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 
