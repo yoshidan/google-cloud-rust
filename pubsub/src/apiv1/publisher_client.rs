@@ -1,3 +1,4 @@
+use crate::apiv1::default_setting;
 use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
 use google_cloud_gax::invoke::invoke_reuse;
 use google_cloud_gax::util::create_request;
@@ -10,16 +11,6 @@ use google_cloud_googleapis::pubsub::v1::{
 use google_cloud_googleapis::{Code, Status};
 use google_cloud_grpc::conn::Channel;
 use tonic::Response;
-
-fn default_setting() -> BackoffRetrySettings {
-    BackoffRetrySettings {
-        retryer: BackoffRetryer {
-            backoff: Backoff::default(),
-            //handle gRPC stream error (Status { code: Unknown, message: "transport error", source: None })
-            codes: vec![Code::Unavailable, Code::Unknown],
-        },
-    }
-}
 
 #[derive(Clone)]
 pub struct PublisherClient {
@@ -47,7 +38,7 @@ impl PublisherClient {
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Topic>, Status> {
         let mut setting = Self::get_call_setting(opt);
-        let name = &req.nae;
+        let name = &req.name;
         return invoke_reuse(
             |client| async {
                 let request = create_request(format!("name={}", name), req.clone());
