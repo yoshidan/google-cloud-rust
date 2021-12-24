@@ -82,7 +82,23 @@ impl PublisherClient {
         req: UpdateTopicRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Topic>, Status> {
-        let mut setting = Self::get_call_setting(opt);
+        let setting = match opt {
+            Some(opt) => opt,
+            None => BackoffRetrySettings {
+                retryer: BackoffRetryer {
+                    backoff: Backoff::default(),
+                    codes: vec![
+                        Code::Unavailable,
+                        Code::Unknown,
+                        Code::Aborted,
+                        Code::Internal,
+                        Code::ResourceExhausted,
+                        Code::DeadlineExceeded,
+                        Code::Cancelled,
+                    ],
+                },
+            },
+        };
         let name = &req.topic?.name;
         return invoke_reuse(
             |client| async {
