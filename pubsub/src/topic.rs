@@ -5,6 +5,7 @@ use google_cloud_googleapis::spanner::admin::database::v1::backup::State;
 use google_cloud_googleapis::Status;
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
+use crate::publish_scheduler::PublishScheduler;
 use crate::subscription::Subscription;
 
 /// Topic is a reference to a PubSub topic.
@@ -12,10 +13,24 @@ pub struct Topic {
    name: String,
    stopped: bool,
    pubc: Arc<PublisherClient>,
-   subc: Arc<SubscriberClient>
+   subc: Arc<SubscriberClient>,
+   scheduler: Arc<PublishScheduler>
 }
 
 impl Topic {
+
+   fn new(name: String,
+          pubc: Arc<PublisherClient>,
+          subc: Arc<SubscriberClient>,
+          scheduler: Arc<PublishScheduler>) -> Self {
+      Self {
+         name,
+         stopped: false,
+         pubc,
+         subc,
+         scheduler
+      }
+   }
 
    /// id returns the unique identifier of the topic within its project.
    fn id(&self) -> Option<String> {

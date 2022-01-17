@@ -3,11 +3,7 @@ use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetrye
 use google_cloud_gax::invoke::invoke_reuse;
 use google_cloud_gax::util::create_request;
 use google_cloud_googleapis::pubsub::v1::publisher_client::PublisherClient as InternalPublisherClient;
-use google_cloud_googleapis::pubsub::v1::{
-    DeleteTopicRequest, DetachSubscriptionRequest, DetachSubscriptionResponse, GetTopicRequest,
-    ListTopicSnapshotsRequest, ListTopicSubscriptionsRequest, ListTopicsRequest, Subscription,
-    Topic, UpdateTopicRequest,
-};
+use google_cloud_googleapis::pubsub::v1::{DeleteTopicRequest, DetachSubscriptionRequest, DetachSubscriptionResponse, GetTopicRequest, ListTopicSnapshotsRequest, ListTopicSubscriptionsRequest, ListTopicsRequest, Subscription, Topic, UpdateTopicRequest, PublishRequest, PublishResponse};
 use google_cloud_googleapis::{Code, Status};
 use google_cloud_grpc::conn::Channel;
 use tonic::Response;
@@ -79,10 +75,10 @@ impl PublisherClient {
     /// publish adds one or more messages to the topic. Returns NOT_FOUND if the topic does not exist.
     pub async fn publish(
         &mut self,
-        req: UpdateTopicRequest,
+        req: PublishRequest,
         opt: Option<BackoffRetrySettings>,
-    ) -> Result<Response<Topic>, Status> {
-        let setting = match opt {
+    ) -> Result<Response<PublishResponse>, Status> {
+        let mut setting = match opt {
             Some(opt) => opt,
             None => BackoffRetrySettings {
                 retryer: BackoffRetryer {
