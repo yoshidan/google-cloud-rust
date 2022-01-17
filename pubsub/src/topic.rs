@@ -1,17 +1,19 @@
 use std::sync::Arc;
+use parking_lot::RwLock;
+use tokio::sync::oneshot::channel;
 use google_cloud_googleapis::Code::NotFound;
-use google_cloud_googleapis::pubsub::v1::{DeleteTopicRequest, GetTopicRequest, ListTopicSubscriptionsRequest};
+use google_cloud_googleapis::pubsub::v1::{DeleteTopicRequest, GetTopicRequest, ListTopicSubscriptionsRequest, PubsubMessage};
 use google_cloud_googleapis::spanner::admin::database::v1::backup::State;
 use google_cloud_googleapis::Status;
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
-use crate::publish_scheduler::PublishScheduler;
+use crate::publish_scheduler::{Awaiter, PublishScheduler};
 use crate::subscription::Subscription;
 
 /// Topic is a reference to a PubSub topic.
 pub struct Topic {
    name: String,
-   stopped: bool,
+   stopped: RwLock<bool>,
    pubc: Arc<PublisherClient>,
    subc: Arc<SubscriberClient>,
    scheduler: Arc<PublishScheduler>
@@ -25,7 +27,7 @@ impl Topic {
           scheduler: Arc<PublishScheduler>) -> Self {
       Self {
          name,
-         stopped: false,
+         stopped: RwLock::new(false),
          pubc,
          subc,
          scheduler
@@ -75,5 +77,29 @@ impl Topic {
          page_size: 0,
          page_token: "".to_string(),
       }, None).await.map(|v| v.into_iter().map(|sub_name| Subscription::new(sub_name, self.subc.clone())).collect())
+   }
+
+   async fn publish(&mut self, message: PubsubMessage) -> Awaiter {
+      if self.stopped.read() {
+         let (sender,receiver) = channel();
+         sender.send(Err(Status::new(tonic::Status::unavailable("stopped"))));
+         return Awaiter::new(receiver);
+      }
+      return self.scheduler.publish(self.name.to_string(), message).await;
+   }
+
+   pub async fn stop(&mut self) {
+      if self.stop_if_needed() {
+         self.scheduler.flush().await;
+      }
+   }
+
+   fn stop_if_needed(&self) -> bool {
+      let mut w = self.stopped.write();
+      if w {
+         return false
+      }
+      *w = true;
+      return true;
    }
 }

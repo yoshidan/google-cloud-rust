@@ -33,6 +33,11 @@ pub struct Awaiter {
 }
 
 impl Awaiter {
+    pub(crate) fn new(receiver: Receiver<Result<String,Status>>) -> Self {
+        Self {
+            receiver,
+        }
+    }
     pub async fn get(&mut self) -> Result<String, Status> {
         match timeout(self.config.session_get_timeout, receiver).await {
            Ok(v) => v,
@@ -54,11 +59,14 @@ impl PublishScheduler {
                 topic,
                 messages: vec![message]
             },None).await.map(|v| v.into_inner().message_ids[0]);
+            self.post_publish();
             sender.send(result);
             return Awaiter {
                 receiver,
             }
         }
+        self.ticket.fetch_sub(1, Ordering::SeqCst);
+
         //enqueue
         self.queue.push_back(ReservedMessage {
             chan: sender,
@@ -69,41 +77,45 @@ impl PublishScheduler {
         }
     }
 
-    fn take_ticket(&mut self) -> bool{
-        let mut rest = self.ticket.lock();
-        if rest > 0 {
-            rest -= -1;
-            return true;
-        }
-        return false;
+    pub async fn flush(&mut self) {
+       loop {
+           let v = self.send_queued_data().await;
+           if v == 0 {
+               break;
+           }
+       }
     }
 
     fn post_publish(&mut self) {
         tokio::spawn(async move {
-            // publish rest
-            let (messages, chan) = self.dequeue(10);
-            let result = self.pubc.publish(PublishRequest {
-                topic,
-                messages,
-            },None).await.map(|v| v.into_inner().message_ids);
-
-            // notify to receivers
-            match result {
-                Ok(message_ids) => {
-                    for (i, sender) in chan.iter().enumerate() {
-                        sender.send(Ok(message_ids[i].to_string()));
-                    }
-                },
-                Err(status) => {
-                   chan.into_iter().for_each(|v| {
-                       v.send(Err(status));
-                   });
-                }
-            }
-
+            self.send_queued_data().await;
             // return the ticket
             self.ticket.fetch_sub(1, Ordering::SeqCst);
         });
+    }
+
+    async fn send_queued_data(&mut self) -> usize {
+        // publish rest
+        let (messages, chan) = self.dequeue(10);
+        let result = self.pubc.publish(PublishRequest {
+            topic,
+            messages,
+        },None).await.map(|v| v.into_inner().message_ids);
+
+        // notify to receivers
+        match result {
+            Ok(message_ids) => {
+                for (i, sender) in chan.iter().enumerate() {
+                    sender.send(Ok(message_ids[i].to_string()));
+                }
+            },
+            Err(status) => {
+                chan.into_iter().for_each(|v| {
+                    v.send(Err(status));
+                });
+            }
+        }
+        return messages.len()
     }
 
     fn dequeue(&mut self, size: usize) -> (Vec<PubsubMessage>,Vec<Sender<Result<String,Status>>>) {
@@ -114,6 +126,8 @@ impl PublishScheduler {
             if let Some(v) = locked.pop_front() {
                 messages.push_back(v.message);
                 target_chan.push_back(v.chan);
+            }else {
+                break;
             }
         }
         (messages, target_chan)
