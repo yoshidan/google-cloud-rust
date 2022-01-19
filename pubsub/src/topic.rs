@@ -7,7 +7,7 @@ use google_cloud_googleapis::spanner::admin::database::v1::backup::State;
 use google_cloud_googleapis::Status;
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
-use crate::publish_scheduler::{Awaiter, PublishScheduler};
+use crate::publisher::{Awaiter, PublishScheduler};
 use crate::subscription::Subscription;
 
 /// Topic is a reference to a PubSub topic.
