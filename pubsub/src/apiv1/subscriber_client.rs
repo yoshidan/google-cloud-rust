@@ -1,7 +1,8 @@
 use crate::apiv1::default_setting;
 use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
 use google_cloud_gax::invoke::invoke_reuse;
-use google_cloud_gax::util::create_request;
+use google_cloud_gax::util::{create_request};
+use tonic::{IntoRequest, IntoStreamingRequest, Request};
 use google_cloud_googleapis::pubsub::v1::subscriber_client::SubscriberClient as InternalSubscriberClient;
 use google_cloud_googleapis::pubsub::v1::{
     AcknowledgeRequest, CreateSnapshotRequest, DeleteSnapshotRequest, DeleteSubscriptionRequest,
@@ -73,9 +74,12 @@ impl SubscriberClient {
         &mut self,
         req: UpdateSubscriptionRequest,
         opt: Option<BackoffRetrySettings>,
-    ) -> Result<Response<Topic>, Status> {
+    ) -> Result<Response<Subscription>, Status> {
         let mut setting = Self::get_call_setting(opt);
-        let name = &req.subscription?.name;
+        let name = match &req.subscription {
+            Some(s) => s.name.as_str(),
+            None => ""
+        };
         return invoke_reuse(
             |client| async {
                 let request = create_request(format!("subscription.name={}", name), req.clone());
@@ -258,10 +262,16 @@ impl SubscriberClient {
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Streaming<StreamingPullResponse>>, Status> {
         let mut setting = Self::get_call_setting(opt);
-        let subscription = &req.subscription;
+
         return invoke_reuse(
             |client| async {
-                let request = create_request(format!("subscription={}", subscription), req.clone());
+                let base_req = req.clone();
+                let request = Box::pin(async_stream::stream! {
+                    let entries = vec![base_req];
+                    for entry in entries {
+                        yield entry;
+                    }
+                });
                 client
                     .streaming_pull(request)
                     .await
@@ -316,7 +326,7 @@ impl SubscriberClient {
             |client| async {
                 let request = create_request(format!("snapshot={}", snapshot), req.clone());
                 client
-                    .get_subscription(request)
+                    .get_snapshot(request)
                     .await
                     .map_err(|e| (e.into(), client))
             },
@@ -410,10 +420,13 @@ impl SubscriberClient {
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Snapshot>, Status> {
         let mut setting = Self::get_call_setting(opt);
-        let name = &req.snapshot?.name;
+        let name = match &req.snapshot {
+            Some(v) => v.name.as_str(),
+            None => ""
+        };
         return invoke_reuse(
             |client| async {
-                let request = create_request(format!("snapshot.name={}", name), req.clone());
+                let request = create_request(format!("snapshot.name={}", name.to_string()), req.clone());
                 client
                     .update_snapshot(request)
                     .await

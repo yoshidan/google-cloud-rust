@@ -57,7 +57,10 @@ impl PublisherClient {
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Topic>, Status> {
         let mut setting = Self::get_call_setting(opt);
-        let name = &req.topic?.name;
+        let name = match &req.topic {
+            Some(t) => t.name.as_str(),
+            None => ""
+        };
         return invoke_reuse(
             |client| async {
                 let request = create_request(format!("name={}", name), req.clone());
@@ -95,7 +98,7 @@ impl PublisherClient {
                 },
             },
         };
-        let name = &req.topic?.name;
+        let name = &req.topic;
         return invoke_reuse(
             |client| async {
                 let request = create_request(format!("name={}", name), req.clone());

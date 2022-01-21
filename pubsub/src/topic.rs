@@ -14,17 +14,17 @@ use crate::subscription::Subscription;
 pub struct Topic {
    name: String,
    stopped: RwLock<bool>,
-   pubc: Arc<PublisherClient>,
-   subc: Arc<SubscriberClient>,
-   scheduler: Arc<Publisher>
+   pubc: PublisherClient,
+   subc: SubscriberClient,
+   scheduler: Publisher
 }
 
 impl Topic {
 
    fn new(name: String,
-          pubc: Arc<PublisherClient>,
-          subc: Arc<SubscriberClient>,
-          scheduler: Arc<Publisher>) -> Self {
+          pubc: PublisherClient,
+          subc: SubscriberClient,
+          scheduler: Publisher) -> Self {
       Self {
          name,
          stopped: RwLock::new(false),
@@ -80,7 +80,7 @@ impl Topic {
    }
 
    async fn publish(&mut self, message: PubsubMessage) -> Awaiter {
-      if self.stopped.read() {
+      if *self.stopped.read() {
          let (sender,receiver) = channel();
          sender.send(Err(Status::new(tonic::Status::unavailable("stopped"))));
          return Awaiter::new(receiver);
@@ -88,15 +88,15 @@ impl Topic {
       return self.scheduler.publish(message).await;
    }
 
-   pub async fn stop(&mut self) {
+   pub fn stop(&mut self) {
       if self.stop_if_needed() {
-         self.scheduler.sto().await;
+         self.scheduler.stop();
       }
    }
 
    fn stop_if_needed(&self) -> bool {
       let mut w = self.stopped.write();
-      if w {
+      if *w {
          return false
       }
       *w = true;

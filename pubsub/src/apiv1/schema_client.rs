@@ -3,10 +3,7 @@ use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetrye
 use google_cloud_gax::invoke::invoke_reuse;
 use google_cloud_gax::util::create_request;
 use google_cloud_googleapis::pubsub::v1::schema_service_client::SchemaServiceClient;
-use google_cloud_googleapis::pubsub::v1::{
-    CreateSchemaRequest, GetSchemaRequest, ListSchemasRequest, Schema, ValidateMessageRequest,
-    ValidateMessageResponse, ValidateSchemaRequest, ValidateSchemaResponse,
-};
+use google_cloud_googleapis::pubsub::v1::{CreateSchemaRequest, DeleteSchemaRequest, GetSchemaRequest, ListSchemasRequest, Schema, ValidateMessageRequest, ValidateMessageResponse, ValidateSchemaRequest, ValidateSchemaResponse};
 use google_cloud_googleapis::{Code, Status};
 use google_cloud_grpc::conn::Channel;
 use tonic::Response;
@@ -81,7 +78,7 @@ impl SchemaClient {
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Vec<Schema>, Status> {
         let mut setting = Self::get_call_setting(opt);
-        let project = &req.project;
+        let project = &req.parent;
         let mut all = vec![];
         //eager loading
         loop {
@@ -98,7 +95,7 @@ impl SchemaClient {
                 &mut setting,
             )
             .await?;
-            all.extend(response.topics.into_iter());
+            all.extend(response.schemas.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
             }
@@ -109,7 +106,7 @@ impl SchemaClient {
     /// delete_schema deletes a schema.
     pub async fn delete_schema(
         &mut self,
-        req: GetSchemaRequest,
+        req: DeleteSchemaRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<()>, Status> {
         let mut setting = Self::get_call_setting(opt);

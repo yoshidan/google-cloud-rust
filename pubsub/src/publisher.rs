@@ -39,7 +39,7 @@ impl Awaiter {
         }
     }
     pub async fn get(&mut self) -> Result<String, Status> {
-        match timeout(self.config.session_get_timeout, self.consumer).await {
+        match timeout(std::time::Duration::from_secs(1), &mut self.consumer).await {
            Ok(v) => match v {
                Ok(vv) => vv,
                Err(e) => Err(Status::new(tonic::Status::unknown(e.to_string())))
@@ -52,14 +52,17 @@ impl Awaiter {
 impl Publisher {
 
     pub fn new( topic: String, config: SchedulerConfig, pubc: PublisherClient ) -> Self {
-        let (sender, receiver) = async_channel::unbounded();
-        let workers = (0..config.workers).map(|| {
+        let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
+        let workers = (0..config.workers).map(|_| {
             let mut client = pubc.clone();
-            tokio::spawn(async {
+            let receiver_for_worker = receiver.clone();
+            let topic_for_worker = topic.clone();
+            tokio::spawn(async move {
                 loop {
-                    if let Ok(message) = receiver.recv().await {
+                    if let Ok(message) = receiver_for_worker.recv().await {
+                        println!("start publish");
                         let result = client.publish(PublishRequest {
-                            topic: topic.to_string(),
+                            topic: topic_for_worker.to_string(),
                             messages: vec![message.message],
                         },None).await.map(|v| v.into_inner().message_ids);
 
@@ -73,6 +76,7 @@ impl Publisher {
                             }
                         }
                     }else {
+                        print!("error");
                         break;
                     }
                 }
@@ -87,7 +91,7 @@ impl Publisher {
 
     pub async fn publish(&mut self, message: PubsubMessage) -> Awaiter{
 
-        let (producer, consumer) = oneshot::channel();
+        let (producer, mut consumer) = oneshot::channel();
         self.sender.send(ReservedMessage {
             producer,
             message
@@ -97,14 +101,14 @@ impl Publisher {
         }
     }
 
-    pub async fn stop(&mut self) {
+    pub fn stop(&mut self) {
         if self.stopped {
             return
         }
         self.stopped = true;
         self.sender.close();
-        for worker in self.workers {
-            worker.await;
+        for worker in self.workers.iter() {
+            worker.abort();
         }
     }
 
@@ -113,11 +117,7 @@ impl Publisher {
 impl Drop for Publisher {
 
     fn drop(&mut self) {
-        if self.stopped {
-            return
-        }
-        self.sender.close();
-        self.workers.into_iter().for_each(|v| v.abort())
+       self.stop() ;
     }
 
 }
