@@ -13,13 +13,13 @@ use google_cloud_googleapis::Status;
 use crate::apiv1::publisher_client::PublisherClient;
 
 pub struct ReservedMessage {
-    producer: oneshot<Result<String,Status>>,
+    producer: oneshot::Sender<Result<String,Status>>,
     message: PubsubMessage,
 }
 
 pub struct SchedulerConfig {
-    workers: usize,
-    timeout: Duration,
+    pub workers: usize,
+    pub timeout: Duration,
 }
 
 pub struct Publisher {
@@ -39,8 +39,11 @@ impl Awaiter {
         }
     }
     pub async fn get(&mut self) -> Result<String, Status> {
-        match timeout(self.config.session_get_timeout, receiver).await {
-           Ok(v) => v,
+        match timeout(self.config.session_get_timeout, self.consumer).await {
+           Ok(v) => match v {
+               Ok(vv) => vv,
+               Err(e) => Err(Status::new(tonic::Status::unknown(e.to_string())))
+           },
            Err(e) => Err(Status::new(tonic::Status::deadline_exceeded(e.to_string())))
        }
     }
@@ -52,7 +55,7 @@ impl Publisher {
         let (sender, receiver) = async_channel::unbounded();
         let workers = (0..config.workers).map(|| {
             let mut client = pubc.clone();
-            tokio::spawn(async || {
+            tokio::spawn(async {
                 loop {
                     if let Ok(message) = receiver.recv().await {
                         let result = client.publish(PublishRequest {
@@ -63,10 +66,10 @@ impl Publisher {
                         // notify to receivers
                         match result {
                             Ok(message_ids) => {
-                                message.producer.send(Ok(message_ids[i].to_string()));
+                                message.producer.send(Ok(message_ids[0].to_string()));
                             },
                             Err(status) => {
-                                producer.producer.send(Err(status));
+                                message.producer.send(Err(status));
                             }
                         }
                     }else {

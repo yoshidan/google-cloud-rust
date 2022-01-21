@@ -15,8 +15,8 @@ pub struct PublisherClient {
 
 impl PublisherClient {
     /// create new publisher client
-    pub fn new(inner: InternalPublisherClient<Channel>) -> PublisherClient {
-        PublisherClient { inner }
+    pub fn new(chan: Channel) -> PublisherClient {
+        PublisherClient { inner : InternalPublisherClient::new(chan)}
     }
 
     /// merge call setting

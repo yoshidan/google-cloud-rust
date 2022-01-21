@@ -1,6 +1,7 @@
 pub mod publisher_client;
 pub mod schema_client;
 pub mod subscriber_client;
+pub mod conn_pool;
 
 use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
 use google_cloud_googleapis::{Code, Status};

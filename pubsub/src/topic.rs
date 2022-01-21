@@ -7,7 +7,7 @@ use google_cloud_googleapis::spanner::admin::database::v1::backup::State;
 use google_cloud_googleapis::Status;
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
-use crate::publisher::{Awaiter, PublishScheduler};
+use crate::publisher::{Awaiter, Publisher};
 use crate::subscription::Subscription;
 
 /// Topic is a reference to a PubSub topic.
@@ -16,7 +16,7 @@ pub struct Topic {
    stopped: RwLock<bool>,
    pubc: Arc<PublisherClient>,
    subc: Arc<SubscriberClient>,
-   scheduler: Arc<PublishScheduler>
+   scheduler: Arc<Publisher>
 }
 
 impl Topic {
@@ -24,7 +24,7 @@ impl Topic {
    fn new(name: String,
           pubc: Arc<PublisherClient>,
           subc: Arc<SubscriberClient>,
-          scheduler: Arc<PublishScheduler>) -> Self {
+          scheduler: Arc<Publisher>) -> Self {
       Self {
          name,
          stopped: RwLock::new(false),
@@ -85,12 +85,12 @@ impl Topic {
          sender.send(Err(Status::new(tonic::Status::unavailable("stopped"))));
          return Awaiter::new(receiver);
       }
-      return self.scheduler.publish(self.name.to_string(), message).await;
+      return self.scheduler.publish(message).await;
    }
 
    pub async fn stop(&mut self) {
       if self.stop_if_needed() {
-         self.scheduler.flush().await;
+         self.scheduler.sto().await;
       }
    }
 
