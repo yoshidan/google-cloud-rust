@@ -95,7 +95,7 @@ impl Publisher {
         self.sender.send(ReservedMessage {
             producer,
             message
-        });
+        }).await;
         return Awaiter {
             consumer,
         }

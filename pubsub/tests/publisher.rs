@@ -11,7 +11,7 @@ async fn test_publish() -> Result<(), anyhow::Error> {
     let cons = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
     let client = PublisherClient::new(cons.conn());
 
-    let mut publisher = Publisher::new("test-topic1".to_string(), SchedulerConfig {
+    let mut publisher = Publisher::new("projects/local-project/topics/test-topic1".to_string(), SchedulerConfig {
         workers: 5,
         timeout: std::time::Duration::from_secs(1)
     }, client);
