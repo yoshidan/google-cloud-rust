@@ -93,7 +93,7 @@ impl Publisher {
         }
     }
 
-    pub async fn publish(&mut self, message: PubsubMessage) -> Awaiter{
+    pub async fn publish(&self, message: PubsubMessage) -> Awaiter{
 
         let (producer, mut consumer) = oneshot::channel();
         self.sender.send(ReservedMessage {
