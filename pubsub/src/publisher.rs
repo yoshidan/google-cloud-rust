@@ -53,7 +53,7 @@ impl Publisher {
 
     pub fn new( topic: String, config: SchedulerConfig, pubc: PublisherClient ) -> Self {
         let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
-        let workers = (0..config.workers).map(|_| {
+        let workers = (0..config.workers).map(|i| {
             let mut client = pubc.clone();
             let mut receiver_for_worker = receiver.clone();
             let topic_for_worker = topic.clone();
@@ -65,13 +65,14 @@ impl Publisher {
                             Ok(message) => {
                                 buffer.push_back(message);
                                 if buffer.len() > 3 {
+                                    println!("flush buffer worker {}", i);
                                     Self::flush(&mut client, topic_for_worker.as_str(), buffer).await;
                                     buffer = VecDeque::new();
                                 }
                             }
                             Err(e) => {
                                 //closed
-                                println!("closed");
+                                println!("closed worker {}", i);
                                 break;
                             }
                         },
@@ -79,7 +80,7 @@ impl Publisher {
                             if !buffer.is_empty() {
                                 Self::flush(&mut client, topic_for_worker.as_str(), buffer).await;
                                 buffer = VecDeque::new();
-                                println!("done flush")
+                                println!("done flush worker {}", i)
                             }
                         }
                     }
