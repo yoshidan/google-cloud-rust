@@ -3,13 +3,13 @@ use std::future::Future;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use prost::Message;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 use google_cloud_googleapis::pubsub::v1::{PublishRequest, PublishResponse, PubsubMessage};
-use google_cloud_googleapis::Status;
+use google_cloud_googleapis::{Code, Status};
 use crate::apiv1::publisher_client::PublisherClient;
 
 pub struct ReservedMessage {
@@ -39,7 +39,7 @@ impl Awaiter {
         }
     }
     pub async fn get(&mut self) -> Result<String, Status> {
-        match timeout(std::time::Duration::from_secs(1), &mut self.consumer).await {
+        match timeout(std::time::Duration::from_secs(3), &mut self.consumer).await {
            Ok(v) => match v {
                Ok(vv) => vv,
                Err(e) => Err(Status::new(tonic::Status::unknown(e.to_string())))
@@ -55,29 +55,33 @@ impl Publisher {
         let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
         let workers = (0..config.workers).map(|_| {
             let mut client = pubc.clone();
-            let receiver_for_worker = receiver.clone();
+            let mut receiver_for_worker = receiver.clone();
             let topic_for_worker = topic.clone();
             tokio::spawn(async move {
+                let mut buffer = VecDeque::<ReservedMessage>::new();
                 loop {
-                    if let Ok(message) = receiver_for_worker.recv().await {
-                        println!("start publish");
-                        let result = client.publish(PublishRequest {
-                            topic: topic_for_worker.to_string(),
-                            messages: vec![message.message],
-                        },None).await.map(|v| v.into_inner().message_ids);
-
-                        // notify to receivers
-                        match result {
-                            Ok(message_ids) => {
-                                message.producer.send(Ok(message_ids[0].to_string()));
-                            },
-                            Err(status) => {
-                                message.producer.send(Err(status));
+                    match timeout(std::time::Duration::from_millis(1),&mut receiver_for_worker.recv()).await {
+                        Ok(result) => match result {
+                            Ok(message) => {
+                                buffer.push_back(message);
+                                if buffer.len() > 3 {
+                                    Self::flush(&mut client, topic_for_worker.as_str(), buffer).await;
+                                    buffer = VecDeque::new();
+                                }
+                            }
+                            Err(e) => {
+                                //closed
+                                println!("closed");
+                                break;
+                            }
+                        },
+                        Err(e) => {
+                            if !buffer.is_empty() {
+                                Self::flush(&mut client, topic_for_worker.as_str(), buffer).await;
+                                buffer = VecDeque::new();
+                                println!("done flush")
                             }
                         }
-                    }else {
-                        print!("error");
-                        break;
                     }
                 }
             })
@@ -110,6 +114,35 @@ impl Publisher {
         for worker in self.workers.iter() {
             worker.abort();
         }
+    }
+
+
+    async fn flush(client: &mut PublisherClient, topic: &str, buffer: VecDeque<ReservedMessage>) {
+        let mut data = Vec::<PubsubMessage> ::with_capacity(buffer.len());
+        let mut callback = Vec::<oneshot::Sender<Result<String,Status>>>::with_capacity(buffer.len());
+        buffer.into_iter().for_each(|r| {
+            data.push(r.message);
+            callback.push(r.producer);
+        });
+        let result = client.publish(PublishRequest {
+            topic: topic.to_string(),
+            messages: data,
+        }, None).await.map(|v| v.into_inner().message_ids);
+
+        // notify to receivers
+        match result {
+            Ok(message_ids) => {
+                for (i, p) in callback.into_iter().enumerate() {
+                    p.send(Ok(message_ids[i].to_string()));
+                }
+            },
+            Err(status) => {
+                for p in callback.into_iter() {
+                    //TODO copy error
+                    p.send(Err(Status::new(tonic::Status::new(status.source.code().clone(), status.source.message().clone()))));
+                }
+            }
+        };
     }
 
 }
