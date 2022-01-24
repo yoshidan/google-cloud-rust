@@ -282,8 +282,8 @@ impl SubscriberClient {
                     let entries = vec![base_req.clone(), empty.clone(), empty.clone()];
                     for entry in entries {
                         println!("send");
-                        //TODO 何回かsendしないとダメのよう？
-                        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                        //TODO stream.message()した後にsendしないとダメらしい??
+                        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
                         yield entry;
                     }
                 });

@@ -52,13 +52,15 @@ async fn test_subscribe() -> Result<(), anyhow::Error> {
     let mut response = result.into_inner();
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     let mut d = 0;
-    tokio::spawn(async move {
-        let message = response.message().await.unwrap();
-        println!("message = {}", message.is_some());
-        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    let waiter = tokio::spawn(async move {
+        loop {
+            while let Some(message) = response.message().await.unwrap() {
+                println!("message = {}", message.received_messages.len());
+            }
+        }
     });
 
     //let mut subc = Arc::new(Subscriber::new("projects/local-project/subscriptions/test-subscription2".to_string(), client));
-    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+    waiter.await;
     Ok(())
 }
