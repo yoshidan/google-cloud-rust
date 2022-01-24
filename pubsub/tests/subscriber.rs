@@ -50,7 +50,7 @@ async fn test_subscribe() -> Result<(), anyhow::Error> {
 
     let result = client.streaming_pull(request.clone(),None).await.unwrap();
     let mut response = result.into_inner();
-    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     let mut d = 0;
     let waiter = tokio::spawn(async move {
         loop {

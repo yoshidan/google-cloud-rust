@@ -282,8 +282,9 @@ impl SubscriberClient {
                     let entries = vec![base_req.clone(), empty.clone(), empty.clone()];
                     for entry in entries {
                         println!("send");
-                        //TODO stream.message()した後にsendしないとダメらしい??
-                        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                        //TODO stream.message()した後にsendしないとダメらしい。
+                        //TODO 接続 -> yield -> .message() -> yield -> message() と一回取得したら次のメッセージを送信しない限り受信できない（Goでもそのようになっている）
+                        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                         yield entry;
                     }
                 });
