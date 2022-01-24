@@ -24,8 +24,10 @@ pub struct SubscriberClient {
 
 impl SubscriberClient {
     /// create new Subscriber client
-    pub fn new(inner: InternalSubscriberClient<Channel>) -> SubscriberClient {
-        SubscriberClient { inner }
+    pub fn new(chan: Channel) -> SubscriberClient {
+        SubscriberClient {
+            inner: InternalSubscriberClient::new(chan)
+        }
     }
 
     /// merge call setting
@@ -265,15 +267,31 @@ impl SubscriberClient {
 
         return invoke_reuse(
             |client| async {
-                let base_req = req.clone();
+                let mut base_req = req.clone();
                 let request = Box::pin(async_stream::stream! {
-                    let entries = vec![base_req];
+                    let empty =  StreamingPullRequest {
+        subscription: "".to_string(),
+        ack_ids: vec![],
+        modify_deadline_seconds: vec![],
+        modify_deadline_ack_ids: vec![],
+        stream_ack_deadline_seconds: 30,
+        client_id: "".to_string(),
+        max_outstanding_messages: 1000,
+        max_outstanding_bytes: 1000 * 1000
+    };
+                    let entries = vec![base_req.clone(), empty.clone(), empty.clone()];
                     for entry in entries {
+                        println!("send");
+                        //TODO 何回かsendしないとダメのよう？
+                        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                         yield entry;
                     }
                 });
+                let mut v = request.into_streaming_request();
+                let target = v.metadata_mut();
+                target.append("x-goog-request-params", format!("subscription={}", req.subscription.to_string()).parse().unwrap());
                 client
-                    .streaming_pull(request)
+                    .streaming_pull(v)
                     .await
                     .map_err(|e| (e.into(), client))
             },
