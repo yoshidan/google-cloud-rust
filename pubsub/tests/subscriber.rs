@@ -48,15 +48,27 @@ async fn test_subscribe() -> Result<(), anyhow::Error> {
         max_outstanding_bytes: 1000 * 1000
     };
 
-    let result = client.streaming_pull(request.clone(),None).await.unwrap();
+    let (sender, receiver) = tokio::sync::watch::channel(0);
+    let result = client.streaming_pull(request.clone(),receiver, None).await.unwrap();
     let mut response = result.into_inner();
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-    let mut d = 0;
+
+    //pinger
+    tokio::spawn(async move {
+        let mut d = 0;
+        loop {
+            d += 1;
+            let v = sender.send(d).is_ok();
+            println!("ping {} {}", d, v );
+            tokio::time::sleep(std::time::Duration::from_secs(4)).await;
+        }
+    });
     let waiter = tokio::spawn(async move {
         loop {
+
             while let Some(message) = response.message().await.unwrap() {
                 println!("message = {}", message.received_messages.len());
             }
+
         }
     });
 

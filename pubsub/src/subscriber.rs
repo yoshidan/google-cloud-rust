@@ -42,13 +42,14 @@ impl Subscriber {
 
              //   let m = response2.unwrap().into_inner().received_messages;
               //  println!("{}", m.len());
-                let response = client.streaming_pull(request, None).await;
+                let (sender, receiver) = tokio::sync::watch::channel(1);
+                let response = client.streaming_pull(request, receiver, None).await;
 
                 match response {
                     Ok(r) => {
                         let mut stream = r.into_inner();
                         loop {
-
+                            sender.send(1);
                             if let Some(message) = stream.message().await.unwrap()
                             {
                                 for m in message.received_messages {

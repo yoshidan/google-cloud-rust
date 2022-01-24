@@ -16,6 +16,7 @@ use google_cloud_googleapis::pubsub::v1::{
 use google_cloud_googleapis::{Code, Status};
 use google_cloud_grpc::conn::Channel;
 use tonic::{Response, Streaming};
+use tonic::codegen::futures_core::Stream;
 
 #[derive(Clone)]
 pub struct SubscriberClient {
@@ -261,32 +262,37 @@ impl SubscriberClient {
     pub async fn streaming_pull(
         &mut self,
         req: StreamingPullRequest,
+        receiver: tokio::sync::watch::Receiver<i32>,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Streaming<StreamingPullResponse>>, Status> {
         let mut setting = Self::get_call_setting(opt);
-
         return invoke_reuse(
             |client| async {
                 let mut base_req = req.clone();
+                let mut rx = receiver.clone();
                 let request = Box::pin(async_stream::stream! {
-                    let empty =  StreamingPullRequest {
-        subscription: "".to_string(),
-        ack_ids: vec![],
-        modify_deadline_seconds: vec![],
-        modify_deadline_ack_ids: vec![],
-        stream_ack_deadline_seconds: 30,
-        client_id: "".to_string(),
-        max_outstanding_messages: 1000,
-        max_outstanding_bytes: 1000 * 1000
-    };
-                    let entries = vec![base_req.clone(), empty.clone(), empty.clone()];
-                    for entry in entries {
-                        println!("send");
-                        //TODO stream.message()した後にsendしないとダメらしい。
-                        //TODO 接続 -> yield -> .message() -> yield -> message() と一回取得したら次のメッセージを送信しない限り受信できない（Goでもそのようになっている）
-                        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                        yield entry;
-                    }
+                    //１発は打たないと進まない
+                    println!("yield");
+                    yield base_req.clone();
+
+                    // ping message
+                    loop {
+                     if rx.changed().await.is_ok() {
+                        println!("received = {:?}", *rx.borrow());
+                         //TODO stream.message()した後にsendしないとダメらしい。
+                        yield  StreamingPullRequest {
+                    subscription: "".to_string(),
+                    ack_ids: vec![],
+                    modify_deadline_seconds: vec![],
+                    modify_deadline_ack_ids: vec![],
+                    stream_ack_deadline_seconds: 10,
+                    client_id: "".to_string(),
+                    max_outstanding_messages: 1000,
+                    max_outstanding_bytes: 1000 * 1000 * 1000
+                };
+                    };
+                    println!("not changed");
+                            }
                 });
                 let mut v = request.into_streaming_request();
                 let target = v.metadata_mut();
