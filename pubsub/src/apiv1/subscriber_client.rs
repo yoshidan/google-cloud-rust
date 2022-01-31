@@ -271,9 +271,10 @@ impl SubscriberClient {
                 let mut base_req = req.clone();
                 let mut rx = receiver.clone();
                 let request = Box::pin(async_stream::stream! {
-                    //１発は打たないと進まない
+                    //１発は打たないと進まないとstreaming_pull().awaitで帰ってこない
                     println!("yield");
                     yield base_req.clone();
+
 
                     // ping message
                     loop {

@@ -51,9 +51,10 @@ async fn test_subscribe() -> Result<(), anyhow::Error> {
     let (sender, receiver) = tokio::sync::watch::channel(0);
     let result = client.streaming_pull(request.clone(),receiver, None).await.unwrap();
     let mut response = result.into_inner();
+    println!("start response");
 
     //pinger
-    tokio::spawn(async move {
+    /*tokio::spawn(async move {
         let mut d = 0;
         loop {
             d += 1;
@@ -62,6 +63,7 @@ async fn test_subscribe() -> Result<(), anyhow::Error> {
             tokio::time::sleep(std::time::Duration::from_secs(4)).await;
         }
     });
+     */
     let waiter = tokio::spawn(async move {
         loop {
 
