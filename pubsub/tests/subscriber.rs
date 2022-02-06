@@ -38,13 +38,14 @@ async fn test_subscribe() -> Result<(), anyhow::Error> {
     let (tx, rx) = tokio::sync::oneshot::channel::<bool>();
     tokio::spawn(async move {
         match receiver.recv().await {
-            Ok(message) => {
-                println!("message = {}", message.message_id);
-                let data = message.data;
-                let string = std::str::from_utf8(&data).unwrap();
+            Ok(mut message) => {
+                println!("message = {}", message.message.message_id);
+                let data = &message.message.data;
+                let string = std::str::from_utf8(data).unwrap();
                 if string == "test_message" {
                     tx.send(true);
                 }
+                message.ack().await;
             },
             Err(e) => {
                 println!("closed {:?}", e);
