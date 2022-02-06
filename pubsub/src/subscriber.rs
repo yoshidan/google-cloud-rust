@@ -8,19 +8,20 @@ use prost::Message;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
-use google_cloud_googleapis::pubsub::v1::{PublishRequest, PublishResponse, PubsubMessage, PullRequest, StreamingPullRequest, StreamingPullResponse};
+use google_cloud_googleapis::pubsub::v1::{PublishRequest, PublishResponse, PubsubMessage, PullRequest, ReceivedMessage, StreamingPullRequest, StreamingPullResponse};
 use google_cloud_googleapis::{Code, Status};
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
 
 pub struct Subscriber {
-   workers: Vec<JoinHandle<()>>
+   pub workers: Vec<JoinHandle<()>>
 }
 
 impl Subscriber {
-    pub fn new(subsciption: String, subc: SubscriberClient) -> Subscriber {
+    pub fn new(subsciption: String, subc: SubscriberClient, queue:async_channel::Sender<PubsubMessage> ) -> Subscriber {
         let workers = (0..3).map(|_| {
             let mut client = subc.clone();
+            let mut queue_clone = queue.clone();
             let subscription_for_worker = subsciption.clone();
             tokio::spawn(async move {
                 println!("start subscriber");
@@ -34,14 +35,7 @@ impl Subscriber {
                     max_outstanding_messages: 1000,
                     max_outstanding_bytes: 1000 * 1000 * 1000
                 };
-                let response2 = client.pull(PullRequest {
-                    subscription: subscription_for_worker,
-                    return_immediately: false,
-                    max_messages: 10
-                }, None).await;
 
-             //   let m = response2.unwrap().into_inner().received_messages;
-              //  println!("{}", m.len());
                 let (sender, receiver) = tokio::sync::watch::channel(1);
                 let response = client.streaming_pull(request, receiver, None).await;
 
@@ -49,16 +43,17 @@ impl Subscriber {
                     Ok(r) => {
                         let mut stream = r.into_inner();
                         loop {
-                            sender.send(1);
+                            //sender.send(1);
                             if let Some(message) = stream.message().await.unwrap()
                             {
                                 for m in message.received_messages {
                                     if let Some(mes) = m.message {
-                                        println!("recv {}", mes.message_id);
+                                        println!("recev message {}", mes.message_id);
+                                        queue_clone.send(mes).await;
                                     }
                                 }
                             }else {
-                              //  println!("recv nothing");
+                                println!("recv nothing");
                                 tokio::time::sleep(std::time::Duration::from_millis(10));
                             }
                         }
