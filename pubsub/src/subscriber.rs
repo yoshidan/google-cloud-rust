@@ -68,18 +68,12 @@ impl Subscriber {
             match response {
                 Ok(r) => {
                     let mut stream = r.into_inner();
-                    loop {
-                        if let Some(message) = stream.message().await.unwrap()
-                        {
-                            for m in message.received_messages {
-                                if let Some(mes) = m.message {
-                                    log::debug!("message received: {}", mes.message_id);
-                                    queue.send(mes).await;
-                                }
+                    while let Ok(Some(message)) = stream.message().await {
+                        for m in message.received_messages {
+                            if let Some(mes) = m.message {
+                                log::debug!("message received: {}", mes.message_id);
+                                queue.send(mes).await;
                             }
-                        }else {
-                            println!("may be receiver closed");
-                            break;
                         }
                     }
                 },
