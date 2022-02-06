@@ -18,6 +18,19 @@ use google_cloud_grpc::conn::Channel;
 use tonic::{Response, Streaming};
 use tonic::codegen::futures_core::Stream;
 
+pub(crate)  fn create_default_streaming_pull_request(subscription: String) -> StreamingPullRequest {
+    return StreamingPullRequest {
+        subscription,
+        ack_ids: vec![],
+        modify_deadline_seconds: vec![],
+        modify_deadline_ack_ids: vec![],
+        stream_ack_deadline_seconds: 10,
+        client_id: "".to_string(),
+        max_outstanding_messages: 1000,
+        max_outstanding_bytes: 1000 * 1000 * 1000
+    };
+}
+
 #[derive(Clone)]
 pub struct SubscriberClient {
     inner: InternalSubscriberClient<Channel>,
@@ -262,38 +275,21 @@ impl SubscriberClient {
     pub async fn streaming_pull(
         &mut self,
         req: StreamingPullRequest,
-        receiver: tokio::sync::watch::Receiver<i32>,
+        ping_receiver: async_channel::Receiver<bool>,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Streaming<StreamingPullResponse>>, Status> {
         let mut setting = Self::get_call_setting(opt);
         return invoke_reuse(
             |client| async {
                 let mut base_req = req.clone();
-                let mut rx = receiver.clone();
+                let mut rx = ping_receiver.clone();
                 let request = Box::pin(async_stream::stream! {
-                    //１発は打たないと進まないとstreaming_pull().awaitで帰ってこない
-                    println!("yield");
                     yield base_req.clone();
 
-
                     // ping message
-                    loop {
-                     if rx.changed().await.is_ok() {
-                        println!("received = {:?}", *rx.borrow());
-                         //TODO stream.message()した後にsendしないとダメらしい。
-                        yield  StreamingPullRequest {
-                    subscription: "".to_string(),
-                    ack_ids: vec![],
-                    modify_deadline_seconds: vec![],
-                    modify_deadline_ack_ids: vec![],
-                    stream_ack_deadline_seconds: 10,
-                    client_id: "".to_string(),
-                    max_outstanding_messages: 1000,
-                    max_outstanding_bytes: 1000 * 1000 * 1000
-                };
-                    };
-                    println!("not changed");
-                            }
+                    while let Ok(r) = rx.recv().await {
+                       yield create_default_streaming_pull_request("".to_string())
+                    }
                 });
                 let mut v = request.into_streaming_request();
                 let target = v.metadata_mut();
