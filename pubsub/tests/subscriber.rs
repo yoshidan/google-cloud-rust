@@ -78,25 +78,27 @@ async fn test_multi_subscriber_single_subscription() -> Result<(), anyhow::Error
 
     let cons = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
     let mut subc = SubscriberClient::new(cons.conn());
-    let subscription1 = subc.create_subscription(create_default_subscription_request( "projects/local-project/topics/test-topic1".to_string()), None).await.unwrap().into_inner().name;
-    let (sender, receiver) = async_channel::unbounded();
-    let mut subscriber = Subscriber::new(subscription1.clone(), subc.clone(), sender, Config::default());
-    let (sender2, receiver2) = async_channel::unbounded();
-    let mut subscriber2= Subscriber::new(subscription1.clone(), subc.clone() , sender2, Config::default());
+    let v = Arc::new(AtomicU32::new(0));
+    let subscription = subc.create_subscription(create_default_subscription_request( "projects/local-project/topics/test-topic1".to_string()), None).await.unwrap().into_inner().name;
+    let mut subscribers = vec![];
+    for _ in 0..3 {
+        let mut subc = SubscriberClient::new(cons.conn());
+        let (sender, receiver) = async_channel::unbounded();
+        subscribers.push(Subscriber::new(subscription.clone(), subc, sender, Config::default()));
+        subscribe(v.clone(), subscription.clone(), receiver);
+    }
 
     let mut publisher = publish(cons.conn()).await;
 
-    let v = Arc::new(AtomicU32::new(0));
-    subscribe(v.clone(), subscription1.clone(), receiver);
-    let v2 = Arc::new(AtomicU32::new(0));
-    subscribe(v2.clone(), subscription1, receiver2);
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-    subscriber.stop();
-    subscriber2.stop();
+    for mut subscriber in subscribers {
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        subscriber.stop();
+        println!("stopped");
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    }
+
+    assert_eq!(v.load(SeqCst),1);
     publisher.stop();
-    println!("stopped");
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-    assert_eq!(v.load(SeqCst) + v2.load(SeqCst), 1);
     Ok(())
 }
 
@@ -106,29 +108,25 @@ async fn test_multi_subscriber_multi_subscription() -> Result<(), anyhow::Error>
 
     let cons = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
 
-    let mut subc = SubscriberClient::new(cons.conn());
-    let subscription1 = subc.create_subscription(create_default_subscription_request( "projects/local-project/topics/test-topic1".to_string()), None).await.unwrap().into_inner().name;
-    let subscription2 = subc.create_subscription(create_default_subscription_request("projects/local-project/topics/test-topic1".to_string()), None).await.unwrap().into_inner().name;
-
-    let (sender, receiver) = async_channel::unbounded();
-    let mut subscriber = Subscriber::new(subscription1.clone(), subc.clone() , sender, Config::default());
-    let (sender2, receiver2) = async_channel::unbounded();
-    let mut subscriber2= Subscriber::new(subscription2.clone(), subc.clone(), sender2, Config::default());
+    let mut subscribers = vec![];
+    for _ in 0..3 {
+        let mut subc = SubscriberClient::new(cons.conn());
+        let subscription = subc.create_subscription(create_default_subscription_request("projects/local-project/topics/test-topic1".to_string()), None).await.unwrap().into_inner().name;
+        let (sender, receiver) = async_channel::unbounded();
+        let v = Arc::new(AtomicU32::new(0));
+        subscribers.push((v.clone(), Subscriber::new(subscription.clone(), subc, sender, Config::default())));
+        subscribe(v.clone(), subscription, receiver);
+    }
 
     let mut publisher = publish(cons.conn()).await;
 
-    let v = Arc::new(AtomicU32::new(0));
-    subscribe(v.clone(), subscription1, receiver);
-    let v2 = Arc::new(AtomicU32::new(0));
-    subscribe(v2.clone(), subscription2, receiver2);
-
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-    subscriber.stop();
-    subscriber2.stop();
+    for (v, mut subscriber) in subscribers {
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        subscriber.stop();
+        println!("stopped");
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        assert_eq!(v.load(SeqCst),1);
+    }
     publisher.stop();
-    println!("stopped");
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-    assert_eq!(v.load(SeqCst),1);
-    assert_eq!(v2.load(SeqCst),1);
     Ok(())
 }
