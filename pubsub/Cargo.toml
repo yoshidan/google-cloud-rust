@@ -33,3 +33,4 @@ google-cloud-googleapis = { version = "0.2.1", path = "../googleapis" }
 env_logger = "0.9"
 serial_test = "0.5.1"
 anyhow = "1.0.48"
+uuid = { version="0.8.2", features=["v4"] }

@@ -18,7 +18,7 @@ use google_cloud_grpc::conn::Channel;
 use tonic::{Response, Streaming};
 use tonic::codegen::futures_core::Stream;
 
-pub(crate)  fn create_default_streaming_pull_request(subscription: String) -> StreamingPullRequest {
+pub(crate) fn create_default_streaming_pull_request(subscription: String) -> StreamingPullRequest {
     return StreamingPullRequest {
         subscription,
         ack_ids: vec![],
@@ -30,6 +30,7 @@ pub(crate)  fn create_default_streaming_pull_request(subscription: String) -> St
         max_outstanding_bytes: 1000 * 1000 * 1000
     };
 }
+
 
 #[derive(Clone)]
 pub struct SubscriberClient {
@@ -230,6 +231,7 @@ impl SubscriberClient {
     ) -> Result<Response<()>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let subscription = &req.subscription;
+        println!("ack {}", req.ack_ids.first().unwrap().to_string());
         return invoke_reuse(
             |client| async {
                 let request = create_request(format!("subscription={}", subscription), req.clone());

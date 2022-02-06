@@ -15,6 +15,7 @@ use crate::apiv1::subscriber_client::{create_default_streaming_pull_request, Sub
 
 pub struct ReceivedMessage {
    pub message: PubsubMessage ,
+   ack_id: String,
    subscription: String,
    subscriber_client: SubscriberClient
 }
@@ -23,7 +24,7 @@ impl ReceivedMessage {
     pub async fn ack(&mut self) -> Result<(), Status> {
        self.subscriber_client.acknowledge(AcknowledgeRequest {
            subscription: self.subscription.to_string(),
-           ack_ids: vec![self.message.message_id.to_string()]
+           ack_ids: vec![self.ack_id.to_string()]
        }, None).await.map(|e| e.into_inner())
     }
 
@@ -31,7 +32,7 @@ impl ReceivedMessage {
         self.subscriber_client.modify_ack_deadline(ModifyAckDeadlineRequest {
             subscription: self.subscription.to_string(),
             ack_deadline_seconds: 0,
-            ack_ids: vec![self.message.message_id.to_string()]
+            ack_ids: vec![self.ack_id.to_string()]
         }, None).await.map(|e| e.into_inner())
     }
 }
@@ -97,6 +98,7 @@ impl Subscriber {
                                 log::debug!("message received: {}", mes.message_id);
                                 queue.send(ReceivedMessage {
                                     message: mes,
+                                    ack_id: m.ack_id,
                                     subscription: subscription.to_string(),
                                     subscriber_client: client.clone()
                                 }).await;
