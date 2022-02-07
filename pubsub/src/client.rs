@@ -2,10 +2,11 @@ use google_cloud_googleapis::Status;
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
-use crate::publisher::{Publisher, PublisherConfig, SchedulerConfig};
+use crate::publisher::{Publisher, PublisherConfig};
 use crate::subscription::Subscription;
 use crate::topic::Topic;
 use google_cloud_googleapis::pubsub::v1::{DetachSubscriptionRequest, ListSubscriptionsRequest, ListTopicsRequest, Subscription as InternalSubscription, Topic as InternalTopic};
+use google_cloud_grpc::conn::Error;
 
 pub struct Config {
     pub pool_size: usize,
@@ -25,16 +26,17 @@ pub struct Client {
 }
 
 impl Client {
-    fn new(project_id: &str, config: Option<Config>) -> Self {
+    pub async fn new(project_id: &str, config: Option<Config>) -> Result<Self, Error> {
         let pool_size = config.unwrap_or(Config::default()).pool_size;
         let emulator_host = match std::env::var("PUBSUB_EMULATOR_HOST") {
             Ok(s) => Some(s),
             Err(_) => None,
         };
-        return Self {
+        let cm = ConnectionManager::new(pool_size, emulator_host).await?;
+        return Ok(Self {
            project_id: project_id.to_string(),
-           cm: ConnectionManager::new(pool_size, emulator_host)
-        }
+           cm,
+        })
     }
 
     pub async fn create_subscription(&self, subscription_id: &str, topic_id: &str) -> Result<Subscription, Status> {
@@ -57,7 +59,7 @@ impl Client {
         }, None).await.map(|v| self.subscription(subscription_id))
     }
 
-    pub fn subscriptions(&self) -> Result<Vec<Subscription>, Status> {
+    pub async fn subscriptions(&self) -> Result<Vec<Subscription>, Status> {
         let mut subc= SubscriberClient::new(self.cm.conn());
         subc.list_subscriptions(ListSubscriptionsRequest {
             project: self.project_id.to_string(),
@@ -76,7 +78,7 @@ impl Client {
     pub async fn detach_subscription(&self, sub_id: &str) -> Result<(), Status> {
         let mut client = PublisherClient::new(self.cm.conn());
         client.detach_subscription(DetachSubscriptionRequest{
-            subscription: subscription_name(sub_id),
+            subscription: self.subscription_name(sub_id),
         }, None).await.map(|v| ())
     }
 
@@ -93,8 +95,9 @@ impl Client {
         }, None).await.map(|v| self.topic(topic_id, topic_config))
     }
 
-    pub fn topics(&self, config: Option<PublisherConfig>) -> Result<Vec<Topic>, Status> {
+    pub async fn topics(&self, config: Option<PublisherConfig>) -> Result<Vec<Topic>, Status> {
         let mut pubc = PublisherClient::new(self.cm.conn());
+        let opt = config.unwrap_or_default();
         pubc.list_topics(ListTopicsRequest {
             project: self.project_id.to_string(),
             page_size: 0,
@@ -105,7 +108,8 @@ impl Client {
                     x.name.to_string(),
                     pubc.clone(),
                     SubscriberClient::new(self.cm.conn()),
-                    config)
+                    opt.clone(),
+                    )
             }).collect()
         })
     }
@@ -116,11 +120,11 @@ impl Client {
         Topic::new(self.topic_name(id), pubc, subc, config.unwrap_or(PublisherConfig::default()))
     }
 
-    fn topic_name(&self, id: &str) -> string {
+    fn topic_name(&self, id: &str) -> String {
         format!("projects/{}/topics/{}", self.project_id, id)
     }
 
-    fn subscription_name(&self, id: &str) -> string {
+    fn subscription_name(&self, id: &str) -> String {
         format!("projects/{}/subscriptions/{}", self.project_id, id)
     }
 }

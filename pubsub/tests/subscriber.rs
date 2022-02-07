@@ -5,7 +5,7 @@ use parking_lot::Mutex;
 use google_cloud_googleapis::pubsub::v1::{PubsubMessage, StreamingPullRequest, Subscription};
 use google_cloud_pubsub::apiv1::publisher_client::PublisherClient;
 use google_cloud_pubsub::apiv1::conn_pool::ConnectionManager;
-use google_cloud_pubsub::publisher::{Publisher, SchedulerConfig};
+use google_cloud_pubsub::publisher::{Publisher, PublisherConfig};
 use serial_test::serial;
 use tokio::time::timeout;
 use tonic::IntoStreamingRequest;
@@ -39,10 +39,7 @@ fn create_default_subscription_request(topic: String) -> Subscription {
 
 async fn publish(ch: Channel) -> Publisher {
     let pubc = PublisherClient::new(ch);
-    let mut publisher = Publisher::new("projects/local-project/topics/test-topic1".to_string(), SchedulerConfig {
-        workers: 5,
-        timeout: std::time::Duration::from_secs(1)
-    }, pubc);
+    let mut publisher = Publisher::new("projects/local-project/topics/test-topic1".to_string(), PublisherConfig::default(), pubc);
     publisher.publish(PubsubMessage {
         data: "test_message".into(),
         attributes: Default::default(),

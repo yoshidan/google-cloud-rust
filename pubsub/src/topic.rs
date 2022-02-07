@@ -7,7 +7,7 @@ use google_cloud_googleapis::spanner::admin::database::v1::backup::State;
 use google_cloud_googleapis::Status;
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
-use crate::publisher::{Awaiter, Publisher, SchedulerConfig};
+use crate::publisher::{Awaiter, Publisher, PublisherConfig};
 use crate::subscription::Subscription;
 
 /// Topic is a reference to a PubSub topic.
@@ -24,8 +24,8 @@ impl Topic {
    pub fn new(name: String,
           pubc: PublisherClient,
           subc: SubscriberClient,
-          scheduler_config: SchedulerConfig ) -> Self {
-      let scheduler = Publisher::new(topc, scheduler_config, pubc.clone());
+          config: PublisherConfig ) -> Self {
+      let scheduler = Publisher::new(name.clone(), config, pubc.clone());
       Self {
          name,
          stopped: RwLock::new(false),

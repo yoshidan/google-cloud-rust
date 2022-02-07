@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::future::Future;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -17,6 +17,7 @@ pub struct ReservedMessage {
     message: PubsubMessage,
 }
 
+#[derive(Clone)]
 pub struct PublisherConfig {
     pub workers: usize,
     pub timeout: Duration,
@@ -34,6 +35,7 @@ impl Default for PublisherConfig {
 }
 
 pub struct Publisher {
+    priority_senders: Vec<async_channel::Sender<ReservedMessage>>,
     sender: async_channel::Sender<ReservedMessage>,
     workers: Vec<JoinHandle<()>>,
     stopped: bool
@@ -64,26 +66,38 @@ impl Publisher {
 
     pub fn new( topic: String, config: PublisherConfig, pubc: PublisherClient ) -> Self {
         let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
-        let workers = (0..config.workers).map(|i| {
+        let mut receivers = Vec::with_capacity(1 + config.workers);
+        let mut priority_senders = Vec::with_capacity(config.workers);
+        for _ in 0..config.workers {
+            receivers.push(receiver.clone()) ;
+        }
+
+        // ordering key message
+        for _ in 0..config.workers {
+            let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
+            receivers.push(receiver);
+            priority_senders.push(sender);
+        }
+
+        let workers = receivers.into_iter().map(|receiver| {
             let mut client = pubc.clone();
-            let mut receiver_for_worker = receiver.clone();
             let topic_for_worker = topic.clone();
             tokio::spawn(async move {
                 let mut buffer = VecDeque::<ReservedMessage>::new();
                 loop {
-                    match timeout(std::time::Duration::from_millis(1),&mut receiver_for_worker.recv()).await {
+                    match timeout(std::time::Duration::from_millis(1),&mut receiver.recv()).await {
                         Ok(result) => match result {
                             Ok(message) => {
                                 buffer.push_back(message);
                                 if buffer.len() > 3 {
-                                    println!("flush buffer worker {}", i);
+                                    println!("flush buffer worker");
                                     Self::flush(&mut client, topic_for_worker.as_str(), buffer).await;
                                     buffer = VecDeque::new();
                                 }
                             }
                             Err(e) => {
                                 //closed
-                                println!("closed worker {}", i);
+                                println!("closed worker");
                                 break;
                             }
                         },
@@ -91,7 +105,7 @@ impl Publisher {
                             if !buffer.is_empty() {
                                 Self::flush(&mut client, topic_for_worker.as_str(), buffer).await;
                                 buffer = VecDeque::new();
-                                println!("done flush worker {}", i)
+                                println!("done flush worker")
                             }
                         }
                     }
@@ -101,6 +115,7 @@ impl Publisher {
         Self {
             workers,
             sender,
+            priority_senders,
             stopped: false
         }
     }
@@ -108,10 +123,19 @@ impl Publisher {
     pub async fn publish(&self, message: PubsubMessage) -> Awaiter{
 
         let (producer, mut consumer) = oneshot::channel();
-        self.sender.send(ReservedMessage {
-            producer,
-            message
-        }).await;
+        if message.ordering_key.is_empty() {
+            self.sender.send( ReservedMessage {
+                producer,
+                message
+            }).await;
+        }else {
+            let checksum = crc32fast::hash(message.ordering_key.as_bytes()) as usize;
+            let index = checksum % self.priority_senders.len();
+            self.priority_senders[index].send(ReservedMessage {
+                producer,
+                message
+            }).await;
+        }
         return Awaiter {
             consumer,
         }
