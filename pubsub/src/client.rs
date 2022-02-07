@@ -5,7 +5,7 @@ use crate::apiv1::subscriber_client::SubscriberClient;
 use crate::publisher::{Publisher, PublisherConfig, SchedulerConfig};
 use crate::subscription::Subscription;
 use crate::topic::Topic;
-use google_cloud_googleapis::pubsub::v1::{DetachSubscriptionRequest, ListSubscriptionsRequest, Subscription as InternalSubscription, Topic as InternalTopic};
+use google_cloud_googleapis::pubsub::v1::{DetachSubscriptionRequest, ListSubscriptionsRequest, ListTopicsRequest, Subscription as InternalSubscription, Topic as InternalTopic};
 
 pub struct Config {
     pub pool_size: usize,
@@ -54,25 +54,24 @@ impl Client {
             message_retention_duration: None,
             retain_acked_messages: false,
             topic_message_retention_duration: None
-        }, None).map(|v| Ok(self.subscription(subscription_id))).await
+        }, None).await.map(|v| self.subscription(subscription_id))
     }
 
-    /*
     pub fn subscriptions(&self) -> Result<Vec<Subscription>, Status> {
         let mut subc= SubscriberClient::new(self.cm.conn());
         subc.list_subscriptions(ListSubscriptionsRequest {
             project: self.project_id.to_string(),
             page_size: 0,
             page_token: "".to_string()
-        }, None).await.map(|v| )
+        }, None).await.map(|v| v.into_iter().map( |x |
+            Subscription::new(x.name.to_string(), subc.clone())).collect()
+        )
     }
-     */
 
     pub fn subscription(&self, id: &str) -> Subscription {
         let subc= SubscriberClient::new(self.cm.conn());
         Subscription::new(self.subscription_name(id), subc)
     }
-
 
     pub async fn detach_subscription(&self, sub_id: &str) -> Result<(), Status> {
         let mut client = PublisherClient::new(self.cm.conn());
@@ -80,7 +79,6 @@ impl Client {
             subscription: subscription_name(sub_id),
         }, None).await.map(|v| ())
     }
-
 
     pub async fn create_topic(&self, topic_id: &str, topic_config: Option<PublisherConfig>) -> Result<Topic, Status> {
         let mut client = PublisherClient::new(self.cm.conn()) ;
@@ -93,6 +91,23 @@ impl Client {
             satisfies_pzs: false,
             message_retention_duration: None
         }, None).await.map(|v| self.topic(topic_id, topic_config))
+    }
+
+    pub fn topics(&self, config: Option<PublisherConfig>) -> Result<Vec<Topic>, Status> {
+        let mut pubc = PublisherClient::new(self.cm.conn());
+        pubc.list_topics(ListTopicsRequest {
+            project: self.project_id.to_string(),
+            page_size: 0,
+            page_token: "".to_string()
+        }, None).await.map(|v| {
+            v.into_iter().map(|x| {
+                Topic::new(
+                    x.name.to_string(),
+                    pubc.clone(),
+                    SubscriberClient::new(self.cm.conn()),
+                    config)
+            }).collect()
+        })
     }
 
     pub fn topic(&self, id: &str, config: Option<PublisherConfig>) -> Topic {
