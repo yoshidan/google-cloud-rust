@@ -3,3 +3,4 @@ pub mod topic;
 pub mod subscription;
 pub mod publisher;
 pub mod subscriber;
+pub mod client;

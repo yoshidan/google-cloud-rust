@@ -77,11 +77,10 @@ impl Subscriber {
 
         // ping request
         let ping_handle = tokio::spawn(async move {
-            let result = ping_sender.send(true).await;
-            if result.is_err() {
-               log::debug!("receiver closed {:?}", result.unwrap_err())
+            while let Ok(result) = ping_sender.send(true).await {
+                tokio::time::sleep(std::time::Duration::from_secs(ping_interval_second)).await;
             }
-            tokio::time::sleep(std::time::Duration::from_secs(ping_interval_second)).await;
+            log::debug!("receiver closed");
         });
 
         let receive_handle = tokio::spawn(async move {

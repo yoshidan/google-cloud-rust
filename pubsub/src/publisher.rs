@@ -17,9 +17,20 @@ pub struct ReservedMessage {
     message: PubsubMessage,
 }
 
-pub struct SchedulerConfig {
+pub struct PublisherConfig {
     pub workers: usize,
     pub timeout: Duration,
+    pub buffer_size: usize
+}
+
+impl Default for PublisherConfig {
+    fn default() -> Self {
+        Self {
+            workers: 3,
+            timeout: std::time::Duration::from_secs(3),
+            buffer_size: 3
+        }
+    }
 }
 
 pub struct Publisher {
@@ -51,7 +62,7 @@ impl Awaiter {
 
 impl Publisher {
 
-    pub fn new( topic: String, config: SchedulerConfig, pubc: PublisherClient ) -> Self {
+    pub fn new( topic: String, config: PublisherConfig, pubc: PublisherClient ) -> Self {
         let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
         let workers = (0..config.workers).map(|i| {
             let mut client = pubc.clone();
