@@ -11,6 +11,7 @@ use tokio::time::timeout;
 use google_cloud_googleapis::pubsub::v1::{PublishRequest, PublishResponse, PubsubMessage};
 use google_cloud_googleapis::{Code, Status};
 use crate::apiv1::publisher_client::PublisherClient;
+use crate::util::ToUsize;
 
 pub struct ReservedMessage {
     producer: oneshot::Sender<Result<String,Status>>,
@@ -129,8 +130,8 @@ impl Publisher {
                 message
             }).await;
         }else {
-            let checksum = crc32fast::hash(message.ordering_key.as_bytes()) as usize;
-            let index = checksum % self.priority_senders.len();
+            let key = message.ordering_key.as_str().to_usize();
+            let index = key % self.priority_senders.len();
             self.priority_senders[index].send(ReservedMessage {
                 producer,
                 message

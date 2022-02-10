@@ -36,24 +36,24 @@ impl Topic {
    }
 
    /// id returns the unique identifier of the topic within its project.
-   fn id(&self) -> Option<String> {
+   pub fn id(&self) -> Option<String> {
       self.name.rfind('/').map(|i| self.name[(i + 1)..].to_string())
    }
 
    // string returns the printable globally unique name for the topic.
-   fn string(&self) -> &str {
+   pub fn string(&self) -> &str {
      self.name.as_str()
    }
 
    /// delete deletes the topic.
-   async fn delete(&mut self) -> Result<(),Status>{
+   pub async fn delete(&mut self) -> Result<(),Status>{
       self.pubc.delete_topic(DeleteTopicRequest {
          topic: self.name.to_string()
       }, None).await.map(|v| v.into_inner())
    }
 
    /// exists reports whether the topic exists on the server.
-   async fn exists(&mut self) -> Result<bool,Status>{
+   pub async fn exists(&mut self) -> Result<bool,Status>{
       if self.name == "_deleted-topic_" {
          return Ok(false)
       }
@@ -72,7 +72,7 @@ impl Topic {
    /// Subscriptions returns an iterator which returns the subscriptions for this topic.
    ///
    /// Some of the returned subscriptions may belong to a project other than t.
-   async fn subscriptions(&mut self) -> Result<Vec<Subscription>,Status>{
+   pub async fn subscriptions(&mut self) -> Result<Vec<Subscription>,Status>{
       self.pubc.list_topic_subscriptions(ListTopicSubscriptionsRequest{
          topic: self.name.to_string(),
          page_size: 0,
@@ -80,7 +80,7 @@ impl Topic {
       }, None).await.map(|v| v.into_iter().map(|sub_name| Subscription::new(sub_name, self.subc.clone())).collect())
    }
 
-   async fn publish(&mut self, message: PubsubMessage) -> Awaiter {
+   pub async fn publish(&mut self, message: PubsubMessage) -> Awaiter {
       if *self.stopped.read() {
          let (sender,receiver) = channel();
          sender.send(Err(Status::new(tonic::Status::unavailable("stopped"))));
