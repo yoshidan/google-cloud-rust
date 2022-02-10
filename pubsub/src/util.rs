@@ -4,6 +4,6 @@ pub(crate) trait ToUsize{
 
 impl ToUsize for &str {
     fn to_usize(&self) -> usize {
-        self.as_bytes().iter().sum()
+        self.as_bytes().iter().map(|v| *v as usize).sum()
     }
 }

@@ -2,7 +2,7 @@ use std::sync::Arc;
 use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 use google_cloud_pubsub::apiv1::publisher_client::PublisherClient;
 use google_cloud_pubsub::apiv1::conn_pool::ConnectionManager;
-use google_cloud_pubsub::publisher::{Publisher, SchedulerConfig};
+use google_cloud_pubsub::publisher::{Publisher, PublisherConfig};
 use serial_test::serial;
 use uuid::Uuid;
 use google_cloud_pubsub::client::Client;
@@ -30,7 +30,7 @@ async fn test_scenario() -> Result<(), anyhow::Error> {
     let mut subscription = client.create_subscription(&uuid, topic.string()).await.unwrap();
 
     //subscribe
-    tokio::spawn(|| async move {
+    tokio::spawn(async move {
         subscription.receive(|mut v| async move {
             v.ack().await;
             println!("id={} data={}", v.message.message_id, std::str::from_utf8(&v.message.data).unwrap());

@@ -1,8 +1,9 @@
-use std::ops::Sub;
+use std::future::Future;
 use std::sync::Arc;
 use google_cloud_googleapis::pubsub::v1::DeleteSubscriptionRequest;
 use google_cloud_googleapis::Status;
 use crate::apiv1::subscriber_client::SubscriberClient;
+use crate::publisher::ReservedMessage;
 use crate::subscriber::{Config, ReceivedMessage, Subscriber};
 
 /// Subscription is a reference to a PubSub subscription.
@@ -21,11 +22,12 @@ impl Subscription {
         }
     }
 
-    pub async fn receive(&mut self, &mut f : impl FnMut(ReceivedMessage) -> ()) {
+    pub async fn receive<F>(&mut self, f: impl Fn(ReceivedMessage) -> F)
+    where F: Future<Output = ()> {
         let (sender, receiver) = async_channel::unbounded();
         self.subscriber = Some(Subscriber::new(self.name.clone(), self.subc.clone(), sender, Config::default()));
         while let Ok(message) = receiver.recv().await {
-            f(message);
+            f(message).await;
         };
     }
 
@@ -36,6 +38,8 @@ impl Subscription {
     }
 
     pub fn stop(&mut self) {
-        self.subscriber?.stop();
+        if let Some(s) = &mut self.subscriber {
+            s.stop();
+        }
     }
 }
