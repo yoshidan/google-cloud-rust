@@ -38,16 +38,12 @@ impl ReceivedMessage {
 }
 
 pub struct Config {
-    pub worker_count: i32,
-    pub priority_worker_count: i32,
     pub ping_interval_second: u64
 }
 
 impl Default for Config {
     fn default() -> Self {
         return Self {
-            worker_count: 3,
-            priority_worker_count: 3,
             ping_interval_second: 10
         }
     }
@@ -60,22 +56,17 @@ struct Worker {
 
 pub struct Subscriber {
    workers: Vec<Worker>,
-   priority_workers: Vec<Worker>,
    stopped: bool
 }
 
 impl Subscriber {
-    pub fn new(subscription: String, client: SubscriberClient, queue:async_channel::Sender<ReceivedMessage> , config: Config) -> Subscriber {
+    pub fn new(subscription: String, client: SubscriberClient, queues: Vec<async_channel::Sender<ReceivedMessage>>, config: Config) -> Subscriber {
         //Orderingが有効な場合、順序月メッセージは同じStreamに入ってくるため、worker毎にstreamが別れていれば問題はない。
-        let workers = (0..config.worker_count).map(|_| {
-            Self::start_worker(subscription.clone(), client.clone(), queue.clone(), config.ping_interval_second)
-        }).collect();
-        let priority_workers = (0..config.priority_worker_count).map(|_| {
-            Self::start_worker(subscription.clone(), client.clone(), queue.clone(), config.ping_interval_second)
+        let workers = queues.into_iter().map(|queue| {
+            Self::start_worker(subscription.clone(), client.clone(), queue, config.ping_interval_second)
         }).collect();
         Self {
             workers,
-            priority_workers,
             stopped: false
         }
     }

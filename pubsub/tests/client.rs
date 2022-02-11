@@ -6,6 +6,8 @@ use google_cloud_pubsub::publisher::{Publisher, PublisherConfig};
 use serial_test::serial;
 use uuid::Uuid;
 use google_cloud_pubsub::client::Client;
+use google_cloud_pubsub::subscriber::ReceivedMessage;
+use google_cloud_pubsub::subscription::ReceiveConfig;
 
 
 fn create_message(data: &[u8], ordering_key: &str) -> PubsubMessage {
@@ -34,7 +36,10 @@ async fn test_scenario() -> Result<(), anyhow::Error> {
         subscription.receive(|mut v| async move {
             v.ack().await;
             println!("id={} data={}", v.message.message_id, std::str::from_utf8(&v.message.data).unwrap());
-        }).await;
+        }, Some(ReceiveConfig {
+            ordering_worker_count: 0,
+            worker_count: 3,
+        })).await;
     });
 
     //publish
