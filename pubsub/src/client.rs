@@ -47,7 +47,7 @@ impl Client {
             push_config: None,
             ack_deadline_seconds: 0,
             labels: Default::default(),
-            enable_message_ordering: false,
+            enable_message_ordering: true,
             expiration_policy: None,
             filter: "".to_string(),
             dead_letter_policy: None,

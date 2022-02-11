@@ -39,12 +39,15 @@ async fn test_scenario() -> Result<(), anyhow::Error> {
         subscription.receive(|mut v| async move {
             v.ack().await;
             println!("tid={:?} id={} data={}", thread::current().id(), v.message.message_id, std::str::from_utf8(&v.message.data).unwrap());
-        }, None).await
+        }, Some(ReceiveConfig {
+            ordering_worker_count: 2,
+            worker_count: 2
+        })).await
     });
 
     //publish
     for v in 0..100 {
-        let message = create_message(format!("abc_{}",v).as_bytes(), "");
+        let message = create_message(format!("abc_{}",v).as_bytes(), "orderkey");
         let message_id = topic.publish(message).await.get().await.unwrap();
         println!("sent {}", message_id);
     }
