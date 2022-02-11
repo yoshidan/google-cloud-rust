@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::thread;
 use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 use google_cloud_pubsub::apiv1::publisher_client::PublisherClient;
 use google_cloud_pubsub::apiv1::conn_pool::ConnectionManager;
@@ -20,7 +21,7 @@ fn create_message(data: &[u8], ordering_key: &str) -> PubsubMessage {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_scenario() -> Result<(), anyhow::Error> {
     std::env::set_var("PUBSUB_EMULATOR_HOST","localhost:8681".to_string());
@@ -28,23 +29,25 @@ async fn test_scenario() -> Result<(), anyhow::Error> {
 
     // create
     let uuid = Uuid::new_v4().to_hyphenated().to_string();
-    let mut topic = client.create_topic(&uuid, None).await.unwrap();
-    let mut subscription = client.create_subscription(&uuid, topic.string()).await.unwrap();
+    let topic_name = &format!("t{}", &uuid);
+    let subscription_name = &format!("s{}", &uuid);
+    let mut topic = client.create_topic(topic_name, None).await.unwrap();
+    let mut subscription = client.create_subscription(subscription_name, topic_name).await.unwrap();
 
     //subscribe
-    tokio::spawn(async move {
+    let handle = tokio::spawn(async move {
         subscription.receive(|mut v| async move {
             v.ack().await;
-            println!("id={} data={}", v.message.message_id, std::str::from_utf8(&v.message.data).unwrap());
-        }, Some(ReceiveConfig {
-            ordering_worker_count: 0,
-            worker_count: 3,
-        })).await;
+            println!("tid={:?} id={} data={}", thread::current().id(), v.message.message_id, std::str::from_utf8(&v.message.data).unwrap());
+        }, None).await
     });
 
     //publish
-    let message = create_message("abc".as_bytes(), "");
-    let message_id = topic.publish(message).await.get().await.unwrap();
-    println!("sent {}", message_id);
+    for v in 0..100 {
+        let message = create_message(format!("abc_{}",v).as_bytes(), "");
+        let message_id = topic.publish(message).await.get().await.unwrap();
+        println!("sent {}", message_id);
+    }
+    handle.await;
     Ok(())
 }

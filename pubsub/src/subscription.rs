@@ -42,11 +42,11 @@ impl Subscription {
         let mut receivers  = Vec::with_capacity(op.ordering_worker_count + op.worker_count);
         let mut senders = Vec::with_capacity(receivers.len());
         let (sender, receiver) = async_channel::unbounded::<ReceivedMessage>();
-        (0..op.worker_count).map(|v| {
+        (0..op.worker_count).for_each(|v| {
             receivers.push(receiver.clone());
             senders.push(sender.clone());
         });
-        (0..op.ordering_worker_count).map(|v| {
+        (0..op.ordering_worker_count).for_each(|v| {
             let (sender, receiver) = async_channel::unbounded::<ReceivedMessage>();
             receivers.push(receiver);
             senders.push(sender);
