@@ -5,7 +5,7 @@ use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
 use crate::publisher::{Publisher, PublisherConfig};
-use crate::subscription::Subscription;
+use crate::subscription::{Subscription, SubscriptionConfig};
 use crate::topic::Topic;
 use google_cloud_googleapis::pubsub::v1::{DeadLetterPolicy, DetachSubscriptionRequest, ExpirationPolicy, ListSubscriptionsRequest, ListTopicsRequest, PushConfig, RetryPolicy, Subscription as InternalSubscription, Topic as InternalTopic};
 use google_cloud_grpc::conn::Error;
@@ -22,39 +22,6 @@ impl Default for Config {
     }
 }
 
-pub struct CreateSubscriptionConfig {
-    pub push_config: Option<PushConfig>,
-    pub ack_deadline_seconds: i32,
-    pub retain_acked_messages: bool,
-    pub message_retention_duration: Option<Duration>,
-    pub labels: HashMap<String, String>,
-    pub enable_message_ordering: bool,
-    pub expiration_policy: Option<ExpirationPolicy>,
-    pub filter: String,
-    pub dead_letter_policy: Option<DeadLetterPolicy>,
-    pub retry_policy: Option<RetryPolicy>,
-    pub detached: bool,
-    pub topic_message_retention_duration: Option<Duration>,
-}
-
-impl Default for CreateSubscriptionConfig {
-    fn default() -> Self {
-        Self {
-            push_config: None,
-            ack_deadline_seconds: 0,
-            retain_acked_messages: false,
-            message_retention_duration: None,
-            labels: Default::default(),
-            enable_message_ordering: false,
-            expiration_policy: None,
-            filter: "".to_string(),
-            dead_letter_policy: None,
-            retry_policy: None,
-            detached: false,
-            topic_message_retention_duration: None
-        }
-    }
-}
 
 pub struct Client {
    project_id: String,
@@ -75,12 +42,11 @@ impl Client {
         })
     }
 
-    pub async fn create_subscription(&self, subscription_id: &str, topic_id: &str, config: Option<CreateSubscriptionConfig>) -> Result<Subscription, Status> {
+    pub async fn create_subscription(&self, subscription_id: &str, topic: &Topic, op: SubscriptionConfig) -> Result<Subscription, Status> {
         let mut client = SubscriberClient::new(self.cm.conn()) ;
-        let op = config.unwrap_or_default();
         client.create_subscription(InternalSubscription{
             name: self.subscription_name(subscription_id),
-            topic: self.topic_name(topic_id),
+            topic: topic.string().to_string(),
             push_config: op.push_config,
             ack_deadline_seconds: op.ack_deadline_seconds,
             labels: op.labels,

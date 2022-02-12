@@ -6,9 +6,9 @@ use google_cloud_pubsub::apiv1::conn_pool::ConnectionManager;
 use google_cloud_pubsub::publisher::{Publisher, PublisherConfig};
 use serial_test::serial;
 use uuid::Uuid;
-use google_cloud_pubsub::client::{Client, CreateSubscriptionConfig};
+use google_cloud_pubsub::client::{Client};
 use google_cloud_pubsub::subscriber::ReceivedMessage;
-use google_cloud_pubsub::subscription::ReceiveConfig;
+use google_cloud_pubsub::subscription::{ReceiveConfig, SubscriptionConfig};
 
 
 fn create_message(data: &[u8], ordering_key: &str) -> PubsubMessage {
@@ -32,9 +32,9 @@ async fn test_scenario() -> Result<(), anyhow::Error> {
     let topic_name = &format!("t{}", &uuid);
     let subscription_name = &format!("s{}", &uuid);
     let mut topic = client.create_topic(topic_name, None).await.unwrap();
-    let mut config = CreateSubscriptionConfig::default();
+    let mut config = SubscriptionConfig::default();
     config.enable_message_ordering = true;
-    let mut subscription = client.create_subscription(subscription_name, topic_name, Some(config)).await.unwrap();
+    let mut subscription = client.create_subscription(subscription_name , &topic, config).await.unwrap();
 
     //subscribe
     let handle = tokio::spawn(async move {
@@ -54,5 +54,6 @@ async fn test_scenario() -> Result<(), anyhow::Error> {
         println!("sent {}", message_id);
     }
     handle.await;
+
     Ok(())
 }
