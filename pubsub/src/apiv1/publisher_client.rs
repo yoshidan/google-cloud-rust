@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use crate::apiv1::default_setting;
 use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
 use google_cloud_gax::invoke::invoke_reuse;
@@ -7,16 +8,17 @@ use google_cloud_googleapis::pubsub::v1::{DeleteTopicRequest, DetachSubscription
 use google_cloud_googleapis::{Code, Status};
 use google_cloud_grpc::conn::Channel;
 use tonic::Response;
+use crate::apiv1::conn_pool::ConnectionManager;
 
 #[derive(Clone)]
 pub struct PublisherClient {
-    inner: InternalPublisherClient<Channel>,
+    cm: Arc<ConnectionManager>
 }
 
 impl PublisherClient {
     /// create new publisher client
-    pub fn new(chan: Channel) -> PublisherClient {
-        PublisherClient { inner : InternalPublisherClient::new(chan)}
+    pub fn new(cm : ConnectionManager) -> PublisherClient {
+        PublisherClient { cm : Arc::new(cm)}
     }
 
     /// merge call setting
@@ -27,9 +29,13 @@ impl PublisherClient {
         }
     }
 
+    fn client(&self) -> InternalPublisherClient<Channel> {
+        InternalPublisherClient::new(self.cm.conn())
+    }
+
     /// create_topic creates the given topic with the given name. See the [resource name rules]
     pub async fn create_topic(
-        &mut self,
+        &self,
         req: Topic,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Topic>, Status> {
@@ -43,7 +49,7 @@ impl PublisherClient {
                     .await
                     .map_err(|e| (e.into(), client))
             },
-            &mut self.inner,
+            &mut self.client(),
             &mut setting,
         )
         .await;
@@ -52,7 +58,7 @@ impl PublisherClient {
     /// update_topic updates an existing topic. Note that certain properties of a
     /// topic are not modifiable.
     pub async fn update_topic(
-        &mut self,
+        &self,
         req: UpdateTopicRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Topic>, Status> {
@@ -69,7 +75,7 @@ impl PublisherClient {
                     .await
                     .map_err(|e| (e.into(), client))
             },
-            &mut self.inner,
+            &mut self.client(),
             &mut setting,
         )
         .await;
@@ -77,7 +83,7 @@ impl PublisherClient {
 
     /// publish adds one or more messages to the topic. Returns NOT_FOUND if the topic does not exist.
     pub async fn publish(
-        &mut self,
+        &self,
         req: PublishRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<PublishResponse>, Status> {
@@ -107,7 +113,7 @@ impl PublisherClient {
                     .await
                     .map_err(|e| (e.into(), client))
             },
-            &mut self.inner,
+            &mut self.client(),
             &mut setting,
         )
         .await;
@@ -115,7 +121,7 @@ impl PublisherClient {
 
     /// get_topic gets the configuration of a topic.
     pub async fn get_topic(
-        &mut self,
+        &self,
         req: GetTopicRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Topic>, Status> {
@@ -129,7 +135,7 @@ impl PublisherClient {
                     .await
                     .map_err(|e| (e.into(), client))
             },
-            &mut self.inner,
+            &mut self.client(),
             &mut setting,
         )
         .await;
@@ -137,7 +143,7 @@ impl PublisherClient {
 
     /// list_topics lists matching topics.
     pub async fn list_topics(
-        &mut self,
+        &self,
         mut req: ListTopicsRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Vec<Topic>, Status> {
@@ -155,7 +161,7 @@ impl PublisherClient {
                         .map_err(|e| (Status::from(e), client))
                         .map(|d| d.into_inner())
                 },
-                &mut self.inner,
+                &mut self.client(),
                 &mut setting,
             )
             .await?;
@@ -169,7 +175,7 @@ impl PublisherClient {
 
     /// list_topics lists matching topics.
     pub async fn list_topic_subscriptions(
-        &mut self,
+        &self,
         mut req: ListTopicSubscriptionsRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Vec<String>, Status> {
@@ -187,7 +193,7 @@ impl PublisherClient {
                         .map_err(|e| (Status::from(e), client))
                         .map(|d| d.into_inner())
                 },
-                &mut self.inner,
+                &mut self.client(),
                 &mut setting,
             )
             .await?;
@@ -205,7 +211,7 @@ impl PublisherClient {
     /// set the acknowledgment state of messages in an existing subscription to the
     /// state captured by a snapshot.
     pub async fn list_topic_snapshots(
-        &mut self,
+        &self,
         mut req: ListTopicSnapshotsRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Vec<String>, Status> {
@@ -223,7 +229,7 @@ impl PublisherClient {
                         .map_err(|e| (Status::from(e), client))
                         .map(|d| d.into_inner())
                 },
-                &mut self.inner,
+                &mut self.client(),
                 &mut setting,
             )
             .await?;
@@ -241,7 +247,7 @@ impl PublisherClient {
     /// configuration or subscriptions. Existing subscriptions to this topic are
     /// not deleted, but their topic field is set to _deleted-topic_.
     pub async fn delete_topic(
-        &mut self,
+        &self,
         req: DeleteTopicRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<()>, Status> {
@@ -255,7 +261,7 @@ impl PublisherClient {
                     .await
                     .map_err(|e| (e.into(), client))
             },
-            &mut self.inner,
+            &mut self.client(),
             &mut setting,
         )
         .await;
@@ -266,7 +272,7 @@ impl PublisherClient {
     /// will return FAILED_PRECONDITION. If the subscription is a push
     /// subscription, pushes to the endpoint will stop.
     pub async fn detach_subscription(
-        &mut self,
+        &self,
         req: DetachSubscriptionRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<DetachSubscriptionResponse>, Status> {
@@ -280,7 +286,7 @@ impl PublisherClient {
                     .await
                     .map_err(|e| (e.into(), client))
             },
-            &mut self.inner,
+            &mut self.client(),
             &mut setting,
         )
         .await;

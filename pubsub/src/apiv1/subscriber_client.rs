@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use crate::apiv1::default_setting;
 use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
 use google_cloud_gax::invoke::invoke_reuse;
@@ -17,6 +18,7 @@ use google_cloud_googleapis::{Code, Status};
 use google_cloud_grpc::conn::Channel;
 use tonic::{Response, Streaming};
 use tonic::codegen::futures_core::Stream;
+use crate::apiv1::conn_pool::ConnectionManager;
 
 pub(crate) fn create_default_streaming_pull_request(subscription: String) -> StreamingPullRequest {
     return StreamingPullRequest {
@@ -34,14 +36,14 @@ pub(crate) fn create_default_streaming_pull_request(subscription: String) -> Str
 
 #[derive(Clone)]
 pub struct SubscriberClient {
-    inner: InternalSubscriberClient<Channel>,
+    cm: Arc<ConnectionManager>
 }
 
 impl SubscriberClient {
     /// create new Subscriber client
-    pub fn new(chan: Channel) -> SubscriberClient {
+    pub fn new(cm: ConnectionManager) -> SubscriberClient {
         SubscriberClient {
-            inner: InternalSubscriberClient::new(chan)
+            cm: Arc::new(cm)
         }
     }
 
@@ -51,6 +53,10 @@ impl SubscriberClient {
             Some(s) => s,
             None => default_setting(),
         }
+    }
+
+    fn client(&self) -> InternalSubscriberClient<Channel> {
+        InternalSubscriberClient::new(self.cm.conn())
     }
 
     /// create_subscription creates a subscription to a given topic. See the [resource name rules]
@@ -65,7 +71,7 @@ impl SubscriberClient {
     /// name is populated in the returned Subscription object. Note that for REST
     /// API requests, you must specify a name in the request.
     pub async fn create_subscription(
-        &mut self,
+        &self,
         req: Subscription,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Subscription>, Status> {
@@ -79,7 +85,7 @@ impl SubscriberClient {
                     .await
                     .map_err(|e| (e.into(), client))
             },
-            &mut self.inner,
+            &mut self.client(),
             &mut setting,
         )
         .await;
@@ -105,7 +111,7 @@ impl SubscriberClient {
                     .await
                     .map_err(|e| (e.into(), client))
             },
-            &mut self.inner,
+            &mut self.client(),
             &mut setting,
         )
         .await;
@@ -127,7 +133,7 @@ impl SubscriberClient {
                     .await
                     .map_err(|e| (e.into(), client))
             },
-            &mut self.inner,
+            &mut self.client(),
             &mut setting,
         )
         .await;
@@ -135,7 +141,7 @@ impl SubscriberClient {
 
     /// list_subscriptions lists matching subscriptions.
     pub async fn list_subscriptions(
-        &mut self,
+        &self,
         mut req: ListSubscriptionsRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Vec<Subscription>, Status> {
@@ -153,7 +159,7 @@ impl SubscriberClient {
                         .map_err(|e| (Status::from(e), client))
                         .map(|d| d.into_inner())
                 },
-                &mut self.inner,
+                &mut self.client(),
                 &mut setting,
             )
             .await?;
@@ -185,7 +191,7 @@ impl SubscriberClient {
                     .await
                     .map_err(|e| (e.into(), client))
             },
-            &mut self.inner,
+            &mut self.client(),
             &mut setting,
         )
         .await;
@@ -211,7 +217,7 @@ impl SubscriberClient {
                     .await
                     .map_err(|e| (e.into(), client))
             },
-            &mut self.inner,
+            &mut self.client(),
             &mut setting,
         )
         .await;
@@ -240,7 +246,7 @@ impl SubscriberClient {
                     .await
                     .map_err(|e| (e.into(), client))
             },
-            &mut self.inner,
+            &mut self.client(),
             &mut setting,
         )
         .await;
@@ -261,7 +267,7 @@ impl SubscriberClient {
                 let request = create_request(format!("subscription={}", subscription), req.clone());
                 client.pull(request).await.map_err(|e| (e.into(), client))
             },
-            &mut self.inner,
+            &mut self.client(),
             &mut setting,
         )
         .await;
@@ -301,7 +307,7 @@ impl SubscriberClient {
                     .await
                     .map_err(|e| (e.into(), client))
             },
-            &mut self.inner,
+            &mut self.client(),
             &mut setting,
         )
         .await;
@@ -328,7 +334,7 @@ impl SubscriberClient {
                     .await
                     .map_err(|e| (e.into(), client))
             },
-            &mut self.inner,
+            &mut self.client(),
             &mut setting,
         )
         .await;
@@ -354,7 +360,7 @@ impl SubscriberClient {
                     .await
                     .map_err(|e| (e.into(), client))
             },
-            &mut self.inner,
+            &mut self.client(),
             &mut setting,
         )
         .await;
@@ -383,7 +389,7 @@ impl SubscriberClient {
                         .map_err(|e| (Status::from(e), client))
                         .map(|d| d.into_inner())
                 },
-                &mut self.inner,
+                &mut self.client(),
                 &mut setting,
             )
             .await?;
@@ -426,7 +432,7 @@ impl SubscriberClient {
                     .await
                     .map_err(|e| (e.into(), client))
             },
-            &mut self.inner,
+            &mut self.client(),
             &mut setting,
         )
         .await;
@@ -456,7 +462,7 @@ impl SubscriberClient {
                     .await
                     .map_err(|e| (e.into(), client))
             },
-            &mut self.inner,
+            &mut self.client(),
             &mut setting,
         )
         .await;
@@ -486,7 +492,7 @@ impl SubscriberClient {
                     .await
                     .map_err(|e| (e.into(), client))
             },
-            &mut self.inner,
+            &mut self.client(),
             &mut setting,
         )
         .await;

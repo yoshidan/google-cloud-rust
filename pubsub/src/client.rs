@@ -25,7 +25,8 @@ impl Default for Config {
 
 pub struct Client {
    project_id: String,
-   cm: ConnectionManager,
+   pubc: PublisherClient,
+    subc: SubscriberClient,
 }
 
 impl Client {
@@ -35,16 +36,17 @@ impl Client {
             Ok(s) => Some(s),
             Err(_) => None,
         };
-        let cm = ConnectionManager::new(pool_size, emulator_host).await?;
+        let pubc = PublisherClient::new(ConnectionManager::new(pool_size, emulator_host.clone()).await?);
+        let subc = SubscriberClient::new(ConnectionManager::new(pool_size, emulator_host).await?);
         return Ok(Self {
            project_id: project_id.to_string(),
-           cm,
+           pubc,
+            subc
         })
     }
 
     pub async fn create_subscription(&self, subscription_id: &str, topic: &Topic, op: SubscriptionConfig) -> Result<Subscription, Status> {
-        let mut client = SubscriberClient::new(self.cm.conn()) ;
-        client.create_subscription(InternalSubscription{
+        self.subc.create_subscription(InternalSubscription{
             name: self.subscription_name(subscription_id),
             topic: topic.string().to_string(),
             push_config: op.push_config,
@@ -63,31 +65,27 @@ impl Client {
     }
 
     pub async fn subscriptions(&self) -> Result<Vec<Subscription>, Status> {
-        let mut subc= SubscriberClient::new(self.cm.conn());
-        subc.list_subscriptions(ListSubscriptionsRequest {
+        self.subc.list_subscriptions(ListSubscriptionsRequest {
             project: self.project_id.to_string(),
             page_size: 0,
             page_token: "".to_string()
         }, None).await.map(|v| v.into_iter().map( |x |
-            Subscription::new(x.name.to_string(), subc.clone())).collect()
+            Subscription::new(x.name.to_string(), self.subc.clone())).collect()
         )
     }
 
     pub fn subscription(&self, id: &str) -> Subscription {
-        let subc= SubscriberClient::new(self.cm.conn());
-        Subscription::new(self.subscription_name(id), subc)
+        Subscription::new(self.subscription_name(id), self.subc.clone())
     }
 
     pub async fn detach_subscription(&self, sub_id: &str) -> Result<(), Status> {
-        let mut client = PublisherClient::new(self.cm.conn());
-        client.detach_subscription(DetachSubscriptionRequest{
+        self.pubc.detach_subscription(DetachSubscriptionRequest{
             subscription: self.subscription_name(sub_id),
         }, None).await.map(|v| ())
     }
 
     pub async fn create_topic(&self, topic_id: &str, topic_config: Option<PublisherConfig>) -> Result<Topic, Status> {
-        let mut client = PublisherClient::new(self.cm.conn()) ;
-        client.create_topic(InternalTopic {
+        self.pubc.create_topic(InternalTopic {
             name: self.topic_name(topic_id),
             labels: Default::default(),
             message_storage_policy: None,
@@ -99,9 +97,8 @@ impl Client {
     }
 
     pub async fn topics(&self, config: Option<PublisherConfig>) -> Result<Vec<Topic>, Status> {
-        let mut pubc = PublisherClient::new(self.cm.conn());
         let opt = config.unwrap_or_default();
-        pubc.list_topics(ListTopicsRequest {
+        self.pubc.list_topics(ListTopicsRequest {
             project: self.project_id.to_string(),
             page_size: 0,
             page_token: "".to_string()
@@ -109,8 +106,8 @@ impl Client {
             v.into_iter().map(|x| {
                 Topic::new(
                     x.name.to_string(),
-                    pubc.clone(),
-                    SubscriberClient::new(self.cm.conn()),
+                    self.pubc.clone(),
+                    self.subc.clone(),
                     opt.clone(),
                     )
             }).collect()
@@ -118,9 +115,7 @@ impl Client {
     }
 
     pub fn topic(&self, id: &str, config: Option<PublisherConfig>) -> Topic {
-        let pubc = PublisherClient::new(self.cm.conn());
-        let subc= SubscriberClient::new(self.cm.conn());
-        Topic::new(self.topic_name(id), pubc, subc, config.unwrap_or(PublisherConfig::default()))
+        Topic::new(self.topic_name(id), self.pubc.clone(), self.subc.clone(), config.unwrap_or(PublisherConfig::default()))
     }
 
     fn topic_name(&self, id: &str) -> String {

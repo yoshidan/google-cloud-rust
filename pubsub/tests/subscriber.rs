@@ -37,8 +37,8 @@ fn create_default_subscription_request(topic: String) -> Subscription {
     };
 }
 
-async fn publish(ch: Channel) -> Publisher {
-    let pubc = PublisherClient::new(ch);
+async fn publish() -> Publisher {
+    let pubc = PublisherClient::new(ConnectionManager::new(4, Some("localhost:8681".to_string())).await.unwrap());
     let mut publisher = Publisher::new("projects/local-project/topics/test-topic1".to_string(), PublisherConfig::default(), pubc);
     publisher.publish(PubsubMessage {
         data: "test_message".into(),
@@ -73,19 +73,17 @@ fn subscribe(v: Arc<AtomicU32>, name: String, receiver: async_channel::Receiver<
 #[serial]
 async fn test_multi_subscriber_single_subscription() -> Result<(), anyhow::Error> {
 
-    let cons = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
-    let mut subc = SubscriberClient::new(cons.conn());
+    let subc = SubscriberClient::new(ConnectionManager::new(4, Some("localhost:8681".to_string())).await?);
     let v = Arc::new(AtomicU32::new(0));
     let subscription = subc.create_subscription(create_default_subscription_request( "projects/local-project/topics/test-topic1".to_string()), None).await.unwrap().into_inner().name;
     let mut subscribers = vec![];
     for _ in 0..3 {
-        let mut subc = SubscriberClient::new(cons.conn());
         let (sender, receiver) = async_channel::unbounded();
-        subscribers.push(Subscriber::new(subscription.clone(), subc, sender, Config::default()));
+        subscribers.push(Subscriber::new(subscription.clone(), subc.clone(), vec![sender], Config::default()));
         subscribe(v.clone(), subscription.clone(), receiver);
     }
 
-    let mut publisher = publish(cons.conn()).await;
+    let mut publisher = publish().await;
 
     for mut subscriber in subscribers {
         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
@@ -104,18 +102,18 @@ async fn test_multi_subscriber_single_subscription() -> Result<(), anyhow::Error
 async fn test_multi_subscriber_multi_subscription() -> Result<(), anyhow::Error> {
 
     let cons = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
+    let mut subc = SubscriberClient::new(cons);
 
     let mut subscribers = vec![];
     for _ in 0..3 {
-        let mut subc = SubscriberClient::new(cons.conn());
-        let subscription = subc.create_subscription(create_default_subscription_request("projects/local-project/topics/test-topic1".to_string()), None).await.unwrap().into_inner().name;
+        let subscription = subc.clone().create_subscription(create_default_subscription_request("projects/local-project/topics/test-topic1".to_string()), None).await.unwrap().into_inner().name;
         let (sender, receiver) = async_channel::unbounded();
         let v = Arc::new(AtomicU32::new(0));
-        subscribers.push((v.clone(), Subscriber::new(subscription.clone(), subc, sender, Config::default())));
+        subscribers.push((v.clone(), Subscriber::new(subscription.clone(), subc.clone(), vec![sender], Config::default())));
         subscribe(v.clone(), subscription, receiver);
     }
 
-    let mut publisher = publish(cons.conn()).await;
+    let mut publisher = publish().await;
 
     for (v, mut subscriber) in subscribers {
         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
