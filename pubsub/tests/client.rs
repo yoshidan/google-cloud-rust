@@ -1,3 +1,4 @@
+use std::iter::successors;
 use std::sync::Arc;
 use std::thread;
 use google_cloud_googleapis::pubsub::v1::PubsubMessage;
@@ -35,6 +36,7 @@ async fn test_scenario() -> Result<(), anyhow::Error> {
     let mut config = SubscriptionConfig::default();
     config.enable_message_ordering = true;
     let mut subscription = client.create_subscription(subscription_name , &topic, config).await.unwrap();
+    let subcon = subscription.config().await?;
 
     //subscribe
     let handle = tokio::spawn(async move {

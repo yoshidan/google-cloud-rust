@@ -10,7 +10,6 @@ use crate::subscriber::{Config, ReceivedMessage, Subscriber};
 use crate::topic::Topic;
 
 pub struct SubscriptionConfig {
-    pub topic: String,
     pub push_config: Option<PushConfig>,
     pub ack_deadline_seconds: i32,
     pub retain_acked_messages: bool,
@@ -28,7 +27,6 @@ pub struct SubscriptionConfig {
 impl Default for SubscriptionConfig {
     fn default() -> Self {
         Self {
-            topic: "".to_string(),
             push_config: None,
             ack_deadline_seconds: 0,
             retain_acked_messages: false,
@@ -48,7 +46,6 @@ impl Default for SubscriptionConfig {
 impl Into<SubscriptionConfig> for InternalSubscription {
     fn into(self) -> SubscriptionConfig {
         SubscriptionConfig {
-            topic: self.topic,
             push_config: self.push_config,
             ack_deadline_seconds: self.ack_deadline_seconds,
             retain_acked_messages: self.retain_acked_messages,
@@ -64,7 +61,6 @@ impl Into<SubscriptionConfig> for InternalSubscription {
         }
     }
 }
-
 
 pub struct ReceiveConfig {
     pub ordering_worker_count: usize,
@@ -84,7 +80,7 @@ impl Default for ReceiveConfig {
 pub struct Subscription {
     name: String,
     subc: SubscriberClient,
-    subscriber: Option<Subscriber>
+    subscriber: Option<Subscriber>,
 }
 
 impl Subscription {
@@ -92,7 +88,7 @@ impl Subscription {
         Self {
             name,
             subc,
-            subscriber: None
+            subscriber: None,
         }
     }
 
@@ -144,10 +140,13 @@ impl Subscription {
         }, None).await.map(|v| v.into_inner())
     }
 
-    pub async fn config(&mut self) -> Result<SubscriptionConfig, Status>{
+    pub async fn config(&mut self) -> Result<(String, SubscriptionConfig), Status>{
         self.subc.get_subscription(GetSubscriptionRequest{
             subscription: self.name.to_string()
-        }, None).await.map(|v| v.into_inner().into())
+        }, None).await.map(|v| {
+            let inner = v.into_inner();
+            (inner.topic.to_string(),inner.into())
+        })
     }
 
     pub fn stop(&mut self) {

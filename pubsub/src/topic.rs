@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::sync::Arc;
 use parking_lot::RwLock;
 use tokio::sync::oneshot::channel;
@@ -14,9 +15,11 @@ use crate::subscription::Subscription;
 pub struct Topic {
    name: String,
    stopped: RwLock<bool>,
+   init: RwLock<bool>,
    pubc: PublisherClient,
    subc: SubscriberClient,
-   scheduler: Publisher
+   config: PublisherConfig,
+   publisher: Option<Publisher>
 }
 
 impl Topic {
@@ -24,14 +27,23 @@ impl Topic {
    pub fn new(name: String,
           pubc: PublisherClient,
           subc: SubscriberClient,
-          config: PublisherConfig ) -> Self {
-      let scheduler = Publisher::new(name.clone(), config, pubc.clone());
+          config: PublisherConfig) -> Self {
       Self {
          name,
+         init: RwLock::new(false),
          stopped: RwLock::new(false),
          pubc,
          subc,
-         scheduler
+         config,
+         publisher:None
+      }
+   }
+
+   fn init(&mut self) {
+      let mut lock = self.init.write();
+      if !*lock{
+         self.publisher = Some(Publisher::new(self.name.clone(), self.config.clone(), self.pubc.clone()));
+         *lock = true;
       }
    }
 
@@ -86,12 +98,16 @@ impl Topic {
          sender.send(Err(Status::new(tonic::Status::unavailable("stopped"))));
          return Awaiter::new(receiver);
       }
-      return self.scheduler.publish(message).await;
+      self.init();
+      return self.publisher.as_ref().unwrap().publish(message).await;
    }
 
    pub fn stop(&mut self) {
       if self.stop_if_needed() {
-         self.scheduler.stop();
+         match self.publisher.as_mut() {
+            Some(o) => o.stop(),
+            None => {}
+         }
       }
    }
 
