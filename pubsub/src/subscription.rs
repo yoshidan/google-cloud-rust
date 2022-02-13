@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
-use google_cloud_googleapis::pubsub::v1::{DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest, PushConfig, RetryPolicy, Subscription as InternalSubscription};
+use prost_types::FieldMask;
+use google_cloud_googleapis::pubsub::v1::{DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest, PushConfig, RetryPolicy, Subscription as InternalSubscription, UpdateSubscriptionRequest};
 use google_cloud_googleapis::Status;
 use crate::apiv1::subscriber_client::SubscriberClient;
 use crate::publisher::ReservedMessage;
@@ -23,6 +24,18 @@ pub struct SubscriptionConfig {
     pub detached: bool,
     pub topic_message_retention_duration: Option<Duration>,
 }
+
+pub struct SubscriptionConfigToUpdate {
+    pub push_config: Option<PushConfig>,
+    pub ack_deadline_seconds: Option<i32>,
+    pub retain_acked_messages: Option<bool>,
+    pub message_retention_duration: Option<Duration>,
+    pub labels: Option<HashMap<String, String>>,
+    pub expiration_policy: Option<ExpirationPolicy>,
+    pub dead_letter_policy: Option<DeadLetterPolicy>,
+    pub retry_policy: Option<RetryPolicy>,
+}
+
 
 impl Default for SubscriptionConfig {
     fn default() -> Self {
@@ -143,6 +156,53 @@ impl Subscription {
     pub async fn config(&mut self) -> Result<(String, SubscriptionConfig), Status>{
         self.subc.get_subscription(GetSubscriptionRequest{
             subscription: self.name.to_string()
+        }, None).await.map(|v| {
+            let inner = v.into_inner();
+            (inner.topic.to_string(),inner.into())
+        })
+    }
+
+    pub async fn update(&mut self, updating: SubscriptionConfigToUpdate) -> Result<(String, SubscriptionConfig), Status>{
+        let mut config = self.subc.get_subscription(GetSubscriptionRequest{
+            subscription: self.name.to_string()
+        }, None).await?.into_inner();
+
+        let mut paths = vec![];
+        if updating.push_config.is_some() {
+            config.push_config = updating.push_config;
+            paths.push("push_config".to_string());
+        }
+        if let Some(v) = updating.ack_deadline_seconds{
+            config.ack_deadline_seconds = v;
+            paths.push("ack_deadline_seconds".to_string());
+        }
+        if let Some(v) = updating.retain_acked_messages {
+            config.retain_acked_messages = v;
+            paths.push("retain_acked_messages".to_string());
+        }
+        if updating.message_retention_duration.is_some() {
+            let v = updating.message_retention_duration.map(|v| prost_types::Duration::from(v));
+            config.message_retention_duration = v;
+            paths.push("message_retention_duration".to_string());
+        }
+        if updating.expiration_policy.is_some() {
+            config.expiration_policy = updating.expiration_policy;
+            paths.push("expiration_policy".to_string());
+        }
+        if let Some(v) = updating.labels {
+            config.labels = v;
+            paths.push("labels".to_string());
+        }
+        if updating.retry_policy.is_some() {
+            config.retry_policy = updating.retry_policy;
+            paths.push("retry_policy".to_string());
+        }
+
+        self.subc.update_subscription(UpdateSubscriptionRequest{
+            subscription: Some(config.into()),
+            update_mask: Some(FieldMask {
+                paths
+            })
         }, None).await.map(|v| {
             let inner = v.into_inner();
             (inner.topic.to_string(),inner.into())
