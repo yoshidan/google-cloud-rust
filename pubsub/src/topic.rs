@@ -103,20 +103,16 @@ impl Topic {
    }
 
    pub fn stop(&mut self) {
-      if self.stop_if_needed() {
-         match self.publisher.as_mut() {
-            Some(o) => o.stop(),
-            None => {}
-         }
+      if let Some(s) = &mut self.publisher {
+         s.stop();
       }
+   }
+}
+
+impl Drop for Topic {
+
+   fn drop(&mut self) {
+      self.stop() ;
    }
 
-   fn stop_if_needed(&self) -> bool {
-      let mut w = self.stopped.write();
-      if *w {
-         return false
-      }
-      *w = true;
-      return true;
-   }
 }

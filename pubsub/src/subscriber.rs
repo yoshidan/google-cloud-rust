@@ -126,8 +126,12 @@ impl Subscriber {
        }
         self.stopped = true
     }
+}
+
+impl Drop for Subscriber {
 
     fn drop(&mut self) {
-        self.stop()
+        self.stop() ;
     }
+
 }

@@ -76,14 +76,12 @@ impl Into<SubscriptionConfig> for InternalSubscription {
 }
 
 pub struct ReceiveConfig {
-    pub ordering_worker_count: usize,
     pub worker_count: usize
 }
 
 impl Default for ReceiveConfig {
     fn default() -> Self {
         Self {
-            ordering_worker_count: 0,
             worker_count: 10,
         }
     }
@@ -115,21 +113,25 @@ impl Subscription {
         self.name.as_str()
     }
 
-    pub async fn receive<F>(&mut self, f: impl Fn(ReceivedMessage) -> F + Send + 'static + Sync + Clone, config: Option<ReceiveConfig>)
+    pub async fn receive<F>(&mut self, f: impl Fn(ReceivedMessage) -> F + Send + 'static + Sync + Clone, config: Option<ReceiveConfig>) -> Result<(), Status>
     where F: Future<Output = ()> + Send + 'static {
         let op = config.unwrap_or_default();
-        let mut receivers  = Vec::with_capacity(op.ordering_worker_count + op.worker_count);
+        let mut receivers  = Vec::with_capacity(op.worker_count);
         let mut senders = Vec::with_capacity(receivers.len());
-        let (sender, receiver) = async_channel::unbounded::<ReceivedMessage>();
-        (0..op.worker_count).for_each(|v| {
-            receivers.push(receiver.clone());
-            senders.push(sender.clone());
-        });
-        (0..op.ordering_worker_count).for_each(|v| {
+
+        if self.config().await?.1.enable_message_ordering {
+            (0..op.worker_count).for_each(|v| {
+                let (sender, receiver) = async_channel::unbounded::<ReceivedMessage>();
+                receivers.push(receiver);
+                senders.push(sender);
+            });
+        }else {
             let (sender, receiver) = async_channel::unbounded::<ReceivedMessage>();
-            receivers.push(receiver);
-            senders.push(sender);
-        });
+            (0..op.worker_count).for_each(|v| {
+                receivers.push(receiver.clone());
+                senders.push(sender.clone());
+            });
+        }
 
         self.subscriber = Some(Subscriber::new(self.name.clone(), self.subc.clone(), senders, Config::default()));
         let mut join_handles = Vec::with_capacity(receivers.len());
@@ -145,6 +147,7 @@ impl Subscription {
         for j in join_handles {
             j.await;
         }
+        Ok(())
     }
 
     pub async fn delete(&mut self) -> Result<(), Status>{
@@ -214,4 +217,12 @@ impl Subscription {
             s.stop();
         }
     }
+}
+
+impl Drop for Subscription {
+
+    fn drop(&mut self) {
+        self.stop();
+    }
+
 }

@@ -44,9 +44,8 @@ async fn test_scenario() -> Result<(), anyhow::Error> {
             v.ack().await;
             println!("tid={:?} id={} data={}", thread::current().id(), v.message.message_id, std::str::from_utf8(&v.message.data).unwrap());
         }, Some(ReceiveConfig {
-            ordering_worker_count: 2,
             worker_count: 2
-        })).await
+        })).await;
     });
 
     //publish
@@ -55,7 +54,8 @@ async fn test_scenario() -> Result<(), anyhow::Error> {
         let message_id = topic.publish(message).await.get().await.unwrap();
         println!("sent {}", message_id);
     }
-    handle.await;
 
+    tokio::time::sleep(std::time::Duration::from_secs(3));
+    subscription.stop();
     Ok(())
 }
