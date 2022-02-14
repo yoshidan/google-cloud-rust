@@ -1,5 +1,4 @@
-
-
+use google_cloud_gax::call_option::BackoffRetrySettings;
 use google_cloud_googleapis::Status;
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::publisher_client::PublisherClient;
@@ -22,10 +21,10 @@ impl Default for Config {
     }
 }
 
-
+#[derive(Clone)]
 pub struct Client {
-   project_id: String,
-   pubc: PublisherClient,
+    project_id: String,
+    pubc: PublisherClient,
     subc: SubscriberClient,
 }
 
@@ -39,13 +38,13 @@ impl Client {
         let pubc = PublisherClient::new(ConnectionManager::new(pool_size, emulator_host.clone()).await?);
         let subc = SubscriberClient::new(ConnectionManager::new(pool_size, emulator_host).await?);
         return Ok(Self {
-           project_id: project_id.to_string(),
-           pubc,
+            project_id: project_id.to_string(),
+            pubc,
             subc
         })
     }
 
-    pub async fn create_subscription(&self, subscription_id: &str, topic: &Topic, op: SubscriptionConfig) -> Result<Subscription, Status> {
+    pub async fn create_subscription(&self, subscription_id: &str, topic: &Topic, op: SubscriptionConfig, opt: Option<BackoffRetrySettings>) -> Result<Subscription, Status> {
         self.subc.create_subscription(InternalSubscription{
             name: self.subscription_name(subscription_id),
             topic: topic.string().to_string(),
@@ -61,15 +60,15 @@ impl Client {
             message_retention_duration: op.message_retention_duration.map(|v| v.into()),
             retain_acked_messages: op.retain_acked_messages,
             topic_message_retention_duration: op.topic_message_retention_duration.map(|v| v.into())
-        }, None).await.map(|_v| self.subscription(subscription_id))
+        }, opt).await.map(|_v| self.subscription(subscription_id))
     }
 
-    pub async fn subscriptions(&self) -> Result<Vec<Subscription>, Status> {
+    pub async fn subscriptions(&self, opt: Option<BackoffRetrySettings>) -> Result<Vec<Subscription>, Status> {
         self.subc.list_subscriptions(ListSubscriptionsRequest {
             project: self.project_id.to_string(),
             page_size: 0,
             page_token: "".to_string()
-        }, None).await.map(|v| v.into_iter().map( |x |
+        }, opt).await.map(|v| v.into_iter().map( |x |
             Subscription::new(x.name.to_string(), self.subc.clone())).collect()
         )
     }
@@ -78,13 +77,13 @@ impl Client {
         Subscription::new(self.subscription_name(id), self.subc.clone())
     }
 
-    pub async fn detach_subscription(&self, sub_id: &str) -> Result<(), Status> {
+    pub async fn detach_subscription(&self, sub_id: &str, opt: Option<BackoffRetrySettings>) -> Result<(), Status> {
         self.pubc.detach_subscription(DetachSubscriptionRequest{
             subscription: self.subscription_name(sub_id),
-        }, None).await.map(|_v| ())
+        }, opt).await.map(|_v| ())
     }
 
-    pub async fn create_topic(&self, topic_id: &str, topic_config: Option<PublisherConfig>) -> Result<Topic, Status> {
+    pub async fn create_topic(&self, topic_id: &str, publisher_config: Option<PublisherConfig>, opt:Option<BackoffRetrySettings>) -> Result<Topic, Status> {
         self.pubc.create_topic(InternalTopic {
             name: self.topic_name(topic_id),
             labels: Default::default(),
@@ -93,22 +92,22 @@ impl Client {
             schema_settings: None,
             satisfies_pzs: false,
             message_retention_duration: None
-        }, None).await.map(|_v| self.topic(topic_id, topic_config))
+        }, opt).await.map(|_v| self.topic(topic_id, publisher_config))
     }
 
-    pub async fn topics(&self, config: Option<PublisherConfig>) -> Result<Vec<Topic>, Status> {
-        let opt = config.unwrap_or_default();
+    pub async fn topics(&self, publisher_config: Option<PublisherConfig>, opt: Option<BackoffRetrySettings>) -> Result<Vec<Topic>, Status> {
+        let config = publisher_config.unwrap_or_default();
         self.pubc.list_topics(ListTopicsRequest {
             project: self.project_id.to_string(),
             page_size: 0,
             page_token: "".to_string()
-        }, None).await.map(|v| {
+        }, opt).await.map(|v| {
             v.into_iter().map(|x| {
                 Topic::new(
                     x.name.to_string(),
                     self.pubc.clone(),
                     self.subc.clone(),
-                    Some(opt.clone()),
+                    Some(config.clone()),
                     )
             }).collect()
         })

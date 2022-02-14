@@ -3,6 +3,7 @@ use std::future::Future;
 
 use std::time::Duration;
 use prost_types::FieldMask;
+use google_cloud_gax::call_option::BackoffRetrySettings;
 
 use google_cloud_googleapis::pubsub::v1::{DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest, PushConfig, RetryPolicy, Subscription as InternalSubscription, UpdateSubscriptionRequest};
 use google_cloud_googleapis::Status;
@@ -116,25 +117,25 @@ impl Subscription {
         self.name.as_str()
     }
 
-    pub async fn delete(&mut self) -> Result<(), Status>{
+    pub async fn delete(&mut self, opt: Option<BackoffRetrySettings>) -> Result<(), Status>{
         self.subc.delete_subscription(DeleteSubscriptionRequest {
             subscription: self.name.to_string()
-        }, None).await.map(|v| v.into_inner())
+        }, opt).await.map(|v| v.into_inner())
     }
 
-    pub async fn config(&mut self) -> Result<(String, SubscriptionConfig), Status>{
+    pub async fn config(&mut self, opt: Option<BackoffRetrySettings>) -> Result<(String, SubscriptionConfig), Status>{
         self.subc.get_subscription(GetSubscriptionRequest{
             subscription: self.name.to_string()
-        }, None).await.map(|v| {
+        }, opt).await.map(|v| {
             let inner = v.into_inner();
             (inner.topic.to_string(),inner.into())
         })
     }
 
-    pub async fn update(&mut self, updating: SubscriptionConfigToUpdate) -> Result<(String, SubscriptionConfig), Status>{
+    pub async fn update(&mut self, updating: SubscriptionConfigToUpdate, opt: Option<BackoffRetrySettings>) -> Result<(String, SubscriptionConfig), Status>{
         let mut config = self.subc.get_subscription(GetSubscriptionRequest{
             subscription: self.name.to_string()
-        }, None).await?.into_inner();
+        }, opt.clone()).await?.into_inner();
 
         let mut paths = vec![];
         if updating.push_config.is_some() {
@@ -172,7 +173,7 @@ impl Subscription {
             update_mask: Some(FieldMask {
                 paths
             })
-        }, None).await.map(|v| {
+        }, opt).await.map(|v| {
             let inner = v.into_inner();
             (inner.topic.to_string(),inner.into())
         })
@@ -184,7 +185,7 @@ impl Subscription {
         let mut receivers  = Vec::with_capacity(op.worker_count);
         let mut senders = Vec::with_capacity(receivers.len());
 
-        if self.config().await?.1.enable_message_ordering {
+        if self.config(op.subscriber_config.retry_setting.clone()).await?.1.enable_message_ordering {
             (0..op.worker_count).for_each(|_v| {
                 let (sender, receiver) = async_channel::unbounded::<ReceivedMessage>();
                 receivers.push(receiver);

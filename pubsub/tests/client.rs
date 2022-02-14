@@ -30,10 +30,10 @@ async fn test_scenario() -> Result<(), anyhow::Error> {
     let uuid = Uuid::new_v4().to_hyphenated().to_string();
     let topic_name = &format!("t{}", &uuid);
     let subscription_name = &format!("s{}", &uuid);
-    let topic = client.create_topic(topic_name, None).await.unwrap();
+    let topic = client.create_topic(topic_name, None, None).await.unwrap();
     let mut config = SubscriptionConfig::default();
     config.enable_message_ordering = true;
-    let mut subscription = client.create_subscription(subscription_name , &topic, config).await.unwrap();
+    let mut subscription = client.create_subscription(subscription_name , &topic, config, None).await.unwrap();
 
     let (token,cancel) = CancellationToken::new();
     //subscribe
