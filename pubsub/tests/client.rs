@@ -48,14 +48,12 @@ async fn test_scenario() -> Result<(), anyhow::Error> {
     //publish
     for v in 0..100 {
         let message = create_message(format!("abc_{}",v).as_bytes(), "orderkey");
-        let message_id = topic.publish(message).await.get().await.unwrap();
+        let message_id = topic.publish(message).await.unwrap();
         println!("sent {}", message_id);
     }
 
     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-    {
-        drop(cancel);
-    }
+    drop(cancel);
     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
     handle.await;

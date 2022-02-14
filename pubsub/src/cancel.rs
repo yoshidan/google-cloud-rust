@@ -6,13 +6,11 @@ pub struct CancellationToken {
 }
 
 impl CancellationToken {
-    pub fn new() -> (Self, impl FnOnce() + Send + Sync + 'static)  {
+    pub fn new() -> (Self, impl Drop)  {
         let (sender, receiver) = watch::channel::<bool>(false);
         (Self {
             cancel: receiver
-        }, move || {
-            sender.send(true);
-        })
+        },  sender)
     }
 
     // return if sender closed or sender first published

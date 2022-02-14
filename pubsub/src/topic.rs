@@ -80,12 +80,12 @@ impl Topic {
       }, None).await.map(|v| v.into_iter().map(|sub_name| Subscription::new(sub_name, self.subc.clone())).collect())
    }
 
-   pub async fn publish(&self, message: PubsubMessage) -> Awaiter {
+   pub async fn publish(&self, message: PubsubMessage) -> Result<String,Status>{
       let mut lock = self.publisher.lock();
       if lock.is_none() {
          *lock = Some(Publisher::new(self.name.clone(), self.config.clone(), self.pubc.clone()));
       }
-      return lock.as_ref().unwrap().publish(message).await;
+      lock.as_ref().unwrap().publish(message).await.get().await
    }
 
    pub fn close(&self) {
