@@ -169,7 +169,7 @@ impl Publisher {
             Err(status) => {
                 for p in callback.into_iter() {
                     //TODO copy error
-                    p.send(Err(Status::new(tonic::Status::new(status.source.code().clone(), status.source.message().clone()))));
+                    p.send(Err(Status::new(tonic::Status::new(status.source.code().clone(), &(*status.source.message()).to_string()))));
                 }
             }
         };
