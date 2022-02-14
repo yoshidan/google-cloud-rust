@@ -38,42 +38,13 @@ impl ReceivedMessage {
     }
 }
 
-pub struct Config {
-    pub ping_interval_second: u64
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        return Self {
-            ping_interval_second: 1
-        }
-    }
-}
-
-struct Worker {
-    pub ping_handle: JoinHandle<()>,
-    pub ping_sender: Sender<bool>,
-    pub receive_handle: JoinHandle<()>
-}
-
 pub struct Subscriber {
-   workers: Vec<Worker>,
-   stopped: bool
+    pub ping_sender: Sender<bool>,
 }
 
 impl Subscriber {
-    pub fn new(subscription: String, client: SubscriberClient, queues: Vec<async_channel::Sender<ReceivedMessage>>, config: Config) -> Subscriber {
-        //Orderingが有効な場合、順序月メッセージは同じStreamに入ってくるため、worker毎にstreamが別れていれば問題はない。
-        let workers = queues.into_iter().map(|queue| {
-            Self::start_worker(subscription.clone(), client.clone(), queue, config.ping_interval_second)
-        }).collect();
-        Self {
-            workers,
-            stopped: false
-        }
-    }
 
-    fn start_worker(subscription: String, mut client: SubscriberClient, mut queue: async_channel::Sender<ReceivedMessage>, ping_interval_second: u64) -> Worker {
+    pub fn new(subscription: String, mut client: SubscriberClient, queue: async_channel::Sender<ReceivedMessage>, ping_interval_second: u64) -> Self {
         let (ping_sender,ping_receiver) = async_channel::unbounded();
 
         // ping request
@@ -118,28 +89,12 @@ impl Subscriber {
             };
             ()
         });
-        return Worker {
-            ping_handle,
+        return Self{
             ping_sender,
-            receive_handle
         }
     }
 
-    pub fn stop(&mut self) {
-        if self.stopped {
-            return
-        }
-       for worker in &self.workers {
-           worker.ping_sender.close();
-       }
-        self.stopped = true
+    pub fn stop(& self) {
+        self.ping_sender.close();
     }
-}
-
-impl Drop for Subscriber {
-
-    fn drop(&mut self) {
-        self.stop() ;
-    }
-
 }

@@ -5,3 +5,4 @@ pub mod publisher;
 pub mod subscriber;
 pub mod client;
 pub mod util;
+pub mod cancel;

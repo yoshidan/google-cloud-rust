@@ -8,6 +8,7 @@ use google_cloud_pubsub::apiv1::conn_pool::ConnectionManager;
 use google_cloud_pubsub::publisher::{Publisher, PublisherConfig};
 use serial_test::serial;
 use uuid::Uuid;
+use google_cloud_pubsub::cancel::CancellationToken;
 use google_cloud_pubsub::client::{Client};
 use google_cloud_pubsub::subscriber::ReceivedMessage;
 use google_cloud_pubsub::subscription::{ReceiveConfig, SubscriptionConfig};
@@ -38,14 +39,15 @@ async fn test_scenario() -> Result<(), anyhow::Error> {
     config.enable_message_ordering = true;
     let mut subscription = client.create_subscription(subscription_name , &topic, config).await.unwrap();
 
-    let (sender,receiver) = tokio::sync::oneshot::channel();
+    let (token,cancel) = CancellationToken::new();
     //subscribe
     let handle = tokio::spawn(async move {
-        subscription.receive(receiver, |mut v| async move {
+        subscription.receive(token, |mut v| async move {
             v.ack().await;
             println!("tid={:?} id={} data={}", thread::current().id(), v.message.message_id, std::str::from_utf8(&v.message.data).unwrap());
         }, Some(ReceiveConfig {
-            worker_count: 2
+            worker_count: 2,
+            ping_interval_second: 1,
         })).await;
     });
 
@@ -57,7 +59,7 @@ async fn test_scenario() -> Result<(), anyhow::Error> {
     }
 
     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-    sender.send(true);
+    cancel();
     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
     handle.await;

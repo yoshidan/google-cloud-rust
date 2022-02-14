@@ -1,13 +1,16 @@
 use std::collections::HashMap;
 use std::future::Future;
+use std::ops::Sub;
 use std::sync::Arc;
 use std::time::Duration;
 use prost_types::FieldMask;
+use tokio::sync::oneshot;
 use google_cloud_googleapis::pubsub::v1::{DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest, PushConfig, RetryPolicy, Subscription as InternalSubscription, UpdateSubscriptionRequest};
 use google_cloud_googleapis::Status;
 use crate::apiv1::subscriber_client::SubscriberClient;
+use crate::cancel::CancellationToken;
 use crate::publisher::ReservedMessage;
-use crate::subscriber::{Config, ReceivedMessage, Subscriber};
+use crate::subscriber::{ReceivedMessage, Subscriber};
 use crate::topic::Topic;
 
 pub struct SubscriptionConfig {
@@ -76,22 +79,25 @@ impl Into<SubscriptionConfig> for InternalSubscription {
 }
 
 pub struct ReceiveConfig {
-    pub worker_count: usize
+    pub worker_count: usize,
+    pub ping_interval_second: u64,
 }
 
 impl Default for ReceiveConfig {
     fn default() -> Self {
         Self {
             worker_count: 10,
+            ping_interval_second: 10,
         }
     }
 }
+
+
 
 /// Subscription is a reference to a PubSub subscription.
 pub struct Subscription {
     name: String,
     subc: SubscriberClient,
-    subscriber: Option<Subscriber>,
 }
 
 impl Subscription {
@@ -99,7 +105,6 @@ impl Subscription {
         Self {
             name,
             subc,
-            subscriber: None,
         }
     }
 
@@ -111,51 +116,6 @@ impl Subscription {
     /// string returns the globally unique printable name of the subscription.
     pub fn string(&self) -> &str {
         self.name.as_str()
-    }
-
-    pub async fn receive<F>(&mut self, cancel: tokio::sync::oneshot::Receiver<bool>,  f: impl Fn(ReceivedMessage) -> F + Send + 'static + Sync + Clone, config: Option<ReceiveConfig>) -> Result<(), Status>
-    where F: Future<Output = ()> + Send + 'static {
-        let op = config.unwrap_or_default();
-        let mut receivers  = Vec::with_capacity(op.worker_count);
-        let mut senders = Vec::with_capacity(receivers.len());
-
-        if self.config().await?.1.enable_message_ordering {
-            (0..op.worker_count).for_each(|v| {
-                let (sender, receiver) = async_channel::unbounded::<ReceivedMessage>();
-                receivers.push(receiver);
-                senders.push(sender);
-            });
-        }else {
-            let (sender, receiver) = async_channel::unbounded::<ReceivedMessage>();
-            (0..op.worker_count).for_each(|v| {
-                receivers.push(receiver.clone());
-                senders.push(sender.clone());
-            });
-        }
-
-        let mut subscriber = Subscriber::new(self.name.clone(), self.subc.clone(), senders.clone(), Config::default());
-        let mut join_handles = Vec::with_capacity(receivers.len());
-        for receiver in receivers {
-            let f_clone = f.clone();
-            join_handles.push(tokio::spawn(async move {
-                while let Ok(message) = receiver.recv().await {
-                    f_clone(message).await;
-                };
-                println!("closed subscription workers");
-            }));
-        }
-        cancel.await;
-        println!("cancelled");
-        subscriber.stop();
-        for s in senders {
-            s.close();
-        }
-
-        // wait
-        for j in join_handles {
-            j.await;
-        }
-        Ok(())
     }
 
     pub async fn delete(&mut self) -> Result<(), Status>{
@@ -220,17 +180,55 @@ impl Subscription {
         })
     }
 
-    pub fn stop(&mut self) {
-        if let Some(s) = &mut self.subscriber {
-            s.stop();
+    pub async fn receive<F>(&mut self, mut cancellation_token: CancellationToken,  f: impl Fn(ReceivedMessage) -> F + Send + 'static + Sync + Clone, config: Option<ReceiveConfig>) -> Result<(), Status>
+        where F: Future<Output = ()> + Send + 'static {
+        let op = config.unwrap_or_default();
+        let mut receivers  = Vec::with_capacity(op.worker_count);
+        let mut senders = Vec::with_capacity(receivers.len());
+
+        if self.config().await?.1.enable_message_ordering {
+            (0..op.worker_count).for_each(|v| {
+                let (sender, receiver) = async_channel::unbounded::<ReceivedMessage>();
+                receivers.push(receiver);
+                senders.push(sender);
+            });
+        }else {
+            let (sender, receiver) = async_channel::unbounded::<ReceivedMessage>();
+            (0..op.worker_count).for_each(|v| {
+                receivers.push(receiver.clone());
+                senders.push(sender.clone());
+            });
         }
+
+        //Orderingが有効な場合、順序付きメッセージは同じStreamに入ってくるためSubscriber毎にqueueが別れていれば問題はない。
+        let subscribers : Vec<Subscriber> = senders.clone().into_iter().map(|queue| {
+            Subscriber::new(self.name.clone(), self.subc.clone(), queue, op.ping_interval_second)
+        }).collect();
+
+        let mut message_receivers= Vec::with_capacity(receivers.len());
+        for receiver in receivers {
+            let f_clone = f.clone();
+            message_receivers.push(tokio::spawn(async move {
+                while let Ok(message) = receiver.recv().await {
+                    f_clone(message).await;
+                };
+                println!("closed subscription workers");
+            }));
+        }
+        cancellation_token.wait().await;
+
+        for subscriber in subscribers {
+            subscriber.stop();
+        }
+
+        for sender in senders {
+            sender.close();
+        }
+
+        // wait for finish
+        for mr in message_receivers {
+            mr.await;
+        }
+        Ok(())
     }
-}
-
-impl Drop for Subscription {
-
-    fn drop(&mut self) {
-        self.stop();
-    }
-
 }
