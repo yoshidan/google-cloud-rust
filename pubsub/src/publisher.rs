@@ -39,7 +39,6 @@ pub struct Publisher {
     priority_senders: Vec<async_channel::Sender<ReservedMessage>>,
     sender: async_channel::Sender<ReservedMessage>,
     workers: Vec<JoinHandle<()>>,
-    stopped: bool
 }
 
 pub struct Awaiter {
@@ -85,7 +84,7 @@ impl Publisher {
             let topic_for_worker = topic.clone();
             tokio::spawn(async move {
                 let mut buffer = VecDeque::<ReservedMessage>::new();
-                loop {
+                while !receiver.is_closed() {
                     match timeout(std::time::Duration::from_millis(1),&mut receiver.recv()).await {
                         Ok(result) => match result {
                             Ok(message) => {
@@ -117,7 +116,6 @@ impl Publisher {
             workers,
             sender,
             priority_senders,
-            stopped: false
         }
     }
 
@@ -142,17 +140,12 @@ impl Publisher {
         }
     }
 
-    pub fn stop(&mut self) {
-        if self.stopped {
-            return
-        }
-        self.stopped = true;
+    pub fn close(&mut self) {
         self.sender.close();
-        for worker in self.workers.iter() {
-            worker.abort();
+        for ps in self.priority_senders.iter() {
+            ps.close();
         }
     }
-
 
     async fn flush(client: &mut PublisherClient, topic: &str, buffer: VecDeque<ReservedMessage>) {
         let mut data = Vec::<PubsubMessage> ::with_capacity(buffer.len());
@@ -187,7 +180,7 @@ impl Publisher {
 impl Drop for Publisher {
 
     fn drop(&mut self) {
-       self.stop() ;
+       self.close() ;
     }
 
 }

@@ -1,11 +1,11 @@
 use tokio::sync::watch;
 
 #[derive(Clone)]
-pub struct CancellationReceiver {
+pub struct CancellationToken {
     cancel: watch::Receiver<bool>
 }
 
-impl CancellationReceiver {
+impl CancellationToken {
     pub fn new() -> (Self, impl FnOnce() + Send + Sync + 'static)  {
         let (mut sender, receiver) = watch::channel::<bool>(false);
         (Self {

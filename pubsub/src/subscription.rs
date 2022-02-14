@@ -218,7 +218,7 @@ impl Subscription {
         cancellation_token.done().await;
 
         for subscriber in subscribers {
-            subscriber.stop();
+            subscriber.close();
         }
 
         for sender in senders {

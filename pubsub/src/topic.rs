@@ -1,6 +1,6 @@
 use std::ops::Deref;
 use std::sync::Arc;
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use tokio::sync::oneshot::channel;
 use google_cloud_googleapis::Code::NotFound;
 use google_cloud_googleapis::pubsub::v1::{DeleteTopicRequest, GetTopicRequest, ListTopicSubscriptionsRequest, PubsubMessage};
@@ -14,12 +14,10 @@ use crate::subscription::Subscription;
 /// Topic is a reference to a PubSub topic.
 pub struct Topic {
    name: String,
-   stopped: RwLock<bool>,
-   init: RwLock<bool>,
    pubc: PublisherClient,
    subc: SubscriberClient,
    config: PublisherConfig,
-   publisher: Option<Publisher>
+   publisher: Mutex<Option<Publisher>>
 }
 
 impl Topic {
@@ -30,20 +28,10 @@ impl Topic {
           config: PublisherConfig) -> Self {
       Self {
          name,
-         init: RwLock::new(false),
-         stopped: RwLock::new(false),
          pubc,
          subc,
          config,
-         publisher:None
-      }
-   }
-
-   fn init(&mut self) {
-      let mut lock = self.init.write();
-      if !*lock{
-         self.publisher = Some(Publisher::new(self.name.clone(), self.config.clone(), self.pubc.clone()));
-         *lock = true;
+         publisher: Mutex::new(None)
       }
    }
 
@@ -92,27 +80,30 @@ impl Topic {
       }, None).await.map(|v| v.into_iter().map(|sub_name| Subscription::new(sub_name, self.subc.clone())).collect())
    }
 
-   pub async fn publish(&mut self, message: PubsubMessage) -> Awaiter {
-      if *self.stopped.read() {
-         let (sender,receiver) = channel();
-         sender.send(Err(Status::new(tonic::Status::unavailable("stopped"))));
-         return Awaiter::new(receiver);
+   pub async fn publish(&self, message: PubsubMessage) -> Awaiter {
+      let mut lock = self.publisher.lock();
+      if lock.is_none() {
+         *lock = Some(Publisher::new(self.name.clone(), self.config.clone(), self.pubc.clone()));
       }
-      self.init();
-      return self.publisher.as_ref().unwrap().publish(message).await;
+      return lock.as_ref().unwrap().publish(message).await;
    }
 
-   pub fn stop(&mut self) {
-      if let Some(s) = &mut self.publisher {
-         s.stop();
+   pub fn close(&self) {
+      let mut lock = self.publisher.lock();
+      if lock.is_some() {
+         if let Some(s) = &mut *lock {
+            s.close();
+         }
       }
+      *lock = None
    }
+
 }
 
 impl Drop for Topic {
 
    fn drop(&mut self) {
-      self.stop() ;
+      self.close() ;
    }
 
 }
