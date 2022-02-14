@@ -2,7 +2,7 @@ use std::sync::Arc;
 use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 use google_cloud_pubsub::apiv1::publisher_client::PublisherClient;
 use google_cloud_pubsub::apiv1::conn_pool::ConnectionManager;
-use google_cloud_pubsub::publisher::{Publisher, SchedulerConfig};
+use google_cloud_pubsub::publisher::{Publisher};
 use serial_test::serial;
 
 #[tokio::test]

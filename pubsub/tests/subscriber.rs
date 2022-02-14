@@ -87,13 +87,13 @@ async fn test_multi_subscriber_single_subscription() -> Result<(), anyhow::Error
 
     for mut subscriber in subscribers {
         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-        subscriber.stop();
+        subscriber.close();
         println!("stopped");
         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     }
 
     assert_eq!(v.load(SeqCst),1);
-    publisher.stop();
+    publisher.close();
     Ok(())
 }
 
