@@ -65,7 +65,7 @@ impl Awaiter {
 /// Each item is added with a given key.
 /// Items added to the empty string key are handled in random order.
 /// Items added to any other key are handled sequentially.
-pub struct Publisher {
+pub(crate) struct Publisher {
     ordering_senders: Vec<async_channel::Sender<ReservedMessage>>,
     sender: async_channel::Sender<ReservedMessage>,
     publish_timeout: Duration,
@@ -197,5 +197,41 @@ impl Drop for Publisher {
 
     fn drop(&mut self) {
        self.stop() ;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+    use google_cloud_googleapis::pubsub::v1::PubsubMessage;
+    use crate::apiv1::conn_pool::ConnectionManager;
+    use serial_test::serial;
+    use crate::apiv1::publisher_client::PublisherClient;
+    use crate::publisher::Publisher;
+
+    #[tokio::test]
+    #[serial]
+    async fn test_publish() -> Result<(), anyhow::Error> {
+        let cons = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
+        let client = PublisherClient::new(cons);
+
+        let publisher = Arc::new(Publisher::new("projects/local-project/topics/test-topic1".to_string(), client, None));
+
+        for _ in 0..10 {
+            let p = publisher.clone();
+            tokio::spawn(async move {
+                let mut result = p.publish(PubsubMessage {
+                    data: "abc".into(),
+                    attributes: Default::default(),
+                    message_id: "".to_string(),
+                    publish_time: None,
+                    ordering_key: "".to_string()
+                }).await;
+                let v = result.get().await;
+                println!("{}", v.unwrap());
+            });
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+        Ok(())
     }
 }

@@ -11,7 +11,7 @@ use tonic::Response;
 use crate::apiv1::conn_pool::ConnectionManager;
 
 #[derive(Clone)]
-pub struct PublisherClient {
+pub(crate) struct PublisherClient {
     cm: Arc<ConnectionManager>
 }
 

@@ -25,7 +25,7 @@ pub struct Topic {
 
 impl Topic {
 
-   pub fn new(name: String,
+   pub(crate) fn new(name: String,
           pubc: PublisherClient,
           subc: SubscriberClient,
           config: Option<PublisherConfig>) -> Self {

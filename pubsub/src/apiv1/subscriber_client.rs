@@ -32,7 +32,7 @@ pub(crate) fn create_default_streaming_pull_request(subscription: String) -> Str
 
 
 #[derive(Clone)]
-pub struct SubscriberClient {
+pub(crate) struct SubscriberClient {
     cm: Arc<ConnectionManager>
 }
 

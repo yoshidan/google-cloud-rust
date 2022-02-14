@@ -9,7 +9,7 @@ use google_cloud_grpc::conn::Channel;
 use tonic::Response;
 
 #[derive(Clone)]
-pub struct SchemaClient {
+pub(crate) struct SchemaClient {
     inner: SchemaServiceClient<Channel>,
 }
 
