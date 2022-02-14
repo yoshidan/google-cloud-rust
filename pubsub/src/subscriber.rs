@@ -3,6 +3,7 @@ use std::future::Future;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
+use async_channel::Sender;
 use parking_lot::{Mutex, RwLock};
 use prost::Message;
 use tokio::sync::oneshot;
@@ -44,13 +45,14 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         return Self {
-            ping_interval_second: 10
+            ping_interval_second: 1
         }
     }
 }
 
 struct Worker {
     pub ping_handle: JoinHandle<()>,
+    pub ping_sender: Sender<bool>,
     pub receive_handle: JoinHandle<()>
 }
 
@@ -75,11 +77,13 @@ impl Subscriber {
         let (ping_sender,ping_receiver) = async_channel::unbounded();
 
         // ping request
+        let ping_sender_clone = ping_sender.clone();
         let ping_handle = tokio::spawn(async move {
-            while let Ok(result) = ping_sender.send(true).await {
+            while !ping_sender_clone.is_closed() {
+                ping_sender_clone.send(true).await;
                 tokio::time::sleep(std::time::Duration::from_secs(ping_interval_second)).await;
             }
-            log::debug!("receiver closed");
+            println!("ping closed");
         });
 
         let receive_handle = tokio::spawn(async move {
@@ -94,15 +98,19 @@ impl Subscriber {
                         for m in message.received_messages {
                             if let Some(mes) = m.message {
                                 log::debug!("message received: {}", mes.message_id);
-                                queue.send(ReceivedMessage {
+                                let v = queue.send(ReceivedMessage {
                                     message: mes,
                                     ack_id: m.ack_id,
                                     subscription: subscription.to_string(),
                                     subscriber_client: client.clone()
                                 }).await;
+                                if v.is_err() {
+                                    break;
+                                }
                             }
                         }
                     }
+                    println!("closed subs");
                 },
                 Err(e)=> {
                     println!("subscribe error {:?}", e)
@@ -112,17 +120,17 @@ impl Subscriber {
         });
         return Worker {
             ping_handle,
+            ping_sender,
             receive_handle
         }
     }
 
     pub fn stop(&mut self) {
-        if !self.stopped {
+        if self.stopped {
             return
         }
        for worker in &self.workers {
-           worker.ping_handle.abort();
-           worker.receive_handle.abort();
+           worker.ping_sender.close();
        }
         self.stopped = true
     }

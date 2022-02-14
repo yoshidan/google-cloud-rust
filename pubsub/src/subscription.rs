@@ -113,7 +113,7 @@ impl Subscription {
         self.name.as_str()
     }
 
-    pub async fn receive<F>(&mut self, f: impl Fn(ReceivedMessage) -> F + Send + 'static + Sync + Clone, config: Option<ReceiveConfig>) -> Result<(), Status>
+    pub async fn receive<F>(&mut self, cancel: tokio::sync::oneshot::Receiver<bool>,  f: impl Fn(ReceivedMessage) -> F + Send + 'static + Sync + Clone, config: Option<ReceiveConfig>) -> Result<(), Status>
     where F: Future<Output = ()> + Send + 'static {
         let op = config.unwrap_or_default();
         let mut receivers  = Vec::with_capacity(op.worker_count);
@@ -133,7 +133,7 @@ impl Subscription {
             });
         }
 
-        self.subscriber = Some(Subscriber::new(self.name.clone(), self.subc.clone(), senders, Config::default()));
+        let mut subscriber = Subscriber::new(self.name.clone(), self.subc.clone(), senders.clone(), Config::default());
         let mut join_handles = Vec::with_capacity(receivers.len());
         for receiver in receivers {
             let f_clone = f.clone();
@@ -141,8 +141,16 @@ impl Subscription {
                 while let Ok(message) = receiver.recv().await {
                     f_clone(message).await;
                 };
+                println!("closed subscription workers");
             }));
         }
+        cancel.await;
+        println!("cancelled");
+        subscriber.stop();
+        for s in senders {
+            s.close();
+        }
+
         // wait
         for j in join_handles {
             j.await;

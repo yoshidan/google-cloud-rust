@@ -1,6 +1,7 @@
 use std::iter::successors;
 use std::sync::Arc;
 use std::thread;
+use parking_lot::Mutex;
 use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 use google_cloud_pubsub::apiv1::publisher_client::PublisherClient;
 use google_cloud_pubsub::apiv1::conn_pool::ConnectionManager;
@@ -36,11 +37,11 @@ async fn test_scenario() -> Result<(), anyhow::Error> {
     let mut config = SubscriptionConfig::default();
     config.enable_message_ordering = true;
     let mut subscription = client.create_subscription(subscription_name , &topic, config).await.unwrap();
-    let subcon = subscription.config().await?;
 
+    let (sender,receiver) = tokio::sync::oneshot::channel();
     //subscribe
     let handle = tokio::spawn(async move {
-        subscription.receive(|mut v| async move {
+        subscription.receive(receiver, |mut v| async move {
             v.ack().await;
             println!("tid={:?} id={} data={}", thread::current().id(), v.message.message_id, std::str::from_utf8(&v.message.data).unwrap());
         }, Some(ReceiveConfig {
@@ -55,7 +56,10 @@ async fn test_scenario() -> Result<(), anyhow::Error> {
         println!("sent {}", message_id);
     }
 
-    tokio::time::sleep(std::time::Duration::from_secs(3));
-    subscription.stop();
+    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    sender.send(true);
+    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+
+    handle.await;
     Ok(())
 }
