@@ -1,20 +1,20 @@
-use std::ops::Deref;
-use std::ptr::hash;
+
+
 use std::sync::Arc;
-use parking_lot::Mutex;
-use google_cloud_googleapis::pubsub::v1::{PubsubMessage, StreamingPullRequest, Subscription};
+
+use google_cloud_googleapis::pubsub::v1::{PubsubMessage, Subscription};
 use google_cloud_pubsub::apiv1::publisher_client::PublisherClient;
 use google_cloud_pubsub::apiv1::conn_pool::ConnectionManager;
 use google_cloud_pubsub::publisher::{Publisher, PublisherConfig};
 use serial_test::serial;
-use tokio::time::timeout;
-use tonic::IntoStreamingRequest;
+
+
 use google_cloud_pubsub::apiv1::subscriber_client::SubscriberClient;
 use google_cloud_pubsub::subscriber::{ReceivedMessage, Subscriber};
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering::SeqCst;
-use google_cloud_googleapis::longrunning::CancelOperationRequest;
-use google_cloud_grpc::conn::Channel;
+
+
 use uuid::Uuid;
 
 fn create_default_subscription_request(topic: String) -> Subscription {
@@ -39,7 +39,7 @@ fn create_default_subscription_request(topic: String) -> Subscription {
 
 async fn publish() -> Publisher {
     let pubc = PublisherClient::new(ConnectionManager::new(4, Some("localhost:8681".to_string())).await.unwrap());
-    let mut publisher = Publisher::new("projects/local-project/topics/test-topic1".to_string(), PublisherConfig::default(), pubc);
+    let publisher = Publisher::new("projects/local-project/topics/test-topic1".to_string(), PublisherConfig::default(), pubc);
     publisher.publish(PubsubMessage {
         data: "test_message".into(),
         attributes: Default::default(),
@@ -85,7 +85,7 @@ async fn test_multi_subscriber_single_subscription() -> Result<(), anyhow::Error
 
     let mut publisher = publish().await;
 
-    for mut subscriber in subscribers {
+    for subscriber in subscribers {
         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
         subscriber.close();
         println!("stopped");
@@ -102,7 +102,7 @@ async fn test_multi_subscriber_single_subscription() -> Result<(), anyhow::Error
 async fn test_multi_subscriber_multi_subscription() -> Result<(), anyhow::Error> {
 
     let cons = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
-    let mut subc = SubscriberClient::new(cons);
+    let subc = SubscriberClient::new(cons);
 
     let mut subscribers = vec![];
     for _ in 0..3 {
@@ -115,7 +115,7 @@ async fn test_multi_subscriber_multi_subscription() -> Result<(), anyhow::Error>
 
     let mut publisher = publish().await;
 
-    for (v, mut subscriber) in subscribers {
+    for (v, subscriber) in subscribers {
         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
         subscriber.close();
         println!("stopped");
