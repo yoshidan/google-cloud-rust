@@ -1,5 +1,15 @@
 use tokio::sync::watch;
 
+/// ```
+/// use google_cloud_pubsub::cancel::CancellationToken;
+/// let (mut token, cancel) = CancellationToken::new();
+/// tokio::spawn(async move {
+///     //wait for cancel
+///     token.done().await;
+/// });
+/// // cancel
+/// drop(cancel);
+/// ```
 #[derive(Clone)]
 pub struct CancellationToken {
     cancel: watch::Receiver<bool>
