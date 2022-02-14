@@ -61,10 +61,13 @@ impl Awaiter {
     }
 }
 
+/// Publisher is a scheduler which is designed for Pub/Sub's Publish flow.
+/// Each item is added with a given key.
+/// Items added to the empty string key are handled in random order.
+/// Items added to any other key are handled sequentially.
 pub struct Publisher {
-    priority_senders: Vec<async_channel::Sender<ReservedMessage>>,
+    ordering_senders: Vec<async_channel::Sender<ReservedMessage>>,
     sender: async_channel::Sender<ReservedMessage>,
-    workers: Vec<JoinHandle<()>>,
     publish_timeout: Duration,
 }
 
@@ -74,19 +77,21 @@ impl Publisher {
         let config = opt.unwrap_or_default();
         let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
         let mut receivers = Vec::with_capacity(1 + config.workers);
-        let mut priority_senders = Vec::with_capacity(config.workers);
+        let mut ordering_senders = Vec::with_capacity(config.workers);
+
+        // for non-ordering key message
         for _ in 0..config.workers {
             receivers.push(receiver.clone()) ;
         }
 
-        // ordering key message
+        // for ordering key message
         for _ in 0..config.workers {
             let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
             receivers.push(receiver);
-            priority_senders.push(sender);
+            ordering_senders.push(sender);
         }
 
-        let workers = receivers.into_iter().map(|receiver| {
+        receivers.into_iter().for_each(|receiver| {
             let mut client = pubc.clone();
             let topic_for_worker = topic.clone();
             let retry_setting = config.retry_setting.clone();
@@ -97,7 +102,7 @@ impl Publisher {
                         Ok(result) => match result {
                             Ok(message) => {
                                 buffer.push_back(message);
-                                if buffer.len() > config.buffer_size {
+                                if buffer.len() >= config.buffer_size {
                                     println!("flush buffer worker");
                                     Self::flush(&mut client, topic_for_worker.as_str(), buffer, retry_setting.clone()).await;
                                     buffer = VecDeque::new();
@@ -109,6 +114,7 @@ impl Publisher {
                                 break;
                             }
                         },
+                        //timed out
                         Err(_e) => {
                             if !buffer.is_empty() {
                                 Self::flush(&mut client, topic_for_worker.as_str(), buffer, retry_setting.clone()).await;
@@ -118,16 +124,18 @@ impl Publisher {
                         }
                     }
                 }
-            })
-        }).collect();
+            });
+        });
+
         Self {
-            workers,
             sender,
-            priority_senders,
+            ordering_senders,
             publish_timeout: config.publish_timeout
         }
     }
 
+    /// publish publishes message.
+    /// If an ordering key is specified, it will be added to the queue so that it will be delivered in order.
     pub async fn publish(&self, message: PubsubMessage) -> Awaiter{
 
         let (producer, consumer) = oneshot::channel();
@@ -138,8 +146,8 @@ impl Publisher {
             }).await;
         }else {
             let key = message.ordering_key.as_str().to_usize();
-            let index = key % self.priority_senders.len();
-            self.priority_senders[index].send(ReservedMessage {
+            let index = key % self.ordering_senders.len();
+            self.ordering_senders[index].send(ReservedMessage {
                 producer,
                 message
             }).await;
@@ -147,13 +155,7 @@ impl Publisher {
         Awaiter::new(self.publish_timeout, consumer)
     }
 
-    pub fn close(&mut self) {
-        self.sender.close();
-        for ps in self.priority_senders.iter() {
-            ps.close();
-        }
-    }
-
+    /// flush publishes the messages in buffer.
     async fn flush(client: &mut PublisherClient, topic: &str, buffer: VecDeque<ReservedMessage>, retry_setting: Option<BackoffRetrySettings>) {
         let mut data = Vec::<PubsubMessage> ::with_capacity(buffer.len());
         let mut callback = Vec::<oneshot::Sender<Result<String,Status>>>::with_capacity(buffer.len());
@@ -181,11 +183,19 @@ impl Publisher {
         };
     }
 
+    /// stop stops all the tasks.
+    pub fn stop(&mut self) {
+        self.sender.close();
+        for ps in self.ordering_senders.iter() {
+            ps.close();
+        }
+    }
+
 }
 
 impl Drop for Publisher {
 
     fn drop(&mut self) {
-       self.close() ;
+       self.stop() ;
     }
 }

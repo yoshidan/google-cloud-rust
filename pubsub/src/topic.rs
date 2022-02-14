@@ -12,6 +12,8 @@ use crate::publisher::{Awaiter, Publisher, PublisherConfig};
 use crate::subscription::Subscription;
 
 /// Topic is a reference to a PubSub topic.
+///
+/// The methods of Topic are safe for use by multiple tasks.
 #[derive(Clone)]
 pub struct Topic {
    name: String,
@@ -81,19 +83,28 @@ impl Topic {
       }, opt).await.map(|v| v.into_iter().map(|sub_name| Subscription::new(sub_name, self.subc.clone())).collect())
    }
 
-   pub async fn publish(&self, message: PubsubMessage) -> Result<String,Status>{
+   /// publish publishes msg to the topic asynchronously. Messages are batched and
+   /// sent according to the topic's PublisherConfig. Publish never blocks.
+   ///
+   /// publish returns a non-nil Awaiter which will be ready when the
+   /// message has been sent (or has failed to be sent) to the server.
+   ///
+   /// publish creates tasks for batching and sending messages. These tasks
+   /// need to be stopped by calling t.stop(). Once stopped, future calls to Publish
+   /// will immediately return a Awaiter with an error.
+   pub async fn publish(&self, message: PubsubMessage) -> Awaiter {
       let mut lock = self.publisher.lock();
       if lock.is_none() {
          *lock = Some(Publisher::new(self.name.clone(), self.pubc.clone(),self.config.clone()));
       }
-      lock.as_ref().unwrap().publish(message).await.get().await
+      lock.as_ref().unwrap().publish(message).await
    }
 
-   pub fn close(&self) {
+   pub fn stop(&self) {
       let mut lock = self.publisher.lock();
       if lock.is_some() {
          if let Some(s) = &mut *lock {
-            s.close();
+            s.stop();
          }
       }
       *lock = None
@@ -104,7 +115,7 @@ impl Topic {
 impl Drop for Topic {
 
    fn drop(&mut self) {
-      self.close() ;
+      self.stop() ;
    }
 
 }

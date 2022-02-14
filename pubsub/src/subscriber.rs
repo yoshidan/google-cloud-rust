@@ -104,13 +104,13 @@ impl Subscriber {
         }
     }
 
-    pub fn close(& self) {
+    pub fn stop(& self) {
         self.ping_sender.close();
     }
 }
 
 impl Drop for Subscriber {
     fn drop(&mut self) {
-        self.close();
+        self.stop();
     }
 }

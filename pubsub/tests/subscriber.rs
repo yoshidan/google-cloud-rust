@@ -87,7 +87,7 @@ async fn test_multi_subscriber_single_subscription() -> Result<(), anyhow::Error
 
     for subscriber in subscribers {
         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-        subscriber.close();
+        subscriber.stop();
         println!("stopped");
         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     }
@@ -117,7 +117,7 @@ async fn test_multi_subscriber_multi_subscription() -> Result<(), anyhow::Error>
 
     for (v, subscriber) in subscribers {
         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-        subscriber.close();
+        subscriber.stop();
         println!("stopped");
         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
         assert_eq!(v.load(SeqCst),1);

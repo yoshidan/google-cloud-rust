@@ -6,13 +6,13 @@ use prost_types::FieldMask;
 use google_cloud_gax::call_option::BackoffRetrySettings;
 
 use google_cloud_googleapis::pubsub::v1::{DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest, PushConfig, RetryPolicy, Subscription as InternalSubscription, UpdateSubscriptionRequest};
-use google_cloud_googleapis::Status;
+use google_cloud_googleapis::{Code, Status};
 use crate::apiv1::subscriber_client::SubscriberClient;
 use crate::cancel::CancellationToken;
 
 use crate::subscriber::{ReceivedMessage, Subscriber, SubscriberConfig};
 
-
+/// SubscriptionConfigToUpdate describes how to update a subscription.
 pub struct SubscriptionConfig {
     pub push_config: Option<PushConfig>,
     pub ack_deadline_seconds: i32,
@@ -38,7 +38,6 @@ pub struct SubscriptionConfigToUpdate {
     pub dead_letter_policy: Option<DeadLetterPolicy>,
     pub retry_policy: Option<RetryPolicy>,
 }
-
 
 impl Default for SubscriptionConfig {
     fn default() -> Self {
@@ -117,21 +116,41 @@ impl Subscription {
         self.name.as_str()
     }
 
-    pub async fn delete(&mut self, opt: Option<BackoffRetrySettings>) -> Result<(), Status>{
+    /// delete deletes the subscription.
+    pub async fn delete(&mut self, retry_option: Option<BackoffRetrySettings>) -> Result<(), Status>{
         self.subc.delete_subscription(DeleteSubscriptionRequest {
             subscription: self.name.to_string()
-        }, opt).await.map(|v| v.into_inner())
+        }, retry_option).await.map(|v| v.into_inner())
     }
 
-    pub async fn config(&mut self, opt: Option<BackoffRetrySettings>) -> Result<(String, SubscriptionConfig), Status>{
+    /// exists reports whether the subscription exists on the server.
+    pub async fn exists(&mut self, retry_option: Option<BackoffRetrySettings>) -> Result<bool, Status>{
+        match self.subc.get_subscription(GetSubscriptionRequest{
+            subscription: self.name.to_string()
+        }, retry_option).await {
+            Ok(_) => Ok(true),
+            Err(e) => {
+                if e.code() == Code::NotFound {
+                    Ok(false)
+                }else {
+                    Err(e)
+                }
+            }
+        }
+    }
+
+    /// config fetches the current configuration for the subscription.
+    pub async fn config(&mut self, retry_option: Option<BackoffRetrySettings>) -> Result<(String, SubscriptionConfig), Status>{
         self.subc.get_subscription(GetSubscriptionRequest{
             subscription: self.name.to_string()
-        }, opt).await.map(|v| {
+        }, retry_option).await.map(|v| {
             let inner = v.into_inner();
             (inner.topic.to_string(),inner.into())
         })
     }
 
+    /// update changes an existing subscription according to the fields set in updating.
+    /// It returns the new SubscriptionConfig.
     pub async fn update(&mut self, updating: SubscriptionConfigToUpdate, opt: Option<BackoffRetrySettings>) -> Result<(String, SubscriptionConfig), Status>{
         let mut config = self.subc.get_subscription(GetSubscriptionRequest{
             subscription: self.name.to_string()
@@ -179,6 +198,9 @@ impl Subscription {
         })
     }
 
+    /// receive calls f with the outstanding messages from the subscription.
+    /// It blocks until ctx is done, or the service returns a non-retryable error.
+    /// The standard way to terminate a receive is to use CancellationToken.
     pub async fn receive<F>(&mut self, mut cancellation_token: CancellationToken,  f: impl Fn(ReceivedMessage) -> F + Send + 'static + Sync + Clone, config: Option<ReceiveConfig>) -> Result<(), Status>
         where F: Future<Output = ()> + Send + 'static {
         let op = config.unwrap_or_default();
@@ -217,7 +239,7 @@ impl Subscription {
         cancellation_token.done().await;
 
         for subscriber in subscribers {
-            subscriber.close();
+            subscriber.stop();
         }
 
         for sender in senders {

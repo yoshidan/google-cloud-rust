@@ -44,7 +44,7 @@ async fn test_scenario() -> Result<(), anyhow::Error> {
     config.subscriber_config.ping_interval = Duration::from_secs(1);
     let handle = tokio::spawn(async move {
         subscription.receive(token, |mut v| async move {
-            v.ack().await;
+            let _ = v.ack().await;
             println!("tid={:?} id={} data={}", thread::current().id(), v.message.message_id, std::str::from_utf8(&v.message.data).unwrap());
         }, Some(config)).await;
     });
@@ -63,6 +63,6 @@ async fn test_scenario() -> Result<(), anyhow::Error> {
     drop(cancel);
     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
-    handle.await;
+    let _ = handle.await;
     Ok(())
 }
