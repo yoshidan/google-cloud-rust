@@ -10,7 +10,7 @@ use serial_test::serial;
 use tokio::time::timeout;
 use tonic::IntoStreamingRequest;
 use google_cloud_pubsub::apiv1::subscriber_client::SubscriberClient;
-use google_cloud_pubsub::subscriber::{Config, ReceivedMessage, Subscriber};
+use google_cloud_pubsub::subscriber::{ReceivedMessage, Subscriber};
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering::SeqCst;
 use google_cloud_googleapis::longrunning::CancelOperationRequest;
