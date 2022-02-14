@@ -81,11 +81,13 @@ impl Publisher {
 
         // for non-ordering key message
         for _ in 0..config.workers {
+            log::trace!("start non-ordering publisher : {}", topic.clone());
             receivers.push(receiver.clone()) ;
         }
 
         // for ordering key message
         for _ in 0..config.workers {
+            log::trace!("start ordering publisher : {}", topic.clone());
             let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
             receivers.push(receiver);
             ordering_senders.push(sender);
@@ -103,23 +105,23 @@ impl Publisher {
                             Ok(message) => {
                                 buffer.push_back(message);
                                 if buffer.len() >= config.buffer_size {
-                                    println!("flush buffer worker");
+                                    log::trace!("maximum buffer {} : {}", buffer.len(), topic_for_worker);
                                     Self::flush(&mut client, topic_for_worker.as_str(), buffer, retry_setting.clone()).await;
                                     buffer = VecDeque::new();
                                 }
                             }
                             Err(_e) => {
                                 //closed
-                                println!("closed worker");
+                                log::trace!("stop publisher : {}", topic_for_worker);
                                 break;
                             }
                         },
                         //timed out
                         Err(_e) => {
                             if !buffer.is_empty() {
+                                log::trace!("elapsed: flush buffer : {}", topic_for_worker);
                                 Self::flush(&mut client, topic_for_worker.as_str(), buffer, retry_setting.clone()).await;
                                 buffer = VecDeque::new();
-                                println!("done flush worker")
                             }
                         }
                     }
@@ -206,32 +208,39 @@ mod tests {
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
     use crate::apiv1::conn_pool::ConnectionManager;
     use serial_test::serial;
+    use tokio::task::JoinHandle;
     use crate::apiv1::publisher_client::PublisherClient;
     use crate::publisher::Publisher;
 
     #[tokio::test]
     #[serial]
     async fn test_publish() -> Result<(), anyhow::Error> {
+        std::env::set_var("RUST_LOG","google_cloud_pubsub=trace".to_string());
+        env_logger::init();
         let cons = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
         let client = PublisherClient::new(cons);
 
         let publisher = Arc::new(Publisher::new("projects/local-project/topics/test-topic1".to_string(), client, None));
 
-        for _ in 0..10 {
+        let joins : Vec<JoinHandle<String>>= (0..10).map(|i| {
             let p = publisher.clone();
             tokio::spawn(async move {
                 let mut result = p.publish(PubsubMessage {
                     data: "abc".into(),
                     attributes: Default::default(),
-                    message_id: "".to_string(),
+                    message_id: i.to_string(),
                     publish_time: None,
                     ordering_key: "".to_string()
                 }).await;
                 let v = result.get().await;
-                println!("{}", v.unwrap());
-            });
+                v.unwrap()
+            })
+        }).collect();
+        for j in joins {
+            let v = j.await;
+            assert!(v.is_ok());
+            log::info!("send message id = {}", v.unwrap());
         }
-        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
         Ok(())
     }
 }

@@ -229,11 +229,12 @@ impl Subscription {
         let mut message_receivers= Vec::with_capacity(receivers.len());
         for receiver in receivers {
             let f_clone = f.clone();
+            let name = self.name.clone();
             message_receivers.push(tokio::spawn(async move {
                 while let Ok(message) = receiver.recv().await {
                     f_clone(message).await;
                 };
-                println!("closed subscription workers");
+                log::trace!("stop message receiver : {}", name);
             }));
         }
         cancellation_token.done().await;

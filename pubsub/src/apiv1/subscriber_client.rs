@@ -234,7 +234,6 @@ impl SubscriberClient {
     ) -> Result<Response<()>, Status> {
         let mut setting = Self::get_call_setting(opt);
         let subscription = &req.subscription;
-        println!("ack {}", req.ack_ids.first().unwrap().to_string());
         return invoke_reuse(
             |client| async {
                 let request = create_request(format!("subscription={}", subscription), req.clone());

@@ -58,16 +58,17 @@ impl Subscriber {
 
         // ping request
         let ping_sender_clone = ping_sender.clone();
+        let subscription_clone =  subscription.to_string();
         tokio::spawn(async move {
             while !ping_sender_clone.is_closed() {
                 ping_sender_clone.send(true).await;
                 tokio::time::sleep(config.ping_interval).await;
             }
-            println!("ping closed");
+            log::trace!("stop pinger : {}", subscription_clone);
         });
 
         tokio::spawn(async move {
-            println!("start subscriber");
+            log::trace!("start subscriber: {}", subscription);
             let request = create_default_streaming_pull_request(subscription.to_string());
             let response = client.streaming_pull(request, ping_receiver, config.retry_setting).await;
 
@@ -91,10 +92,10 @@ impl Subscriber {
                         }
                     }
                     // streaming request is closed when the ping_sender closed.
-                    println!("closed subs");
+                    log::trace!("stop subscriber : {}", subscription);
                 },
                 Err(e)=> {
-                    println!("subscribe error {:?}", e)
+                    log::error!("subscriber error {:?} : {}", e, subscription);
                 }
             };
             ()
@@ -169,7 +170,7 @@ mod tests {
     fn subscribe(v: Arc<AtomicU32>, name: String, receiver: async_channel::Receiver<ReceivedMessage>){
         tokio::spawn(async move {
             while let Ok(mut message) = receiver.recv().await {
-                println!("message = {} from={}", message.message.message_id, name.to_string());
+                log::info!("message = {} from={}", message.message.message_id, name.to_string());
                 let data = &message.message.data;
                 let string = std::str::from_utf8(data).unwrap();
                 if string == "test_message" {
@@ -178,7 +179,7 @@ mod tests {
                 match message.ack().await {
                     Ok(_) => {},
                     Err(e) => {
-                        println!("error {}", e);
+                        log::error!("error {}", e);
                     }
                 }
             };
@@ -188,7 +189,8 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_multi_subscriber_single_subscription() -> Result<(), anyhow::Error> {
-
+        std::env::set_var("RUST_LOG","google_cloud_pubsub=trace".to_string());
+        env_logger::init();
         let subc = SubscriberClient::new(ConnectionManager::new(4, Some("localhost:8681".to_string())).await?);
         let v = Arc::new(AtomicU32::new(0));
         let subscription = subc.create_subscription(create_default_subscription_request( "projects/local-project/topics/test-topic1".to_string()), None).await.unwrap().into_inner().name;
@@ -204,7 +206,6 @@ mod tests {
         for subscriber in subscribers {
             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
             subscriber.stop();
-            println!("stopped");
             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
         }
 
@@ -217,6 +218,8 @@ mod tests {
     #[serial]
     async fn test_multi_subscriber_multi_subscription() -> Result<(), anyhow::Error> {
 
+        std::env::set_var("RUST_LOG","google_cloud_pubsub=trace".to_string());
+        env_logger::init();
         let cons = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
         let subc = SubscriberClient::new(cons);
 
@@ -234,7 +237,6 @@ mod tests {
         for (v, subscriber) in subscribers {
             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
             subscriber.stop();
-            println!("stopped");
             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
             assert_eq!(v.load(SeqCst),1);
         }

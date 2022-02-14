@@ -176,6 +176,9 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+    use std::sync::atomic::AtomicU32;
+    use std::sync::atomic::Ordering::SeqCst;
     use std::thread;
     use std::time::Duration;
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
@@ -196,19 +199,20 @@ mod tests {
         }
     }
 
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
-    async fn test_scenario() -> Result<(), anyhow::Error> {
+    async fn do_test(ordering_key: &str) -> Result<(), anyhow::Error> {
+        std::env::set_var("RUST_LOG","google_cloud_pubsub=trace".to_string());
+        env_logger::init();
         std::env::set_var("PUBSUB_EMULATOR_HOST","localhost:8681".to_string());
         let client = Client::new("local-project", None).await.unwrap();
 
+        let order = !ordering_key.is_empty();
         // create
         let uuid = Uuid::new_v4().to_hyphenated().to_string();
         let topic_name = &format!("t{}", &uuid);
         let subscription_name = &format!("s{}", &uuid);
         let topic = client.create_topic(topic_name, None, None).await.unwrap();
         let mut config = SubscriptionConfig::default();
-        config.enable_message_ordering = true;
+        config.enable_message_ordering = !ordering_key.is_empty();
         let mut subscription = client.create_subscription(subscription_name , &topic, config, None).await.unwrap();
 
         let (token,cancel) = CancellationToken::new();
@@ -218,28 +222,55 @@ mod tests {
             subscriber_config: SubscriberConfig::default(),
         };
         config.subscriber_config.ping_interval = Duration::from_secs(1);
+        let (s, mut r) = tokio::sync::mpsc::channel(100);
         let handle = tokio::spawn(async move {
-            subscription.receive(token, |mut v| async move {
-                let _ = v.ack().await;
-                println!("tid={:?} id={} data={}", thread::current().id(), v.message.message_id, std::str::from_utf8(&v.message.data).unwrap());
+            subscription.receive(token, move |mut v| {
+                let s2 = s.clone();
+                async move {
+                    let _ = v.ack().await;
+                    let data = std::str::from_utf8(&v.message.data).unwrap().to_string();
+                    log::info!("tid={:?} id={} data={}", thread::current().id(), v.message.message_id, data);
+                    s2.send(data).await;
+                }
             }, Some(config)).await;
         });
 
         //publish
         let mut awaiters = Vec::with_capacity(100);
         for v in 0..100 {
-            let message = create_message(format!("abc_{}",v).as_bytes(), "orderkey");
+            let message = create_message(format!("abc_{}",v).as_bytes(), ordering_key);
             awaiters.push(topic.publish(message).await);
         }
         for mut v in awaiters {
-            println!("sent {}", v.get().await.unwrap());
+            log::info!("sent message_id = {}", v.get().await.unwrap());
         }
 
         tokio::time::sleep(std::time::Duration::from_secs(3)).await;
         drop(cancel);
         tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
+        let mut count = 0;
+        while let Some(data) = r.recv().await {
+            log::debug!("{}", data);
+            if order {
+                assert_eq!(format!("abc_{}", count), data);
+            }
+            count += 1;
+        }
+        assert_eq!(count, 100);
         let _ = handle.await;
         Ok(())
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_scenario_ordered() -> Result<(), anyhow::Error> {
+       do_test("ordering").await
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_scenario_random() -> Result<(), anyhow::Error> {
+        do_test("").await
     }
 }
