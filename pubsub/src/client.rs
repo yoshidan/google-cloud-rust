@@ -108,14 +108,14 @@ impl Client {
                     x.name.to_string(),
                     self.pubc.clone(),
                     self.subc.clone(),
-                    opt.clone(),
+                    Some(opt.clone()),
                     )
             }).collect()
         })
     }
 
     pub fn topic(&self, id: &str, config: Option<PublisherConfig>) -> Topic {
-        Topic::new(self.topic_name(id), self.pubc.clone(), self.subc.clone(), config.unwrap_or(PublisherConfig::default()))
+        Topic::new(self.topic_name(id), self.pubc.clone(), self.subc.clone(), config)
     }
 
     fn topic_name(&self, id: &str) -> String {

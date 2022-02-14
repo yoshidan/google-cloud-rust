@@ -46,10 +46,13 @@ async fn test_scenario() -> Result<(), anyhow::Error> {
     });
 
     //publish
+    let mut awaiters = Vec::with_capacity(100);
     for v in 0..100 {
         let message = create_message(format!("abc_{}",v).as_bytes(), "orderkey");
-        let message_id = topic.publish(message).await.unwrap();
-        println!("sent {}", message_id);
+        awaiters.push(topic.publish(message).await);
+    }
+    for mut v in awaiters {
+        println!("sent {}", v.get().await.unwrap());
     }
 
     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
