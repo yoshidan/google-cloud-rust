@@ -215,7 +215,7 @@ impl Subscription {
                 println!("closed subscription workers");
             }));
         }
-        cancellation_token.wait().await;
+        cancellation_token.done().await;
 
         for subscriber in subscribers {
             subscriber.stop();

@@ -59,7 +59,9 @@ async fn test_scenario() -> Result<(), anyhow::Error> {
     }
 
     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-    cancel();
+    {
+        cancel;
+    }
     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
     handle.await;
