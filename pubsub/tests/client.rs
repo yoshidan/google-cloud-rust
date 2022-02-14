@@ -1,9 +1,11 @@
 use std::thread;
+use std::time::Duration;
 use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 use serial_test::serial;
 use uuid::Uuid;
 use google_cloud_pubsub::cancel::CancellationToken;
 use google_cloud_pubsub::client::{Client};
+use google_cloud_pubsub::subscriber::SubscriberConfig;
 
 use google_cloud_pubsub::subscription::{ReceiveConfig, SubscriptionConfig};
 
@@ -35,14 +37,16 @@ async fn test_scenario() -> Result<(), anyhow::Error> {
 
     let (token,cancel) = CancellationToken::new();
     //subscribe
+    let mut config = ReceiveConfig {
+        worker_count: 2,
+        subscriber_config: SubscriberConfig::default(),
+    };
+    config.subscriber_config.ping_interval = Duration::from_secs(1);
     let handle = tokio::spawn(async move {
         subscription.receive(token, |mut v| async move {
             v.ack().await;
             println!("tid={:?} id={} data={}", thread::current().id(), v.message.message_id, std::str::from_utf8(&v.message.data).unwrap());
-        }, Some(ReceiveConfig {
-            worker_count: 2,
-            ping_interval_second: 1,
-        })).await;
+        }, Some(config)).await;
     });
 
     //publish

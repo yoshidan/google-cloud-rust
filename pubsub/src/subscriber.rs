@@ -1,4 +1,6 @@
+use std::time::Duration;
 use async_channel::Sender;
+use google_cloud_gax::call_option::BackoffRetrySettings;
 use google_cloud_googleapis::pubsub::v1::{AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage};
 use google_cloud_googleapis::{Status};
 
@@ -28,29 +30,46 @@ impl ReceivedMessage {
     }
 }
 
+#[derive(Clone)]
+pub struct SubscriberConfig {
+    pub ping_interval: Duration,
+    pub retry_setting: Option<BackoffRetrySettings>
+}
+
+impl Default for SubscriberConfig {
+    fn default() -> Self {
+        Self {
+            ping_interval: std::time::Duration::from_secs(10),
+            retry_setting: None,
+        }
+    }
+}
+
 pub struct Subscriber {
     pub ping_sender: Sender<bool>,
 }
 
 impl Subscriber {
 
-    pub fn new(subscription: String, mut client: SubscriberClient, queue: async_channel::Sender<ReceivedMessage>, ping_interval_second: u64) -> Self {
+    pub fn new(subscription: String, mut client: SubscriberClient, queue: async_channel::Sender<ReceivedMessage>, opt: Option<SubscriberConfig>) -> Self {
+        let config = opt.unwrap_or_default();
+
         let (ping_sender,ping_receiver) = async_channel::unbounded();
 
         // ping request
         let ping_sender_clone = ping_sender.clone();
-        let _ping_handle = tokio::spawn(async move {
+        tokio::spawn(async move {
             while !ping_sender_clone.is_closed() {
                 ping_sender_clone.send(true).await;
-                tokio::time::sleep(std::time::Duration::from_secs(ping_interval_second)).await;
+                tokio::time::sleep(config.ping_interval).await;
             }
             println!("ping closed");
         });
 
-        let _receive_handle = tokio::spawn(async move {
+        tokio::spawn(async move {
             println!("start subscriber");
             let request = create_default_streaming_pull_request(subscription.to_string());
-            let response = client.streaming_pull(request, ping_receiver, None).await;
+            let response = client.streaming_pull(request, ping_receiver, config.retry_setting).await;
 
             match response {
                 Ok(r) => {
@@ -71,6 +90,7 @@ impl Subscriber {
                             }
                         }
                     }
+                    // streaming request is closed when the ping_sender closed.
                     println!("closed subs");
                 },
                 Err(e)=> {

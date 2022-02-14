@@ -1,4 +1,5 @@
 use std::collections::{VecDeque};
+use std::sync::Arc;
 use std::time::Duration;
 
 use tokio::sync::oneshot;
@@ -7,6 +8,7 @@ use tokio::time::timeout;
 use google_cloud_gax::call_option::BackoffRetrySettings;
 use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
 use google_cloud_googleapis::{Status};
+use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::util::ToUsize;
 
@@ -59,7 +61,7 @@ impl Awaiter {
     }
 }
 
-pub(crate) struct Publisher {
+pub struct Publisher {
     priority_senders: Vec<async_channel::Sender<ReservedMessage>>,
     sender: async_channel::Sender<ReservedMessage>,
     workers: Vec<JoinHandle<()>>,
@@ -186,5 +188,4 @@ impl Drop for Publisher {
     fn drop(&mut self) {
        self.close() ;
     }
-
 }

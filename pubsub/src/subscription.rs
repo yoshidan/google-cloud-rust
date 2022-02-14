@@ -9,7 +9,7 @@ use google_cloud_googleapis::Status;
 use crate::apiv1::subscriber_client::SubscriberClient;
 use crate::cancel::CancellationToken;
 
-use crate::subscriber::{ReceivedMessage, Subscriber};
+use crate::subscriber::{ReceivedMessage, Subscriber, SubscriberConfig};
 
 
 pub struct SubscriptionConfig {
@@ -79,18 +79,17 @@ impl Into<SubscriptionConfig> for InternalSubscription {
 
 pub struct ReceiveConfig {
     pub worker_count: usize,
-    pub ping_interval_second: u64,
+    pub subscriber_config: SubscriberConfig,
 }
 
 impl Default for ReceiveConfig {
     fn default() -> Self {
         Self {
             worker_count: 10,
-            ping_interval_second: 10,
+            subscriber_config: SubscriberConfig::default(),
         }
     }
 }
-
 
 
 /// Subscription is a reference to a PubSub subscription.
@@ -201,7 +200,7 @@ impl Subscription {
 
         //Orderingが有効な場合、順序付きメッセージは同じStreamに入ってくるためSubscriber毎にqueueが別れていれば問題はない。
         let subscribers : Vec<Subscriber> = senders.clone().into_iter().map(|queue| {
-            Subscriber::new(self.name.clone(), self.subc.clone(), queue, op.ping_interval_second)
+            Subscriber::new(self.name.clone(), self.subc.clone(), queue, Some(op.subscriber_config.clone()))
         }).collect();
 
         let mut message_receivers= Vec::with_capacity(receivers.len());

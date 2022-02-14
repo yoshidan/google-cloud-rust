@@ -39,7 +39,7 @@ fn create_default_subscription_request(topic: String) -> Subscription {
 
 async fn publish() -> Publisher {
     let pubc = PublisherClient::new(ConnectionManager::new(4, Some("localhost:8681".to_string())).await.unwrap());
-    let publisher = Publisher::new("projects/local-project/topics/test-topic1".to_string(), PublisherConfig::default(), pubc);
+    let publisher = Publisher::new("projects/local-project/topics/test-topic1".to_string(), pubc, None);
     publisher.publish(PubsubMessage {
         data: "test_message".into(),
         attributes: Default::default(),
@@ -79,7 +79,7 @@ async fn test_multi_subscriber_single_subscription() -> Result<(), anyhow::Error
     let mut subscribers = vec![];
     for _ in 0..3 {
         let (sender, receiver) = async_channel::unbounded();
-        subscribers.push(Subscriber::new(subscription.clone(), subc.clone(), sender, 1));
+        subscribers.push(Subscriber::new(subscription.clone(), subc.clone(), sender, None));
         subscribe(v.clone(), subscription.clone(), receiver);
     }
 
@@ -109,7 +109,7 @@ async fn test_multi_subscriber_multi_subscription() -> Result<(), anyhow::Error>
         let subscription = subc.clone().create_subscription(create_default_subscription_request("projects/local-project/topics/test-topic1".to_string()), None).await.unwrap().into_inner().name;
         let (sender, receiver) = async_channel::unbounded();
         let v = Arc::new(AtomicU32::new(0));
-        subscribers.push((v.clone(), Subscriber::new(subscription.clone(), subc.clone(), sender, 1)));
+        subscribers.push((v.clone(), Subscriber::new(subscription.clone(), subc.clone(), sender, None)));
         subscribe(v.clone(), subscription, receiver);
     }
 
