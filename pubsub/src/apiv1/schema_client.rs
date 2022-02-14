@@ -1,10 +1,10 @@
 use crate::apiv1::default_setting;
-use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
+use google_cloud_gax::call_option::{BackoffRetrySettings};
 use google_cloud_gax::invoke::invoke_reuse;
 use google_cloud_gax::util::create_request;
 use google_cloud_googleapis::pubsub::v1::schema_service_client::SchemaServiceClient;
 use google_cloud_googleapis::pubsub::v1::{CreateSchemaRequest, DeleteSchemaRequest, GetSchemaRequest, ListSchemasRequest, Schema, ValidateMessageRequest, ValidateMessageResponse, ValidateSchemaRequest, ValidateSchemaResponse};
-use google_cloud_googleapis::{Code, Status};
+use google_cloud_googleapis::{Status};
 use google_cloud_grpc::conn::Channel;
 use tonic::Response;
 

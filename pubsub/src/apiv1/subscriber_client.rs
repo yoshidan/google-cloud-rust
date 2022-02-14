@@ -1,23 +1,20 @@
 use std::sync::Arc;
 use crate::apiv1::default_setting;
-use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
+use google_cloud_gax::call_option::{BackoffRetrySettings};
 use google_cloud_gax::invoke::invoke_reuse;
 use google_cloud_gax::util::{create_request};
-use tonic::{IntoRequest, IntoStreamingRequest, Request};
+use tonic::{IntoStreamingRequest};
 use google_cloud_googleapis::pubsub::v1::subscriber_client::SubscriberClient as InternalSubscriberClient;
 use google_cloud_googleapis::pubsub::v1::{
-    AcknowledgeRequest, CreateSnapshotRequest, DeleteSnapshotRequest, DeleteSubscriptionRequest,
-    DeleteTopicRequest, DetachSubscriptionRequest, DetachSubscriptionResponse, GetSnapshotRequest,
-    GetSubscriptionRequest, GetTopicRequest, ListSnapshotsRequest, ListSubscriptionsRequest,
-    ListSubscriptionsResponse, ListTopicSnapshotsRequest, ListTopicSubscriptionsRequest,
-    ListTopicsRequest, ModifyAckDeadlineRequest, ModifyPushConfigRequest, PullRequest,
-    PullResponse, Snapshot, StreamingPullRequest, StreamingPullResponse, Subscription, Topic,
-    UpdateSnapshotRequest, UpdateSubscriptionRequest, UpdateTopicRequest,
+    AcknowledgeRequest, CreateSnapshotRequest, DeleteSnapshotRequest, DeleteSubscriptionRequest, GetSnapshotRequest,
+    GetSubscriptionRequest, ListSnapshotsRequest, ListSubscriptionsRequest, ModifyAckDeadlineRequest, ModifyPushConfigRequest, PullRequest,
+    PullResponse, Snapshot, StreamingPullRequest, StreamingPullResponse, Subscription,
+    UpdateSnapshotRequest, UpdateSubscriptionRequest,
 };
-use google_cloud_googleapis::{Code, Status};
+use google_cloud_googleapis::{Status};
 use google_cloud_grpc::conn::Channel;
 use tonic::{Response, Streaming};
-use tonic::codegen::futures_core::Stream;
+
 use crate::apiv1::conn_pool::ConnectionManager;
 
 pub(crate) fn create_default_streaming_pull_request(subscription: String) -> StreamingPullRequest {
@@ -289,13 +286,13 @@ impl SubscriberClient {
         let mut setting = Self::get_call_setting(opt);
         return invoke_reuse(
             |client| async {
-                let mut base_req = req.clone();
-                let mut rx = ping_receiver.clone();
+                let base_req = req.clone();
+                let rx = ping_receiver.clone();
                 let request = Box::pin(async_stream::stream! {
                     yield base_req.clone();
 
                     // ping message
-                    while let Ok(r) = rx.recv().await {
+                    while let Ok(_r) = rx.recv().await {
                        yield create_default_streaming_pull_request("".to_string())
                     }
                 });

@@ -1,4 +1,4 @@
-use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
+
 use google_cloud_grpc::conn::{ConnectionManager as GRPCConnectionManager, Error};
 use  google_cloud_grpc::conn::Channel;
 

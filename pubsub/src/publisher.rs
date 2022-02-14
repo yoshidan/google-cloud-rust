@@ -1,15 +1,15 @@
-use std::collections::{HashMap, VecDeque};
-use std::future::Future;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::collections::{VecDeque};
+
+
+
 use std::time::Duration;
-use parking_lot::{Mutex, RwLock};
-use prost::Message;
+
+
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
-use google_cloud_googleapis::pubsub::v1::{PublishRequest, PublishResponse, PubsubMessage};
-use google_cloud_googleapis::{Code, Status};
+use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
+use google_cloud_googleapis::{Status};
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::util::ToUsize;
 
@@ -95,13 +95,13 @@ impl Publisher {
                                     buffer = VecDeque::new();
                                 }
                             }
-                            Err(e) => {
+                            Err(_e) => {
                                 //closed
                                 println!("closed worker");
                                 break;
                             }
                         },
-                        Err(e) => {
+                        Err(_e) => {
                             if !buffer.is_empty() {
                                 Self::flush(&mut client, topic_for_worker.as_str(), buffer).await;
                                 buffer = VecDeque::new();
@@ -121,7 +121,7 @@ impl Publisher {
 
     pub async fn publish(&self, message: PubsubMessage) -> Awaiter{
 
-        let (producer, mut consumer) = oneshot::channel();
+        let (producer, consumer) = oneshot::channel();
         if message.ordering_key.is_empty() {
             self.sender.send( ReservedMessage {
                 producer,

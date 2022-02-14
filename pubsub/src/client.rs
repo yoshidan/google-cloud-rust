@@ -1,13 +1,13 @@
-use std::collections::HashMap;
-use std::time::Duration;
+
+
 use google_cloud_googleapis::Status;
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
-use crate::publisher::{Publisher, PublisherConfig};
+use crate::publisher::{PublisherConfig};
 use crate::subscription::{Subscription, SubscriptionConfig};
 use crate::topic::Topic;
-use google_cloud_googleapis::pubsub::v1::{DeadLetterPolicy, DetachSubscriptionRequest, ExpirationPolicy, ListSubscriptionsRequest, ListTopicsRequest, PushConfig, RetryPolicy, Subscription as InternalSubscription, Topic as InternalTopic};
+use google_cloud_googleapis::pubsub::v1::{DetachSubscriptionRequest, ListSubscriptionsRequest, ListTopicsRequest, Subscription as InternalSubscription, Topic as InternalTopic};
 use google_cloud_grpc::conn::Error;
 
 pub struct Config {
@@ -61,7 +61,7 @@ impl Client {
             message_retention_duration: op.message_retention_duration.map(|v| v.into()),
             retain_acked_messages: op.retain_acked_messages,
             topic_message_retention_duration: op.topic_message_retention_duration.map(|v| v.into())
-        }, None).await.map(|v| self.subscription(subscription_id))
+        }, None).await.map(|_v| self.subscription(subscription_id))
     }
 
     pub async fn subscriptions(&self) -> Result<Vec<Subscription>, Status> {
@@ -81,7 +81,7 @@ impl Client {
     pub async fn detach_subscription(&self, sub_id: &str) -> Result<(), Status> {
         self.pubc.detach_subscription(DetachSubscriptionRequest{
             subscription: self.subscription_name(sub_id),
-        }, None).await.map(|v| ())
+        }, None).await.map(|_v| ())
     }
 
     pub async fn create_topic(&self, topic_id: &str, topic_config: Option<PublisherConfig>) -> Result<Topic, Status> {
@@ -93,7 +93,7 @@ impl Client {
             schema_settings: None,
             satisfies_pzs: false,
             message_retention_duration: None
-        }, None).await.map(|v| self.topic(topic_id, topic_config))
+        }, None).await.map(|_v| self.topic(topic_id, topic_config))
     }
 
     pub async fn topics(&self, config: Option<PublisherConfig>) -> Result<Vec<Topic>, Status> {

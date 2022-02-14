@@ -7,7 +7,7 @@ pub struct CancellationToken {
 
 impl CancellationToken {
     pub fn new() -> (Self, impl FnOnce() + Send + Sync + 'static)  {
-        let (mut sender, receiver) = watch::channel::<bool>(false);
+        let (sender, receiver) = watch::channel::<bool>(false);
         (Self {
             cancel: receiver
         }, move || {

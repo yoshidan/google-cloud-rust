@@ -1,17 +1,17 @@
-use std::collections::VecDeque;
-use std::future::Future;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::Duration;
+
+
+
+
+
 use async_channel::Sender;
-use parking_lot::{Mutex, RwLock};
-use prost::Message;
-use tokio::sync::oneshot;
-use tokio::task::JoinHandle;
-use tokio::time::timeout;
-use google_cloud_googleapis::pubsub::v1::{AcknowledgeRequest, ModifyAckDeadlineRequest, PublishRequest, PublishResponse, PubsubMessage, PullRequest, StreamingPullRequest, StreamingPullResponse};
-use google_cloud_googleapis::{Code, Status};
-use crate::apiv1::publisher_client::PublisherClient;
+
+
+
+
+
+use google_cloud_googleapis::pubsub::v1::{AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage};
+use google_cloud_googleapis::{Status};
+
 use crate::apiv1::subscriber_client::{create_default_streaming_pull_request, SubscriberClient};
 
 pub struct ReceivedMessage {
@@ -49,7 +49,7 @@ impl Subscriber {
 
         // ping request
         let ping_sender_clone = ping_sender.clone();
-        let ping_handle = tokio::spawn(async move {
+        let _ping_handle = tokio::spawn(async move {
             while !ping_sender_clone.is_closed() {
                 ping_sender_clone.send(true).await;
                 tokio::time::sleep(std::time::Duration::from_secs(ping_interval_second)).await;
@@ -57,7 +57,7 @@ impl Subscriber {
             println!("ping closed");
         });
 
-        let receive_handle = tokio::spawn(async move {
+        let _receive_handle = tokio::spawn(async move {
             println!("start subscriber");
             let request = create_default_streaming_pull_request(subscription.to_string());
             let response = client.streaming_pull(request, ping_receiver, None).await;

@@ -4,7 +4,7 @@ pub mod subscriber_client;
 pub mod conn_pool;
 
 use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
-use google_cloud_googleapis::{Code, Status};
+use google_cloud_googleapis::{Code};
 
 fn default_setting() -> BackoffRetrySettings {
     BackoffRetrySettings {
