@@ -72,7 +72,7 @@ impl Client {
     /// If the subscription already exists an error will be returned.
     pub async fn create_subscription(&self, subscription_id: &str, topic: &Topic, cfg: SubscriptionConfig, retry_option: Option<BackoffRetrySettings>) -> Result<Subscription, Status> {
         self.subc.create_subscription(InternalSubscription{
-            name: self.subscription_name(subscription_id),
+            name: self.fully_qualified_subscription_name(subscription_id),
             topic: topic.string().to_string(),
             push_config: cfg.push_config,
             ack_deadline_seconds: cfg.ack_deadline_seconds,
@@ -92,7 +92,7 @@ impl Client {
     /// subscriptions returns an iterator which returns all of the subscriptions for the client's project.
     pub async fn subscriptions(&self, retry_option: Option<BackoffRetrySettings>) -> Result<Vec<Subscription>, Status> {
         self.subc.list_subscriptions(ListSubscriptionsRequest {
-            project: self.project_id.to_string(),
+            project: self.fully_qualified_project_name(),
             page_size: 0,
             page_token: "".to_string()
         }, retry_option).await.map(|v| v.into_iter().map( |x |
@@ -102,7 +102,7 @@ impl Client {
 
     /// subscription creates a reference to a subscription.
     pub fn subscription(&self, id: &str) -> Subscription {
-        Subscription::new(self.subscription_name(id), self.subc.clone())
+        Subscription::new(self.fully_qualified_subscription_name(id), self.subc.clone())
     }
 
     /// detach_subscription detaches a subscription from its topic. All messages
@@ -111,7 +111,7 @@ impl Client {
     /// subscription, pushes to the endpoint will stop.
     pub async fn detach_subscription(&self, sub_id: &str, retry_option: Option<BackoffRetrySettings>) -> Result<(), Status> {
         self.pubc.detach_subscription(DetachSubscriptionRequest{
-            subscription: self.subscription_name(sub_id),
+            subscription: self.fully_qualified_subscription_name(sub_id),
         }, retry_option).await.map(|_v| ())
     }
 
@@ -126,7 +126,7 @@ impl Client {
     /// If the topic already exists an error will be returned.
     pub async fn create_topic(&self, topic_id: &str, publisher_config: Option<PublisherConfig>, retry_option:Option<BackoffRetrySettings>) -> Result<Topic, Status> {
         self.pubc.create_topic(InternalTopic {
-            name: self.topic_name(topic_id),
+            name: self.fully_qualified_topic_name(topic_id),
             labels: Default::default(),
             message_storage_policy: None,
             kms_key_name: "".to_string(),
@@ -140,7 +140,7 @@ impl Client {
     pub async fn topics(&self, publisher_config: Option<PublisherConfig>, retry_option: Option<BackoffRetrySettings>) -> Result<Vec<Topic>, Status> {
         let config = publisher_config.unwrap_or_default();
         self.pubc.list_topics(ListTopicsRequest {
-            project: self.project_id.to_string(),
+            project: self.fully_qualified_project_name(),
             page_size: 0,
             page_token: "".to_string()
         }, retry_option).await.map(|v| {
@@ -162,15 +162,19 @@ impl Client {
     ///
     /// Avoid creating many Topic instances if you use them to publish.
     pub fn topic(&self, id: &str, config: Option<PublisherConfig>) -> Topic {
-        Topic::new(self.topic_name(id), self.pubc.clone(), self.subc.clone(), config)
+        Topic::new(self.fully_qualified_topic_name(id), self.pubc.clone(), self.subc.clone(), config)
     }
 
-    fn topic_name(&self, id: &str) -> String {
+    fn fully_qualified_topic_name(&self, id: &str) -> String {
         format!("projects/{}/topics/{}", self.project_id, id)
     }
 
-    fn subscription_name(&self, id: &str) -> String {
+    fn fully_qualified_subscription_name(&self, id: &str) -> String {
         format!("projects/{}/subscriptions/{}", self.project_id, id)
+    }
+
+    fn fully_qualified_project_name(&self) -> String {
+        format!("projects/{}", self.project_id)
     }
 }
 
@@ -186,6 +190,7 @@ mod tests {
     use uuid::Uuid;
     use crate::cancel::CancellationToken;
     use crate::client::{Client};
+    use crate::publisher::PublisherConfig;
     use crate::subscriber::SubscriberConfig;
     use crate::subscription::{ReceiveConfig, SubscriptionConfig};
 
@@ -199,11 +204,15 @@ mod tests {
         }
     }
 
-    async fn do_test(ordering_key: &str) -> Result<(), anyhow::Error> {
+    async fn create_client() -> Client {
         std::env::set_var("RUST_LOG","google_cloud_pubsub=trace".to_string());
         env_logger::init();
         std::env::set_var("PUBSUB_EMULATOR_HOST","localhost:8681".to_string());
-        let client = Client::new("local-project", None).await.unwrap();
+        Client::new("local-project", None).await.unwrap()
+    }
+
+    async fn do_publish_and_subscribe(ordering_key: &str) -> Result<(), anyhow::Error> {
+        let client = create_client().await;
 
         let order = !ordering_key.is_empty();
         // create
@@ -259,18 +268,38 @@ mod tests {
         }
         assert_eq!(count, 100);
         let _ = handle.await;
+        
         Ok(())
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_scenario_ordered() -> Result<(), anyhow::Error> {
-       do_test("ordering").await
+    async fn test_publish_subscribe_ordered() -> Result<(), anyhow::Error> {
+       do_publish_and_subscribe("ordering").await
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_scenario_random() -> Result<(), anyhow::Error> {
-        do_test("").await
+    async fn test_publish_subscribe_random() -> Result<(), anyhow::Error> {
+        do_publish_and_subscribe("").await
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_lifecycle() -> Result<(), anyhow::Error>{
+       let client = create_client().await;
+
+        let uuid = Uuid::new_v4().to_hyphenated().to_string();
+        let topic_id = &format!("t{}", &uuid);
+        let subscription_id = &format!("s{}", &uuid);
+        let topics = client.topics(None, None) .await.unwrap();
+        let subs = client.subscriptions(None) .await.unwrap();
+        let topic = client.create_topic(topic_id, None, None).await.unwrap();
+        let subscription= client.create_subscription(subscription_id, &topic, SubscriptionConfig::default(), None).await?;
+        let topics_after = client.topics(None, None) .await.unwrap();
+        let subs_after= client.subscriptions(None) .await.unwrap();
+        assert_eq!(1, topics_after.len() - topics.len());
+        assert_eq!(1, subs_after.len() - subs.len());
+        Ok(())
     }
 }

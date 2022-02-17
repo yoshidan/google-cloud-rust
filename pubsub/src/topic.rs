@@ -39,8 +39,8 @@ impl Topic {
    }
 
    /// id returns the unique identifier of the topic within its project.
-   pub fn id(&self) -> Option<String> {
-      self.name.rfind('/').map(|i| self.name[(i + 1)..].to_string())
+   pub fn id(&self) -> String {
+      self.name.rfind('/').map_or("".to_string(),|i| self.name[(i + 1)..].to_string())
    }
 
    /// string returns the printable globally unique name for the topic.
