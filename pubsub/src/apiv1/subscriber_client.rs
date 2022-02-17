@@ -91,7 +91,7 @@ impl SubscriberClient {
     /// updateSubscription updates an existing subscription. Note that certain properties of a
     /// subscription, such as its topic, are not modifiable.
     pub async fn update_subscription(
-        &mut self,
+        &self,
         req: UpdateSubscriptionRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Subscription>, Status> {
@@ -116,7 +116,7 @@ impl SubscriberClient {
 
     /// get_subscription gets the configuration details of a subscription.
     pub async fn get_subscription(
-        &mut self,
+        &self,
         req: GetSubscriptionRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Subscription>, Status> {
@@ -174,7 +174,7 @@ impl SubscriberClient {
     /// the same name, but the new one has no association with the old
     /// subscription or its topic unless the same topic is specified.
     pub async fn delete_subscription(
-        &mut self,
+        &self,
         req: DeleteSubscriptionRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<()>, Status> {
@@ -200,7 +200,7 @@ impl SubscriberClient {
     /// processing was interrupted. Note that this does not modify the
     /// subscription-level ackDeadlineSeconds used for subsequent messages.
     pub async fn modify_ack_deadline(
-        &mut self,
+        &self,
         req: ModifyAckDeadlineRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<()>, Status> {
@@ -228,7 +228,7 @@ impl SubscriberClient {
     /// but such a message may be redelivered later. Acknowledging a message more
     /// than once will not result in an error.
     pub async fn acknowledge(
-        &mut self,
+        &self,
         req: AcknowledgeRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<()>, Status> {
@@ -252,7 +252,7 @@ impl SubscriberClient {
     /// there are too many concurrent pull requests pending for the given
     /// subscription.
     pub async fn pull(
-        &mut self,
+        &self,
         req: PullRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<PullResponse>, Status> {
@@ -277,7 +277,7 @@ impl SubscriberClient {
     /// re-establish the stream. Flow control can be achieved by configuring the
     /// underlying RPC channel.
     pub async fn streaming_pull(
-        &mut self,
+        &self,
         req: StreamingPullRequest,
         ping_receiver: async_channel::Receiver<bool>,
         opt: Option<BackoffRetrySettings>,
@@ -316,7 +316,7 @@ impl SubscriberClient {
     /// attributes of a push subscription. Messages will accumulate for delivery
     /// continuously through the call regardless of changes to the PushConfig.
     pub async fn modify_push_config(
-        &mut self,
+        &self,
         req: ModifyPushConfigRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<()>, Status> {
@@ -342,7 +342,7 @@ impl SubscriberClient {
     /// is, you can set the acknowledgment state of messages in an existing
     /// subscription to the state captured by a snapshot
     pub async fn get_snapshot(
-        &mut self,
+        &self,
         req: GetSnapshotRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Snapshot>, Status> {
@@ -367,7 +367,7 @@ impl SubscriberClient {
     /// the acknowledgment state of messages in an existing subscription to the
     /// state captured by a snapshot.
     pub async fn list_snapshots(
-        &mut self,
+        &self,
         mut req: ListSnapshotsRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Vec<Snapshot>, Status> {
@@ -414,7 +414,7 @@ impl SubscriberClient {
     /// generated name is populated in the returned Snapshot object. Note that for
     /// REST API requests, you must specify a name in the request.
     pub async fn create_snapshot(
-        &mut self,
+        &self,
         req: CreateSnapshotRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Snapshot>, Status> {
@@ -441,7 +441,7 @@ impl SubscriberClient {
     /// acknowledgment state of messages in an existing subscription to the state
     /// captured by a snapshot.
     pub async fn update_snapshot(
-        &mut self,
+        &self,
         req: UpdateSnapshotRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<Snapshot>, Status> {
@@ -474,7 +474,7 @@ impl SubscriberClient {
     /// created with the same name, but the new one has no association with the old
     /// snapshot or its subscription, unless the same subscription is specified.
     pub async fn delete_snapshot(
-        &mut self,
+        &self,
         req: DeleteSnapshotRequest,
         opt: Option<BackoffRetrySettings>,
     ) -> Result<Response<()>, Status> {

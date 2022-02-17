@@ -117,14 +117,14 @@ impl Subscription {
     }
 
     /// delete deletes the subscription.
-    pub async fn delete(&mut self, retry_option: Option<BackoffRetrySettings>) -> Result<(), Status>{
+    pub async fn delete(&self, retry_option: Option<BackoffRetrySettings>) -> Result<(), Status>{
         self.subc.delete_subscription(DeleteSubscriptionRequest {
             subscription: self.name.to_string()
         }, retry_option).await.map(|v| v.into_inner())
     }
 
     /// exists reports whether the subscription exists on the server.
-    pub async fn exists(&mut self, retry_option: Option<BackoffRetrySettings>) -> Result<bool, Status>{
+    pub async fn exists(&self, retry_option: Option<BackoffRetrySettings>) -> Result<bool, Status>{
         match self.subc.get_subscription(GetSubscriptionRequest{
             subscription: self.name.to_string()
         }, retry_option).await {
@@ -140,7 +140,7 @@ impl Subscription {
     }
 
     /// config fetches the current configuration for the subscription.
-    pub async fn config(&mut self, retry_option: Option<BackoffRetrySettings>) -> Result<(String, SubscriptionConfig), Status>{
+    pub async fn config(&self, retry_option: Option<BackoffRetrySettings>) -> Result<(String, SubscriptionConfig), Status>{
         self.subc.get_subscription(GetSubscriptionRequest{
             subscription: self.name.to_string()
         }, retry_option).await.map(|v| {
@@ -151,7 +151,7 @@ impl Subscription {
 
     /// update changes an existing subscription according to the fields set in updating.
     /// It returns the new SubscriptionConfig.
-    pub async fn update(&mut self, updating: SubscriptionConfigToUpdate, opt: Option<BackoffRetrySettings>) -> Result<(String, SubscriptionConfig), Status>{
+    pub async fn update(&self, updating: SubscriptionConfigToUpdate, opt: Option<BackoffRetrySettings>) -> Result<(String, SubscriptionConfig), Status>{
         let mut config = self.subc.get_subscription(GetSubscriptionRequest{
             subscription: self.name.to_string()
         }, opt.clone()).await?.into_inner();
@@ -201,7 +201,7 @@ impl Subscription {
     /// receive calls f with the outstanding messages from the subscription.
     /// It blocks until ctx is done, or the service returns a non-retryable error.
     /// The standard way to terminate a receive is to use CancellationToken.
-    pub async fn receive<F>(&mut self, mut cancellation_token: CancellationToken,  f: impl Fn(ReceivedMessage) -> F + Send + 'static + Sync + Clone, config: Option<ReceiveConfig>) -> Result<(), Status>
+    pub async fn receive<F>(&self, mut cancellation_token: CancellationToken,  f: impl Fn(ReceivedMessage) -> F + Send + 'static + Sync + Clone, config: Option<ReceiveConfig>) -> Result<(), Status>
         where F: Future<Output = ()> + Send + 'static {
         let op = config.unwrap_or_default();
         let mut receivers  = Vec::with_capacity(op.worker_count);
@@ -252,5 +252,72 @@ impl Subscription {
             mr.await;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use std::time::Duration;
+    use uuid::Uuid;
+    use google_cloud_googleapis::pubsub::v1::{ExpirationPolicy, Subscription as InternalSubscription};
+    use serial_test::serial;
+    use crate::apiv1::conn_pool::ConnectionManager;
+    use crate::apiv1::subscriber_client::SubscriberClient;
+    use crate::subscription::{Subscription, SubscriptionConfigToUpdate};
+
+    #[tokio::test]
+    #[serial]
+    async fn test_subscription() -> Result<(), anyhow::Error> {
+        std::env::set_var("RUST_LOG","google_cloud_pubsub=trace".to_string());
+        env_logger::init();
+        let cm = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
+        let client = SubscriberClient::new(cm);
+
+        let uuid = Uuid::new_v4().to_hyphenated().to_string();
+        let subscription_name = format!("projects/loca-lproject/subscriptions/s{}", &uuid);
+        let topic_name = "projects/local-project/topics/test-topic1".to_string();
+        let subscription = client.create_subscription(InternalSubscription {
+            name: subscription_name.to_string(),
+            topic: topic_name.to_string(),
+            push_config: None,
+            ack_deadline_seconds: 0,
+            retain_acked_messages: false,
+            message_retention_duration: None,
+            labels: Default::default(),
+            enable_message_ordering: true,
+            expiration_policy: None,
+            filter: "".to_string(),
+            dead_letter_policy: None,
+            retry_policy: None,
+            detached: false,
+            topic_message_retention_duration: None
+        }, None).await?.into_inner();
+
+        let mut sub = Subscription::new(subscription.name, client);
+        assert!(sub.exists(None).await?);
+
+        let config = sub.config(None).await?;
+        assert_eq!(config.0, topic_name);
+        assert!(config.1.enable_message_ordering);
+
+        let new_config = sub.update(SubscriptionConfigToUpdate {
+            push_config: None,
+            ack_deadline_seconds: Some(100),
+            retain_acked_messages: None,
+            message_retention_duration: None,
+            labels: None,
+            expiration_policy: None,
+            dead_letter_policy: None,
+            retry_policy: None
+        }, None).await?;
+        assert_eq!(new_config.0, topic_name);
+        assert_eq!(new_config.1.ack_deadline_seconds, 100);
+
+        sub.delete(None).await?;
+        assert!(!sub.exists(None).await?);
+
+        Ok(())
+
     }
 }
