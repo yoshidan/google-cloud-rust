@@ -119,3 +119,66 @@ impl Drop for Topic {
    }
 
 }
+
+#[cfg(test)]
+mod tests {
+   use std::collections::HashMap;
+   use std::time::Duration;
+   use uuid::Uuid;
+   use google_cloud_googleapis::pubsub::v1::{ExpirationPolicy, MessageStoragePolicy, PubsubMessage, Topic as InternalTopic};
+   use serial_test::serial;
+   use crate::apiv1::conn_pool::ConnectionManager;
+   use crate::apiv1::publisher_client::PublisherClient;
+   use crate::apiv1::subscriber_client::SubscriberClient;
+   use crate::topic::Topic;
+
+   #[tokio::test]
+   #[serial]
+   async fn test_topic() -> Result<(), anyhow::Error> {
+      std::env::set_var("RUST_LOG","google_cloud_pubsub=trace".to_string());
+      env_logger::init();
+      let cm = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
+      let client = PublisherClient::new(cm);
+
+      let uuid = Uuid::new_v4().to_hyphenated().to_string();
+      let topic_name = format!("projects/local-project/topics/t{}",uuid).to_string();
+      let topic = client.create_topic(InternalTopic {
+         name: topic_name.to_string(),
+         message_retention_duration: None,
+         labels: Default::default(),
+         message_storage_policy: None,
+         kms_key_name: "".to_string(),
+         schema_settings: None,
+         satisfies_pzs: false
+      }, None).await?.into_inner();
+
+      let subcm = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
+      let subc = SubscriberClient::new(subcm);
+      let mut topic = Topic::new(topic.name, client, subc, None);
+      assert!(topic.exists(None).await?);
+
+      let subs = topic.subscriptions(None).await?;
+      assert_eq!(0, subs.len());
+
+      let msg = PubsubMessage {
+         data: "aaa".as_bytes().to_vec(),
+         attributes: Default::default(),
+         message_id: "".to_string(),
+         publish_time: None,
+         ordering_key: "".to_string()
+      };
+      let message_id = topic.publish(msg.clone()).await.get().await;
+      assert!(message_id.unwrap().len() > 0);
+
+      topic.stop();
+      let message_id = topic.publish(msg).await.get().await;
+      assert!(message_id.unwrap().len() > 0);
+
+      topic.delete(None).await?;
+
+      assert!(!topic.exists(None).await?);
+
+      Ok(())
+
+   }
+}
