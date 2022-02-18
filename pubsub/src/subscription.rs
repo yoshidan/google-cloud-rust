@@ -325,7 +325,7 @@ mod tests {
             sub.delete(None).await.unwrap();
             assert!(!sub.exists(None).await.unwrap())
         });
-        tokio::time::sleep(Duration::from_secs(1)).await;
+        tokio::time::sleep(Duration::from_secs(3)).await;
         drop(cancel);
         handle.await;
 

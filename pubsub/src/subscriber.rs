@@ -1,5 +1,6 @@
 use std::time::Duration;
 use async_channel::Sender;
+use tokio::select;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
@@ -68,7 +69,7 @@ impl Subscriber {
 
         let pinger = tokio::spawn(async move {
             loop {
-                tokio::select! {
+                select! {
                     _ = observer.cancelled() => {
                         ping_sender.close();
                         break;
@@ -81,37 +82,50 @@ impl Subscriber {
             log::trace!("stop pinger : {}", subscription_clone);
         });
 
+        let observer2= cancellation_token.child_token();
         let inner= tokio::spawn(async move {
             log::trace!("start subscriber: {}", subscription);
             let request = create_default_streaming_pull_request(subscription.to_string());
             let response = client.streaming_pull(request, ping_receiver, config.retry_setting).await;
 
-            match response {
-                Ok(r) => {
-                    let mut stream = r.into_inner();
-                    while let Ok(Some(message)) = stream.message().await {
+            let mut stream = match response {
+                Ok(r) => r.into_inner(),
+                Err(e) => {
+                    log::error!("subscriber error {:?} : {}", e, subscription);
+                    return;
+                }
+            };
+            loop {
+                select! {
+                    _ = observer2.cancelled() => {
+                        queue.close();
+                        break;
+                    }
+                    maybe = stream.message() => {
+                        let message = match maybe{
+                           Err(e) => break,
+                           Ok(message) => message
+                        };
+                        let message = match message {
+                            Some(m) => m,
+                            None => break
+                        };
                         for m in message.received_messages {
                             if let Some(mes) = m.message {
                                 log::debug!("message received: {}", mes.message_id);
-                                let v = queue.send(ReceivedMessage {
+                                queue.send(ReceivedMessage {
                                     message: mes,
                                     ack_id: m.ack_id,
                                     subscription: subscription.to_string(),
                                     subscriber_client: client.clone()
                                 }).await;
-                                if v.is_err() {
-                                    break;
-                                }
                             }
                         }
                     }
-                    // streaming request is closed when the ping_sender closed.
-                    log::trace!("stop subscriber : {}", subscription);
-                },
-                Err(e)=> {
-                    log::error!("subscriber error {:?} : {}", e, subscription);
                 }
             }
+            // streaming request is closed when the ping_sender closed.
+            log::trace!("stop subscriber : {}", subscription);
         });
         return Self{
             cancellation_token,
