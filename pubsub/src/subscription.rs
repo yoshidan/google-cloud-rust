@@ -239,8 +239,8 @@ impl Subscription {
         }
         cancellation_token.done().await;
 
-        for subscriber in subscribers {
-            subscriber.stop();
+        for mut subscriber in subscribers {
+            subscriber.stop().await;
         }
 
         for sender in senders {
@@ -264,6 +264,7 @@ mod tests {
     use serial_test::serial;
     use crate::apiv1::conn_pool::ConnectionManager;
     use crate::apiv1::subscriber_client::SubscriberClient;
+    use crate::cancel::CancellationToken;
     use crate::subscription::{Subscription, SubscriptionConfigToUpdate};
 
     #[tokio::test]
@@ -314,8 +315,19 @@ mod tests {
         assert_eq!(new_config.0, topic_name);
         assert_eq!(new_config.1.ack_deadline_seconds, 100);
 
-        sub.delete(None).await?;
-        assert!(!sub.exists(None).await?);
+        let (ctx, cancel) = CancellationToken::new();
+        let handle = tokio::spawn(async move {
+            let _ = sub.receive(ctx, |mut message| async move {
+                println!("{}", message.message.message_id);
+                message.ack();
+            }, None).await;
+
+            sub.delete(None).await.unwrap();
+            assert!(!sub.exists(None).await.unwrap())
+        });
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        drop(cancel);
+        handle.await;
 
         Ok(())
 

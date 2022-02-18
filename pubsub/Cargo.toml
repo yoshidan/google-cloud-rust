@@ -24,6 +24,7 @@ base64 = "0.13"
 anyhow = "1.0"
 async-channel = "1.6.1"
 async-stream = "0.3.1"
+tokio-util = "0.6.9"
 
 google-cloud-grpc = { version = "0.2.1", path = "../foundation/grpc" }
 google-cloud-gax = { version = "0.3.1", path = "../foundation/gax" }

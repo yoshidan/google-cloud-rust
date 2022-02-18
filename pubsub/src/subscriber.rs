@@ -1,5 +1,8 @@
 use std::time::Duration;
 use async_channel::Sender;
+use tokio::task::JoinHandle;
+use tokio::time::sleep;
+use tokio_util::sync::CancellationToken;
 use google_cloud_gax::call_option::BackoffRetrySettings;
 use google_cloud_googleapis::pubsub::v1::{AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage};
 use google_cloud_googleapis::{Status};
@@ -46,7 +49,9 @@ impl Default for SubscriberConfig {
 }
 
 pub(crate) struct Subscriber {
-    pub ping_sender: Sender<bool>,
+    cancellation_token: CancellationToken,
+    pinger: Option<JoinHandle<()>>,
+    inner: Option<JoinHandle<()>>,
 }
 
 impl Subscriber {
@@ -54,20 +59,29 @@ impl Subscriber {
     pub fn new(subscription: String, mut client: SubscriberClient, queue: async_channel::Sender<ReceivedMessage>, opt: Option<SubscriberConfig>) -> Self {
         let config = opt.unwrap_or_default();
 
+        let cancellation_token = CancellationToken::new();
+        let observer = cancellation_token.child_token();
         let (ping_sender,ping_receiver) = async_channel::unbounded();
 
         // ping request
-        let ping_sender_clone = ping_sender.clone();
         let subscription_clone =  subscription.to_string();
-        tokio::spawn(async move {
-            while !ping_sender_clone.is_closed() {
-                ping_sender_clone.send(true).await;
-                tokio::time::sleep(config.ping_interval).await;
+
+        let pinger = tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    _ = observer.cancelled() => {
+                        ping_sender.close();
+                        break;
+                    }
+                    _ = sleep(config.ping_interval) => {
+                        ping_sender.send(true).await;
+                    }
+                }
             }
             log::trace!("stop pinger : {}", subscription_clone);
         });
 
-        tokio::spawn(async move {
+        let inner= tokio::spawn(async move {
             log::trace!("start subscriber: {}", subscription);
             let request = create_default_streaming_pull_request(subscription.to_string());
             let response = client.streaming_pull(request, ping_receiver, config.retry_setting).await;
@@ -97,25 +111,25 @@ impl Subscriber {
                 Err(e)=> {
                     log::error!("subscriber error {:?} : {}", e, subscription);
                 }
-            };
-            ()
+            }
         });
         return Self{
-            ping_sender,
+            cancellation_token,
+            pinger: Some(pinger),
+            inner: Some(inner)
         }
     }
 
-    pub fn stop(& self) {
-        self.ping_sender.close();
+    pub async fn stop(&mut self) {
+        self.cancellation_token.cancel();
+        if let Some(v) = self.pinger.take() {
+            v.await;
+        }
+        if let Some(v) = self.inner.take() {
+            v.await;
+        }
     }
 }
-
-impl Drop for Subscriber {
-    fn drop(&mut self) {
-        self.stop();
-    }
-}
-
 
 #[cfg(test)]
 mod tests {
@@ -203,9 +217,9 @@ mod tests {
 
         let mut publisher = publish().await;
 
-        for subscriber in subscribers {
+        for mut subscriber in subscribers {
             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-            subscriber.stop();
+            subscriber.stop().await;
             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
         }
 
@@ -234,9 +248,9 @@ mod tests {
 
         let mut publisher = publish().await;
 
-        for (v, subscriber) in subscribers {
+        for (v, mut subscriber) in subscribers {
             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-            subscriber.stop();
+            subscriber.stop().await;
             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
             assert_eq!(v.load(SeqCst),1);
         }
