@@ -69,6 +69,7 @@ pub(crate) struct Publisher {
     ordering_senders: Vec<async_channel::Sender<ReservedMessage>>,
     sender: async_channel::Sender<ReservedMessage>,
     publish_timeout: Duration,
+    workers: Option<Vec<JoinHandle<()>>>
 }
 
 impl Publisher {
@@ -93,7 +94,7 @@ impl Publisher {
             ordering_senders.push(sender);
         }
 
-        receivers.into_iter().for_each(|receiver| {
+        let workers = receivers.into_iter().map(|receiver| {
             let mut client = pubc.clone();
             let topic_for_worker = topic.clone();
             let retry_setting = config.retry_setting.clone();
@@ -126,12 +127,13 @@ impl Publisher {
                         }
                     }
                 }
-            });
-        });
+            })
+        }).collect();
 
         Self {
             sender,
             ordering_senders,
+            workers: Some(workers),
             publish_timeout: config.publish_timeout
         }
     }
@@ -186,20 +188,18 @@ impl Publisher {
     }
 
     /// stop stops all the tasks.
-    pub fn stop(&mut self) {
+    pub async fn stop(&mut self) {
         self.sender.close();
         for ps in self.ordering_senders.iter() {
             ps.close();
         }
+        if let Some(workers) = self.workers.take() {
+            for w in workers {
+                w.await;
+            }
+        }
     }
 
-}
-
-impl Drop for Publisher {
-
-    fn drop(&mut self) {
-       self.stop() ;
-    }
 }
 
 #[cfg(test)]

@@ -100,14 +100,10 @@ impl Topic {
       lock.as_ref().unwrap().publish(message).await
    }
 
-   pub fn stop(&self) {
-      let mut lock = self.publisher.lock();
-      if lock.is_some() {
-         if let Some(s) = &mut *lock {
-            s.stop();
-         }
+   pub async fn stop(&self) {
+      if let Some(mut p) = { self.publisher.lock().take() } {
+         p.stop().await;
       }
-      *lock = None
    }
 
 }
@@ -170,10 +166,11 @@ mod tests {
       let message_id = topic.publish(msg.clone()).await.get().await;
       assert!(message_id.unwrap().len() > 0);
 
-      topic.stop();
+      topic.stop().await;
       let message_id = topic.publish(msg).await.get().await;
       assert!(message_id.unwrap().len() > 0);
 
+      topic.stop().await;
       topic.delete(None).await?;
 
       assert!(!topic.exists(None).await?);
