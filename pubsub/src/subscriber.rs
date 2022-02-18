@@ -61,7 +61,7 @@ impl Subscriber {
         let config = opt.unwrap_or_default();
 
         let cancellation_token = CancellationToken::new();
-        let observer = cancellation_token.child_token();
+        let cancel_receiver= cancellation_token.child_token();
         let (ping_sender,ping_receiver) = async_channel::unbounded();
 
         // ping request
@@ -70,7 +70,7 @@ impl Subscriber {
         let pinger = tokio::spawn(async move {
             loop {
                 select! {
-                    _ = observer.cancelled() => {
+                    _ = cancel_receiver.cancelled() => {
                         ping_sender.close();
                         break;
                     }
@@ -82,7 +82,7 @@ impl Subscriber {
             log::trace!("stop pinger : {}", subscription_clone);
         });
 
-        let observer2= cancellation_token.child_token();
+        let cancel_receiver= cancellation_token.child_token();
         let inner= tokio::spawn(async move {
             log::trace!("start subscriber: {}", subscription);
             let request = create_default_streaming_pull_request(subscription.to_string());
@@ -97,7 +97,7 @@ impl Subscriber {
             };
             loop {
                 select! {
-                    _ = observer2.cancelled() => {
+                    _ = cancel_receiver.cancelled() => {
                         queue.close();
                         break;
                     }

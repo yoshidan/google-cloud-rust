@@ -3,12 +3,12 @@ use std::future::Future;
 
 use std::time::Duration;
 use prost_types::FieldMask;
+use tokio_util::sync::CancellationToken;
 use google_cloud_gax::call_option::BackoffRetrySettings;
 
 use google_cloud_googleapis::pubsub::v1::{DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest, PushConfig, RetryPolicy, Subscription as InternalSubscription, UpdateSubscriptionRequest};
 use google_cloud_googleapis::{Code, Status};
 use crate::apiv1::subscriber_client::SubscriberClient;
-use crate::cancel::CancellationToken;
 
 use crate::subscriber::{ReceivedMessage, Subscriber, SubscriberConfig};
 
@@ -237,7 +237,7 @@ impl Subscription {
                 log::trace!("stop message receiver : {}", name);
             }));
         }
-        cancellation_token.done().await;
+        cancellation_token.cancelled().await;
 
         for mut subscriber in subscribers {
             subscriber.stop().await;
@@ -262,9 +262,9 @@ mod tests {
     use uuid::Uuid;
     use google_cloud_googleapis::pubsub::v1::{ExpirationPolicy, Subscription as InternalSubscription};
     use serial_test::serial;
+    use tokio_util::sync::CancellationToken;
     use crate::apiv1::conn_pool::ConnectionManager;
     use crate::apiv1::subscriber_client::SubscriberClient;
-    use crate::cancel::CancellationToken;
     use crate::subscription::{Subscription, SubscriptionConfigToUpdate};
 
     #[tokio::test]
@@ -315,9 +315,10 @@ mod tests {
         assert_eq!(new_config.0, topic_name);
         assert_eq!(new_config.1.ack_deadline_seconds, 100);
 
-        let (ctx, cancel) = CancellationToken::new();
+        let cancellation_token = CancellationToken::new();
+        let cancel_receiver = cancellation_token.child_token();
         let handle = tokio::spawn(async move {
-            let _ = sub.receive(ctx, |mut message| async move {
+            let _ = sub.receive(cancel_receiver, |mut message| async move {
                 println!("{}", message.message.message_id);
                 message.ack();
             }, None).await;
@@ -326,7 +327,7 @@ mod tests {
             assert!(!sub.exists(None).await.unwrap())
         });
         tokio::time::sleep(Duration::from_secs(3)).await;
-        drop(cancel);
+        cancellation_token.cancel();
         handle.await;
 
         Ok(())

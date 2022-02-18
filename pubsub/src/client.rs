@@ -187,8 +187,8 @@ mod tests {
     use std::time::Duration;
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
     use serial_test::serial;
+    use tokio_util::sync::CancellationToken;
     use uuid::Uuid;
-    use crate::cancel::CancellationToken;
     use crate::client::{Client};
     use crate::publisher::PublisherConfig;
     use crate::subscriber::SubscriberConfig;
@@ -206,7 +206,7 @@ mod tests {
 
     async fn create_client() -> Client {
         std::env::set_var("RUST_LOG","google_cloud_pubsub=trace".to_string());
-        env_logger::init();
+        env_logger::try_init();
         std::env::set_var("PUBSUB_EMULATOR_HOST","localhost:8681".to_string());
         Client::new("local-project", None).await.unwrap()
     }
@@ -224,16 +224,17 @@ mod tests {
         config.enable_message_ordering = !ordering_key.is_empty();
         let mut subscription = client.create_subscription(subscription_name , &topic, config, None).await.unwrap();
 
-        let (token,cancel) = CancellationToken::new();
+        let cancellation_token = CancellationToken::new();
         //subscribe
         let mut config = ReceiveConfig {
             worker_count: 2,
             subscriber_config: SubscriberConfig::default(),
         };
+        let cancel_receiver = cancellation_token.child_token();
         config.subscriber_config.ping_interval = Duration::from_secs(1);
         let (s, mut r) = tokio::sync::mpsc::channel(100);
         let handle = tokio::spawn(async move {
-            subscription.receive(token, move |mut v| {
+            subscription.receive(cancel_receiver, move |mut v| {
                 let s2 = s.clone();
                 async move {
                     let _ = v.ack().await;
@@ -255,7 +256,7 @@ mod tests {
         }
 
         tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-        drop(cancel);
+        cancellation_token.cancel();
         tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
         let mut count = 0;
