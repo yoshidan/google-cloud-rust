@@ -256,8 +256,9 @@ mod tests {
             let message = create_message(format!("abc_{}",v).as_bytes(), ordering_key);
             awaiters.push(topic.publish(message).await);
         }
+        let ctx = CancellationToken::new();
         for mut v in awaiters {
-            log::info!("sent message_id = {}", v.get().await.unwrap());
+            log::info!("sent message_id = {}", v.get(ctx.child_token()).await.unwrap());
         }
 
         tokio::time::sleep(std::time::Duration::from_secs(3)).await;

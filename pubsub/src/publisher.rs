@@ -1,6 +1,7 @@
 use std::collections::{VecDeque};
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::select;
 
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
@@ -23,7 +24,6 @@ pub struct PublisherConfig {
     pub workers: usize,
     pub flush_buffer_interval: Duration,
     pub buffer_size: usize,
-    pub publish_timeout: Duration,
     pub retry_setting: Option<RetrySetting>
 }
 
@@ -33,7 +33,6 @@ impl Default for PublisherConfig {
             workers: 3,
             flush_buffer_interval: Duration::from_millis(100),
             buffer_size: 3,
-            publish_timeout: Duration::from_secs(3),
             retry_setting: None,
         }
     }
@@ -41,24 +40,22 @@ impl Default for PublisherConfig {
 
 pub struct Awaiter {
     consumer: oneshot::Receiver<Result<String,Status>>,
-    await_timeout: Duration
 }
 
 impl Awaiter {
-    pub(crate) fn new(await_timeout: Duration, consumer: oneshot::Receiver<Result<String,Status>>) -> Self {
+    pub(crate) fn new(consumer: oneshot::Receiver<Result<String,Status>>) -> Self {
         Self {
             consumer,
-            await_timeout,
         }
     }
-    pub async fn get(&mut self) -> Result<String, Status> {
-        match timeout(self.await_timeout, &mut self.consumer).await {
-           Ok(v) => match v {
-               Ok(vv) => vv,
-               Err(e) => Err(Status::new(tonic::Status::cancelled(e.to_string())))
-           },
-           Err(e) => Err(Status::new(tonic::Status::deadline_exceeded(e.to_string())))
-       }
+    pub async fn get(&mut self, ctx: CancellationToken) -> Result<String, Status> {
+        select! {
+            _ = ctx.cancelled() => Err(tonic::Status::cancelled("cancelled").into()),
+            v = &mut self.consumer => match v {
+                Ok(vv) => vv,
+                Err(e) => Err(tonic::Status::aborted("closed").into())
+            }
+        }
     }
 }
 
@@ -69,7 +66,6 @@ impl Awaiter {
 pub(crate) struct Publisher {
     ordering_senders: Vec<async_channel::Sender<ReservedMessage>>,
     sender: async_channel::Sender<ReservedMessage>,
-    publish_timeout: Duration,
     workers: Option<Vec<JoinHandle<()>>>
 }
 
@@ -135,7 +131,6 @@ impl Publisher {
             sender,
             ordering_senders,
             workers: Some(workers),
-            publish_timeout: config.publish_timeout
         }
     }
 
@@ -157,7 +152,7 @@ impl Publisher {
                 message
             }).await;
         }
-        Awaiter::new(self.publish_timeout, consumer)
+        Awaiter::new(consumer)
     }
 
     /// flush publishes the messages in buffer.
@@ -206,12 +201,14 @@ impl Publisher {
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
+    use std::time::Duration;
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
     use crate::apiv1::conn_pool::ConnectionManager;
     use serial_test::serial;
     use tokio::task::JoinHandle;
+    use tokio_util::sync::CancellationToken;
     use crate::apiv1::publisher_client::PublisherClient;
-    use crate::publisher::Publisher;
+    use crate::publisher::{Publisher, PublisherConfig};
 
     #[tokio::test]
     #[serial]
@@ -223,8 +220,10 @@ mod tests {
 
         let publisher = Arc::new(Publisher::new("projects/local-project/topics/test-topic1".to_string(), client, None));
 
+        let ctx = CancellationToken::new();
         let joins : Vec<JoinHandle<String>>= (0..10).map(|i| {
             let p = publisher.clone();
+            let ctx = ctx.child_token();
             tokio::spawn(async move {
                 let mut result = p.publish(PubsubMessage {
                     data: "abc".into(),
@@ -233,7 +232,7 @@ mod tests {
                     publish_time: None,
                     ordering_key: "".to_string()
                 }).await;
-                let v = result.get().await;
+                let v = result.get(ctx.child_token()).await;
                 v.unwrap()
             })
         }).collect();
@@ -242,6 +241,36 @@ mod tests {
             assert!(v.is_ok());
             log::info!("send message id = {}", v.unwrap());
         }
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_publish_cancel() -> Result<(), anyhow::Error> {
+        std::env::set_var("RUST_LOG","google_cloud_pubsub=trace".to_string());
+        env_logger::init();
+        let cons = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
+        let client = PublisherClient::new(cons);
+
+        let mut opt = PublisherConfig::default();
+        opt.flush_buffer_interval = Duration::from_secs(10);
+        let publisher = Publisher::new("projects/local-project/topics/test-topic1".to_string(), client, None);
+        let ctx = CancellationToken::new();
+        let mut result = publisher.publish(PubsubMessage {
+            data: "abcx".into(),
+            attributes: Default::default(),
+            message_id: "".to_string(),
+            publish_time: None,
+            ordering_key: "".to_string()
+        }).await;
+        let child = ctx.child_token();
+        let j = tokio::spawn(async move {
+            let v = result.get(child).await;
+            assert!(v.is_err());
+            println!("{}", v.unwrap_err());
+        });
+        ctx.cancel();
+        j.await;
         Ok(())
     }
 }

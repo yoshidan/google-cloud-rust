@@ -192,7 +192,7 @@ mod tests {
             message_id: "".to_string(),
             publish_time: None,
             ordering_key: "".to_string()
-        }).await.get().await;
+        }).await.get(CancellationToken::new()).await;
         return publisher;
     }
 

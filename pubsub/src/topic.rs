@@ -167,11 +167,11 @@ mod tests {
          publish_time: None,
          ordering_key: "".to_string()
       };
-      let message_id = topic.publish(msg.clone()).await.get().await;
+      let message_id = topic.publish(msg.clone()).await.get(ctx.child_token()).await;
       assert!(message_id.unwrap().len() > 0);
 
       topic.stop().await;
-      let message_id = topic.publish(msg).await.get().await;
+      let message_id = topic.publish(msg).await.get(ctx.child_token()).await;
       assert!(message_id.unwrap().len() > 0);
 
       topic.stop().await;
