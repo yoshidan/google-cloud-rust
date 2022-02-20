@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use parking_lot::{Mutex};
+use tokio_util::sync::CancellationToken;
 
 use google_cloud_googleapis::Code::NotFound;
 use google_cloud_googleapis::pubsub::v1::{DeleteTopicRequest, GetTopicRequest, ListTopicSubscriptionsRequest, PubsubMessage};
@@ -49,18 +50,18 @@ impl Topic {
    }
 
    /// delete deletes the topic.
-   pub async fn delete(&self, opt: Option<RetrySetting>) -> Result<(),Status>{
-      self.pubc.delete_topic(DeleteTopicRequest {
+   pub async fn delete(&self, ctx: CancellationToken, opt: Option<RetrySetting>) -> Result<(),Status>{
+      self.pubc.delete_topic(ctx, DeleteTopicRequest {
          topic: self.name.to_string()
       }, opt).await.map(|v| v.into_inner())
    }
 
    /// exists reports whether the topic exists on the server.
-   pub async fn exists(&self, opt: Option<RetrySetting>) -> Result<bool,Status>{
+   pub async fn exists(&self, ctx: CancellationToken, opt: Option<RetrySetting>) -> Result<bool,Status>{
       if self.name == "_deleted-topic_" {
          return Ok(false)
       }
-      match self.pubc.get_topic(GetTopicRequest{
+      match self.pubc.get_topic(ctx, GetTopicRequest{
          topic: self.name.to_string()
       }, opt).await {
          Ok(_) => Ok(true),
@@ -75,8 +76,8 @@ impl Topic {
    /// Subscriptions returns an iterator which returns the subscriptions for this topic.
    ///
    /// Some of the returned subscriptions may belong to a project other than t.
-   pub async fn subscriptions(&self, opt: Option<RetrySetting>) -> Result<Vec<Subscription>,Status>{
-      self.pubc.list_topic_subscriptions(ListTopicSubscriptionsRequest{
+   pub async fn subscriptions(&self, ctx: CancellationToken, opt: Option<RetrySetting>) -> Result<Vec<Subscription>,Status>{
+      self.pubc.list_topic_subscriptions(ctx, ListTopicSubscriptionsRequest{
          topic: self.name.to_string(),
          page_size: 0,
          page_token: "".to_string(),
@@ -123,6 +124,7 @@ mod tests {
    use uuid::Uuid;
    use google_cloud_googleapis::pubsub::v1::{ExpirationPolicy, MessageStoragePolicy, PubsubMessage, Topic as InternalTopic};
    use serial_test::serial;
+   use tokio_util::sync::CancellationToken;
    use crate::apiv1::conn_pool::ConnectionManager;
    use crate::apiv1::publisher_client::PublisherClient;
    use crate::apiv1::subscriber_client::SubscriberClient;
@@ -138,7 +140,8 @@ mod tests {
 
       let uuid = Uuid::new_v4().to_hyphenated().to_string();
       let topic_name = format!("projects/local-project/topics/t{}",uuid).to_string();
-      let topic = client.create_topic(InternalTopic {
+      let ctx = CancellationToken::new();
+      let topic = client.create_topic(ctx, InternalTopic {
          name: topic_name.to_string(),
          message_retention_duration: None,
          labels: Default::default(),
@@ -150,10 +153,11 @@ mod tests {
 
       let subcm = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
       let subc = SubscriberClient::new(subcm);
+      let ctx = CancellationToken::new();
       let mut topic = Topic::new(topic.name, client, subc, None);
-      assert!(topic.exists(None).await?);
+      assert!(topic.exists(ctx.child_token(), None).await?);
 
-      let subs = topic.subscriptions(None).await?;
+      let subs = topic.subscriptions(ctx.child_token(), None).await?;
       assert_eq!(0, subs.len());
 
       let msg = PubsubMessage {
@@ -171,9 +175,9 @@ mod tests {
       assert!(message_id.unwrap().len() > 0);
 
       topic.stop().await;
-      topic.delete(None).await?;
+      topic.delete(ctx.child_token(), None).await?;
 
-      assert!(!topic.exists(None).await?);
+      assert!(!topic.exists(ctx.child_token(), None).await?);
 
       Ok(())
 

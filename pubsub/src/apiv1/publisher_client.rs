@@ -1,5 +1,8 @@
+use std::future::Future;
 use std::sync::Arc;
-use tokio_retry::{RetryIf};
+use tokio::select;
+use tokio_retry::{Action, RetryIf};
+use tokio_util::sync::CancellationToken;
 use crate::apiv1::{create_request, default_setting, RetrySetting};
 use google_cloud_gax::invoke::{invoke, invoke_reuse};
 use google_cloud_googleapis::pubsub::v1::publisher_client::PublisherClient as InternalPublisherClient;
@@ -24,9 +27,18 @@ impl PublisherClient {
         InternalPublisherClient::new(self.cm.conn())
     }
 
+    async fn invoke<A,R>(ctx: CancellationToken, setting: RetrySetting, action: A) -> Result<R, Status>
+        where A: Action<Item=R, Error=Status> {
+        select! {
+            _ = ctx.cancelled() => Err(Status::new(tonic::Status::cancelled("client cancel"))),
+            v = RetryIf::spawn(setting.strategy(), action, setting.condition()) => v
+        }
+    }
+
     /// create_topic creates the given topic with the given name. See the [resource name rules]
     pub async fn create_topic(
         &self,
+        ctx: CancellationToken,
         req: Topic,
         opt: Option<RetrySetting>,
     ) -> Result<Response<Topic>, Status> {
@@ -40,13 +52,14 @@ impl PublisherClient {
                 .await
                 .map_err(|e| e.into())
         };
-        return RetryIf::spawn(setting.strategy(), action, setting.condition()).await;
+        Self::invoke(ctx, setting, action).await
     }
 
     /// update_topic updates an existing topic. Note that certain properties of a
     /// topic are not modifiable.
     pub async fn update_topic(
         &self,
+        ctx: CancellationToken,
         req: UpdateTopicRequest,
         opt: Option<RetrySetting>,
     ) -> Result<Response<Topic>, Status> {
@@ -63,12 +76,13 @@ impl PublisherClient {
                 .await
                 .map_err(|e| e.into())
         };
-        RetryIf::spawn(setting.strategy(), action, setting.condition()).await
+        Self::invoke(ctx, setting, action).await
     }
 
     /// publish adds one or more messages to the topic. Returns NOT_FOUND if the topic does not exist.
     pub async fn publish(
         &self,
+        ctx: CancellationToken,
         req: PublishRequest,
         opt: Option<RetrySetting>,
     ) -> Result<Response<PublishResponse>, Status> {
@@ -97,12 +111,13 @@ impl PublisherClient {
                 .await
                 .map_err(|e| e.into())
         };
-        RetryIf::spawn(setting.strategy(), action, setting.condition()).await
+        Self::invoke(ctx, setting, action).await
     }
 
     /// get_topic gets the configuration of a topic.
     pub async fn get_topic(
         &self,
+        ctx: CancellationToken,
         req: GetTopicRequest,
         opt: Option<RetrySetting>,
     ) -> Result<Response<Topic>, Status> {
@@ -116,12 +131,13 @@ impl PublisherClient {
                 .await
                 .map_err(|e| e.into())
         };
-        RetryIf::spawn(setting.strategy(), action, setting.condition()).await
+        Self::invoke(ctx, setting, action).await
     }
 
     /// list_topics lists matching topics.
     pub async fn list_topics(
         &self,
+        ctx: CancellationToken,
         mut req: ListTopicsRequest,
         opt: Option<RetrySetting>,
     ) -> Result<Vec<Topic>, Status> {
@@ -140,7 +156,7 @@ impl PublisherClient {
                     .map_err(|e| Status::from(e))
                     .map(|d| d.into_inner())
             };
-            let response : ListTopicsResponse = RetryIf::spawn(setting.strategy(), action, setting.condition()).await?;
+            let response : ListTopicsResponse = Self::invoke(ctx.child_token(), setting, action).await?;
             all.extend(response.topics.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -152,6 +168,7 @@ impl PublisherClient {
     /// list_topics lists matching topics.
     pub async fn list_topic_subscriptions(
         &self,
+        ctx: CancellationToken,
         mut req: ListTopicSubscriptionsRequest,
         opt: Option<RetrySetting>,
     ) -> Result<Vec<String>, Status> {
@@ -170,7 +187,7 @@ impl PublisherClient {
                     .map_err(|e| Status::from(e))
                     .map(|d| d.into_inner())
             };
-            let response : ListTopicSubscriptionsResponse  = RetryIf::spawn(setting.strategy(), action, setting.condition()).await?;
+            let response : ListTopicSubscriptionsResponse  = Self::invoke(ctx.child_token(), setting, action).await?;
             all.extend(response.subscriptions.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -186,6 +203,7 @@ impl PublisherClient {
     /// state captured by a snapshot.
     pub async fn list_topic_snapshots(
         &self,
+        ctx: CancellationToken,
         mut req: ListTopicSnapshotsRequest,
         opt: Option<RetrySetting>,
     ) -> Result<Vec<String>, Status> {
@@ -204,7 +222,7 @@ impl PublisherClient {
                     .map_err(|e| Status::from(e))
                     .map(|d| d.into_inner())
             };
-            let response : ListTopicSnapshotsResponse = RetryIf::spawn(setting.strategy(), action, setting.condition()).await?;
+            let response : ListTopicSnapshotsResponse = Self::invoke(ctx.child_token(), setting, action).await?;
             all.extend(response.snapshots.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -220,6 +238,7 @@ impl PublisherClient {
     /// not deleted, but their topic field is set to _deleted-topic_.
     pub async fn delete_topic(
         &self,
+        ctx: CancellationToken,
         req: DeleteTopicRequest,
         opt: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
@@ -233,8 +252,7 @@ impl PublisherClient {
                .await
                .map_err(|e| e.into())
         };
-
-        RetryIf::spawn(setting.strategy(), action, setting.condition()).await
+        Self::invoke(ctx, setting, action).await
     }
 
     /// detach_subscription detaches a subscription from this topic. All messages retained in the
@@ -243,6 +261,7 @@ impl PublisherClient {
     /// subscription, pushes to the endpoint will stop.
     pub async fn detach_subscription(
         &self,
+        ctx: CancellationToken,
         req: DetachSubscriptionRequest,
         opt: Option<RetrySetting>,
     ) -> Result<Response<DetachSubscriptionResponse>, Status> {
@@ -256,6 +275,6 @@ impl PublisherClient {
                 .await
                 .map_err(|e| e.into())
         };
-        RetryIf::spawn(setting.strategy(), action, setting.condition()).await
+        Self::invoke(ctx, setting, action).await
     }
 }

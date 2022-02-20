@@ -5,6 +5,7 @@ use std::time::Duration;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
+use tokio_util::sync::CancellationToken;
 use google_cloud_gax::call_option::BackoffRetrySettings;
 use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
 use google_cloud_googleapis::{Status};
@@ -168,7 +169,7 @@ impl Publisher {
             data.push(r.message);
             callback.push(r.producer);
         });
-        let result = client.publish(PublishRequest {
+        let result = client.publish(CancellationToken::new(), PublishRequest {
             topic: topic.to_string(),
             messages: data,
         }, retry_setting).await.map(|v| v.into_inner().message_ids);
