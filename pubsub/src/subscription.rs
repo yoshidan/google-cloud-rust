@@ -4,10 +4,10 @@ use std::future::Future;
 use std::time::Duration;
 use prost_types::FieldMask;
 use tokio_util::sync::CancellationToken;
-use google_cloud_gax::call_option::BackoffRetrySettings;
 
 use google_cloud_googleapis::pubsub::v1::{DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest, PushConfig, RetryPolicy, Subscription as InternalSubscription, UpdateSubscriptionRequest};
 use google_cloud_googleapis::{Code, Status};
+use crate::apiv1::RetrySetting;
 use crate::apiv1::subscriber_client::SubscriberClient;
 
 use crate::subscriber::{ReceivedMessage, Subscriber, SubscriberConfig};
@@ -117,15 +117,15 @@ impl Subscription {
     }
 
     /// delete deletes the subscription.
-    pub async fn delete(&self, retry_option: Option<BackoffRetrySettings>) -> Result<(), Status>{
-        self.subc.delete_subscription(DeleteSubscriptionRequest {
+    pub async fn delete(&self, ctx: CancellationToken, retry_option: Option<RetrySetting>) -> Result<(), Status>{
+        self.subc.delete_subscription(ctx, DeleteSubscriptionRequest {
             subscription: self.name.to_string()
         }, retry_option).await.map(|v| v.into_inner())
     }
 
     /// exists reports whether the subscription exists on the server.
-    pub async fn exists(&self, retry_option: Option<BackoffRetrySettings>) -> Result<bool, Status>{
-        match self.subc.get_subscription(GetSubscriptionRequest{
+    pub async fn exists(&self, ctx: CancellationToken, retry_option: Option<RetrySetting>) -> Result<bool, Status>{
+        match self.subc.get_subscription(ctx, GetSubscriptionRequest{
             subscription: self.name.to_string()
         }, retry_option).await {
             Ok(_) => Ok(true),
@@ -140,8 +140,8 @@ impl Subscription {
     }
 
     /// config fetches the current configuration for the subscription.
-    pub async fn config(&self, retry_option: Option<BackoffRetrySettings>) -> Result<(String, SubscriptionConfig), Status>{
-        self.subc.get_subscription(GetSubscriptionRequest{
+    pub async fn config(&self, ctx: CancellationToken, retry_option: Option<RetrySetting>) -> Result<(String, SubscriptionConfig), Status>{
+        self.subc.get_subscription(ctx, GetSubscriptionRequest{
             subscription: self.name.to_string()
         }, retry_option).await.map(|v| {
             let inner = v.into_inner();
@@ -151,8 +151,8 @@ impl Subscription {
 
     /// update changes an existing subscription according to the fields set in updating.
     /// It returns the new SubscriptionConfig.
-    pub async fn update(&self, updating: SubscriptionConfigToUpdate, opt: Option<BackoffRetrySettings>) -> Result<(String, SubscriptionConfig), Status>{
-        let mut config = self.subc.get_subscription(GetSubscriptionRequest{
+    pub async fn update(&self, ctx: CancellationToken, updating: SubscriptionConfigToUpdate, opt: Option<RetrySetting>) -> Result<(String, SubscriptionConfig), Status>{
+        let mut config = self.subc.get_subscription(ctx.child_token(), GetSubscriptionRequest{
             subscription: self.name.to_string()
         }, opt.clone()).await?.into_inner();
 
@@ -187,7 +187,7 @@ impl Subscription {
             paths.push("retry_policy".to_string());
         }
 
-        self.subc.update_subscription(UpdateSubscriptionRequest{
+        self.subc.update_subscription(ctx, UpdateSubscriptionRequest{
             subscription: Some(config.into()),
             update_mask: Some(FieldMask {
                 paths
@@ -201,13 +201,13 @@ impl Subscription {
     /// receive calls f with the outstanding messages from the subscription.
     /// It blocks until ctx is done, or the service returns a non-retryable error.
     /// The standard way to terminate a receive is to use CancellationToken.
-    pub async fn receive<F>(&self, mut cancellation_token: CancellationToken,  f: impl Fn(ReceivedMessage) -> F + Send + 'static + Sync + Clone, config: Option<ReceiveConfig>) -> Result<(), Status>
+    pub async fn receive<F>(&self, mut ctx: CancellationToken,  f: impl Fn(ReceivedMessage) -> F + Send + 'static + Sync + Clone, config: Option<ReceiveConfig>) -> Result<(), Status>
         where F: Future<Output = ()> + Send + 'static {
         let op = config.unwrap_or_default();
         let mut receivers  = Vec::with_capacity(op.worker_count);
         let mut senders = Vec::with_capacity(receivers.len());
 
-        if self.config(op.subscriber_config.retry_setting.clone()).await?.1.enable_message_ordering {
+        if self.config(ctx.child_token(), op.subscriber_config.retry_setting.clone()).await?.1.enable_message_ordering {
             (0..op.worker_count).for_each(|_v| {
                 let (sender, receiver) = async_channel::unbounded::<ReceivedMessage>();
                 receivers.push(receiver);
@@ -237,7 +237,7 @@ impl Subscription {
                 log::trace!("stop message receiver : {}", name);
             }));
         }
-        cancellation_token.cancelled().await;
+        ctx.cancelled().await;
 
         for mut subscriber in subscribers {
             subscriber.stop().await;
@@ -278,7 +278,8 @@ mod tests {
         let uuid = Uuid::new_v4().to_hyphenated().to_string();
         let subscription_name = format!("projects/loca-lproject/subscriptions/s{}", &uuid);
         let topic_name = "projects/local-project/topics/test-topic1".to_string();
-        let subscription = client.create_subscription(InternalSubscription {
+        let ctx = CancellationToken::new();
+        let subscription = client.create_subscription(ctx.child_token(), InternalSubscription {
             name: subscription_name.to_string(),
             topic: topic_name.to_string(),
             push_config: None,
@@ -296,13 +297,13 @@ mod tests {
         }, None).await?.into_inner();
 
         let mut sub = Subscription::new(subscription.name, client);
-        assert!(sub.exists(None).await?);
+        assert!(sub.exists(ctx.child_token(),None).await?);
 
-        let config = sub.config(None).await?;
+        let config = sub.config(ctx.child_token(), None).await?;
         assert_eq!(config.0, topic_name);
         assert!(config.1.enable_message_ordering);
 
-        let new_config = sub.update(SubscriptionConfigToUpdate {
+        let new_config = sub.update(ctx.child_token(), SubscriptionConfigToUpdate {
             push_config: None,
             ack_deadline_seconds: Some(100),
             retain_acked_messages: None,
@@ -320,11 +321,12 @@ mod tests {
         let handle = tokio::spawn(async move {
             let _ = sub.receive(cancel_receiver, |mut message| async move {
                 println!("{}", message.message.message_id);
-                message.ack();
+                //TODO
+                message.ack(CancellationToken::new());
             }, None).await;
 
-            sub.delete(None).await.unwrap();
-            assert!(!sub.exists(None).await.unwrap())
+            sub.delete(ctx.child_token(),None).await.unwrap();
+            assert!(!sub.exists(ctx.child_token(),None).await.unwrap())
         });
         tokio::time::sleep(Duration::from_secs(3)).await;
         cancellation_token.cancel();

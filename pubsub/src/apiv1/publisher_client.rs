@@ -3,8 +3,7 @@ use std::sync::Arc;
 use tokio::select;
 use tokio_retry::{Action, RetryIf};
 use tokio_util::sync::CancellationToken;
-use crate::apiv1::{create_request, default_setting, RetrySetting};
-use google_cloud_gax::invoke::{invoke, invoke_reuse};
+use crate::apiv1::{create_request, invoke, RetrySetting};
 use google_cloud_googleapis::pubsub::v1::publisher_client::PublisherClient as InternalPublisherClient;
 use google_cloud_googleapis::pubsub::v1::{DeleteTopicRequest, DetachSubscriptionRequest, DetachSubscriptionResponse, GetTopicRequest, ListTopicSnapshotsRequest, ListTopicSubscriptionsRequest, ListTopicsRequest, Topic, UpdateTopicRequest, PublishRequest, PublishResponse, ListTopicsResponse, ListTopicSubscriptionsResponse, ListTopicSnapshotsResponse};
 use google_cloud_googleapis::{Code, Status};
@@ -26,15 +25,7 @@ impl PublisherClient {
     fn client(&self) -> InternalPublisherClient<Channel> {
         InternalPublisherClient::new(self.cm.conn())
     }
-
-    async fn invoke<A,R>(ctx: CancellationToken, setting: RetrySetting, action: A) -> Result<R, Status>
-        where A: Action<Item=R, Error=Status> {
-        select! {
-            _ = ctx.cancelled() => Err(Status::new(tonic::Status::cancelled("client cancel"))),
-            v = RetryIf::spawn(setting.strategy(), action, setting.condition()) => v
-        }
-    }
-
+    
     /// create_topic creates the given topic with the given name. See the [resource name rules]
     pub async fn create_topic(
         &self,
@@ -42,7 +33,6 @@ impl PublisherClient {
         req: Topic,
         opt: Option<RetrySetting>,
     ) -> Result<Response<Topic>, Status> {
-        let mut setting = opt.unwrap_or_default();
         let name = &req.name;
         let action = || async {
             let mut client = self.client();
@@ -52,7 +42,7 @@ impl PublisherClient {
                 .await
                 .map_err(|e| e.into())
         };
-        Self::invoke(ctx, setting, action).await
+       invoke(ctx, opt, action).await
     }
 
     /// update_topic updates an existing topic. Note that certain properties of a
@@ -63,7 +53,6 @@ impl PublisherClient {
         req: UpdateTopicRequest,
         opt: Option<RetrySetting>,
     ) -> Result<Response<Topic>, Status> {
-        let mut setting = opt.unwrap_or_default();
         let name = match &req.topic {
             Some(t) => t.name.as_str(),
             None => ""
@@ -76,7 +65,7 @@ impl PublisherClient {
                 .await
                 .map_err(|e| e.into())
         };
-        Self::invoke(ctx, setting, action).await
+       invoke(ctx, opt, action).await
     }
 
     /// publish adds one or more messages to the topic. Returns NOT_FOUND if the topic does not exist.
@@ -86,7 +75,7 @@ impl PublisherClient {
         req: PublishRequest,
         opt: Option<RetrySetting>,
     ) -> Result<Response<PublishResponse>, Status> {
-        let mut setting = match opt {
+        let setting = match opt {
             Some(opt) => opt,
             None => {
                 let mut default = RetrySetting::default();
@@ -111,7 +100,7 @@ impl PublisherClient {
                 .await
                 .map_err(|e| e.into())
         };
-        Self::invoke(ctx, setting, action).await
+       invoke(ctx, Some(setting), action).await
     }
 
     /// get_topic gets the configuration of a topic.
@@ -121,7 +110,6 @@ impl PublisherClient {
         req: GetTopicRequest,
         opt: Option<RetrySetting>,
     ) -> Result<Response<Topic>, Status> {
-        let mut setting = opt.unwrap_or_default();
         let topic = &req.topic;
         let action = || async {
             let mut client = self.client();
@@ -131,7 +119,7 @@ impl PublisherClient {
                 .await
                 .map_err(|e| e.into())
         };
-        Self::invoke(ctx, setting, action).await
+       invoke(ctx, opt, action).await
     }
 
     /// list_topics lists matching topics.
@@ -144,9 +132,7 @@ impl PublisherClient {
         let project = &req.project;
         let mut all = vec![];
         //eager loading
-        let v = opt.unwrap_or_default();
         loop {
-            let mut setting = v.clone();
             let action = || async {
                 let mut client = self.client();
                 let request = create_request(format!("project={}", project), req.clone());
@@ -156,7 +142,7 @@ impl PublisherClient {
                     .map_err(|e| Status::from(e))
                     .map(|d| d.into_inner())
             };
-            let response : ListTopicsResponse = Self::invoke(ctx.child_token(), setting, action).await?;
+            let response =invoke(ctx.child_token(), opt.clone(), action).await?;
             all.extend(response.topics.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -175,9 +161,7 @@ impl PublisherClient {
         let topic = &req.topic;
         let mut all = vec![];
         //eager loading
-        let v = opt.unwrap_or_default();
         loop {
-            let mut setting = v.clone();
             let action = || async {
                 let mut client = self.client();
                 let request = create_request(format!("topic={}", topic), req.clone());
@@ -187,7 +171,7 @@ impl PublisherClient {
                     .map_err(|e| Status::from(e))
                     .map(|d| d.into_inner())
             };
-            let response : ListTopicSubscriptionsResponse  = Self::invoke(ctx.child_token(), setting, action).await?;
+            let response = invoke(ctx.child_token(), opt.clone(), action).await?;
             all.extend(response.subscriptions.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -210,9 +194,7 @@ impl PublisherClient {
         let topic = &req.topic;
         let mut all = vec![];
         //eager loading
-        let v = opt.unwrap_or_default();
         loop {
-            let mut setting = v.clone();
             let action = || async {
                 let mut client = self.client();
                 let request = create_request(format!("topic={}", topic), req.clone());
@@ -222,7 +204,7 @@ impl PublisherClient {
                     .map_err(|e| Status::from(e))
                     .map(|d| d.into_inner())
             };
-            let response : ListTopicSnapshotsResponse = Self::invoke(ctx.child_token(), setting, action).await?;
+            let response =invoke(ctx.child_token(), opt.clone(), action).await?;
             all.extend(response.snapshots.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -242,7 +224,6 @@ impl PublisherClient {
         req: DeleteTopicRequest,
         opt: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let mut setting = opt.unwrap_or_default();
         let topic = &req.topic;
         let action = || async {
            let mut client = self.client();
@@ -252,7 +233,7 @@ impl PublisherClient {
                .await
                .map_err(|e| e.into())
         };
-        Self::invoke(ctx, setting, action).await
+       invoke(ctx, opt, action).await
     }
 
     /// detach_subscription detaches a subscription from this topic. All messages retained in the
@@ -265,7 +246,6 @@ impl PublisherClient {
         req: DetachSubscriptionRequest,
         opt: Option<RetrySetting>,
     ) -> Result<Response<DetachSubscriptionResponse>, Status> {
-        let mut setting = opt.unwrap_or_default();
         let subscription = &req.subscription;
         let action = || async {
             let mut client = self.client();
@@ -275,6 +255,6 @@ impl PublisherClient {
                 .await
                 .map_err(|e| e.into())
         };
-        Self::invoke(ctx, setting, action).await
+       invoke(ctx, opt, action).await
     }
 }

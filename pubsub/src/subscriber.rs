@@ -4,9 +4,9 @@ use tokio::select;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
-use google_cloud_gax::call_option::BackoffRetrySettings;
 use google_cloud_googleapis::pubsub::v1::{AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage};
 use google_cloud_googleapis::{Status};
+use crate::apiv1::RetrySetting;
 
 use crate::apiv1::subscriber_client::{create_default_streaming_pull_request, SubscriberClient};
 
@@ -18,15 +18,15 @@ pub struct ReceivedMessage {
 }
 
 impl ReceivedMessage {
-    pub async fn ack(&mut self) -> Result<(), Status> {
-       self.subscriber_client.acknowledge(AcknowledgeRequest {
+    pub async fn ack(&self, ctx: CancellationToken) -> Result<(), Status> {
+       self.subscriber_client.acknowledge(ctx, AcknowledgeRequest {
            subscription: self.subscription.to_string(),
            ack_ids: vec![self.ack_id.to_string()]
        }, None).await.map(|e| e.into_inner())
     }
 
-    pub async fn nack(&mut self) -> Result<(), Status> {
-        self.subscriber_client.modify_ack_deadline(ModifyAckDeadlineRequest {
+    pub async fn nack(&self, ctx: CancellationToken) -> Result<(), Status> {
+        self.subscriber_client.modify_ack_deadline(ctx, ModifyAckDeadlineRequest {
             subscription: self.subscription.to_string(),
             ack_deadline_seconds: 0,
             ack_ids: vec![self.ack_id.to_string()]
@@ -37,7 +37,7 @@ impl ReceivedMessage {
 #[derive(Clone)]
 pub struct SubscriberConfig {
     pub ping_interval: Duration,
-    pub retry_setting: Option<BackoffRetrySettings>
+    pub retry_setting: Option<RetrySetting>
 }
 
 impl Default for SubscriberConfig {
@@ -86,7 +86,7 @@ impl Subscriber {
         let inner= tokio::spawn(async move {
             log::trace!("start subscriber: {}", subscription);
             let request = create_default_streaming_pull_request(subscription.to_string());
-            let response = client.streaming_pull(request, ping_receiver, config.retry_setting).await;
+            let response = client.streaming_pull(cancel_receiver.child_token(), request, ping_receiver, config.retry_setting).await;
 
             let mut stream = match response {
                 Ok(r) => r.into_inner(),
@@ -159,6 +159,7 @@ mod tests {
     use crate::subscriber::{ReceivedMessage, Subscriber};
     use std::sync::atomic::AtomicU32;
     use std::sync::atomic::Ordering::SeqCst;
+    use tokio_util::sync::CancellationToken;
 
     use uuid::Uuid;
 
@@ -204,7 +205,7 @@ mod tests {
                 if string == "test_message" {
                     v.fetch_add(1, SeqCst);
                 }
-                match message.ack().await {
+                match message.ack(CancellationToken::new()).await {
                     Ok(_) => {},
                     Err(e) => {
                         log::error!("error {}", e);
@@ -221,7 +222,8 @@ mod tests {
         env_logger::init();
         let subc = SubscriberClient::new(ConnectionManager::new(4, Some("localhost:8681".to_string())).await?);
         let v = Arc::new(AtomicU32::new(0));
-        let subscription = subc.create_subscription(create_default_subscription_request( "projects/local-project/topics/test-topic1".to_string()), None).await.unwrap().into_inner().name;
+        let ctx = CancellationToken::new();
+        let subscription = subc.create_subscription(ctx, create_default_subscription_request( "projects/local-project/topics/test-topic1".to_string()), None).await.unwrap().into_inner().name;
         let mut subscribers = vec![];
         for _ in 0..3 {
             let (sender, receiver) = async_channel::unbounded();
@@ -253,7 +255,8 @@ mod tests {
 
         let mut subscribers = vec![];
         for _ in 0..3 {
-            let subscription = subc.clone().create_subscription(create_default_subscription_request("projects/local-project/topics/test-topic1".to_string()), None).await.unwrap().into_inner().name;
+            let ctx = CancellationToken::new();
+            let subscription = subc.clone().create_subscription(ctx, create_default_subscription_request("projects/local-project/topics/test-topic1".to_string()), None).await.unwrap().into_inner().name;
             let (sender, receiver) = async_channel::unbounded();
             let v = Arc::new(AtomicU32::new(0));
             subscribers.push((v.clone(), Subscriber::new(subscription.clone(), subc.clone(), sender, None)));

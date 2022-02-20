@@ -1,16 +1,10 @@
 use std::sync::Arc;
-use crate::apiv1::default_setting;
-use google_cloud_gax::call_option::{BackoffRetrySettings};
-use google_cloud_gax::invoke::invoke_reuse;
-use google_cloud_gax::util::{create_request};
+use tokio_retry::Retry;
+use tokio_util::sync::CancellationToken;
+use crate::apiv1::{create_request, invoke, RetrySetting};
 use tonic::{IntoStreamingRequest};
 use google_cloud_googleapis::pubsub::v1::subscriber_client::SubscriberClient as InternalSubscriberClient;
-use google_cloud_googleapis::pubsub::v1::{
-    AcknowledgeRequest, CreateSnapshotRequest, DeleteSnapshotRequest, DeleteSubscriptionRequest, GetSnapshotRequest,
-    GetSubscriptionRequest, ListSnapshotsRequest, ListSubscriptionsRequest, ModifyAckDeadlineRequest, ModifyPushConfigRequest, PullRequest,
-    PullResponse, Snapshot, StreamingPullRequest, StreamingPullResponse, Subscription,
-    UpdateSnapshotRequest, UpdateSubscriptionRequest,
-};
+use google_cloud_googleapis::pubsub::v1::{AcknowledgeRequest, CreateSnapshotRequest, DeleteSnapshotRequest, DeleteSubscriptionRequest, GetSnapshotRequest, GetSubscriptionRequest, ListSnapshotsRequest, ListSnapshotsResponse, ListSubscriptionsRequest, ListSubscriptionsResponse, ModifyAckDeadlineRequest, ModifyPushConfigRequest, PullRequest, PullResponse, Snapshot, StreamingPullRequest, StreamingPullResponse, Subscription, UpdateSnapshotRequest, UpdateSubscriptionRequest};
 use google_cloud_googleapis::{Status};
 use google_cloud_grpc::conn::Channel;
 use tonic::{Response, Streaming};
@@ -44,14 +38,6 @@ impl SubscriberClient {
         }
     }
 
-    /// merge call setting
-    fn get_call_setting(call_setting: Option<BackoffRetrySettings>) -> BackoffRetrySettings {
-        match call_setting {
-            Some(s) => s,
-            None => default_setting(),
-        }
-    }
-
     fn client(&self) -> InternalSubscriberClient<Channel> {
         InternalSubscriberClient::new(self.cm.conn())
     }
@@ -69,97 +55,85 @@ impl SubscriberClient {
     /// API requests, you must specify a name in the request.
     pub async fn create_subscription(
         &self,
+        ctx: CancellationToken,
         req: Subscription,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<Subscription>, Status> {
-        let mut setting = Self::get_call_setting(opt);
         let name = &req.name;
-        return invoke_reuse(
-            |client| async {
-                let request = create_request(format!("name={}", name), req.clone());
-                client
-                    .create_subscription(request)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.client(),
-            &mut setting,
-        )
-        .await;
+        let action = || async {
+            let mut client = self.client();
+            let request = create_request(format!("name={}", name), req.clone());
+            client
+                .create_subscription(request)
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(ctx, opt, action).await
     }
 
     /// updateSubscription updates an existing subscription. Note that certain properties of a
     /// subscription, such as its topic, are not modifiable.
     pub async fn update_subscription(
         &self,
+        ctx: CancellationToken,
         req: UpdateSubscriptionRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<Subscription>, Status> {
-        let mut setting = Self::get_call_setting(opt);
         let name = match &req.subscription {
             Some(s) => s.name.as_str(),
             None => ""
         };
-        return invoke_reuse(
-            |client| async {
-                let request = create_request(format!("subscription.name={}", name), req.clone());
-                client
-                    .update_subscription(request)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.client(),
-            &mut setting,
-        )
-        .await;
+        let action = || async {
+            let mut client = self.client();
+            let request = create_request(format!("subscription.name={}", name), req.clone());
+            client
+                .update_subscription(request)
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(ctx, opt, action).await
     }
 
     /// get_subscription gets the configuration details of a subscription.
     pub async fn get_subscription(
         &self,
+        ctx: CancellationToken,
         req: GetSubscriptionRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<Subscription>, Status> {
-        let mut setting = Self::get_call_setting(opt);
         let subscription = &req.subscription;
-        return invoke_reuse(
-            |client| async {
-                let request = create_request(format!("subscription={}", subscription), req.clone());
-                client
-                    .get_subscription(request)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.client(),
-            &mut setting,
-        )
-        .await;
+        let action = ||  async {
+            let mut client = self.client();
+            let request = create_request(format!("subscription={}", subscription), req.clone());
+            client
+                .get_subscription(request)
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(ctx, opt, action).await
     }
 
     /// list_subscriptions lists matching subscriptions.
     pub async fn list_subscriptions(
         &self,
+        ctx: CancellationToken,
         mut req: ListSubscriptionsRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Vec<Subscription>, Status> {
-        let mut setting = Self::get_call_setting(opt);
         let project = &req.project;
         let mut all = vec![];
         //eager loading
         loop {
-            let response = invoke_reuse(
-                |client| async {
-                    let request = create_request(format!("project={}", project), req.clone());
-                    client
-                        .list_subscriptions(request)
-                        .await
-                        .map_err(|e| (Status::from(e), client))
-                        .map(|d| d.into_inner())
-                },
-                &mut self.client(),
-                &mut setting,
-            )
-            .await?;
+            let action = ||  async {
+                let mut client = self.client();
+                let request = create_request(format!("project={}", project), req.clone());
+                client
+                    .list_subscriptions(request)
+                    .await
+                    .map_err(|e| e.into())
+                    .map(|d| d.into_inner())
+            };
+            let response: ListSubscriptionsResponse = invoke(ctx.child_token(), opt.clone(), action).await?;
             all.extend(response.subscriptions.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -175,23 +149,20 @@ impl SubscriberClient {
     /// subscription or its topic unless the same topic is specified.
     pub async fn delete_subscription(
         &self,
+        ctx: CancellationToken,
         req: DeleteSubscriptionRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let mut setting = Self::get_call_setting(opt);
         let subscription = &req.subscription;
-        return invoke_reuse(
-            |client| async {
-                let request = create_request(format!("subscription={}", subscription), req.clone());
-                client
-                    .delete_subscription(request)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.client(),
-            &mut setting,
-        )
-        .await;
+        let action = || async {
+            let mut client = self.client();
+            let request = create_request(format!("subscription={}", subscription), req.clone());
+            client
+                .delete_subscription(request)
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(ctx, opt, action).await
     }
 
     /// ModifyAckDeadline modifies the ack deadline for a specific message. This method is useful
@@ -201,23 +172,20 @@ impl SubscriberClient {
     /// subscription-level ackDeadlineSeconds used for subsequent messages.
     pub async fn modify_ack_deadline(
         &self,
+        ctx: CancellationToken,
         req: ModifyAckDeadlineRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let mut setting = Self::get_call_setting(opt);
         let subscription = &req.subscription;
-        return invoke_reuse(
-            |client| async {
-                let request = create_request(format!("subscription={}", subscription), req.clone());
-                client
-                    .modify_ack_deadline(request)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.client(),
-            &mut setting,
-        )
-        .await;
+        let action = || async {
+            let mut client = self.client();
+            let request = create_request(format!("subscription={}", subscription), req.clone());
+            client
+                .modify_ack_deadline(request)
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(ctx, opt, action).await
     }
 
     /// acknowledge acknowledges the messages associated with the ack_ids in the
@@ -229,23 +197,20 @@ impl SubscriberClient {
     /// than once will not result in an error.
     pub async fn acknowledge(
         &self,
+        ctx: CancellationToken,
         req: AcknowledgeRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let mut setting = Self::get_call_setting(opt);
         let subscription = &req.subscription;
-        return invoke_reuse(
-            |client| async {
-                let request = create_request(format!("subscription={}", subscription), req.clone());
-                client
-                    .acknowledge(request)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.client(),
-            &mut setting,
-        )
-        .await;
+        let action = ||  async {
+            let mut client = self.client();
+            let request = create_request(format!("subscription={}", subscription), req.clone());
+            client
+                .acknowledge(request)
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(ctx, opt, action).await
     }
 
     /// pull pulls messages from the server. The server may return UNAVAILABLE if
@@ -253,20 +218,17 @@ impl SubscriberClient {
     /// subscription.
     pub async fn pull(
         &self,
+        ctx: CancellationToken,
         req: PullRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<PullResponse>, Status> {
-        let mut setting = Self::get_call_setting(opt);
         let subscription = &req.subscription;
-        return invoke_reuse(
-            |client| async {
-                let request = create_request(format!("subscription={}", subscription), req.clone());
-                client.pull(request).await.map_err(|e| (e.into(), client))
-            },
-            &mut self.client(),
-            &mut setting,
-        )
-        .await;
+        let action = || async {
+            let mut client = self.client();
+            let request = create_request(format!("subscription={}", subscription), req.clone());
+            client.pull(request).await.map_err(|e| e.into())
+        };
+        invoke(ctx, opt, action).await
     }
 
     /// streaming_pull establishes a stream with the server, which sends messages down to the
@@ -278,16 +240,16 @@ impl SubscriberClient {
     /// underlying RPC channel.
     pub async fn streaming_pull(
         &self,
+        ctx: CancellationToken,
         req: StreamingPullRequest,
         ping_receiver: async_channel::Receiver<bool>,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<Streaming<StreamingPullResponse>>, Status> {
-        let mut setting = Self::get_call_setting(opt);
-        return invoke_reuse(
-            |client| async {
-                let base_req = req.clone();
-                let rx = ping_receiver.clone();
-                let request = Box::pin(async_stream::stream! {
+        let action = || async {
+            let mut client = self.client();
+            let base_req = req.clone();
+            let rx = ping_receiver.clone();
+            let request = Box::pin(async_stream::stream! {
                     yield base_req.clone();
 
                     // ping message
@@ -295,18 +257,15 @@ impl SubscriberClient {
                        yield create_default_streaming_pull_request("".to_string())
                     }
                 });
-                let mut v = request.into_streaming_request();
-                let target = v.metadata_mut();
-                target.append("x-goog-request-params", format!("subscription={}", req.subscription.to_string()).parse().unwrap());
-                client
-                    .streaming_pull(v)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.client(),
-            &mut setting,
-        )
-        .await;
+            let mut v = request.into_streaming_request();
+            let target = v.metadata_mut();
+            target.append("x-goog-request-params", format!("subscription={}", req.subscription.to_string()).parse().unwrap());
+            client
+                .streaming_pull(v)
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(ctx, opt, action).await
     }
 
     /// modify_push_config modifies the PushConfig for a specified subscription.
@@ -317,23 +276,20 @@ impl SubscriberClient {
     /// continuously through the call regardless of changes to the PushConfig.
     pub async fn modify_push_config(
         &self,
+        ctx: CancellationToken,
         req: ModifyPushConfigRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let mut setting = Self::get_call_setting(opt);
         let subscription = &req.subscription;
-        return invoke_reuse(
-            |client| async {
-                let request = create_request(format!("subscription={}", subscription), req.clone());
-                client
-                    .modify_push_config(request)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.client(),
-            &mut setting,
-        )
-        .await;
+        let action = || async {
+            let mut client = self.client();
+            let request = create_request(format!("subscription={}", subscription), req.clone());
+            client
+                .modify_push_config(request)
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(ctx, opt, action).await
     }
 
     /// get_snapshot gets the configuration details of a snapshot. Snapshots are used in
@@ -343,23 +299,20 @@ impl SubscriberClient {
     /// subscription to the state captured by a snapshot
     pub async fn get_snapshot(
         &self,
+        ctx: CancellationToken,
         req: GetSnapshotRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<Snapshot>, Status> {
-        let mut setting = Self::get_call_setting(opt);
         let snapshot = &req.snapshot;
-        return invoke_reuse(
-            |client| async {
-                let request = create_request(format!("snapshot={}", snapshot), req.clone());
-                client
-                    .get_snapshot(request)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.client(),
-            &mut setting,
-        )
-        .await;
+        let action = ||  async {
+            let mut client = self.client();
+            let request = create_request(format!("snapshot={}", snapshot), req.clone());
+            client
+                .get_snapshot(request)
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(ctx, opt, action).await
     }
 
     /// list_snapshots lists the existing snapshots. Snapshots are used in Seek (at https://cloud.google.com/pubsub/docs/replay-overview) operations, which
@@ -368,27 +321,24 @@ impl SubscriberClient {
     /// state captured by a snapshot.
     pub async fn list_snapshots(
         &self,
+        ctx: CancellationToken,
         mut req: ListSnapshotsRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Vec<Snapshot>, Status> {
-        let mut setting = Self::get_call_setting(opt);
         let project = &req.project;
         let mut all = vec![];
         //eager loading
         loop {
-            let response = invoke_reuse(
-                |client| async {
-                    let request = create_request(format!("project={}", project), req.clone());
-                    client
-                        .list_snapshots(request)
-                        .await
-                        .map_err(|e| (Status::from(e), client))
-                        .map(|d| d.into_inner())
-                },
-                &mut self.client(),
-                &mut setting,
-            )
-            .await?;
+            let action = || async {
+                let mut client = self.client();
+                let request = create_request(format!("project={}", project), req.clone());
+                client
+                    .list_snapshots(request)
+                    .await
+                    .map_err(|e| e.into())
+                    .map(|d| d.into_inner())
+            };
+            let response : ListSnapshotsResponse = invoke(ctx.child_token(), opt.clone(), action).await?;
             all.extend(response.snapshots.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -415,23 +365,20 @@ impl SubscriberClient {
     /// REST API requests, you must specify a name in the request.
     pub async fn create_snapshot(
         &self,
+        ctx: CancellationToken,
         req: CreateSnapshotRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<Snapshot>, Status> {
-        let mut setting = Self::get_call_setting(opt);
         let name = &req.name;
-        return invoke_reuse(
-            |client| async {
-                let request = create_request(format!("name={}", name), req.clone());
-                client
-                    .create_snapshot(request)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.client(),
-            &mut setting,
-        )
-        .await;
+        let action = ||  async {
+            let mut client = self.client();
+            let request = create_request(format!("name={}", name), req.clone());
+            client
+                .create_snapshot(request)
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(ctx, opt, action).await
     }
 
     /// update_snapshot updates an existing snapshot. Snapshots are used in
@@ -442,26 +389,23 @@ impl SubscriberClient {
     /// captured by a snapshot.
     pub async fn update_snapshot(
         &self,
+        ctx: CancellationToken,
         req: UpdateSnapshotRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<Snapshot>, Status> {
-        let mut setting = Self::get_call_setting(opt);
         let name = match &req.snapshot {
             Some(v) => v.name.as_str(),
             None => ""
         };
-        return invoke_reuse(
-            |client| async {
-                let request = create_request(format!("snapshot.name={}", name.to_string()), req.clone());
-                client
-                    .update_snapshot(request)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.client(),
-            &mut setting,
-        )
-        .await;
+        let action = || async {
+            let mut client = self.client();
+            let request = create_request(format!("snapshot.name={}", name.to_string()), req.clone());
+            client
+                .update_snapshot(request)
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(ctx, opt, action).await
     }
 
     /// delete_snapshot removes an existing snapshot. Snapshots are used in [Seek]
@@ -475,22 +419,19 @@ impl SubscriberClient {
     /// snapshot or its subscription, unless the same subscription is specified.
     pub async fn delete_snapshot(
         &self,
+        ctx: CancellationToken,
         req: DeleteSnapshotRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let mut setting = Self::get_call_setting(opt);
         let name = &req.snapshot;
-        return invoke_reuse(
-            |client| async {
-                let request = create_request(format!("snapshot={}", name), req.clone());
-                client
-                    .delete_snapshot(request)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.client(),
-            &mut setting,
-        )
-        .await;
+        let action = || async {
+            let mut client = self.client();
+            let request = create_request(format!("snapshot={}", name), req.clone());
+            client
+                .delete_snapshot(request)
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(ctx, opt, action).await
     }
 }

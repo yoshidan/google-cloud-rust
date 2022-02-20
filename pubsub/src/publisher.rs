@@ -6,7 +6,6 @@ use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
-use google_cloud_gax::call_option::BackoffRetrySettings;
 use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
 use google_cloud_googleapis::{Status};
 use crate::apiv1::conn_pool::ConnectionManager;

@@ -5,20 +5,12 @@ pub mod conn_pool;
 
 use std::iter::Take;
 use std::time::Duration;
-use tokio_retry::Condition;
+use tokio::select;
+use tokio_retry::{Action, Condition, RetryIf};
 use tokio_retry::strategy::ExponentialBackoff;
+use tokio_util::sync::CancellationToken;
 use tonic::{IntoRequest, Request};
-use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
 use google_cloud_googleapis::{Code, Status};
-
-fn default_setting() -> BackoffRetrySettings {
-    BackoffRetrySettings {
-        retryer: BackoffRetryer {
-            backoff: Backoff::default(),
-            codes: vec![Code::Unavailable, Code::Unknown, Code::Aborted],
-        },
-    }
-}
 
 fn create_request<T>(param_string: String, into_request: impl IntoRequest<T>) -> Request<T> {
     let mut request = into_request.into_request();
@@ -68,5 +60,14 @@ impl Default for RetrySetting {
             take: 5,
             codes: vec![Code::Unavailable, Code::Unknown, Code::Aborted]
         }
+    }
+}
+
+async fn invoke<A,R>(ctx: CancellationToken, opt: Option<RetrySetting>, action: A) -> Result<R, Status>
+    where A: Action<Item=R, Error=Status> {
+    let setting = opt.unwrap_or_default();
+    select! {
+        _ = ctx.cancelled() => Err(Status::new(tonic::Status::cancelled("client cancel"))),
+        v = RetryIf::spawn(setting.strategy(), action, setting.condition()) => v
     }
 }
