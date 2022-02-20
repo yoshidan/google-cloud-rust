@@ -10,6 +10,7 @@ use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
 use google_cloud_googleapis::{Status};
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::publisher_client::PublisherClient;
+use crate::apiv1::RetrySetting;
 use crate::util::ToUsize;
 
 pub(crate) struct ReservedMessage {
@@ -23,7 +24,7 @@ pub struct PublisherConfig {
     pub flush_buffer_interval: Duration,
     pub buffer_size: usize,
     pub publish_timeout: Duration,
-    pub retry_setting: Option<BackoffRetrySettings>
+    pub retry_setting: Option<RetrySetting>
 }
 
 impl Default for PublisherConfig {
@@ -160,7 +161,7 @@ impl Publisher {
     }
 
     /// flush publishes the messages in buffer.
-    async fn flush(client: &mut PublisherClient, topic: &str, buffer: VecDeque<ReservedMessage>, retry_setting: Option<BackoffRetrySettings>) {
+    async fn flush(client: &mut PublisherClient, topic: &str, buffer: VecDeque<ReservedMessage>, retry_setting: Option<RetrySetting>) {
         let mut data = Vec::<PubsubMessage> ::with_capacity(buffer.len());
         let mut callback = Vec::<oneshot::Sender<Result<String,Status>>>::with_capacity(buffer.len());
         buffer.into_iter().for_each(|r| {

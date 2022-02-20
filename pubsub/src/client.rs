@@ -8,6 +8,7 @@ use crate::subscription::{Subscription, SubscriptionConfig};
 use crate::topic::Topic;
 use google_cloud_googleapis::pubsub::v1::{DetachSubscriptionRequest, ListSubscriptionsRequest, ListTopicsRequest, Subscription as InternalSubscription, Topic as InternalTopic};
 use google_cloud_grpc::conn::Error;
+use crate::apiv1::RetrySetting;
 
 pub struct ClientConfig {
     pub pool_size: usize,
@@ -109,7 +110,7 @@ impl Client {
     /// retained in the subscription are dropped. Subsequent `Pull` and `StreamingPull`
     /// requests will return FAILED_PRECONDITION. If the subscription is a push
     /// subscription, pushes to the endpoint will stop.
-    pub async fn detach_subscription(&self, sub_id: &str, retry_option: Option<BackoffRetrySettings>) -> Result<(), Status> {
+    pub async fn detach_subscription(&self, sub_id: &str, retry_option: Option<RetrySetting>) -> Result<(), Status> {
         self.pubc.detach_subscription(DetachSubscriptionRequest{
             subscription: self.fully_qualified_subscription_name(sub_id),
         }, retry_option).await.map(|_v| ())
@@ -133,11 +134,11 @@ impl Client {
             schema_settings: None,
             satisfies_pzs: false,
             message_retention_duration: None
-        }, retry_option).await.map(|_v| self.topic(topic_id, publisher_config))
+        }, None).await.map(|_v| self.topic(topic_id, publisher_config))
     }
 
     /// topics returns an iterator which returns all of the topics for the client's project.
-    pub async fn topics(&self, publisher_config: Option<PublisherConfig>, retry_option: Option<BackoffRetrySettings>) -> Result<Vec<Topic>, Status> {
+    pub async fn topics(&self, publisher_config: Option<PublisherConfig>, retry_option: Option<RetrySetting>) -> Result<Vec<Topic>, Status> {
         let config = publisher_config.unwrap_or_default();
         self.pubc.list_topics(ListTopicsRequest {
             project: self.fully_qualified_project_name(),

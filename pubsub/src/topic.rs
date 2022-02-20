@@ -1,12 +1,12 @@
 use std::sync::Arc;
 use parking_lot::{Mutex};
-use google_cloud_gax::call_option::BackoffRetrySettings;
 
 use google_cloud_googleapis::Code::NotFound;
 use google_cloud_googleapis::pubsub::v1::{DeleteTopicRequest, GetTopicRequest, ListTopicSubscriptionsRequest, PubsubMessage};
 
 use google_cloud_googleapis::Status;
 use crate::apiv1::publisher_client::PublisherClient;
+use crate::apiv1::RetrySetting;
 use crate::apiv1::subscriber_client::SubscriberClient;
 use crate::publisher::{Awaiter, Publisher, PublisherConfig};
 use crate::subscription::Subscription;
@@ -49,14 +49,14 @@ impl Topic {
    }
 
    /// delete deletes the topic.
-   pub async fn delete(&self, opt: Option<BackoffRetrySettings>) -> Result<(),Status>{
+   pub async fn delete(&self, opt: Option<RetrySetting>) -> Result<(),Status>{
       self.pubc.delete_topic(DeleteTopicRequest {
          topic: self.name.to_string()
       }, opt).await.map(|v| v.into_inner())
    }
 
    /// exists reports whether the topic exists on the server.
-   pub async fn exists(&self, opt: Option<BackoffRetrySettings>) -> Result<bool,Status>{
+   pub async fn exists(&self, opt: Option<RetrySetting>) -> Result<bool,Status>{
       if self.name == "_deleted-topic_" {
          return Ok(false)
       }
@@ -75,7 +75,7 @@ impl Topic {
    /// Subscriptions returns an iterator which returns the subscriptions for this topic.
    ///
    /// Some of the returned subscriptions may belong to a project other than t.
-   pub async fn subscriptions(&self, opt: Option<BackoffRetrySettings>) -> Result<Vec<Subscription>,Status>{
+   pub async fn subscriptions(&self, opt: Option<RetrySetting>) -> Result<Vec<Subscription>,Status>{
       self.pubc.list_topic_subscriptions(ListTopicSubscriptionsRequest{
          topic: self.name.to_string(),
          page_size: 0,

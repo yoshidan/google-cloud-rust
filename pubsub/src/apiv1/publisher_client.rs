@@ -1,10 +1,9 @@
 use std::sync::Arc;
-use crate::apiv1::default_setting;
-use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
-use google_cloud_gax::invoke::invoke_reuse;
-use google_cloud_gax::util::create_request;
+use tokio_retry::{RetryIf};
+use crate::apiv1::{create_request, default_setting, RetrySetting};
+use google_cloud_gax::invoke::{invoke, invoke_reuse};
 use google_cloud_googleapis::pubsub::v1::publisher_client::PublisherClient as InternalPublisherClient;
-use google_cloud_googleapis::pubsub::v1::{DeleteTopicRequest, DetachSubscriptionRequest, DetachSubscriptionResponse, GetTopicRequest, ListTopicSnapshotsRequest, ListTopicSubscriptionsRequest, ListTopicsRequest, Topic, UpdateTopicRequest, PublishRequest, PublishResponse};
+use google_cloud_googleapis::pubsub::v1::{DeleteTopicRequest, DetachSubscriptionRequest, DetachSubscriptionResponse, GetTopicRequest, ListTopicSnapshotsRequest, ListTopicSubscriptionsRequest, ListTopicsRequest, Topic, UpdateTopicRequest, PublishRequest, PublishResponse, ListTopicsResponse, ListTopicSubscriptionsResponse, ListTopicSnapshotsResponse};
 use google_cloud_googleapis::{Code, Status};
 use google_cloud_grpc::conn::Channel;
 use tonic::Response;
@@ -21,14 +20,6 @@ impl PublisherClient {
         PublisherClient { cm : Arc::new(cm)}
     }
 
-    /// merge call setting
-    fn get_call_setting(call_setting: Option<BackoffRetrySettings>) -> BackoffRetrySettings {
-        match call_setting {
-            Some(s) => s,
-            None => default_setting(),
-        }
-    }
-
     fn client(&self) -> InternalPublisherClient<Channel> {
         InternalPublisherClient::new(self.cm.conn())
     }
@@ -37,22 +28,19 @@ impl PublisherClient {
     pub async fn create_topic(
         &self,
         req: Topic,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<Topic>, Status> {
-        let mut setting = Self::get_call_setting(opt);
+        let mut setting = opt.unwrap_or_default();
         let name = &req.name;
-        return invoke_reuse(
-            |client| async {
-                let request = create_request(format!("name={}", name), req.clone());
-                client
-                    .create_topic(request)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.client(),
-            &mut setting,
-        )
-        .await;
+        let action = || async {
+            let mut client = self.client();
+            let request = create_request(format!("name={}", name), req.clone());
+            client
+                .create_topic(request)
+                .await
+                .map_err(|e| e.into())
+        };
+        return RetryIf::spawn(setting.strategy(), action, setting.condition()).await;
     }
 
     /// update_topic updates an existing topic. Note that certain properties of a
@@ -60,111 +48,99 @@ impl PublisherClient {
     pub async fn update_topic(
         &self,
         req: UpdateTopicRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<Topic>, Status> {
-        let mut setting = Self::get_call_setting(opt);
+        let mut setting = opt.unwrap_or_default();
         let name = match &req.topic {
             Some(t) => t.name.as_str(),
             None => ""
         };
-        return invoke_reuse(
-            |client| async {
-                let request = create_request(format!("name={}", name), req.clone());
-                client
-                    .update_topic(request)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.client(),
-            &mut setting,
-        )
-        .await;
+        let action = || async {
+            let mut client = self.client();
+            let request = create_request(format!("name={}", name), req.clone());
+            client
+                .update_topic(request)
+                .await
+                .map_err(|e| e.into())
+        };
+        RetryIf::spawn(setting.strategy(), action, setting.condition()).await
     }
 
     /// publish adds one or more messages to the topic. Returns NOT_FOUND if the topic does not exist.
     pub async fn publish(
         &self,
         req: PublishRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<PublishResponse>, Status> {
         let mut setting = match opt {
             Some(opt) => opt,
-            None => BackoffRetrySettings {
-                retryer: BackoffRetryer {
-                    backoff: Backoff::default(),
-                    codes: vec![
-                        Code::Unavailable,
-                        Code::Unknown,
-                        Code::Aborted,
-                        Code::Internal,
-                        Code::ResourceExhausted,
-                        Code::DeadlineExceeded,
-                        Code::Cancelled,
-                    ],
-                },
+            None => {
+                let mut default = RetrySetting::default();
+                default.codes = vec![
+                    Code::Unavailable,
+                    Code::Unknown,
+                    Code::Aborted,
+                    Code::Cancelled,
+                    Code::DeadlineExceeded,
+                    Code::ResourceExhausted,
+                    Code::Internal
+                ];
+                default
             },
         };
         let name = &req.topic;
-        return invoke_reuse(
-            |client| async {
-                let request = create_request(format!("name={}", name), req.clone());
-                client
-                    .publish(request)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.client(),
-            &mut setting,
-        )
-        .await;
+        let action = || async {
+            let mut client = self.client();
+            let request = create_request(format!("name={}", name), req.clone());
+            client
+                .publish(request)
+                .await
+                .map_err(|e| e.into())
+        };
+        RetryIf::spawn(setting.strategy(), action, setting.condition()).await
     }
 
     /// get_topic gets the configuration of a topic.
     pub async fn get_topic(
         &self,
         req: GetTopicRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<Topic>, Status> {
-        let mut setting = Self::get_call_setting(opt);
+        let mut setting = opt.unwrap_or_default();
         let topic = &req.topic;
-        return invoke_reuse(
-            |client| async {
-                let request = create_request(format!("topic={}", topic), req.clone());
-                client
-                    .get_topic(request)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.client(),
-            &mut setting,
-        )
-        .await;
+        let action = || async {
+            let mut client = self.client();
+            let request = create_request(format!("topic={}", topic), req.clone());
+            client
+                .get_topic(request)
+                .await
+                .map_err(|e| e.into())
+        };
+        RetryIf::spawn(setting.strategy(), action, setting.condition()).await
     }
 
     /// list_topics lists matching topics.
     pub async fn list_topics(
         &self,
         mut req: ListTopicsRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Vec<Topic>, Status> {
-        let mut setting = Self::get_call_setting(opt);
         let project = &req.project;
         let mut all = vec![];
         //eager loading
+        let v = opt.unwrap_or_default();
         loop {
-            let response = invoke_reuse(
-                |client| async {
-                    let request = create_request(format!("project={}", project), req.clone());
-                    client
-                        .list_topics(request)
-                        .await
-                        .map_err(|e| (Status::from(e), client))
-                        .map(|d| d.into_inner())
-                },
-                &mut self.client(),
-                &mut setting,
-            )
-            .await?;
+            let mut setting = v.clone();
+            let action = || async {
+                let mut client = self.client();
+                let request = create_request(format!("project={}", project), req.clone());
+                client
+                    .list_topics(request)
+                    .await
+                    .map_err(|e| Status::from(e))
+                    .map(|d| d.into_inner())
+            };
+            let response : ListTopicsResponse = RetryIf::spawn(setting.strategy(), action, setting.condition()).await?;
             all.extend(response.topics.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -177,26 +153,24 @@ impl PublisherClient {
     pub async fn list_topic_subscriptions(
         &self,
         mut req: ListTopicSubscriptionsRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Vec<String>, Status> {
-        let mut setting = Self::get_call_setting(opt);
         let topic = &req.topic;
         let mut all = vec![];
         //eager loading
+        let v = opt.unwrap_or_default();
         loop {
-            let response = invoke_reuse(
-                |client| async {
-                    let request = create_request(format!("topic={}", topic), req.clone());
-                    client
-                        .list_topic_subscriptions(request)
-                        .await
-                        .map_err(|e| (Status::from(e), client))
-                        .map(|d| d.into_inner())
-                },
-                &mut self.client(),
-                &mut setting,
-            )
-            .await?;
+            let mut setting = v.clone();
+            let action = || async {
+                let mut client = self.client();
+                let request = create_request(format!("topic={}", topic), req.clone());
+                client
+                    .list_topic_subscriptions(request)
+                    .await
+                    .map_err(|e| Status::from(e))
+                    .map(|d| d.into_inner())
+            };
+            let response : ListTopicSubscriptionsResponse  = RetryIf::spawn(setting.strategy(), action, setting.condition()).await?;
             all.extend(response.subscriptions.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -213,26 +187,24 @@ impl PublisherClient {
     pub async fn list_topic_snapshots(
         &self,
         mut req: ListTopicSnapshotsRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Vec<String>, Status> {
-        let mut setting = Self::get_call_setting(opt);
         let topic = &req.topic;
         let mut all = vec![];
         //eager loading
+        let v = opt.unwrap_or_default();
         loop {
-            let response = invoke_reuse(
-                |client| async {
-                    let request = create_request(format!("topic={}", topic), req.clone());
-                    client
-                        .list_topic_snapshots(request)
-                        .await
-                        .map_err(|e| (Status::from(e), client))
-                        .map(|d| d.into_inner())
-                },
-                &mut self.client(),
-                &mut setting,
-            )
-            .await?;
+            let mut setting = v.clone();
+            let action = || async {
+                let mut client = self.client();
+                let request = create_request(format!("topic={}", topic), req.clone());
+                client
+                    .list_topic_snapshots(request)
+                    .await
+                    .map_err(|e| Status::from(e))
+                    .map(|d| d.into_inner())
+            };
+            let response : ListTopicSnapshotsResponse = RetryIf::spawn(setting.strategy(), action, setting.condition()).await?;
             all.extend(response.snapshots.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -249,22 +221,20 @@ impl PublisherClient {
     pub async fn delete_topic(
         &self,
         req: DeleteTopicRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let mut setting = Self::get_call_setting(opt);
+        let mut setting = opt.unwrap_or_default();
         let topic = &req.topic;
-        return invoke_reuse(
-            |client| async {
-                let request = create_request(format!("topic={}", topic), req.clone());
-                client
-                    .delete_topic(request)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.client(),
-            &mut setting,
-        )
-        .await;
+        let action = || async {
+           let mut client = self.client();
+           let request = create_request(format!("topic={}", topic), req.clone());
+           client
+               .delete_topic(request)
+               .await
+               .map_err(|e| e.into())
+        };
+
+        RetryIf::spawn(setting.strategy(), action, setting.condition()).await
     }
 
     /// detach_subscription detaches a subscription from this topic. All messages retained in the
@@ -274,21 +244,18 @@ impl PublisherClient {
     pub async fn detach_subscription(
         &self,
         req: DetachSubscriptionRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<DetachSubscriptionResponse>, Status> {
-        let mut setting = Self::get_call_setting(opt);
+        let mut setting = opt.unwrap_or_default();
         let subscription = &req.subscription;
-        return invoke_reuse(
-            |client| async {
-                let request = create_request(format!("subscription={}", subscription), req.clone());
-                client
-                    .detach_subscription(request)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.client(),
-            &mut setting,
-        )
-        .await;
+        let action = || async {
+            let mut client = self.client();
+            let request = create_request(format!("subscription={}", subscription), req.clone());
+            client
+                .detach_subscription(request)
+                .await
+                .map_err(|e| e.into())
+        };
+        RetryIf::spawn(setting.strategy(), action, setting.condition()).await
     }
 }
