@@ -3,6 +3,7 @@ use std::future::Future;
 
 use std::time::Duration;
 use prost_types::FieldMask;
+use tokio::select;
 use tokio_util::sync::CancellationToken;
 
 use google_cloud_googleapis::pubsub::v1::{DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest, PushConfig, RetryPolicy, Subscription as InternalSubscription, UpdateSubscriptionRequest};
@@ -221,9 +222,9 @@ impl Subscription {
             });
         }
 
-        //Orderingが有効な場合、順序付きメッセージは同じStreamに入ってくるためSubscriber毎にqueueが別れていれば問題はない。
-        let subscribers : Vec<Subscriber> = senders.clone().into_iter().map(|queue| {
-            Subscriber::new(self.name.clone(), self.subc.clone(), queue, Some(op.subscriber_config.clone()))
+        //same ordering key is in same stream.
+        let subscribers : Vec<Subscriber> = senders.into_iter().map(|queue| {
+            Subscriber::start(ctx.clone(), self.name.clone(), self.subc.clone(), queue, Some(op.subscriber_config.clone()))
         }).collect();
 
         let mut message_receivers= Vec::with_capacity(receivers.len());
@@ -232,23 +233,25 @@ impl Subscription {
             let ctx_clone = ctx.clone();
             let name = self.name.clone();
             message_receivers.push(tokio::spawn(async move {
-                while let Ok(message) = receiver.recv().await {
-                    f_clone(message, ctx_clone.clone()).await;
-                };
+                loop {
+                   select! {
+                       _ = ctx_clone.cancelled() => break,
+                       msg = receiver.recv() => match msg {
+                           Ok(message) => f_clone(message, ctx_clone.clone()).await,
+                           Err(_) => break
+                       }
+
+                   }
+                }
                 log::trace!("stop message receiver : {}", name);
             }));
         }
         ctx.cancelled().await;
 
+        // wait for all the treads finish.
         for mut subscriber in subscribers {
-            subscriber.stop().await;
+            subscriber.done().await;
         }
-
-        for sender in senders {
-            sender.close();
-        }
-
-        // wait for finish
         for mr in message_receivers {
             mr.await;
         }

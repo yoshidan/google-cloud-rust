@@ -50,18 +50,16 @@ impl Default for SubscriberConfig {
 }
 
 pub(crate) struct Subscriber {
-    cancellation_token: CancellationToken,
     pinger: Option<JoinHandle<()>>,
     inner: Option<JoinHandle<()>>,
 }
 
 impl Subscriber {
 
-    pub fn new(subscription: String, mut client: SubscriberClient, queue: async_channel::Sender<ReceivedMessage>, opt: Option<SubscriberConfig>) -> Self {
+    pub fn start(ctx: CancellationToken, subscription: String, mut client: SubscriberClient, queue: async_channel::Sender<ReceivedMessage>, opt: Option<SubscriberConfig>) -> Self {
         let config = opt.unwrap_or_default();
 
-        let cancellation_token = CancellationToken::new();
-        let cancel_receiver= cancellation_token.clone();
+        let cancel_receiver= ctx.clone();
         let (ping_sender,ping_receiver) = async_channel::unbounded();
 
         // ping request
@@ -82,7 +80,7 @@ impl Subscriber {
             log::trace!("stop pinger : {}", subscription_clone);
         });
 
-        let cancel_receiver= cancellation_token.clone();
+        let cancel_receiver= ctx.clone();
         let inner= tokio::spawn(async move {
             log::trace!("start subscriber: {}", subscription);
             let request = create_default_streaming_pull_request(subscription.to_string());
@@ -133,14 +131,12 @@ impl Subscriber {
             log::trace!("stop subscriber in streaming: {}", subscription);
         });
         return Self{
-            cancellation_token,
             pinger: Some(pinger),
             inner: Some(inner)
         }
     }
 
-    pub async fn stop(&mut self) {
-        self.cancellation_token.cancel();
+    pub async fn done(&mut self) {
         if let Some(v) = self.pinger.take() {
             v.await;
         }
@@ -228,24 +224,23 @@ mod tests {
         let subc = SubscriberClient::new(ConnectionManager::new(4, Some("localhost:8681".to_string())).await?);
         let v = Arc::new(AtomicU32::new(0));
         let ctx = CancellationToken::new();
-        let subscription = subc.create_subscription(ctx, create_default_subscription_request( "projects/local-project/topics/test-topic1".to_string()), None).await.unwrap().into_inner().name;
+        let subscription = subc.create_subscription(ctx.clone(), create_default_subscription_request( "projects/local-project/topics/test-topic1".to_string()), None).await.unwrap().into_inner().name;
         let mut subscribers = vec![];
         for _ in 0..3 {
             let (sender, receiver) = async_channel::unbounded();
-            subscribers.push(Subscriber::new(subscription.clone(), subc.clone(), sender, None));
+            subscribers.push(Subscriber::start(ctx.clone(), subscription.clone(), subc.clone(), sender, None));
             subscribe(v.clone(), subscription.clone(), receiver);
         }
 
         let mut publisher = publish().await;
 
-        for mut subscriber in subscribers {
-            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-            subscriber.stop().await;
-            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        ctx.cancel();
+        for mut s in subscribers {
+            s.done().await;
         }
-
         assert_eq!(v.load(SeqCst),1);
-        publisher.stop();
+        publisher.stop().await;
         Ok(())
     }
 
@@ -261,22 +256,23 @@ mod tests {
         let mut subscribers = vec![];
         for _ in 0..3 {
             let ctx = CancellationToken::new();
-            let subscription = subc.clone().create_subscription(ctx, create_default_subscription_request("projects/local-project/topics/test-topic1".to_string()), None).await.unwrap().into_inner().name;
+            let subscription = subc.clone().create_subscription(ctx.clone(), create_default_subscription_request("projects/local-project/topics/test-topic1".to_string()), None).await.unwrap().into_inner().name;
             let (sender, receiver) = async_channel::unbounded();
             let v = Arc::new(AtomicU32::new(0));
-            subscribers.push((v.clone(), Subscriber::new(subscription.clone(), subc.clone(), sender, None)));
+            subscribers.push((ctx.clone(), v.clone(), Subscriber::start(ctx, subscription.clone(), subc.clone(), sender, None)));
             subscribe(v.clone(), subscription, receiver);
         }
 
         let mut publisher = publish().await;
 
-        for (v, mut subscriber) in subscribers {
-            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-            subscriber.stop().await;
-            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+        for (ctx, v, mut s) in subscribers {
+            ctx.cancel();
+            s.done().await;
             assert_eq!(v.load(SeqCst),1);
         }
-        publisher.stop();
+        publisher.stop().await;
         Ok(())
     }
 }
