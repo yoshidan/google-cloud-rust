@@ -94,17 +94,12 @@ impl Topic {
    /// need to be stopped by calling t.stop(). Once stopped, future calls to Publish
    /// will immediately return a Awaiter with an error.
    pub async fn publish(&self, message: PubsubMessage) -> Awaiter {
-      let mut lock = self.publisher.lock();
+      let mut lock = { self.publisher.lock() } ;
       if lock.is_none() {
          *lock = Some(Publisher::new(self.name.clone(), self.pubc.clone(),self.config.clone()));
       }
       lock.as_ref().unwrap().publish(message).await
    }
-
-   pub async fn publish_t(&self, message: PubsubMessage) -> Awaiter {
-      Publisher::new(self.name.clone(), self.pubc.clone(),self.config.clone()).publish(message).await
-   }
-
 
    pub async fn stop(&self) {
       if let Some(mut p) = { self.publisher.lock().take() } {
