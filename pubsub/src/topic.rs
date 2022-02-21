@@ -101,6 +101,11 @@ impl Topic {
       lock.as_ref().unwrap().publish(message).await
    }
 
+   pub async fn publish_t(&self, message: PubsubMessage) -> Awaiter {
+      Publisher::new(self.name.clone(), self.pubc.clone(),self.config.clone()).publish(message).await
+   }
+
+
    pub async fn stop(&self) {
       if let Some(mut p) = { self.publisher.lock().take() } {
          p.stop().await;
