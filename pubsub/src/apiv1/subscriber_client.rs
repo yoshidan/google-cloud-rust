@@ -133,7 +133,7 @@ impl SubscriberClient {
                     .map_err(|e| e.into())
                     .map(|d| d.into_inner())
             };
-            let response: ListSubscriptionsResponse = invoke(ctx.child_token(), opt.clone(), action).await?;
+            let response: ListSubscriptionsResponse = invoke(ctx.clone(), opt.clone(), action).await?;
             all.extend(response.subscriptions.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -338,7 +338,7 @@ impl SubscriberClient {
                     .map_err(|e| e.into())
                     .map(|d| d.into_inner())
             };
-            let response : ListSnapshotsResponse = invoke(ctx.child_token(), opt.clone(), action).await?;
+            let response : ListSnapshotsResponse = invoke(ctx.clone(), opt.clone(), action).await?;
             all.extend(response.snapshots.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);

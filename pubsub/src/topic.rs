@@ -155,9 +155,9 @@ mod tests {
       let subc = SubscriberClient::new(subcm);
       let ctx = CancellationToken::new();
       let mut topic = Topic::new(topic.name, client, subc, None);
-      assert!(topic.exists(ctx.child_token(), None).await?);
+      assert!(topic.exists(ctx.clone(), None).await?);
 
-      let subs = topic.subscriptions(ctx.child_token(), None).await?;
+      let subs = topic.subscriptions(ctx.clone(), None).await?;
       assert_eq!(0, subs.len());
 
       let msg = PubsubMessage {
@@ -167,17 +167,17 @@ mod tests {
          publish_time: None,
          ordering_key: "".to_string()
       };
-      let message_id = topic.publish(msg.clone()).await.get(ctx.child_token()).await;
+      let message_id = topic.publish(msg.clone()).await.get(ctx.clone()).await;
       assert!(message_id.unwrap().len() > 0);
 
       topic.stop().await;
-      let message_id = topic.publish(msg).await.get(ctx.child_token()).await;
+      let message_id = topic.publish(msg).await.get(ctx.clone()).await;
       assert!(message_id.unwrap().len() > 0);
 
       topic.stop().await;
-      topic.delete(ctx.child_token(), None).await?;
+      topic.delete(ctx.clone(), None).await?;
 
-      assert!(!topic.exists(ctx.child_token(), None).await?);
+      assert!(!topic.exists(ctx.clone(), None).await?);
 
       Ok(())
 

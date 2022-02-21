@@ -152,7 +152,7 @@ impl Subscription {
     /// update changes an existing subscription according to the fields set in updating.
     /// It returns the new SubscriptionConfig.
     pub async fn update(&self, ctx: CancellationToken, updating: SubscriptionConfigToUpdate, opt: Option<RetrySetting>) -> Result<(String, SubscriptionConfig), Status>{
-        let mut config = self.subc.get_subscription(ctx.child_token(), GetSubscriptionRequest{
+        let mut config = self.subc.get_subscription(ctx.clone(), GetSubscriptionRequest{
             subscription: self.name.to_string()
         }, opt.clone()).await?.into_inner();
 
@@ -201,13 +201,13 @@ impl Subscription {
     /// receive calls f with the outstanding messages from the subscription.
     /// It blocks until ctx is done, or the service returns a non-retryable error.
     /// The standard way to terminate a receive is to use CancellationToken.
-    pub async fn receive<F>(&self, mut ctx: CancellationToken,  f: impl Fn(ReceivedMessage) -> F + Send + 'static + Sync + Clone, config: Option<ReceiveConfig>) -> Result<(), Status>
+    pub async fn receive<F>(&self, mut ctx: CancellationToken,  f: impl Fn(ReceivedMessage, CancellationToken) -> F + Send + 'static + Sync + Clone, config: Option<ReceiveConfig>) -> Result<(), Status>
         where F: Future<Output = ()> + Send + 'static {
         let op = config.unwrap_or_default();
         let mut receivers  = Vec::with_capacity(op.worker_count);
         let mut senders = Vec::with_capacity(receivers.len());
 
-        if self.config(ctx.child_token(), op.subscriber_config.retry_setting.clone()).await?.1.enable_message_ordering {
+        if self.config(ctx.clone(), op.subscriber_config.retry_setting.clone()).await?.1.enable_message_ordering {
             (0..op.worker_count).for_each(|_v| {
                 let (sender, receiver) = async_channel::unbounded::<ReceivedMessage>();
                 receivers.push(receiver);
@@ -229,10 +229,11 @@ impl Subscription {
         let mut message_receivers= Vec::with_capacity(receivers.len());
         for receiver in receivers {
             let f_clone = f.clone();
+            let ctx_clone = ctx.clone();
             let name = self.name.clone();
             message_receivers.push(tokio::spawn(async move {
                 while let Ok(message) = receiver.recv().await {
-                    f_clone(message).await;
+                    f_clone(message, ctx_clone.clone()).await;
                 };
                 log::trace!("stop message receiver : {}", name);
             }));
@@ -279,7 +280,7 @@ mod tests {
         let subscription_name = format!("projects/loca-lproject/subscriptions/s{}", &uuid);
         let topic_name = "projects/local-project/topics/test-topic1".to_string();
         let ctx = CancellationToken::new();
-        let subscription = client.create_subscription(ctx.child_token(), InternalSubscription {
+        let subscription = client.create_subscription(ctx.clone(), InternalSubscription {
             name: subscription_name.to_string(),
             topic: topic_name.to_string(),
             push_config: None,
@@ -297,13 +298,13 @@ mod tests {
         }, None).await?.into_inner();
 
         let mut sub = Subscription::new(subscription.name, client);
-        assert!(sub.exists(ctx.child_token(),None).await?);
+        assert!(sub.exists(ctx.clone(),None).await?);
 
-        let config = sub.config(ctx.child_token(), None).await?;
+        let config = sub.config(ctx.clone(), None).await?;
         assert_eq!(config.0, topic_name);
         assert!(config.1.enable_message_ordering);
 
-        let new_config = sub.update(ctx.child_token(), SubscriptionConfigToUpdate {
+        let new_config = sub.update(ctx.clone(), SubscriptionConfigToUpdate {
             push_config: None,
             ack_deadline_seconds: Some(100),
             retain_acked_messages: None,
@@ -317,16 +318,15 @@ mod tests {
         assert_eq!(new_config.1.ack_deadline_seconds, 100);
 
         let cancellation_token = CancellationToken::new();
-        let cancel_receiver = cancellation_token.child_token();
+        let cancel_receiver = cancellation_token.clone();
         let handle = tokio::spawn(async move {
-            let _ = sub.receive(cancel_receiver, |mut message| async move {
+            let _ = sub.receive(cancel_receiver, |mut message, ctx| async move {
                 println!("{}", message.message.message_id);
-                //TODO
-                message.ack(CancellationToken::new());
+                message.ack();
             }, None).await;
 
-            sub.delete(ctx.child_token(),None).await.unwrap();
-            assert!(!sub.exists(ctx.child_token(),None).await.unwrap())
+            sub.delete(ctx.clone(),None).await.unwrap();
+            assert!(!sub.exists(ctx.clone(),None).await.unwrap())
         });
         tokio::time::sleep(Duration::from_secs(3)).await;
         cancellation_token.cancel();

@@ -5,7 +5,7 @@ use tokio::task::JoinHandle;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 use google_cloud_googleapis::pubsub::v1::{AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage};
-use google_cloud_googleapis::{Status};
+use google_cloud_googleapis::{Code, Status};
 use crate::apiv1::RetrySetting;
 
 use crate::apiv1::subscriber_client::{create_default_streaming_pull_request, SubscriberClient};
@@ -18,15 +18,15 @@ pub struct ReceivedMessage {
 }
 
 impl ReceivedMessage {
-    pub async fn ack(&self, ctx: CancellationToken) -> Result<(), Status> {
-       self.subscriber_client.acknowledge(ctx, AcknowledgeRequest {
+    pub async fn ack(&self) -> Result<(), Status> {
+       self.subscriber_client.acknowledge(CancellationToken::new(), AcknowledgeRequest {
            subscription: self.subscription.to_string(),
            ack_ids: vec![self.ack_id.to_string()]
        }, None).await.map(|e| e.into_inner())
     }
 
-    pub async fn nack(&self, ctx: CancellationToken) -> Result<(), Status> {
-        self.subscriber_client.modify_ack_deadline(ctx, ModifyAckDeadlineRequest {
+    pub async fn nack(&self) -> Result<(), Status> {
+        self.subscriber_client.modify_ack_deadline(CancellationToken::new(), ModifyAckDeadlineRequest {
             subscription: self.subscription.to_string(),
             ack_deadline_seconds: 0,
             ack_ids: vec![self.ack_id.to_string()]
@@ -61,7 +61,7 @@ impl Subscriber {
         let config = opt.unwrap_or_default();
 
         let cancellation_token = CancellationToken::new();
-        let cancel_receiver= cancellation_token.child_token();
+        let cancel_receiver= cancellation_token.clone();
         let (ping_sender,ping_receiver) = async_channel::unbounded();
 
         // ping request
@@ -82,19 +82,24 @@ impl Subscriber {
             log::trace!("stop pinger : {}", subscription_clone);
         });
 
-        let cancel_receiver= cancellation_token.child_token();
+        let cancel_receiver= cancellation_token.clone();
         let inner= tokio::spawn(async move {
             log::trace!("start subscriber: {}", subscription);
             let request = create_default_streaming_pull_request(subscription.to_string());
-            let response = client.streaming_pull(cancel_receiver.child_token(), request, ping_receiver, config.retry_setting).await;
+            let response = client.streaming_pull(cancel_receiver.clone(), request, ping_receiver, config.retry_setting).await;
 
             let mut stream = match response {
                 Ok(r) => r.into_inner(),
                 Err(e) => {
-                    log::error!("subscriber error {:?} : {}", e, subscription);
+                    if e.code() == Code::Cancelled {
+                        log::trace!("stop subscriber : {}", subscription);
+                    }else {
+                        log::error!("subscriber error {:?} : {}", e, subscription);
+                    }
                     return;
                 }
             };
+            log::trace!("start streaming: {}", subscription);
             loop {
                 select! {
                     _ = cancel_receiver.cancelled() => {
@@ -125,7 +130,7 @@ impl Subscriber {
                 }
             }
             // streaming request is closed when the ping_sender closed.
-            log::trace!("stop subscriber : {}", subscription);
+            log::trace!("stop subscriber in streaming: {}", subscription);
         });
         return Self{
             cancellation_token,
@@ -205,7 +210,7 @@ mod tests {
                 if string == "test_message" {
                     v.fetch_add(1, SeqCst);
                 }
-                match message.ack(CancellationToken::new()).await {
+                match message.ack().await {
                     Ok(_) => {},
                     Err(e) => {
                         log::error!("error {}", e);

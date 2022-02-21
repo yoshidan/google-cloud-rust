@@ -226,7 +226,7 @@ mod tests {
         let mut config = SubscriptionConfig::default();
         config.enable_message_ordering = !ordering_key.is_empty();
         let ctx = CancellationToken::new();
-        let mut subscription = client.create_subscription(ctx.child_token(), subscription_name , &topic, config, None).await.unwrap();
+        let mut subscription = client.create_subscription(ctx.clone(), subscription_name , &topic, config, None).await.unwrap();
 
         let cancellation_token = CancellationToken::new();
         //subscribe
@@ -234,15 +234,14 @@ mod tests {
             worker_count: 2,
             subscriber_config: SubscriberConfig::default(),
         };
-        let cancel_receiver = cancellation_token.child_token();
+        let cancel_receiver = cancellation_token.clone();
         config.subscriber_config.ping_interval = Duration::from_secs(1);
         let (s, mut r) = tokio::sync::mpsc::channel(100);
         let handle = tokio::spawn(async move {
-            subscription.receive(cancel_receiver, move |mut v| {
+            subscription.receive(cancel_receiver, move |mut v, ctx| {
                 let s2 = s.clone();
                 async move {
-                    //TODO 伝播
-                    let _ = v.ack(CancellationToken::new()).await;
+                    let _ = v.ack().await;
                     let data = std::str::from_utf8(&v.message.data).unwrap().to_string();
                     log::info!("tid={:?} id={} data={}", thread::current().id(), v.message.message_id, data);
                     s2.send(data).await;
@@ -258,7 +257,7 @@ mod tests {
         }
         let ctx = CancellationToken::new();
         for mut v in awaiters {
-            log::info!("sent message_id = {}", v.get(ctx.child_token()).await.unwrap());
+            log::info!("sent message_id = {}", v.get(ctx.clone()).await.unwrap());
         }
 
         tokio::time::sleep(std::time::Duration::from_secs(3)).await;
@@ -302,12 +301,12 @@ mod tests {
         let topic_id = &format!("t{}", &uuid);
         let subscription_id = &format!("s{}", &uuid);
         let ctx = CancellationToken::new();
-        let topics = client.topics(ctx.child_token(), None, None) .await.unwrap();
+        let topics = client.topics(ctx.clone(), None, None) .await.unwrap();
         let subs = client.subscriptions(CancellationToken::new(), None) .await.unwrap();
         let ctx = CancellationToken::new();
-        let topic = client.create_topic(ctx.child_token(), topic_id, None, None).await.unwrap();
+        let topic = client.create_topic(ctx.clone(), topic_id, None, None).await.unwrap();
         let subscription= client.create_subscription(CancellationToken::new(), subscription_id, &topic, SubscriptionConfig::default(), None).await?;
-        let topics_after = client.topics(ctx.child_token(), None, None) .await.unwrap();
+        let topics_after = client.topics(ctx.clone(), None, None) .await.unwrap();
         let subs_after= client.subscriptions(CancellationToken::new(), None) .await.unwrap();
         assert_eq!(1, topics_after.len() - topics.len());
         assert_eq!(1, subs_after.len() - subs.len());

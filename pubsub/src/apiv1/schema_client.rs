@@ -81,7 +81,7 @@ impl SchemaClient {
                     .map_err(|e| e.into())
                     .map(|d| d.into_inner())
             };
-            let response = invoke(ctx.child_token(), opt.clone(), action).await?;
+            let response = invoke(ctx.clone(), opt.clone(), action).await?;
             all.extend(response.schemas.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);

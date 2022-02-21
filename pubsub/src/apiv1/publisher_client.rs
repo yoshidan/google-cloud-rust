@@ -142,7 +142,7 @@ impl PublisherClient {
                     .map_err(|e| Status::from(e))
                     .map(|d| d.into_inner())
             };
-            let response =invoke(ctx.child_token(), opt.clone(), action).await?;
+            let response =invoke(ctx.clone(), opt.clone(), action).await?;
             all.extend(response.topics.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -171,7 +171,7 @@ impl PublisherClient {
                     .map_err(|e| Status::from(e))
                     .map(|d| d.into_inner())
             };
-            let response = invoke(ctx.child_token(), opt.clone(), action).await?;
+            let response = invoke(ctx.clone(), opt.clone(), action).await?;
             all.extend(response.subscriptions.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -204,7 +204,7 @@ impl PublisherClient {
                     .map_err(|e| Status::from(e))
                     .map(|d| d.into_inner())
             };
-            let response =invoke(ctx.child_token(), opt.clone(), action).await?;
+            let response =invoke(ctx.clone(), opt.clone(), action).await?;
             all.extend(response.snapshots.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);

@@ -223,7 +223,7 @@ mod tests {
         let ctx = CancellationToken::new();
         let joins : Vec<JoinHandle<String>>= (0..10).map(|i| {
             let p = publisher.clone();
-            let ctx = ctx.child_token();
+            let ctx = ctx.clone();
             tokio::spawn(async move {
                 let mut result = p.publish(PubsubMessage {
                     data: "abc".into(),
@@ -232,7 +232,7 @@ mod tests {
                     publish_time: None,
                     ordering_key: "".to_string()
                 }).await;
-                let v = result.get(ctx.child_token()).await;
+                let v = result.get(ctx.clone()).await;
                 v.unwrap()
             })
         }).collect();
@@ -263,7 +263,7 @@ mod tests {
             publish_time: None,
             ordering_key: "".to_string()
         }).await;
-        let child = ctx.child_token();
+        let child = ctx.clone();
         let j = tokio::spawn(async move {
             let v = result.get(child).await;
             assert!(v.is_err());
