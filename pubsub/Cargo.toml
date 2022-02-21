@@ -22,10 +22,10 @@ async-trait = "0.1"
 parking_lot = "0.11"
 base64 = "0.13"
 anyhow = "1.0"
-async-channel = "1.6.1"
-async-stream = "0.3.1"
-tokio-util = "0.6.9"
-tokio-retry = "0.3.0"
+async-channel = "1.6"
+async-stream = "0.3"
+tokio-util = "0.7"
+tokio-retry = "0.3"
 
 google-cloud-grpc = { version = "0.2.1", path = "../foundation/grpc" }
 google-cloud-googleapis = { version = "0.2.1", path = "../googleapis" }
