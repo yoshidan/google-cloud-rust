@@ -1,5 +1,5 @@
 use std::collections::{VecDeque};
-
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::select;
 
@@ -9,7 +9,7 @@ use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
 use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
 use google_cloud_googleapis::{Status};
-
+use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::RetrySetting;
 use crate::util::ToUsize;
@@ -48,12 +48,13 @@ impl Awaiter {
             consumer,
         }
     }
-    pub async fn get(&mut self, ctx: CancellationToken) -> Result<String, Status> {
+    pub async fn get(self, ctx: CancellationToken) -> Result<String, Status> {
+        let onetime = self.consumer;
         select! {
             _ = ctx.cancelled() => Err(tonic::Status::cancelled("cancelled").into()),
-            v = &mut self.consumer => match v {
+            v = onetime => match v {
                 Ok(vv) => vv,
-                Err(_e) => Err(tonic::Status::aborted("closed").into())
+                Err(e) => Err(tonic::Status::aborted("closed").into())
             }
         }
     }
