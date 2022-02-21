@@ -150,7 +150,7 @@ impl Subscriber {
 mod tests {
     use std::sync::Arc;
 
-    use google_cloud_googleapis::pubsub::v1::{PubsubMessage, Subscription};
+    use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage, Subscription};
     use crate::apiv1::publisher_client::PublisherClient;
     use crate::apiv1::conn_pool::ConnectionManager;
     use crate::publisher::{Publisher};
@@ -184,17 +184,19 @@ mod tests {
         };
     }
 
-    async fn publish() -> Publisher {
+    async fn publish() {
         let pubc = PublisherClient::new(ConnectionManager::new(4, Some("localhost:8681".to_string())).await.unwrap());
-        let publisher = Publisher::new("projects/local-project/topics/test-topic1".to_string(), pubc, None);
-        publisher.publish(PubsubMessage {
+        let msg =  PubsubMessage {
             data: "test_message".into(),
             attributes: Default::default(),
             message_id: "".to_string(),
             publish_time: None,
             ordering_key: "".to_string()
-        }).await.get(CancellationToken::new()).await;
-        return publisher;
+        };
+        pubc.publish(CancellationToken::new(), PublishRequest {
+            topic: "projects/local-project/topics/test-topic1".to_string(),
+            messages: vec![msg]
+        }, None).await;
     }
 
     fn subscribe(v: Arc<AtomicU32>, name: String, receiver: async_channel::Receiver<ReceivedMessage>){
@@ -232,7 +234,7 @@ mod tests {
             subscribe(v.clone(), subscription.clone(), receiver);
         }
 
-        let mut publisher = publish().await;
+        publish().await;
 
         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
         ctx.cancel();
@@ -240,7 +242,6 @@ mod tests {
             s.done().await;
         }
         assert_eq!(v.load(SeqCst),1);
-        publisher.stop();
         Ok(())
     }
 
@@ -263,7 +264,7 @@ mod tests {
             subscribe(v.clone(), subscription, receiver);
         }
 
-        let mut publisher = publish().await;
+        publish().await;
 
         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 
@@ -272,7 +273,6 @@ mod tests {
             s.done().await;
             assert_eq!(v.load(SeqCst),1);
         }
-        publisher.stop();
         Ok(())
     }
 }

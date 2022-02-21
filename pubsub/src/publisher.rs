@@ -1,12 +1,16 @@
 use std::collections::{VecDeque};
 use std::future::Future;
 use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering::SeqCst;
 use std::time::Duration;
+use async_channel::Receiver;
 use tokio::select;
 
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
+use tokio_retry::Retry;
 use tokio_util::sync::CancellationToken;
 use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
 use google_cloud_googleapis::{Status};
@@ -16,8 +20,8 @@ use crate::apiv1::RetrySetting;
 use crate::util::ToUsize;
 
 pub(crate) struct ReservedMessage {
-    producer: oneshot::Sender<Result<String,Status>>,
-    message: PubsubMessage,
+    pub producer: oneshot::Sender<Result<String,Status>>,
+    pub message: PubsubMessage,
 }
 
 #[derive(Clone)]
@@ -66,32 +70,12 @@ impl Awaiter {
 /// Items added to the empty string key are handled in random order.
 /// Items added to any other key are handled sequentially.
 pub(crate) struct Publisher {
-    ordering_senders: Vec<async_channel::Sender<ReservedMessage>>,
-    sender: async_channel::Sender<ReservedMessage>,
     workers: Option<Vec<JoinHandle<()>>>
 }
 
 impl Publisher {
 
-    pub fn new(topic: String, pubc: PublisherClient, opt: Option<PublisherConfig>) -> Self {
-        let config = opt.unwrap_or_default();
-        let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
-        let mut receivers = Vec::with_capacity(1 + config.workers);
-        let mut ordering_senders = Vec::with_capacity(config.workers);
-
-        // for non-ordering key message
-        for _ in 0..config.workers {
-            log::trace!("start non-ordering publisher : {}", topic.clone());
-            receivers.push(receiver.clone()) ;
-        }
-
-        // for ordering key message
-        for _ in 0..config.workers {
-            log::trace!("start ordering publisher : {}", topic.clone());
-            let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
-            receivers.push(receiver);
-            ordering_senders.push(sender);
-        }
+    pub fn start(topic: String, pubc: PublisherClient, receivers: Vec<async_channel::Receiver<ReservedMessage>>, config: PublisherConfig) -> Self {
 
         let workers = receivers.into_iter().map(|receiver| {
             let mut client = pubc.clone();
@@ -130,31 +114,8 @@ impl Publisher {
         }).collect();
 
         Self {
-            sender,
-            ordering_senders,
-            workers: Some(workers),
+            workers: Some(workers)
         }
-    }
-
-    /// publish publishes message.
-    /// If an ordering key is specified, it will be added to the queue so that it will be delivered in order.
-    pub async fn publish(&self, message: PubsubMessage) -> Awaiter{
-
-        let (producer, consumer) = oneshot::channel();
-        if message.ordering_key.is_empty() {
-            self.sender.send( ReservedMessage {
-                producer,
-                message
-            }).await;
-        }else {
-            let key = message.ordering_key.as_str().to_usize();
-            let index = key % self.ordering_senders.len();
-            self.ordering_senders[index].send(ReservedMessage {
-                producer,
-                message
-            }).await;
-        }
-        Awaiter::new(consumer)
     }
 
     /// flush publishes the messages in buffer.
@@ -185,23 +146,15 @@ impl Publisher {
         };
     }
 
-    /// stop stops all the tasks.
-    pub fn stop(&self) {
-        self.sender.close();
-        for ps in self.ordering_senders.iter() {
-            ps.close();
+    /// shutdown stops all the tasks.
+    pub async fn shutdown(&mut self) {
+        if let Some(workers ) = self.workers.take() {
+            for worker in workers {
+                worker.await;
+            }
         }
     }
 
-    pub fn is_closed(&self) -> bool{
-        self.sender.is_closed()
-    }
-}
-
-impl Drop for Publisher {
-    fn drop(&mut self) {
-        self.stop();
-    }
 }
 
 #[cfg(test)]
@@ -211,10 +164,11 @@ mod tests {
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
     use crate::apiv1::conn_pool::ConnectionManager;
     use serial_test::serial;
+    use tokio::sync::oneshot;
     use tokio::task::JoinHandle;
     use tokio_util::sync::CancellationToken;
     use crate::apiv1::publisher_client::PublisherClient;
-    use crate::publisher::{Publisher, PublisherConfig};
+    use crate::publisher::{Awaiter, Publisher, PublisherConfig, ReservedMessage};
 
     #[tokio::test]
     #[serial]
@@ -224,22 +178,28 @@ mod tests {
         let cons = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
         let client = PublisherClient::new(cons);
 
-        let publisher = Arc::new(Publisher::new("projects/local-project/topics/test-topic1".to_string(), client, None));
+        let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
+        let publisher = Arc::new(Publisher::start("projects/local-project/topics/test-topic1".to_string(), client, vec![receiver.clone(),receiver], PublisherConfig::default()));
 
         let ctx = CancellationToken::new();
-        let joins : Vec<JoinHandle<String>>= (0..10).map(|i| {
+        let joins : Vec<JoinHandle<String>> = (0..10).map(|i| {
             let p = publisher.clone();
             let ctx = ctx.clone();
+            let s = sender.clone();
             tokio::spawn(async move {
-                let mut result = p.publish(PubsubMessage {
+                let message = PubsubMessage {
                     data: "abc".into(),
                     attributes: Default::default(),
                     message_id: i.to_string(),
                     publish_time: None,
                     ordering_key: "".to_string()
+                };
+                let (producer, consumer) = oneshot::channel();
+                s.send( ReservedMessage {
+                    producer,
+                    message
                 }).await;
-                let v = result.get(ctx.clone()).await;
-                v.unwrap()
+                Awaiter::new(consumer).get(ctx.clone()).await.unwrap()
             })
         }).collect();
         for j in joins {
@@ -260,15 +220,22 @@ mod tests {
 
         let mut opt = PublisherConfig::default();
         opt.flush_buffer_interval = Duration::from_secs(10);
-        let publisher = Publisher::new("projects/local-project/topics/test-topic1".to_string(), client, None);
+        let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
+        let publisher = Arc::new(Publisher::start("projects/local-project/topics/test-topic1".to_string(), client, vec![receiver], opt));
         let ctx = CancellationToken::new();
-        let mut result = publisher.publish(PubsubMessage {
-            data: "abcx".into(),
+        let message = PubsubMessage {
+            data: "abc".into(),
             attributes: Default::default(),
             message_id: "".to_string(),
             publish_time: None,
             ordering_key: "".to_string()
+        };
+        let (producer, consumer) = oneshot::channel();
+        sender.send( ReservedMessage {
+            producer,
+            message
         }).await;
+        let result = Awaiter::new(consumer);
         let child = ctx.clone();
         let j = tokio::spawn(async move {
             let v = result.get(child).await;

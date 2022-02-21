@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use parking_lot::{Mutex};
+use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 
 use google_cloud_googleapis::Code::NotFound;
@@ -9,8 +10,9 @@ use google_cloud_googleapis::Status;
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::RetrySetting;
 use crate::apiv1::subscriber_client::SubscriberClient;
-use crate::publisher::{Awaiter, Publisher, PublisherConfig};
+use crate::publisher::{Awaiter, Publisher, PublisherConfig, ReservedMessage};
 use crate::subscription::Subscription;
+use crate::util::ToUsize;
 
 /// Topic is a reference to a PubSub topic.
 ///
@@ -20,21 +22,46 @@ pub struct Topic {
    name: String,
    pubc: PublisherClient,
    subc: SubscriberClient,
-   publisher: Arc<Publisher>
+   ordering_senders: Vec<async_channel::Sender<ReservedMessage>>,
+   sender: async_channel::Sender<ReservedMessage>,
+   publisher: Arc<Mutex<Publisher>>
 }
 
 impl Topic {
 
-   pub(crate) fn new(name: String,
+   pub(crate) fn new(topic: String,
           pubc: PublisherClient,
           subc: SubscriberClient,
-          config: Option<PublisherConfig>) -> Self {
-      let publisher = Publisher::new(name.clone(), pubc.clone(), config);
+          config: Option<PublisherConfig>
+   ) -> Self {
+
+      let config = config.unwrap_or_default();
+      let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
+      let mut receivers = Vec::with_capacity(1 + config.workers);
+      let mut ordering_senders = Vec::with_capacity(config.workers);
+
+      // for non-ordering key message
+      for _ in 0..config.workers {
+         log::trace!("start non-ordering publisher : {}", topic.clone());
+         receivers.push(receiver.clone()) ;
+      }
+
+      // for ordering key message
+      for _ in 0..config.workers {
+         log::trace!("start ordering publisher : {}", topic.clone());
+         let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
+         receivers.push(receiver);
+         ordering_senders.push(sender);
+      }
+      let publisher = Arc::new(Mutex::new(Publisher::start(topic.to_string(),pubc.clone(), receivers, config)));
+
       Self {
-         name,
+         name: topic,
          pubc,
          subc,
-         publisher: Arc::new(publisher),
+         sender,
+         ordering_senders,
+         publisher,
       }
    }
 
@@ -93,24 +120,41 @@ impl Topic {
    /// need to be stopped by calling t.stop(). Once stopped, future calls to Publish
    /// will immediately return a Awaiter with an error.
    pub async fn publish(&self, message: PubsubMessage) -> Awaiter {
-      if self.publisher.is_closed() {
+      if self.is_shutdown() {
          let (mut tx, rx) = tokio::sync::oneshot::channel();
          tx.closed();
          return Awaiter::new(rx)
       }
-      self.publisher.publish(message).await
+
+      let (producer, consumer) = oneshot::channel();
+      if message.ordering_key.is_empty() {
+         self.sender.send( ReservedMessage {
+            producer,
+            message
+         }).await;
+      }else {
+         let key = message.ordering_key.as_str().to_usize();
+         let index = key % self.ordering_senders.len();
+         self.ordering_senders[index].send(ReservedMessage {
+            producer,
+            message
+         }).await;
+      }
+      Awaiter::new(consumer)
    }
 
-   pub fn stop(&self) {
-      self.publisher.stop();
+   pub async fn shutdown(&self) {
+      self.sender.close();
+      for s in &self.ordering_senders {
+        s.close();
+      }
+      self.publisher.lock().shutdown().await;
    }
 
-}
-
-impl Drop for Topic {
-   fn drop(&mut self) {
-      self.stop();
+   fn is_shutdown(&self) -> bool{
+      self.sender.is_closed()
    }
+
 }
 
 #[cfg(test)]
@@ -167,7 +211,7 @@ mod tests {
       let message_id = topic.publish(msg.clone()).await.get(ctx.clone()).await;
       assert!(message_id.unwrap().len() > 0);
 
-      topic.stop();
+      topic.shutdown().await;
       let message_id = topic.publish(msg).await.get(ctx.clone()).await;
       assert!(message_id.is_err());
       assert_eq!(message_id.unwrap_err().code(), Code::Cancelled);
