@@ -181,18 +181,18 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-    use std::sync::atomic::AtomicU32;
-    use std::sync::atomic::Ordering::SeqCst;
+    
+    
+    
     use std::thread;
     use std::time::Duration;
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
     use serial_test::serial;
     use tokio_util::sync::CancellationToken;
-    use tonic::codegen::http::header::CACHE_CONTROL;
+    
     use uuid::Uuid;
     use crate::client::{Client};
-    use crate::publisher::PublisherConfig;
+    
     use crate::subscriber::SubscriberConfig;
     use crate::subscription::{ReceiveConfig, SubscriptionConfig};
 
@@ -226,7 +226,7 @@ mod tests {
         let mut config = SubscriptionConfig::default();
         config.enable_message_ordering = !ordering_key.is_empty();
         let ctx = CancellationToken::new();
-        let mut subscription = client.create_subscription(ctx.clone(), subscription_name , &topic, config, None).await.unwrap();
+        let subscription = client.create_subscription(ctx.clone(), subscription_name , &topic, config, None).await.unwrap();
 
         let cancellation_token = CancellationToken::new();
         //subscribe
@@ -238,7 +238,7 @@ mod tests {
         config.subscriber_config.ping_interval = Duration::from_secs(1);
         let (s, mut r) = tokio::sync::mpsc::channel(100);
         let handle = tokio::spawn(async move {
-            subscription.receive(cancel_receiver, move |mut v, ctx| {
+            subscription.receive(cancel_receiver, move |v, _ctx| {
                 let s2 = s.clone();
                 async move {
                     let _ = v.ack().await;
@@ -305,7 +305,7 @@ mod tests {
         let subs = client.subscriptions(CancellationToken::new(), None) .await.unwrap();
         let ctx = CancellationToken::new();
         let topic = client.create_topic(ctx.clone(), topic_id, None, None).await.unwrap();
-        let subscription= client.create_subscription(CancellationToken::new(), subscription_id, &topic, SubscriptionConfig::default(), None).await?;
+        let _subscription= client.create_subscription(CancellationToken::new(), subscription_id, &topic, SubscriptionConfig::default(), None).await?;
         let topics_after = client.topics(ctx.clone(), None, None) .await.unwrap();
         let subs_after= client.subscriptions(CancellationToken::new(), None) .await.unwrap();
         assert_eq!(1, topics_after.len() - topics.len());

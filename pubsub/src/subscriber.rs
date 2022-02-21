@@ -1,5 +1,5 @@
 use std::time::Duration;
-use async_channel::Sender;
+
 use tokio::select;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
@@ -56,7 +56,7 @@ pub(crate) struct Subscriber {
 
 impl Subscriber {
 
-    pub fn start(ctx: CancellationToken, subscription: String, mut client: SubscriberClient, queue: async_channel::Sender<ReceivedMessage>, opt: Option<SubscriberConfig>) -> Self {
+    pub fn start(ctx: CancellationToken, subscription: String, client: SubscriberClient, queue: async_channel::Sender<ReceivedMessage>, opt: Option<SubscriberConfig>) -> Self {
         let config = opt.unwrap_or_default();
 
         let cancel_receiver= ctx.clone();
@@ -106,7 +106,7 @@ impl Subscriber {
                     }
                     maybe = stream.message() => {
                         let message = match maybe{
-                           Err(e) => break,
+                           Err(_e) => break,
                            Ok(message) => message
                         };
                         let message = match message {
@@ -153,7 +153,7 @@ mod tests {
     use google_cloud_googleapis::pubsub::v1::{PubsubMessage, Subscription};
     use crate::apiv1::publisher_client::PublisherClient;
     use crate::apiv1::conn_pool::ConnectionManager;
-    use crate::publisher::{Publisher, PublisherConfig};
+    use crate::publisher::{Publisher};
     use serial_test::serial;
 
     use crate::apiv1::subscriber_client::SubscriberClient;
@@ -199,7 +199,7 @@ mod tests {
 
     fn subscribe(v: Arc<AtomicU32>, name: String, receiver: async_channel::Receiver<ReceivedMessage>){
         tokio::spawn(async move {
-            while let Ok(mut message) = receiver.recv().await {
+            while let Ok(message) = receiver.recv().await {
                 log::info!("message = {} from={}", message.message.message_id, name.to_string());
                 let data = &message.message.data;
                 let string = std::str::from_utf8(data).unwrap();

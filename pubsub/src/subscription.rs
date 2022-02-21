@@ -202,7 +202,7 @@ impl Subscription {
     /// receive calls f with the outstanding messages from the subscription.
     /// It blocks until ctx is done, or the service returns a non-retryable error.
     /// The standard way to terminate a receive is to use CancellationToken.
-    pub async fn receive<F>(&self, mut ctx: CancellationToken,  f: impl Fn(ReceivedMessage, CancellationToken) -> F + Send + 'static + Sync + Clone, config: Option<ReceiveConfig>) -> Result<(), Status>
+    pub async fn receive<F>(&self, ctx: CancellationToken,  f: impl Fn(ReceivedMessage, CancellationToken) -> F + Send + 'static + Sync + Clone, config: Option<ReceiveConfig>) -> Result<(), Status>
         where F: Future<Output = ()> + Send + 'static {
         let op = config.unwrap_or_default();
         let mut receivers  = Vec::with_capacity(op.worker_count);
@@ -261,10 +261,10 @@ impl Subscription {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    
     use std::time::Duration;
     use uuid::Uuid;
-    use google_cloud_googleapis::pubsub::v1::{ExpirationPolicy, Subscription as InternalSubscription};
+    use google_cloud_googleapis::pubsub::v1::{Subscription as InternalSubscription};
     use serial_test::serial;
     use tokio_util::sync::CancellationToken;
     use crate::apiv1::conn_pool::ConnectionManager;
@@ -300,7 +300,7 @@ mod tests {
             topic_message_retention_duration: None
         }, None).await?.into_inner();
 
-        let mut sub = Subscription::new(subscription.name, client);
+        let sub = Subscription::new(subscription.name, client);
         assert!(sub.exists(ctx.clone(),None).await?);
 
         let config = sub.config(ctx.clone(), None).await?;
@@ -323,7 +323,7 @@ mod tests {
         let cancellation_token = CancellationToken::new();
         let cancel_receiver = cancellation_token.clone();
         let handle = tokio::spawn(async move {
-            let _ = sub.receive(cancel_receiver, |mut message, ctx| async move {
+            let _ = sub.receive(cancel_receiver, |message, _ctx| async move {
                 println!("{}", message.message.message_id);
                 message.ack();
             }, None).await;

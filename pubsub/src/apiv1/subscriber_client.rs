@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use tokio_retry::Retry;
+
 use tokio_util::sync::CancellationToken;
 use crate::apiv1::{create_request, invoke, RetrySetting};
 use tonic::{IntoStreamingRequest};

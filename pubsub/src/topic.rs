@@ -119,10 +119,10 @@ impl Drop for Topic {
 
 #[cfg(test)]
 mod tests {
-   use std::collections::HashMap;
-   use std::time::Duration;
+   
+   
    use uuid::Uuid;
-   use google_cloud_googleapis::pubsub::v1::{ExpirationPolicy, MessageStoragePolicy, PubsubMessage, Topic as InternalTopic};
+   use google_cloud_googleapis::pubsub::v1::{PubsubMessage, Topic as InternalTopic};
    use serial_test::serial;
    use tokio_util::sync::CancellationToken;
    use crate::apiv1::conn_pool::ConnectionManager;
@@ -154,7 +154,7 @@ mod tests {
       let subcm = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
       let subc = SubscriberClient::new(subcm);
       let ctx = CancellationToken::new();
-      let mut topic = Topic::new(topic.name, client, subc, None);
+      let topic = Topic::new(topic.name, client, subc, None);
       assert!(topic.exists(ctx.clone(), None).await?);
 
       let subs = topic.subscriptions(ctx.clone(), None).await?;
