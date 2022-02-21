@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use parking_lot::{Mutex};
+use parking_lot::{Mutex, RwLock};
 use tokio_util::sync::CancellationToken;
 
 use google_cloud_googleapis::Code::NotFound;
@@ -21,7 +21,7 @@ pub struct Topic {
    pubc: PublisherClient,
    subc: SubscriberClient,
    config: Option<PublisherConfig>,
-   publisher: Arc<Mutex<Option<Publisher>>>
+   publisher: Arc<RwLock<Option<Publisher>>>
 }
 
 impl Topic {
@@ -35,7 +35,7 @@ impl Topic {
          pubc,
          subc,
          config,
-         publisher: Arc::new(Mutex::new(None))
+         publisher: Arc::new(RwLock::new(None))
       }
    }
 
@@ -94,15 +94,17 @@ impl Topic {
    /// need to be stopped by calling t.stop(). Once stopped, future calls to Publish
    /// will immediately return a Awaiter with an error.
    pub async fn publish(&self, message: PubsubMessage) -> Awaiter {
-      let mut lock = { self.publisher.lock() } ;
-      if lock.is_none() {
-         *lock = Some(Publisher::new(self.name.clone(), self.pubc.clone(),self.config.clone()));
-      }
-      lock.as_ref().unwrap().publish(message).await
+      {
+         let mut lock = self.publisher.write();
+         if lock.is_none() {
+            *lock = Some(Publisher::new(self.name.clone(), self.pubc.clone(), self.config.clone()));
+         }
+      };
+      self.publisher.read().as_ref().unwrap().publish(message).await
    }
 
    pub async fn stop(&self) {
-      if let Some(mut p) = { self.publisher.lock().take() } {
+      if let Some(mut p) = { self.publisher.write().take() } {
          p.stop().await;
       }
    }
