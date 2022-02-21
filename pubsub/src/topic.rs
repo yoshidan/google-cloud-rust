@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use parking_lot::{Mutex, RwLock};
+use parking_lot::{Mutex};
 use tokio_util::sync::CancellationToken;
 
 use google_cloud_googleapis::Code::NotFound;
@@ -20,8 +20,7 @@ pub struct Topic {
    name: String,
    pubc: PublisherClient,
    subc: SubscriberClient,
-   config: Option<PublisherConfig>,
-   publisher: Arc<RwLock<Option<Publisher>>>
+   publisher: Arc<Publisher>
 }
 
 impl Topic {
@@ -30,12 +29,12 @@ impl Topic {
           pubc: PublisherClient,
           subc: SubscriberClient,
           config: Option<PublisherConfig>) -> Self {
+      let publisher = Publisher::new(name.clone(), pubc.clone(), config);
       Self {
          name,
          pubc,
          subc,
-         config,
-         publisher: Arc::new(RwLock::new(None))
+         publisher: Arc::new(publisher),
       }
    }
 
@@ -94,29 +93,24 @@ impl Topic {
    /// need to be stopped by calling t.stop(). Once stopped, future calls to Publish
    /// will immediately return a Awaiter with an error.
    pub async fn publish(&self, message: PubsubMessage) -> Awaiter {
-      {
-         let mut lock = self.publisher.write();
-         if lock.is_none() {
-            *lock = Some(Publisher::new(self.name.clone(), self.pubc.clone(), self.config.clone()));
-         }
-      };
-      self.publisher.read().as_ref().unwrap().publish(message).await
+      if self.publisher.is_closed() {
+         let (mut tx, rx) = tokio::sync::oneshot::channel();
+         tx.closed();
+         return Awaiter::new(rx)
+      }
+      self.publisher.publish(message).await
    }
 
-   pub async fn stop(&self) {
-      if let Some(mut p) = { self.publisher.write().take() } {
-         p.stop().await;
-      }
+   pub fn stop(&self) {
+      self.publisher.stop();
    }
 
 }
 
 impl Drop for Topic {
-
    fn drop(&mut self) {
-      self.stop() ;
+      self.stop();
    }
-
 }
 
 #[cfg(test)]
@@ -127,6 +121,7 @@ mod tests {
    use google_cloud_googleapis::pubsub::v1::{PubsubMessage, Topic as InternalTopic};
    use serial_test::serial;
    use tokio_util::sync::CancellationToken;
+   use google_cloud_googleapis::Code;
    use crate::apiv1::conn_pool::ConnectionManager;
    use crate::apiv1::publisher_client::PublisherClient;
    use crate::apiv1::subscriber_client::SubscriberClient;
@@ -156,7 +151,7 @@ mod tests {
       let subcm = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
       let subc = SubscriberClient::new(subcm);
       let ctx = CancellationToken::new();
-      let topic = Topic::new(topic.name, client, subc, None);
+      let mut topic = Topic::new(topic.name, client, subc, None);
       assert!(topic.exists(ctx.clone(), None).await?);
 
       let subs = topic.subscriptions(ctx.clone(), None).await?;
@@ -172,13 +167,12 @@ mod tests {
       let message_id = topic.publish(msg.clone()).await.get(ctx.clone()).await;
       assert!(message_id.unwrap().len() > 0);
 
-      topic.stop().await;
+      topic.stop();
       let message_id = topic.publish(msg).await.get(ctx.clone()).await;
-      assert!(message_id.unwrap().len() > 0);
+      assert!(message_id.is_err());
+      assert_eq!(message_id.unwrap_err().code(), Code::Cancelled);
 
-      topic.stop().await;
       topic.delete(ctx.clone(), None).await?;
-
       assert!(!topic.exists(ctx.clone(), None).await?);
 
       Ok(())

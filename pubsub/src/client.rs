@@ -275,7 +275,7 @@ mod tests {
         assert_eq!(count, 100);
         let _ = handle.await;
 
-        topic.stop().await;
+        topic.stop();
 
         Ok(())
     }

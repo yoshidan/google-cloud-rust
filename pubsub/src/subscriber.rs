@@ -240,7 +240,7 @@ mod tests {
             s.done().await;
         }
         assert_eq!(v.load(SeqCst),1);
-        publisher.stop().await;
+        publisher.stop();
         Ok(())
     }
 
@@ -272,7 +272,7 @@ mod tests {
             s.done().await;
             assert_eq!(v.load(SeqCst),1);
         }
-        publisher.stop().await;
+        publisher.stop();
         Ok(())
     }
 }

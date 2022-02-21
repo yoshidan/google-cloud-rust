@@ -1,4 +1,5 @@
 use std::collections::{VecDeque};
+use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::select;
@@ -54,7 +55,7 @@ impl Awaiter {
             _ = ctx.cancelled() => Err(tonic::Status::cancelled("cancelled").into()),
             v = onetime => match v {
                 Ok(vv) => vv,
-                Err(e) => Err(tonic::Status::aborted("closed").into())
+                Err(e) => Err(tonic::Status::cancelled("closed").into())
             }
         }
     }
@@ -185,18 +186,22 @@ impl Publisher {
     }
 
     /// stop stops all the tasks.
-    pub async fn stop(&mut self) {
+    pub fn stop(&self) {
         self.sender.close();
         for ps in self.ordering_senders.iter() {
             ps.close();
         }
-        if let Some(workers) = self.workers.take() {
-            for w in workers {
-                w.await;
-            }
-        }
     }
 
+    pub fn is_closed(&self) -> bool{
+        self.sender.is_closed()
+    }
+}
+
+impl Drop for Publisher {
+    fn drop(&mut self) {
+        self.stop();
+    }
 }
 
 #[cfg(test)]
