@@ -195,7 +195,7 @@ mod tests {
       let subcm = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
       let subc = SubscriberClient::new(subcm);
       let ctx = CancellationToken::new();
-      let mut topic = Topic::new(topic.name, client, subc, None);
+      let topic = Topic::new(topic.name, client, subc, None);
       assert!(topic.exists(ctx.clone(), None).await?);
 
       let subs = topic.subscriptions(ctx.clone(), None).await?;

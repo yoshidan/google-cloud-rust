@@ -153,7 +153,7 @@ mod tests {
     use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage, Subscription};
     use crate::apiv1::publisher_client::PublisherClient;
     use crate::apiv1::conn_pool::ConnectionManager;
-    use crate::publisher::{Publisher};
+    
     use serial_test::serial;
 
     use crate::apiv1::subscriber_client::SubscriberClient;

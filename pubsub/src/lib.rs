@@ -27,7 +27,7 @@
 //!
 //!     // Create topic.
 //!     let fqtn = client.fully_qualified_topic_name("test-topic");
-//!     client.create_topic(ctx, "test-topic", None).await?;
+//!     client.create_topic(ctx, &fgtn, None).await?;
 //!     let topic = client.topic(&fqtn, None);
 //!
 //!     // Publish message.
@@ -36,7 +36,8 @@
 //!         attributes: Default::default(),
 //!         message_id: "".to_string(),
 //!         publish_time: None,
-//!         ordering_key: "".to_string()
+            //! //Set ordering_key if needed (https://cloud.google.com/pubsub/docs/ordering)
+//!         ordering_key: "key".to_string()
 //!     }).await;
 //!
 //!     // The get method blocks until a server-generated ID or an error is returned for the published message.

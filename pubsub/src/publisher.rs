@@ -1,23 +1,23 @@
 use std::collections::{VecDeque};
-use std::future::Future;
-use std::sync::Arc;
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering::SeqCst;
+
+
+
+
 use std::time::Duration;
-use async_channel::Receiver;
+
 use tokio::select;
 
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
-use tokio_retry::Retry;
+
 use tokio_util::sync::CancellationToken;
 use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
 use google_cloud_googleapis::{Status};
-use crate::apiv1::conn_pool::ConnectionManager;
+
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::RetrySetting;
-use crate::util::ToUsize;
+
 
 pub(crate) struct ReservedMessage {
     pub producer: oneshot::Sender<Result<String,Status>>,
@@ -59,7 +59,7 @@ impl Awaiter {
             _ = ctx.cancelled() => Err(tonic::Status::cancelled("cancelled").into()),
             v = onetime => match v {
                 Ok(vv) => vv,
-                Err(e) => Err(tonic::Status::cancelled("closed").into())
+                Err(_e) => Err(tonic::Status::cancelled("closed").into())
             }
         }
     }
@@ -183,7 +183,7 @@ mod tests {
 
         let ctx = CancellationToken::new();
         let joins : Vec<JoinHandle<String>> = (0..10).map(|i| {
-            let p = publisher.clone();
+            let _p = publisher.clone();
             let ctx = ctx.clone();
             let s = sender.clone();
             tokio::spawn(async move {
@@ -221,7 +221,7 @@ mod tests {
         let mut opt = PublisherConfig::default();
         opt.flush_buffer_interval = Duration::from_secs(10);
         let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
-        let publisher = Arc::new(Publisher::start("projects/local-project/topics/test-topic1".to_string(), client, vec![receiver], opt));
+        let _publisher = Arc::new(Publisher::start("projects/local-project/topics/test-topic1".to_string(), client, vec![receiver], opt));
         let ctx = CancellationToken::new();
         let message = PubsubMessage {
             data: "abc".into(),

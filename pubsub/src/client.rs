@@ -134,7 +134,7 @@ impl Client {
             schema_settings: None,
             satisfies_pzs: false,
             message_retention_duration: None
-        }, retry_option).await.map(|v| ())
+        }, retry_option).await.map(|_v| ())
     }
 
     /// topics returns an iterator which returns all of the topics for the client's project.
@@ -249,7 +249,7 @@ mod tests {
             awaiters.push(topic.publish(message).await);
         }
         let ctx = CancellationToken::new();
-        for mut v in awaiters {
+        for v in awaiters {
             log::info!("sent message_id = {}", v.get(ctx.clone()).await.unwrap());
         }
 
@@ -297,7 +297,7 @@ mod tests {
         let topics = client.get_topics(ctx.clone(), None) .await.unwrap();
         let subs = client.get_subscriptions(CancellationToken::new(), None) .await.unwrap();
         let ctx = CancellationToken::new();
-        let topic = client.create_topic(ctx.clone(), &topic_name, None).await.unwrap();
+        let _topic = client.create_topic(ctx.clone(), &topic_name, None).await.unwrap();
         let _subscription= client.create_subscription(CancellationToken::new(), &subscription_name, &topic_name, SubscriptionConfig::default(), None).await?;
         let topics_after = client.get_topics(ctx.clone(), None) .await.unwrap();
         let subs_after= client.get_subscriptions(CancellationToken::new(), None) .await.unwrap();

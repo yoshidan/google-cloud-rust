@@ -7,6 +7,7 @@ Providing a high level API for gRPC API like [Google Cloud Go](https://github.co
 ## Component 
 
 * [google-cloud-spanner](./spanner)
+* [google-cloud-pubsub](./pubsub)
 
 ## License
 This project is licensed under the [MIT license](./LICENCE).
