@@ -1,11 +1,13 @@
 use std::borrow::BorrowMut;
+use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 use parking_lot::{Mutex};
 use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 
 use google_cloud_googleapis::Code::NotFound;
-use google_cloud_googleapis::pubsub::v1::{DeleteTopicRequest, GetTopicRequest, ListTopicSubscriptionsRequest, PubsubMessage, Topic as InternalTopic};
+use google_cloud_googleapis::pubsub::v1::{DeleteTopicRequest, GetTopicRequest, ListTopicSubscriptionsRequest, MessageStoragePolicy, PubsubMessage, SchemaSettings, Topic as InternalTopic};
 
 use google_cloud_googleapis::Status;
 use crate::apiv1::publisher_client::PublisherClient;
@@ -14,6 +16,28 @@ use crate::apiv1::subscriber_client::SubscriberClient;
 use crate::publisher::{Awaiter, Publisher, PublisherConfig, ReservedMessage};
 use crate::subscription::Subscription;
 use crate::util::ToUsize;
+
+pub struct TopicConfig {
+   pub labels: HashMap<String,String>,
+   pub message_storage_policy: Option<MessageStoragePolicy>,
+   pub kms_key_name: String,
+   pub schema_settings: Option<SchemaSettings>,
+   pub satisfies_pzs: bool,
+   pub message_retention_duration: Option<Duration>,
+}
+
+impl Default for TopicConfig {
+   fn default() -> Self {
+      Self {
+         labels: HashMap::default(),
+         message_storage_policy: None,
+         kms_key_name: "".to_string(),
+         schema_settings: None,
+         satisfies_pzs: false,
+         message_retention_duration: None
+      }
+   }
+}
 
 /// Topic is a reference to a PubSub topic.
 ///
@@ -79,15 +103,16 @@ impl Topic {
    }
 
    /// create creates the topic.
-   pub async fn create(&self, ctx: CancellationToken, opt: Option<RetrySetting>) -> Result<(),Status>{
+   pub async fn create(&self, ctx: CancellationToken, cfg: Option<TopicConfig>, opt: Option<RetrySetting>) -> Result<(),Status>{
+      let topic_config = cfg.unwrap_or_default();
       self.pubc.create_topic(ctx, InternalTopic {
          name: self.fully_qualified_name().to_string(),
-         labels: Default::default(),
-         message_storage_policy: None,
-         kms_key_name: "".to_string(),
-         schema_settings: None,
-         satisfies_pzs: false,
-         message_retention_duration: None
+         labels: topic_config.labels,
+         message_storage_policy: topic_config.message_storage_policy,
+         kms_key_name: topic_config.kms_key_name,
+         schema_settings:topic_config.schema_settings,
+         satisfies_pzs: topic_config.satisfies_pzs,
+         message_retention_duration: topic_config.message_retention_duration.map(|v| v.into()),
       }, opt).await.map(|v| ())
    }
 
@@ -185,14 +210,17 @@ impl Topic {
 #[cfg(test)]
 mod tests {
    use std::borrow::BorrowMut;
+   use std::time::Duration;
    use uuid::Uuid;
    use google_cloud_googleapis::pubsub::v1::{PubsubMessage, Topic as InternalTopic};
    use serial_test::serial;
+   use tokio::task::JoinHandle;
    use tokio_util::sync::CancellationToken;
    use google_cloud_googleapis::Code;
    use crate::apiv1::conn_pool::ConnectionManager;
    use crate::apiv1::publisher_client::PublisherClient;
    use crate::apiv1::subscriber_client::SubscriberClient;
+   use crate::publisher::PublisherConfig;
    use crate::topic::Topic;
 
    #[ctor::ctor]
@@ -204,49 +232,48 @@ mod tests {
    #[tokio::test]
    #[serial]
    async fn test_topic() -> Result<(), anyhow::Error> {
-      let cm = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
-      let client = PublisherClient::new(cm);
+      let cm1 = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
+      let pubc = PublisherClient::new(cm1);
+      let cm2 = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
+      let subc = SubscriberClient::new(cm2);
 
       let uuid = Uuid::new_v4().to_hyphenated().to_string();
       let topic_name = format!("projects/local-project/topics/t{}",uuid).to_string();
       let ctx = CancellationToken::new();
-      let topic = client.create_topic(ctx, InternalTopic {
-         name: topic_name.to_string(),
-         message_retention_duration: None,
-         labels: Default::default(),
-         message_storage_policy: None,
-         kms_key_name: "".to_string(),
-         schema_settings: None,
-         satisfies_pzs: false
-      }, None).await?.into_inner();
 
-      let subcm = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
-      let subc = SubscriberClient::new(subcm);
-      let ctx = CancellationToken::new();
-      let mut topic = Topic::new(topic.name, client, subc);
-      topic.borrow_mut().run(None);
-      assert!(topic.exists(ctx.clone(), None).await?);
+      // Create topic.
+      let mut topic = Topic::new(topic_name, pubc, subc);
+      if !topic.exists(ctx.clone(), None).await? {
+         topic.create(ctx.clone(), None, None).await?;
+      }
+      
+      // Start publisher.
+      topic.run(None);
+      let topic = topic;
 
-      let subs = topic.subscriptions(ctx.clone(), None).await?;
-      assert_eq!(0, subs.len());
+      // Publish message.
+      let tasks : Vec<JoinHandle<String>> = (0..10).into_iter().map(|_i| {
+         let topic = topic.clone();
+         let ctx = ctx.clone();
+         tokio::spawn(async move {
+            let mut msg = PubsubMessage::default();
+            msg.data = "abc".into();
+            let mut awaiter = topic.publish(msg).await;
+            awaiter.get(ctx).await.unwrap()
+         })
+      }).collect();
 
-      let msg = PubsubMessage {
-         data: "aaa".as_bytes().to_vec(),
-         attributes: Default::default(),
-         message_id: "".to_string(),
-         publish_time: None,
-         ordering_key: "".to_string()
-      };
-      let message_id = topic.publish(msg.clone()).await.get(ctx.clone()).await;
-      assert!(message_id.unwrap().len() > 0);
+      // Wait for all publish task finish
+      for task in tasks {
+         let message_id= task.await?;
+         log::trace!("{}", message_id);
+         assert!(!message_id.is_empty())
+      }
 
-      topic.shutdown().await;
-      let message_id = topic.publish(msg).await.get(ctx.clone()).await;
-      assert!(message_id.is_err());
-      assert_eq!(message_id.unwrap_err().code(), Code::Cancelled);
+      // Wait for publishers in topic finish.
+      topic.shutdown();
 
       topic.delete(ctx.clone(), None).await?;
-      assert!(!topic.exists(ctx.clone(), None).await?);
 
       Ok(())
 

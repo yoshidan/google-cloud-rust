@@ -5,7 +5,7 @@ use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
 use crate::publisher::{PublisherConfig};
 use crate::subscription::{Subscription, SubscriptionConfig};
-use crate::topic::Topic;
+use crate::topic::{Topic, TopicConfig};
 use google_cloud_googleapis::pubsub::v1::{DetachSubscriptionRequest, ListSubscriptionsRequest, ListTopicsRequest, Subscription as InternalSubscription, Topic as InternalTopic};
 use google_cloud_grpc::conn::Error;
 use crate::apiv1::RetrySetting;
@@ -111,9 +111,9 @@ impl Client {
     /// see: https://cloud.google.com/pubsub/docs/admin#resource_names
     ///
     /// If the topic already exists an error will be returned.
-    pub async fn create_topic(&self, ctx: CancellationToken, id: &str, retry_option:Option<RetrySetting>) -> Result<Topic, Status> {
+    pub async fn create_topic(&self, ctx: CancellationToken, id: &str, cfg: Option<TopicConfig>, retry_option:Option<RetrySetting>) -> Result<Topic, Status> {
         let topic = self.topic(id);
-        topic.create(ctx, retry_option).await.map(|v| topic)
+        topic.create(ctx, cfg, retry_option).await.map(|v| topic)
     }
 
     /// topics returns an iterator which returns all of the topics for the client's project.
@@ -172,13 +172,10 @@ mod tests {
     }
 
     fn create_message(data: &[u8], ordering_key: &str) -> PubsubMessage {
-        PubsubMessage {
-            data: data.to_vec(),
-            attributes: Default::default(),
-            message_id: "".to_string(),
-            publish_time: None,
-            ordering_key: ordering_key.to_string()
-        }
+        let mut msg = PubsubMessage::default();
+        msg.data = data.to_vec();
+        msg.ordering_key = ordering_key.to_string();
+        return msg;
     }
 
     async fn create_client() -> Client {
@@ -195,7 +192,7 @@ mod tests {
         let topic_id= &format!("t{}", &uuid);
         let subscription_id= &format!("s{}", &uuid);
         let ctx = CancellationToken::new();
-        let mut topic =client.create_topic(ctx, topic_id.as_str(), None).await.unwrap();
+        let mut topic =client.create_topic(ctx, topic_id.as_str(), None, None).await.unwrap();
         topic.run(None);
         let mut config = SubscriptionConfig::default();
         config.enable_message_ordering = !ordering_key.is_empty();
@@ -278,7 +275,7 @@ mod tests {
         let topics = client.get_topics(ctx.clone(), None) .await.unwrap();
         let subs = client.get_subscriptions(CancellationToken::new(), None) .await.unwrap();
         let ctx = CancellationToken::new();
-        let _topic = client.create_topic(ctx.clone(), topic_id.as_str(), None).await.unwrap();
+        let _topic = client.create_topic(ctx.clone(), topic_id.as_str(), None, None).await.unwrap();
         let _subscription= client.create_subscription(CancellationToken::new(), subscription_id.as_str(), topic_id.as_str(), SubscriptionConfig::default(), None).await?;
         let topics_after = client.get_topics(ctx.clone(), None) .await.unwrap();
         let subs_after= client.get_subscriptions(CancellationToken::new(), None) .await.unwrap();

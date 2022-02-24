@@ -64,15 +64,19 @@ impl Awaiter {
     }
 }
 
+pub(crate) struct Publisher {
+    inner: InternalPublisher
+}
+
 /// Publisher is a scheduler which is designed for Pub/Sub's Publish flow.
 /// Each item is added with a given key.
 /// Items added to the empty string key are handled in random order.
 /// Items added to any other key are handled sequentially.
-pub(crate) struct Publisher {
+struct InternalPublisher {
     workers: Option<Vec<JoinHandle<()>>>
 }
 
-impl Publisher {
+impl InternalPublisher {
 
     pub fn start(topic: String, pubc: PublisherClient, receivers: Vec<async_channel::Receiver<ReservedMessage>>, config: PublisherConfig) -> Self {
 
@@ -95,7 +99,6 @@ impl Publisher {
                             continue
                         }
                     };
-
                     match result {
                         Ok(message) => {
                             bundle.push_back(message);
@@ -230,13 +233,8 @@ mod tests {
         let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
         let _publisher = Arc::new(Publisher::start("projects/local-project/topics/test-topic1".to_string(), client, vec![receiver], opt));
         let ctx = CancellationToken::new();
-        let message = PubsubMessage {
-            data: "abc".into(),
-            attributes: Default::default(),
-            message_id: "".to_string(),
-            publish_time: None,
-            ordering_key: "".to_string()
-        };
+        let mut message = PubsubMessage::default();
+        message.data = "abc".into();
         let (producer, consumer) = oneshot::channel();
         sender.send( ReservedMessage {
             producer,

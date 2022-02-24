@@ -14,13 +14,15 @@
 //! use google_cloud_googleapis::Status;
 //! use tokio_util::sync::CancellationToken;
 //! use google_cloud_googleapis::pubsub::v1::PubsubMessage;
+//! use google_cloud_pubsub::topic::TopicConfig;
 //! use google_cloud_pubsub::subscription::SubscriptionConfig;
+//! use tokio::task::JoinHandle;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Status> {
 //!
 //!     // Create pubsub client.
-//!     let mut client = Client::new("local-project", None).await.unwrap();
+//! let mut client = Client::new("local-project", None).await.unwrap();
 //!
 //!     // Token for cancel.
 //!     let ctx = CancellationToken::new();
@@ -28,7 +30,7 @@
 //!     // Create topic.
 //!     let mut topic = client.topic("test-topic");
 //!     if !topic.exists(ctx.clone(), None).await? {
-//!         topic.create(ctx.clone(), None).await?;
+//!         topic.create(ctx.clone(), TopicConfig::default(), None).await?;
 //!     }
 //!
 //!     // Start publisher.
@@ -36,7 +38,7 @@
 //!     let topic = topic;
 //!
 //!     // Publish message.
-//!     let tasks = (0..10).into_iter().map(|_i| {
+//!     let tasks : Vec<JoinHandle<String>> = (0..10).into_iter().map(|_i| {
 //!         let topic = topic.clone();
 //!         let ctx = ctx.clone();
 //!         tokio::spawn(async move {
@@ -48,13 +50,13 @@
 //!                 ordering_key: "".to_string()
 //!             }).await;
 //!             // The get method blocks until a server-generated ID or an error is returned for the published message.
-//!             let message_id = awaiter.get(ctx).await.unwrap();
+//!             awaiter.get(ctx).await
 //!         })
-//!     });
+//!     }).collect();
 //!
 //!     // Wait for all publish task finish
 //!     for task in tasks {
-//!         task.await;
+//!         let message_id = task.await?;
 //!     }
 //!
 //!     // Wait for publishers in topic finish.
