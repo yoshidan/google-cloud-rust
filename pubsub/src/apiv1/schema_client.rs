@@ -1,12 +1,15 @@
-use std::sync::Arc;
-use tokio_util::sync::CancellationToken;
+use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::{create_request, invoke, RetrySetting};
 use google_cloud_googleapis::pubsub::v1::schema_service_client::SchemaServiceClient;
-use google_cloud_googleapis::pubsub::v1::{CreateSchemaRequest, DeleteSchemaRequest, GetSchemaRequest, ListSchemasRequest, Schema, ValidateMessageRequest, ValidateMessageResponse, ValidateSchemaRequest, ValidateSchemaResponse};
-use google_cloud_googleapis::{Status};
+use google_cloud_googleapis::pubsub::v1::{
+    CreateSchemaRequest, DeleteSchemaRequest, GetSchemaRequest, ListSchemasRequest, Schema,
+    ValidateMessageRequest, ValidateMessageResponse, ValidateSchemaRequest, ValidateSchemaResponse,
+};
+use google_cloud_googleapis::Status;
 use google_cloud_grpc::conn::Channel;
+use std::sync::Arc;
+use tokio_util::sync::CancellationToken;
 use tonic::Response;
-use crate::apiv1::conn_pool::ConnectionManager;
 
 #[derive(Clone)]
 pub(crate) struct SchemaClient {
@@ -16,7 +19,7 @@ pub(crate) struct SchemaClient {
 impl SchemaClient {
     /// create new publisher client
     pub fn new(cm: ConnectionManager) -> SchemaClient {
-        SchemaClient { cm : Arc::new(cm)}
+        SchemaClient { cm: Arc::new(cm) }
     }
 
     fn client(&self) -> SchemaServiceClient<Channel> {
@@ -25,7 +28,7 @@ impl SchemaClient {
 
     /// create_schema creates a schema.
     pub async fn create_schema(
-        & self,
+        &self,
         ctx: CancellationToken,
         req: CreateSchemaRequest,
         opt: Option<RetrySetting>,
@@ -34,10 +37,7 @@ impl SchemaClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("parent={}", parent), req.clone());
-            client
-                .create_schema(request)
-                .await
-                .map_err(|e| e.into())
+            client.create_schema(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -53,10 +53,7 @@ impl SchemaClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={}", name), req.clone());
-            client
-                .get_schema(request)
-                .await
-                .map_err(|e| e.into())
+            client.get_schema(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -101,10 +98,7 @@ impl SchemaClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={}", name), req.clone());
-            client
-                .delete_schema(request)
-                .await
-                .map_err(|e| e.into())
+            client.delete_schema(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -117,13 +111,10 @@ impl SchemaClient {
         opt: Option<RetrySetting>,
     ) -> Result<Response<ValidateSchemaResponse>, Status> {
         let parent = &req.parent;
-        let action = ||  async {
+        let action = || async {
             let mut client = self.client();
             let request = create_request(format!("parent={}", parent), req.clone());
-            client
-                .validate_schema(request)
-                .await
-                .map_err(|e| e.into())
+            client.validate_schema(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -139,10 +130,7 @@ impl SchemaClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("parent={}", parent), req.clone());
-            client
-                .validate_message(request)
-                .await
-                .map_err(|e| e.into())
+            client.validate_message(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }

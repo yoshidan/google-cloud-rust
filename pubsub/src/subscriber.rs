@@ -1,36 +1,52 @@
 use std::time::Duration;
 
+use crate::apiv1::RetrySetting;
+use google_cloud_googleapis::pubsub::v1::{
+    AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage,
+};
+use google_cloud_googleapis::{Code, Status};
 use tokio::select;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
-use google_cloud_googleapis::pubsub::v1::{AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage};
-use google_cloud_googleapis::{Code, Status};
-use crate::apiv1::RetrySetting;
 
 use crate::apiv1::subscriber_client::{create_default_streaming_pull_request, SubscriberClient};
 
 pub struct ReceivedMessage {
-   pub message: PubsubMessage ,
-   ack_id: String,
-   subscription: String,
-   subscriber_client: SubscriberClient
+    pub message: PubsubMessage,
+    ack_id: String,
+    subscription: String,
+    subscriber_client: SubscriberClient,
 }
 
 impl ReceivedMessage {
     pub async fn ack(&self) -> Result<(), Status> {
-       self.subscriber_client.acknowledge(CancellationToken::new(), AcknowledgeRequest {
-           subscription: self.subscription.to_string(),
-           ack_ids: vec![self.ack_id.to_string()]
-       }, None).await.map(|e| e.into_inner())
+        self.subscriber_client
+            .acknowledge(
+                CancellationToken::new(),
+                AcknowledgeRequest {
+                    subscription: self.subscription.to_string(),
+                    ack_ids: vec![self.ack_id.to_string()],
+                },
+                None,
+            )
+            .await
+            .map(|e| e.into_inner())
     }
 
     pub async fn nack(&self) -> Result<(), Status> {
-        self.subscriber_client.modify_ack_deadline(CancellationToken::new(), ModifyAckDeadlineRequest {
-            subscription: self.subscription.to_string(),
-            ack_deadline_seconds: 0,
-            ack_ids: vec![self.ack_id.to_string()]
-        }, None).await.map(|e| e.into_inner())
+        self.subscriber_client
+            .modify_ack_deadline(
+                CancellationToken::new(),
+                ModifyAckDeadlineRequest {
+                    subscription: self.subscription.to_string(),
+                    ack_deadline_seconds: 0,
+                    ack_ids: vec![self.ack_id.to_string()],
+                },
+                None,
+            )
+            .await
+            .map(|e| e.into_inner())
     }
 }
 
@@ -38,7 +54,7 @@ impl ReceivedMessage {
 pub struct SubscriberConfig {
     /// ping interval for Bi Directional Streaming
     pub ping_interval: Duration,
-    pub retry_setting: Option<RetrySetting>
+    pub retry_setting: Option<RetrySetting>,
 }
 
 impl Default for SubscriberConfig {
@@ -56,15 +72,20 @@ pub(crate) struct Subscriber {
 }
 
 impl Subscriber {
-
-    pub fn start(ctx: CancellationToken, subscription: String, client: SubscriberClient, queue: async_channel::Sender<ReceivedMessage>, opt: Option<SubscriberConfig>) -> Self {
+    pub fn start(
+        ctx: CancellationToken,
+        subscription: String,
+        client: SubscriberClient,
+        queue: async_channel::Sender<ReceivedMessage>,
+        opt: Option<SubscriberConfig>,
+    ) -> Self {
         let config = opt.unwrap_or_default();
 
-        let cancel_receiver= ctx.clone();
-        let (ping_sender,ping_receiver) = async_channel::unbounded();
+        let cancel_receiver = ctx.clone();
+        let (ping_sender, ping_receiver) = async_channel::unbounded();
 
         // ping request
-        let subscription_clone =  subscription.to_string();
+        let subscription_clone = subscription.to_string();
 
         let pinger = tokio::spawn(async move {
             loop {
@@ -81,18 +102,25 @@ impl Subscriber {
             log::trace!("stop pinger : {}", subscription_clone);
         });
 
-        let cancel_receiver= ctx.clone();
-        let inner= tokio::spawn(async move {
+        let cancel_receiver = ctx.clone();
+        let inner = tokio::spawn(async move {
             log::trace!("start subscriber: {}", subscription);
             let request = create_default_streaming_pull_request(subscription.to_string());
-            let response = client.streaming_pull(cancel_receiver.clone(), request, ping_receiver, config.retry_setting).await;
+            let response = client
+                .streaming_pull(
+                    cancel_receiver.clone(),
+                    request,
+                    ping_receiver,
+                    config.retry_setting,
+                )
+                .await;
 
             let mut stream = match response {
                 Ok(r) => r.into_inner(),
                 Err(e) => {
                     if e.code() == Code::Cancelled {
                         log::trace!("stop subscriber : {}", subscription);
-                    }else {
+                    } else {
                         log::error!("subscriber error {:?} : {}", e, subscription);
                     }
                     return;
@@ -131,10 +159,10 @@ impl Subscriber {
             // streaming request is closed when the ping_sender closed.
             log::trace!("stop subscriber in streaming: {}", subscription);
         });
-        return Self{
+        return Self {
             pinger: Some(pinger),
-            inner: Some(inner)
-        }
+            inner: Some(inner),
+        };
     }
 
     pub async fn done(&mut self) {

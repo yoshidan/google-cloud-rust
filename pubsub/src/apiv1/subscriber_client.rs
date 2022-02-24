@@ -1,12 +1,18 @@
 use std::sync::Arc;
 
-use tokio_util::sync::CancellationToken;
 use crate::apiv1::{create_request, invoke, RetrySetting};
-use tonic::{IntoStreamingRequest};
 use google_cloud_googleapis::pubsub::v1::subscriber_client::SubscriberClient as InternalSubscriberClient;
-use google_cloud_googleapis::pubsub::v1::{AcknowledgeRequest, CreateSnapshotRequest, DeleteSnapshotRequest, DeleteSubscriptionRequest, GetSnapshotRequest, GetSubscriptionRequest, ListSnapshotsRequest, ListSnapshotsResponse, ListSubscriptionsRequest, ListSubscriptionsResponse, ModifyAckDeadlineRequest, ModifyPushConfigRequest, PullRequest, PullResponse, Snapshot, StreamingPullRequest, StreamingPullResponse, Subscription, UpdateSnapshotRequest, UpdateSubscriptionRequest};
-use google_cloud_googleapis::{Status};
+use google_cloud_googleapis::pubsub::v1::{
+    AcknowledgeRequest, CreateSnapshotRequest, DeleteSnapshotRequest, DeleteSubscriptionRequest,
+    GetSnapshotRequest, GetSubscriptionRequest, ListSnapshotsRequest, ListSnapshotsResponse,
+    ListSubscriptionsRequest, ListSubscriptionsResponse, ModifyAckDeadlineRequest,
+    ModifyPushConfigRequest, PullRequest, PullResponse, Snapshot, StreamingPullRequest,
+    StreamingPullResponse, Subscription, UpdateSnapshotRequest, UpdateSubscriptionRequest,
+};
+use google_cloud_googleapis::Status;
 use google_cloud_grpc::conn::Channel;
+use tokio_util::sync::CancellationToken;
+use tonic::IntoStreamingRequest;
 use tonic::{Response, Streaming};
 
 use crate::apiv1::conn_pool::ConnectionManager;
@@ -20,22 +26,19 @@ pub(crate) fn create_default_streaming_pull_request(subscription: String) -> Str
         stream_ack_deadline_seconds: 10,
         client_id: "".to_string(),
         max_outstanding_messages: 1000,
-        max_outstanding_bytes: 1000 * 1000 * 1000
+        max_outstanding_bytes: 1000 * 1000 * 1000,
     };
 }
 
-
 #[derive(Clone)]
 pub(crate) struct SubscriberClient {
-    cm: Arc<ConnectionManager>
+    cm: Arc<ConnectionManager>,
 }
 
 impl SubscriberClient {
     /// create new Subscriber client
     pub fn new(cm: ConnectionManager) -> SubscriberClient {
-        SubscriberClient {
-            cm: Arc::new(cm)
-        }
+        SubscriberClient { cm: Arc::new(cm) }
     }
 
     fn client(&self) -> InternalSubscriberClient<Channel> {
@@ -81,7 +84,7 @@ impl SubscriberClient {
     ) -> Result<Response<Subscription>, Status> {
         let name = match &req.subscription {
             Some(s) => s.name.as_str(),
-            None => ""
+            None => "",
         };
         let action = || async {
             let mut client = self.client();
@@ -102,13 +105,10 @@ impl SubscriberClient {
         opt: Option<RetrySetting>,
     ) -> Result<Response<Subscription>, Status> {
         let subscription = &req.subscription;
-        let action = ||  async {
+        let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription={}", subscription), req.clone());
-            client
-                .get_subscription(request)
-                .await
-                .map_err(|e| e.into())
+            client.get_subscription(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -124,7 +124,7 @@ impl SubscriberClient {
         let mut all = vec![];
         //eager loading
         loop {
-            let action = ||  async {
+            let action = || async {
                 let mut client = self.client();
                 let request = create_request(format!("project={}", project), req.clone());
                 client
@@ -133,7 +133,8 @@ impl SubscriberClient {
                     .map_err(|e| e.into())
                     .map(|d| d.into_inner())
             };
-            let response: ListSubscriptionsResponse = invoke(ctx.clone(), opt.clone(), action).await?;
+            let response: ListSubscriptionsResponse =
+                invoke(ctx.clone(), opt.clone(), action).await?;
             all.extend(response.subscriptions.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -202,13 +203,10 @@ impl SubscriberClient {
         opt: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
         let subscription = &req.subscription;
-        let action = ||  async {
+        let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription={}", subscription), req.clone());
-            client
-                .acknowledge(request)
-                .await
-                .map_err(|e| e.into())
+            client.acknowledge(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -250,20 +248,22 @@ impl SubscriberClient {
             let base_req = req.clone();
             let rx = ping_receiver.clone();
             let request = Box::pin(async_stream::stream! {
-                    yield base_req.clone();
+                yield base_req.clone();
 
-                    // ping message
-                    while let Ok(_r) = rx.recv().await {
-                       yield create_default_streaming_pull_request("".to_string())
-                    }
-                });
+                // ping message
+                while let Ok(_r) = rx.recv().await {
+                   yield create_default_streaming_pull_request("".to_string())
+                }
+            });
             let mut v = request.into_streaming_request();
             let target = v.metadata_mut();
-            target.append("x-goog-request-params", format!("subscription={}", req.subscription.to_string()).parse().unwrap());
-            client
-                .streaming_pull(v)
-                .await
-                .map_err(|e| e.into())
+            target.append(
+                "x-goog-request-params",
+                format!("subscription={}", req.subscription.to_string())
+                    .parse()
+                    .unwrap(),
+            );
+            client.streaming_pull(v).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -304,13 +304,10 @@ impl SubscriberClient {
         opt: Option<RetrySetting>,
     ) -> Result<Response<Snapshot>, Status> {
         let snapshot = &req.snapshot;
-        let action = ||  async {
+        let action = || async {
             let mut client = self.client();
             let request = create_request(format!("snapshot={}", snapshot), req.clone());
-            client
-                .get_snapshot(request)
-                .await
-                .map_err(|e| e.into())
+            client.get_snapshot(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -338,7 +335,7 @@ impl SubscriberClient {
                     .map_err(|e| e.into())
                     .map(|d| d.into_inner())
             };
-            let response : ListSnapshotsResponse = invoke(ctx.clone(), opt.clone(), action).await?;
+            let response: ListSnapshotsResponse = invoke(ctx.clone(), opt.clone(), action).await?;
             all.extend(response.snapshots.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -370,13 +367,10 @@ impl SubscriberClient {
         opt: Option<RetrySetting>,
     ) -> Result<Response<Snapshot>, Status> {
         let name = &req.name;
-        let action = ||  async {
+        let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={}", name), req.clone());
-            client
-                .create_snapshot(request)
-                .await
-                .map_err(|e| e.into())
+            client.create_snapshot(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -395,15 +389,13 @@ impl SubscriberClient {
     ) -> Result<Response<Snapshot>, Status> {
         let name = match &req.snapshot {
             Some(v) => v.name.as_str(),
-            None => ""
+            None => "",
         };
         let action = || async {
             let mut client = self.client();
-            let request = create_request(format!("snapshot.name={}", name.to_string()), req.clone());
-            client
-                .update_snapshot(request)
-                .await
-                .map_err(|e| e.into())
+            let request =
+                create_request(format!("snapshot.name={}", name.to_string()), req.clone());
+            client.update_snapshot(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -427,10 +419,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("snapshot={}", name), req.clone());
-            client
-                .delete_snapshot(request)
-                .await
-                .map_err(|e| e.into())
+            client.delete_snapshot(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }

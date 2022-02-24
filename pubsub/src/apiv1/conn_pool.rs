@@ -1,6 +1,5 @@
-
+use google_cloud_grpc::conn::Channel;
 use google_cloud_grpc::conn::{ConnectionManager as GRPCConnectionManager, Error};
-use  google_cloud_grpc::conn::Channel;
 
 pub const AUDIENCE: &str = "https://spanner.googleapis.com/";
 pub const PUBSUB: &str = "pubsub.googleapis.com";
@@ -32,6 +31,6 @@ impl ConnectionManager {
     }
 
     pub fn conn(&self) -> Channel {
-       self.inner.conn()
+        self.inner.conn()
     }
 }

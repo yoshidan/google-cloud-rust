@@ -121,9 +121,9 @@
 //! }
 //! ```
 pub mod apiv1;
-pub mod topic;
-pub mod subscription;
+pub mod client;
 pub mod publisher;
 pub mod subscriber;
-pub mod client;
+pub mod subscription;
+pub mod topic;
 pub mod util;

@@ -1,31 +1,33 @@
-
 use std::sync::Arc;
 
-
-use tokio_util::sync::CancellationToken;
+use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::{create_request, invoke, RetrySetting};
 use google_cloud_googleapis::pubsub::v1::publisher_client::PublisherClient as InternalPublisherClient;
-use google_cloud_googleapis::pubsub::v1::{DeleteTopicRequest, DetachSubscriptionRequest, DetachSubscriptionResponse, GetTopicRequest, ListTopicSnapshotsRequest, ListTopicSubscriptionsRequest, ListTopicsRequest, Topic, UpdateTopicRequest, PublishRequest, PublishResponse};
+use google_cloud_googleapis::pubsub::v1::{
+    DeleteTopicRequest, DetachSubscriptionRequest, DetachSubscriptionResponse, GetTopicRequest,
+    ListTopicSnapshotsRequest, ListTopicSubscriptionsRequest, ListTopicsRequest, PublishRequest,
+    PublishResponse, Topic, UpdateTopicRequest,
+};
 use google_cloud_googleapis::{Code, Status};
 use google_cloud_grpc::conn::Channel;
+use tokio_util::sync::CancellationToken;
 use tonic::Response;
-use crate::apiv1::conn_pool::ConnectionManager;
 
 #[derive(Clone)]
 pub(crate) struct PublisherClient {
-    cm: Arc<ConnectionManager>
+    cm: Arc<ConnectionManager>,
 }
 
 impl PublisherClient {
     /// create new publisher client
-    pub fn new(cm : ConnectionManager) -> PublisherClient {
-        PublisherClient { cm : Arc::new(cm)}
+    pub fn new(cm: ConnectionManager) -> PublisherClient {
+        PublisherClient { cm: Arc::new(cm) }
     }
 
     fn client(&self) -> InternalPublisherClient<Channel> {
         InternalPublisherClient::new(self.cm.conn())
     }
-    
+
     /// create_topic creates the given topic with the given name. See the [resource name rules]
     pub async fn create_topic(
         &self,
@@ -37,12 +39,9 @@ impl PublisherClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={}", name), req.clone());
-            client
-                .create_topic(request)
-                .await
-                .map_err(|e| e.into())
+            client.create_topic(request).await.map_err(|e| e.into())
         };
-       invoke(ctx, opt, action).await
+        invoke(ctx, opt, action).await
     }
 
     /// update_topic updates an existing topic. Note that certain properties of a
@@ -55,17 +54,14 @@ impl PublisherClient {
     ) -> Result<Response<Topic>, Status> {
         let name = match &req.topic {
             Some(t) => t.name.as_str(),
-            None => ""
+            None => "",
         };
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={}", name), req.clone());
-            client
-                .update_topic(request)
-                .await
-                .map_err(|e| e.into())
+            client.update_topic(request).await.map_err(|e| e.into())
         };
-       invoke(ctx, opt, action).await
+        invoke(ctx, opt, action).await
     }
 
     /// publish adds one or more messages to the topic. Returns NOT_FOUND if the topic does not exist.
@@ -86,21 +82,18 @@ impl PublisherClient {
                     Code::Cancelled,
                     Code::DeadlineExceeded,
                     Code::ResourceExhausted,
-                    Code::Internal
+                    Code::Internal,
                 ];
                 default
-            },
+            }
         };
         let name = &req.topic;
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={}", name), req.clone());
-            client
-                .publish(request)
-                .await
-                .map_err(|e| e.into())
+            client.publish(request).await.map_err(|e| e.into())
         };
-       invoke(ctx, Some(setting), action).await
+        invoke(ctx, Some(setting), action).await
     }
 
     /// get_topic gets the configuration of a topic.
@@ -114,12 +107,9 @@ impl PublisherClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("topic={}", topic), req.clone());
-            client
-                .get_topic(request)
-                .await
-                .map_err(|e| e.into())
+            client.get_topic(request).await.map_err(|e| e.into())
         };
-       invoke(ctx, opt, action).await
+        invoke(ctx, opt, action).await
     }
 
     /// list_topics lists matching topics.
@@ -142,7 +132,7 @@ impl PublisherClient {
                     .map_err(|e| Status::from(e))
                     .map(|d| d.into_inner())
             };
-            let response =invoke(ctx.clone(), opt.clone(), action).await?;
+            let response = invoke(ctx.clone(), opt.clone(), action).await?;
             all.extend(response.topics.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -204,7 +194,7 @@ impl PublisherClient {
                     .map_err(|e| Status::from(e))
                     .map(|d| d.into_inner())
             };
-            let response =invoke(ctx.clone(), opt.clone(), action).await?;
+            let response = invoke(ctx.clone(), opt.clone(), action).await?;
             all.extend(response.snapshots.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -226,14 +216,11 @@ impl PublisherClient {
     ) -> Result<Response<()>, Status> {
         let topic = &req.topic;
         let action = || async {
-           let mut client = self.client();
-           let request = create_request(format!("topic={}", topic), req.clone());
-           client
-               .delete_topic(request)
-               .await
-               .map_err(|e| e.into())
+            let mut client = self.client();
+            let request = create_request(format!("topic={}", topic), req.clone());
+            client.delete_topic(request).await.map_err(|e| e.into())
         };
-       invoke(ctx, opt, action).await
+        invoke(ctx, opt, action).await
     }
 
     /// detach_subscription detaches a subscription from this topic. All messages retained in the
@@ -255,6 +242,6 @@ impl PublisherClient {
                 .await
                 .map_err(|e| e.into())
         };
-       invoke(ctx, opt, action).await
+        invoke(ctx, opt, action).await
     }
 }
