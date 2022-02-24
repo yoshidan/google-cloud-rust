@@ -1,21 +1,21 @@
-use std::borrow::BorrowMut;
+
 use std::collections::HashMap;
-use std::sync::Arc;
+
 use std::time::Duration;
-use parking_lot::{Mutex};
-use tokio::sync::oneshot;
+
+
 use tokio_util::sync::CancellationToken;
 
 use google_cloud_googleapis::Code::NotFound;
-use google_cloud_googleapis::pubsub::v1::{DeleteTopicRequest, GetTopicRequest, ListTopicSubscriptionsRequest, MessageStoragePolicy, PubsubMessage, SchemaSettings, Topic as InternalTopic};
+use google_cloud_googleapis::pubsub::v1::{DeleteTopicRequest, GetTopicRequest, ListTopicSubscriptionsRequest, MessageStoragePolicy, SchemaSettings, Topic as InternalTopic};
 
 use google_cloud_googleapis::Status;
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::RetrySetting;
 use crate::apiv1::subscriber_client::SubscriberClient;
-use crate::publisher::{Awaiter, Publisher, PublisherConfig, ReservedMessage};
+use crate::publisher::{Publisher, PublisherConfig};
 use crate::subscription::Subscription;
-use crate::util::ToUsize;
+
 
 pub struct TopicConfig {
    pub labels: HashMap<String,String>,
@@ -84,7 +84,7 @@ impl Topic {
          schema_settings:topic_config.schema_settings,
          satisfies_pzs: topic_config.satisfies_pzs,
          message_retention_duration: topic_config.message_retention_duration.map(|v| v.into()),
-      }, opt).await.map(|v| ())
+      }, opt).await.map(|_v| ())
    }
 
    /// delete deletes the topic.
@@ -127,15 +127,15 @@ impl Topic {
 
 #[cfg(test)]
 mod tests {
-   use std::borrow::BorrowMut;
+   
    use std::time::Duration;
    use uuid::Uuid;
-   use google_cloud_googleapis::pubsub::v1::{PubsubMessage, Topic as InternalTopic};
+   use google_cloud_googleapis::pubsub::v1::{PubsubMessage};
    use serial_test::serial;
    use tokio::task::JoinHandle;
    use tokio::time::sleep;
    use tokio_util::sync::CancellationToken;
-   use google_cloud_googleapis::{Code, Status};
+   use google_cloud_googleapis::{Status};
    use crate::apiv1::conn_pool::ConnectionManager;
    use crate::apiv1::publisher_client::PublisherClient;
    use crate::apiv1::subscriber_client::SubscriberClient;
@@ -159,7 +159,7 @@ mod tests {
       let ctx = CancellationToken::new();
 
       // Create topic.
-      let mut topic = Topic::new(topic_name, pubc, subc);
+      let topic = Topic::new(topic_name, pubc, subc);
       if !topic.exists(ctx.clone(), None).await? {
          topic.create(ctx.clone(), None, None).await?;
       }
@@ -173,7 +173,7 @@ mod tests {
          tokio::spawn(async move {
             let mut msg = PubsubMessage::default();
             msg.data = "abc".into();
-            let mut awaiter = publisher.publish(msg).await;
+            let awaiter = publisher.publish(msg).await;
             awaiter.get(ctx).await
          })
       }).collect()

@@ -302,7 +302,7 @@ mod tests {
     use std::sync::atomic::Ordering::SeqCst;
     use std::time::Duration;
     use uuid::Uuid;
-    use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage, Subscription as InternalSubscription};
+    use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
     use serial_test::serial;
     use tokio_util::sync::CancellationToken;
     use crate::apiv1::conn_pool::ConnectionManager;
@@ -378,7 +378,7 @@ mod tests {
     #[serial]
     async fn test_multi_subscriber_single_subscription() -> Result<(), anyhow::Error> {
         let subscription = create_subscription().await.unwrap();
-        let ctx = CancellationToken::new();
+        let _ctx = CancellationToken::new();
 
         let cancellation_token = CancellationToken::new();
         let cancel_receiver = cancellation_token.clone();

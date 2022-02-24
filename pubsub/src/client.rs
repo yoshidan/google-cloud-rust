@@ -3,10 +3,10 @@ use google_cloud_googleapis::Status;
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
-use crate::publisher::{PublisherConfig};
+
 use crate::subscription::{Subscription, SubscriptionConfig};
 use crate::topic::{Topic, TopicConfig};
-use google_cloud_googleapis::pubsub::v1::{DetachSubscriptionRequest, ListSubscriptionsRequest, ListTopicsRequest, Subscription as InternalSubscription, Topic as InternalTopic};
+use google_cloud_googleapis::pubsub::v1::{DetachSubscriptionRequest, ListSubscriptionsRequest, ListTopicsRequest};
 use google_cloud_grpc::conn::Error;
 use crate::apiv1::RetrySetting;
 
@@ -113,7 +113,7 @@ impl Client {
     /// If the topic already exists an error will be returned.
     pub async fn create_topic(&self, ctx: CancellationToken, id: &str, cfg: Option<TopicConfig>, retry_option:Option<RetrySetting>) -> Result<Topic, Status> {
         let topic = self.topic(id);
-        topic.create(ctx, cfg, retry_option).await.map(|v| topic)
+        topic.create(ctx, cfg, retry_option).await.map(|_v| topic)
     }
 
     /// topics returns an iterator which returns all of the topics for the client's project.
