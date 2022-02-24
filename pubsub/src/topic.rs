@@ -1,10 +1,11 @@
+use std::borrow::BorrowMut;
 use std::sync::Arc;
 use parking_lot::{Mutex};
 use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 
 use google_cloud_googleapis::Code::NotFound;
-use google_cloud_googleapis::pubsub::v1::{DeleteTopicRequest, GetTopicRequest, ListTopicSubscriptionsRequest, PubsubMessage};
+use google_cloud_googleapis::pubsub::v1::{DeleteTopicRequest, GetTopicRequest, ListTopicSubscriptionsRequest, PubsubMessage, Topic as InternalTopic};
 
 use google_cloud_googleapis::Status;
 use crate::apiv1::publisher_client::PublisherClient;
@@ -23,45 +24,20 @@ pub struct Topic {
    pubc: PublisherClient,
    subc: SubscriberClient,
    ordering_senders: Vec<async_channel::Sender<ReservedMessage>>,
-   sender: async_channel::Sender<ReservedMessage>,
-   publisher: Arc<Mutex<Publisher>>
+   sender: Option<async_channel::Sender<ReservedMessage>>,
+   publisher: Arc<Mutex<Option<Publisher>>>
 }
 
 impl Topic {
 
-   pub(crate) fn new(fqtn: String,
-          pubc: PublisherClient,
-          subc: SubscriberClient,
-          config: Option<PublisherConfig>
-   ) -> Self {
-
-      let config = config.unwrap_or_default();
-      let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
-      let mut receivers = Vec::with_capacity(1 + config.workers);
-      let mut ordering_senders = Vec::with_capacity(config.workers);
-
-      // for non-ordering key message
-      for _ in 0..config.workers {
-         log::trace!("start non-ordering publisher : {}", fqtn.clone());
-         receivers.push(receiver.clone()) ;
-      }
-
-      // for ordering key message
-      for _ in 0..config.workers {
-         log::trace!("start ordering publisher : {}", fqtn.clone());
-         let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
-         receivers.push(receiver);
-         ordering_senders.push(sender);
-      }
-      let publisher = Arc::new(Mutex::new(Publisher::start(fqtn.to_string(),pubc.clone(), receivers, config)));
-
+   pub(crate) fn new(fqtn: String, pubc: PublisherClient, subc: SubscriberClient) -> Self {
       Self {
          fqtn,
          pubc,
          subc,
-         sender,
-         ordering_senders,
-         publisher,
+         ordering_senders: vec![],
+         sender: None,
+         publisher: Arc::new(Mutex::new(None)),
       }
    }
 
@@ -73,6 +49,46 @@ impl Topic {
    /// fully_qualified_name returns the printable globally unique name for the topic.
    pub fn fully_qualified_name(&self) -> &str {
      self.fqtn.as_str()
+   }
+
+   pub fn run(&mut self, config: Option<PublisherConfig>) {
+      let mut publisher = self.publisher.lock();
+      if publisher.is_none() {
+         let config = config.unwrap_or_default();
+         let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
+         let mut receivers = Vec::with_capacity(1 + config.workers);
+         let mut ordering_senders = Vec::with_capacity(config.workers);
+
+         // for non-ordering key message
+         for _ in 0..config.workers {
+            log::trace!("start non-ordering publisher : {}", self.fqtn.clone());
+            receivers.push(receiver.clone());
+         }
+
+         // for ordering key message
+         for _ in 0..config.workers {
+            log::trace!("start ordering publisher : {}", self.fqtn.clone());
+            let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
+            receivers.push(receiver);
+            ordering_senders.push(sender);
+         }
+         *publisher = Some(Publisher::start(self.fqtn.to_string(), self.pubc.clone(), receivers, config));
+         self.sender = Some(sender);
+         self.ordering_senders = ordering_senders;
+      }
+   }
+
+   /// create creates the topic.
+   pub async fn create(&self, ctx: CancellationToken, opt: Option<RetrySetting>) -> Result<(),Status>{
+      self.pubc.create_topic(ctx, InternalTopic {
+         name: self.fully_qualified_name().to_string(),
+         labels: Default::default(),
+         message_storage_policy: None,
+         kms_key_name: "".to_string(),
+         schema_settings: None,
+         satisfies_pzs: false,
+         message_retention_duration: None
+      }, opt).await.map(|v| ())
    }
 
    /// delete deletes the topic.
@@ -128,7 +144,7 @@ impl Topic {
 
       let (producer, consumer) = oneshot::channel();
       if message.ordering_key.is_empty() {
-         self.sender.send( ReservedMessage {
+         self.sender.as_ref().unwrap().send( ReservedMessage {
             producer,
             message
          }).await;
@@ -144,23 +160,31 @@ impl Topic {
    }
 
    pub async fn shutdown(&self) {
-      self.sender.close();
-      for s in &self.ordering_senders {
-        s.close();
+      match self.sender.as_ref() {
+         Some(sender) => {
+            sender.close();
+            for s in &self.ordering_senders {
+               s.close();
+            }
+            let mut publisher = self.publisher.lock().borrow_mut().take().unwrap();
+            publisher.done().await;
+         },
+         None => {}
       }
-      self.publisher.lock().done().await;
    }
 
    fn is_shutdown(&self) -> bool{
-      self.sender.is_closed()
+      match self.sender.as_ref() {
+         Some(v) => v.is_closed(),
+         None => true
+      }
    }
 
 }
 
 #[cfg(test)]
 mod tests {
-   
-   
+   use std::borrow::BorrowMut;
    use uuid::Uuid;
    use google_cloud_googleapis::pubsub::v1::{PubsubMessage, Topic as InternalTopic};
    use serial_test::serial;
@@ -199,7 +223,8 @@ mod tests {
       let subcm = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
       let subc = SubscriberClient::new(subcm);
       let ctx = CancellationToken::new();
-      let topic = Topic::new(topic.name, client, subc, None);
+      let mut topic = Topic::new(topic.name, client, subc);
+      topic.borrow_mut().run(None);
       assert!(topic.exists(ctx.clone(), None).await?);
 
       let subs = topic.subscriptions(ctx.clone(), None).await?;

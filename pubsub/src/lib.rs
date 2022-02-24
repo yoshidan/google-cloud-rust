@@ -26,21 +26,36 @@
 //!     let ctx = CancellationToken::new();
 //!
 //!     // Create topic.
-//!     client.create_topic(ctx.clone(), "test-topic", None).await?;
-//!     let topic = client.topic("test-topic", None);
+//!     let mut topic = client.topic("test-topic");
+//!     if !topic.exists(ctx.clone(), None).await? {
+//!         topic.create(ctx.clone(), None).await?;
+//!     }
+//!
+//!     // Start publisher.
+//!     topic.run(None);
+//!     let topic = topic;
 //!
 //!     // Publish message.
-//!     let mut awaiter = topic.publish(PubsubMessage {
-//!         data: "abc".as_bytes().to_vec(),
-//!         attributes: Default::default(),
-//!         message_id: "".to_string(),
-//!         publish_time: None,
-            //! //Set ordering_key if needed (https://cloud.google.com/pubsub/docs/ordering)
-//!         ordering_key: "key".to_string()
-//!     }).await;
+//!     let tasks = (0..10).into_iter().map(|_i| {
+//!         let topic = topic.clone();
+//!         let ctx = ctx.clone();
+//!         tokio::spawn(async move {
+//!             let mut awaiter = topic.publish(PubsubMessage {
+//!                 data: "abc".as_bytes().to_vec(),
+//!                 attributes: Default::default(),
+//!                 message_id: "".to_string(),
+//!                 publish_time: None,
+//!                 ordering_key: "".to_string()
+//!             }).await;
+//!             // The get method blocks until a server-generated ID or an error is returned for the published message.
+//!             let message_id = awaiter.get(ctx).await.unwrap();
+//!         })
+//!     });
 //!
-//!     // The get method blocks until a server-generated ID or an error is returned for the published message.
-//!     let message_id = awaiter.get(ctx).await?;
+//!     // Wait for all publish task finish
+//!     for task in tasks {
+//!         task.await;
+//!     }
 //!
 //!     // Wait for publishers in topic finish.
 //!     topic.shutdown();
@@ -69,7 +84,7 @@
 //!     let ctx = CancellationToken::new();
 //!
 //!     // Get the topic to subscribe to.
-//!     let topic = client.topic("test-topic", None);
+//!     let topic = client.topic("test-topic");
 //!
 //!     // Configure subscription.
 //!     let mut config = SubscriptionConfig::default();
@@ -77,8 +92,10 @@
 //!     config.enable_message_ordering = true;
 //!
 //!     // Create subscription
-//!     let subscription = client.create_subscription(ctx.clone(), "test-subscription", topic.id().as_str(), config, None).await?;
-//!
+//!     let subscription = client.subscription("test-subscription");
+//!     if !subscription.exists(ctx.clone(), None).await? {
+//!         subscription.create(ctx.clone(), topic.fully_qualified_name(), config, None).await?;
+//!     }
 //!     let ctx2 = ctx.clone();
 //!     tokio::spawn(async move {
 //!         // Cancel after 10 seconds.

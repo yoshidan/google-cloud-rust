@@ -117,6 +117,26 @@ impl Subscription {
         self.fqsn.as_str()
     }
 
+    /// create creates the subscription.
+    pub async fn create(&self, ctx: CancellationToken, fqtn: &str, cfg: SubscriptionConfig, retry_option: Option<RetrySetting> ) -> Result<(), Status>{
+        self.subc.create_subscription(ctx, InternalSubscription{
+            name: self.fully_qualified_name().to_string(),
+            topic: fqtn.to_string(),
+            push_config: cfg.push_config,
+            ack_deadline_seconds: cfg.ack_deadline_seconds,
+            labels: cfg.labels,
+            enable_message_ordering: cfg.enable_message_ordering,
+            expiration_policy: cfg.expiration_policy,
+            filter: cfg.filter,
+            dead_letter_policy: cfg.dead_letter_policy,
+            retry_policy: cfg.retry_policy,
+            detached: cfg.detached,
+            message_retention_duration: cfg.message_retention_duration.map(|v| v.into()),
+            retain_acked_messages: cfg.retain_acked_messages,
+            topic_message_retention_duration: cfg.topic_message_retention_duration.map(|v| v.into())
+        }, retry_option).await.map(|_v| ())
+    }
+
     /// delete deletes the subscription.
     pub async fn delete(&self, ctx: CancellationToken, retry_option: Option<RetrySetting>) -> Result<(), Status>{
         self.subc.delete_subscription(ctx, DeleteSubscriptionRequest {

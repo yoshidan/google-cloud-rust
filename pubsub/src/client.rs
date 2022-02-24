@@ -72,22 +72,8 @@ impl Client {
     ///
     /// If the subscription already exists an error will be returned.
     pub async fn create_subscription(&self, ctx: CancellationToken, id: &str, topic_id: &str, cfg: SubscriptionConfig, retry_option: Option<RetrySetting>) -> Result<Subscription, Status> {
-        self.subc.create_subscription(ctx, InternalSubscription{
-            name: self.fully_qualified_subscription_name(id).to_string(),
-            topic: self.fully_qualified_topic_name(topic_id).to_string(),
-            push_config: cfg.push_config,
-            ack_deadline_seconds: cfg.ack_deadline_seconds,
-            labels: cfg.labels,
-            enable_message_ordering: cfg.enable_message_ordering,
-            expiration_policy: cfg.expiration_policy,
-            filter: cfg.filter,
-            dead_letter_policy: cfg.dead_letter_policy,
-            retry_policy: cfg.retry_policy,
-            detached: cfg.detached,
-            message_retention_duration: cfg.message_retention_duration.map(|v| v.into()),
-            retain_acked_messages: cfg.retain_acked_messages,
-            topic_message_retention_duration: cfg.topic_message_retention_duration.map(|v| v.into())
-        }, retry_option).await.map(|_v| self.subscription(id))
+        let subscription = self.subscription(id);
+        subscription.create(ctx, self.fully_qualified_topic_name(topic_id).as_str(), cfg, retry_option).await.map(|_v| subscription)
     }
 
     /// subscriptions returns an iterator which returns all of the subscriptions for the client's project.
@@ -125,16 +111,9 @@ impl Client {
     /// see: https://cloud.google.com/pubsub/docs/admin#resource_names
     ///
     /// If the topic already exists an error will be returned.
-    pub async fn create_topic(&self, ctx: CancellationToken, id: &str, retry_option:Option<RetrySetting>) -> Result<(), Status> {
-        self.pubc.create_topic(ctx, InternalTopic {
-            name: self.fully_qualified_topic_name(id).to_string(),
-            labels: Default::default(),
-            message_storage_policy: None,
-            kms_key_name: "".to_string(),
-            schema_settings: None,
-            satisfies_pzs: false,
-            message_retention_duration: None
-        }, retry_option).await.map(|_v| ())
+    pub async fn create_topic(&self, ctx: CancellationToken, id: &str, retry_option:Option<RetrySetting>) -> Result<Topic, Status> {
+        let topic = self.topic(id);
+        topic.create(ctx, retry_option).await.map(|v| topic)
     }
 
     /// topics returns an iterator which returns all of the topics for the client's project.
@@ -154,8 +133,8 @@ impl Client {
     /// associated with it. Clean them up by calling topic.stop.
     ///
     /// Avoid creating many Topic instances if you use them to publish.
-    pub fn topic(&self, id: &str, config: Option<PublisherConfig>) -> Topic {
-        Topic::new(self.fully_qualified_topic_name(id).to_string(), self.pubc.clone(), self.subc.clone(), config)
+    pub fn topic(&self, id: &str) -> Topic {
+        Topic::new(self.fully_qualified_topic_name(id).to_string(), self.pubc.clone(), self.subc.clone())
     }
 
     pub fn fully_qualified_topic_name(&self, id: &str) -> String {
@@ -216,8 +195,8 @@ mod tests {
         let topic_id= &format!("t{}", &uuid);
         let subscription_id= &format!("s{}", &uuid);
         let ctx = CancellationToken::new();
-        client.create_topic(ctx, topic_id.as_str(), None).await.unwrap();
-        let topic = client.topic(topic_id.as_str(), None);
+        let mut topic =client.create_topic(ctx, topic_id.as_str(), None).await.unwrap();
+        topic.run(None);
         let mut config = SubscriptionConfig::default();
         config.enable_message_ordering = !ordering_key.is_empty();
         let ctx = CancellationToken::new();
