@@ -22,7 +22,7 @@
 //! async fn main() -> Result<(), Status> {
 //!
 //!     // Create pubsub client.
-//! let mut client = Client::new("local-project", None).await.unwrap();
+//!     let mut client = Client::new("local-project", None).await.unwrap();
 //!
 //!     // Token for cancel.
 //!     let ctx = CancellationToken::new();
@@ -37,7 +37,7 @@
 //!     let publisher = topic.new_publisher(None);
 //!
 //!     // Publish message.
-//!     let tasks : Vec<JoinHandle<String>> = (0..10).into_iter().map(|_i| {
+//!     let tasks : Vec<JoinHandle<Result<String,Status>>> = (0..10).into_iter().map(|_i| {
 //!         let publisher = publisher.clone();
 //!         let ctx = ctx.clone();
 //!         tokio::spawn(async move {
@@ -54,7 +54,7 @@
 //!
 //!     // Wait for all publish task finish
 //!     for task in tasks {
-//!         let result = task.await?;
+//!         let message_id = task.await.unwrap()?;
 //!     }
 //!
 //!     // Wait for publishers in topic finish.
