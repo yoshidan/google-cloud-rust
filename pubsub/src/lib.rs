@@ -28,27 +28,25 @@
 //!     let ctx = CancellationToken::new();
 //!
 //!     // Create topic.
-//!     let mut topic = client.topic("test-topic");
+//!     let topic = client.topic("test-topic");
 //!     if !topic.exists(ctx.clone(), None).await? {
-//!         topic.create(ctx.clone(), TopicConfig::default(), None).await?;
+//!         topic.create(ctx.clone(), None, None).await?;
 //!     }
 //!
 //!     // Start publisher.
-//!     topic.run(None);
-//!     let topic = topic;
+//!     let publisher = topic.new_publisher(None);
 //!
 //!     // Publish message.
 //!     let tasks : Vec<JoinHandle<String>> = (0..10).into_iter().map(|_i| {
-//!         let topic = topic.clone();
+//!         let publisher = publisher.clone();
 //!         let ctx = ctx.clone();
 //!         tokio::spawn(async move {
-//!             let mut awaiter = topic.publish(PubsubMessage {
-//!                 data: "abc".as_bytes().to_vec(),
-//!                 attributes: Default::default(),
-//!                 message_id: "".to_string(),
-//!                 publish_time: None,
-//!                 ordering_key: "".to_string()
-//!             }).await;
+//!             let mut msg = PubsubMessage::default();
+//!             msg.data = "abc".into();
+//!             // Set ordering_key if needed (https://cloud.google.com/pubsub/docs/ordering)
+//!             // msg.ordering_key = "order".into();
+//!
+//!             let mut awaiter = publisher.publish(msg).await;
 //!             // The get method blocks until a server-generated ID or an error is returned for the published message.
 //!             awaiter.get(ctx).await
 //!         })
@@ -56,11 +54,12 @@
 //!
 //!     // Wait for all publish task finish
 //!     for task in tasks {
-//!         let message_id = task.await?;
+//!         let result = task.await?;
 //!     }
 //!
 //!     // Wait for publishers in topic finish.
-//!     topic.shutdown();
+//!     let mut publisher = publisher;
+//!     publisher.shutdown();
 //!
 //!     Ok(())
 //! }

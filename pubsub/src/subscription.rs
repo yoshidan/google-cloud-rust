@@ -29,17 +29,6 @@ pub struct SubscriptionConfig {
     pub topic_message_retention_duration: Option<Duration>,
 }
 
-pub struct SubscriptionConfigToUpdate {
-    pub push_config: Option<PushConfig>,
-    pub ack_deadline_seconds: Option<i32>,
-    pub retain_acked_messages: Option<bool>,
-    pub message_retention_duration: Option<Duration>,
-    pub labels: Option<HashMap<String, String>>,
-    pub expiration_policy: Option<ExpirationPolicy>,
-    pub dead_letter_policy: Option<DeadLetterPolicy>,
-    pub retry_policy: Option<RetryPolicy>,
-}
-
 impl Default for SubscriptionConfig {
     fn default() -> Self {
         Self {
@@ -77,6 +66,33 @@ impl Into<SubscriptionConfig> for InternalSubscription {
         }
     }
 }
+
+pub struct SubscriptionConfigToUpdate {
+    pub push_config: Option<PushConfig>,
+    pub ack_deadline_seconds: Option<i32>,
+    pub retain_acked_messages: Option<bool>,
+    pub message_retention_duration: Option<Duration>,
+    pub labels: Option<HashMap<String, String>>,
+    pub expiration_policy: Option<ExpirationPolicy>,
+    pub dead_letter_policy: Option<DeadLetterPolicy>,
+    pub retry_policy: Option<RetryPolicy>,
+}
+
+impl Default for SubscriptionConfigToUpdate {
+    fn default() -> Self {
+        Self {
+            push_config: None,
+            ack_deadline_seconds: None,
+            retain_acked_messages: None,
+            message_retention_duration: None,
+            labels: None,
+            expiration_policy: None,
+            dead_letter_policy: None,
+            retry_policy: None,
+        }
+    }
+}
+
 
 pub struct ReceiveConfig {
     pub worker_count: usize,
@@ -166,7 +182,7 @@ impl Subscription {
             subscription: self.fqsn.to_string()
         }, retry_option).await.map(|v| {
             let inner = v.into_inner();
-            (inner.topic.to_string(),inner.into())
+            (inner.topic.to_string(), inner.into())
         })
     }
 
@@ -281,15 +297,18 @@ impl Subscription {
 
 #[cfg(test)]
 mod tests {
-    
+    use std::sync::Arc;
+    use std::sync::atomic::AtomicU32;
+    use std::sync::atomic::Ordering::SeqCst;
     use std::time::Duration;
     use uuid::Uuid;
-    use google_cloud_googleapis::pubsub::v1::{Subscription as InternalSubscription};
+    use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage, Subscription as InternalSubscription};
     use serial_test::serial;
     use tokio_util::sync::CancellationToken;
     use crate::apiv1::conn_pool::ConnectionManager;
+    use crate::apiv1::publisher_client::PublisherClient;
     use crate::apiv1::subscriber_client::SubscriberClient;
-    use crate::subscription::{Subscription, SubscriptionConfigToUpdate};
+    use crate::subscription::{Subscription, SubscriptionConfig, SubscriptionConfigToUpdate};
 
     #[ctor::ctor]
     fn init() {
@@ -297,69 +316,122 @@ mod tests {
         env_logger::try_init();
     }
 
-    #[tokio::test]
-    #[serial]
-    async fn test_subscription() -> Result<(), anyhow::Error> {
+    async fn create_subscription() -> Result<Subscription, anyhow::Error> {
         let cm = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
         let client = SubscriberClient::new(cm);
 
         let uuid = Uuid::new_v4().to_hyphenated().to_string();
         let subscription_name = format!("projects/loca-lproject/subscriptions/s{}", &uuid);
-        let topic_name = "projects/local-project/topics/test-topic1".to_string();
+        let topic_name = "projects/local-project/topics/test-topic1";
         let ctx = CancellationToken::new();
-        let subscription = client.create_subscription(ctx.clone(), InternalSubscription {
-            name: subscription_name.to_string(),
-            topic: topic_name.to_string(),
-            push_config: None,
-            ack_deadline_seconds: 0,
-            retain_acked_messages: false,
-            message_retention_duration: None,
-            labels: Default::default(),
-            enable_message_ordering: true,
-            expiration_policy: None,
-            filter: "".to_string(),
-            dead_letter_policy: None,
-            retry_policy: None,
-            detached: false,
-            topic_message_retention_duration: None
-        }, None).await?.into_inner();
+        let subscription = Subscription::new(subscription_name, client);
+        if !subscription.exists(ctx.clone(),None).await? {
+            subscription.create(ctx.clone(), topic_name, SubscriptionConfig::default(), None).await?;
+        }
+        return Ok(subscription);
+    }
 
-        let sub = Subscription::new(subscription.name, client);
-        assert!(sub.exists(ctx.clone(),None).await?);
+    async fn publish() {
+        let pubc = PublisherClient::new(ConnectionManager::new(4, Some("localhost:8681".to_string())).await.unwrap());
+        let mut msg =  PubsubMessage::default();
+        msg.data = "test_message".into();
+        pubc.publish(CancellationToken::new(), PublishRequest {
+            topic: "projects/local-project/topics/test-topic1".to_string(),
+            messages: vec![msg]
+        }, None).await;
+    }
 
-        let config = sub.config(ctx.clone(), None).await?;
+    #[tokio::test]
+    #[serial]
+    async fn test_subscription() -> Result<(), anyhow::Error> {
+        let subscription = create_subscription().await.unwrap();
+
+        let topic_name = "projects/local-project/topics/test-topic1";
+        let ctx = CancellationToken::new();
+        let config = subscription.config(ctx.clone(), None).await?;
         assert_eq!(config.0, topic_name);
-        assert!(config.1.enable_message_ordering);
 
-        let new_config = sub.update(ctx.clone(), SubscriptionConfigToUpdate {
-            push_config: None,
-            ack_deadline_seconds: Some(100),
-            retain_acked_messages: None,
-            message_retention_duration: None,
-            labels: None,
-            expiration_policy: None,
-            dead_letter_policy: None,
-            retry_policy: None
-        }, None).await?;
+        let mut updating = SubscriptionConfigToUpdate::default();
+        updating.ack_deadline_seconds = Some(100);
+        let new_config = subscription.update(ctx.clone(), updating, None).await?;
         assert_eq!(new_config.0, topic_name);
         assert_eq!(new_config.1.ack_deadline_seconds, 100);
 
         let cancellation_token = CancellationToken::new();
         let cancel_receiver = cancellation_token.clone();
         let handle = tokio::spawn(async move {
-            let _ = sub.receive(cancel_receiver, |message, _ctx| async move {
+            let _ = subscription.receive(cancel_receiver, |message, _ctx| async move {
                 println!("{}", message.message.message_id);
                 message.ack();
             }, None).await;
-
-            sub.delete(ctx.clone(),None).await.unwrap();
-            assert!(!sub.exists(ctx.clone(),None).await.unwrap())
+            subscription.delete(ctx.clone(),None).await.unwrap();
+            assert!(!subscription.exists(ctx.clone(),None).await.unwrap())
         });
         tokio::time::sleep(Duration::from_secs(3)).await;
         cancellation_token.cancel();
         handle.await;
 
         Ok(())
+    }
 
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_multi_subscriber_single_subscription() -> Result<(), anyhow::Error> {
+        let subscription = create_subscription().await.unwrap();
+        let ctx = CancellationToken::new();
+
+        let cancellation_token = CancellationToken::new();
+        let cancel_receiver = cancellation_token.clone();
+        let v = Arc::new(AtomicU32::new(0));
+        let v2 = v.clone();
+        let handle = tokio::spawn(async move {
+            let _ = subscription.receive(cancel_receiver, move |message, _ctx| {
+                let v2= v2.clone();
+                async move {
+                    v2.fetch_add(1, SeqCst);
+                    message.ack();
+                }
+            }, None).await;
+        });
+        publish().await;
+        tokio::time::sleep(Duration::from_secs(3)).await;
+        cancellation_token.cancel();
+        handle.await;
+        assert_eq!(v.load(SeqCst),1);
+        Ok(())
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_multi_subscriber_multi_subscription() -> Result<(), anyhow::Error> {
+        let mut subscriptions = vec![];
+
+        let ctx = CancellationToken::new();
+        for _ in 0..3 {
+            let subscription = create_subscription().await?;
+            let v = Arc::new(AtomicU32::new(0));
+            let ctx = ctx.clone();
+            let v2 = v.clone();
+            let handle = tokio::spawn(async move {
+                let _ = subscription.receive(ctx, move|message, _ctx| {
+                    let v2 = v2.clone();
+                    async move {
+                        v2.fetch_add(1, SeqCst);
+                        message.ack();
+                    }
+                }, None).await;
+            });
+            subscriptions.push((handle,v))
+        }
+
+        publish().await;
+        tokio::time::sleep(Duration::from_secs(5)).await;
+
+        ctx.cancel();
+        for (task, v) in subscriptions {
+            task.await;
+            assert_eq!(v.load(SeqCst),1);
+        }
+        Ok(())
     }
 }
