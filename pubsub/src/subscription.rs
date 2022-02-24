@@ -95,39 +95,39 @@ impl Default for ReceiveConfig {
 
 /// Subscription is a reference to a PubSub subscription.
 pub struct Subscription {
-    name: String,
+    fqsn: String,
     subc: SubscriberClient,
 }
 
 impl Subscription {
-    pub(crate) fn new(name: String, subc: SubscriberClient) -> Self {
+    pub(crate) fn new(fqsn: String, subc: SubscriberClient) -> Self {
         Self {
-            name,
+            fqsn,
             subc,
         }
     }
 
     /// id returns the unique identifier of the subscription within its project.
     pub fn id(&self) -> String {
-        self.name.rfind('/').map_or("".to_string(),|i| self.name[(i + 1)..].to_string())
+        self.fqsn.rfind('/').map_or("".to_string(),|i| self.fqsn[(i + 1)..].to_string())
     }
 
     /// string returns the globally unique printable name of the subscription.
-    pub fn string(&self) -> &str {
-        self.name.as_str()
+    pub fn fully_qualified_name(&self) -> &str {
+        self.fqsn.as_str()
     }
 
     /// delete deletes the subscription.
     pub async fn delete(&self, ctx: CancellationToken, retry_option: Option<RetrySetting>) -> Result<(), Status>{
         self.subc.delete_subscription(ctx, DeleteSubscriptionRequest {
-            subscription: self.name.to_string()
+            subscription: self.fqsn.to_string()
         }, retry_option).await.map(|v| v.into_inner())
     }
 
     /// exists reports whether the subscription exists on the server.
     pub async fn exists(&self, ctx: CancellationToken, retry_option: Option<RetrySetting>) -> Result<bool, Status>{
         match self.subc.get_subscription(ctx, GetSubscriptionRequest{
-            subscription: self.name.to_string()
+            subscription: self.fqsn.to_string()
         }, retry_option).await {
             Ok(_) => Ok(true),
             Err(e) => {
@@ -143,7 +143,7 @@ impl Subscription {
     /// config fetches the current configuration for the subscription.
     pub async fn config(&self, ctx: CancellationToken, retry_option: Option<RetrySetting>) -> Result<(String, SubscriptionConfig), Status>{
         self.subc.get_subscription(ctx, GetSubscriptionRequest{
-            subscription: self.name.to_string()
+            subscription: self.fqsn.to_string()
         }, retry_option).await.map(|v| {
             let inner = v.into_inner();
             (inner.topic.to_string(),inner.into())
@@ -154,7 +154,7 @@ impl Subscription {
     /// It returns the new SubscriptionConfig.
     pub async fn update(&self, ctx: CancellationToken, updating: SubscriptionConfigToUpdate, opt: Option<RetrySetting>) -> Result<(String, SubscriptionConfig), Status>{
         let mut config = self.subc.get_subscription(ctx.clone(), GetSubscriptionRequest{
-            subscription: self.name.to_string()
+            subscription: self.fqsn.to_string()
         }, opt.clone()).await?.into_inner();
 
         let mut paths = vec![];
@@ -224,14 +224,14 @@ impl Subscription {
 
         //same ordering key is in same stream.
         let subscribers : Vec<Subscriber> = senders.into_iter().map(|queue| {
-            Subscriber::start(ctx.clone(), self.name.clone(), self.subc.clone(), queue, Some(op.subscriber_config.clone()))
+            Subscriber::start(ctx.clone(), self.fqsn.clone(), self.subc.clone(), queue, Some(op.subscriber_config.clone()))
         }).collect();
 
         let mut message_receivers= Vec::with_capacity(receivers.len());
         for receiver in receivers {
             let f_clone = f.clone();
             let ctx_clone = ctx.clone();
-            let name = self.name.clone();
+            let name = self.fqsn.clone();
             message_receivers.push(tokio::spawn(async move {
                 loop {
                    select! {

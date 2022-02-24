@@ -71,10 +71,10 @@ impl Client {
     /// cfg.push_config may be set to configure this subscription for push delivery.
     ///
     /// If the subscription already exists an error will be returned.
-    pub async fn create_subscription(&self, ctx: CancellationToken, fqsn: &str, fqtn: &str, cfg: SubscriptionConfig, retry_option: Option<RetrySetting>) -> Result<Subscription, Status> {
+    pub async fn create_subscription(&self, ctx: CancellationToken, id: &str, topic_id: &str, cfg: SubscriptionConfig, retry_option: Option<RetrySetting>) -> Result<Subscription, Status> {
         self.subc.create_subscription(ctx, InternalSubscription{
-            name: fqsn.to_string(),
-            topic: fqtn.to_string(),
+            name: self.fully_qualified_subscription_name(id).to_string(),
+            topic: self.fully_qualified_topic_name(topic_id).to_string(),
             push_config: cfg.push_config,
             ack_deadline_seconds: cfg.ack_deadline_seconds,
             labels: cfg.labels,
@@ -87,7 +87,7 @@ impl Client {
             message_retention_duration: cfg.message_retention_duration.map(|v| v.into()),
             retain_acked_messages: cfg.retain_acked_messages,
             topic_message_retention_duration: cfg.topic_message_retention_duration.map(|v| v.into())
-        }, retry_option).await.map(|_v| self.subscription(fqsn))
+        }, retry_option).await.map(|_v| self.subscription(id))
     }
 
     /// subscriptions returns an iterator which returns all of the subscriptions for the client's project.
@@ -102,8 +102,8 @@ impl Client {
     }
 
     /// subscription creates a reference to a subscription.
-    pub fn subscription(&self, fqsn: &str) -> Subscription {
-        Subscription::new(fqsn.to_string(), self.subc.clone())
+    pub fn subscription(&self, id: &str) -> Subscription {
+        Subscription::new(self.fully_qualified_subscription_name(id), self.subc.clone())
     }
 
     /// detach_subscription detaches a subscription from its topic. All messages
@@ -125,9 +125,9 @@ impl Client {
     /// see: https://cloud.google.com/pubsub/docs/admin#resource_names
     ///
     /// If the topic already exists an error will be returned.
-    pub async fn create_topic(&self, ctx: CancellationToken, fqtn: &str, retry_option:Option<RetrySetting>) -> Result<(), Status> {
+    pub async fn create_topic(&self, ctx: CancellationToken, id: &str, retry_option:Option<RetrySetting>) -> Result<(), Status> {
         self.pubc.create_topic(ctx, InternalTopic {
-            name: fqtn.to_string(),
+            name: self.fully_qualified_topic_name(id).to_string(),
             labels: Default::default(),
             message_storage_policy: None,
             kms_key_name: "".to_string(),
@@ -154,8 +154,8 @@ impl Client {
     /// associated with it. Clean them up by calling topic.stop.
     ///
     /// Avoid creating many Topic instances if you use them to publish.
-    pub fn topic(&self, fqtn: &str, config: Option<PublisherConfig>) -> Topic {
-        Topic::new(fqtn.to_string(), self.pubc.clone(), self.subc.clone(), config)
+    pub fn topic(&self, id: &str, config: Option<PublisherConfig>) -> Topic {
+        Topic::new(self.fully_qualified_topic_name(id).to_string(), self.pubc.clone(), self.subc.clone(), config)
     }
 
     pub fn fully_qualified_topic_name(&self, id: &str) -> String {
@@ -173,8 +173,6 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    
-    
     
     use std::thread;
     use std::time::Duration;
@@ -211,15 +209,15 @@ mod tests {
         let order = !ordering_key.is_empty();
         // create
         let uuid = Uuid::new_v4().to_hyphenated().to_string();
-        let topic_name = client.fully_qualified_topic_name(&format!("t{}", &uuid));
-        let subscription_name = client.fully_qualified_subscription_name(&format!("s{}", &uuid));
+        let topic_id= &format!("t{}", &uuid);
+        let subscription_id= &format!("s{}", &uuid);
         let ctx = CancellationToken::new();
-        client.create_topic(ctx, &topic_name, None).await.unwrap();
-        let topic = client.topic(&topic_name, None);
+        client.create_topic(ctx, topic_id.as_str(), None).await.unwrap();
+        let topic = client.topic(topic_id.as_str(), None);
         let mut config = SubscriptionConfig::default();
         config.enable_message_ordering = !ordering_key.is_empty();
         let ctx = CancellationToken::new();
-        let subscription = client.create_subscription(ctx.clone(), &subscription_name , &topic_name, config, None).await.unwrap();
+        let subscription = client.create_subscription(ctx.clone(), subscription_id.as_str(), topic_id.as_str(), config, None).await.unwrap();
 
         let cancellation_token = CancellationToken::new();
         //subscribe
@@ -291,14 +289,14 @@ mod tests {
        let client = create_client().await;
 
         let uuid = Uuid::new_v4().to_hyphenated().to_string();
-        let topic_name  = client.fully_qualified_topic_name(&format!("t{}", &uuid));
-        let subscription_name= client.fully_qualified_subscription_name(&format!("s{}", &uuid));
+        let topic_id  = &format!("t{}", &uuid);
+        let subscription_id= &format!("s{}", &uuid);
         let ctx = CancellationToken::new();
         let topics = client.get_topics(ctx.clone(), None) .await.unwrap();
         let subs = client.get_subscriptions(CancellationToken::new(), None) .await.unwrap();
         let ctx = CancellationToken::new();
-        let _topic = client.create_topic(ctx.clone(), &topic_name, None).await.unwrap();
-        let _subscription= client.create_subscription(CancellationToken::new(), &subscription_name, &topic_name, SubscriptionConfig::default(), None).await?;
+        let _topic = client.create_topic(ctx.clone(), topic_id.as_str(), None).await.unwrap();
+        let _subscription= client.create_subscription(CancellationToken::new(), subscription_id.as_str(), topic_id.as_str(), SubscriptionConfig::default(), None).await?;
         let topics_after = client.get_topics(ctx.clone(), None) .await.unwrap();
         let subs_after= client.get_subscriptions(CancellationToken::new(), None) .await.unwrap();
         assert_eq!(1, topics_after.len() - topics.len());

@@ -19,7 +19,7 @@ use crate::util::ToUsize;
 /// The methods of Topic are safe for use by multiple tasks.
 #[derive(Clone)]
 pub struct Topic {
-   name: String,
+   fqtn: String,
    pubc: PublisherClient,
    subc: SubscriberClient,
    ordering_senders: Vec<async_channel::Sender<ReservedMessage>>,
@@ -29,7 +29,7 @@ pub struct Topic {
 
 impl Topic {
 
-   pub(crate) fn new(topic: String,
+   pub(crate) fn new(fqtn: String,
           pubc: PublisherClient,
           subc: SubscriberClient,
           config: Option<PublisherConfig>
@@ -42,21 +42,21 @@ impl Topic {
 
       // for non-ordering key message
       for _ in 0..config.workers {
-         log::trace!("start non-ordering publisher : {}", topic.clone());
+         log::trace!("start non-ordering publisher : {}", fqtn.clone());
          receivers.push(receiver.clone()) ;
       }
 
       // for ordering key message
       for _ in 0..config.workers {
-         log::trace!("start ordering publisher : {}", topic.clone());
+         log::trace!("start ordering publisher : {}", fqtn.clone());
          let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
          receivers.push(receiver);
          ordering_senders.push(sender);
       }
-      let publisher = Arc::new(Mutex::new(Publisher::start(topic.to_string(),pubc.clone(), receivers, config)));
+      let publisher = Arc::new(Mutex::new(Publisher::start(fqtn.to_string(),pubc.clone(), receivers, config)));
 
       Self {
-         name: topic,
+         fqtn,
          pubc,
          subc,
          sender,
@@ -67,28 +67,28 @@ impl Topic {
 
    /// id returns the unique identifier of the topic within its project.
    pub fn id(&self) -> String {
-      self.name.rfind('/').map_or("".to_string(),|i| self.name[(i + 1)..].to_string())
+      self.fqtn.rfind('/').map_or("".to_string(),|i| self.fqtn[(i + 1)..].to_string())
    }
 
-   /// string returns the printable globally unique name for the topic.
-   pub fn string(&self) -> &str {
-     self.name.as_str()
+   /// fully_qualified_name returns the printable globally unique name for the topic.
+   pub fn fully_qualified_name(&self) -> &str {
+     self.fqtn.as_str()
    }
 
    /// delete deletes the topic.
    pub async fn delete(&self, ctx: CancellationToken, opt: Option<RetrySetting>) -> Result<(),Status>{
       self.pubc.delete_topic(ctx, DeleteTopicRequest {
-         topic: self.name.to_string()
+         topic: self.fqtn.to_string()
       }, opt).await.map(|v| v.into_inner())
    }
 
    /// exists reports whether the topic exists on the server.
    pub async fn exists(&self, ctx: CancellationToken, opt: Option<RetrySetting>) -> Result<bool,Status>{
-      if self.name == "_deleted-topic_" {
+      if self.fqtn == "_deleted-topic_" {
          return Ok(false)
       }
       match self.pubc.get_topic(ctx, GetTopicRequest{
-         topic: self.name.to_string()
+         topic: self.fqtn.to_string()
       }, opt).await {
          Ok(_) => Ok(true),
          Err(e) => if e.code() == NotFound {
@@ -104,7 +104,7 @@ impl Topic {
    /// Some of the returned subscriptions may belong to a project other than t.
    pub async fn subscriptions(&self, ctx: CancellationToken, opt: Option<RetrySetting>) -> Result<Vec<Subscription>,Status>{
       self.pubc.list_topic_subscriptions(ctx, ListTopicSubscriptionsRequest{
-         topic: self.name.to_string(),
+         topic: self.fqtn.to_string(),
          page_size: 0,
          page_token: "".to_string(),
       }, opt).await.map(|v| v.into_iter().map(|sub_name| Subscription::new(sub_name, self.subc.clone())).collect())

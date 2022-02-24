@@ -36,6 +36,7 @@ impl ReceivedMessage {
 
 #[derive(Clone)]
 pub struct SubscriberConfig {
+    /// ping interval for Bi Directional Streaming
     pub ping_interval: Duration,
     pub retry_setting: Option<RetrySetting>
 }

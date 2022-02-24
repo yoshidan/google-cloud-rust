@@ -33,9 +33,8 @@ google-cloud-pubsub = <version>
      let ctx = CancellationToken::new();
 
      // Create topic.
-     let fqtn = client.fully_qualified_topic_name("test-topic");
-     client.create_topic(ctx, &fgtn, None).await?;
-     let topic = client.topic(&fqtn, None);
+     client.create_topic(ctx, "test-topic", None).await?;
+     let topic = client.topic("test-topic", None);
 
      // Publish message.
      let mut awaiter = topic.publish(PubsubMessage {
@@ -43,8 +42,8 @@ google-cloud-pubsub = <version>
          attributes: Default::default(),
          message_id: "".to_string(),
          publish_time: None,
- //Set ordering_key if needed (https://cloud.google.com/pubsub/docs/ordering)
-         ordering_key: "key".to_string()  
+         //Set ordering_key if needed (https://cloud.google.com/pubsub/docs/ordering)
+         ordering_key: "key".to_string()
      }).await;
 
      // The get method blocks until a server-generated ID or an error is returned for the published message.
@@ -77,8 +76,7 @@ google-cloud-pubsub = <version>
      let ctx = CancellationToken::new();
 
      // Get the topic to subscribe to.
-     let fqtn = client.fully_qualified_topic_name("test-topic");
-     let topic = client.topic(&fqtn, None).await?;
+     let topic = client.topic("test-topic", None).await?;
 
      // Configure subscription.
      let mut config = SubscriptionConfig::default();
@@ -86,8 +84,7 @@ google-cloud-pubsub = <version>
      config.enable_message_ordering = true;
 
      // Create subscription
-     let fqsn = client.fully_qualified_subscription_name("test-subscription");
-     let subscription = client.create_subscription(ctx.clone(), &fqsn, &fqtn, config, None).await?;
+     let subscription = client.create_subscription(ctx.clone(), "test-subscription", topic.id(), config, None).await?;
 
      let ctx2 = ctx.clone();
      tokio::spawn(async move {

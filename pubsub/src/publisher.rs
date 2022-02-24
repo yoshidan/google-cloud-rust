@@ -1,8 +1,4 @@
 use std::collections::{VecDeque};
-
-
-
-
 use std::time::Duration;
 
 use tokio::select;
@@ -26,9 +22,12 @@ pub(crate) struct ReservedMessage {
 
 #[derive(Clone)]
 pub struct PublisherConfig {
+    /// worker count. each workers have gRPC channel
     pub workers: usize,
-    pub flush_buffer_interval: Duration,
-    pub buffer_size: usize,
+    /// interval for flush bundle message
+    pub flush_interval: Duration,
+    /// max bundle size to flush
+    pub bundle_size: usize,
     pub retry_setting: Option<RetrySetting>
 }
 
@@ -36,8 +35,8 @@ impl Default for PublisherConfig {
     fn default() -> Self {
         Self {
             workers: 3,
-            flush_buffer_interval: Duration::from_millis(100),
-            buffer_size: 3,
+            flush_interval: Duration::from_millis(100),
+            bundle_size: 3,
             retry_setting: None,
         }
     }
@@ -82,16 +81,16 @@ impl Publisher {
             let topic_for_worker = topic.clone();
             let retry_setting = config.retry_setting.clone();
             tokio::spawn(async move {
-                let mut buffer = VecDeque::<ReservedMessage>::new();
+                let mut bundle = VecDeque::<ReservedMessage>::new();
                 while !receiver.is_closed() {
-                    match timeout(config.flush_buffer_interval,&mut receiver.recv()).await {
+                    match timeout(config.flush_interval,&mut receiver.recv()).await {
                         Ok(result) => match result {
                             Ok(message) => {
-                                buffer.push_back(message);
-                                if buffer.len() >= config.buffer_size {
-                                    log::trace!("maximum buffer {} : {}", buffer.len(), topic_for_worker);
-                                    Self::flush(&mut client, topic_for_worker.as_str(), buffer, retry_setting.clone()).await;
-                                    buffer = VecDeque::new();
+                                bundle.push_back(message);
+                                if bundle.len() >= config.bundle_size {
+                                    log::trace!("maximum buffer {} : {}", bundle.len(), topic_for_worker);
+                                    Self::flush(&mut client, topic_for_worker.as_str(), bundle, retry_setting.clone()).await;
+                                    bundle = VecDeque::new();
                                 }
                             }
                             Err(_e) => {
@@ -102,10 +101,10 @@ impl Publisher {
                         },
                         //timed out
                         Err(_e) => {
-                            if !buffer.is_empty() {
+                            if !bundle.is_empty() {
                                 log::trace!("elapsed: flush buffer : {}", topic_for_worker);
-                                Self::flush(&mut client, topic_for_worker.as_str(), buffer, retry_setting.clone()).await;
-                                buffer = VecDeque::new();
+                                Self::flush(&mut client, topic_for_worker.as_str(), bundle, retry_setting.clone()).await;
+                                bundle = VecDeque::new();
                             }
                         }
                     }
@@ -119,10 +118,10 @@ impl Publisher {
     }
 
     /// flush publishes the messages in buffer.
-    async fn flush(client: &mut PublisherClient, topic: &str, buffer: VecDeque<ReservedMessage>, retry_setting: Option<RetrySetting>) {
-        let mut data = Vec::<PubsubMessage> ::with_capacity(buffer.len());
-        let mut callback = Vec::<oneshot::Sender<Result<String,Status>>>::with_capacity(buffer.len());
-        buffer.into_iter().for_each(|r| {
+    async fn flush(client: &mut PublisherClient, topic: &str, bundle: VecDeque<ReservedMessage>, retry_setting: Option<RetrySetting>) {
+        let mut data = Vec::<PubsubMessage> ::with_capacity(bundle.len());
+        let mut callback = Vec::<oneshot::Sender<Result<String,Status>>>::with_capacity(bundle.len());
+        bundle.into_iter().for_each(|r| {
             data.push(r.message);
             callback.push(r.producer);
         });
@@ -219,7 +218,7 @@ mod tests {
         let client = PublisherClient::new(cons);
 
         let mut opt = PublisherConfig::default();
-        opt.flush_buffer_interval = Duration::from_secs(10);
+        opt.flush_interval = Duration::from_secs(10);
         let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
         let _publisher = Arc::new(Publisher::start("projects/local-project/topics/test-topic1".to_string(), client, vec![receiver], opt));
         let ctx = CancellationToken::new();
