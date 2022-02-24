@@ -1,5 +1,7 @@
 use std::collections::{VecDeque};
+use std::sync::Arc;
 use std::time::Duration;
+use parking_lot::Mutex;
 
 use tokio::select;
 
@@ -13,6 +15,7 @@ use google_cloud_googleapis::{Status};
 
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::RetrySetting;
+use crate::util::ToUsize;
 
 
 pub(crate) struct ReservedMessage {
@@ -64,23 +67,97 @@ impl Awaiter {
     }
 }
 
-pub(crate) struct Publisher {
-    inner: InternalPublisher
-}
-
 /// Publisher is a scheduler which is designed for Pub/Sub's Publish flow.
 /// Each item is added with a given key.
 /// Items added to the empty string key are handled in random order.
 /// Items added to any other key are handled sequentially.
-struct InternalPublisher {
-    workers: Option<Vec<JoinHandle<()>>>
+#[derive(Clone)]
+pub struct Publisher {
+    ordering_senders: Arc<Vec<async_channel::Sender<ReservedMessage>>>,
+    sender: async_channel::Sender<ReservedMessage>,
+    worker: Arc<Mutex<Worker>>
 }
 
-impl InternalPublisher {
+impl Publisher {
+    pub(crate) fn new(fqtn: String, pubc: PublisherClient, config: Option<PublisherConfig>) -> Self {
+        let config = config.unwrap_or_default();
+        let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
+        let mut receivers = Vec::with_capacity(1 + config.workers);
+        let mut ordering_senders = Vec::with_capacity(config.workers);
+
+        // for non-ordering key message
+        for _ in 0..config.workers {
+            log::trace!("start non-ordering publisher : {}", fqtn.clone());
+            receivers.push(receiver.clone());
+        }
+
+        // for ordering key message
+        for _ in 0..config.workers {
+            log::trace!("start ordering publisher : {}", fqtn.clone());
+            let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
+            receivers.push(receiver);
+            ordering_senders.push(sender);
+        }
+
+        Self {
+            sender,
+            ordering_senders: Arc::new(ordering_senders),
+            worker: Arc::new(Mutex::new(Worker::start(fqtn.to_string(), pubc, receivers, config)))
+        }
+    }
+
+    /// publish publishes msg to the topic asynchronously. Messages are batched and
+    /// sent according to the topic's PublisherConfig. Publish never blocks.
+    ///
+    /// publish returns a non-nil Awaiter which will be ready when the
+    /// message has been sent (or has failed to be sent) to the server.
+    ///
+    /// publish creates tasks for batching and sending messages. These tasks
+    /// need to be stopped by calling t.stop(). Once stopped, future calls to Publish
+    /// will immediately return a Awaiter with an error.
+    pub async fn publish(&self, message: PubsubMessage) -> Awaiter {
+        if self.sender.is_closed() {
+            let (mut tx, rx) = tokio::sync::oneshot::channel();
+            tx.closed();
+            return Awaiter::new(rx)
+        }
+
+        let (producer, consumer) = oneshot::channel();
+        if message.ordering_key.is_empty() {
+            self.sender.send( ReservedMessage {
+                producer,
+                message
+            }).await;
+        }else {
+            let key = message.ordering_key.as_str().to_usize();
+            let index = key % self.ordering_senders.len();
+            self.ordering_senders[index].send(ReservedMessage {
+                producer,
+                message
+            }).await;
+        }
+        Awaiter::new(consumer)
+    }
+
+    pub async fn shutdown(&mut self) {
+        self.sender.close();
+        for s in self.ordering_senders.iter() {
+            s.close();
+        }
+        self.worker.lock().done().await;
+    }
+
+}
+
+struct Worker {
+    tasks: Option<Vec<JoinHandle<()>>>
+}
+
+impl Worker {
 
     pub fn start(topic: String, pubc: PublisherClient, receivers: Vec<async_channel::Receiver<ReservedMessage>>, config: PublisherConfig) -> Self {
 
-        let workers = receivers.into_iter().map(|receiver| {
+        let tasks = receivers.into_iter().map(|receiver| {
             let mut client = pubc.clone();
             let topic_for_worker = topic.clone();
             let retry_setting = config.retry_setting.clone();
@@ -122,7 +199,7 @@ impl InternalPublisher {
         }).collect();
 
         Self {
-            workers: Some(workers)
+            tasks: Some(tasks)
         }
     }
 
@@ -156,99 +233,11 @@ impl InternalPublisher {
 
     /// done waits for all the workers finish.
     pub async fn done(&mut self) {
-        if let Some(workers ) = self.workers.take() {
-            for worker in workers {
-                worker.await;
+        if let Some(tasks) = self.tasks.take() {
+            for task in tasks{
+                task.await;
             }
         }
     }
 
-}
-
-#[cfg(test)]
-mod tests {
-    use std::sync::Arc;
-    use std::time::Duration;
-    use google_cloud_googleapis::pubsub::v1::PubsubMessage;
-    use crate::apiv1::conn_pool::ConnectionManager;
-    use serial_test::serial;
-    use tokio::sync::oneshot;
-    use tokio::task::JoinHandle;
-    use tokio_util::sync::CancellationToken;
-    use crate::apiv1::publisher_client::PublisherClient;
-    use crate::publisher::{Awaiter, Publisher, PublisherConfig, ReservedMessage};
-
-    #[ctor::ctor]
-    fn init() {
-        std::env::set_var("RUST_LOG","google_cloud_pubsub=trace".to_string());
-        env_logger::try_init();
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn test_publish() -> Result<(), anyhow::Error> {
-        let cons = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
-        let client = PublisherClient::new(cons);
-
-        let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
-        let publisher = Arc::new(Publisher::start("projects/local-project/topics/test-topic1".to_string(), client, vec![receiver.clone(),receiver], PublisherConfig::default()));
-
-        let ctx = CancellationToken::new();
-        let joins : Vec<JoinHandle<String>> = (0..10).map(|i| {
-            let _p = publisher.clone();
-            let ctx = ctx.clone();
-            let s = sender.clone();
-            tokio::spawn(async move {
-                let message = PubsubMessage {
-                    data: "abc".into(),
-                    attributes: Default::default(),
-                    message_id: i.to_string(),
-                    publish_time: None,
-                    ordering_key: "".to_string()
-                };
-                let (producer, consumer) = oneshot::channel();
-                s.send( ReservedMessage {
-                    producer,
-                    message
-                }).await;
-                Awaiter::new(consumer).get(ctx.clone()).await.unwrap()
-            })
-        }).collect();
-        for j in joins {
-            let v = j.await;
-            assert!(v.is_ok());
-            log::info!("send message id = {}", v.unwrap());
-        }
-        Ok(())
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn test_publish_cancel() -> Result<(), anyhow::Error> {
-        let cons = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
-        let client = PublisherClient::new(cons);
-
-        let mut opt = PublisherConfig::default();
-        opt.flush_interval = Duration::from_secs(10);
-        let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
-        let _publisher = Arc::new(Publisher::start("projects/local-project/topics/test-topic1".to_string(), client, vec![receiver], opt));
-        let ctx = CancellationToken::new();
-        let mut message = PubsubMessage::default();
-        message.data = "abc".into();
-        let (producer, consumer) = oneshot::channel();
-        sender.send( ReservedMessage {
-            producer,
-            message
-        }).await;
-        let result = Awaiter::new(consumer);
-        let child = ctx.clone();
-        let j = tokio::spawn(async move {
-            let v = result.get(child).await;
-            assert!(v.is_err());
-            println!("{}", v.unwrap_err());
-        });
-        ctx.cancel();
-        j.await;
-        Ok(())
-    }
 }

@@ -47,9 +47,6 @@ pub struct Topic {
    fqtn: String,
    pubc: PublisherClient,
    subc: SubscriberClient,
-   ordering_senders: Vec<async_channel::Sender<ReservedMessage>>,
-   sender: Option<async_channel::Sender<ReservedMessage>>,
-   publisher: Arc<Mutex<Option<Publisher>>>
 }
 
 impl Topic {
@@ -59,9 +56,6 @@ impl Topic {
          fqtn,
          pubc,
          subc,
-         ordering_senders: vec![],
-         sender: None,
-         publisher: Arc::new(Mutex::new(None)),
       }
    }
 
@@ -75,31 +69,8 @@ impl Topic {
      self.fqtn.as_str()
    }
 
-   pub fn run(&mut self, config: Option<PublisherConfig>) {
-      let mut publisher = self.publisher.lock();
-      if publisher.is_none() {
-         let config = config.unwrap_or_default();
-         let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
-         let mut receivers = Vec::with_capacity(1 + config.workers);
-         let mut ordering_senders = Vec::with_capacity(config.workers);
-
-         // for non-ordering key message
-         for _ in 0..config.workers {
-            log::trace!("start non-ordering publisher : {}", self.fqtn.clone());
-            receivers.push(receiver.clone());
-         }
-
-         // for ordering key message
-         for _ in 0..config.workers {
-            log::trace!("start ordering publisher : {}", self.fqtn.clone());
-            let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
-            receivers.push(receiver);
-            ordering_senders.push(sender);
-         }
-         *publisher = Some(Publisher::start(self.fqtn.to_string(), self.pubc.clone(), receivers, config));
-         self.sender = Some(sender);
-         self.ordering_senders = ordering_senders;
-      }
+   pub fn new_publisher(&self, config: Option<PublisherConfig>) -> Publisher {
+      Publisher::new(self.fqtn.clone(), self.pubc.clone(), config)
    }
 
    /// create creates the topic.
@@ -151,59 +122,6 @@ impl Topic {
       }, opt).await.map(|v| v.into_iter().map(|sub_name| Subscription::new(sub_name, self.subc.clone())).collect())
    }
 
-   /// publish publishes msg to the topic asynchronously. Messages are batched and
-   /// sent according to the topic's PublisherConfig. Publish never blocks.
-   ///
-   /// publish returns a non-nil Awaiter which will be ready when the
-   /// message has been sent (or has failed to be sent) to the server.
-   ///
-   /// publish creates tasks for batching and sending messages. These tasks
-   /// need to be stopped by calling t.stop(). Once stopped, future calls to Publish
-   /// will immediately return a Awaiter with an error.
-   pub async fn publish(&self, message: PubsubMessage) -> Awaiter {
-      if self.is_shutdown() {
-         let (mut tx, rx) = tokio::sync::oneshot::channel();
-         tx.closed();
-         return Awaiter::new(rx)
-      }
-
-      let (producer, consumer) = oneshot::channel();
-      if message.ordering_key.is_empty() {
-         self.sender.as_ref().unwrap().send( ReservedMessage {
-            producer,
-            message
-         }).await;
-      }else {
-         let key = message.ordering_key.as_str().to_usize();
-         let index = key % self.ordering_senders.len();
-         self.ordering_senders[index].send(ReservedMessage {
-            producer,
-            message
-         }).await;
-      }
-      Awaiter::new(consumer)
-   }
-
-   pub async fn shutdown(&self) {
-      match self.sender.as_ref() {
-         Some(sender) => {
-            sender.close();
-            for s in &self.ordering_senders {
-               s.close();
-            }
-            let mut publisher = self.publisher.lock().borrow_mut().take().unwrap();
-            publisher.done().await;
-         },
-         None => {}
-      }
-   }
-
-   fn is_shutdown(&self) -> bool{
-      match self.sender.as_ref() {
-         Some(v) => v.is_closed(),
-         None => true
-      }
-   }
 
 }
 
@@ -215,12 +133,13 @@ mod tests {
    use google_cloud_googleapis::pubsub::v1::{PubsubMessage, Topic as InternalTopic};
    use serial_test::serial;
    use tokio::task::JoinHandle;
+   use tokio::time::sleep;
    use tokio_util::sync::CancellationToken;
-   use google_cloud_googleapis::Code;
+   use google_cloud_googleapis::{Code, Status};
    use crate::apiv1::conn_pool::ConnectionManager;
    use crate::apiv1::publisher_client::PublisherClient;
    use crate::apiv1::subscriber_client::SubscriberClient;
-   use crate::publisher::PublisherConfig;
+   use crate::publisher::{Publisher, PublisherConfig};
    use crate::topic::Topic;
 
    #[ctor::ctor]
@@ -229,9 +148,7 @@ mod tests {
       env_logger::try_init();
    }
 
-   #[tokio::test]
-   #[serial]
-   async fn test_topic() -> Result<(), anyhow::Error> {
+   async fn create_topic() -> Result<Topic, anyhow::Error> {
       let cm1 = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
       let pubc = PublisherClient::new(cm1);
       let cm2 = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
@@ -246,34 +163,83 @@ mod tests {
       if !topic.exists(ctx.clone(), None).await? {
          topic.create(ctx.clone(), None, None).await?;
       }
-      
-      // Start publisher.
-      topic.run(None);
-      let topic = topic;
+      return Ok(topic);
+   }
 
-      // Publish message.
-      let tasks : Vec<JoinHandle<String>> = (0..10).into_iter().map(|_i| {
-         let topic = topic.clone();
+   async fn publish(ctx: CancellationToken, publisher: Publisher) -> Vec<JoinHandle<Result<String, Status>>> {
+      (0..10).into_iter().map(|_i| {
+         let publisher = publisher.clone();
          let ctx = ctx.clone();
          tokio::spawn(async move {
             let mut msg = PubsubMessage::default();
             msg.data = "abc".into();
-            let mut awaiter = topic.publish(msg).await;
-            awaiter.get(ctx).await.unwrap()
+            let mut awaiter = publisher.publish(msg).await;
+            awaiter.get(ctx).await
          })
-      }).collect();
+      }).collect()
+   }
+
+   #[tokio::test]
+   #[serial]
+   async fn test_publish() -> Result<(), anyhow::Error> {
+      let ctx = CancellationToken::new();
+      let topic = create_topic().await?;
+      let publisher = topic.new_publisher(None);
+
+      // Publish message.
+      let tasks = publish(ctx.clone(), publisher.clone()).await;
 
       // Wait for all publish task finish
       for task in tasks {
-         let message_id= task.await?;
+         let message_id= task.await??;
          log::trace!("{}", message_id);
          assert!(!message_id.is_empty())
       }
 
       // Wait for publishers in topic finish.
-      topic.shutdown();
+      let mut publisher = publisher;
+      publisher.shutdown().await;
+
+      // Can't publish messages
+      let result = publisher.publish(PubsubMessage::default()).await.get(ctx.clone()).await;
+      assert!(result.is_err());
 
       topic.delete(ctx.clone(), None).await?;
+
+      Ok(())
+   }
+
+   #[tokio::test]
+   #[serial]
+   async fn test_publish_cancel() -> Result<(), anyhow::Error> {
+      let ctx = CancellationToken::new();
+      let topic = create_topic().await?;
+      let mut config = PublisherConfig::default();
+      config.flush_interval = Duration::from_secs(10);
+      config.bundle_size = 11;
+      let publisher = topic.new_publisher(Some(config));
+
+      // Publish message.
+      let tasks = publish(ctx.clone(), publisher.clone()).await;
+
+      // Shutdown after 1 sec
+      sleep(Duration::from_secs(1)).await;
+      let mut publisher = publisher;
+      publisher.shutdown().await;
+
+      // Confirm flush bundle.
+      for task in tasks {
+         let message_id= task.await?;
+         assert!(message_id.is_ok());
+         assert!(!message_id.unwrap().is_empty());
+      }
+
+      // Can't publish messages
+      let result = publisher.publish(PubsubMessage::default()).await.get(ctx.clone()).await;
+      assert!(result.is_err());
+
+      topic.delete(ctx.clone(), None).await?;
+      assert!(!topic.exists(ctx,None).await?);
 
       Ok(())
 

@@ -192,8 +192,8 @@ mod tests {
         let topic_id= &format!("t{}", &uuid);
         let subscription_id= &format!("s{}", &uuid);
         let ctx = CancellationToken::new();
-        let mut topic =client.create_topic(ctx, topic_id.as_str(), None, None).await.unwrap();
-        topic.run(None);
+        let topic =client.create_topic(ctx, topic_id.as_str(), None, None).await.unwrap();
+        let publisher = topic.new_publisher(None);
         let mut config = SubscriptionConfig::default();
         config.enable_message_ordering = !ordering_key.is_empty();
         let ctx = CancellationToken::new();
@@ -224,7 +224,7 @@ mod tests {
         let mut awaiters = Vec::with_capacity(100);
         for v in 0..100 {
             let message = create_message(format!("abc_{}",v).as_bytes(), ordering_key);
-            awaiters.push(topic.publish(message).await);
+            awaiters.push(publisher.publish(message).await);
         }
         let ctx = CancellationToken::new();
         for v in awaiters {
@@ -246,7 +246,8 @@ mod tests {
         assert_eq!(count, 100);
         let _ = handle.await;
 
-        topic.shutdown().await;
+        let mut publisher = publisher;
+        publisher.shutdown().await;
 
         Ok(())
     }
