@@ -165,6 +165,12 @@ mod tests {
 
     use uuid::Uuid;
 
+    #[ctor::ctor]
+    fn init() {
+        std::env::set_var("RUST_LOG","google_cloud_pubsub=trace".to_string());
+        env_logger::try_init();
+    }
+
     fn create_default_subscription_request(topic: String) -> Subscription {
         let uuid = Uuid::new_v4().to_hyphenated().to_string();
         return Subscription {
@@ -222,8 +228,6 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_multi_subscriber_single_subscription() -> Result<(), anyhow::Error> {
-        std::env::set_var("RUST_LOG","google_cloud_pubsub=trace".to_string());
-        env_logger::init();
         let subc = SubscriberClient::new(ConnectionManager::new(4, Some("localhost:8681".to_string())).await?);
         let v = Arc::new(AtomicU32::new(0));
         let ctx = CancellationToken::new();
@@ -249,9 +253,6 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_multi_subscriber_multi_subscription() -> Result<(), anyhow::Error> {
-
-        std::env::set_var("RUST_LOG","google_cloud_pubsub=trace".to_string());
-        env_logger::init();
         let cons = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
         let subc = SubscriberClient::new(cons);
 

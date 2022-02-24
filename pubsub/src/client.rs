@@ -186,6 +186,12 @@ mod tests {
     use crate::subscriber::SubscriberConfig;
     use crate::subscription::{ReceiveConfig, SubscriptionConfig};
 
+    #[ctor::ctor]
+    fn init() {
+        std::env::set_var("RUST_LOG","google_cloud_pubsub=trace".to_string());
+        env_logger::try_init();
+    }
+
     fn create_message(data: &[u8], ordering_key: &str) -> PubsubMessage {
         PubsubMessage {
             data: data.to_vec(),
@@ -197,8 +203,6 @@ mod tests {
     }
 
     async fn create_client() -> Client {
-        std::env::set_var("RUST_LOG","google_cloud_pubsub=trace".to_string());
-        env_logger::try_init();
         std::env::set_var("PUBSUB_EMULATOR_HOST","localhost:8681".to_string());
         Client::new("local-project", None).await.unwrap()
     }

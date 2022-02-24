@@ -148,7 +148,7 @@ impl Topic {
       for s in &self.ordering_senders {
         s.close();
       }
-      self.publisher.lock().shutdown().await;
+      self.publisher.lock().done().await;
    }
 
    fn is_shutdown(&self) -> bool{
@@ -171,11 +171,15 @@ mod tests {
    use crate::apiv1::subscriber_client::SubscriberClient;
    use crate::topic::Topic;
 
+   #[ctor::ctor]
+   fn init() {
+      std::env::set_var("RUST_LOG","google_cloud_pubsub=trace".to_string());
+      env_logger::try_init();
+   }
+
    #[tokio::test]
    #[serial]
    async fn test_topic() -> Result<(), anyhow::Error> {
-      std::env::set_var("RUST_LOG","google_cloud_pubsub=trace".to_string());
-      env_logger::init();
       let cm = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
       let client = PublisherClient::new(cm);
 

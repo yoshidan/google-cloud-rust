@@ -83,22 +83,8 @@ impl Publisher {
             tokio::spawn(async move {
                 let mut bundle = VecDeque::<ReservedMessage>::new();
                 while !receiver.is_closed() {
-                    match timeout(config.flush_interval,&mut receiver.recv()).await {
-                        Ok(result) => match result {
-                            Ok(message) => {
-                                bundle.push_back(message);
-                                if bundle.len() >= config.bundle_size {
-                                    log::trace!("maximum buffer {} : {}", bundle.len(), topic_for_worker);
-                                    Self::flush(&mut client, topic_for_worker.as_str(), bundle, retry_setting.clone()).await;
-                                    bundle = VecDeque::new();
-                                }
-                            }
-                            Err(_e) => {
-                                //closed
-                                log::trace!("stop publisher : {}", topic_for_worker);
-                                break;
-                            }
-                        },
+                    let result = match timeout(config.flush_interval,&mut receiver.recv()).await {
+                        Ok(result) => result,
                         //timed out
                         Err(_e) => {
                             if !bundle.is_empty() {
@@ -106,8 +92,28 @@ impl Publisher {
                                 Self::flush(&mut client, topic_for_worker.as_str(), bundle, retry_setting.clone()).await;
                                 bundle = VecDeque::new();
                             }
+                            continue
                         }
-                    }
+                    };
+
+                    match result {
+                        Ok(message) => {
+                            bundle.push_back(message);
+                            if bundle.len() >= config.bundle_size {
+                                log::trace!("maximum buffer {} : {}", bundle.len(), topic_for_worker);
+                                Self::flush(&mut client, topic_for_worker.as_str(), bundle, retry_setting.clone()).await;
+                                bundle = VecDeque::new();
+                            }
+                        }
+                        //closed
+                        Err(_e) => break
+                    };
+                }
+
+                log::trace!("stop publisher : {}", topic_for_worker);
+                if !bundle.is_empty() {
+                    log::trace!("flush rest buffer : {}", topic_for_worker);
+                    Self::flush(&mut client, topic_for_worker.as_str(), bundle, retry_setting.clone()).await;
                 }
             })
         }).collect();
@@ -145,8 +151,8 @@ impl Publisher {
         };
     }
 
-    /// shutdown stops all the tasks.
-    pub async fn shutdown(&mut self) {
+    /// done waits for all the workers finish.
+    pub async fn done(&mut self) {
         if let Some(workers ) = self.workers.take() {
             for worker in workers {
                 worker.await;
@@ -169,11 +175,15 @@ mod tests {
     use crate::apiv1::publisher_client::PublisherClient;
     use crate::publisher::{Awaiter, Publisher, PublisherConfig, ReservedMessage};
 
+    #[ctor::ctor]
+    fn init() {
+        std::env::set_var("RUST_LOG","google_cloud_pubsub=trace".to_string());
+        env_logger::try_init();
+    }
+
     #[tokio::test]
     #[serial]
     async fn test_publish() -> Result<(), anyhow::Error> {
-        std::env::set_var("RUST_LOG","google_cloud_pubsub=trace".to_string());
-        env_logger::init();
         let cons = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
         let client = PublisherClient::new(cons);
 
@@ -212,8 +222,6 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_publish_cancel() -> Result<(), anyhow::Error> {
-        std::env::set_var("RUST_LOG","google_cloud_pubsub=trace".to_string());
-        env_logger::init();
         let cons = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
         let client = PublisherClient::new(cons);
 

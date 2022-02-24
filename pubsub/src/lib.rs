@@ -20,13 +20,13 @@
 //! async fn main() -> Result<(), Status> {
 //!
 //!     // Create pubsub client.
-//!     let mut client = Client::new("local-project", None).await?;
+//!     let mut client = Client::new("local-project", None).await.unwrap();
 //!
 //!     // Token for cancel.
 //!     let ctx = CancellationToken::new();
 //!
 //!     // Create topic.
-//!     client.create_topic(ctx, "test-topic", None).await?;
+//!     client.create_topic(ctx.clone(), "test-topic", None).await?;
 //!     let topic = client.topic("test-topic", None);
 //!
 //!     // Publish message.
@@ -40,7 +40,7 @@
 //!     }).await;
 //!
 //!     // The get method blocks until a server-generated ID or an error is returned for the published message.
-//!     let message_id = awaiter.get(ctx.clone()).await?;
+//!     let message_id = awaiter.get(ctx).await?;
 //!
 //!     // Wait for publishers in topic finish.
 //!     topic.shutdown();
@@ -63,13 +63,13 @@
 //!
 //!     // Create pubsub client
 //!     use std::time::Duration;
-//!     let mut client = Client::new("local-project", None).await?;
+//!     let mut client = Client::new("local-project", None).await.unwrap();
 //!
 //!     // Token for cancel.
 //!     let ctx = CancellationToken::new();
 //!
 //!     // Get the topic to subscribe to.
-//!     let topic = client.topic("test-topic", None).await?;
+//!     let topic = client.topic("test-topic", None);
 //!
 //!     // Configure subscription.
 //!     let mut config = SubscriptionConfig::default();
@@ -77,7 +77,7 @@
 //!     config.enable_message_ordering = true;
 //!
 //!     // Create subscription
-//!     let subscription = client.create_subscription(ctx.clone(), "test-subscription", topic.id(), config, None).await?;
+//!     let subscription = client.create_subscription(ctx.clone(), "test-subscription", topic.id().as_str(), config, None).await?;
 //!
 //!     let ctx2 = ctx.clone();
 //!     tokio::spawn(async move {
@@ -89,8 +89,8 @@
 //!     // Receive blocks until the ctx is cancelled or an error occurs.
 //!     subscription.receive(ctx.clone(), |mut message, ctx| async move {
 //!         // Handle data.
-//!         let data = message.message.data;
-//!         println!("{}", data);
+//!         let data = message.message.data.as_slice();
+//!         println!("{:?}", data);
 //!
 //!         // Ack or Nack message.
 //!         message.ack().await;
