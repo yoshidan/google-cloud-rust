@@ -1,4 +1,4 @@
-use std::time::Duration;
+
 use tokio_util::sync::CancellationToken;
 
 use google_cloud_gax::retry::{invoke, RetrySetting};
@@ -16,11 +16,11 @@ use google_cloud_googleapis::spanner::admin::database::v1::{
     UpdateBackupRequest, UpdateDatabaseDdlRequest,
 };
 
-use crate::admin::{default_internal_client, default_retry_setting, SCOPES};
-use crate::{AUDIENCE, SPANNER};
-use google_cloud_gax::conn::{Channel, ConnectionManager, Error};
+use crate::admin::{default_internal_client, default_retry_setting};
+
+use google_cloud_gax::conn::{Channel, Error};
 use google_cloud_gax::create_request;
-use google_cloud_gax::status::{Code, Status};
+use google_cloud_gax::status::{Status};
 use google_cloud_longrunning::autogen::operations_client::OperationsClient;
 use google_cloud_longrunning::longrunning::Operation;
 use tonic::Response;

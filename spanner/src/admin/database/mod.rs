@@ -16,7 +16,7 @@ mod tests {
 
     async fn create_database() -> Database {
         std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-        let mut client = DatabaseAdminClient::default().await.unwrap();
+        let client = DatabaseAdminClient::default().await.unwrap();
         let database_id = format!("test{}ut", Utc::now().timestamp_nanos());
         let request = CreateDatabaseRequest {
             parent: "projects/local-project/instances/test-instance".to_string(),
@@ -49,7 +49,7 @@ mod tests {
     #[serial]
     async fn test_get_database() {
         std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-        let mut client = DatabaseAdminClient::default().await.unwrap();
+        let client = DatabaseAdminClient::default().await.unwrap();
         let name =
             format!("projects/local-project/instances/test-instance/databases/local-database");
         let request = GetDatabaseRequest { name: name.clone() };
@@ -70,7 +70,7 @@ mod tests {
     #[serial]
     async fn test_delete_database() {
         let database = create_database().await;
-        let mut client = DatabaseAdminClient::default().await.unwrap();
+        let client = DatabaseAdminClient::default().await.unwrap();
         let request = DropDatabaseRequest {
             database: database.name.to_string(),
         };
@@ -87,7 +87,7 @@ mod tests {
     #[serial]
     async fn test_list_databases() {
         std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-        let mut client = DatabaseAdminClient::default().await.unwrap();
+        let client = DatabaseAdminClient::default().await.unwrap();
         let request = ListDatabasesRequest {
             parent: "projects/local-project/instances/test-instance".to_string(),
             page_size: 1,

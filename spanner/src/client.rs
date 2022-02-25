@@ -423,7 +423,7 @@ impl Client {
         let result: Result<(Option<Timestamp>, ()), TxError> = self
             .read_write_transaction_sync_with_option(
                 ctx,
-                |ctx, tx| {
+                |_ctx, tx| {
                     tx.buffer_write(ms.to_vec());
                     Ok(())
                 },

@@ -1,10 +1,10 @@
 use std::iter::Take;
 use std::marker::PhantomData;
-use tokio::time::Duration;
+
 use tokio_retry::strategy::ExponentialBackoff;
 use tokio_retry::Condition;
 
-use crate::client::TxError;
+
 use crate::session::SessionError;
 use google_cloud_gax::retry::{CodeCondition, Retry, RetrySetting, TryAs};
 use google_cloud_gax::status::{Code, Status};
@@ -24,7 +24,7 @@ where
     fn should_retry(&mut self, error: &E) -> bool {
         let status = match error.try_as() {
             Ok(s) => s,
-            Err(e) => return false,
+            Err(_e) => return false,
         };
         let code = status.code();
         if code == Code::Internal
@@ -85,7 +85,7 @@ mod tests {
     use crate::client::{RunInTxError, TxError};
     use crate::retry::TransactionRetrySetting;
     use google_cloud_gax::retry::Retry;
-    use google_cloud_gax::status::{Code, Status};
+    use google_cloud_gax::status::{Status};
     use tokio_retry::Condition;
 
     #[test]
