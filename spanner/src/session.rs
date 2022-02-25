@@ -13,11 +13,11 @@ use google_cloud_googleapis::spanner::v1::{
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::spanner_client::{ping_query_request, Client};
 
+use google_cloud_gax::status::{Code, Status};
 use tokio::sync::broadcast;
 use tokio::sync::oneshot;
 use tokio::time::{sleep, timeout, Duration};
 use tokio_util::sync::CancellationToken;
-use google_cloud_gax::status::{Code, Status};
 
 type Waiters = Mutex<VecDeque<oneshot::Sender<SessionHandle>>>;
 
@@ -60,7 +60,11 @@ impl SessionHandle {
         let request = DeleteSessionRequest {
             name: self.session.name.to_string(),
         };
-        match self.spanner_client.delete_session(CancellationToken::new(), request, None).await {
+        match self
+            .spanner_client
+            .delete_session(CancellationToken::new(), request, None)
+            .await
+        {
             Ok(_s) => self.valid = false,
             Err(e) => {
                 log::error!("session remove error {} error={:?}", self.session.name, e);
@@ -493,7 +497,11 @@ async fn health_check(
         };
 
         let request = ping_query_request(s.session.name.clone());
-        match s.spanner_client.execute_sql(CancellationToken::new(),request, None).await {
+        match s
+            .spanner_client
+            .execute_sql(CancellationToken::new(), request, None)
+            .await
+        {
             Ok(_) => {
                 s.last_checked_at = now;
                 s.last_pong_at = now;
@@ -557,7 +565,11 @@ async fn delete_session(session: &mut SessionHandle) {
     let request = DeleteSessionRequest {
         name: session_name.to_string(),
     };
-    match session.spanner_client.delete_session(CancellationToken::new(), request, None).await {
+    match session
+        .spanner_client
+        .delete_session(CancellationToken::new(), request, None)
+        .await
+    {
         Ok(_) => {}
         Err(e) => log::error!("failed to delete session {}, {:?}", session_name, e),
     }

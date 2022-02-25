@@ -82,7 +82,8 @@ impl Client {
         let setting = opt.unwrap_or(default_setting());
         let database = &req.database;
         return invoke_fn(
-            ctx, Some(setting),
+            ctx,
+            Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("database={}", database), req.clone());
                 spanner_client
@@ -108,7 +109,8 @@ impl Client {
         let setting = opt.unwrap_or(default_setting());
         let database = &req.database;
         return invoke_fn(
-            ctx, Some(setting),
+            ctx,
+            Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("database={}", database), req.clone());
                 spanner_client
@@ -116,7 +118,7 @@ impl Client {
                     .await
                     .map_err(|e| (e.into(), spanner_client))
             },
-            &mut self.inner
+            &mut self.inner,
         )
         .await;
     }
@@ -133,7 +135,8 @@ impl Client {
         let setting = opt.unwrap_or(default_setting());
         let name = &req.name;
         return invoke_fn(
-            ctx, Some(setting),
+            ctx,
+            Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("name={}", name), req.clone());
                 spanner_client
@@ -141,7 +144,7 @@ impl Client {
                     .await
                     .map_err(|e| (e.into(), spanner_client))
             },
-            &mut self.inner
+            &mut self.inner,
         )
         .await;
     }
@@ -156,7 +159,8 @@ impl Client {
         let setting = opt.unwrap_or(default_setting());
         let database = &req.database;
         return invoke_fn(
-            ctx, Some(setting),
+            ctx,
+            Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("database={}", database), req.clone());
                 spanner_client
@@ -164,7 +168,7 @@ impl Client {
                     .await
                     .map_err(|e| (e.into(), spanner_client))
             },
-            &mut self.inner
+            &mut self.inner,
         )
         .await;
     }
@@ -181,7 +185,8 @@ impl Client {
         let setting = opt.unwrap_or(default_setting());
         let name = &req.name;
         return invoke_fn(
-            ctx, Some(setting),
+            ctx,
+            Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("name={}", name), req.clone());
                 spanner_client
@@ -214,7 +219,8 @@ impl Client {
         let setting = opt.unwrap_or(default_setting());
         let session = &req.session;
         return invoke_fn(
-            ctx, Some(setting),
+            ctx,
+            Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
                 spanner_client
@@ -241,7 +247,8 @@ impl Client {
         let setting = opt.unwrap_or(default_setting());
         let session = &req.session;
         return invoke_fn(
-            ctx, Some(setting),
+            ctx,
+            Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
                 spanner_client
@@ -274,7 +281,8 @@ impl Client {
         let setting = opt.unwrap_or(default_setting());
         let session = &req.session;
         return invoke_fn(
-            ctx, Some(setting),
+            ctx,
+            Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
                 let result = spanner_client.execute_batch_dml(request).await;
@@ -323,7 +331,8 @@ impl Client {
         let setting = opt.unwrap_or(default_setting());
         let session = &req.session;
         return invoke_fn(
-            ctx, Some(setting),
+            ctx,
+            Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
                 spanner_client
@@ -350,7 +359,8 @@ impl Client {
         let setting = opt.unwrap_or(default_setting());
         let session = &req.session;
         return invoke_fn(
-            ctx ,Some(setting),
+            ctx,
+            Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
                 spanner_client
@@ -376,7 +386,8 @@ impl Client {
         let setting = opt.unwrap_or(default_setting());
         let session = &req.session;
         return invoke_fn(
-            ctx, Some(setting),
+            ctx,
+            Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
                 spanner_client
@@ -412,7 +423,8 @@ impl Client {
         let setting = opt.unwrap_or(default_setting());
         let session = &req.session;
         return invoke_fn(
-            ctx, Some(setting),
+            ctx,
+            Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
                 spanner_client
@@ -442,7 +454,8 @@ impl Client {
         let setting = opt.unwrap_or(default_setting());
         let session = &req.session;
         return invoke_fn(
-            ctx, Some(setting),
+            ctx,
+            Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
                 spanner_client
@@ -475,7 +488,8 @@ impl Client {
         let setting = opt.unwrap_or(default_setting());
         let session = &req.session;
         return invoke_fn(
-            ctx, Some(setting),
+            ctx,
+            Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
                 spanner_client
@@ -510,7 +524,8 @@ impl Client {
         let setting = opt.unwrap_or(default_setting());
         let session = &req.session;
         return invoke_fn(
-            ctx, Some(setting),
+            ctx,
+            Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
                 spanner_client

@@ -1,52 +1,59 @@
 use std::iter::Take;
 use std::marker::PhantomData;
 use tokio::time::Duration;
-use tokio_retry::Condition;
 use tokio_retry::strategy::ExponentialBackoff;
+use tokio_retry::Condition;
 
-use google_cloud_gax::retry::{CodeCondition, Retry, RetrySetting, TryAs};
-use google_cloud_gax::status::{Code, Status};
 use crate::client::TxError;
 use crate::session::SessionError;
+use google_cloud_gax::retry::{CodeCondition, Retry, RetrySetting, TryAs};
+use google_cloud_gax::status::{Code, Status};
 
-pub struct TransactionCondition<E> where E: TryAs<Status> + From<SessionError> + From<Status>{
-   inner: CodeCondition,
+pub struct TransactionCondition<E>
+where
+    E: TryAs<Status> + From<SessionError> + From<Status>,
+{
+    inner: CodeCondition,
     _marker: PhantomData<E>,
 }
 
-impl <E> Condition<E> for TransactionCondition<E> where E: TryAs<Status> + From<SessionError> + From<Status>,{
+impl<E> Condition<E> for TransactionCondition<E>
+where
+    E: TryAs<Status> + From<SessionError> + From<Status>,
+{
     fn should_retry(&mut self, error: &E) -> bool {
         let status = match error.try_as() {
             Ok(s) => s,
-            Err(e) => return false
+            Err(e) => return false,
         };
         let code = status.code();
         if code == Code::Internal
             && !status.message().contains("stream terminated by RST_STREAM")
             && !status
-            .message()
-            .contains("HTTP/2 error code: INTERNAL_ERROR")
+                .message()
+                .contains("HTTP/2 error code: INTERNAL_ERROR")
             && !status
-            .message()
-            .contains("Connection closed with unknown cause")
+                .message()
+                .contains("Connection closed with unknown cause")
             && !status
-            .message()
-            .contains("Received unexpected EOS on DATA frame from server")
+                .message()
+                .contains("Received unexpected EOS on DATA frame from server")
         {
             return false;
         }
-        return self.inner.should_retry(error)
+        return self.inner.should_retry(error);
     }
 }
 
 #[derive(Clone)]
 pub struct TransactionRetrySetting {
-    pub inner: RetrySetting
+    pub inner: RetrySetting,
 }
 
-impl <E> Retry<E, TransactionCondition<E>> for TransactionRetrySetting
-    where E: TryAs<Status> + From<SessionError> + From<Status> {
-
+impl<E> Retry<E, TransactionCondition<E>> for TransactionRetrySetting
+where
+    E: TryAs<Status> + From<SessionError> + From<Status>,
+{
     fn strategy(&self) -> Take<ExponentialBackoff> {
         self.inner.strategy()
     }
@@ -60,13 +67,11 @@ impl <E> Retry<E, TransactionCondition<E>> for TransactionRetrySetting
 }
 
 impl TransactionRetrySetting {
-   pub fn new(codes: Vec<Code>)  -> Self {
-       let mut inner = RetrySetting::default();
-       inner.codes = codes;
-       Self {
-           inner
-       }
-   }
+    pub fn new(codes: Vec<Code>) -> Self {
+        let mut inner = RetrySetting::default();
+        inner.codes = codes;
+        Self { inner }
+    }
 }
 
 impl Default for TransactionRetrySetting {
@@ -77,11 +82,11 @@ impl Default for TransactionRetrySetting {
 
 #[cfg(test)]
 mod tests {
-    use tokio_retry::Condition;
-    use google_cloud_gax::retry::Retry;
-    use google_cloud_gax::status::{Code, Status};
     use crate::client::{RunInTxError, TxError};
     use crate::retry::TransactionRetrySetting;
+    use google_cloud_gax::retry::Retry;
+    use google_cloud_gax::status::{Code, Status};
+    use tokio_retry::Condition;
 
     #[test]
     fn test_transaction_condition() {
@@ -91,6 +96,8 @@ mod tests {
         assert!(!condition.should_retry(&TxError::GRPC(Status::from(status))));
 
         let status = tonic::Status::new(tonic::Code::Aborted, "default");
-        assert!(!default.condition().should_retry(&RunInTxError::GRPC(Status::from(status))));
+        assert!(!default
+            .condition()
+            .should_retry(&RunInTxError::GRPC(Status::from(status))));
     }
 }

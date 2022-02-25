@@ -2,10 +2,10 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use google_cloud_gax::retry::RetrySetting;
 use prost_types::{value::Kind, Value};
 use tokio_util::sync::CancellationToken;
 use tonic::{Response, Streaming};
-use google_cloud_gax::retry::RetrySetting;
 
 use google_cloud_gax::status::Status;
 use google_cloud_googleapis::spanner::v1::struct_type::Field;

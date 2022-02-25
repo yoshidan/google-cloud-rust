@@ -5,6 +5,12 @@ use std::sync::atomic::{AtomicI64, Ordering};
 use prost_types::Struct;
 use tokio_util::sync::CancellationToken;
 
+use crate::session::ManagedSession;
+use crate::statement::Statement;
+use crate::transaction::{CallOptions, QueryOptions, Transaction};
+use crate::value::Timestamp;
+use google_cloud_gax::retry::{RetrySetting, TryAs};
+use google_cloud_gax::status::{Code, Status};
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::TransactionId;
 use google_cloud_googleapis::spanner::v1::{
     commit_request, execute_batch_dml_request, result_set_stats, transaction_options,
@@ -12,12 +18,6 @@ use google_cloud_googleapis::spanner::v1::{
     ExecuteBatchDmlRequest, ExecuteSqlRequest, Mutation, ResultSetStats, RollbackRequest,
     TransactionOptions, TransactionSelector,
 };
-use crate::session::ManagedSession;
-use crate::statement::Statement;
-use crate::transaction::{CallOptions, QueryOptions, Transaction};
-use crate::value::Timestamp;
-use google_cloud_gax::retry::{RetrySetting, TryAs};
-use google_cloud_gax::status::{Code, Status};
 
 #[derive(Clone)]
 pub struct CommitOptions {
@@ -117,7 +117,8 @@ impl ReadWriteTransaction {
         session: ManagedSession,
         options: CallOptions,
     ) -> Result<ReadWriteTransaction, BeginError> {
-        return ReadWriteTransaction::begin_internal(ctx,
+        return ReadWriteTransaction::begin_internal(
+            ctx,
             session,
             transaction_options::Mode::ReadWrite(transaction_options::ReadWrite {}),
             options,
@@ -130,7 +131,8 @@ impl ReadWriteTransaction {
         session: ManagedSession,
         options: CallOptions,
     ) -> Result<ReadWriteTransaction, BeginError> {
-        return ReadWriteTransaction::begin_internal(ctx,
+        return ReadWriteTransaction::begin_internal(
+            ctx,
             session,
             transaction_options::Mode::PartitionedDml(transaction_options::PartitionedDml {}),
             options,
@@ -181,7 +183,9 @@ impl ReadWriteTransaction {
     }
 
     pub async fn update(&mut self, ctx: CancellationToken, stmt: Statement) -> Result<i64, Status> {
-        return self.update_with_option(ctx, stmt, QueryOptions::default()).await;
+        return self
+            .update_with_option(ctx, stmt, QueryOptions::default())
+            .await;
     }
 
     pub async fn update_with_option(
@@ -215,7 +219,11 @@ impl ReadWriteTransaction {
         Ok(extract_row_count(response.into_inner().stats))
     }
 
-    pub async fn batch_update(&mut self, ctx: CancellationToken, stmt: Vec<Statement>) -> Result<Vec<i64>, Status> {
+    pub async fn batch_update(
+        &mut self,
+        ctx: CancellationToken,
+        stmt: Vec<Statement>,
+    ) -> Result<Vec<i64>, Status> {
         return self
             .batch_update_with_option(ctx, stmt, QueryOptions::default())
             .await;
@@ -245,7 +253,7 @@ impl ReadWriteTransaction {
         let session = self.as_mut_session();
         let result = session
             .spanner_client
-            .execute_batch_dml(ctx,request, options.call_options.call_setting)
+            .execute_batch_dml(ctx, request, options.call_options.call_setting)
             .await;
         let response = session.invalidate_if_needed(result).await?;
         Ok(response
@@ -310,7 +318,11 @@ impl ReadWriteTransaction {
         };
     }
 
-    pub async fn commit(&mut self, ctx: CancellationToken, options: CommitOptions) -> Result<CommitResponse, Status> {
+    pub async fn commit(
+        &mut self,
+        ctx: CancellationToken,
+        options: CommitOptions,
+    ) -> Result<CommitResponse, Status> {
         let tx_id = self.tx_id.clone();
         let mutations = self.wb.to_vec();
         let session = self.as_mut_session();

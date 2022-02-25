@@ -14,8 +14,8 @@ use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, ReadOptions, Transaction};
 use crate::value::TimestampBound;
 use chrono::{DateTime, TimeZone, Utc};
-use tokio_util::sync::CancellationToken;
 use google_cloud_gax::status::Status;
+use tokio_util::sync::CancellationToken;
 
 /// ReadOnlyTransaction provides a snapshot transaction with guaranteed
 /// consistency across reads, but does not allow writes.  Read-only transactions

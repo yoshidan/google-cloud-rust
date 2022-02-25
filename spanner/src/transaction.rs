@@ -1,9 +1,9 @@
 use std::ops::DerefMut;
 use std::sync::atomic::AtomicI64;
 
+use google_cloud_gax::retry::RetrySetting;
 use prost_types::Struct;
 use tokio_util::sync::CancellationToken;
-use google_cloud_gax::retry::RetrySetting;
 
 use google_cloud_gax::status::Status;
 use google_cloud_googleapis::spanner::v1::request_options::Priority;
@@ -94,7 +94,11 @@ impl Transaction {
     /// retrieving the resulting rows.
     ///
     /// query returns only row data, without a query plan or execution statistics.
-    pub async fn query(&mut self, ctx: CancellationToken, statement: Statement) -> Result<RowIterator<'_>, Status> {
+    pub async fn query(
+        &mut self,
+        ctx: CancellationToken,
+        statement: Statement,
+    ) -> Result<RowIterator<'_>, Status> {
         return self
             .query_with_option(ctx, statement, QueryOptions::default())
             .await;
@@ -127,7 +131,8 @@ impl Transaction {
         };
         let session = self.session.as_mut().unwrap().deref_mut();
         return RowIterator::new(
-            ctx, session,
+            ctx,
+            session,
             Box::new(StatementReader {
                 request,
                 call_setting: options.call_options.call_setting,
