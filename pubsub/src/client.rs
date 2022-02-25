@@ -1,16 +1,16 @@
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
-use google_cloud_googleapis::Status;
 use tokio_util::sync::CancellationToken;
 
-use crate::apiv1::RetrySetting;
 use crate::subscription::{Subscription, SubscriptionConfig};
 use crate::topic::{Topic, TopicConfig};
+use google_cloud_gax::conn::Error;
+use google_cloud_gax::retry::RetrySetting;
+use google_cloud_gax::status::Status;
 use google_cloud_googleapis::pubsub::v1::{
     DetachSubscriptionRequest, ListSubscriptionsRequest, ListTopicsRequest,
 };
-use google_cloud_grpc::conn::Error;
 
 pub struct ClientConfig {
     pub pool_size: usize,

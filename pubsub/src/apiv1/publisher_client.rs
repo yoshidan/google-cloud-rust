@@ -1,15 +1,16 @@
 use std::sync::Arc;
 
 use crate::apiv1::conn_pool::ConnectionManager;
-use crate::apiv1::{create_request, invoke, RetrySetting};
+use google_cloud_gax::conn::Channel;
+use google_cloud_gax::create_request;
+use google_cloud_gax::retry::{invoke, RetrySetting};
+use google_cloud_gax::status::{Code, Status};
 use google_cloud_googleapis::pubsub::v1::publisher_client::PublisherClient as InternalPublisherClient;
 use google_cloud_googleapis::pubsub::v1::{
     DeleteTopicRequest, DetachSubscriptionRequest, DetachSubscriptionResponse, GetTopicRequest,
     ListTopicSnapshotsRequest, ListTopicSubscriptionsRequest, ListTopicsRequest, PublishRequest,
     PublishResponse, Topic, UpdateTopicRequest,
 };
-use google_cloud_googleapis::{Code, Status};
-use google_cloud_grpc::conn::Channel;
 use tokio_util::sync::CancellationToken;
 use tonic::Response;
 

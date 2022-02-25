@@ -1,12 +1,9 @@
-use google_cloud_googleapis::{Code, Status};
-
-use google_cloud_gax::invoke::{invoke_reuse, TryAs};
+use google_cloud_gax::retry::{invoke_fn, TryAs};
 use google_cloud_googleapis::spanner::v1::{
     commit_request, transaction_options, Mutation, TransactionOptions,
 };
 
 use crate::apiv1::conn_pool::ConnectionManager;
-use crate::retry::{new_default_tx_retry, new_tx_retry_with_codes};
 use crate::session::{ManagedSession, SessionConfig, SessionError, SessionManager};
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions};
@@ -14,9 +11,12 @@ use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
 use crate::value::{Timestamp, TimestampBound};
 
+use crate::retry::TransactionRetrySetting;
+use google_cloud_gax::status::{Code, Status};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+use tokio_util::sync::CancellationToken;
 
 #[derive(Clone)]
 pub struct PartitionedUpdateOption {
@@ -100,7 +100,7 @@ pub enum InitializationError {
     FailedToCreateSessionPool(#[from] Status),
 
     #[error(transparent)]
-    FailedToCreateChannelPool(#[from] google_cloud_grpc::conn::Error),
+    FailedToCreateChannelPool(#[from] google_cloud_gax::conn::Error),
 
     #[error("invalid config: {0}")]
     InvalidConfig(String),
@@ -225,9 +225,12 @@ impl Client {
 
     /// read_only_transaction returns a ReadOnlyTransaction that can be used for
     /// multiple reads from the database.
-    pub async fn read_only_transaction(&self) -> Result<ReadOnlyTransaction, TxError> {
+    pub async fn read_only_transaction(
+        &self,
+        ctx: CancellationToken,
+    ) -> Result<ReadOnlyTransaction, TxError> {
         return self
-            .read_only_transaction_with_option(ReadOnlyTransactionOption::default())
+            .read_only_transaction_with_option(ctx, ReadOnlyTransactionOption::default())
             .await;
     }
 
@@ -235,11 +238,12 @@ impl Client {
     /// multiple reads from the database.
     pub async fn read_only_transaction_with_option(
         &self,
+        ctx: CancellationToken,
         options: ReadOnlyTransactionOption,
     ) -> Result<ReadOnlyTransaction, TxError> {
         let session = self.get_session().await?;
         let result =
-            ReadOnlyTransaction::begin(session, options.timestamp_bound, options.call_options)
+            ReadOnlyTransaction::begin(ctx, session, options.timestamp_bound, options.call_options)
                 .await?;
         Ok(result)
     }
@@ -248,9 +252,12 @@ impl Client {
     /// for partitioned reads or queries from a snapshot of the database. This is
     /// useful in batch processing pipelines where one wants to divide the work of
     /// reading from the database across multiple machines.
-    pub async fn batch_read_only_transaction(&self) -> Result<BatchReadOnlyTransaction, TxError> {
+    pub async fn batch_read_only_transaction(
+        &self,
+        ctx: CancellationToken,
+    ) -> Result<BatchReadOnlyTransaction, TxError> {
         return self
-            .batch_read_only_transaction_with_option(ReadOnlyTransactionOption::default())
+            .batch_read_only_transaction_with_option(ctx, ReadOnlyTransactionOption::default())
             .await;
     }
 
@@ -260,12 +267,17 @@ impl Client {
     /// reading from the database across multiple machines.
     pub async fn batch_read_only_transaction_with_option(
         &self,
+        ctx: CancellationToken,
         options: ReadOnlyTransactionOption,
     ) -> Result<BatchReadOnlyTransaction, TxError> {
         let session = self.get_session().await?;
-        let result =
-            BatchReadOnlyTransaction::begin(session, options.timestamp_bound, options.call_options)
-                .await?;
+        let result = BatchReadOnlyTransaction::begin(
+            ctx,
+            session,
+            options.timestamp_bound,
+            options.call_options,
+        )
+        .await?;
         Ok(result)
     }
 
@@ -277,9 +289,13 @@ impl Client {
     ///
     /// PartitionedUpdate returns an estimated count of the number of rows affected.
     /// The actual number of affected rows may be greater than the estimate.
-    pub async fn partitioned_update(&self, stmt: Statement) -> Result<i64, TxError> {
+    pub async fn partitioned_update(
+        &self,
+        ctx: CancellationToken,
+        stmt: Statement,
+    ) -> Result<i64, TxError> {
         return self
-            .partitioned_update_with_option(stmt, PartitionedUpdateOption::default())
+            .partitioned_update_with_option(ctx, stmt, PartitionedUpdateOption::default())
             .await;
     }
 
@@ -293,16 +309,20 @@ impl Client {
     /// The actual number of affected rows may be greater than the estimate.
     pub async fn partitioned_update_with_option(
         &self,
+        ctx: CancellationToken,
         stmt: Statement,
         options: PartitionedUpdateOption,
     ) -> Result<i64, TxError> {
-        let mut ro = new_tx_retry_with_codes(vec![Code::Aborted, Code::Internal]);
+        let ro = TransactionRetrySetting::new(vec![Code::Aborted, Code::Internal]);
         let session = Some(self.get_session().await?);
 
         // reuse session
-        return invoke_reuse(
+        return invoke_fn(
+            ctx.clone(),
+            Some(ro),
             |session| async {
                 let mut tx = match ReadWriteTransaction::begin_partitioned_dml(
+                    ctx.clone(),
                     session.unwrap(),
                     options.begin_options.clone(),
                 )
@@ -315,12 +335,11 @@ impl Client {
                     Some(o) => o,
                     None => QueryOptions::default(),
                 };
-                tx.update_with_option(stmt.clone(), qo)
+                tx.update_with_option(ctx.clone(), stmt.clone(), qo)
                     .await
                     .map_err(|e| (TxError::GRPC(e), tx.take_session()))
             },
             session,
-            &mut ro,
         )
         .await;
     }
@@ -336,10 +355,11 @@ impl Client {
     /// writing.
     pub async fn apply_at_least_once(
         &self,
+        ctx: CancellationToken,
         ms: Vec<Mutation>,
     ) -> Result<Option<Timestamp>, TxError> {
         return self
-            .apply_at_least_once_with_option(ms, CommitOptions::default())
+            .apply_at_least_once_with_option(ctx, ms, CommitOptions::default())
             .await;
     }
 
@@ -354,20 +374,23 @@ impl Client {
     /// writing.
     pub async fn apply_at_least_once_with_option(
         &self,
+        ctx: CancellationToken,
         ms: Vec<Mutation>,
         options: CommitOptions,
     ) -> Result<Option<Timestamp>, TxError> {
-        let mut ro = new_default_tx_retry();
+        let ro = TransactionRetrySetting::default();
         let mut session = self.get_session().await?;
 
-        return invoke_reuse(
+        return invoke_fn(
+            ctx.clone(),
+            Some(ro),
             |session| async {
                 let tx = commit_request::Transaction::SingleUseTransaction(TransactionOptions {
                     mode: Some(transaction_options::Mode::ReadWrite(
                         transaction_options::ReadWrite {},
                     )),
                 });
-                match commit(session, ms.clone(), tx, options.clone()).await {
+                match commit(ctx.clone(), session, ms.clone(), tx, options.clone()).await {
                     Ok(s) => Ok(match s.commit_timestamp {
                         Some(s) => Some(s.into()),
                         None => None,
@@ -376,26 +399,31 @@ impl Client {
                 }
             },
             &mut session,
-            &mut ro,
         )
         .await;
     }
 
     /// Apply applies a list of mutations atomically to the database.
-    pub async fn apply(&self, ms: Vec<Mutation>) -> Result<Option<Timestamp>, TxError> {
+    pub async fn apply(
+        &self,
+        ctx: CancellationToken,
+        ms: Vec<Mutation>,
+    ) -> Result<Option<Timestamp>, TxError> {
         return self
-            .apply_with_option(ms, ReadWriteTransactionOption::default())
+            .apply_with_option(ctx, ms, ReadWriteTransactionOption::default())
             .await;
     }
 
     pub async fn apply_with_option(
         &self,
+        ctx: CancellationToken,
         ms: Vec<Mutation>,
         options: ReadWriteTransactionOption,
     ) -> Result<Option<Timestamp>, TxError> {
         let result: Result<(Option<Timestamp>, ()), TxError> = self
             .read_write_transaction_sync_with_option(
-                |tx| {
+                ctx,
+                |_ctx, tx| {
                     tx.buffer_write(ms.to_vec());
                     Ok(())
                 },
@@ -425,16 +453,18 @@ impl Client {
     /// more details.
     pub async fn read_write_transaction<'a, T, E, F>(
         &self,
+        ctx: CancellationToken,
         f: F,
     ) -> Result<(Option<Timestamp>, T), E>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
         F: for<'tx> Fn(
+            CancellationToken,
             &'tx mut ReadWriteTransaction,
         ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'tx>>,
     {
         return self
-            .read_write_transaction_with_option(f, ReadWriteTransactionOption::default())
+            .read_write_transaction_with_option(ctx, f, ReadWriteTransactionOption::default())
             .await;
     }
 
@@ -458,31 +488,35 @@ impl Client {
     /// more details.
     pub async fn read_write_transaction_with_option<'a, T, E, F>(
         &'a self,
+        ctx: CancellationToken,
         f: F,
         options: ReadWriteTransactionOption,
     ) -> Result<(Option<Timestamp>, T), E>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
         F: for<'tx> Fn(
+            CancellationToken,
             &'tx mut ReadWriteTransaction,
         ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'tx>>,
     {
         let (bo, co) = Client::split_read_write_transaction_option(options);
 
-        let mut ro = new_default_tx_retry();
+        let ro = TransactionRetrySetting::default();
         let session = Some(self.get_session().await?);
 
         // must reuse session
-        return invoke_reuse(
+        return invoke_fn(
+            ctx.clone(),
+            Some(ro),
             |session| async {
                 let mut tx = self
-                    .create_read_write_transaction::<E>(session, bo.clone())
+                    .create_read_write_transaction::<E>(ctx.clone(), session, bo.clone())
                     .await?;
-                let result = f(&mut tx).await;
-                tx.finish(result, Some(co.clone())).await
+                let result = f(ctx.child_token(), &mut tx).await;
+                tx.finish(CancellationToken::new(), result, Some(co.clone()))
+                    .await
             },
             session,
-            &mut ro,
         )
         .await;
     }
@@ -494,7 +528,8 @@ impl Client {
 
     async fn read_write_transaction_sync_with_option<T, E>(
         &self,
-        f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,
+        ctx: CancellationToken,
+        f: impl Fn(CancellationToken, &mut ReadWriteTransaction) -> Result<T, E>,
         options: ReadWriteTransactionOption,
     ) -> Result<(Option<Timestamp>, T), E>
     where
@@ -502,33 +537,36 @@ impl Client {
     {
         let (bo, co) = Client::split_read_write_transaction_option(options);
 
-        let mut ro = new_default_tx_retry();
+        let ro = TransactionRetrySetting::default();
         let session = Some(self.get_session().await?);
 
         // reuse session
-        return invoke_reuse(
+        return invoke_fn(
+            ctx.clone(),
+            Some(ro),
             |session| async {
                 let mut tx = self
-                    .create_read_write_transaction::<E>(session, bo.clone())
+                    .create_read_write_transaction::<E>(ctx.clone(), session, bo.clone())
                     .await?;
-                let result = f(&mut tx);
-                tx.finish(result, Some(co.clone())).await
+                let result = f(ctx.child_token(), &mut tx);
+                tx.finish(CancellationToken::new(), result, Some(co.clone()))
+                    .await
             },
             session,
-            &mut ro,
         )
         .await;
     }
 
     async fn create_read_write_transaction<E>(
         &self,
+        ctx: CancellationToken,
         session: Option<ManagedSession>,
         bo: CallOptions,
     ) -> Result<ReadWriteTransaction, (E, Option<ManagedSession>)>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
     {
-        return ReadWriteTransaction::begin(session.unwrap(), bo)
+        return ReadWriteTransaction::begin(ctx, session.unwrap(), bo)
             .await
             .map_err(|e| (E::from(e.status), Some(e.session)));
     }

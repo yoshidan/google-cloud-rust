@@ -11,11 +11,11 @@
 //!
 //! ```
 //! use google_cloud_pubsub::client::Client;
-//! use google_cloud_googleapis::Status;
 //! use tokio_util::sync::CancellationToken;
 //! use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 //! use google_cloud_pubsub::topic::TopicConfig;
 //! use google_cloud_pubsub::subscription::SubscriptionConfig;
+//! use google_cloud_gax::status::Status;
 //! use tokio::task::JoinHandle;
 //!
 //! #[tokio::main]
@@ -69,10 +69,10 @@
 //!
 //! ```
 //! use google_cloud_pubsub::client::Client;
-//! use google_cloud_googleapis::Status;
 //! use tokio_util::sync::CancellationToken;
 //! use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 //! use google_cloud_pubsub::subscription::SubscriptionConfig;
+//! use google_cloud_gax::status::Status;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Status> {

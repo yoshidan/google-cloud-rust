@@ -12,10 +12,11 @@ mod tests {
     };
 
     use serial_test::serial;
+    use tokio_util::sync::CancellationToken;
 
     async fn create_database() -> Database {
         std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-        let mut client = DatabaseAdminClient::default().await.unwrap();
+        let client = DatabaseAdminClient::default().await.unwrap();
         let database_id = format!("test{}ut", Utc::now().timestamp_nanos());
         let request = CreateDatabaseRequest {
             parent: "projects/local-project/instances/test-instance".to_string(),
@@ -24,8 +25,11 @@ mod tests {
             encryption_config: None,
         };
 
-        let creation_result = match client.create_database(request, None).await {
-            Ok(mut res) => res.wait(None).await,
+        let creation_result = match client
+            .create_database(CancellationToken::new(), request, None)
+            .await
+        {
+            Ok(mut res) => res.wait(CancellationToken::new(), None).await,
             Err(err) => panic!("err: {:?}", err),
         };
         match creation_result {
@@ -45,12 +49,15 @@ mod tests {
     #[serial]
     async fn test_get_database() {
         std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-        let mut client = DatabaseAdminClient::default().await.unwrap();
+        let client = DatabaseAdminClient::default().await.unwrap();
         let name =
             format!("projects/local-project/instances/test-instance/databases/local-database");
         let request = GetDatabaseRequest { name: name.clone() };
 
-        match client.get_database(request, None).await {
+        match client
+            .get_database(CancellationToken::new(), request, None)
+            .await
+        {
             Ok(res) => {
                 let db = res.into_inner();
                 assert_eq!(db.name, name);
@@ -63,11 +70,14 @@ mod tests {
     #[serial]
     async fn test_delete_database() {
         let database = create_database().await;
-        let mut client = DatabaseAdminClient::default().await.unwrap();
+        let client = DatabaseAdminClient::default().await.unwrap();
         let request = DropDatabaseRequest {
             database: database.name.to_string(),
         };
-        match client.drop_database(request, None).await {
+        match client
+            .drop_database(CancellationToken::new(), request, None)
+            .await
+        {
             Ok(_res) => assert!(true),
             Err(err) => panic!("err: {:?}", err),
         };
@@ -77,14 +87,17 @@ mod tests {
     #[serial]
     async fn test_list_databases() {
         std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-        let mut client = DatabaseAdminClient::default().await.unwrap();
+        let client = DatabaseAdminClient::default().await.unwrap();
         let request = ListDatabasesRequest {
             parent: "projects/local-project/instances/test-instance".to_string(),
             page_size: 1,
             page_token: "".to_string(),
         };
 
-        match client.list_databases(request, None).await {
+        match client
+            .list_databases(CancellationToken::new(), request, None)
+            .await
+        {
             Ok(res) => {
                 println!("size = {}", res.len());
                 assert!(res.len() > 0);
@@ -98,12 +111,15 @@ mod tests {
     async fn test_get_database_ddl() {
         let database = create_database().await;
         std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-        let mut client = DatabaseAdminClient::default().await.unwrap();
+        let client = DatabaseAdminClient::default().await.unwrap();
         let request = GetDatabaseDdlRequest {
             database: database.name.to_string(),
         };
 
-        match client.get_database_ddl(request, None).await {
+        match client
+            .get_database_ddl(CancellationToken::new(), request, None)
+            .await
+        {
             Ok(res) => {
                 assert_eq!(res.into_inner().statements.len(), 1);
             }
@@ -116,15 +132,18 @@ mod tests {
     async fn test_update_database_ddl() {
         let database = create_database().await;
         std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-        let mut client = DatabaseAdminClient::default().await.unwrap();
+        let client = DatabaseAdminClient::default().await.unwrap();
         let request = UpdateDatabaseDdlRequest {
             database: database.name.to_string(),
             statements: vec!["CREATE TABLE Tbl1 (ID INT64) PRIMARY KEY(ID)".to_string()],
             operation_id: "".to_string(),
         };
 
-        let update_result = match client.update_database_ddl(request, None).await {
-            Ok(mut res) => res.wait(None).await,
+        let update_result = match client
+            .update_database_ddl(CancellationToken::new(), request, None)
+            .await
+        {
+            Ok(mut res) => res.wait(CancellationToken::new(), None).await,
             Err(err) => panic!("err: {:?}", err),
         };
         match update_result {

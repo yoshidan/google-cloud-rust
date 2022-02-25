@@ -1,5 +1,5 @@
-use google_cloud_grpc::conn::Channel;
-use google_cloud_grpc::conn::{ConnectionManager as GRPCConnectionManager, Error};
+use google_cloud_gax::conn::Channel;
+use google_cloud_gax::conn::{ConnectionManager as GRPCConnectionManager, Error};
 
 pub const AUDIENCE: &str = "https://spanner.googleapis.com/";
 pub const PUBSUB: &str = "pubsub.googleapis.com";

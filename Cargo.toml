@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "foundation/grpc",
     "foundation/metadata",
     "foundation/gax",
     "foundation/longrunning",
