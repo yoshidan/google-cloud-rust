@@ -1,6 +1,8 @@
 use std::time::Duration;
 
 use crate::apiv1::RetrySetting;
+use google_cloud_gax::retry::RetrySetting;
+use google_cloud_gax::status::{Code, Status};
 use google_cloud_googleapis::pubsub::v1::{
     AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage,
 };

@@ -1,13 +1,13 @@
-use crate::autogen::operations_client::OperationsClient;
-use google_cloud_gax::call_option::{BackoffRetrySettings, BackoffRetryer};
-use google_cloud_gax::retry::invoke_reuse;
+use crate::autogen::operations_client::{default_retry_setting, OperationsClient};
+use google_cloud_gax::retry::invoke;
+use google_cloud_gax::status::{Code, Status};
 use google_cloud_googleapis::longrunning::{
     operation, CancelOperationRequest, DeleteOperationRequest, GetOperationRequest,
     Operation as InternalOperation,
 };
 use google_cloud_googleapis::{Code, Status};
 use std::marker::PhantomData;
-use google_cloud_googleapis::rpc::Status;
+use tokio_util::sync::CancellationToken;
 
 pub struct Operation<T: prost::Message + Default> {
     inner: InternalOperation,
@@ -44,11 +44,12 @@ impl<T: prost::Message + Default> Operation<T> {
     /// If Poll succeeds and the operation has completed successfully,
     /// op.Done will return true; if resp != nil, the response of the operation
     /// is stored in resp.
-    pub async fn poll(&mut self) -> Result<Option<T>, Status> {
+    pub async fn poll(&mut self, ctx: CancellationToken) -> Result<Option<T>, Status> {
         if !self.done() {
             let operation = self
                 .client
                 .get_operation(
+                    ctx,
                     GetOperationRequest {
                         name: self.name().to_string(),
                     },
@@ -77,36 +78,29 @@ impl<T: prost::Message + Default> Operation<T> {
     /// wait implements Wait, taking exponentialBackoff and sleeper arguments for testing.
     pub async fn wait(
         &mut self,
-        option: Option<BackoffRetrySettings>,
+        ctx: CancellationToken,
+        option: Option<RetrySettings>,
     ) -> Result<Option<T>, Status> {
         let mut settings = match option {
             Some(s) => s,
-            None => BackoffRetrySettings {
-                retryer: BackoffRetryer {
-                    backoff: Default::default(),
-                    codes: vec![Code::DeadlineExceeded],
-                },
-            },
+            None => {
+                let mut setting = default_retry_setting();
+                setting.codes = vec![Code::DeadlineExceeded];
+                setting
+            }
         };
-        return invoke_reuse(
-            |me| async {
-                let poll_result: Option<T> = match me.poll().await {
-                    Ok(s) => s,
-                    Err(e) => return Err((e, me)),
-                };
-                if me.done() {
-                    Ok(poll_result)
-                } else {
-                    Err((
-                        tonic::Status::new(tonic::Code::DeadlineExceeded, "wait timeout").into(),
-                        me,
-                    ))
-                }
-            },
-            self,
-            &mut settings,
-        )
-        .await;
+        let action = || async {
+            let poll_result: Option<T> = match self.poll(CancellationToken::new()).await {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            };
+            if me.done() {
+                Ok(poll_result)
+            } else {
+                Err(tonic::Status::new(tonic::Code::DeadlineExceeded, "wait timeout").into())
+            }
+        };
+        invoke(ctx, Some(settings), action).await
     }
 
     /// Cancel starts asynchronous cancellation on a long-running operation. The server
@@ -117,9 +111,10 @@ impl<T: prost::Message + Default> Operation<T> {
     /// operation completed despite cancellation. On successful cancellation,
     /// the operation is not deleted; instead, op.Poll returns an error
     /// with code Canceled.
-    pub async fn cancel(&mut self) -> Result<(), Status> {
+    pub async fn cancel(&mut self, ctx: CancellationToken) -> Result<(), Status> {
         self.client
             .cancel_operation(
+                ctx,
                 CancelOperationRequest {
                     name: self.name().to_string(),
                 },
@@ -132,9 +127,10 @@ impl<T: prost::Message + Default> Operation<T> {
     /// Delete deletes a long-running operation. This method indicates that the client is
     /// no longer interested in the operation result. It does not cancel the
     /// operation. If the server doesn't support this method, status.Code(err) == codes.Unimplemented.
-    pub async fn delete(&mut self) -> Result<(), Status> {
+    pub async fn delete(&mut self, ctx: CancellationToken) -> Result<(), Status> {
         self.client
             .delete_operation(
+                ctx,
                 DeleteOperationRequest {
                     name: self.name().to_string(),
                 },

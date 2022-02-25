@@ -1,11 +1,11 @@
+use crate::status::{Code, Status};
 use std::iter::Take;
 use std::time::Duration;
 use tokio::select;
-use tokio_retry::{Action, Condition};
 use tokio_retry::strategy::ExponentialBackoff;
+use tokio_retry::{Action, Condition};
 use tokio_util::sync::CancellationToken;
 use tonic::{IntoRequest, Request};
-use crate::status::{Code, Status};
 
 #[derive(Clone)]
 pub struct RetrySetting {
@@ -48,13 +48,13 @@ impl Default for RetrySetting {
     }
 }
 
-async fn invoke<A, R>(
+pub async fn invoke<A, R>(
     ctx: CancellationToken,
     opt: Option<RetrySetting>,
     action: A,
 ) -> Result<R, Status>
-    where
-        A: Action<Item = R, Error = Status>,
+where
+    A: Action<Item = R, Error = Status>,
 {
     let setting = opt.unwrap_or_default();
     select! {
@@ -62,4 +62,3 @@ async fn invoke<A, R>(
         v = RetryIf::spawn(setting.strategy(), action, setting.condition()) => v
     }
 }
-

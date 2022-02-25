@@ -1,5 +1,8 @@
 use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
-use google_cloud_gax::retry::invoke_reuse;
+use google_cloud_gax::conn::{Channel, Error};
+use google_cloud_gax::create_request;
+use google_cloud_gax::retry::{invoke, invoke_reuse, RetrySetting};
+use google_cloud_gax::status::{Code, Status};
 use google_cloud_gax::util::create_request;
 use google_cloud_googleapis::longrunning::operations_client::OperationsClient as InternalOperationsClient;
 use google_cloud_googleapis::longrunning::{
@@ -7,13 +10,12 @@ use google_cloud_googleapis::longrunning::{
     WaitOperationRequest,
 };
 use google_cloud_googleapis::{Code, Status};
-use google_cloud_gax::conn::{Channel, Error};
 use std::time::Duration;
+use tokio_util::sync::CancellationToken;
 use tonic::Response;
-use google_cloud_gax::status::Code;
 
-fn default_retry_setting() -> Self {
-    Self {
+pub fn default_retry_setting() -> RetrySetting {
+    RetrySetting {
         from_millis: 50,
         max_delay: Some(Duration::from_secs(10)),
         factor: 1u64,
@@ -46,23 +48,20 @@ impl OperationsClient {
     /// method to poll the operation result at intervals as recommended by the API service.
     pub async fn get_operation(
         &mut self,
+        ctx: CancellationToken,
         req: GetOperationRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<Operation>, Status> {
-        let mut setting = Self::get_call_setting(opt);
+        let setting = opt.unwrap_or(default_retry_setting());
         let name = &req.name;
-        return invoke_reuse(
-            |client| async {
-                let request = create_request(format!("name={}", name), req.clone());
-                client
-                    .get_operation(request)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-            &mut setting,
-        )
-        .await;
+        let action = || async {
+            let request = create_request(format!("name={}", name), req.clone());
+            self.inner
+                .get_operation(request)
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(ctx, Some(setting), action).await
     }
 
     /// DeleteOperation deletes a long-running operation. This method indicates that the client is
@@ -71,23 +70,20 @@ impl OperationsClient {
     /// google.rpc.Code.UNIMPLEMENTED.
     pub async fn delete_operation(
         &mut self,
+        ctx: CancellationToken,
         req: DeleteOperationRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let mut setting = Self::get_call_setting(opt);
+        let setting = opt.unwrap_or(default_retry_setting());
         let name = &req.name;
-        return invoke_reuse(
-            |client| async {
-                let request = create_request(format!("name={}", name), req.clone());
-                client
-                    .delete_operation(request)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-            &mut setting,
-        )
-        .await;
+        let action = || async {
+            let request = create_request(format!("name={}", name), req.clone());
+            self.inner
+                .delete_operation(request)
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(ctx, Some(setting), action).await
     }
 
     /// CancelOperation starts asynchronous cancellation on a long-running operation.  The server
@@ -102,23 +98,20 @@ impl OperationsClient {
     /// corresponding to Code.CANCELLED.
     pub async fn cancel_operation(
         &mut self,
+        ctx: CancellationToken,
         req: CancelOperationRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let mut setting = Self::get_call_setting(opt);
+        let setting = opt.unwrap_or(default_retry_setting());
         let name = &req.name;
-        return invoke_reuse(
-            |client| async {
-                let request = create_request(format!("name={}", name), req.clone());
-                client
-                    .cancel_operation(request)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-            &mut setting,
-        )
-        .await;
+        let action = || async {
+            let request = create_request(format!("name={}", name), req.clone());
+            self.inner
+                .cancel_operation(request)
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(ctx, Some(setting), action).await
     }
 
     /// WaitOperation waits until the specified long-running operation is done or reaches at most
@@ -133,20 +126,16 @@ impl OperationsClient {
     pub async fn wait_operation(
         &mut self,
         req: WaitOperationRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<Operation>, Status> {
-        let mut setting = Self::get_call_setting(opt);
-        return invoke_reuse(
-            |client| async {
-                let request = create_request("".to_string(), req.clone());
-                client
-                    .wait_operation(request)
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-            &mut setting,
-        )
-        .await;
+        let setting = opt.unwrap_or(default_retry_setting());
+        let action = || async {
+            let request = create_request("".to_string(), req.clone());
+            self.inner
+                .wait_operation(request)
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(ctx, Some(setting), action).await
     }
 }

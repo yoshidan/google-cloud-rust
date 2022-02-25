@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::future::Future;
 
+use google_cloud_gax::retry::RetrySetting;
+use google_cloud_gax::status::{Code, Status};
 use prost_types::FieldMask;
 use std::time::Duration;
 use tokio::select;

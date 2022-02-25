@@ -9,6 +9,8 @@ use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 
+use google_cloud_gax::retry::RetrySetting;
+use google_cloud_gax::status::Status;
 use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
 use google_cloud_googleapis::Status;
 use tokio_util::sync::CancellationToken;

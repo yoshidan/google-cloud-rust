@@ -1,14 +1,14 @@
+use crate::retry::RetrySetting;
+use crate::status::Status;
 use tokio::select;
 use tokio_retry::Action;
 use tokio_util::sync::CancellationToken;
-use tonic::Request;
 use tonic::IntoRequest;
-use crate::retry::RetrySetting;
-use crate::status::Status;
+use tonic::Request;
 
-pub mod status;
-pub mod retry;
 pub mod conn;
+pub mod retry;
+pub mod status;
 
 pub fn create_request<T>(param_string: String, into_request: impl IntoRequest<T>) -> Request<T> {
     let mut request = into_request.into_request();
@@ -18,4 +18,3 @@ pub fn create_request<T>(param_string: String, into_request: impl IntoRequest<T>
     }
     request
 }
-
