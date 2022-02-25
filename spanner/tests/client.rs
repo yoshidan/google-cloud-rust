@@ -10,6 +10,7 @@ use google_cloud_spanner::key::Key;
 
 use google_cloud_spanner::value::Timestamp;
 use serial_test::serial;
+use tokio_util::sync::CancellationToken;
 
 const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
@@ -34,15 +35,15 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
 
     let client = Client::new(DATABASE).await.context("error")?;
     let result: Result<(Option<Timestamp>, i64), RunInTxError> = client
-        .read_write_transaction(
-            |tx| {
+        .read_write_transaction(CancellationToken::new(),
+            |ctx, tx| {
                 let user_id= user_id.to_string();
                 Box::pin(async move {
                     let ms = vec![create_user_mutation("user_client_1x", &now), create_user_mutation("user_client_2x", &now)];
                     tx.buffer_write(ms);
                     let mut stmt = Statement::new("Insert Into UserItem (UserId,ItemId,Quantity,UpdatedAt) VALUES(@UserId,1,1,PENDING_COMMIT_TIMESTAMP())");
                     stmt.add_param("UserId", &user_id);
-                    let updated = tx.update(stmt).await?;
+                    let updated = tx.update(ctx, stmt).await?;
                     if updated == 0 {
                         Err(anyhow::Error::msg("error").into())
                     }else {
@@ -55,21 +56,38 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
     let value = result.unwrap().0.unwrap();
     let ts = Utc.timestamp(value.seconds, value.nanos as u32);
 
-    let mut ro = client.read_only_transaction().await?;
+    let mut ro = client
+        .read_only_transaction(CancellationToken::new())
+        .await?;
     let record = ro
-        .read("User", &user_columns(), Key::key(&"user_client_1x"))
+        .read(
+            CancellationToken::new(),
+            "User",
+            &user_columns(),
+            Key::key(&"user_client_1x"),
+        )
         .await?;
     let row = all_rows(record).await.pop().unwrap();
     assert_user_row(&row, "user_client_1x", &now, &ts);
 
     let record = ro
-        .read("User", &user_columns(), Key::key(&"user_client_2x"))
+        .read(
+            CancellationToken::new(),
+            "User",
+            &user_columns(),
+            Key::key(&"user_client_2x"),
+        )
         .await?;
     let row = all_rows(record).await.pop().unwrap();
     assert_user_row(&row, "user_client_2x", &now, &ts);
 
     let record = ro
-        .read("UserItem", &["UpdatedAt"], Key::composite(&[&user_id, &1]))
+        .read(
+            CancellationToken::new(),
+            "UserItem",
+            &["UpdatedAt"],
+            Key::composite(&[&user_id, &1]),
+        )
         .await?;
     let row = all_rows(record).await.pop().unwrap();
     let cts = row.column_by_name::<DateTime<Utc>>("UpdatedAt").unwrap();
@@ -88,12 +106,25 @@ async fn test_apply() -> Result<(), anyhow::Error> {
         .iter()
         .map(|id| create_user_mutation(id, &now))
         .collect();
-    let value = client.apply(ms).await.unwrap().unwrap();
+    let value = client
+        .apply(CancellationToken::new(), ms)
+        .await
+        .unwrap()
+        .unwrap();
     let ts = Utc.timestamp(value.seconds, value.nanos as u32);
 
-    let mut ro = client.read_only_transaction().await?;
+    let mut ro = client
+        .read_only_transaction(CancellationToken::new())
+        .await?;
     for x in users {
-        let record = ro.read("User", &user_columns(), Key::key(&x)).await?;
+        let record = ro
+            .read(
+                CancellationToken::new(),
+                "User",
+                &user_columns(),
+                Key::key(&x),
+            )
+            .await?;
         let row = all_rows(record).await.pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
     }
@@ -111,12 +142,25 @@ async fn test_apply_at_least_once() -> Result<(), anyhow::Error> {
         .iter()
         .map(|id| create_user_mutation(id, &now))
         .collect();
-    let value = client.apply_at_least_once(ms).await.unwrap().unwrap();
+    let value = client
+        .apply_at_least_once(CancellationToken::new(), ms)
+        .await
+        .unwrap()
+        .unwrap();
     let ts = Utc.timestamp(value.seconds, value.nanos as u32);
 
-    let mut ro = client.read_only_transaction().await?;
+    let mut ro = client
+        .read_only_transaction(CancellationToken::new())
+        .await?;
     for x in users {
-        let record = ro.read("User", &user_columns(), Key::key(&x)).await?;
+        let record = ro
+            .read(
+                CancellationToken::new(),
+                "User",
+                &user_columns(),
+                Key::key(&x),
+            )
+            .await?;
         let row = all_rows(record).await.pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
     }
@@ -136,11 +180,19 @@ async fn test_partitioned_update() -> Result<(), anyhow::Error> {
     let client = Client::new(DATABASE).await.context("error")?;
     let stmt =
         Statement::new("UPDATE User SET NullableString = 'aaa' WHERE NullableString IS NOT NULL");
-    client.partitioned_update(stmt).await.unwrap();
+    client
+        .partitioned_update(CancellationToken::new(), stmt)
+        .await
+        .unwrap();
 
     let mut single = client.single().await.unwrap();
     let rows = single
-        .read("User", &["NullableString"], Key::key(&user_id))
+        .read(
+            CancellationToken::new(),
+            "User",
+            &["NullableString"],
+            Key::key(&user_id),
+        )
         .await
         .unwrap();
     let row = all_rows(rows).await.pop().unwrap();
@@ -162,7 +214,10 @@ async fn test_batch_read_only_transaction() -> Result<(), anyhow::Error> {
     replace_test_data(&mut session, many).await.unwrap();
 
     let client = Client::new(DATABASE).await.context("error")?;
-    let mut tx = client.batch_read_only_transaction().await.unwrap();
+    let mut tx = client
+        .batch_read_only_transaction(CancellationToken::new())
+        .await
+        .unwrap();
 
     let stmt = Statement::new(format!(
         "SELECT * FROM User p WHERE p.UserId LIKE 'user_partition_{}_%' ",
