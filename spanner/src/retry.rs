@@ -92,12 +92,9 @@ mod tests {
     fn test_transaction_condition() {
         let status = tonic::Status::new(tonic::Code::Internal, "stream terminated by RST_STREAM");
         let default = TransactionRetrySetting::default();
-        let mut condition = default.condition();
-        assert!(!condition.should_retry(&TxError::GRPC(Status::from(status))));
+        assert!(!default.condition().should_retry(&TxError::GRPC(Status::from(status))));
 
         let status = tonic::Status::new(tonic::Code::Aborted, "default");
-        assert!(!default
-            .condition()
-            .should_retry(&RunInTxError::GRPC(Status::from(status))));
+        assert!(default.condition().should_retry(&RunInTxError::GRPC(Status::from(status))));
     }
 }

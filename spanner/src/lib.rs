@@ -9,33 +9,38 @@
 //!
 //! Create `Client` and call transaction API same as [Google Cloud Go](https://github.com/googleapis/google-cloud-go/tree/main/spanner).
 //!
-//! ```ignore
+//! ```
 //! use google_cloud_spanner::client::Client;
 //! use google_cloud_spanner::mutation::insert;
 //! use google_cloud_spanner::statement::Statement;
 //! use google_cloud_spanner::reader::AsyncIterator;
 //! use google_cloud_spanner::value::CommitTimestamp;
+//! use google_cloud_spanner::client::RunInTxError;
+//! use tokio_util::sync::CancellationToken;
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), Error> {
+//! async fn main() -> Result<(), anyhow::Error> {
 //!
-//!     const DATABASE: &str = "projects/your_project/instances/your-instance/databases/your-database";
+//!     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 //!
 //!     // Create spanner client
 //!     let mut client = Client::new(DATABASE).await?;
 //!
+//!     let ctx = CancellationToken::new();
+//!
 //!     // Insert
-//!     let mutation = insert("Table", &["col1", "col2", "col3"], &[&1, &"strvalue", &CommitTimestamp::new()]);
-//!     let commit_timestamp = client.apply(vec![mutation]).await?;
+//!     let mutation = insert("Guild", &["GuildId", "OwnerUserID", "UpdatedAt"], &[&"guildId", &"ownerId", &CommitTimestamp::new()]);
+//!     let commit_timestamp = client.apply(ctx.clone(), vec![mutation]).await?;
 //!
 //!     // Read with query
-//!     let mut stmt = Statement::new("SELECT col2 FROM Table WHERE col1 = @col1");
-//!     stmt.add_param("col1",&1);
+//!     let mut stmt = Statement::new("SELECT GuildId FROM Guild WHERE OwnerUserID = @OwnerUserID");
+//!     stmt.add_param("OwnerUserID",&"ownerId");
 //!     let mut tx = client.single().await?;
-//!     let mut iter = tx.query(stmt).await?;
-//!     while let some(row) = iter.next().await? {
-//!         let col2 = row.column_by_name::<String>("col2");
+//!     let mut iter = tx.query(ctx.clone(), stmt).await?;
+//!     while let Some(row) = iter.next(ctx.clone()).await? {
+//!         let guild_id = row.column_by_name::<String>("GuildId");
 //!     }
+//!     Ok(())
 //! }
 //! ```
 //!
