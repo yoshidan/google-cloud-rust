@@ -8,8 +8,8 @@ use google_cloud_gax::status::{Code, Status};
 use google_cloud_googleapis::pubsub::v1::publisher_client::PublisherClient as InternalPublisherClient;
 use google_cloud_googleapis::pubsub::v1::{
     DeleteTopicRequest, DetachSubscriptionRequest, DetachSubscriptionResponse, GetTopicRequest,
-    ListTopicSnapshotsRequest, ListTopicSubscriptionsRequest, ListTopicsRequest, PublishRequest,
-    PublishResponse, Topic, UpdateTopicRequest,
+    ListTopicSnapshotsRequest, ListTopicSubscriptionsRequest, ListTopicsRequest, PublishRequest, PublishResponse,
+    Topic, UpdateTopicRequest,
 };
 use tokio_util::sync::CancellationToken;
 use tonic::Response;
@@ -238,10 +238,7 @@ impl PublisherClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription={}", subscription), req.clone());
-            client
-                .detach_subscription(request)
-                .await
-                .map_err(|e| e.into())
+            client.detach_subscription(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }

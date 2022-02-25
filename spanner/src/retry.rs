@@ -28,12 +28,8 @@ where
         let code = status.code();
         if code == Code::Internal
             && !status.message().contains("stream terminated by RST_STREAM")
-            && !status
-                .message()
-                .contains("HTTP/2 error code: INTERNAL_ERROR")
-            && !status
-                .message()
-                .contains("Connection closed with unknown cause")
+            && !status.message().contains("HTTP/2 error code: INTERNAL_ERROR")
+            && !status.message().contains("Connection closed with unknown cause")
             && !status
                 .message()
                 .contains("Received unexpected EOS on DATA frame from server")
@@ -91,9 +87,7 @@ mod tests {
     fn test_transaction_condition() {
         let status = tonic::Status::new(tonic::Code::Internal, "stream terminated by RST_STREAM");
         let default = TransactionRetrySetting::default();
-        assert!(!default
-            .condition()
-            .should_retry(&TxError::GRPC(Status::from(status))));
+        assert!(!default.condition().should_retry(&TxError::GRPC(Status::from(status))));
 
         let status = tonic::Status::new(tonic::Code::Aborted, "default");
         assert!(default

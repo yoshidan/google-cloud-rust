@@ -28,8 +28,7 @@ pub async fn default_internal_client() -> Result<(Channel, OperationsClient), Er
         Ok(s) => Some(s),
         Err(_) => None,
     };
-    let conn_pool =
-        ConnectionManager::new(1, SPANNER, AUDIENCE, Some(&SCOPES), emulator_host).await?;
+    let conn_pool = ConnectionManager::new(1, SPANNER, AUDIENCE, Some(&SCOPES), emulator_host).await?;
     let conn = conn_pool.conn();
     let lro_client = OperationsClient::new(conn).await?;
     Ok((conn_pool.conn(), lro_client))

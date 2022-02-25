@@ -56,9 +56,7 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
     let value = result.unwrap().0.unwrap();
     let ts = Utc.timestamp(value.seconds, value.nanos as u32);
 
-    let mut ro = client
-        .read_only_transaction(CancellationToken::new())
-        .await?;
+    let mut ro = client.read_only_transaction(CancellationToken::new()).await?;
     let record = ro
         .read(
             CancellationToken::new(),
@@ -102,28 +100,14 @@ async fn test_apply() -> Result<(), anyhow::Error> {
     let users: Vec<String> = (0..2).map(|x| format!("user_client_{}", x)).collect();
     let client = Client::new(DATABASE).await.context("error")?;
     let now = Utc::now();
-    let ms = users
-        .iter()
-        .map(|id| create_user_mutation(id, &now))
-        .collect();
-    let value = client
-        .apply(CancellationToken::new(), ms)
-        .await
-        .unwrap()
-        .unwrap();
+    let ms = users.iter().map(|id| create_user_mutation(id, &now)).collect();
+    let value = client.apply(CancellationToken::new(), ms).await.unwrap().unwrap();
     let ts = Utc.timestamp(value.seconds, value.nanos as u32);
 
-    let mut ro = client
-        .read_only_transaction(CancellationToken::new())
-        .await?;
+    let mut ro = client.read_only_transaction(CancellationToken::new()).await?;
     for x in users {
         let record = ro
-            .read(
-                CancellationToken::new(),
-                "User",
-                &user_columns(),
-                Key::key(&x),
-            )
+            .read(CancellationToken::new(), "User", &user_columns(), Key::key(&x))
             .await?;
         let row = all_rows(record).await.pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
@@ -138,10 +122,7 @@ async fn test_apply_at_least_once() -> Result<(), anyhow::Error> {
     let users: Vec<String> = (0..2).map(|x| format!("user_client_x_{}", x)).collect();
     let client = Client::new(DATABASE).await.context("error")?;
     let now = Utc::now();
-    let ms = users
-        .iter()
-        .map(|id| create_user_mutation(id, &now))
-        .collect();
+    let ms = users.iter().map(|id| create_user_mutation(id, &now)).collect();
     let value = client
         .apply_at_least_once(CancellationToken::new(), ms)
         .await
@@ -149,17 +130,10 @@ async fn test_apply_at_least_once() -> Result<(), anyhow::Error> {
         .unwrap();
     let ts = Utc.timestamp(value.seconds, value.nanos as u32);
 
-    let mut ro = client
-        .read_only_transaction(CancellationToken::new())
-        .await?;
+    let mut ro = client.read_only_transaction(CancellationToken::new()).await?;
     for x in users {
         let record = ro
-            .read(
-                CancellationToken::new(),
-                "User",
-                &user_columns(),
-                Key::key(&x),
-            )
+            .read(CancellationToken::new(), "User", &user_columns(), Key::key(&x))
             .await?;
         let row = all_rows(record).await.pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
@@ -178,12 +152,8 @@ async fn test_partitioned_update() -> Result<(), anyhow::Error> {
         .await
         .unwrap();
     let client = Client::new(DATABASE).await.context("error")?;
-    let stmt =
-        Statement::new("UPDATE User SET NullableString = 'aaa' WHERE NullableString IS NOT NULL");
-    client
-        .partitioned_update(CancellationToken::new(), stmt)
-        .await
-        .unwrap();
+    let stmt = Statement::new("UPDATE User SET NullableString = 'aaa' WHERE NullableString IS NOT NULL");
+    client.partitioned_update(CancellationToken::new(), stmt).await.unwrap();
 
     let mut single = client.single().await.unwrap();
     let rows = single

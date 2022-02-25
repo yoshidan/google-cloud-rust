@@ -151,10 +151,7 @@ pub fn insert_or_update(table: &str, columns: &[&str], values: &[&dyn ToKind]) -
 /// For a similar example, See update.
 pub fn insert_or_update_map(table: &str, columns_ans_values: &[(&str, &dyn ToKind)]) -> Mutation {
     Mutation {
-        operation: Some(Operation::InsertOrUpdate(write_map(
-            table,
-            columns_ans_values,
-        ))),
+        operation: Some(Operation::InsertOrUpdate(write_map(table, columns_ans_values))),
     }
 }
 

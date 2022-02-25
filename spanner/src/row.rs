@@ -46,16 +46,8 @@ pub enum Error {
 }
 
 impl Row {
-    pub fn new(
-        index: Arc<HashMap<String, usize>>,
-        fields: Arc<Vec<Field>>,
-        values: Vec<Value>,
-    ) -> Row {
-        Row {
-            index,
-            fields,
-            values,
-        }
+    pub fn new(index: Arc<HashMap<String, usize>>, fields: Arc<Vec<Field>>, values: Vec<Value>) -> Row {
+        Row { index, fields, values }
     }
 
     pub fn column<T>(&self, column_index: usize) -> Result<T, Error>
@@ -91,11 +83,7 @@ pub struct Struct<'a> {
 }
 
 impl<'a> Struct<'a> {
-    pub fn new(
-        metadata: &'a StructType,
-        item: &'a Value,
-        field: &'a Field,
-    ) -> Result<Struct<'a>, Error> {
+    pub fn new(metadata: &'a StructType, item: &'a Value, field: &'a Field) -> Result<Struct<'a>, Error> {
         let kind = as_ref(item, field)?;
         let mut index = HashMap::new();
         for (i, f) in metadata.fields.iter().enumerate() {
@@ -149,9 +137,7 @@ impl<'a> Struct<'a> {
 impl TryFromValue for i64 {
     fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
-            Kind::StringValue(s) => s
-                .parse()
-                .map_err(|e| Error::IntParseError(field.name.to_string(), e)),
+            Kind::StringValue(s) => s.parse().map_err(|e| Error::IntParseError(field.name.to_string(), e)),
             v => kind_to_error(v, field),
         }
     }
@@ -179,8 +165,8 @@ impl TryFromValue for DateTime<Utc> {
     fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
             Kind::StringValue(s) => {
-                let fixed = DateTime::parse_from_rfc3339(&s)
-                    .map_err(|e| Error::DateParseError(field.name.to_string(), e))?;
+                let fixed =
+                    DateTime::parse_from_rfc3339(&s).map_err(|e| Error::DateParseError(field.name.to_string(), e))?;
                 Ok(DateTime::<Utc>::from(fixed))
             }
             v => kind_to_error(v, field),
@@ -199,8 +185,9 @@ impl TryFromValue for CommitTimestamp {
 impl TryFromValue for NaiveDate {
     fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
-            Kind::StringValue(s) => NaiveDate::parse_from_str(&s, "%Y-%m-%d")
-                .map_err(|e| Error::DateParseError(field.name.to_string(), e)),
+            Kind::StringValue(s) => {
+                NaiveDate::parse_from_str(&s, "%Y-%m-%d").map_err(|e| Error::DateParseError(field.name.to_string(), e))
+            }
             v => kind_to_error(v, field),
         }
     }
@@ -209,9 +196,7 @@ impl TryFromValue for NaiveDate {
 impl TryFromValue for Vec<u8> {
     fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
-            Kind::StringValue(s) => {
-                base64::decode(s).map_err(|e| Error::ByteParseError(field.name.to_string(), e))
-            }
+            Kind::StringValue(s) => base64::decode(s).map_err(|e| Error::ByteParseError(field.name.to_string(), e)),
             v => kind_to_error(v, field),
         }
     }
@@ -220,8 +205,9 @@ impl TryFromValue for Vec<u8> {
 impl TryFromValue for rust_decimal::Decimal {
     fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
-            Kind::StringValue(s) => rust_decimal::Decimal::from_str(&s)
-                .map_err(|e| Error::DecimalParseError(field.name.to_string(), e)),
+            Kind::StringValue(s) => {
+                rust_decimal::Decimal::from_str(&s).map_err(|e| Error::DecimalParseError(field.name.to_string(), e))
+            }
             v => kind_to_error(v, field),
         }
     }
@@ -367,10 +353,7 @@ mod tests {
                 ("struct_field", self.struct_field.to_kind()),
                 ("struct_field_time", self.struct_field_time.to_kind()),
                 // value from DB is timestamp. it's not string 'spanner.commit_timestamp()'.
-                (
-                    "commit_timestamp",
-                    DateTime::from(self.commit_timestamp).to_kind(),
-                ),
+                ("commit_timestamp", DateTime::from(self.commit_timestamp).to_kind()),
             ]
         }
 

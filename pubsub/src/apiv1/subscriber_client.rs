@@ -6,11 +6,10 @@ use google_cloud_gax::retry::{invoke, RetrySetting};
 use google_cloud_gax::status::Status;
 use google_cloud_googleapis::pubsub::v1::subscriber_client::SubscriberClient as InternalSubscriberClient;
 use google_cloud_googleapis::pubsub::v1::{
-    AcknowledgeRequest, CreateSnapshotRequest, DeleteSnapshotRequest, DeleteSubscriptionRequest,
-    GetSnapshotRequest, GetSubscriptionRequest, ListSnapshotsRequest, ListSnapshotsResponse,
-    ListSubscriptionsRequest, ListSubscriptionsResponse, ModifyAckDeadlineRequest,
-    ModifyPushConfigRequest, PullRequest, PullResponse, Snapshot, StreamingPullRequest,
-    StreamingPullResponse, Subscription, UpdateSnapshotRequest, UpdateSubscriptionRequest,
+    AcknowledgeRequest, CreateSnapshotRequest, DeleteSnapshotRequest, DeleteSubscriptionRequest, GetSnapshotRequest,
+    GetSubscriptionRequest, ListSnapshotsRequest, ListSnapshotsResponse, ListSubscriptionsRequest,
+    ListSubscriptionsResponse, ModifyAckDeadlineRequest, ModifyPushConfigRequest, PullRequest, PullResponse, Snapshot,
+    StreamingPullRequest, StreamingPullResponse, Subscription, UpdateSnapshotRequest, UpdateSubscriptionRequest,
 };
 use tokio_util::sync::CancellationToken;
 use tonic::IntoStreamingRequest;
@@ -67,10 +66,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={}", name), req.clone());
-            client
-                .create_subscription(request)
-                .await
-                .map_err(|e| e.into())
+            client.create_subscription(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -90,10 +86,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription.name={}", name), req.clone());
-            client
-                .update_subscription(request)
-                .await
-                .map_err(|e| e.into())
+            client.update_subscription(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -134,8 +127,7 @@ impl SubscriberClient {
                     .map_err(|e| e.into())
                     .map(|d| d.into_inner())
             };
-            let response: ListSubscriptionsResponse =
-                invoke(ctx.clone(), opt.clone(), action).await?;
+            let response: ListSubscriptionsResponse = invoke(ctx.clone(), opt.clone(), action).await?;
             all.extend(response.subscriptions.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -159,10 +151,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription={}", subscription), req.clone());
-            client
-                .delete_subscription(request)
-                .await
-                .map_err(|e| e.into())
+            client.delete_subscription(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -182,10 +171,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription={}", subscription), req.clone());
-            client
-                .modify_ack_deadline(request)
-                .await
-                .map_err(|e| e.into())
+            client.modify_ack_deadline(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -285,10 +271,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription={}", subscription), req.clone());
-            client
-                .modify_push_config(request)
-                .await
-                .map_err(|e| e.into())
+            client.modify_push_config(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -394,8 +377,7 @@ impl SubscriberClient {
         };
         let action = || async {
             let mut client = self.client();
-            let request =
-                create_request(format!("snapshot.name={}", name.to_string()), req.clone());
+            let request = create_request(format!("snapshot.name={}", name.to_string()), req.clone());
             client.update_snapshot(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await

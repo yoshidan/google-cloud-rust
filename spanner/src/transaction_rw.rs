@@ -13,10 +13,9 @@ use google_cloud_gax::retry::{RetrySetting, TryAs};
 use google_cloud_gax::status::{Code, Status};
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::TransactionId;
 use google_cloud_googleapis::spanner::v1::{
-    commit_request, execute_batch_dml_request, result_set_stats, transaction_options,
-    transaction_selector, BeginTransactionRequest, CommitRequest, CommitResponse,
-    ExecuteBatchDmlRequest, ExecuteSqlRequest, Mutation, ResultSetStats, RollbackRequest,
-    TransactionOptions, TransactionSelector,
+    commit_request, execute_batch_dml_request, result_set_stats, transaction_options, transaction_selector,
+    BeginTransactionRequest, CommitRequest, CommitResponse, ExecuteBatchDmlRequest, ExecuteSqlRequest, Mutation,
+    ResultSetStats, RollbackRequest, TransactionOptions, TransactionSelector,
 };
 
 #[derive(Clone)]
@@ -158,10 +157,7 @@ impl ReadWriteTransaction {
         let response = match session.invalidate_if_needed(result).await {
             Ok(response) => response,
             Err(err) => {
-                return Err(BeginError {
-                    status: err,
-                    session,
-                });
+                return Err(BeginError { status: err, session });
             }
         };
         let tx = response.into_inner();
@@ -183,9 +179,7 @@ impl ReadWriteTransaction {
     }
 
     pub async fn update(&mut self, ctx: CancellationToken, stmt: Statement) -> Result<i64, Status> {
-        return self
-            .update_with_option(ctx, stmt, QueryOptions::default())
-            .await;
+        return self.update_with_option(ctx, stmt, QueryOptions::default()).await;
     }
 
     pub async fn update_with_option(
@@ -198,9 +192,7 @@ impl ReadWriteTransaction {
             session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
             sql: stmt.sql.to_string(),
-            params: Some(prost_types::Struct {
-                fields: stmt.params,
-            }),
+            params: Some(prost_types::Struct { fields: stmt.params }),
             param_types: stmt.param_types,
             resume_token: vec![],
             query_mode: options.mode.into(),
@@ -219,14 +211,8 @@ impl ReadWriteTransaction {
         Ok(extract_row_count(response.into_inner().stats))
     }
 
-    pub async fn batch_update(
-        &mut self,
-        ctx: CancellationToken,
-        stmt: Vec<Statement>,
-    ) -> Result<Vec<i64>, Status> {
-        return self
-            .batch_update_with_option(ctx, stmt, QueryOptions::default())
-            .await;
+    pub async fn batch_update(&mut self, ctx: CancellationToken, stmt: Vec<Statement>) -> Result<Vec<i64>, Status> {
+        return self.batch_update_with_option(ctx, stmt, QueryOptions::default()).await;
     }
 
     pub async fn batch_update_with_option(
@@ -318,11 +304,7 @@ impl ReadWriteTransaction {
         };
     }
 
-    pub async fn commit(
-        &mut self,
-        ctx: CancellationToken,
-        options: CommitOptions,
-    ) -> Result<CommitResponse, Status> {
+    pub async fn commit(&mut self, ctx: CancellationToken, options: CommitOptions) -> Result<CommitResponse, Status> {
         let tx_id = self.tx_id.clone();
         let mutations = self.wb.to_vec();
         let session = self.as_mut_session();

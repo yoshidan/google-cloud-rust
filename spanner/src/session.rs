@@ -6,9 +6,7 @@ use std::time::Instant;
 use parking_lot::Mutex;
 use thiserror;
 
-use google_cloud_googleapis::spanner::v1::{
-    BatchCreateSessionsRequest, DeleteSessionRequest, Session,
-};
+use google_cloud_googleapis::spanner::v1::{BatchCreateSessionsRequest, DeleteSessionRequest, Session};
 
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::spanner_client::{ping_query_request, Client};
@@ -292,8 +290,7 @@ impl SessionManager {
         config: SessionConfig,
     ) -> Result<SessionManager, Status> {
         let database_name = database.into();
-        let init_pool =
-            SessionManager::init_pool(database_name.clone(), &conn_pool, config.min_opened).await?;
+        let init_pool = SessionManager::init_pool(database_name.clone(), &conn_pool, config.min_opened).await?;
 
         let waiters = Arc::new(Waiters::new(VecDeque::new()));
         let (creation_producer, creation_consumer) = broadcast::channel(1);
@@ -302,11 +299,7 @@ impl SessionManager {
             database: database_name,
             config: Arc::new(config),
             conn_pool: Arc::new(conn_pool),
-            session_pool: SessionPool::new(
-                init_pool,
-                Arc::clone(&waiters),
-                creation_producer.clone(),
-            ),
+            session_pool: SessionPool::new(init_pool, Arc::clone(&waiters), creation_producer.clone()),
             waiters,
             creation_producer,
         };
@@ -336,9 +329,7 @@ impl SessionManager {
         let mut sessions = Vec::<SessionHandle>::new();
         for _ in 0..channel_num {
             let next_client = conn_pool.conn();
-            match batch_create_session(next_client, database.clone(), creation_count_per_channel)
-                .await
-            {
+            match batch_create_session(next_client, database.clone(), creation_count_per_channel).await {
                 Ok(r) => {
                     for i in r {
                         sessions.push(i);
@@ -389,9 +380,7 @@ impl SessionManager {
                 let _ = rx.recv().await;
 
                 let num_opened = session_pool.num_opened();
-                if num_opened >= config.min_opened
-                    && allocation_request_size >= { session_pool.waiters.lock().len() }
-                {
+                if num_opened >= config.min_opened && allocation_request_size >= { session_pool.waiters.lock().len() } {
                     continue;
                 }
 
@@ -446,13 +435,7 @@ impl SessionManager {
                 }
 
                 let now = Instant::now();
-                shrink_idle_sessions(
-                    now,
-                    config.idle_timeout,
-                    &session_pool,
-                    max_removing_count as usize,
-                )
-                .await;
+                shrink_idle_sessions(now, config.idle_timeout, &session_pool, max_removing_count as usize).await;
                 health_check(
                     now + Duration::from_nanos(1),
                     config.session_alive_trust_duration,
@@ -464,11 +447,7 @@ impl SessionManager {
     }
 }
 
-async fn health_check(
-    now: Instant,
-    session_alive_trust_duration: Duration,
-    sessions: &SessionPool,
-) {
+async fn health_check(now: Instant, session_alive_trust_duration: Duration, sessions: &SessionPool) {
     let sleep_duration = Duration::from_millis(10);
     loop {
         sleep(sleep_duration).await;
@@ -483,9 +462,7 @@ async fn health_check(
                         locked.release(s);
                         break;
                     }
-                    if std::cmp::max(s.last_used_at, s.last_pong_at) + session_alive_trust_duration
-                        >= now
-                    {
+                    if std::cmp::max(s.last_used_at, s.last_pong_at) + session_alive_trust_duration >= now {
                         s.last_checked_at = now;
                         locked.release(s);
                         continue;
@@ -586,10 +563,7 @@ async fn batch_create_session(
         session_count: creation_count as i32,
     };
 
-    log::debug!(
-        "spawn session creation request : count to create = {}",
-        creation_count
-    );
+    log::debug!("spawn session creation request : count to create = {}", creation_count);
     let response = spanner_client
         .batch_create_sessions(CancellationToken::new(), request, None)
         .await?
@@ -614,8 +588,7 @@ mod tests {
     use std::time::Instant;
     use tokio::time::{sleep, Duration};
 
-    pub const DATABASE: &str =
-        "projects/local-project/instances/test-instance/databases/local-database";
+    pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
     async fn assert_rush(use_invalidate: bool, config: SessionConfig) {
         let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
@@ -711,12 +684,7 @@ mod tests {
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
         sleep(Duration::from_secs(1)).await;
 
-        health_check(
-            Instant::now(),
-            session_alive_trust_duration,
-            &sm.session_pool,
-        )
-        .await;
+        health_check(Instant::now(), session_alive_trust_duration, &sm.session_pool).await;
 
         assert_eq!(sm.num_opened(), 5);
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
@@ -736,12 +704,7 @@ mod tests {
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
         sleep(Duration::from_secs(1)).await;
 
-        health_check(
-            Instant::now(),
-            session_alive_trust_duration,
-            &sm.session_pool,
-        )
-        .await;
+        health_check(Instant::now(), session_alive_trust_duration, &sm.session_pool).await;
 
         assert_eq!(sm.num_opened(), 5);
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
@@ -772,11 +735,7 @@ mod tests {
             // all the session are using
             assert_eq!(sm.num_opened(), 45);
             {
-                assert_eq!(
-                    sm.session_pool.inner.lock().inuse,
-                    45,
-                    "all the session are using"
-                );
+                assert_eq!(sm.session_pool.inner.lock().inuse, 45, "all the session are using");
             }
             sleep(tokio::time::Duration::from_secs(1)).await;
         }

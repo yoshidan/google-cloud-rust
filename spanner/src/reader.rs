@@ -243,8 +243,7 @@ impl<'a> AsyncIterator for RowIterator<'a> {
         if !self.rows.is_empty() {
             let column_length = self.fields.len();
             let target_record_is_chunked = self.rows.len() < column_length;
-            let target_record_contains_chunked_value =
-                self.chunked_value && self.rows.len() == column_length;
+            let target_record_contains_chunked_value = self.chunked_value && self.rows.len() == column_length;
 
             if !target_record_is_chunked && !target_record_contains_chunked_value {
                 // get column_length values

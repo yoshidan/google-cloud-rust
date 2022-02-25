@@ -2,8 +2,7 @@ use crate::autogen::operations_client::{default_retry_setting, OperationsClient}
 use google_cloud_gax::retry::{invoke_fn, RetrySetting};
 use google_cloud_gax::status::{Code, Status};
 use google_cloud_googleapis::longrunning::{
-    operation, CancelOperationRequest, DeleteOperationRequest, GetOperationRequest,
-    Operation as InternalOperation,
+    operation, CancelOperationRequest, DeleteOperationRequest, GetOperationRequest, Operation as InternalOperation,
 };
 use std::marker::PhantomData;
 use tokio_util::sync::CancellationToken;
@@ -75,11 +74,7 @@ impl<T: prost::Message + Default> Operation<T> {
     }
 
     /// wait implements Wait, taking exponentialBackoff and sleeper arguments for testing.
-    pub async fn wait(
-        &mut self,
-        ctx: CancellationToken,
-        option: Option<RetrySetting>,
-    ) -> Result<Option<T>, Status> {
+    pub async fn wait(&mut self, ctx: CancellationToken, option: Option<RetrySetting>) -> Result<Option<T>, Status> {
         let settings = match option {
             Some(s) => s,
             None => {

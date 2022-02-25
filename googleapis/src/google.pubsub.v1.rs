@@ -207,20 +207,14 @@ pub mod schema_service_client {
             let inner = tonic::client::Grpc::new(inner);
             Self { inner }
         }
-        pub fn with_interceptor<F>(
-            inner: T,
-            interceptor: F,
-        ) -> SchemaServiceClient<InterceptedService<T, F>>
+        pub fn with_interceptor<F>(inner: T, interceptor: F) -> SchemaServiceClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T: tonic::codegen::Service<
                 http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
-                >,
+                Response = http::Response<<T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody>,
             >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
-                Into<StdError> + Send + Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error: Into<StdError> + Send + Sync,
         {
             SchemaServiceClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -243,15 +237,10 @@ pub mod schema_service_client {
             request: impl tonic::IntoRequest<super::CreateSchemaRequest>,
         ) -> Result<tonic::Response<super::Schema>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.SchemaService/CreateSchema",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.SchemaService/CreateSchema");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Gets a schema."]
@@ -260,14 +249,10 @@ pub mod schema_service_client {
             request: impl tonic::IntoRequest<super::GetSchemaRequest>,
         ) -> Result<tonic::Response<super::Schema>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.pubsub.v1.SchemaService/GetSchema");
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.SchemaService/GetSchema");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Lists schemas in a project."]
@@ -276,14 +261,10 @@ pub mod schema_service_client {
             request: impl tonic::IntoRequest<super::ListSchemasRequest>,
         ) -> Result<tonic::Response<super::ListSchemasResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.pubsub.v1.SchemaService/ListSchemas");
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.SchemaService/ListSchemas");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Deletes a schema."]
@@ -292,15 +273,10 @@ pub mod schema_service_client {
             request: impl tonic::IntoRequest<super::DeleteSchemaRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.SchemaService/DeleteSchema",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.SchemaService/DeleteSchema");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Validates a schema."]
@@ -309,15 +285,10 @@ pub mod schema_service_client {
             request: impl tonic::IntoRequest<super::ValidateSchemaRequest>,
         ) -> Result<tonic::Response<super::ValidateSchemaResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.SchemaService/ValidateSchema",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.SchemaService/ValidateSchema");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Validates a message against a schema."]
@@ -326,15 +297,10 @@ pub mod schema_service_client {
             request: impl tonic::IntoRequest<super::ValidateMessageRequest>,
         ) -> Result<tonic::Response<super::ValidateMessageResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.SchemaService/ValidateMessage",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.SchemaService/ValidateMessage");
             self.inner.unary(request.into_request(), path, codec).await
         }
     }
@@ -377,8 +343,7 @@ pub struct Topic {
     /// See [Creating and managing labels]
     /// (<https://cloud.google.com/pubsub/docs/labels>).
     #[prost(map = "string, string", tag = "2")]
-    pub labels:
-        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     /// Policy constraining the set of Google Cloud Platform regions where messages
     /// published to the topic may be stored. If not present, then no constraints
     /// are in effect.
@@ -426,8 +391,7 @@ pub struct PubsubMessage {
     /// contain non-empty data. This can be used to filter messages on the
     /// subscription.
     #[prost(map = "string, string", tag = "2")]
-    pub attributes:
-        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    pub attributes: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     /// ID of this message, assigned by the server when the message is published.
     /// Guaranteed to be unique within the topic. This value may be read by a
     /// subscriber that receives a `PubsubMessage` via a `Pull` call or a push
@@ -655,8 +619,7 @@ pub struct Subscription {
     /// See <a href="<https://cloud.google.com/pubsub/docs/labels">> Creating and
     /// managing labels</a>.
     #[prost(map = "string, string", tag = "9")]
-    pub labels:
-        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     /// If true, messages published with the same `ordering_key` in `PubsubMessage`
     /// will be delivered to the subscribers in the order in which they
     /// are received by the Pub/Sub system. Otherwise, they may be delivered in
@@ -811,8 +774,7 @@ pub struct PushConfig {
     /// For example:
     /// <pre><code>attributes { "x-goog-version": "v1" } </code></pre>
     #[prost(map = "string, string", tag = "2")]
-    pub attributes:
-        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    pub attributes: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     /// An authentication method used by push endpoints to verify the source of
     /// push requests. This can be used with push endpoints that are private by
     /// default to allow requests only from the Cloud Pub/Sub system, for example.
@@ -1107,8 +1069,7 @@ pub struct StreamingPullResponse {
     pub received_messages: ::prost::alloc::vec::Vec<ReceivedMessage>,
     /// Properties associated with this subscription.
     #[prost(message, optional, tag = "4")]
-    pub subscription_properties:
-        ::core::option::Option<streaming_pull_response::SubscriptionProperties>,
+    pub subscription_properties: ::core::option::Option<streaming_pull_response::SubscriptionProperties>,
 }
 /// Nested message and enum types in `StreamingPullResponse`.
 pub mod streaming_pull_response {
@@ -1145,8 +1106,7 @@ pub struct CreateSnapshotRequest {
     /// See <a href="<https://cloud.google.com/pubsub/docs/labels">> Creating and
     /// managing labels</a>.
     #[prost(map = "string, string", tag = "3")]
-    pub labels:
-        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 /// Request for the UpdateSnapshot method.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1187,8 +1147,7 @@ pub struct Snapshot {
     /// See [Creating and managing labels]
     /// (<https://cloud.google.com/pubsub/docs/labels>).
     #[prost(map = "string, string", tag = "4")]
-    pub labels:
-        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 /// Request for the GetSnapshot method.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1301,20 +1260,14 @@ pub mod publisher_client {
             let inner = tonic::client::Grpc::new(inner);
             Self { inner }
         }
-        pub fn with_interceptor<F>(
-            inner: T,
-            interceptor: F,
-        ) -> PublisherClient<InterceptedService<T, F>>
+        pub fn with_interceptor<F>(inner: T, interceptor: F) -> PublisherClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T: tonic::codegen::Service<
                 http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
-                >,
+                Response = http::Response<<T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody>,
             >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
-                Into<StdError> + Send + Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error: Into<StdError> + Send + Sync,
         {
             PublisherClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -1338,14 +1291,10 @@ pub mod publisher_client {
             request: impl tonic::IntoRequest<super::Topic>,
         ) -> Result<tonic::Response<super::Topic>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/CreateTopic");
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/CreateTopic");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Updates an existing topic. Note that certain properties of a"]
@@ -1355,14 +1304,10 @@ pub mod publisher_client {
             request: impl tonic::IntoRequest<super::UpdateTopicRequest>,
         ) -> Result<tonic::Response<super::Topic>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/UpdateTopic");
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/UpdateTopic");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Adds one or more messages to the topic. Returns `NOT_FOUND` if the topic"]
@@ -1372,10 +1317,7 @@ pub mod publisher_client {
             request: impl tonic::IntoRequest<super::PublishRequest>,
         ) -> Result<tonic::Response<super::PublishResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/Publish");
@@ -1387,10 +1329,7 @@ pub mod publisher_client {
             request: impl tonic::IntoRequest<super::GetTopicRequest>,
         ) -> Result<tonic::Response<super::Topic>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/GetTopic");
@@ -1402,14 +1341,10 @@ pub mod publisher_client {
             request: impl tonic::IntoRequest<super::ListTopicsRequest>,
         ) -> Result<tonic::Response<super::ListTopicsResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/ListTopics");
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/ListTopics");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Lists the names of the attached subscriptions on this topic."]
@@ -1418,15 +1353,10 @@ pub mod publisher_client {
             request: impl tonic::IntoRequest<super::ListTopicSubscriptionsRequest>,
         ) -> Result<tonic::Response<super::ListTopicSubscriptionsResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Publisher/ListTopicSubscriptions",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/ListTopicSubscriptions");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Lists the names of the snapshots on this topic. Snapshots are used in"]
@@ -1439,15 +1369,10 @@ pub mod publisher_client {
             request: impl tonic::IntoRequest<super::ListTopicSnapshotsRequest>,
         ) -> Result<tonic::Response<super::ListTopicSnapshotsResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Publisher/ListTopicSnapshots",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/ListTopicSnapshots");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Deletes the topic with the given name. Returns `NOT_FOUND` if the topic"]
@@ -1460,14 +1385,10 @@ pub mod publisher_client {
             request: impl tonic::IntoRequest<super::DeleteTopicRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/DeleteTopic");
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/DeleteTopic");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Detaches a subscription from this topic. All messages retained in the"]
@@ -1479,15 +1400,10 @@ pub mod publisher_client {
             request: impl tonic::IntoRequest<super::DetachSubscriptionRequest>,
         ) -> Result<tonic::Response<super::DetachSubscriptionResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Publisher/DetachSubscription",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/DetachSubscription");
             self.inner.unary(request.into_request(), path, codec).await
         }
     }
@@ -1525,20 +1441,14 @@ pub mod subscriber_client {
             let inner = tonic::client::Grpc::new(inner);
             Self { inner }
         }
-        pub fn with_interceptor<F>(
-            inner: T,
-            interceptor: F,
-        ) -> SubscriberClient<InterceptedService<T, F>>
+        pub fn with_interceptor<F>(inner: T, interceptor: F) -> SubscriberClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T: tonic::codegen::Service<
                 http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
-                >,
+                Response = http::Response<<T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody>,
             >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
-                Into<StdError> + Send + Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error: Into<StdError> + Send + Sync,
         {
             SubscriberClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -1571,15 +1481,10 @@ pub mod subscriber_client {
             request: impl tonic::IntoRequest<super::Subscription>,
         ) -> Result<tonic::Response<super::Subscription>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Subscriber/CreateSubscription",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/CreateSubscription");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Gets the configuration details of a subscription."]
@@ -1588,15 +1493,10 @@ pub mod subscriber_client {
             request: impl tonic::IntoRequest<super::GetSubscriptionRequest>,
         ) -> Result<tonic::Response<super::Subscription>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Subscriber/GetSubscription",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/GetSubscription");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Updates an existing subscription. Note that certain properties of a"]
@@ -1606,15 +1506,10 @@ pub mod subscriber_client {
             request: impl tonic::IntoRequest<super::UpdateSubscriptionRequest>,
         ) -> Result<tonic::Response<super::Subscription>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Subscriber/UpdateSubscription",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/UpdateSubscription");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Lists matching subscriptions."]
@@ -1623,15 +1518,10 @@ pub mod subscriber_client {
             request: impl tonic::IntoRequest<super::ListSubscriptionsRequest>,
         ) -> Result<tonic::Response<super::ListSubscriptionsResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Subscriber/ListSubscriptions",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/ListSubscriptions");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Deletes an existing subscription. All messages retained in the subscription"]
@@ -1644,15 +1534,10 @@ pub mod subscriber_client {
             request: impl tonic::IntoRequest<super::DeleteSubscriptionRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Subscriber/DeleteSubscription",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/DeleteSubscription");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Modifies the ack deadline for a specific message. This method is useful"]
@@ -1665,15 +1550,10 @@ pub mod subscriber_client {
             request: impl tonic::IntoRequest<super::ModifyAckDeadlineRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Subscriber/ModifyAckDeadline",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/ModifyAckDeadline");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Acknowledges the messages associated with the `ack_ids` in the"]
@@ -1688,14 +1568,10 @@ pub mod subscriber_client {
             request: impl tonic::IntoRequest<super::AcknowledgeRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/Acknowledge");
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/Acknowledge");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Pulls messages from the server. The server may return `UNAVAILABLE` if"]
@@ -1706,10 +1582,7 @@ pub mod subscriber_client {
             request: impl tonic::IntoRequest<super::PullRequest>,
         ) -> Result<tonic::Response<super::PullResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/Pull");
@@ -1725,19 +1598,12 @@ pub mod subscriber_client {
         pub async fn streaming_pull(
             &mut self,
             request: impl tonic::IntoStreamingRequest<Message = super::StreamingPullRequest>,
-        ) -> Result<
-            tonic::Response<tonic::codec::Streaming<super::StreamingPullResponse>>,
-            tonic::Status,
-        > {
+        ) -> Result<tonic::Response<tonic::codec::Streaming<super::StreamingPullResponse>>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/StreamingPull");
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/StreamingPull");
             self.inner
                 .streaming(request.into_streaming_request(), path, codec)
                 .await
@@ -1753,15 +1619,10 @@ pub mod subscriber_client {
             request: impl tonic::IntoRequest<super::ModifyPushConfigRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Subscriber/ModifyPushConfig",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/ModifyPushConfig");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Gets the configuration details of a snapshot. Snapshots are used in"]
@@ -1774,14 +1635,10 @@ pub mod subscriber_client {
             request: impl tonic::IntoRequest<super::GetSnapshotRequest>,
         ) -> Result<tonic::Response<super::Snapshot>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/GetSnapshot");
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/GetSnapshot");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Lists the existing snapshots. Snapshots are used in [Seek]("]
@@ -1794,14 +1651,10 @@ pub mod subscriber_client {
             request: impl tonic::IntoRequest<super::ListSnapshotsRequest>,
         ) -> Result<tonic::Response<super::ListSnapshotsResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/ListSnapshots");
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/ListSnapshots");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Creates a snapshot from the requested subscription. Snapshots are used in"]
@@ -1825,14 +1678,10 @@ pub mod subscriber_client {
             request: impl tonic::IntoRequest<super::CreateSnapshotRequest>,
         ) -> Result<tonic::Response<super::Snapshot>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/CreateSnapshot");
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/CreateSnapshot");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Updates an existing snapshot. Snapshots are used in"]
@@ -1846,14 +1695,10 @@ pub mod subscriber_client {
             request: impl tonic::IntoRequest<super::UpdateSnapshotRequest>,
         ) -> Result<tonic::Response<super::Snapshot>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/UpdateSnapshot");
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/UpdateSnapshot");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Removes an existing snapshot. Snapshots are used in [Seek]"]
@@ -1870,14 +1715,10 @@ pub mod subscriber_client {
             request: impl tonic::IntoRequest<super::DeleteSnapshotRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/DeleteSnapshot");
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/DeleteSnapshot");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Seeks an existing subscription to a point in time or to a given snapshot,"]
@@ -1892,10 +1733,7 @@ pub mod subscriber_client {
             request: impl tonic::IntoRequest<super::SeekRequest>,
         ) -> Result<tonic::Response<super::SeekResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/Seek");

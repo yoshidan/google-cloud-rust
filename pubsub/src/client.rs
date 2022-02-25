@@ -8,9 +8,7 @@ use crate::topic::{Topic, TopicConfig};
 use google_cloud_gax::conn::Error;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_gax::status::Status;
-use google_cloud_googleapis::pubsub::v1::{
-    DetachSubscriptionRequest, ListSubscriptionsRequest, ListTopicsRequest,
-};
+use google_cloud_googleapis::pubsub::v1::{DetachSubscriptionRequest, ListSubscriptionsRequest, ListTopicsRequest};
 
 pub struct ClientConfig {
     pub pool_size: usize,
@@ -43,8 +41,7 @@ impl Client {
             Ok(s) => Some(s),
             Err(_) => None,
         };
-        let pubc =
-            PublisherClient::new(ConnectionManager::new(pool_size, emulator_host.clone()).await?);
+        let pubc = PublisherClient::new(ConnectionManager::new(pool_size, emulator_host.clone()).await?);
         let subc = SubscriberClient::new(ConnectionManager::new(pool_size, emulator_host).await?);
         return Ok(Self {
             project_id: project_id.to_string(),
@@ -118,10 +115,7 @@ impl Client {
 
     /// subscription creates a reference to a subscription.
     pub fn subscription(&self, id: &str) -> Subscription {
-        Subscription::new(
-            self.fully_qualified_subscription_name(id),
-            self.subc.clone(),
-        )
+        Subscription::new(self.fully_qualified_subscription_name(id), self.subc.clone())
     }
 
     /// detach_subscription detaches a subscription from its topic. All messages
@@ -255,22 +249,13 @@ mod tests {
         let topic_id = &format!("t{}", &uuid);
         let subscription_id = &format!("s{}", &uuid);
         let ctx = CancellationToken::new();
-        let topic = client
-            .create_topic(ctx, topic_id.as_str(), None, None)
-            .await
-            .unwrap();
+        let topic = client.create_topic(ctx, topic_id.as_str(), None, None).await.unwrap();
         let publisher = topic.new_publisher(None);
         let mut config = SubscriptionConfig::default();
         config.enable_message_ordering = !ordering_key.is_empty();
         let ctx = CancellationToken::new();
         let subscription = client
-            .create_subscription(
-                ctx.clone(),
-                subscription_id.as_str(),
-                topic_id.as_str(),
-                config,
-                None,
-            )
+            .create_subscription(ctx.clone(), subscription_id.as_str(), topic_id.as_str(), config, None)
             .await
             .unwrap();
 
@@ -360,10 +345,7 @@ mod tests {
         let subscription_id = &format!("s{}", &uuid);
         let ctx = CancellationToken::new();
         let topics = client.get_topics(ctx.clone(), None).await.unwrap();
-        let subs = client
-            .get_subscriptions(CancellationToken::new(), None)
-            .await
-            .unwrap();
+        let subs = client.get_subscriptions(CancellationToken::new(), None).await.unwrap();
         let ctx = CancellationToken::new();
         let _topic = client
             .create_topic(ctx.clone(), topic_id.as_str(), None, None)
@@ -379,10 +361,7 @@ mod tests {
             )
             .await?;
         let topics_after = client.get_topics(ctx.clone(), None).await.unwrap();
-        let subs_after = client
-            .get_subscriptions(CancellationToken::new(), None)
-            .await
-            .unwrap();
+        let subs_after = client.get_subscriptions(CancellationToken::new(), None).await.unwrap();
         assert_eq!(1, topics_after.len() - topics.len());
         assert_eq!(1, subs_after.len() - subs.len());
         Ok(())

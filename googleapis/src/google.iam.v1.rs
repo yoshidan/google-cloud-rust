@@ -335,20 +335,14 @@ pub mod iam_policy_client {
             let inner = tonic::client::Grpc::new(inner);
             Self { inner }
         }
-        pub fn with_interceptor<F>(
-            inner: T,
-            interceptor: F,
-        ) -> IamPolicyClient<InterceptedService<T, F>>
+        pub fn with_interceptor<F>(inner: T, interceptor: F) -> IamPolicyClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T: tonic::codegen::Service<
                 http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
-                >,
+                Response = http::Response<<T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody>,
             >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
-                Into<StdError> + Send + Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error: Into<StdError> + Send + Sync,
         {
             IamPolicyClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -372,14 +366,10 @@ pub mod iam_policy_client {
             request: impl tonic::IntoRequest<super::SetIamPolicyRequest>,
         ) -> Result<tonic::Response<super::Policy>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.iam.v1.IAMPolicy/SetIamPolicy");
+            let path = http::uri::PathAndQuery::from_static("/google.iam.v1.IAMPolicy/SetIamPolicy");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Gets the access control policy for a resource."]
@@ -390,14 +380,10 @@ pub mod iam_policy_client {
             request: impl tonic::IntoRequest<super::GetIamPolicyRequest>,
         ) -> Result<tonic::Response<super::Policy>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.iam.v1.IAMPolicy/GetIamPolicy");
+            let path = http::uri::PathAndQuery::from_static("/google.iam.v1.IAMPolicy/GetIamPolicy");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Returns permissions that a caller has on the specified resource."]
@@ -412,14 +398,10 @@ pub mod iam_policy_client {
             request: impl tonic::IntoRequest<super::TestIamPermissionsRequest>,
         ) -> Result<tonic::Response<super::TestIamPermissionsResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.iam.v1.IAMPolicy/TestIamPermissions");
+            let path = http::uri::PathAndQuery::from_static("/google.iam.v1.IAMPolicy/TestIamPermissions");
             self.inner.unary(request.into_request(), path, codec).await
         }
     }

@@ -25,11 +25,7 @@ pub struct Config<'a> {
 impl Config<'_> {
     pub fn scopes_to_string(&self, sep: &str) -> String {
         match self.scopes {
-            Some(s) => s
-                .iter()
-                .map(|x| x.to_string())
-                .collect::<Vec<_>>()
-                .join(sep),
+            Some(s) => s.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(sep),
             None => EMPTY.to_string(),
         }
     }
@@ -70,10 +66,8 @@ fn credentials_from_json_with_params(
                     }
 
                     // use Standard OAuth 2.0 Flow
-                    let source = OAuth2ServiceAccountTokenSource::new(
-                        &credentials,
-                        config.scopes_to_string(" ").as_str(),
-                    )?;
+                    let source =
+                        OAuth2ServiceAccountTokenSource::new(&credentials, config.scopes_to_string(" ").as_str())?;
                     Ok(Box::new(source))
                 }
                 Some(audience) => {

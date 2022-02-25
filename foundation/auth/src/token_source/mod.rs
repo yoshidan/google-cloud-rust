@@ -38,9 +38,7 @@ impl ResponseExtension for Response<hyper::body::Body> {
             return Err(Error::DeserializeError(self.status().to_string()));
         }
         let (_, body) = self.into_parts();
-        let body = hyper::body::to_bytes(body)
-            .await
-            .map_err(Error::HyperError)?;
+        let body = hyper::body::to_bytes(body).await.map_err(Error::HyperError)?;
         let token = json::from_slice(&body).map_err(Error::JsonError)?;
 
         Ok(token)
@@ -82,8 +80,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_user_account_token_source() -> Result<(), Error> {
-        let authorized_user_credentials =
-            std::env::var("TEST_USER_CREDENTIALS").map_err(Error::VarError)?;
+        let authorized_user_credentials = std::env::var("TEST_USER_CREDENTIALS").map_err(Error::VarError)?;
 
         let json = base64::decode(authorized_user_credentials).unwrap();
         let mut file = File::create(".cred.json")?;

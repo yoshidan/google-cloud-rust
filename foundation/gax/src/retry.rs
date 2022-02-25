@@ -88,11 +88,7 @@ impl Default for RetrySetting {
     }
 }
 
-pub async fn invoke<A, R, RT, C, E>(
-    ctx: CancellationToken,
-    opt: Option<RT>,
-    action: A,
-) -> Result<R, E>
+pub async fn invoke<A, R, RT, C, E>(ctx: CancellationToken, opt: Option<RT>, action: A) -> Result<R, E>
 where
     E: TryAs<Status> + From<Status>,
     A: Action<Item = R, Error = E>,

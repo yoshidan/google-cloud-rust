@@ -43,10 +43,7 @@ async fn test_on_gce() -> Result<bool, Error> {
 
     let url = format!("http://{}", METADATA_IP);
     let body = hyper::Body::empty();
-    let request = Request::builder()
-        .method(Method::GET)
-        .uri(&url)
-        .body(body)?;
+    let request = Request::builder().method(Method::GET).uri(&url).body(body)?;
 
     let client = Client::builder().build(default_http_connector());
     let response = client.request(request).await;

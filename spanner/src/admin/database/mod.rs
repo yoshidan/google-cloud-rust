@@ -7,8 +7,8 @@ mod tests {
 
     use google_cloud_googleapis::spanner::admin::database::v1::database::State;
     use google_cloud_googleapis::spanner::admin::database::v1::{
-        CreateDatabaseRequest, Database, DropDatabaseRequest, GetDatabaseDdlRequest,
-        GetDatabaseRequest, ListDatabasesRequest, UpdateDatabaseDdlRequest,
+        CreateDatabaseRequest, Database, DropDatabaseRequest, GetDatabaseDdlRequest, GetDatabaseRequest,
+        ListDatabasesRequest, UpdateDatabaseDdlRequest,
     };
 
     use serial_test::serial;
@@ -25,10 +25,7 @@ mod tests {
             encryption_config: None,
         };
 
-        let creation_result = match client
-            .create_database(CancellationToken::new(), request, None)
-            .await
-        {
+        let creation_result = match client.create_database(CancellationToken::new(), request, None).await {
             Ok(mut res) => res.wait(CancellationToken::new(), None).await,
             Err(err) => panic!("err: {:?}", err),
         };
@@ -50,14 +47,10 @@ mod tests {
     async fn test_get_database() {
         std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
         let client = DatabaseAdminClient::default().await.unwrap();
-        let name =
-            format!("projects/local-project/instances/test-instance/databases/local-database");
+        let name = format!("projects/local-project/instances/test-instance/databases/local-database");
         let request = GetDatabaseRequest { name: name.clone() };
 
-        match client
-            .get_database(CancellationToken::new(), request, None)
-            .await
-        {
+        match client.get_database(CancellationToken::new(), request, None).await {
             Ok(res) => {
                 let db = res.into_inner();
                 assert_eq!(db.name, name);
@@ -74,10 +67,7 @@ mod tests {
         let request = DropDatabaseRequest {
             database: database.name.to_string(),
         };
-        match client
-            .drop_database(CancellationToken::new(), request, None)
-            .await
-        {
+        match client.drop_database(CancellationToken::new(), request, None).await {
             Ok(_res) => assert!(true),
             Err(err) => panic!("err: {:?}", err),
         };
@@ -94,10 +84,7 @@ mod tests {
             page_token: "".to_string(),
         };
 
-        match client
-            .list_databases(CancellationToken::new(), request, None)
-            .await
-        {
+        match client.list_databases(CancellationToken::new(), request, None).await {
             Ok(res) => {
                 println!("size = {}", res.len());
                 assert!(res.len() > 0);
@@ -116,10 +103,7 @@ mod tests {
             database: database.name.to_string(),
         };
 
-        match client
-            .get_database_ddl(CancellationToken::new(), request, None)
-            .await
-        {
+        match client.get_database_ddl(CancellationToken::new(), request, None).await {
             Ok(res) => {
                 assert_eq!(res.into_inner().statements.len(), 1);
             }

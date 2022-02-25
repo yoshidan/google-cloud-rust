@@ -76,11 +76,7 @@ pub struct Publisher {
 }
 
 impl Publisher {
-    pub(crate) fn new(
-        fqtn: String,
-        pubc: PublisherClient,
-        config: Option<PublisherConfig>,
-    ) -> Self {
+    pub(crate) fn new(fqtn: String, pubc: PublisherClient, config: Option<PublisherConfig>) -> Self {
         let config = config.unwrap_or_default();
         let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
         let mut receivers = Vec::with_capacity(1 + config.workers);
@@ -103,12 +99,7 @@ impl Publisher {
         Self {
             sender,
             ordering_senders: Arc::new(ordering_senders),
-            worker: Arc::new(Mutex::new(Worker::start(
-                fqtn.to_string(),
-                pubc,
-                receivers,
-                config,
-            ))),
+            worker: Arc::new(Mutex::new(Worker::start(fqtn.to_string(), pubc, receivers, config))),
         }
     }
 
@@ -130,9 +121,7 @@ impl Publisher {
 
         let (producer, consumer) = oneshot::channel();
         if message.ordering_key.is_empty() {
-            self.sender
-                .send(ReservedMessage { producer, message })
-                .await;
+            self.sender.send(ReservedMessage { producer, message }).await;
         } else {
             let key = message.ordering_key.as_str().to_usize();
             let index = key % self.ordering_senders.len();
@@ -172,41 +161,26 @@ impl Worker {
                 tokio::spawn(async move {
                     let mut bundle = VecDeque::<ReservedMessage>::new();
                     while !receiver.is_closed() {
-                        let result =
-                            match timeout(config.flush_interval, &mut receiver.recv()).await {
-                                Ok(result) => result,
-                                //timed out
-                                Err(_e) => {
-                                    if !bundle.is_empty() {
-                                        log::trace!("elapsed: flush buffer : {}", topic_for_worker);
-                                        Self::flush(
-                                            &mut client,
-                                            topic_for_worker.as_str(),
-                                            bundle,
-                                            retry_setting.clone(),
-                                        )
+                        let result = match timeout(config.flush_interval, &mut receiver.recv()).await {
+                            Ok(result) => result,
+                            //timed out
+                            Err(_e) => {
+                                if !bundle.is_empty() {
+                                    log::trace!("elapsed: flush buffer : {}", topic_for_worker);
+                                    Self::flush(&mut client, topic_for_worker.as_str(), bundle, retry_setting.clone())
                                         .await;
-                                        bundle = VecDeque::new();
-                                    }
-                                    continue;
+                                    bundle = VecDeque::new();
                                 }
-                            };
+                                continue;
+                            }
+                        };
                         match result {
                             Ok(message) => {
                                 bundle.push_back(message);
                                 if bundle.len() >= config.bundle_size {
-                                    log::trace!(
-                                        "maximum buffer {} : {}",
-                                        bundle.len(),
-                                        topic_for_worker
-                                    );
-                                    Self::flush(
-                                        &mut client,
-                                        topic_for_worker.as_str(),
-                                        bundle,
-                                        retry_setting.clone(),
-                                    )
-                                    .await;
+                                    log::trace!("maximum buffer {} : {}", bundle.len(), topic_for_worker);
+                                    Self::flush(&mut client, topic_for_worker.as_str(), bundle, retry_setting.clone())
+                                        .await;
                                     bundle = VecDeque::new();
                                 }
                             }
@@ -218,13 +192,7 @@ impl Worker {
                     log::trace!("stop publisher : {}", topic_for_worker);
                     if !bundle.is_empty() {
                         log::trace!("flush rest buffer : {}", topic_for_worker);
-                        Self::flush(
-                            &mut client,
-                            topic_for_worker.as_str(),
-                            bundle,
-                            retry_setting.clone(),
-                        )
-                        .await;
+                        Self::flush(&mut client, topic_for_worker.as_str(), bundle, retry_setting.clone()).await;
                     }
                 })
             })
@@ -241,8 +209,7 @@ impl Worker {
         retry_setting: Option<RetrySetting>,
     ) {
         let mut data = Vec::<PubsubMessage>::with_capacity(bundle.len());
-        let mut callback =
-            Vec::<oneshot::Sender<Result<String, Status>>>::with_capacity(bundle.len());
+        let mut callback = Vec::<oneshot::Sender<Result<String, Status>>>::with_capacity(bundle.len());
         bundle.into_iter().for_each(|r| {
             data.push(r.message);
             callback.push(r.producer);

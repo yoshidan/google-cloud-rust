@@ -9,12 +9,10 @@ use google_cloud_gax::status::{Code, Status};
 use google_cloud_googleapis::spanner::v1 as internal;
 use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
 use google_cloud_googleapis::spanner::v1::{
-    BatchCreateSessionsRequest, BatchCreateSessionsResponse, BeginTransactionRequest,
-    CommitRequest, CommitResponse, CreateSessionRequest, DeleteSessionRequest,
-    ExecuteBatchDmlRequest, ExecuteBatchDmlResponse, ExecuteSqlRequest, GetSessionRequest,
-    ListSessionsRequest, ListSessionsResponse, PartialResultSet, PartitionQueryRequest,
-    PartitionReadRequest, PartitionResponse, ReadRequest, ResultSet, RollbackRequest, Session,
-    Transaction,
+    BatchCreateSessionsRequest, BatchCreateSessionsResponse, BeginTransactionRequest, CommitRequest, CommitResponse,
+    CreateSessionRequest, DeleteSessionRequest, ExecuteBatchDmlRequest, ExecuteBatchDmlResponse, ExecuteSqlRequest,
+    GetSessionRequest, ListSessionsRequest, ListSessionsResponse, PartialResultSet, PartitionQueryRequest,
+    PartitionReadRequest, PartitionResponse, ReadRequest, ResultSet, RollbackRequest, Session, Transaction,
 };
 
 pub(crate) fn ping_query_request(session_name: impl Into<String>) -> internal::ExecuteSqlRequest {

@@ -35,9 +35,7 @@ impl Error for Status {
 
 impl From<tonic::Status> for Status {
     fn from(tonic_status: tonic::Status) -> Self {
-        return Status {
-            source: tonic_status,
-        };
+        return Status { source: tonic_status };
     }
 }
 
@@ -146,13 +144,9 @@ impl Code {
             Code::DeadlineExceeded => "Deadline expired before operation could complete",
             Code::NotFound => "Some requested entity was not found",
             Code::AlreadyExists => "Some entity that we attempted to create already exists",
-            Code::PermissionDenied => {
-                "The caller does not have permission to execute the specified operation"
-            }
+            Code::PermissionDenied => "The caller does not have permission to execute the specified operation",
             Code::ResourceExhausted => "Some resource has been exhausted",
-            Code::FailedPrecondition => {
-                "The system is not in a state required for the operation's execution"
-            }
+            Code::FailedPrecondition => "The system is not in a state required for the operation's execution",
             Code::Aborted => "The operation was aborted",
             Code::OutOfRange => "Operation was attempted past the valid range",
             Code::Unimplemented => "Operation is not implemented or not supported",

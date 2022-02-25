@@ -17,14 +17,7 @@ pub struct ConnectionManager {
 impl ConnectionManager {
     pub async fn new(pool_size: usize, emulator_host: Option<String>) -> Result<Self, Error> {
         Ok(ConnectionManager {
-            inner: GRPCConnectionManager::new(
-                pool_size,
-                SPANNER,
-                AUDIENCE,
-                Some(&SCOPES),
-                emulator_host,
-            )
-            .await?,
+            inner: GRPCConnectionManager::new(pool_size, SPANNER, AUDIENCE, Some(&SCOPES), emulator_host).await?,
         })
     }
 

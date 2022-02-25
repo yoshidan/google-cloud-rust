@@ -2,9 +2,8 @@ use std::ops::{Deref, DerefMut};
 use std::sync::atomic::AtomicI64;
 
 use google_cloud_googleapis::spanner::v1::{
-    transaction_options, transaction_selector, BeginTransactionRequest, ExecuteSqlRequest,
-    PartitionOptions, PartitionQueryRequest, PartitionReadRequest, ReadRequest, TransactionOptions,
-    TransactionSelector,
+    transaction_options, transaction_selector, BeginTransactionRequest, ExecuteSqlRequest, PartitionOptions,
+    PartitionQueryRequest, PartitionReadRequest, ReadRequest, TransactionOptions, TransactionSelector,
 };
 
 use crate::key::KeySet;
@@ -51,20 +50,15 @@ impl DerefMut for ReadOnlyTransaction {
 }
 
 impl ReadOnlyTransaction {
-    pub async fn single(
-        session: ManagedSession,
-        tb: TimestampBound,
-    ) -> Result<ReadOnlyTransaction, Status> {
+    pub async fn single(session: ManagedSession, tb: TimestampBound) -> Result<ReadOnlyTransaction, Status> {
         Ok(ReadOnlyTransaction {
             base_tx: Transaction {
                 session: Some(session),
                 sequence_number: AtomicI64::new(0),
                 transaction_selector: TransactionSelector {
-                    selector: Some(transaction_selector::Selector::SingleUse(
-                        TransactionOptions {
-                            mode: Some(transaction_options::Mode::ReadOnly(tb.into())),
-                        },
-                    )),
+                    selector: Some(transaction_selector::Selector::SingleUse(TransactionOptions {
+                        mode: Some(transaction_options::Mode::ReadOnly(tb.into())),
+                    })),
                 },
             },
             rts: None,
@@ -210,9 +204,7 @@ impl BatchReadOnlyTransaction {
                             limit: ro.limit,
                             resume_token: vec![],
                             partition_token: x.partition_token,
-                            request_options: Transaction::create_request_options(
-                                ro.call_options.priority,
-                            ),
+                            request_options: Transaction::create_request_options(ro.call_options.priority),
                         },
                         call_setting: ro.call_options.call_setting.clone(),
                     },
@@ -277,9 +269,7 @@ impl BatchReadOnlyTransaction {
                             partition_token: x.partition_token,
                             seqno: 0,
                             query_options: qo.optimizer_options.clone(),
-                            request_options: Transaction::create_request_options(
-                                qo.call_options.priority,
-                            ),
+                            request_options: Transaction::create_request_options(qo.call_options.priority),
                         },
                         call_setting: qo.call_options.call_setting.clone(),
                     },

@@ -43,13 +43,7 @@ async fn test_mutation_and_statement() {
         .await
         .unwrap();
 
-    let mut tx = match ReadWriteTransaction::begin(
-        CancellationToken::new(),
-        session,
-        CallOptions::default(),
-    )
-    .await
-    {
+    let mut tx = match ReadWriteTransaction::begin(CancellationToken::new(), session, CallOptions::default()).await {
         Ok(tx) => tx,
         Err(e) => panic!("begin first error {:?}", e.status),
     };
@@ -97,20 +91,15 @@ async fn test_partitioned_dml() {
         .await
         .unwrap();
 
-    let mut tx = match ReadWriteTransaction::begin_partitioned_dml(
-        CancellationToken::new(),
-        session,
-        CallOptions::default(),
-    )
-    .await
-    {
-        Ok(tx) => tx,
-        Err(e) => panic!("begin first error {:?}", e.status),
-    };
+    let mut tx =
+        match ReadWriteTransaction::begin_partitioned_dml(CancellationToken::new(), session, CallOptions::default())
+            .await
+        {
+            Ok(tx) => tx,
+            Err(e) => panic!("begin first error {:?}", e.status),
+        };
     let result = async {
-        let stmt1 = Statement::new(
-            "UPDATE User SET NullableString = 'aaa' WHERE NullableString IS NOT NULL",
-        );
+        let stmt1 = Statement::new("UPDATE User SET NullableString = 'aaa' WHERE NullableString IS NOT NULL");
         tx.update(CancellationToken::new(), stmt1).await
     }
     .await;
@@ -145,19 +134,12 @@ async fn test_rollback() {
         .await
         .unwrap();
 
-    let mut tx = match ReadWriteTransaction::begin(
-        CancellationToken::new(),
-        session,
-        CallOptions::default(),
-    )
-    .await
-    {
+    let mut tx = match ReadWriteTransaction::begin(CancellationToken::new(), session, CallOptions::default()).await {
         Ok(tx) => tx,
         Err(e) => panic!("begin first error {:?}", e.status),
     };
     let result = async {
-        let mut stmt1 =
-            Statement::new("UPDATE User SET NullableString = 'aaaaaaa' WHERE UserId = @UserId");
+        let mut stmt1 = Statement::new("UPDATE User SET NullableString = 'aaaaaaa' WHERE UserId = @UserId");
         stmt1.add_param("UserId", &past_user);
         tx.update(CancellationToken::new(), stmt1).await?;
 
@@ -170,12 +152,7 @@ async fn test_rollback() {
     let session = create_session().await;
     let mut tx = read_only_transaction(session).await;
     let reader = tx
-        .read(
-            CancellationToken::new(),
-            "User",
-            &user_columns(),
-            Key::key(&past_user),
-        )
+        .read(CancellationToken::new(), "User", &user_columns(), Key::key(&past_user))
         .await
         .unwrap();
     let row = all_rows(reader).await.unwrap().pop().unwrap();
@@ -192,13 +169,7 @@ async fn assert_data(
 ) {
     // get by another transaction
     let session = create_session().await;
-    let mut tx = match ReadWriteTransaction::begin(
-        CancellationToken::new(),
-        session,
-        CallOptions::default(),
-    )
-    .await
-    {
+    let mut tx = match ReadWriteTransaction::begin(CancellationToken::new(), session, CallOptions::default()).await {
         Ok(tx) => tx,
         Err(e) => panic!("begin second error {:?}", e.status),
     };
@@ -237,9 +208,7 @@ async fn assert_data(
     );
     assert!(user_items.is_empty());
 
-    let mut user_characters = row
-        .column_by_name::<Vec<UserCharacter>>("UserCharacter")
-        .unwrap();
+    let mut user_characters = row.column_by_name::<Vec<UserCharacter>>("UserCharacter").unwrap();
     let first_character = user_characters.pop().unwrap();
     assert_eq!(first_character.user_id, *user_id);
     assert_eq!(first_character.character_id, 1);

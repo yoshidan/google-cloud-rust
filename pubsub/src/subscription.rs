@@ -10,8 +10,8 @@ use tokio_util::sync::CancellationToken;
 
 use crate::apiv1::subscriber_client::SubscriberClient;
 use google_cloud_googleapis::pubsub::v1::{
-    DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest,
-    PushConfig, RetryPolicy, Subscription as InternalSubscription, UpdateSubscriptionRequest,
+    DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest, PushConfig, RetryPolicy,
+    Subscription as InternalSubscription, UpdateSubscriptionRequest,
 };
 
 use crate::subscriber::{ReceivedMessage, Subscriber, SubscriberConfig};
@@ -162,9 +162,7 @@ impl Subscription {
                     detached: cfg.detached,
                     message_retention_duration: cfg.message_retention_duration.map(|v| v.into()),
                     retain_acked_messages: cfg.retain_acked_messages,
-                    topic_message_retention_duration: cfg
-                        .topic_message_retention_duration
-                        .map(|v| v.into()),
+                    topic_message_retention_duration: cfg.topic_message_retention_duration.map(|v| v.into()),
                 },
                 retry_option,
             )
@@ -173,11 +171,7 @@ impl Subscription {
     }
 
     /// delete deletes the subscription.
-    pub async fn delete(
-        &self,
-        ctx: CancellationToken,
-        retry_option: Option<RetrySetting>,
-    ) -> Result<(), Status> {
+    pub async fn delete(&self, ctx: CancellationToken, retry_option: Option<RetrySetting>) -> Result<(), Status> {
         self.subc
             .delete_subscription(
                 ctx,
@@ -191,11 +185,7 @@ impl Subscription {
     }
 
     /// exists reports whether the subscription exists on the server.
-    pub async fn exists(
-        &self,
-        ctx: CancellationToken,
-        retry_option: Option<RetrySetting>,
-    ) -> Result<bool, Status> {
+    pub async fn exists(&self, ctx: CancellationToken, retry_option: Option<RetrySetting>) -> Result<bool, Status> {
         match self
             .subc
             .get_subscription(

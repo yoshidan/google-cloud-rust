@@ -1,7 +1,5 @@
 use google_cloud_gax::retry::{invoke_fn, TryAs};
-use google_cloud_googleapis::spanner::v1::{
-    commit_request, transaction_options, Mutation, TransactionOptions,
-};
+use google_cloud_googleapis::spanner::v1::{commit_request, transaction_options, Mutation, TransactionOptions};
 
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::session::{ManagedSession, SessionConfig, SessionError, SessionManager};
@@ -188,8 +186,7 @@ impl Client {
             Err(_) => None,
         };
         let conn_pool = ConnectionManager::new(pool_size, emulator_host).await?;
-        let session_manager =
-            SessionManager::new(database, conn_pool, config.session_config).await?;
+        let session_manager = SessionManager::new(database, conn_pool, config.session_config).await?;
         session_manager.schedule_refresh();
 
         Ok(Client {
@@ -206,18 +203,13 @@ impl Client {
     /// where only a single read or query is needed.  This is more efficient than
     /// using read_only_transaction for a single read or query.
     pub async fn single(&self) -> Result<ReadOnlyTransaction, TxError> {
-        return self
-            .single_with_timestamp_bound(TimestampBound::strong_read())
-            .await;
+        return self.single_with_timestamp_bound(TimestampBound::strong_read()).await;
     }
 
     /// single provides a read-only snapshot transaction optimized for the case
     /// where only a single read or query is needed.  This is more efficient than
     /// using read_only_transaction for a single read or query.
-    pub async fn single_with_timestamp_bound(
-        &self,
-        tb: TimestampBound,
-    ) -> Result<ReadOnlyTransaction, TxError> {
+    pub async fn single_with_timestamp_bound(&self, tb: TimestampBound) -> Result<ReadOnlyTransaction, TxError> {
         let session = self.get_session().await?;
         let result = ReadOnlyTransaction::single(session, tb).await?;
         Ok(result)
@@ -225,10 +217,7 @@ impl Client {
 
     /// read_only_transaction returns a ReadOnlyTransaction that can be used for
     /// multiple reads from the database.
-    pub async fn read_only_transaction(
-        &self,
-        ctx: CancellationToken,
-    ) -> Result<ReadOnlyTransaction, TxError> {
+    pub async fn read_only_transaction(&self, ctx: CancellationToken) -> Result<ReadOnlyTransaction, TxError> {
         return self
             .read_only_transaction_with_option(ctx, ReadOnlyTransactionOption::default())
             .await;
@@ -242,9 +231,7 @@ impl Client {
         options: ReadOnlyTransactionOption,
     ) -> Result<ReadOnlyTransaction, TxError> {
         let session = self.get_session().await?;
-        let result =
-            ReadOnlyTransaction::begin(ctx, session, options.timestamp_bound, options.call_options)
-                .await?;
+        let result = ReadOnlyTransaction::begin(ctx, session, options.timestamp_bound, options.call_options).await?;
         Ok(result)
     }
 
@@ -271,13 +258,8 @@ impl Client {
         options: ReadOnlyTransactionOption,
     ) -> Result<BatchReadOnlyTransaction, TxError> {
         let session = self.get_session().await?;
-        let result = BatchReadOnlyTransaction::begin(
-            ctx,
-            session,
-            options.timestamp_bound,
-            options.call_options,
-        )
-        .await?;
+        let result =
+            BatchReadOnlyTransaction::begin(ctx, session, options.timestamp_bound, options.call_options).await?;
         Ok(result)
     }
 
@@ -289,11 +271,7 @@ impl Client {
     ///
     /// PartitionedUpdate returns an estimated count of the number of rows affected.
     /// The actual number of affected rows may be greater than the estimate.
-    pub async fn partitioned_update(
-        &self,
-        ctx: CancellationToken,
-        stmt: Statement,
-    ) -> Result<i64, TxError> {
+    pub async fn partitioned_update(&self, ctx: CancellationToken, stmt: Statement) -> Result<i64, TxError> {
         return self
             .partitioned_update_with_option(ctx, stmt, PartitionedUpdateOption::default())
             .await;
@@ -386,9 +364,7 @@ impl Client {
             Some(ro),
             |session| async {
                 let tx = commit_request::Transaction::SingleUseTransaction(TransactionOptions {
-                    mode: Some(transaction_options::Mode::ReadWrite(
-                        transaction_options::ReadWrite {},
-                    )),
+                    mode: Some(transaction_options::Mode::ReadWrite(transaction_options::ReadWrite {})),
                 });
                 match commit(ctx.clone(), session, ms.clone(), tx, options.clone()).await {
                     Ok(s) => Ok(match s.commit_timestamp {
@@ -404,11 +380,7 @@ impl Client {
     }
 
     /// Apply applies a list of mutations atomically to the database.
-    pub async fn apply(
-        &self,
-        ctx: CancellationToken,
-        ms: Vec<Mutation>,
-    ) -> Result<Option<Timestamp>, TxError> {
+    pub async fn apply(&self, ctx: CancellationToken, ms: Vec<Mutation>) -> Result<Option<Timestamp>, TxError> {
         return self
             .apply_with_option(ctx, ms, ReadWriteTransactionOption::default())
             .await;
@@ -513,8 +485,7 @@ impl Client {
                     .create_read_write_transaction::<E>(ctx.clone(), session, bo.clone())
                     .await?;
                 let result = f(ctx.child_token(), &mut tx).await;
-                tx.finish(CancellationToken::new(), result, Some(co.clone()))
-                    .await
+                tx.finish(CancellationToken::new(), result, Some(co.clone())).await
             },
             session,
         )
@@ -549,8 +520,7 @@ impl Client {
                     .create_read_write_transaction::<E>(ctx.clone(), session, bo.clone())
                     .await?;
                 let result = f(ctx.child_token(), &mut tx);
-                tx.finish(CancellationToken::new(), result, Some(co.clone()))
-                    .await
+                tx.finish(CancellationToken::new(), result, Some(co.clone())).await
             },
             session,
         )
@@ -575,9 +545,7 @@ impl Client {
         return self.sessions.get().await;
     }
 
-    fn split_read_write_transaction_option(
-        options: ReadWriteTransactionOption,
-    ) -> (CallOptions, CommitOptions) {
+    fn split_read_write_transaction_option(options: ReadWriteTransactionOption) -> (CallOptions, CommitOptions) {
         (options.begin_options, options.commit_options)
     }
 }

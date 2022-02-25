@@ -11,8 +11,8 @@ use crate::apiv1::subscriber_client::SubscriberClient;
 use crate::publisher::{Publisher, PublisherConfig};
 use crate::subscription::Subscription;
 use google_cloud_googleapis::pubsub::v1::{
-    DeleteTopicRequest, GetTopicRequest, ListTopicSubscriptionsRequest, MessageStoragePolicy,
-    SchemaSettings, Topic as InternalTopic,
+    DeleteTopicRequest, GetTopicRequest, ListTopicSubscriptionsRequest, MessageStoragePolicy, SchemaSettings,
+    Topic as InternalTopic,
 };
 
 pub struct TopicConfig {
@@ -86,9 +86,7 @@ impl Topic {
                     kms_key_name: topic_config.kms_key_name,
                     schema_settings: topic_config.schema_settings,
                     satisfies_pzs: topic_config.satisfies_pzs,
-                    message_retention_duration: topic_config
-                        .message_retention_duration
-                        .map(|v| v.into()),
+                    message_retention_duration: topic_config.message_retention_duration.map(|v| v.into()),
                 },
                 opt,
             )
@@ -97,11 +95,7 @@ impl Topic {
     }
 
     /// delete deletes the topic.
-    pub async fn delete(
-        &self,
-        ctx: CancellationToken,
-        opt: Option<RetrySetting>,
-    ) -> Result<(), Status> {
+    pub async fn delete(&self, ctx: CancellationToken, opt: Option<RetrySetting>) -> Result<(), Status> {
         self.pubc
             .delete_topic(
                 ctx,
@@ -115,11 +109,7 @@ impl Topic {
     }
 
     /// exists reports whether the topic exists on the server.
-    pub async fn exists(
-        &self,
-        ctx: CancellationToken,
-        opt: Option<RetrySetting>,
-    ) -> Result<bool, Status> {
+    pub async fn exists(&self, ctx: CancellationToken, opt: Option<RetrySetting>) -> Result<bool, Status> {
         if self.fqtn == "_deleted-topic_" {
             return Ok(false);
         }
@@ -213,10 +203,7 @@ mod tests {
         return Ok(topic);
     }
 
-    async fn publish(
-        ctx: CancellationToken,
-        publisher: Publisher,
-    ) -> Vec<JoinHandle<Result<String, Status>>> {
+    async fn publish(ctx: CancellationToken, publisher: Publisher) -> Vec<JoinHandle<Result<String, Status>>> {
         (0..10)
             .into_iter()
             .map(|_i| {
@@ -254,11 +241,7 @@ mod tests {
         publisher.shutdown().await;
 
         // Can't publish messages
-        let result = publisher
-            .publish(PubsubMessage::default())
-            .await
-            .get(ctx.clone())
-            .await;
+        let result = publisher.publish(PubsubMessage::default()).await.get(ctx.clone()).await;
         assert!(result.is_err());
 
         topic.delete(ctx.clone(), None).await?;
@@ -292,11 +275,7 @@ mod tests {
         }
 
         // Can't publish messages
-        let result = publisher
-            .publish(PubsubMessage::default())
-            .await
-            .get(ctx.clone())
-            .await;
+        let result = publisher.publish(PubsubMessage::default()).await.get(ctx.clone()).await;
         assert!(result.is_err());
 
         topic.delete(ctx.clone(), None).await?;

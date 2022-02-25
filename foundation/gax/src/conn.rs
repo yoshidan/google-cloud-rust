@@ -106,9 +106,7 @@ impl ConnectionManager {
             let endpoint = TonicChannel::from_static(audience).tls_config(tls_config.clone())?;
             let con = Self::connect(endpoint).await?;
             // use GCP token per call
-            let auth_layer = Some(AsyncFilterLayer::new(AsyncAuthInterceptor::new(
-                Arc::clone(&ts),
-            )));
+            let auth_layer = Some(AsyncFilterLayer::new(AsyncAuthInterceptor::new(Arc::clone(&ts))));
             let auth_con = ServiceBuilder::new().option_layer(auth_layer).service(con);
             conns.push(auth_con);
         }

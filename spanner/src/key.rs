@@ -345,22 +345,18 @@ mod tests {
         let range = KeyRange::new(start, end, RangeKind::ClosedClosed);
         let raw_range: v1::KeyRange = range.into();
         match raw_range.start_key_type.unwrap() {
-            v1::key_range::StartKeyType::StartClosed(mut v) => {
-                match v.values.pop().unwrap().kind.unwrap() {
-                    Kind::StringValue(v) => assert_eq!(v, "1"),
-                    _ => panic!("invalid start kind"),
-                }
-            }
+            v1::key_range::StartKeyType::StartClosed(mut v) => match v.values.pop().unwrap().kind.unwrap() {
+                Kind::StringValue(v) => assert_eq!(v, "1"),
+                _ => panic!("invalid start kind"),
+            },
             _ => panic!("invalid start key trype"),
         }
 
         match raw_range.end_key_type.unwrap() {
-            v1::key_range::EndKeyType::EndClosed(mut v) => {
-                match v.values.pop().unwrap().kind.unwrap() {
-                    Kind::StringValue(v) => assert_eq!(v, "100"),
-                    _ => panic!("invalid end kind"),
-                }
-            }
+            v1::key_range::EndKeyType::EndClosed(mut v) => match v.values.pop().unwrap().kind.unwrap() {
+                Kind::StringValue(v) => assert_eq!(v, "100"),
+                _ => panic!("invalid end kind"),
+            },
             _ => panic!("invalid end key trype"),
         }
     }

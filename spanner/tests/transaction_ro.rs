@@ -15,19 +15,9 @@ use common::*;
 use std::collections::HashMap;
 use tokio_util::sync::CancellationToken;
 
-async fn assert_read(
-    tx: &mut ReadOnlyTransaction,
-    user_id: &str,
-    now: &DateTime<Utc>,
-    cts: &DateTime<Utc>,
-) {
+async fn assert_read(tx: &mut ReadOnlyTransaction, user_id: &str, now: &DateTime<Utc>, cts: &DateTime<Utc>) {
     let reader = match tx
-        .read(
-            CancellationToken::new(),
-            "User",
-            &user_columns(),
-            Key::key(&user_id),
-        )
+        .read(CancellationToken::new(), "User", &user_columns(), Key::key(&user_id))
         .await
     {
         Ok(tx) => tx,
@@ -39,12 +29,7 @@ async fn assert_read(
     assert_user_row(&row, user_id, now, cts);
 }
 
-async fn assert_query(
-    tx: &mut ReadOnlyTransaction,
-    user_id: &str,
-    now: &DateTime<Utc>,
-    cts: &DateTime<Utc>,
-) {
+async fn assert_query(tx: &mut ReadOnlyTransaction, user_id: &str, now: &DateTime<Utc>, cts: &DateTime<Utc>) {
     let mut stmt = Statement::new("SELECT * FROM User WHERE UserId = @UserID");
     stmt.add_param("UserId", &user_id);
     let mut rows = execute_query(tx, stmt).await;
@@ -147,9 +132,7 @@ async fn test_complex_query() {
     );
     assert!(user_items.is_empty());
 
-    let mut user_characters = row
-        .column_by_name::<Vec<UserCharacter>>("UserCharacter")
-        .unwrap();
+    let mut user_characters = row.column_by_name::<Vec<UserCharacter>>("UserCharacter").unwrap();
     let first_character = user_characters.pop().unwrap();
     assert_eq!(first_character.user_id, user_id_1);
     assert_eq!(first_character.character_id, 20);
@@ -266,18 +249,10 @@ async fn test_many_records_struct() {
     let user_id = "user_x_6";
     let mutations = vec![create_user_mutation(user_id, &now)];
     let _ = replace_test_data(&mut session, mutations).await.unwrap();
-    let item_mutations = (0..5000)
-        .map(|x| create_user_item_mutation(user_id, x))
-        .collect();
-    let _ = replace_test_data(&mut session, item_mutations)
-        .await
-        .unwrap();
-    let characters_mutations = (0..5000)
-        .map(|x| create_user_character_mutation(user_id, x))
-        .collect();
-    let _ = replace_test_data(&mut session, characters_mutations)
-        .await
-        .unwrap();
+    let item_mutations = (0..5000).map(|x| create_user_item_mutation(user_id, x)).collect();
+    let _ = replace_test_data(&mut session, item_mutations).await.unwrap();
+    let characters_mutations = (0..5000).map(|x| create_user_character_mutation(user_id, x)).collect();
+    let _ = replace_test_data(&mut session, characters_mutations).await.unwrap();
 
     let mut tx = read_only_transaction(session).await;
     let mut stmt = Statement::new(
@@ -293,9 +268,7 @@ async fn test_many_records_struct() {
     let row = rows.pop().unwrap();
     let items = row.column_by_name::<Vec<UserItem>>("UserItem").unwrap();
     assert_eq!(5000, items.len());
-    let characters = row
-        .column_by_name::<Vec<UserCharacter>>("UserCharacter")
-        .unwrap();
+    let characters = row.column_by_name::<Vec<UserCharacter>>("UserCharacter").unwrap();
     assert_eq!(5000, characters.len());
 }
 
@@ -310,12 +283,7 @@ async fn test_read_row() {
 
     let mut tx = read_only_transaction(session).await;
     let row = tx
-        .read_row(
-            CancellationToken::new(),
-            "User",
-            &["UserId"],
-            Key::key(&user_id),
-        )
+        .read_row(CancellationToken::new(), "User", &["UserId"], Key::key(&user_id))
         .await
         .unwrap();
     assert!(row.is_some())

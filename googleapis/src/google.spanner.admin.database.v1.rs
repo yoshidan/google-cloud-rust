@@ -399,10 +399,7 @@ pub struct BackupInfo {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateBackupEncryptionConfig {
     /// Required. The encryption type of the backup.
-    #[prost(
-        enumeration = "create_backup_encryption_config::EncryptionType",
-        tag = "1"
-    )]
+    #[prost(enumeration = "create_backup_encryption_config::EncryptionType", tag = "1")]
     pub encryption_type: i32,
     /// Optional. The Cloud KMS key that will be used to protect the backup.
     /// This field should be set only when
@@ -833,10 +830,7 @@ pub mod restore_database_request {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RestoreDatabaseEncryptionConfig {
     /// Required. The encryption type of the restored database.
-    #[prost(
-        enumeration = "restore_database_encryption_config::EncryptionType",
-        tag = "1"
-    )]
+    #[prost(enumeration = "restore_database_encryption_config::EncryptionType", tag = "1")]
     pub encryption_type: i32,
     /// Optional. The Cloud KMS key that will be used to encrypt/decrypt the restored
     /// database. This field should be set only when
@@ -979,20 +973,14 @@ pub mod database_admin_client {
             let inner = tonic::client::Grpc::new(inner);
             Self { inner }
         }
-        pub fn with_interceptor<F>(
-            inner: T,
-            interceptor: F,
-        ) -> DatabaseAdminClient<InterceptedService<T, F>>
+        pub fn with_interceptor<F>(inner: T, interceptor: F) -> DatabaseAdminClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T: tonic::codegen::Service<
                 http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
-                >,
+                Response = http::Response<<T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody>,
             >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
-                Into<StdError> + Send + Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error: Into<StdError> + Send + Sync,
         {
             DatabaseAdminClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -1015,15 +1003,11 @@ pub mod database_admin_client {
             request: impl tonic::IntoRequest<super::ListDatabasesRequest>,
         ) -> Result<tonic::Response<super::ListDatabasesResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.admin.database.v1.DatabaseAdmin/ListDatabases",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/ListDatabases");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Creates a new Cloud Spanner database and starts to prepare it for serving."]
@@ -1037,20 +1021,13 @@ pub mod database_admin_client {
         pub async fn create_database(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateDatabaseRequest>,
-        ) -> Result<
-            tonic::Response<super::super::super::super::super::longrunning::Operation>,
-            tonic::Status,
-        > {
+        ) -> Result<tonic::Response<super::super::super::super::super::longrunning::Operation>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.admin.database.v1.DatabaseAdmin/CreateDatabase",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/CreateDatabase");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Gets the state of a Cloud Spanner database."]
@@ -1059,15 +1036,11 @@ pub mod database_admin_client {
             request: impl tonic::IntoRequest<super::GetDatabaseRequest>,
         ) -> Result<tonic::Response<super::Database>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.admin.database.v1.DatabaseAdmin/GetDatabase",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/GetDatabase");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Updates the schema of a Cloud Spanner database by"]
@@ -1080,15 +1053,9 @@ pub mod database_admin_client {
         pub async fn update_database_ddl(
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateDatabaseDdlRequest>,
-        ) -> Result<
-            tonic::Response<super::super::super::super::super::longrunning::Operation>,
-            tonic::Status,
-        > {
+        ) -> Result<tonic::Response<super::super::super::super::super::longrunning::Operation>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
@@ -1104,15 +1071,11 @@ pub mod database_admin_client {
             request: impl tonic::IntoRequest<super::DropDatabaseRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.admin.database.v1.DatabaseAdmin/DropDatabase",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/DropDatabase");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Returns the schema of a Cloud Spanner database as a list of formatted"]
@@ -1123,15 +1086,11 @@ pub mod database_admin_client {
             request: impl tonic::IntoRequest<super::GetDatabaseDdlRequest>,
         ) -> Result<tonic::Response<super::GetDatabaseDdlResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.admin.database.v1.DatabaseAdmin/GetDatabaseDdl",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/GetDatabaseDdl");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Sets the access control policy on a database or backup resource."]
@@ -1143,23 +1102,14 @@ pub mod database_admin_client {
         #[doc = " permission on [resource][google.iam.v1.SetIamPolicyRequest.resource]."]
         pub async fn set_iam_policy(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::super::super::iam::v1::SetIamPolicyRequest,
-            >,
-        ) -> Result<
-            tonic::Response<super::super::super::super::super::iam::v1::Policy>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::super::super::super::super::iam::v1::SetIamPolicyRequest>,
+        ) -> Result<tonic::Response<super::super::super::super::super::iam::v1::Policy>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.admin.database.v1.DatabaseAdmin/SetIamPolicy",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/SetIamPolicy");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Gets the access control policy for a database or backup resource."]
@@ -1172,23 +1122,14 @@ pub mod database_admin_client {
         #[doc = " permission on [resource][google.iam.v1.GetIamPolicyRequest.resource]."]
         pub async fn get_iam_policy(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::super::super::iam::v1::GetIamPolicyRequest,
-            >,
-        ) -> Result<
-            tonic::Response<super::super::super::super::super::iam::v1::Policy>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::super::super::super::super::iam::v1::GetIamPolicyRequest>,
+        ) -> Result<tonic::Response<super::super::super::super::super::iam::v1::Policy>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.admin.database.v1.DatabaseAdmin/GetIamPolicy",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/GetIamPolicy");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Returns permissions that the caller has on the specified database or backup"]
@@ -1203,18 +1144,13 @@ pub mod database_admin_client {
         #[doc = " `spanner.backups.list` permission on the containing instance."]
         pub async fn test_iam_permissions(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::super::super::iam::v1::TestIamPermissionsRequest,
-            >,
+            request: impl tonic::IntoRequest<super::super::super::super::super::iam::v1::TestIamPermissionsRequest>,
         ) -> Result<
             tonic::Response<super::super::super::super::super::iam::v1::TestIamPermissionsResponse>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
@@ -1237,20 +1173,13 @@ pub mod database_admin_client {
         pub async fn create_backup(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateBackupRequest>,
-        ) -> Result<
-            tonic::Response<super::super::super::super::super::longrunning::Operation>,
-            tonic::Status,
-        > {
+        ) -> Result<tonic::Response<super::super::super::super::super::longrunning::Operation>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.admin.database.v1.DatabaseAdmin/CreateBackup",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/CreateBackup");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Gets metadata on a pending or completed [Backup][google.spanner.admin.database.v1.Backup]."]
@@ -1259,15 +1188,11 @@ pub mod database_admin_client {
             request: impl tonic::IntoRequest<super::GetBackupRequest>,
         ) -> Result<tonic::Response<super::Backup>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.admin.database.v1.DatabaseAdmin/GetBackup",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/GetBackup");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Updates a pending or completed [Backup][google.spanner.admin.database.v1.Backup]."]
@@ -1276,15 +1201,11 @@ pub mod database_admin_client {
             request: impl tonic::IntoRequest<super::UpdateBackupRequest>,
         ) -> Result<tonic::Response<super::Backup>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.admin.database.v1.DatabaseAdmin/UpdateBackup",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/UpdateBackup");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Deletes a pending or completed [Backup][google.spanner.admin.database.v1.Backup]."]
@@ -1293,15 +1214,11 @@ pub mod database_admin_client {
             request: impl tonic::IntoRequest<super::DeleteBackupRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.admin.database.v1.DatabaseAdmin/DeleteBackup",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/DeleteBackup");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Lists completed and pending backups."]
@@ -1312,15 +1229,11 @@ pub mod database_admin_client {
             request: impl tonic::IntoRequest<super::ListBackupsRequest>,
         ) -> Result<tonic::Response<super::ListBackupsResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.admin.database.v1.DatabaseAdmin/ListBackups",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/ListBackups");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Create a new database by restoring from a completed backup. The new"]
@@ -1343,20 +1256,13 @@ pub mod database_admin_client {
         pub async fn restore_database(
             &mut self,
             request: impl tonic::IntoRequest<super::RestoreDatabaseRequest>,
-        ) -> Result<
-            tonic::Response<super::super::super::super::super::longrunning::Operation>,
-            tonic::Status,
-        > {
+        ) -> Result<tonic::Response<super::super::super::super::super::longrunning::Operation>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.admin.database.v1.DatabaseAdmin/RestoreDatabase",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/RestoreDatabase");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Lists database [longrunning-operations][google.longrunning.Operation]."]
@@ -1372,10 +1278,7 @@ pub mod database_admin_client {
             request: impl tonic::IntoRequest<super::ListDatabaseOperationsRequest>,
         ) -> Result<tonic::Response<super::ListDatabaseOperationsResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
@@ -1398,10 +1301,7 @@ pub mod database_admin_client {
             request: impl tonic::IntoRequest<super::ListBackupOperationsRequest>,
         ) -> Result<tonic::Response<super::ListBackupOperationsResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(

@@ -159,8 +159,7 @@ where
     Tz::Offset: Display,
 {
     fn to_kind(&self) -> Kind {
-        self.to_rfc3339_opts(chrono::SecondsFormat::Nanos, true)
-            .to_kind()
+        self.to_rfc3339_opts(chrono::SecondsFormat::Nanos, true).to_kind()
     }
     fn get_type() -> Type {
         single_type(TypeCode::Timestamp)

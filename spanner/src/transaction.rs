@@ -8,8 +8,8 @@ use tokio_util::sync::CancellationToken;
 use google_cloud_gax::status::Status;
 use google_cloud_googleapis::spanner::v1::request_options::Priority;
 use google_cloud_googleapis::spanner::v1::{
-    execute_sql_request::QueryMode, execute_sql_request::QueryOptions as ExecuteQueryOptions,
-    ExecuteSqlRequest, ReadRequest, RequestOptions, TransactionSelector,
+    execute_sql_request::QueryMode, execute_sql_request::QueryOptions as ExecuteQueryOptions, ExecuteSqlRequest,
+    ReadRequest, RequestOptions, TransactionSelector,
 };
 
 use crate::key::{Key, KeySet};
@@ -94,14 +94,8 @@ impl Transaction {
     /// retrieving the resulting rows.
     ///
     /// query returns only row data, without a query plan or execution statistics.
-    pub async fn query(
-        &mut self,
-        ctx: CancellationToken,
-        statement: Statement,
-    ) -> Result<RowIterator<'_>, Status> {
-        return self
-            .query_with_option(ctx, statement, QueryOptions::default())
-            .await;
+    pub async fn query(&mut self, ctx: CancellationToken, statement: Statement) -> Result<RowIterator<'_>, Status> {
+        return self.query_with_option(ctx, statement, QueryOptions::default()).await;
     }
 
     /// query executes a query against the database. It returns a RowIterator for

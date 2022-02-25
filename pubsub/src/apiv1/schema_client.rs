@@ -5,8 +5,8 @@ use google_cloud_gax::retry::{invoke, RetrySetting};
 use google_cloud_gax::status::Status;
 use google_cloud_googleapis::pubsub::v1::schema_service_client::SchemaServiceClient;
 use google_cloud_googleapis::pubsub::v1::{
-    CreateSchemaRequest, DeleteSchemaRequest, GetSchemaRequest, ListSchemasRequest, Schema,
-    ValidateMessageRequest, ValidateMessageResponse, ValidateSchemaRequest, ValidateSchemaResponse,
+    CreateSchemaRequest, DeleteSchemaRequest, GetSchemaRequest, ListSchemasRequest, Schema, ValidateMessageRequest,
+    ValidateMessageResponse, ValidateSchemaRequest, ValidateSchemaResponse,
 };
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;

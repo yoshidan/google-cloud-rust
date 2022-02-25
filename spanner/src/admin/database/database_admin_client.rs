@@ -2,16 +2,14 @@ use tokio_util::sync::CancellationToken;
 
 use google_cloud_gax::retry::{invoke, RetrySetting};
 use google_cloud_googleapis::iam::v1::{
-    GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest,
-    TestIamPermissionsResponse,
+    GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest, TestIamPermissionsResponse,
 };
 use google_cloud_googleapis::longrunning::Operation as InternalOperation;
 use google_cloud_googleapis::spanner::admin::database::v1::database_admin_client::DatabaseAdminClient as InternalDatabaseAdminClient;
 use google_cloud_googleapis::spanner::admin::database::v1::{
-    Backup, CreateBackupRequest, CreateDatabaseRequest, Database, DeleteBackupRequest,
-    DropDatabaseRequest, GetBackupRequest, GetDatabaseDdlRequest, GetDatabaseDdlResponse,
-    GetDatabaseRequest, ListBackupOperationsRequest, ListBackupsRequest,
-    ListDatabaseOperationsRequest, ListDatabasesRequest, RestoreDatabaseRequest,
+    Backup, CreateBackupRequest, CreateDatabaseRequest, Database, DeleteBackupRequest, DropDatabaseRequest,
+    GetBackupRequest, GetDatabaseDdlRequest, GetDatabaseDdlResponse, GetDatabaseRequest, ListBackupOperationsRequest,
+    ListBackupsRequest, ListDatabaseOperationsRequest, ListDatabasesRequest, RestoreDatabaseRequest,
     UpdateBackupRequest, UpdateDatabaseDdlRequest,
 };
 
@@ -37,10 +35,7 @@ impl DatabaseAdminClient {
 
     pub async fn default() -> Result<Self, Error> {
         let (conn, lro_client) = default_internal_client().await?;
-        Ok(Self::new(
-            InternalDatabaseAdminClient::new(conn),
-            lro_client,
-        ))
+        Ok(Self::new(InternalDatabaseAdminClient::new(conn), lro_client))
     }
 
     /// list_databases lists Cloud Spanner databases.
@@ -88,11 +83,7 @@ impl DatabaseAdminClient {
         let parent = &req.parent;
         let action = || async {
             let request = create_request(format!("parent={}", parent), req.clone());
-            self.inner
-                .clone()
-                .create_database(request)
-                .await
-                .map_err(|e| e.into())
+            self.inner.clone().create_database(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action)
             .await
@@ -110,11 +101,7 @@ impl DatabaseAdminClient {
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={}", name), req.clone());
-            self.inner
-                .clone()
-                .get_database(request)
-                .await
-                .map_err(|e| e.into())
+            self.inner.clone().get_database(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -161,11 +148,7 @@ impl DatabaseAdminClient {
         let database = &req.database;
         let action = || async {
             let request = create_request(format!("database={}", database), req.clone());
-            self.inner
-                .clone()
-                .drop_database(request)
-                .await
-                .map_err(|e| e.into())
+            self.inner.clone().drop_database(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -183,11 +166,7 @@ impl DatabaseAdminClient {
         let database = &req.database;
         let action = || async {
             let request = create_request(format!("database={}", database), req.clone());
-            self.inner
-                .clone()
-                .get_database_ddl(request)
-                .await
-                .map_err(|e| e.into())
+            self.inner.clone().get_database_ddl(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -209,11 +188,7 @@ impl DatabaseAdminClient {
         let resource = &req.resource;
         let action = || async {
             let request = create_request(format!("resource={}", resource), req.clone());
-            self.inner
-                .clone()
-                .set_iam_policy(request)
-                .await
-                .map_err(|e| e.into())
+            self.inner.clone().set_iam_policy(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -236,11 +211,7 @@ impl DatabaseAdminClient {
         let resource = &req.resource;
         let action = || async {
             let request = create_request(format!("resource={}", resource), req.clone());
-            self.inner
-                .clone()
-                .get_iam_policy(request)
-                .await
-                .map_err(|e| e.into())
+            self.inner.clone().get_iam_policy(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -296,11 +267,7 @@ impl DatabaseAdminClient {
         let parent = &req.parent;
         let action = || async {
             let request = create_request(format!("parent={}", parent), req.clone());
-            self.inner
-                .clone()
-                .create_backup(request)
-                .await
-                .map_err(|e| e.into())
+            self.inner.clone().create_backup(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action)
             .await
@@ -318,11 +285,7 @@ impl DatabaseAdminClient {
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={}", name), req.clone());
-            self.inner
-                .clone()
-                .get_backup(request)
-                .await
-                .map_err(|e| e.into())
+            self.inner.clone().get_backup(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -338,11 +301,7 @@ impl DatabaseAdminClient {
         let name = &req.backup.as_ref().unwrap().name;
         let action = || async {
             let request = create_request(format!("backup.name={}", name), req.clone());
-            self.inner
-                .clone()
-                .update_backup(request)
-                .await
-                .map_err(|e| e.into())
+            self.inner.clone().update_backup(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -358,11 +317,7 @@ impl DatabaseAdminClient {
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={}", name), req.clone());
-            self.inner
-                .clone()
-                .delete_backup(request)
-                .await
-                .map_err(|e| e.into())
+            self.inner.clone().delete_backup(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action).await
     }
@@ -426,11 +381,7 @@ impl DatabaseAdminClient {
         let parent = &req.parent;
         let action = || async {
             let request = create_request(format!("parent={}", parent), req.clone());
-            self.inner
-                .clone()
-                .restore_database(request)
-                .await
-                .map_err(|e| e.into())
+            self.inner.clone().restore_database(request).await.map_err(|e| e.into())
         };
         invoke(ctx, opt, action)
             .await
