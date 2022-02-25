@@ -454,6 +454,8 @@
 //! let stmt = Statement::new("UPDATE User SET Value = 'aaa' WHERE Value IS NOT NULL");
 //! let result = client.partitioned_update(stmt).await?;
 //! ```
+pub const AUDIENCE: &str = "https://spanner.googleapis.com/";
+pub const SPANNER: &str = "spanner.googleapis.com";
 
 pub mod admin;
 pub mod apiv1;

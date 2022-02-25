@@ -3,8 +3,8 @@ use std::ops::DerefMut;
 use std::sync::atomic::{AtomicI64, Ordering};
 
 use prost_types::Struct;
+use tokio_util::sync::CancellationToken;
 
-use google_cloud_gax::call_option::BackoffRetrySettings;
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::TransactionId;
 use google_cloud_googleapis::spanner::v1::{
     commit_request, execute_batch_dml_request, result_set_stats, transaction_options,
@@ -12,13 +12,12 @@ use google_cloud_googleapis::spanner::v1::{
     ExecuteBatchDmlRequest, ExecuteSqlRequest, Mutation, ResultSetStats, RollbackRequest,
     TransactionOptions, TransactionSelector,
 };
-use google_cloud_googleapis::{Code, Status};
-
 use crate::session::ManagedSession;
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, Transaction};
 use crate::value::Timestamp;
-use google_cloud_gax::retry::TryAs;
+use google_cloud_gax::retry::{RetrySetting, TryAs};
+use google_cloud_gax::status::{Code, Status};
 
 #[derive(Clone)]
 pub struct CommitOptions {
@@ -114,10 +113,11 @@ pub struct BeginError {
 
 impl ReadWriteTransaction {
     pub async fn begin(
+        ctx: CancellationToken,
         session: ManagedSession,
         options: CallOptions,
     ) -> Result<ReadWriteTransaction, BeginError> {
-        return ReadWriteTransaction::begin_internal(
+        return ReadWriteTransaction::begin_internal(ctx,
             session,
             transaction_options::Mode::ReadWrite(transaction_options::ReadWrite {}),
             options,
@@ -126,10 +126,11 @@ impl ReadWriteTransaction {
     }
 
     pub async fn begin_partitioned_dml(
+        ctx: CancellationToken,
         session: ManagedSession,
         options: CallOptions,
     ) -> Result<ReadWriteTransaction, BeginError> {
-        return ReadWriteTransaction::begin_internal(
+        return ReadWriteTransaction::begin_internal(ctx,
             session,
             transaction_options::Mode::PartitionedDml(transaction_options::PartitionedDml {}),
             options,
@@ -138,6 +139,7 @@ impl ReadWriteTransaction {
     }
 
     async fn begin_internal(
+        ctx: CancellationToken,
         mut session: ManagedSession,
         mode: transaction_options::Mode,
         options: CallOptions,
@@ -149,7 +151,7 @@ impl ReadWriteTransaction {
         };
         let result = session
             .spanner_client
-            .begin_transaction(request, options.call_setting)
+            .begin_transaction(ctx, request, options.call_setting)
             .await;
         let response = match session.invalidate_if_needed(result).await {
             Ok(response) => response,
@@ -178,12 +180,13 @@ impl ReadWriteTransaction {
         self.wb.extend_from_slice(&ms)
     }
 
-    pub async fn update(&mut self, stmt: Statement) -> Result<i64, Status> {
-        return self.update_with_option(stmt, QueryOptions::default()).await;
+    pub async fn update(&mut self, ctx: CancellationToken, stmt: Statement) -> Result<i64, Status> {
+        return self.update_with_option(ctx, stmt, QueryOptions::default()).await;
     }
 
     pub async fn update_with_option(
         &mut self,
+        ctx: CancellationToken,
         stmt: Statement,
         options: QueryOptions,
     ) -> Result<i64, Status> {
@@ -206,20 +209,21 @@ impl ReadWriteTransaction {
         let session = self.as_mut_session();
         let result = session
             .spanner_client
-            .execute_sql(request, options.call_options.call_setting)
+            .execute_sql(ctx, request, options.call_options.call_setting)
             .await;
         let response = session.invalidate_if_needed(result).await?;
         Ok(extract_row_count(response.into_inner().stats))
     }
 
-    pub async fn batch_update(&mut self, stmt: Vec<Statement>) -> Result<Vec<i64>, Status> {
+    pub async fn batch_update(&mut self, ctx: CancellationToken, stmt: Vec<Statement>) -> Result<Vec<i64>, Status> {
         return self
-            .batch_update_with_option(stmt, QueryOptions::default())
+            .batch_update_with_option(ctx, stmt, QueryOptions::default())
             .await;
     }
 
     pub async fn batch_update_with_option(
         &mut self,
+        ctx: CancellationToken,
         stmt: Vec<Statement>,
         options: QueryOptions,
     ) -> Result<Vec<i64>, Status> {
@@ -241,7 +245,7 @@ impl ReadWriteTransaction {
         let session = self.as_mut_session();
         let result = session
             .spanner_client
-            .execute_batch_dml(request, options.call_options.call_setting)
+            .execute_batch_dml(ctx,request, options.call_options.call_setting)
             .await;
         let response = session.invalidate_if_needed(result).await?;
         Ok(response
@@ -254,6 +258,7 @@ impl ReadWriteTransaction {
 
     pub async fn finish<T, E>(
         &mut self,
+        ctx: CancellationToken,
         result: Result<T, E>,
         options: Option<CommitOptions>,
     ) -> Result<(Option<Timestamp>, T), (E, Option<ManagedSession>)>
@@ -266,7 +271,7 @@ impl ReadWriteTransaction {
         };
 
         return match result {
-            Ok(s) => match self.commit(opt).await {
+            Ok(s) => match self.commit(ctx, opt).await {
                 Ok(c) => Ok((
                     match c.commit_timestamp {
                         Some(ts) => Some(ts.into()),
@@ -290,14 +295,14 @@ impl ReadWriteTransaction {
                 let status = match err.try_as() {
                     Ok(status) => status,
                     _ => {
-                        self.rollback(opt.call_options.call_setting).await;
+                        self.rollback(ctx, opt.call_options.call_setting).await;
                         return Err((err, self.take_session()));
                     }
                 };
                 match status.code() {
                     Code::Aborted => Err((err, self.take_session())),
                     _ => {
-                        self.rollback(opt.call_options.call_setting).await;
+                        self.rollback(ctx, opt.call_options.call_setting).await;
                         return Err((err, self.take_session()));
                     }
                 }
@@ -305,20 +310,20 @@ impl ReadWriteTransaction {
         };
     }
 
-    pub async fn commit(&mut self, options: CommitOptions) -> Result<CommitResponse, Status> {
+    pub async fn commit(&mut self, ctx: CancellationToken, options: CommitOptions) -> Result<CommitResponse, Status> {
         let tx_id = self.tx_id.clone();
         let mutations = self.wb.to_vec();
         let session = self.as_mut_session();
-        return commit(session, mutations, TransactionId(tx_id), options).await;
+        return commit(ctx, session, mutations, TransactionId(tx_id), options).await;
     }
 
-    pub async fn rollback(&mut self, setting: Option<BackoffRetrySettings>) {
+    pub async fn rollback(&mut self, ctx: CancellationToken, setting: Option<RetrySetting>) {
         let request = RollbackRequest {
             transaction_id: self.tx_id.clone(),
             session: self.get_session_name(),
         };
         let session = self.as_mut_session();
-        let result = session.spanner_client.rollback(request, setting).await;
+        let result = session.spanner_client.rollback(ctx, request, setting).await;
         let response = session.invalidate_if_needed(result).await;
         match response {
             Ok(_) => {}
@@ -328,6 +333,7 @@ impl ReadWriteTransaction {
 }
 
 pub async fn commit(
+    ctx: CancellationToken,
     session: &mut ManagedSession,
     ms: Vec<Mutation>,
     tx: commit_request::Transaction,
@@ -342,7 +348,7 @@ pub async fn commit(
     };
     let result = session
         .spanner_client
-        .commit(request, commit_options.call_options.call_setting)
+        .commit(ctx, request, commit_options.call_options.call_setting)
         .await;
     let response = session.invalidate_if_needed(result).await;
     match response {

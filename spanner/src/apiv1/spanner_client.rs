@@ -1,10 +1,11 @@
-use google_cloud_googleapis::{Code, Status};
+use std::time::Duration;
+use tokio_util::sync::CancellationToken;
 use tonic::{Response, Streaming};
 
-use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
 use google_cloud_gax::conn::Channel;
-use google_cloud_gax::retry::invoke_reuse;
-use google_cloud_gax::util::create_request;
+use google_cloud_gax::create_request;
+use google_cloud_gax::retry::{invoke_fn, RetrySetting};
+use google_cloud_gax::status::{Code, Status};
 use google_cloud_googleapis::spanner::v1 as internal;
 use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
 use google_cloud_googleapis::spanner::v1::{
@@ -32,13 +33,13 @@ pub(crate) fn ping_query_request(session_name: impl Into<String>) -> internal::E
     }
 }
 
-fn default_setting() -> BackoffRetrySettings {
-    BackoffRetrySettings {
-        retryer: BackoffRetryer {
-            backoff: Backoff::default(),
-            //handle gRPC stream error (Status { code: Unknown, message: "transport error", source: None })
-            codes: vec![Code::Unavailable, Code::Unknown],
-        },
+fn default_setting() -> RetrySetting {
+    RetrySetting {
+        from_millis: 50,
+        max_delay: Some(Duration::from_secs(10)),
+        factor: 1u64,
+        take: 20,
+        codes: vec![Code::Unavailable, Code::Unknown],
     }
 }
 
@@ -51,14 +52,6 @@ impl Client {
     /// create new spanner client
     pub fn new(inner: SpannerClient<Channel>) -> Client {
         Client { inner }
-    }
-
-    /// merge call setting
-    fn get_call_setting(call_setting: Option<BackoffRetrySettings>) -> BackoffRetrySettings {
-        match call_setting {
-            Some(s) => s,
-            None => default_setting(),
-        }
     }
 
     /// create_session creates a new session. A session can be used to perform
@@ -82,12 +75,14 @@ impl Client {
     /// periodically, e.g., "SELECT 1".
     pub async fn create_session(
         &mut self,
+        ctx: CancellationToken,
         req: CreateSessionRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<Session>, Status> {
-        let mut setting = Client::get_call_setting(opt);
+        let setting = opt.unwrap_or(default_setting());
         let database = &req.database;
-        return invoke_reuse(
+        return invoke_fn(
+            ctx, Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("database={}", database), req.clone());
                 spanner_client
@@ -96,7 +91,6 @@ impl Client {
                     .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
-            &mut setting,
         )
         .await;
     }
@@ -107,12 +101,14 @@ impl Client {
     /// See https:///goo.gl/TgSFN2 (at https:///goo.gl/TgSFN2) for best practices on session cache management.
     pub async fn batch_create_sessions(
         &mut self,
+        ctx: CancellationToken,
         req: BatchCreateSessionsRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<tonic::Response<BatchCreateSessionsResponse>, Status> {
-        let mut setting = Client::get_call_setting(opt);
+        let setting = opt.unwrap_or(default_setting());
         let database = &req.database;
-        return invoke_reuse(
+        return invoke_fn(
+            ctx, Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("database={}", database), req.clone());
                 spanner_client
@@ -120,8 +116,7 @@ impl Client {
                     .await
                     .map_err(|e| (e.into(), spanner_client))
             },
-            &mut self.inner,
-            &mut setting,
+            &mut self.inner
         )
         .await;
     }
@@ -131,12 +126,14 @@ impl Client {
     /// alive.
     pub async fn get_session(
         &mut self,
+        ctx: CancellationToken,
         req: GetSessionRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<Session>, Status> {
-        let mut setting = Client::get_call_setting(opt);
+        let setting = opt.unwrap_or(default_setting());
         let name = &req.name;
-        return invoke_reuse(
+        return invoke_fn(
+            ctx, Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("name={}", name), req.clone());
                 spanner_client
@@ -144,8 +141,7 @@ impl Client {
                     .await
                     .map_err(|e| (e.into(), spanner_client))
             },
-            &mut self.inner,
-            &mut setting,
+            &mut self.inner
         )
         .await;
     }
@@ -153,12 +149,14 @@ impl Client {
     /// list_sessions lists all sessions in a given database.
     pub async fn list_sessions(
         &mut self,
+        ctx: CancellationToken,
         req: ListSessionsRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<ListSessionsResponse>, Status> {
-        let mut setting = Client::get_call_setting(opt);
+        let setting = opt.unwrap_or(default_setting());
         let database = &req.database;
-        return invoke_reuse(
+        return invoke_fn(
+            ctx, Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("database={}", database), req.clone());
                 spanner_client
@@ -166,8 +164,7 @@ impl Client {
                     .await
                     .map_err(|e| (e.into(), spanner_client))
             },
-            &mut self.inner,
-            &mut setting,
+            &mut self.inner
         )
         .await;
     }
@@ -177,12 +174,14 @@ impl Client {
     /// this session.
     pub async fn delete_session(
         &mut self,
+        ctx: CancellationToken,
         req: DeleteSessionRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let mut setting = Client::get_call_setting(opt);
+        let setting = opt.unwrap_or(default_setting());
         let name = &req.name;
-        return invoke_reuse(
+        return invoke_fn(
+            ctx, Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("name={}", name), req.clone());
                 spanner_client
@@ -191,7 +190,6 @@ impl Client {
                     .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
-            &mut setting,
         )
         .await;
     }
@@ -209,12 +207,14 @@ impl Client {
     /// ExecuteStreamingSql instead.
     pub async fn execute_sql(
         &mut self,
+        ctx: CancellationToken,
         req: ExecuteSqlRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<ResultSet>, Status> {
-        let mut setting = Client::get_call_setting(opt);
+        let setting = opt.unwrap_or(default_setting());
         let session = &req.session;
-        return invoke_reuse(
+        return invoke_fn(
+            ctx, Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
                 spanner_client
@@ -223,7 +223,6 @@ impl Client {
                     .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
-            &mut setting,
         )
         .await;
     }
@@ -235,12 +234,14 @@ impl Client {
     /// column value can exceed 10 MiB.
     pub async fn execute_streaming_sql(
         &mut self,
+        ctx: CancellationToken,
         req: ExecuteSqlRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
-        let mut setting = Client::get_call_setting(opt);
+        let setting = opt.unwrap_or(default_setting());
         let session = &req.session;
-        return invoke_reuse(
+        return invoke_fn(
+            ctx, Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
                 spanner_client
@@ -249,7 +250,6 @@ impl Client {
                     .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
-            &mut setting,
         )
         .await;
     }
@@ -267,12 +267,14 @@ impl Client {
     /// are not executed.
     pub async fn execute_batch_dml(
         &mut self,
+        ctx: CancellationToken,
         req: ExecuteBatchDmlRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<ExecuteBatchDmlResponse>, Status> {
-        let mut setting = Client::get_call_setting(opt);
+        let setting = opt.unwrap_or(default_setting());
         let session = &req.session;
-        return invoke_reuse(
+        return invoke_fn(
+            ctx, Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
                 let result = spanner_client.execute_batch_dml(request).await;
@@ -295,7 +297,6 @@ impl Client {
                 }
             },
             &mut self.inner,
-            &mut setting,
         )
         .await;
     }
@@ -315,12 +316,14 @@ impl Client {
     /// StreamingRead instead.
     pub async fn read(
         &mut self,
+        ctx: CancellationToken,
         req: ReadRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<ResultSet>, Status> {
-        let mut setting = Client::get_call_setting(opt);
+        let setting = opt.unwrap_or(default_setting());
         let session = &req.session;
-        return invoke_reuse(
+        return invoke_fn(
+            ctx, Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
                 spanner_client
@@ -329,7 +332,6 @@ impl Client {
                     .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
-            &mut setting,
         )
         .await;
     }
@@ -341,12 +343,14 @@ impl Client {
     /// 10 MiB.
     pub async fn streaming_read(
         &mut self,
+        ctx: CancellationToken,
         req: ReadRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
-        let mut setting = Client::get_call_setting(opt);
+        let setting = opt.unwrap_or(default_setting());
         let session = &req.session;
-        return invoke_reuse(
+        return invoke_fn(
+            ctx ,Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
                 spanner_client
@@ -355,7 +359,6 @@ impl Client {
                     .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
-            &mut setting,
         )
         .await;
     }
@@ -366,12 +369,14 @@ impl Client {
     /// side-effect.
     pub async fn begin_transaction(
         &mut self,
+        ctx: CancellationToken,
         req: BeginTransactionRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<Transaction>, Status> {
-        let mut setting = Client::get_call_setting(opt);
+        let setting = opt.unwrap_or(default_setting());
         let session = &req.session;
-        return invoke_reuse(
+        return invoke_fn(
+            ctx, Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
                 spanner_client
@@ -380,7 +385,6 @@ impl Client {
                     .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
-            &mut setting,
         )
         .await;
     }
@@ -401,12 +405,14 @@ impl Client {
     /// state of things as they are now.
     pub async fn commit(
         &mut self,
+        ctx: CancellationToken,
         req: CommitRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<CommitResponse>, Status> {
-        let mut setting = Client::get_call_setting(opt);
+        let setting = opt.unwrap_or(default_setting());
         let session = &req.session;
-        return invoke_reuse(
+        return invoke_fn(
+            ctx, Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
                 spanner_client
@@ -415,7 +421,6 @@ impl Client {
                     .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
-            &mut setting,
         )
         .await;
     }
@@ -430,12 +435,14 @@ impl Client {
     /// found. Rollback never returns ABORTED.
     pub async fn rollback(
         &mut self,
+        ctx: CancellationToken,
         req: RollbackRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let mut setting = Client::get_call_setting(opt);
+        let setting = opt.unwrap_or(default_setting());
         let session = &req.session;
-        return invoke_reuse(
+        return invoke_fn(
+            ctx, Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
                 spanner_client
@@ -444,7 +451,6 @@ impl Client {
                     .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
-            &mut setting,
         )
         .await;
     }
@@ -462,12 +468,14 @@ impl Client {
     /// the whole operation must be restarted from the beginning.
     pub async fn partition_query(
         &mut self,
+        ctx: CancellationToken,
         req: PartitionQueryRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<PartitionResponse>, Status> {
-        let mut setting = Client::get_call_setting(opt);
+        let setting = opt.unwrap_or(default_setting());
         let session = &req.session;
-        return invoke_reuse(
+        return invoke_fn(
+            ctx, Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
                 spanner_client
@@ -476,7 +484,6 @@ impl Client {
                     .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
-            &mut setting,
         )
         .await;
     }
@@ -496,12 +503,14 @@ impl Client {
     /// the whole operation must be restarted from the beginning.
     pub async fn partition_read(
         &mut self,
+        ctx: CancellationToken,
         req: PartitionReadRequest,
-        opt: Option<BackoffRetrySettings>,
+        opt: Option<RetrySetting>,
     ) -> Result<Response<PartitionResponse>, Status> {
-        let mut setting = Client::get_call_setting(opt);
+        let setting = opt.unwrap_or(default_setting());
         let session = &req.session;
-        return invoke_reuse(
+        return invoke_fn(
+            ctx, Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
                 spanner_client
@@ -510,7 +519,6 @@ impl Client {
                     .map_err(|e| (e.into(), spanner_client))
             },
             &mut self.inner,
-            &mut setting,
         )
         .await;
     }

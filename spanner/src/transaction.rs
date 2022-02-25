@@ -1,10 +1,11 @@
 use std::ops::DerefMut;
 use std::sync::atomic::AtomicI64;
 
-use google_cloud_googleapis::Status;
 use prost_types::Struct;
+use tokio_util::sync::CancellationToken;
+use google_cloud_gax::retry::RetrySetting;
 
-use google_cloud_gax::call_option::BackoffRetrySettings;
+use google_cloud_gax::status::Status;
 use google_cloud_googleapis::spanner::v1::request_options::Priority;
 use google_cloud_googleapis::spanner::v1::{
     execute_sql_request::QueryMode, execute_sql_request::QueryOptions as ExecuteQueryOptions,
@@ -21,7 +22,7 @@ use crate::statement::Statement;
 pub struct CallOptions {
     /// Priority is the RPC priority to use for the read operation.
     pub priority: Option<Priority>,
-    pub call_setting: Option<BackoffRetrySettings>,
+    pub call_setting: Option<RetrySetting>,
 }
 
 impl Default for CallOptions {
@@ -93,9 +94,9 @@ impl Transaction {
     /// retrieving the resulting rows.
     ///
     /// query returns only row data, without a query plan or execution statistics.
-    pub async fn query(&mut self, statement: Statement) -> Result<RowIterator<'_>, Status> {
+    pub async fn query(&mut self, ctx: CancellationToken, statement: Statement) -> Result<RowIterator<'_>, Status> {
         return self
-            .query_with_option(statement, QueryOptions::default())
+            .query_with_option(ctx, statement, QueryOptions::default())
             .await;
     }
 
@@ -105,6 +106,7 @@ impl Transaction {
     /// query returns only row data, without a query plan or execution statistics.
     pub async fn query_with_option(
         &mut self,
+        ctx: CancellationToken,
         statement: Statement,
         options: QueryOptions,
     ) -> Result<RowIterator<'_>, Status> {
@@ -125,7 +127,7 @@ impl Transaction {
         };
         let session = self.session.as_mut().unwrap().deref_mut();
         return RowIterator::new(
-            session,
+            ctx, session,
             Box::new(StatementReader {
                 request,
                 call_setting: options.call_options.call_setting,
@@ -137,18 +139,20 @@ impl Transaction {
     /// read returns a RowIterator for reading multiple rows from the database.
     pub async fn read(
         &mut self,
+        ctx: CancellationToken,
         table: &str,
         columns: &[&str],
         key_set: impl Into<KeySet>,
     ) -> Result<RowIterator<'_>, Status> {
         return self
-            .read_with_option(table, columns, key_set, ReadOptions::default())
+            .read_with_option(ctx, table, columns, key_set, ReadOptions::default())
             .await;
     }
 
     /// read returns a RowIterator for reading multiple rows from the database.
     pub async fn read_with_option(
         &mut self,
+        ctx: CancellationToken,
         table: &str,
         columns: &[&str],
         key_set: impl Into<KeySet>,
@@ -169,6 +173,7 @@ impl Transaction {
 
         let session = self.as_mut_session();
         return RowIterator::new(
+            ctx,
             session,
             Box::new(TableReader {
                 request,
@@ -181,27 +186,29 @@ impl Transaction {
     /// read returns a RowIterator for reading multiple rows from the database.
     pub async fn read_row(
         &mut self,
+        ctx: CancellationToken,
         table: &str,
         columns: &[&str],
         key: Key,
     ) -> Result<Option<Row>, Status> {
         return self
-            .read_row_with_option(table, columns, key, ReadOptions::default())
+            .read_row_with_option(ctx, table, columns, key, ReadOptions::default())
             .await;
     }
 
     /// read returns a RowIterator for reading multiple rows from the database.
     pub async fn read_row_with_option(
         &mut self,
+        ctx: CancellationToken,
         table: &str,
         columns: &[&str],
         key: Key,
         options: ReadOptions,
     ) -> Result<Option<Row>, Status> {
         let mut reader = self
-            .read_with_option(table, columns, KeySet::from(key), options)
+            .read_with_option(ctx.clone(), table, columns, KeySet::from(key), options)
             .await?;
-        return reader.next().await;
+        return reader.next(ctx).await;
     }
 
     pub(crate) fn get_session_name(&self) -> String {

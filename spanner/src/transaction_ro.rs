@@ -1,8 +1,6 @@
 use std::ops::{Deref, DerefMut};
 use std::sync::atomic::AtomicI64;
 
-use google_cloud_googleapis::Status;
-
 use google_cloud_googleapis::spanner::v1::{
     transaction_options, transaction_selector, BeginTransactionRequest, ExecuteSqlRequest,
     PartitionOptions, PartitionQueryRequest, PartitionReadRequest, ReadRequest, TransactionOptions,
@@ -16,6 +14,8 @@ use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, ReadOptions, Transaction};
 use crate::value::TimestampBound;
 use chrono::{DateTime, TimeZone, Utc};
+use tokio_util::sync::CancellationToken;
+use google_cloud_gax::status::Status;
 
 /// ReadOnlyTransaction provides a snapshot transaction with guaranteed
 /// consistency across reads, but does not allow writes.  Read-only transactions
@@ -73,6 +73,7 @@ impl ReadOnlyTransaction {
 
     /// begin starts a snapshot read-only Transaction on Cloud Spanner.
     pub async fn begin(
+        ctx: CancellationToken,
         mut session: ManagedSession,
         tb: TimestampBound,
         options: CallOptions,
@@ -87,7 +88,7 @@ impl ReadOnlyTransaction {
 
         let result = session
             .spanner_client
-            .begin_transaction(request, options.call_setting)
+            .begin_transaction(ctx, request, options.call_setting)
             .await;
         return match session.invalidate_if_needed(result).await {
             Ok(response) => {
@@ -138,11 +139,12 @@ impl DerefMut for BatchReadOnlyTransaction {
 
 impl BatchReadOnlyTransaction {
     pub async fn begin(
+        ctx: CancellationToken,
         session: ManagedSession,
         tb: TimestampBound,
         options: CallOptions,
     ) -> Result<BatchReadOnlyTransaction, Status> {
-        let tx = ReadOnlyTransaction::begin(session, tb, options).await?;
+        let tx = ReadOnlyTransaction::begin(ctx, session, tb, options).await?;
         Ok(BatchReadOnlyTransaction { base_tx: tx })
     }
 
@@ -152,12 +154,13 @@ impl BatchReadOnlyTransaction {
     /// configured using PartitionOptions.
     pub async fn partition_read(
         &mut self,
+        ctx: CancellationToken,
         table: &str,
         columns: &[&str],
         keys: impl Into<KeySet> + Clone,
     ) -> Result<Vec<Partition<TableReader>>, Status> {
         return self
-            .partition_read_with_option(table, columns, keys, None, ReadOptions::default())
+            .partition_read_with_option(ctx, table, columns, keys, None, ReadOptions::default())
             .await;
     }
 
@@ -167,6 +170,7 @@ impl BatchReadOnlyTransaction {
     /// configured using PartitionOptions.
     pub async fn partition_read_with_option(
         &mut self,
+        ctx: CancellationToken,
         table: &str,
         columns: &[&str],
         keys: impl Into<KeySet> + Clone,
@@ -187,7 +191,7 @@ impl BatchReadOnlyTransaction {
         let result = match self
             .as_mut_session()
             .spanner_client
-            .partition_read(request, None)
+            .partition_read(ctx, request, None)
             .await
         {
             Ok(r) => Ok(r
@@ -222,16 +226,18 @@ impl BatchReadOnlyTransaction {
     /// partition_query returns a list of Partitions that can be used to execute a query against the database.
     pub async fn partition_query(
         &mut self,
+        ctx: CancellationToken,
         stmt: Statement,
     ) -> Result<Vec<Partition<StatementReader>>, Status> {
         return self
-            .partition_query_with_option(stmt, None, QueryOptions::default())
+            .partition_query_with_option(ctx, stmt, None, QueryOptions::default())
             .await;
     }
 
     /// partition_query returns a list of Partitions that can be used to execute a query against the database.
     pub async fn partition_query_with_option(
         &mut self,
+        ctx: CancellationToken,
         stmt: Statement,
         po: Option<PartitionOptions>,
         qo: QueryOptions,
@@ -249,7 +255,7 @@ impl BatchReadOnlyTransaction {
         let result = match self
             .as_mut_session()
             .spanner_client
-            .partition_query(request.clone(), None)
+            .partition_query(ctx, request.clone(), None)
             .await
         {
             Ok(r) => Ok(r
@@ -287,9 +293,10 @@ impl BatchReadOnlyTransaction {
     /// execute runs a single Partition obtained from partition_read or partition_query.
     pub async fn execute<T: Reader + Sync + Send + 'static>(
         &mut self,
+        ctx: CancellationToken,
         partition: Partition<T>,
     ) -> Result<RowIterator<'_>, Status> {
         let session = self.as_mut_session();
-        return RowIterator::new(session, Box::new(partition.reader)).await;
+        return RowIterator::new(ctx, session, Box::new(partition.reader)).await;
     }
 }

@@ -23,6 +23,8 @@ rust_decimal = "1.18"
 parking_lot = "0.11"
 base64 = "0.13"
 anyhow = "1.0"
+tokio-util = "0.6"
+tokio-retry = "0.3"
 
 google-cloud-longrunning= { version = "0.3.0", path = "../foundation/longrunning" }
 google-cloud-gax = { version = "0.4.0", path = "../foundation/gax" }
