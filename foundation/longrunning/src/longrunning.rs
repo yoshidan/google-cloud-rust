@@ -1,12 +1,13 @@
 use crate::autogen::operations_client::OperationsClient;
 use google_cloud_gax::call_option::{BackoffRetrySettings, BackoffRetryer};
-use google_cloud_gax::invoke::invoke_reuse;
+use google_cloud_gax::retry::invoke_reuse;
 use google_cloud_googleapis::longrunning::{
     operation, CancelOperationRequest, DeleteOperationRequest, GetOperationRequest,
     Operation as InternalOperation,
 };
 use google_cloud_googleapis::{Code, Status};
 use std::marker::PhantomData;
+use google_cloud_googleapis::rpc::Status;
 
 pub struct Operation<T: prost::Message + Default> {
     inner: InternalOperation,

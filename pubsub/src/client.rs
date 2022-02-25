@@ -10,7 +10,7 @@ use crate::topic::{Topic, TopicConfig};
 use google_cloud_googleapis::pubsub::v1::{
     DetachSubscriptionRequest, ListSubscriptionsRequest, ListTopicsRequest,
 };
-use google_cloud_grpc::conn::Error;
+use google_cloud_gax::conn::Error;
 
 pub struct ClientConfig {
     pub pool_size: usize,

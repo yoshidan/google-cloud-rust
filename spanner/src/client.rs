@@ -1,6 +1,6 @@
 use google_cloud_googleapis::{Code, Status};
 
-use google_cloud_gax::invoke::{invoke_reuse, TryAs};
+use google_cloud_gax::retry::{invoke_reuse, TryAs};
 use google_cloud_googleapis::spanner::v1::{
     commit_request, transaction_options, Mutation, TransactionOptions,
 };
@@ -100,7 +100,7 @@ pub enum InitializationError {
     FailedToCreateSessionPool(#[from] Status),
 
     #[error(transparent)]
-    FailedToCreateChannelPool(#[from] google_cloud_grpc::conn::Error),
+    FailedToCreateChannelPool(#[from] google_cloud_gax::conn::Error),
 
     #[error("invalid config: {0}")]
     InvalidConfig(String),

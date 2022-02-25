@@ -1,5 +1,5 @@
 use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
-use google_cloud_gax::invoke::invoke_reuse;
+use google_cloud_gax::retry::invoke_reuse;
 use google_cloud_gax::util::create_request;
 use google_cloud_googleapis::longrunning::operations_client::OperationsClient as InternalOperationsClient;
 use google_cloud_googleapis::longrunning::{
@@ -7,20 +7,18 @@ use google_cloud_googleapis::longrunning::{
     WaitOperationRequest,
 };
 use google_cloud_googleapis::{Code, Status};
-use google_cloud_grpc::conn::{Channel, Error};
+use google_cloud_gax::conn::{Channel, Error};
 use std::time::Duration;
 use tonic::Response;
+use google_cloud_gax::status::Code;
 
-fn default_setting() -> BackoffRetrySettings {
-    let mut backoff = Backoff::default();
-    backoff.initial = Duration::from_millis(500);
-    backoff.max = Duration::from_millis(10000);
-    backoff.multiplier = 2.0;
-    BackoffRetrySettings {
-        retryer: BackoffRetryer {
-            backoff,
-            codes: vec![Code::Unavailable, Code::Unknown],
-        },
+fn default_retry_setting() -> Self {
+    Self {
+        from_millis: 50,
+        max_delay: Some(Duration::from_secs(10)),
+        factor: 1u64,
+        take: 20,
+        codes: vec![Code::Unavailable, Code::Unknown],
     }
 }
 

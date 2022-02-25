@@ -2,7 +2,7 @@ use google_cloud_googleapis::{Code, Status};
 use tonic::{Response, Streaming};
 
 use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
-use google_cloud_gax::invoke::invoke_reuse;
+use google_cloud_gax::retry::invoke_reuse;
 use google_cloud_gax::util::create_request;
 use google_cloud_googleapis::spanner::v1 as internal;
 use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
@@ -14,7 +14,7 @@ use google_cloud_googleapis::spanner::v1::{
     PartitionReadRequest, PartitionResponse, ReadRequest, ResultSet, RollbackRequest, Session,
     Transaction,
 };
-use google_cloud_grpc::conn::Channel;
+use google_cloud_gax::conn::Channel;
 
 pub(crate) fn ping_query_request(session_name: impl Into<String>) -> internal::ExecuteSqlRequest {
     internal::ExecuteSqlRequest {

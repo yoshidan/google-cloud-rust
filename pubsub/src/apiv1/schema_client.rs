@@ -6,7 +6,7 @@ use google_cloud_googleapis::pubsub::v1::{
     ValidateMessageRequest, ValidateMessageResponse, ValidateSchemaRequest, ValidateSchemaResponse,
 };
 use google_cloud_googleapis::Status;
-use google_cloud_grpc::conn::Channel;
+use google_cloud_gax::conn::Channel;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 use tonic::Response;

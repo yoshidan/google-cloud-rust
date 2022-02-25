@@ -9,7 +9,7 @@ use google_cloud_googleapis::pubsub::v1::{
     PublishResponse, Topic, UpdateTopicRequest,
 };
 use google_cloud_googleapis::{Code, Status};
-use google_cloud_grpc::conn::Channel;
+use google_cloud_gax::conn::Channel;
 use tokio_util::sync::CancellationToken;
 use tonic::Response;
 

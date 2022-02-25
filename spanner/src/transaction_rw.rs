@@ -18,7 +18,7 @@ use crate::session::ManagedSession;
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, Transaction};
 use crate::value::Timestamp;
-use google_cloud_gax::invoke::TryAs;
+use google_cloud_gax::retry::TryAs;
 
 #[derive(Clone)]
 pub struct CommitOptions {

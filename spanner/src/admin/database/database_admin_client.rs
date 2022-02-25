@@ -1,7 +1,7 @@
 use crate::apiv1::conn_pool::{AUDIENCE, SPANNER};
 
 use google_cloud_gax::call_option::{Backoff, BackoffRetrySettings, BackoffRetryer};
-use google_cloud_gax::invoke::invoke_reuse;
+use google_cloud_gax::retry::invoke_reuse;
 use google_cloud_gax::util::create_request;
 use google_cloud_googleapis::iam::v1::{
     GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest,
@@ -19,7 +19,7 @@ use google_cloud_googleapis::spanner::admin::database::v1::{
 use google_cloud_googleapis::{Code, Status};
 
 use crate::admin::SCOPES;
-use google_cloud_grpc::conn::{Channel, ConnectionManager, Error};
+use google_cloud_gax::conn::{Channel, ConnectionManager, Error};
 use google_cloud_longrunning::autogen::operations_client::OperationsClient;
 use google_cloud_longrunning::longrunning::Operation;
 use tonic::Response;
