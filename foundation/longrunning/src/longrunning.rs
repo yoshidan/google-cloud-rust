@@ -1,11 +1,10 @@
 use crate::autogen::operations_client::{default_retry_setting, OperationsClient};
-use google_cloud_gax::retry::invoke;
+use google_cloud_gax::retry::{invoke, invoke_fn, RetrySetting};
 use google_cloud_gax::status::{Code, Status};
 use google_cloud_googleapis::longrunning::{
     operation, CancelOperationRequest, DeleteOperationRequest, GetOperationRequest,
     Operation as InternalOperation,
 };
-use google_cloud_googleapis::{Code, Status};
 use std::marker::PhantomData;
 use tokio_util::sync::CancellationToken;
 
@@ -79,7 +78,7 @@ impl<T: prost::Message + Default> Operation<T> {
     pub async fn wait(
         &mut self,
         ctx: CancellationToken,
-        option: Option<RetrySettings>,
+        option: Option<RetrySetting>,
     ) -> Result<Option<T>, Status> {
         let mut settings = match option {
             Some(s) => s,
@@ -89,18 +88,17 @@ impl<T: prost::Message + Default> Operation<T> {
                 setting
             }
         };
-        let action = || async {
-            let poll_result: Option<T> = match self.poll(CancellationToken::new()).await {
+        invoke_fn(ctx, Some(settings), |me| async {
+            let poll_result: Option<T> = match me.poll(CancellationToken::new()).await {
                 Ok(s) => s,
-                Err(e) => return Err(e),
+                Err(e) => return Err((e, me)),
             };
             if me.done() {
                 Ok(poll_result)
             } else {
-                Err(tonic::Status::new(tonic::Code::DeadlineExceeded, "wait timeout").into())
+                Err((tonic::Status::new(tonic::Code::DeadlineExceeded, "wait timeout").into(), me))
             }
-        };
-        invoke(ctx, Some(settings), action).await
+        }, self).await
     }
 
     /// Cancel starts asynchronous cancellation on a long-running operation. The server

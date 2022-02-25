@@ -15,7 +15,7 @@ rand = "0.8"
 tokio = { version = "1.7" }
 tonic = { version = "0.6", features = ["tls", "prost"] }
 thiserror = "1.0"
-tower = { version = "0.4" }
+tower = { version = "0.4", features = ["filter"] }
 http = "0.2"
 prost = "0.9"
 prost-types = "0.9"
