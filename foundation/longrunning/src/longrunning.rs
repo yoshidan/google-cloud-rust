@@ -1,5 +1,5 @@
 use crate::autogen::operations_client::{default_retry_setting, OperationsClient};
-use google_cloud_gax::retry::{invoke, invoke_fn, RetrySetting};
+use google_cloud_gax::retry::{invoke_fn, RetrySetting};
 use google_cloud_gax::status::{Code, Status};
 use google_cloud_googleapis::longrunning::{
     operation, CancelOperationRequest, DeleteOperationRequest, GetOperationRequest,
@@ -80,7 +80,7 @@ impl<T: prost::Message + Default> Operation<T> {
         ctx: CancellationToken,
         option: Option<RetrySetting>,
     ) -> Result<Option<T>, Status> {
-        let mut settings = match option {
+        let settings = match option {
             Some(s) => s,
             None => {
                 let mut setting = default_retry_setting();
@@ -88,17 +88,26 @@ impl<T: prost::Message + Default> Operation<T> {
                 setting
             }
         };
-        invoke_fn(ctx, Some(settings), |me| async {
-            let poll_result: Option<T> = match me.poll(CancellationToken::new()).await {
-                Ok(s) => s,
-                Err(e) => return Err((e, me)),
-            };
-            if me.done() {
-                Ok(poll_result)
-            } else {
-                Err((tonic::Status::new(tonic::Code::DeadlineExceeded, "wait timeout").into(), me))
-            }
-        }, self).await
+        invoke_fn(
+            ctx,
+            Some(settings),
+            |me| async {
+                let poll_result: Option<T> = match me.poll(CancellationToken::new()).await {
+                    Ok(s) => s,
+                    Err(e) => return Err((e, me)),
+                };
+                if me.done() {
+                    Ok(poll_result)
+                } else {
+                    Err((
+                        tonic::Status::new(tonic::Code::DeadlineExceeded, "wait timeout").into(),
+                        me,
+                    ))
+                }
+            },
+            self,
+        )
+        .await
     }
 
     /// Cancel starts asynchronous cancellation on a long-running operation. The server

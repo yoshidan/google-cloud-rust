@@ -9,12 +9,10 @@ use tokio::select;
 use tokio_util::sync::CancellationToken;
 
 use crate::apiv1::subscriber_client::SubscriberClient;
-use crate::apiv1::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::{
     DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest,
     PushConfig, RetryPolicy, Subscription as InternalSubscription, UpdateSubscriptionRequest,
 };
-use google_cloud_googleapis::{Code, Status};
 
 use crate::subscriber::{ReceivedMessage, Subscriber, SubscriberConfig};
 

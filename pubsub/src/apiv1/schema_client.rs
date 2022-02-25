@@ -1,5 +1,4 @@
 use crate::apiv1::conn_pool::ConnectionManager;
-use crate::apiv1::{create_request, invoke, RetrySetting};
 use google_cloud_gax::conn::Channel;
 use google_cloud_gax::create_request;
 use google_cloud_gax::retry::{invoke, RetrySetting};
@@ -9,7 +8,6 @@ use google_cloud_googleapis::pubsub::v1::{
     CreateSchemaRequest, DeleteSchemaRequest, GetSchemaRequest, ListSchemasRequest, Schema,
     ValidateMessageRequest, ValidateMessageResponse, ValidateSchemaRequest, ValidateSchemaResponse,
 };
-use google_cloud_googleapis::Status;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 use tonic::Response;

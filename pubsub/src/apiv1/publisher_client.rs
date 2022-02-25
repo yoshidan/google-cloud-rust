@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use crate::apiv1::conn_pool::ConnectionManager;
-use crate::apiv1::{create_request, invoke, RetrySetting};
 use google_cloud_gax::conn::Channel;
 use google_cloud_gax::create_request;
 use google_cloud_gax::retry::{invoke, RetrySetting};
@@ -12,7 +11,6 @@ use google_cloud_googleapis::pubsub::v1::{
     ListTopicSnapshotsRequest, ListTopicSubscriptionsRequest, ListTopicsRequest, PublishRequest,
     PublishResponse, Topic, UpdateTopicRequest,
 };
-use google_cloud_googleapis::{Code, Status};
 use tokio_util::sync::CancellationToken;
 use tonic::Response;
 

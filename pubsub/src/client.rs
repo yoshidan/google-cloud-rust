@@ -1,10 +1,8 @@
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
-use google_cloud_googleapis::Status;
 use tokio_util::sync::CancellationToken;
 
-use crate::apiv1::RetrySetting;
 use crate::subscription::{Subscription, SubscriptionConfig};
 use crate::topic::{Topic, TopicConfig};
 use google_cloud_gax::conn::Error;

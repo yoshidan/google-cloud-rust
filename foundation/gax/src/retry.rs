@@ -1,13 +1,13 @@
-use std::future::Future;
 use crate::status::{Code, Status};
+use std::future::Future;
 use std::iter::Take;
-use std::sync::Arc;
+
 use std::time::Duration;
 use tokio::select;
 use tokio_retry::strategy::ExponentialBackoff;
 use tokio_retry::{Action, Condition};
 use tokio_util::sync::CancellationToken;
-use tonic::{IntoRequest, Request};
+
 use tokio_retry::RetryIf;
 
 pub trait TryAs<T> {
@@ -20,7 +20,7 @@ impl TryAs<Status> for Status {
     }
 }
 
-pub trait Retry<E: TryAs<Status>, T: Condition<E>>  {
+pub trait Retry<E: TryAs<Status>, T: Condition<E>> {
     fn strategy(&self) -> Take<ExponentialBackoff>;
     fn condition(&self) -> T;
 }
@@ -31,17 +31,18 @@ pub struct CodeCondition {
 
 impl CodeCondition {
     pub fn new(codes: Vec<Code>) -> Self {
-       Self {
-           codes
-       }
+        Self { codes }
     }
 }
 
-impl <E> Condition<E> for CodeCondition where E: TryAs<Status> {
+impl<E> Condition<E> for CodeCondition
+where
+    E: TryAs<Status>,
+{
     fn should_retry(&mut self, error: &E) -> bool {
         let status = match error.try_as() {
             Ok(s) => s,
-            Err(e) => return false
+            Err(_e) => return false,
         };
         for code in &self.codes {
             if *code == status.code() {
@@ -87,7 +88,7 @@ impl Default for RetrySetting {
     }
 }
 
-pub async fn invoke<A, R, RT,C, E>(
+pub async fn invoke<A, R, RT, C, E>(
     ctx: CancellationToken,
     opt: Option<RT>,
     action: A,
@@ -96,7 +97,7 @@ where
     E: TryAs<Status> + From<Status>,
     A: Action<Item = R, Error = E>,
     C: Condition<E>,
-    RT: Retry<E,C> + Default,
+    RT: Retry<E, C> + Default,
 {
     let setting = opt.unwrap_or_default();
     select! {
@@ -106,17 +107,17 @@ where
 }
 /// Repeats retries when the specified error is detected.
 /// The argument specified by 'v' can be reused for each retry.
-pub async fn invoke_fn<R, V, A, RT,C,E>(
+pub async fn invoke_fn<R, V, A, RT, C, E>(
     ctx: CancellationToken,
     opt: Option<RT>,
     mut f: impl FnMut(V) -> A,
     mut v: V,
 ) -> Result<R, E>
-    where
-        E: TryAs<Status> + From<Status>,
-        A: Future<Output = Result<R, (E, V)>>,
-        C: Condition<E>,
-        RT: Retry<E,C> + Default
+where
+    E: TryAs<Status> + From<Status>,
+    A: Future<Output = Result<R, (E, V)>>,
+    C: Condition<E>,
+    RT: Retry<E, C> + Default,
 {
     let fn_loop = async {
         let opt = opt.unwrap_or_default();
@@ -133,11 +134,11 @@ pub async fn invoke_fn<R, V, A, RT,C,E>(
             if opt.condition().should_retry(&status) {
                 let duration = match strategy.next() {
                     None => return Err(status),
-                    Some(s) => s
+                    Some(s) => s,
                 };
                 tokio::time::sleep(duration).await
             } else {
-                return Err(status)
+                return Err(status);
             };
         }
     };

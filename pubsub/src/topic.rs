@@ -6,18 +6,14 @@ use google_cloud_gax::retry::RetrySetting;
 use google_cloud_gax::status::{Code, Status};
 use tokio_util::sync::CancellationToken;
 
+use crate::apiv1::publisher_client::PublisherClient;
+use crate::apiv1::subscriber_client::SubscriberClient;
+use crate::publisher::{Publisher, PublisherConfig};
+use crate::subscription::Subscription;
 use google_cloud_googleapis::pubsub::v1::{
     DeleteTopicRequest, GetTopicRequest, ListTopicSubscriptionsRequest, MessageStoragePolicy,
     SchemaSettings, Topic as InternalTopic,
 };
-use google_cloud_googleapis::Code::NotFound;
-
-use crate::apiv1::publisher_client::PublisherClient;
-use crate::apiv1::subscriber_client::SubscriberClient;
-use crate::apiv1::RetrySetting;
-use crate::publisher::{Publisher, PublisherConfig};
-use crate::subscription::Subscription;
-use google_cloud_googleapis::Status;
 
 pub struct TopicConfig {
     pub labels: HashMap<String, String>,
@@ -186,7 +182,6 @@ mod tests {
     use crate::topic::Topic;
     use google_cloud_gax::status::Status;
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
-    use google_cloud_googleapis::Status;
     use serial_test::serial;
     use std::time::Duration;
     use tokio::task::JoinHandle;
