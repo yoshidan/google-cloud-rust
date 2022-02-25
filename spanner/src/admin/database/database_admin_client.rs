@@ -1,4 +1,3 @@
-
 use tokio_util::sync::CancellationToken;
 
 use google_cloud_gax::retry::{invoke, RetrySetting};
@@ -20,7 +19,7 @@ use crate::admin::{default_internal_client, default_retry_setting};
 
 use google_cloud_gax::conn::{Channel, Error};
 use google_cloud_gax::create_request;
-use google_cloud_gax::status::{Status};
+use google_cloud_gax::status::Status;
 use google_cloud_longrunning::autogen::operations_client::OperationsClient;
 use google_cloud_longrunning::longrunning::Operation;
 use tonic::Response;

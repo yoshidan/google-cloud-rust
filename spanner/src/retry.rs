@@ -4,7 +4,6 @@ use std::marker::PhantomData;
 use tokio_retry::strategy::ExponentialBackoff;
 use tokio_retry::Condition;
 
-
 use crate::session::SessionError;
 use google_cloud_gax::retry::{CodeCondition, Retry, RetrySetting, TryAs};
 use google_cloud_gax::status::{Code, Status};
@@ -85,16 +84,20 @@ mod tests {
     use crate::client::{RunInTxError, TxError};
     use crate::retry::TransactionRetrySetting;
     use google_cloud_gax::retry::Retry;
-    use google_cloud_gax::status::{Status};
+    use google_cloud_gax::status::Status;
     use tokio_retry::Condition;
 
     #[test]
     fn test_transaction_condition() {
         let status = tonic::Status::new(tonic::Code::Internal, "stream terminated by RST_STREAM");
         let default = TransactionRetrySetting::default();
-        assert!(!default.condition().should_retry(&TxError::GRPC(Status::from(status))));
+        assert!(!default
+            .condition()
+            .should_retry(&TxError::GRPC(Status::from(status))));
 
         let status = tonic::Status::new(tonic::Code::Aborted, "default");
-        assert!(default.condition().should_retry(&RunInTxError::GRPC(Status::from(status))));
+        assert!(default
+            .condition()
+            .should_retry(&RunInTxError::GRPC(Status::from(status))));
     }
 }

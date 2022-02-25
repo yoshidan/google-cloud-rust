@@ -1,4 +1,3 @@
-
 use tokio_util::sync::CancellationToken;
 
 use google_cloud_googleapis::iam::v1::{
@@ -12,7 +11,7 @@ use crate::admin::{default_internal_client, default_retry_setting};
 use google_cloud_gax::conn::{Channel, Error};
 use google_cloud_gax::create_request;
 use google_cloud_gax::retry::{invoke, RetrySetting};
-use google_cloud_gax::status::{Status};
+use google_cloud_gax::status::Status;
 use google_cloud_googleapis::spanner::admin::instance::v1::{
     CreateInstanceRequest, DeleteInstanceRequest, GetInstanceConfigRequest, GetInstanceRequest,
     Instance, InstanceConfig, ListInstanceConfigsRequest, ListInstancesRequest,
