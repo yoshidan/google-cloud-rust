@@ -6,7 +6,6 @@ use google_cloud_googleapis::spanner::v1::transaction_options::{Mode, ReadWrite}
 use google_cloud_googleapis::spanner::v1::{
     CommitRequest, CommitResponse, Mutation, TransactionOptions,
 };
-use google_cloud_googleapis::Status;
 use google_cloud_spanner::apiv1::conn_pool::ConnectionManager;
 use google_cloud_spanner::key::Key;
 use google_cloud_spanner::mutation::insert_or_update;
