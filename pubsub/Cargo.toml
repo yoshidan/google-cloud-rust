@@ -27,8 +27,13 @@ async-stream = "0.3"
 tokio-util = "0.7"
 tokio-retry = "0.3"
 
+<<<<<<< HEAD
 google-cloud-gax = { version = "0.4.0", path = "../foundation/gax" }
 google-cloud-googleapis = { version = "0.3.0", path = "../googleapis" }
+=======
+google-cloud-grpc = { version = "0.2.1", path = "../foundation/grpc" }
+google-cloud-googleapis = { version = "0.2.1", path = "../googleapis" }
+>>>>>>> main
 
 [dev-dependencies]
 env_logger = "0.9"
