@@ -7,4 +7,5 @@ members = [
     "foundation/auth",
     "googleapis",
     "spanner",
+    "pubsub",
 ]

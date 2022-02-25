@@ -34,13 +34,19 @@ pub mod spanner {
     }
 }
 
+#[path = ""]
+pub mod pubsub {
+    #[path = "google.pubsub.v1.rs"]
+    pub mod v1;
+}
+
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 
 /// A gRPC status describing the result of an RPC call.
 pub struct Status {
     /// Optional underlying error.
-    source: tonic::Status,
+    pub source: tonic::Status,
 }
 
 impl Status {
