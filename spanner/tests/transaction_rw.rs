@@ -15,8 +15,6 @@ use google_cloud_gax::status::Status;
 use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
 use google_cloud_spanner::transaction_rw::ReadWriteTransaction;
 
-use google_cloud_googleapis::Status;
-
 pub async fn all_rows(mut itr: RowIterator<'_>) -> Result<Vec<Row>, Status> {
     let mut rows = vec![];
     loop {
