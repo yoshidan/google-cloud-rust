@@ -251,11 +251,7 @@ impl<'a> AsyncIterator for RowIterator<'a> {
                 for _ in 0..column_length {
                     values.push(self.rows.pop_front().unwrap());
                 }
-                return Ok(Some(Row::new(
-                    Arc::clone(&self.index),
-                    Arc::clone(&self.fields),
-                    values,
-                )));
+                return Ok(Some(Row::new(Arc::clone(&self.index), Arc::clone(&self.fields), values)));
             }
         }
 

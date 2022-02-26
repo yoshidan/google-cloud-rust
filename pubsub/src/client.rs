@@ -79,12 +79,7 @@ impl Client {
     ) -> Result<Subscription, Status> {
         let subscription = self.subscription(id);
         subscription
-            .create(
-                ctx,
-                self.fully_qualified_topic_name(topic_id).as_str(),
-                cfg,
-                retry_option,
-            )
+            .create(ctx, self.fully_qualified_topic_name(topic_id).as_str(), cfg, retry_option)
             .await
             .map(|_v| subscription)
     }
@@ -277,12 +272,7 @@ mod tests {
                         async move {
                             let _ = v.ack().await;
                             let data = std::str::from_utf8(&v.message.data).unwrap().to_string();
-                            log::info!(
-                                "tid={:?} id={} data={}",
-                                thread::current().id(),
-                                v.message.message_id,
-                                data
-                            );
+                            log::info!("tid={:?} id={} data={}", thread::current().id(), v.message.message_id, data);
                             s2.send(data).await;
                         }
                     },

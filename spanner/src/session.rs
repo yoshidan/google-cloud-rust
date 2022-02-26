@@ -618,18 +618,8 @@ mod tests {
         sleep(tokio::time::Duration::from_millis(100)).await;
         assert_eq!(sm.session_pool.inner.lock().inuse, 0);
         let num_opened = sm.num_opened();
-        assert!(
-            num_opened <= max,
-            "idle session must be lteq {} now is {}",
-            max,
-            num_opened
-        );
-        assert!(
-            num_opened >= min,
-            "idle session must be gteq {} now is {}",
-            min,
-            num_opened
-        );
+        assert!(num_opened <= max, "idle session must be lteq {} now is {}", max, num_opened);
+        assert!(num_opened >= min, "idle session must be gteq {} now is {}", min, num_opened);
     }
 
     #[tokio::test(flavor = "multi_thread")]

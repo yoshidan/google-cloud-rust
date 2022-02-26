@@ -58,23 +58,13 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
 
     let mut ro = client.read_only_transaction(CancellationToken::new()).await?;
     let record = ro
-        .read(
-            CancellationToken::new(),
-            "User",
-            &user_columns(),
-            Key::key(&"user_client_1x"),
-        )
+        .read(CancellationToken::new(), "User", &user_columns(), Key::key(&"user_client_1x"))
         .await?;
     let row = all_rows(record).await.pop().unwrap();
     assert_user_row(&row, "user_client_1x", &now, &ts);
 
     let record = ro
-        .read(
-            CancellationToken::new(),
-            "User",
-            &user_columns(),
-            Key::key(&"user_client_2x"),
-        )
+        .read(CancellationToken::new(), "User", &user_columns(), Key::key(&"user_client_2x"))
         .await?;
     let row = all_rows(record).await.pop().unwrap();
     assert_user_row(&row, "user_client_2x", &now, &ts);
@@ -157,12 +147,7 @@ async fn test_partitioned_update() -> Result<(), anyhow::Error> {
 
     let mut single = client.single().await.unwrap();
     let rows = single
-        .read(
-            CancellationToken::new(),
-            "User",
-            &["NullableString"],
-            Key::key(&user_id),
-        )
+        .read(CancellationToken::new(), "User", &["NullableString"], Key::key(&user_id))
         .await
         .unwrap();
     let row = all_rows(rows).await.pop().unwrap();

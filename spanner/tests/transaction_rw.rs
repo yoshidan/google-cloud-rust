@@ -110,12 +110,7 @@ async fn test_partitioned_dml() {
     let session = create_session().await;
     let mut tx = read_only_transaction(session).await;
     let reader = tx
-        .read(
-            CancellationToken::new(),
-            "User",
-            &["NullableString"],
-            Key::key(&user_id),
-        )
+        .read(CancellationToken::new(), "User", &["NullableString"], Key::key(&user_id))
         .await
         .unwrap();
     let row = all_rows(reader).await.unwrap().pop().unwrap();

@@ -291,10 +291,7 @@ impl Client {
                             if tonic_code == tonic::Code::Ok {
                                 Ok(response)
                             } else {
-                                Err((
-                                    tonic::Status::new(tonic_code, s.message.to_string()).into(),
-                                    spanner_client,
-                                ))
+                                Err((tonic::Status::new(tonic_code, s.message.to_string()).into(), spanner_client))
                             }
                         }
                         None => Ok(response),

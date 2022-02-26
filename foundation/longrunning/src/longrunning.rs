@@ -94,10 +94,7 @@ impl<T: prost::Message + Default> Operation<T> {
                 if me.done() {
                     Ok(poll_result)
                 } else {
-                    Err((
-                        tonic::Status::new(tonic::Code::DeadlineExceeded, "wait timeout").into(),
-                        me,
-                    ))
+                    Err((tonic::Status::new(tonic::Code::DeadlineExceeded, "wait timeout").into(), me))
                 }
             },
             self,
