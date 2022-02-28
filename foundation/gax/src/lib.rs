@@ -1,6 +1,9 @@
+use crate::cancel::CancellationToken;
+use crate::retry::RetrySetting;
 use tonic::IntoRequest;
 use tonic::Request;
 
+pub mod cancel;
 pub mod conn;
 pub mod retry;
 pub mod status;

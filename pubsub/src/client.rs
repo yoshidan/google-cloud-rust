@@ -1,13 +1,14 @@
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
-use tokio_util::sync::CancellationToken;
+use google_cloud_gax::cancel::CancellationToken;
 
 use crate::subscription::{Subscription, SubscriptionConfig};
 use crate::topic::{Topic, TopicConfig};
 use google_cloud_gax::conn::Error;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_gax::status::Status;
+use google_cloud_gax::Context;
 use google_cloud_googleapis::pubsub::v1::{DetachSubscriptionRequest, ListSubscriptionsRequest, ListTopicsRequest};
 
 pub struct ClientConfig {
@@ -71,15 +72,15 @@ impl Client {
     /// If the subscription already exists an error will be returned.
     pub async fn create_subscription(
         &self,
-        ctx: CancellationToken,
         id: &str,
         topic_id: &str,
         cfg: SubscriptionConfig,
-        retry_option: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Subscription, Status> {
         let subscription = self.subscription(id);
         subscription
-            .create(ctx, self.fully_qualified_topic_name(topic_id).as_str(), cfg, retry_option)
+            .create(self.fully_qualified_topic_name(topic_id).as_str(), cfg, cancel, retry)
             .await
             .map(|_v| subscription)
     }
@@ -87,25 +88,19 @@ impl Client {
     /// subscriptions returns an iterator which returns all of the subscriptions for the client's project.
     pub async fn get_subscriptions(
         &self,
-        ctx: CancellationToken,
-        retry_option: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Vec<Subscription>, Status> {
-        self.subc
-            .list_subscriptions(
-                ctx,
-                ListSubscriptionsRequest {
-                    project: self.fully_qualified_project_name(),
-                    page_size: 0,
-                    page_token: "".to_string(),
-                },
-                retry_option,
-            )
-            .await
-            .map(|v| {
-                v.into_iter()
-                    .map(|x| Subscription::new(x.name.to_string(), self.subc.clone()))
-                    .collect()
-            })
+        let req = ListSubscriptionsRequest {
+            project: self.fully_qualified_project_name(),
+            page_size: 0,
+            page_token: "".to_string(),
+        };
+        self.subc.list_subscriptions(req, cancel, retry).await.map(|v| {
+            v.into_iter()
+                .map(|x| Subscription::new(x.name.to_string(), self.subc.clone()))
+                .collect()
+        })
     }
 
     /// subscription creates a reference to a subscription.
@@ -119,20 +114,14 @@ impl Client {
     /// subscription, pushes to the endpoint will stop.
     pub async fn detach_subscription(
         &self,
-        ctx: CancellationToken,
         fqsn: &str,
-        retry_option: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<(), Status> {
-        self.pubc
-            .detach_subscription(
-                ctx,
-                DetachSubscriptionRequest {
-                    subscription: fqsn.to_string(),
-                },
-                retry_option,
-            )
-            .await
-            .map(|_v| ())
+        let req = DetachSubscriptionRequest {
+            subscription: fqsn.to_string(),
+        };
+        self.pubc.detach_subscription(req, cancel, retry).await.map(|_v| ())
     }
 
     /// create_topic creates a new topic.
@@ -146,31 +135,28 @@ impl Client {
     /// If the topic already exists an error will be returned.
     pub async fn create_topic(
         &self,
-        ctx: CancellationToken,
         id: &str,
         cfg: Option<TopicConfig>,
-        retry_option: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Topic, Status> {
         let topic = self.topic(id);
-        topic.create(ctx, cfg, retry_option).await.map(|_v| topic)
+        topic.create(cfg, cancel, retry).await.map(|_v| topic)
     }
 
     /// topics returns an iterator which returns all of the topics for the client's project.
     pub async fn get_topics(
         &self,
-        ctx: CancellationToken,
-        retry_option: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Vec<String>, Status> {
+        let req = ListTopicsRequest {
+            project: self.fully_qualified_project_name(),
+            page_size: 0,
+            page_token: "".to_string(),
+        };
         self.pubc
-            .list_topics(
-                ctx,
-                ListTopicsRequest {
-                    project: self.fully_qualified_project_name(),
-                    page_size: 0,
-                    page_token: "".to_string(),
-                },
-                retry_option,
-            )
+            .list_topics(req, cancel, retry)
             .await
             .map(|v| v.into_iter().map(|x| x.name).collect())
     }
@@ -209,9 +195,9 @@ mod tests {
     use serial_test::serial;
     use std::thread;
     use std::time::Duration;
-    use tokio_util::sync::CancellationToken;
 
     use crate::client::Client;
+    use google_cloud_gax::cancel::CancellationToken;
     use uuid::Uuid;
 
     use crate::subscriber::SubscriberConfig;
@@ -243,14 +229,16 @@ mod tests {
         let uuid = Uuid::new_v4().to_hyphenated().to_string();
         let topic_id = &format!("t{}", &uuid);
         let subscription_id = &format!("s{}", &uuid);
-        let ctx = CancellationToken::new();
-        let topic = client.create_topic(ctx, topic_id.as_str(), None, None).await.unwrap();
+        let ctx = Some(CancellationToken::new());
+        let topic = client
+            .create_topic(topic_id.as_str(), None, ctx.clone(), None)
+            .await
+            .unwrap();
         let publisher = topic.new_publisher(None);
         let mut config = SubscriptionConfig::default();
         config.enable_message_ordering = !ordering_key.is_empty();
-        let ctx = CancellationToken::new();
         let subscription = client
-            .create_subscription(ctx.clone(), subscription_id.as_str(), topic_id.as_str(), config, None)
+            .create_subscription(subscription_id.as_str(), topic_id.as_str(), config, ctx.clone(), None)
             .await
             .unwrap();
 
@@ -266,7 +254,6 @@ mod tests {
         let handle = tokio::spawn(async move {
             subscription
                 .receive(
-                    cancel_receiver,
                     move |v, _ctx| {
                         let s2 = s.clone();
                         async move {
@@ -276,6 +263,7 @@ mod tests {
                             s2.send(data).await;
                         }
                     },
+                    cancel_receiver,
                     Some(config),
                 )
                 .await;
@@ -333,25 +321,24 @@ mod tests {
         let uuid = Uuid::new_v4().to_hyphenated().to_string();
         let topic_id = &format!("t{}", &uuid);
         let subscription_id = &format!("s{}", &uuid);
-        let ctx = CancellationToken::new();
+        let ctx = Some(CancellationToken::new());
         let topics = client.get_topics(ctx.clone(), None).await.unwrap();
-        let subs = client.get_subscriptions(CancellationToken::new(), None).await.unwrap();
-        let ctx = CancellationToken::new();
+        let subs = client.get_subscriptions(ctx.clone(), None).await.unwrap();
         let _topic = client
-            .create_topic(ctx.clone(), topic_id.as_str(), None, None)
+            .create_topic(topic_id.as_str(), None, ctx.clone(), None)
             .await
             .unwrap();
         let _subscription = client
             .create_subscription(
-                CancellationToken::new(),
                 subscription_id.as_str(),
                 topic_id.as_str(),
                 SubscriptionConfig::default(),
+                ctx.clone(),
                 None,
             )
             .await?;
         let topics_after = client.get_topics(ctx.clone(), None).await.unwrap();
-        let subs_after = client.get_subscriptions(CancellationToken::new(), None).await.unwrap();
+        let subs_after = client.get_subscriptions(ctx.clone(), None).await.unwrap();
         assert_eq!(1, topics_after.len() - topics.len());
         assert_eq!(1, subs_after.len() - subs.len());
         Ok(())

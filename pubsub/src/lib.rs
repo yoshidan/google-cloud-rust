@@ -24,13 +24,10 @@
 //!     // Create pubsub client.
 //!     let mut client = Client::new("local-project", None).await.unwrap();
 //!
-//!     // Token for cancel.
-//!     let ctx = CancellationToken::new();
-//!
 //!     // Create topic.
 //!     let topic = client.topic("test-topic");
-//!     if !topic.exists(ctx.clone(), None).await? {
-//!         topic.create(ctx.clone(), None, None).await?;
+//!     if !topic.exists(None, None).await? {
+//!         topic.create(None, None, None).await?;
 //!     }
 //!
 //!     // Start publisher.
@@ -39,7 +36,6 @@
 //!     // Publish message.
 //!     let tasks : Vec<JoinHandle<Result<String,Status>>> = (0..10).into_iter().map(|_i| {
 //!         let publisher = publisher.clone();
-//!         let ctx = ctx.clone();
 //!         tokio::spawn(async move {
 //!             let mut msg = PubsubMessage::default();
 //!             msg.data = "abc".into();
@@ -48,7 +44,7 @@
 //!
 //!             let mut awaiter = publisher.publish(msg).await;
 //!             // The get method blocks until a server-generated ID or an error is returned for the published message.
-//!             awaiter.get(ctx).await
+//!             awaiter.get(None).await
 //!         })
 //!     }).collect();
 //!
@@ -81,9 +77,6 @@
 //!     use std::time::Duration;
 //!     let mut client = Client::new("local-project", None).await.unwrap();
 //!
-//!     // Token for cancel.
-//!     let ctx = CancellationToken::new();
-//!
 //!     // Get the topic to subscribe to.
 //!     let topic = client.topic("test-topic");
 //!
@@ -94,25 +87,27 @@
 //!
 //!     // Create subscription
 //!     let subscription = client.subscription("test-subscription");
-//!     if !subscription.exists(ctx.clone(), None).await? {
-//!         subscription.create(ctx.clone(), topic.fully_qualified_name(), config, None).await?;
+//!     if !subscription.exists(None, None).await? {
+//!         subscription.create(topic.fully_qualified_name(), config, None, None).await?;
 //!     }
-//!     let ctx2 = ctx.clone();
+//!     // Token for cancel.
+//!     let cancel = CancellationToken::new();
+//!     let cancel2 = cancel.clone();
 //!     tokio::spawn(async move {
 //!         // Cancel after 10 seconds.
 //!         tokio::time::sleep(Duration::from_secs(10)).await;
-//!         ctx2.cancel();
+//!         cancel2.cancel();
 //!     });
 //!
 //!     // Receive blocks until the ctx is cancelled or an error occurs.
-//!     subscription.receive(ctx.clone(), |mut message, ctx| async move {
+//!     subscription.receive(|mut message, cancel| async move {
 //!         // Handle data.
 //!         let data = message.message.data.as_slice();
 //!         println!("{:?}", data);
 //!
 //!         // Ack or Nack message.
 //!         message.ack().await;
-//!     }, None).await;
+//!     }, cancel.clone(), None).await;
 //!
 //!     // Delete subscription if needed.
 //!     subscription.delete(ctx, None).await;

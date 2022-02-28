@@ -1,12 +1,12 @@
 use std::time::Duration;
 
+use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_gax::status::{Code, Status};
 use google_cloud_googleapis::pubsub::v1::{AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage};
 use tokio::select;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
-use tokio_util::sync::CancellationToken;
 
 use crate::apiv1::subscriber_client::{create_default_streaming_pull_request, SubscriberClient};
 
@@ -19,30 +19,24 @@ pub struct ReceivedMessage {
 
 impl ReceivedMessage {
     pub async fn ack(&self) -> Result<(), Status> {
+        let req = AcknowledgeRequest {
+            subscription: self.subscription.to_string(),
+            ack_ids: vec![self.ack_id.to_string()],
+        };
         self.subscriber_client
-            .acknowledge(
-                CancellationToken::new(),
-                AcknowledgeRequest {
-                    subscription: self.subscription.to_string(),
-                    ack_ids: vec![self.ack_id.to_string()],
-                },
-                None,
-            )
+            .acknowledge(req, None, None)
             .await
             .map(|e| e.into_inner())
     }
 
     pub async fn nack(&self) -> Result<(), Status> {
+        let req = ModifyAckDeadlineRequest {
+            subscription: self.subscription.to_string(),
+            ack_deadline_seconds: 0,
+            ack_ids: vec![self.ack_id.to_string()],
+        };
         self.subscriber_client
-            .modify_ack_deadline(
-                CancellationToken::new(),
-                ModifyAckDeadlineRequest {
-                    subscription: self.subscription.to_string(),
-                    ack_deadline_seconds: 0,
-                    ack_ids: vec![self.ack_id.to_string()],
-                },
-                None,
-            )
+            .modify_ack_deadline(req, None, None)
             .await
             .map(|e| e.into_inner())
     }
@@ -105,7 +99,7 @@ impl Subscriber {
             log::trace!("start subscriber: {}", subscription);
             let request = create_default_streaming_pull_request(subscription.to_string());
             let response = client
-                .streaming_pull(cancel_receiver.clone(), request, ping_receiver, config.retry_setting)
+                .streaming_pull(request, Some(cancel_receiver.clone()), ping_receiver, config.retry_setting)
                 .await;
 
             let mut stream = match response {

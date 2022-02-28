@@ -6,8 +6,8 @@ use std::time::Duration;
 use tokio::select;
 use tokio_retry::strategy::ExponentialBackoff;
 use tokio_retry::{Action, Condition};
-use tokio_util::sync::CancellationToken;
 
+use crate::cancel::CancellationToken;
 use tokio_retry::RetryIf;
 
 pub trait TryAs<T> {
@@ -88,7 +88,7 @@ impl Default for RetrySetting {
     }
 }
 
-pub async fn invoke<A, R, RT, C, E>(ctx: CancellationToken, opt: Option<RT>, action: A) -> Result<R, E>
+pub async fn invoke<A, R, RT, C, E>(ctx: Option<CancellationToken>, opt: Option<RT>, action: A) -> Result<R, E>
 where
     E: TryAs<Status> + From<Status>,
     A: Action<Item = R, Error = E>,
@@ -96,15 +96,20 @@ where
     RT: Retry<E, C> + Default,
 {
     let setting = opt.unwrap_or_default();
-    select! {
-        _ = ctx.cancelled() => Err(Status::new(tonic::Status::cancelled("client cancel")).into()),
-        v = RetryIf::spawn(setting.strategy(), action, setting.condition()) => v
+    match ctx {
+        Some(ctx) => {
+            select! {
+                _ = ctx.cancelled() => Err(Status::new(tonic::Status::cancelled("client cancel")).into()),
+                v = RetryIf::spawn(setting.strategy(), action, setting.condition()) => v
+            }
+        }
+        None => RetryIf::spawn(setting.strategy(), action, setting.condition()).await,
     }
 }
 /// Repeats retries when the specified error is detected.
 /// The argument specified by 'v' can be reused for each retry.
 pub async fn invoke_fn<R, V, A, RT, C, E>(
-    ctx: CancellationToken,
+    ctx: Option<CancellationToken>,
     opt: Option<RT>,
     mut f: impl FnMut(V) -> A,
     mut v: V,
@@ -139,8 +144,13 @@ where
         }
     };
 
-    select! {
-       _ = ctx.cancelled() => Err(Status::new(tonic::Status::cancelled("client cancel")).into()),
-       v = fn_loop => v
+    match ctx {
+        Some(ctx) => {
+            select! {
+                _ = ctx.cancelled() => Err(Status::new(tonic::Status::cancelled("client cancel")).into()),
+                v = n_loop => v
+            }
+        }
+        None => n_loop.await,
     }
 }
