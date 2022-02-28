@@ -1,4 +1,4 @@
-use tokio_util::sync::{CancellationToken as InternalCancellationToken};
+use tokio_util::sync::CancellationToken as InternalCancellationToken;
 
 #[derive(Clone)]
 pub struct CancellationToken {

@@ -388,7 +388,7 @@ mod tests {
     use std::sync::atomic::AtomicU32;
     use std::sync::atomic::Ordering::SeqCst;
     use std::sync::Arc;
-    
+
     use std::time::Duration;
     use uuid::Uuid;
 

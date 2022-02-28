@@ -3,9 +3,7 @@ use std::time::Duration;
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_gax::status::{Code, Status};
-use google_cloud_googleapis::pubsub::v1::{
-    AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage,
-};
+use google_cloud_googleapis::pubsub::v1::{AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage};
 use tokio::select;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;

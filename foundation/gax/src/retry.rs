@@ -54,7 +54,6 @@ impl Iterator for ExponentialBackoff {
     }
 }
 
-
 pub trait TryAs<T> {
     fn try_as(&self) -> Result<&T, ()>;
 }
@@ -138,7 +137,7 @@ impl Default for RetrySetting {
 pub async fn invoke<A, R, RT, C, E>(
     cancel: Option<CancellationToken>,
     retry: Option<RT>,
-    mut a: impl FnMut() -> A
+    mut a: impl FnMut() -> A,
 ) -> Result<R, E>
 where
     E: TryAs<Status> + From<Status>,
@@ -153,14 +152,14 @@ where
             let result = a().await;
             let status = match result {
                 Ok(s) => return Ok(s),
-                Err(e) => e
+                Err(e) => e,
             };
             if !retry.predicate().should_retry(&status) {
-                return Err(status)
+                return Err(status);
             }
             match strategy.next() {
                 None => return Err(status),
-                Some(duration) => tokio::time::sleep(duration).await
+                Some(duration) => tokio::time::sleep(duration).await,
             };
         }
     };
@@ -203,11 +202,11 @@ where
                 }
             };
             if !retry.predicate().should_retry(&status) {
-                return Err(status)
+                return Err(status);
             }
             match strategy.next() {
                 None => return Err(status),
-                Some(duration) => tokio::time::sleep(duration).await
+                Some(duration) => tokio::time::sleep(duration).await,
             };
         }
     };
