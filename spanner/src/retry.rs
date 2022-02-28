@@ -1,22 +1,19 @@
 use std::iter::Take;
 use std::marker::PhantomData;
 
-use tokio_retry::strategy::ExponentialBackoff;
-use tokio_retry::Condition;
-
 use crate::session::SessionError;
-use google_cloud_gax::retry::{CodeCondition, Retry, RetrySetting, TryAs};
+use google_cloud_gax::retry::{CodePredicate, ExponentialBackoff, Predicate, Retry, RetrySetting, TryAs};
 use google_cloud_gax::status::{Code, Status};
 
-pub struct TransactionCondition<E>
+pub struct TransactionPredicate<E>
 where
     E: TryAs<Status> + From<SessionError> + From<Status>,
 {
-    inner: CodeCondition,
+    inner: CodePredicate,
     _marker: PhantomData<E>,
 }
 
-impl<E> Condition<E> for TransactionCondition<E>
+impl<E> Predicate<E> for TransactionPredicate<E>
 where
     E: TryAs<Status> + From<SessionError> + From<Status>,
 {
@@ -45,7 +42,7 @@ pub struct TransactionRetrySetting {
     pub inner: RetrySetting,
 }
 
-impl<E> Retry<E, TransactionCondition<E>> for TransactionRetrySetting
+impl<E> Retry<E, TransactionPredicate<E>> for TransactionRetrySetting
 where
     E: TryAs<Status> + From<SessionError> + From<Status>,
 {
@@ -53,9 +50,9 @@ where
         self.inner.strategy()
     }
 
-    fn condition(&self) -> TransactionCondition<E> {
-        TransactionCondition {
-            inner: CodeCondition::new(self.inner.codes.clone()),
+    fn predicate(&self) -> TransactionPredicate<E> {
+        TransactionPredicate {
+            inner: CodePredicate::new(self.inner.codes.clone()),
             _marker: PhantomData::default(),
         }
     }
@@ -79,19 +76,18 @@ impl Default for TransactionRetrySetting {
 mod tests {
     use crate::client::{RunInTxError, TxError};
     use crate::retry::TransactionRetrySetting;
-    use google_cloud_gax::retry::Retry;
+    use google_cloud_gax::retry::{Predicate, Retry};
     use google_cloud_gax::status::Status;
-    use tokio_retry::Condition;
 
     #[test]
-    fn test_transaction_condition() {
+    fn test_transaction_predicate() {
         let status = tonic::Status::new(tonic::Code::Internal, "stream terminated by RST_STREAM");
         let default = TransactionRetrySetting::default();
-        assert!(!default.condition().should_retry(&TxError::GRPC(Status::from(status))));
+        assert!(!default.predicate().should_retry(&TxError::GRPC(Status::from(status))));
 
         let status = tonic::Status::new(tonic::Code::Aborted, "default");
         assert!(default
-            .condition()
+            .predicate()
             .should_retry(&RunInTxError::GRPC(Status::from(status))));
     }
 }

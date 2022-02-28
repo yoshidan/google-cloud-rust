@@ -75,12 +75,9 @@
 //! use google_cloud_spanner::client::Client;
 //!
 //! const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
-//! let mut client = match Client::new(DATABASE).await {
-//!     Ok(client) => client,
-//!     Err(e) => { /* handle error */ }
-//! };
+//! let client = Client::new(DATABASE).await?;
 //!
-//! client.close();
+//! client.close().await;
 //! ```
 //!
 //! Remember to close the client after use to free up the sessions in the session pool.
