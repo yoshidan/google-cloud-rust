@@ -16,7 +16,6 @@ use google_cloud_spanner::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTra
 use google_cloud_spanner::value::{CommitTimestamp, TimestampBound};
 use rust_decimal::Decimal;
 use std::str::FromStr;
-use tokio_util::sync::CancellationToken;
 
 pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
