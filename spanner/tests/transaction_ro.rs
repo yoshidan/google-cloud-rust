@@ -13,7 +13,6 @@ mod common;
 use common::*;
 
 use std::collections::HashMap;
-use tokio_util::sync::CancellationToken;
 
 async fn assert_read(tx: &mut ReadOnlyTransaction, user_id: &str, now: &DateTime<Utc>, cts: &DateTime<Utc>) {
     let reader = match tx.read("User", &user_columns(), Key::key(&user_id)).await {

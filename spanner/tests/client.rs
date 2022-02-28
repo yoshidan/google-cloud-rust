@@ -43,7 +43,7 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
                     tx.buffer_write(ms);
                     let mut stmt = Statement::new("Insert Into UserItem (UserId,ItemId,Quantity,UpdatedAt) VALUES(@UserId,1,1,PENDING_COMMIT_TIMESTAMP())");
                     stmt.add_param("UserId", &user_id);
-                    let updated = tx.update(cancel, stmt).await?;
+                    let updated = tx.update(stmt).await?;
                     if updated == 0 {
                         Err(anyhow::Error::msg("error").into())
                     }else {

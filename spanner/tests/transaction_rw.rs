@@ -7,7 +7,6 @@ use google_cloud_spanner::row::Row;
 use google_cloud_spanner::statement::Statement;
 use google_cloud_spanner::transaction::CallOptions;
 use serial_test::serial;
-use tokio_util::sync::CancellationToken;
 
 mod common;
 use common::*;
