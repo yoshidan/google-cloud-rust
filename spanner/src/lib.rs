@@ -11,7 +11,7 @@
 //!
 //! ```
 //! use google_cloud_spanner::client::Client;
-//! use google_cloud_spanner::mutation::insert;
+//! use google_cloud_spanner::mutation::insert_or_update;
 //! use google_cloud_spanner::statement::Statement;
 //! use google_cloud_spanner::reader::AsyncIterator;
 //! use google_cloud_spanner::value::CommitTimestamp;
@@ -25,8 +25,8 @@
 //!     // Create spanner client
 //!     let mut client = Client::new(DATABASE).await?;
 //!
-//!     // Insert
-//!     let mutation = insert("Guild", &["GuildId", "OwnerUserID", "UpdatedAt"], &[&"guildId", &"ownerId", &CommitTimestamp::new()]);
+//!     // Insert or update
+//!     let mutation = insert_or_update("Guild", &["GuildId", "OwnerUserID", "UpdatedAt"], &[&"guildId", &"ownerId", &CommitTimestamp::new()]);
 //!     let commit_timestamp = client.apply(vec![mutation]).await?;
 //!
 //!     // Read with query
@@ -74,47 +74,58 @@
 //! ```
 //! use google_cloud_spanner::client::Client;
 //!
-//! const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
-//! let client = Client::new(DATABASE).await?;
+//! #[tokio::main]
+//! async fn main() -> Result<(), anyhow::Error> {
+//!     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
+//!     let client = Client::new(DATABASE).await?;
 //!
-//! client.close().await;
+//!     client.close().await;
+//!     Ok(())
+//! }
 //! ```
 //!
 //! Remember to close the client after use to free up the sessions in the session pool.
 //!
 //! To use an emulator with this library, you can set the SPANNER_EMULATOR_HOST environment variable to the address at which your emulator is running. This will send requests to that address instead of to Cloud Spanner.   You can then create and use a client as usual:
 //!
-//! ```ignore
+//! ```
 //! use google_cloud_spanner::client::Client;
 //!
-//! // Set SPANNER_EMULATOR_HOST environment variable.
-//! std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
+//! #[tokio::main]
+//! async fn main() -> Result<(), anyhow::Error> {
+//!     // Set SPANNER_EMULATOR_HOST environment variable.
+//!     std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
 //!
-//! // Create client as usual.
-//! const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
-//! let mut client = match Client::new(DATABASE).await {
-//!     Ok(client) => client,
-//!     Err(e) => { /* handle error */ }
-//! };
+//!     // Create client as usual.
+//!     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
+//!     let client = Client::new(DATABASE).await?;
+//!     Ok(())
+//! }
 //! ```
 //!
 //! ### <a name="SimpleReadsAndWrites"></a>Simple Reads and Writes
 //! Two Client methods, Apply and Single, work well for simple reads and writes. As a quick introduction, here we write a new row to the database and read it back:
 //!
-//! ```ignore
+//! ```
 //! use google_cloud_spanner::mutation::insert;
 //! use google_cloud_spanner::key::Key;
 //! use google_cloud_spanner::value::CommitTimestamp;
 //! use google_cloud_spanner::statement::ToKind;
+//! use google_cloud_spanner::client::Client;
+//! use google_cloud_spanner::mutation::insert_or_update;
 //!
-//! let mutation = insert("User",
-//!     &["UserID", "Name", "UpdatedAt"], // columns
-//!     &[&1, &"name", &CommitTimestamp::new()] // values
-//! );
-//! let commit_timestamp = client.apply(vec![mutation]).await?;
+//! #[tokio::main]
+//! async fn main() -> Result<(), anyhow::Error> {
+//!     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
+//!     let client = Client::new(DATABASE).await?;
 //!
-//! let mut tx = client.single().await?;
-//! let row = tx.read_row( "User", &["UserID", "Name", "UpdatedAt"], Key::key(&1)).await?;
+//!     let mutation = insert_or_update("Guild", &["GuildId", "OwnerUserID", "UpdatedAt"], &[&"guildId1", &"ownerId1", &CommitTimestamp::new()]);
+//!     let commit_timestamp = client.apply(vec![mutation]).await?;
+//!
+//!     let mut tx = client.single().await?;
+//!     let row = tx.read_row( "Guild", &["GuildId", "OwnerUserID", "UpdatedAt"], Key::key(&"guildId1")).await?;
+//!     Ok(())
+//! }
 //! ```
 //!
 //! All the methods used above are discussed in more detail below.
@@ -176,40 +187,64 @@
 //!
 //! When you only want one row whose key you know, use ReadRow. Provide the table name, key, and the columns you want to read:
 //!
-//! ```ignore
+//! ```
 //! use google_cloud_spanner::key::Key;
+//! use google_cloud_spanner::client::Client;
 //!
-//! let mut tx = client.single().await?;
-//! let row = tx.read_row("Table", &["col1", "col2"], Key::key(&1)).await?;
+//! #[tokio::main]
+//! async fn main() -> Result<(), anyhow::Error> {
+//!     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
+//!     let client = Client::new(DATABASE).await?;
+//!     let mut tx = client.single().await?;
+//!     let row = tx.read_row("Guild", &["GuildID", "OwnerUserID"], Key::key(&"guild1")).await?;
+//!     Ok(())
+//! }
 //! ```
 //!
 //! Read multiple rows with the Read method. It takes a table name, KeySet, and list of columns:
 //!
-//! ```ignore
+//! ```
 //! use google_cloud_spanner::key::Key;
 //! use google_cloud_spanner::statement::ToKind;
+//! use google_cloud_spanner::client::Client;
 //!
-//! let mut tx = client.single().await?;
-//! let iter1 = tx.read("Table",&["col1", "col2"], vec![
-//!     Key::key(&"pk1"),
-//!     Key::key(&"pk2")
-//! ]).await?;
+//! #[tokio::main]
+//! async fn main() -> Result<(), anyhow::Error> {
+//!     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
+//!     let client = Client::new(DATABASE).await?;
+//!
+//!     let mut tx = client.single().await?;
+//!     let iter1 = tx.read("Guild",&["GuildID", "OwnerUserID"], vec![
+//!         Key::key(&"pk1"),
+//!         Key::key(&"pk2")
+//!     ]).await?;
+//!     Ok(())
+//! }
 //! ```
 //!
 //! RowIterator also follows the standard pattern for the Google Cloud Client Libraries:
 //!
-//! ```ignore
+//! ```
 //! use google_cloud_spanner::key::Key;
+//! use google_cloud_spanner::client::Client;
+//! use google_cloud_spanner::reader::AsyncIterator;
 //!
-//! let mut tx = client.single().await?;
-//! let mut iter = tx.read("Table", &["col1", "col2"], vec![
-//!     Key::key(&"pk1"),
-//!     Key::key(&"pk2")
-//! ]).await?;
+//! #[tokio::main]
+//! async fn main() -> Result<(), anyhow::Error> {
+//!     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
+//!     let client = Client::new(DATABASE).await?;
 //!
-//! while let Some(row) = iter.next().await? {
-//!     // use row
-//! };
+//!     let mut tx = client.single().await?;
+//!     let mut iter = tx.read("Guild", &["GuildID", "OwnerUserID"], vec![
+//!         Key::key(&"pk1"),
+//!         Key::key(&"pk2")
+//!     ]).await?;
+//!
+//!     while let Some(row) = iter.next(None).await? {
+//!         // use row
+//!     };
+//!     Ok(())
+//! }
 //! ```
 //!
 //! * The used session is returned to the drop timing session pool, so unlike Go, there is no need to call Stop.
@@ -231,9 +266,21 @@
 //!
 //! Use the Query method to run the statement and obtain an iterator:
 //!
-//! ```ignore
-//! let mut tx = client.single().await?;
-//! let iter = tx.query(stmt).await?;
+//! ```
+//! use google_cloud_spanner::client::Client;
+//! use google_cloud_spanner::statement::Statement;
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), anyhow::Error> {
+//!     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
+//!     let client = Client::new(DATABASE).await?;
+//!
+//!     let mut stmt = Statement::new("SELECT * FROM Guild WHERE OwnerUserID = @OwnerUserID");
+//!     stmt.add_param("OwnerUserID", &"key");
+//!     let mut tx = client.single().await?;
+//!     let iter = tx.query(stmt).await?;
+//!     Ok(())
+//! }
 //! ```
 //!
 //! ### <a name="Rows"></a>Rows
@@ -336,17 +383,26 @@
 //! One takes lists of columns and values along with the table name:
 //!
 //! ```
-//! use google_cloud_spanner::mutation::insert;
-//! use google_cloud_spanner::mutation::insert_map;
+//! use google_cloud_spanner::mutation::insert_or_update;
+//! use google_cloud_spanner::mutation::insert_or_update_map;
 //! use google_cloud_spanner::value::CommitTimestamp;
+//! use google_cloud_spanner::client::Client;
 //!
-//! let mutation = insert("User",
-//!     &[&"UserID", &"Name", &"UpdatedAt"], // columns
-//!     &[&1, &"name", &CommitTimestamp::new()] // values
-//! );
-//! // or use insert_map
-//! let mutation2 = insert_map("User",
-//!     &[("UserID", &2), ("UserID", &"name2"), (&"UpdatedAt",&CommitTimestamp::new())]);
+//! #[tokio::main]
+//! async fn main() -> Result<(), anyhow::Error> {
+//!     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
+//!     let client = Client::new(DATABASE).await?;
+//!
+//!     let mutation = insert_or_update("Guild",
+//!         &[&"GuildID", &"OwnerUserID", &"UpdatedAt"], // columns
+//!         &[&"gid", &"owner", &CommitTimestamp::new()] // values
+//!     );
+//!     // or use insert_map
+//!     let mutation2 = insert_or_update_map("Guild",
+//!         &[("GuildId", &"gid"), ("OwnerUserID", &"owner"), (&"UpdatedAt",&CommitTimestamp::new())]
+//!     );
+//!     Ok(())
+//! }
 //! ```
 //!
 //! And the third accepts a struct value, and determines the columns from the struct field names:
@@ -396,44 +452,62 @@
 //! ### <a name="Writes"></a>Writes
 //!
 //! To apply a list of mutations to the database, use Apply:
-//! ```ignore
+//! ```
 //! use google_cloud_spanner::mutation::insert;
 //! use google_cloud_spanner::mutation::delete;
 //! use google_cloud_spanner::key::all_keys;
 //! use google_cloud_spanner::statement::ToKind;
+//! use google_cloud_spanner::client::Client;
+//! use google_cloud_spanner::value::CommitTimestamp;
 //!
-//! let m1 = delete("Table", all_keys());
-//! let m2 = insert("Table", &["col1", "col2"], &[&"1", &"2"]);
-//! let commit_timestamp = client.apply(vec![m1,m2]).await?;
+//! #[tokio::main]
+//! async fn main() -> Result<(), anyhow::Error> {
+//!     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
+//!     let client = Client::new(DATABASE).await?;
+//!     let m1 = delete("Guild", all_keys());
+//!     let m2 = insert("Guild", &["GuildID", "OwnerUserID", "UpdatedAt"], &[&"1", &"2", &CommitTimestamp::new()]);
+//!     let commit_timestamp = client.apply(vec![m1,m2]).await?;
+//!     Ok(())
+//! }
 //! ```
 //!
 //! If you need to read before writing in a single transaction, use a ReadWriteTransaction. ReadWriteTransactions may be aborted automatically by the backend and need to be retried. You pass in a function to ReadWriteTransaction, and the client will handle the retries automatically. Use the transaction's BufferWrite method to buffer mutations, which will all be executed at the end of the transaction:
 //!
-//! ```ignore
+//! ```
 //! use google_cloud_spanner::mutation::update;
 //! use google_cloud_spanner::key::Key;
 //! use google_cloud_spanner::value::Timestamp;
 //! use google_cloud_spanner::client::RunInTxError;
+//! use google_cloud_spanner::client::Client;
+//! use google_cloud_spanner::reader::AsyncIterator;
 //!
-//! let tx_result: Result<(Option<Timestamp>,()), RunInTxError> = client.read_write_transaction(|tx| {
-//!     Box::pin(async move {
-//!         // The transaction function will be called again if the error code
-//!         // of this error is Aborted. The backend may automatically abort
-//!         // any read/write transaction if it detects a deadlock or other problems.
-//!         let mut reader = tx.read("UserItem", &["UserId", "ItemId", "Quantity"], Key::key(&"user1")).await?;
-//!         let mut ms = vec![];
-//!         while let Some(row) = reader.next().await? {
-//!             let item_id = row.column_by_name::<i64>("ItemId")?;
-//!             let quantity = row.column_by_name::<i64>("Quantity")? + 1;
-//!             let m = update("UserItem", &["Quantity"], &[&user_id, &item_id, quantity + 1]);
-//!             ms.push(m);
-//!         }
-//!         // The buffered mutation will be committed.  If the commit
-//!         // fails with an Aborted error, this function will be called again
-//!         tx.buffer_write(ms);
-//!         Ok(())
-//!     })
-//! }).await;
+//! #[tokio::main]
+//! async fn main() -> Result<(), anyhow::Error> {
+//!     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
+//!     let client = Client::new(DATABASE).await?;
+//!     let tx_result: Result<(Option<Timestamp>,()), RunInTxError> = client.read_write_transaction(|tx, _| {
+//!         Box::pin(async move {
+//!             // The transaction function will be called again if the error code
+//!             // of this error is Aborted. The backend may automatically abort
+//!             // any read/write transaction if it detects a deadlock or other problems.
+//!             let key = Key::key(&"user1");
+//!             let mut reader = tx.read("UserItem", &["UserId", "ItemId", "Quantity"], key).await?;
+//!             let mut ms = vec![];
+//!             while let Some(row) = reader.next(None).await? {
+//!                 let user_id = row.column_by_name::<i64>("UserId")?;
+//!                 let item_id = row.column_by_name::<i64>("ItemId")?;
+//!                 let quantity = row.column_by_name::<i64>("Quantity")? + 1;
+//!                 let m = update("UserItem", &["Quantity"], &[&user_id, &item_id, &quantity]);
+//!                 ms.push(m);
+//!             }
+//!             // The buffered mutation will be committed.  If the commit
+//!             // fails with an Aborted error, this function will be called again
+//!             tx.buffer_write(ms);
+//!             Ok(())
+//!         })
+//!     }).await;
+//!     Ok(())
+//! }
 //! ```
 //!
 //! You can customize error. The Error of the `read_write_transaction` must implements
@@ -445,13 +519,19 @@
 //! For large databases, it may be more efficient to partition the DML statement.
 //! Use client.partitioned_update to run a DML statement in this way. Not all DML statements can be partitioned.
 //!
-//! ```ignore
+//! ```
 //! use google_cloud_spanner::client::Client;
 //! use google_cloud_spanner::statement::Statement;
 //!
-//! let client = Client::new(DATABASE).await?;
-//! let stmt = Statement::new("UPDATE User SET Value = 'aaa' WHERE Value IS NOT NULL");
-//! let result = client.partitioned_update(stmt).await?;
+//! #[tokio::main]
+//! async fn main() -> Result<(), anyhow::Error> {
+//!     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
+//!     let client = Client::new(DATABASE).await?;
+//!
+//!     let stmt = Statement::new("UPDATE User SET NullableString = 'aaa' WHERE NullableString IS NOT NULL");
+//!     let result = client.partitioned_update(stmt).await?;
+//!     Ok(())
+//! }
 //! ```
 pub const AUDIENCE: &str = "https://spanner.googleapis.com/";
 pub const SPANNER: &str = "spanner.googleapis.com";
