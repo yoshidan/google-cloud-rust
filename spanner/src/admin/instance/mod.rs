@@ -12,7 +12,6 @@ mod tests {
     };
 
     use serial_test::serial;
-    use tokio_util::sync::CancellationToken;
 
     async fn create_instance() -> Instance {
         std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
@@ -34,8 +33,8 @@ mod tests {
             }),
         };
 
-        let creation_result = match client.create_instance(CancellationToken::new(), request, None).await {
-            Ok(mut res) => res.wait(CancellationToken::new(), None).await,
+        let creation_result = match client.create_instance(request, None, None).await {
+            Ok(mut res) => res.wait(None, None).await,
             Err(err) => panic!("err: {:?}", err),
         };
         match creation_result {
@@ -62,7 +61,7 @@ mod tests {
             field_mask: None,
         };
 
-        match client.get_instance(CancellationToken::new(), request, None).await {
+        match client.get_instance(request, None, None).await {
             Ok(res) => {
                 let instance = res.into_inner();
                 assert_eq!(instance.name, name);
@@ -79,7 +78,7 @@ mod tests {
         let request = DeleteInstanceRequest {
             name: instance.name.to_string(),
         };
-        match client.delete_instance(CancellationToken::new(), request, None).await {
+        match client.delete_instance(request, None, None).await {
             Ok(_res) => assert!(true),
             Err(err) => panic!("err: {:?}", err),
         };
@@ -97,7 +96,7 @@ mod tests {
             filter: "".to_string(),
         };
 
-        match client.list_instances(CancellationToken::new(), request, None).await {
+        match client.list_instances(request, None, None).await {
             Ok(res) => {
                 println!("size = {}", res.len());
                 assert!(res.len() > 0);
@@ -117,10 +116,7 @@ mod tests {
             page_token: "".to_string(),
         };
 
-        match client
-            .list_instance_configs(CancellationToken::new(), request, None)
-            .await
-        {
+        match client.list_instance_configs(request, None, None).await {
             Ok(res) => {
                 println!("size = {}", res.len());
                 assert!(res.len() > 0);
@@ -137,10 +133,7 @@ mod tests {
         let name = "projects/local-project/instanceConfigs/emulator-config".to_string();
         let request = GetInstanceConfigRequest { name: name.clone() };
 
-        match client
-            .get_instance_config(CancellationToken::new(), request, None)
-            .await
-        {
+        match client.get_instance_config(request, None, None).await {
             Ok(res) => {
                 let instance = res;
                 assert_eq!(instance.name, name);

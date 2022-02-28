@@ -17,7 +17,6 @@ mod tests {
     use google_cloud_googleapis::spanner::v1::{execute_batch_dml_request, KeySet, Mutation};
     use prost_types::{value::Kind, ListValue, Value};
     use serial_test::serial;
-    use tokio_util::sync::CancellationToken;
 
     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
@@ -33,10 +32,7 @@ mod tests {
             database: DATABASE.to_string(),
             session: None,
         };
-        let session_response = client
-            .create_session(CancellationToken::new(), session_request, None)
-            .await
-            .unwrap();
+        let session_response = client.create_session(session_request, None, None).await.unwrap();
         session_response.into_inner()
     }
 
@@ -52,7 +48,7 @@ mod tests {
             request_options: None,
         };
         return client
-            .begin_transaction(CancellationToken::new(), request, None)
+            .begin_transaction(request, None, None)
             .await
             .unwrap()
             .into_inner();
@@ -67,7 +63,7 @@ mod tests {
             request_options: None,
         };
         return client
-            .begin_transaction(CancellationToken::new(), request, None)
+            .begin_transaction(request, None, None)
             .await
             .unwrap()
             .into_inner();
@@ -82,7 +78,7 @@ mod tests {
             session: None,
         };
 
-        match client.create_session(CancellationToken::new(), request, None).await {
+        match client.create_session(request, None, None).await {
             Ok(res) => {
                 println!("created session = {}", res.get_ref().name);
                 assert!(!res.get_ref().name.is_empty());
@@ -101,10 +97,7 @@ mod tests {
             session_template: None,
         };
 
-        match client
-            .batch_create_sessions(CancellationToken::new(), request, None)
-            .await
-        {
+        match client.batch_create_sessions(request, None, None).await {
             Ok(res) => {
                 assert_eq!(
                     res.get_ref().session.len(),
@@ -126,7 +119,7 @@ mod tests {
             name: session.name.to_string(),
         };
 
-        match client.get_session(CancellationToken::new(), request, None).await {
+        match client.get_session(request, None, None).await {
             Ok(res) => {
                 assert_eq!(res.get_ref().name, session.name.to_string());
             }
@@ -145,7 +138,7 @@ mod tests {
             filter: "".to_string(),
         };
 
-        match client.list_sessions(CancellationToken::new(), request, None).await {
+        match client.list_sessions(request, None, None).await {
             Ok(res) => {
                 println!("list session size = {}", res.get_ref().sessions.len());
             }
@@ -164,10 +157,7 @@ mod tests {
             session_count: 2,
             session_template: None,
         };
-        let session_response = client
-            .batch_create_sessions(CancellationToken::new(), batch_request, None)
-            .await
-            .unwrap();
+        let session_response = client.batch_create_sessions(batch_request, None, None).await.unwrap();
         let sessions = &session_response.get_ref().session;
 
         // all delete
@@ -176,7 +166,7 @@ mod tests {
                 name: session.name.to_string(),
             };
 
-            match client.delete_session(CancellationToken::new(), request, None).await {
+            match client.delete_session(request, None, None).await {
                 Ok(_) => {}
                 Err(err) => panic!("err: {:?}", err),
             };
@@ -201,7 +191,7 @@ mod tests {
             query_options: None,
             request_options: None,
         };
-        match client.execute_sql(CancellationToken::new(), request, None).await {
+        match client.execute_sql(request, None, None).await {
             Ok(res) => {
                 assert_eq!(1, res.into_inner().rows.len());
             }
@@ -228,10 +218,7 @@ mod tests {
             request_options: None,
         };
 
-        let resume_token = match client
-            .execute_streaming_sql(CancellationToken::new(), request.clone(), None)
-            .await
-        {
+        let resume_token = match client.execute_streaming_sql(request.clone(), None, None).await {
             Ok(res) => {
                 let mut result = res.into_inner();
                 if let Some(next_message) = result.message().await.unwrap() {
@@ -246,10 +233,7 @@ mod tests {
         println!("resume token = {:?}", resume_token.clone().unwrap());
         request.resume_token = resume_token.unwrap();
 
-        match client
-            .execute_streaming_sql(CancellationToken::new(), request, None)
-            .await
-        {
+        match client.execute_streaming_sql(request, None, None).await {
             Ok(res) => {
                 let mut result = res.into_inner();
                 assert!(!result.message().await.unwrap().unwrap().values.is_empty())
@@ -274,7 +258,7 @@ mod tests {
             request_options: None,
         };
 
-        match client.begin_transaction(CancellationToken::new(), request, None).await {
+        match client.begin_transaction(request, None, None).await {
             Ok(res) => {
                 let tx_id = res.into_inner().id;
                 println!("tx id is {:?}", tx_id);
@@ -313,14 +297,14 @@ mod tests {
             request_options: None,
         };
 
-        let result = client.execute_batch_dml(CancellationToken::new(), request, None).await;
+        let result = client.execute_batch_dml(request, None, None).await;
         client
             .rollback(
-                CancellationToken::new(),
                 RollbackRequest {
                     session: session.name.to_string(),
                     transaction_id: tx.id,
                 },
+                None,
                 None,
             )
             .await
@@ -360,14 +344,14 @@ mod tests {
             request_options: None,
         };
 
-        let result = client.execute_batch_dml(CancellationToken::new(), request, None).await;
+        let result = client.execute_batch_dml(request, None, None).await;
         client
             .rollback(
-                CancellationToken::new(),
                 RollbackRequest {
                     session: session.name.to_string(),
                     transaction_id: tx.id,
                 },
+                None,
                 None,
             )
             .await
@@ -407,7 +391,7 @@ mod tests {
             limit: 0,
         };
 
-        match client.read(CancellationToken::new(), request, None).await {
+        match client.read(request, None, None).await {
             Ok(res) => {
                 println!("row size = {:?}", res.into_inner().rows.len());
             }
@@ -437,7 +421,7 @@ mod tests {
             limit: 0,
         };
 
-        match client.streaming_read(CancellationToken::new(), request, None).await {
+        match client.streaming_read(request, None, None).await {
             Ok(res) => match res.into_inner().message().await {
                 Ok(..) => {}
                 Err(err) => panic!("err: {:?}", err),
@@ -486,7 +470,7 @@ mod tests {
             return_commit_stats: false,
         };
 
-        match client.commit(CancellationToken::new(), request, None).await {
+        match client.commit(request, None, None).await {
             Ok(res) => {
                 assert!(res.into_inner().commit_timestamp.is_some());
             }
@@ -505,7 +489,7 @@ mod tests {
             transaction_id: tx.id,
         };
 
-        match client.rollback(CancellationToken::new(), request, None).await {
+        match client.rollback(request, None, None).await {
             Ok(_) => {}
             Err(err) => panic!("err: {:?}", err),
         };
@@ -528,7 +512,7 @@ mod tests {
             partition_options: None,
         };
 
-        match client.partition_query(CancellationToken::new(), request, None).await {
+        match client.partition_query(request, None, None).await {
             Ok(res) => {
                 println!("partition count {:?}", res.into_inner().partitions.len());
                 assert_eq!(true, true);
@@ -558,7 +542,7 @@ mod tests {
             key_set: None,
         };
 
-        match client.partition_read(CancellationToken::new(), request, None).await {
+        match client.partition_read(request, None, None).await {
             Ok(res) => {
                 println!("partition count {:?}", res.into_inner().partitions.len());
                 assert_eq!(true, true);

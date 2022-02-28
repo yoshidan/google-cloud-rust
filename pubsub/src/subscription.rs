@@ -1,17 +1,17 @@
 use std::collections::HashMap;
 use std::future::Future;
 
+use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_gax::status::{Code, Status};
 use prost_types::FieldMask;
 use std::time::Duration;
 use tokio::select;
-use tokio_util::sync::CancellationToken;
 
 use crate::apiv1::subscriber_client::SubscriberClient;
 use google_cloud_googleapis::pubsub::v1::{
-    DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest, PushConfig, RetryPolicy,
-    Subscription as InternalSubscription, UpdateSubscriptionRequest,
+    DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest, PullRequest, PushConfig,
+    RetryPolicy, Subscription as InternalSubscription, UpdateSubscriptionRequest,
 };
 
 use crate::subscriber::{ReceivedMessage, Subscriber, SubscriberConfig};
@@ -140,14 +140,13 @@ impl Subscription {
     /// create creates the subscription.
     pub async fn create(
         &self,
-        ctx: CancellationToken,
         fqtn: &str,
         cfg: SubscriptionConfig,
-        retry_option: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<(), Status> {
         self.subc
             .create_subscription(
-                ctx,
                 InternalSubscription {
                     name: self.fully_qualified_name().to_string(),
                     topic: fqtn.to_string(),
@@ -164,39 +163,30 @@ impl Subscription {
                     retain_acked_messages: cfg.retain_acked_messages,
                     topic_message_retention_duration: cfg.topic_message_retention_duration.map(|v| v.into()),
                 },
-                retry_option,
+                cancel,
+                retry,
             )
             .await
             .map(|_v| ())
     }
 
     /// delete deletes the subscription.
-    pub async fn delete(&self, ctx: CancellationToken, retry_option: Option<RetrySetting>) -> Result<(), Status> {
+    pub async fn delete(&self, cancel: Option<CancellationToken>, retry: Option<RetrySetting>) -> Result<(), Status> {
+        let req = DeleteSubscriptionRequest {
+            subscription: self.fqsn.to_string(),
+        };
         self.subc
-            .delete_subscription(
-                ctx,
-                DeleteSubscriptionRequest {
-                    subscription: self.fqsn.to_string(),
-                },
-                retry_option,
-            )
+            .delete_subscription(req, cancel, retry)
             .await
             .map(|v| v.into_inner())
     }
 
     /// exists reports whether the subscription exists on the server.
-    pub async fn exists(&self, ctx: CancellationToken, retry_option: Option<RetrySetting>) -> Result<bool, Status> {
-        match self
-            .subc
-            .get_subscription(
-                ctx,
-                GetSubscriptionRequest {
-                    subscription: self.fqsn.to_string(),
-                },
-                retry_option,
-            )
-            .await
-        {
+    pub async fn exists(&self, cancel: Option<CancellationToken>, retry: Option<RetrySetting>) -> Result<bool, Status> {
+        let req = GetSubscriptionRequest {
+            subscription: self.fqsn.to_string(),
+        };
+        match self.subc.get_subscription(req, cancel, retry).await {
             Ok(_) => Ok(true),
             Err(e) => {
                 if e.code() == Code::NotFound {
@@ -211,41 +201,32 @@ impl Subscription {
     /// config fetches the current configuration for the subscription.
     pub async fn config(
         &self,
-        ctx: CancellationToken,
-        retry_option: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<(String, SubscriptionConfig), Status> {
-        self.subc
-            .get_subscription(
-                ctx,
-                GetSubscriptionRequest {
-                    subscription: self.fqsn.to_string(),
-                },
-                retry_option,
-            )
-            .await
-            .map(|v| {
-                let inner = v.into_inner();
-                (inner.topic.to_string(), inner.into())
-            })
+        let req = GetSubscriptionRequest {
+            subscription: self.fqsn.to_string(),
+        };
+        self.subc.get_subscription(req, cancel, retry).await.map(|v| {
+            let inner = v.into_inner();
+            (inner.topic.to_string(), inner.into())
+        })
     }
 
     /// update changes an existing subscription according to the fields set in updating.
     /// It returns the new SubscriptionConfig.
     pub async fn update(
         &self,
-        ctx: CancellationToken,
         updating: SubscriptionConfigToUpdate,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<(String, SubscriptionConfig), Status> {
+        let req = GetSubscriptionRequest {
+            subscription: self.fqsn.to_string(),
+        };
         let mut config = self
             .subc
-            .get_subscription(
-                ctx.clone(),
-                GetSubscriptionRequest {
-                    subscription: self.fqsn.to_string(),
-                },
-                opt.clone(),
-            )
+            .get_subscription(req, cancel.clone(), retry.clone())
             .await?
             .into_inner();
 
@@ -282,29 +263,44 @@ impl Subscription {
             paths.push("retry_policy".to_string());
         }
 
-        self.subc
-            .update_subscription(
-                ctx,
-                UpdateSubscriptionRequest {
-                    subscription: Some(config.into()),
-                    update_mask: Some(FieldMask { paths }),
-                },
-                opt,
-            )
-            .await
-            .map(|v| {
-                let inner = v.into_inner();
-                (inner.topic.to_string(), inner.into())
-            })
+        let update_req = UpdateSubscriptionRequest {
+            subscription: Some(config.into()),
+            update_mask: Some(FieldMask { paths }),
+        };
+        self.subc.update_subscription(update_req, cancel, retry).await.map(|v| {
+            let inner = v.into_inner();
+            (inner.topic.to_string(), inner.into())
+        })
+    }
+
+    /// pull get message synchronously.
+    /// It blocks until at least one message is available.
+    pub async fn pull(
+        &self,
+        max_messages: i32,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Vec<ReceivedMessage>, Status> {
+        let req = PullRequest {
+            subscription: self.fqsn.clone(),
+            return_immediately: false,
+            max_messages,
+        };
+        let messages = self.subc.pull(req, cancel, retry).await?.into_inner().received_messages;
+        Ok(messages
+            .into_iter()
+            .filter(|m| m.message.is_some())
+            .map(|m| ReceivedMessage::new(self.fqsn.clone(), self.subc.clone(), m.message.unwrap(), m.ack_id))
+            .collect())
     }
 
     /// receive calls f with the outstanding messages from the subscription.
-    /// It blocks until ctx is done, or the service returns a non-retryable error.
+    /// It blocks until cancellation token is cancelled, or the service returns a non-retryable error.
     /// The standard way to terminate a receive is to use CancellationToken.
     pub async fn receive<F>(
         &self,
-        ctx: CancellationToken,
         f: impl Fn(ReceivedMessage, CancellationToken) -> F + Send + 'static + Sync + Clone,
+        cancel: CancellationToken,
         config: Option<ReceiveConfig>,
     ) -> Result<(), Status>
     where
@@ -315,7 +311,7 @@ impl Subscription {
         let mut senders = Vec::with_capacity(receivers.len());
 
         if self
-            .config(ctx.clone(), op.subscriber_config.retry_setting.clone())
+            .config(Some(cancel.clone()), op.subscriber_config.retry_setting.clone())
             .await?
             .1
             .enable_message_ordering
@@ -338,7 +334,7 @@ impl Subscription {
             .into_iter()
             .map(|queue| {
                 Subscriber::start(
-                    ctx.clone(),
+                    cancel.clone(),
                     self.fqsn.clone(),
                     self.subc.clone(),
                     queue,
@@ -350,14 +346,14 @@ impl Subscription {
         let mut message_receivers = Vec::with_capacity(receivers.len());
         for receiver in receivers {
             let f_clone = f.clone();
-            let ctx_clone = ctx.clone();
+            let cancel_clone = cancel.clone();
             let name = self.fqsn.clone();
             message_receivers.push(tokio::spawn(async move {
                 loop {
                     select! {
-                        _ = ctx_clone.cancelled() => break,
+                        _ = cancel_clone.cancelled() => break,
                         msg = receiver.recv() => match msg {
-                            Ok(message) => f_clone(message, ctx_clone.clone()).await,
+                            Ok(message) => f_clone(message, cancel_clone.clone()).await,
                             Err(_) => break
                         }
 
@@ -366,7 +362,7 @@ impl Subscription {
                 log::trace!("stop message receiver : {}", name);
             }));
         }
-        ctx.cancelled().await;
+        cancel.cancelled().await;
 
         // wait for all the treads finish.
         for mut subscriber in subscribers {
@@ -385,13 +381,15 @@ mod tests {
     use crate::apiv1::publisher_client::PublisherClient;
     use crate::apiv1::subscriber_client::SubscriberClient;
     use crate::subscription::{Subscription, SubscriptionConfig, SubscriptionConfigToUpdate};
+    use google_cloud_gax::cancel::CancellationToken;
+    use google_cloud_gax::status::Code;
     use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
     use serial_test::serial;
     use std::sync::atomic::AtomicU32;
     use std::sync::atomic::Ordering::SeqCst;
     use std::sync::Arc;
+
     use std::time::Duration;
-    use tokio_util::sync::CancellationToken;
     use uuid::Uuid;
 
     #[ctor::ctor]
@@ -407,11 +405,11 @@ mod tests {
         let uuid = Uuid::new_v4().to_hyphenated().to_string();
         let subscription_name = format!("projects/loca-lproject/subscriptions/s{}", &uuid);
         let topic_name = "projects/local-project/topics/test-topic1";
-        let ctx = CancellationToken::new();
+        let cancel = CancellationToken::new();
         let subscription = Subscription::new(subscription_name, client);
-        if !subscription.exists(ctx.clone(), None).await? {
+        if !subscription.exists(Some(cancel.clone()), None).await? {
             subscription
-                .create(ctx.clone(), topic_name, SubscriptionConfig::default(), None)
+                .create(topic_name, SubscriptionConfig::default(), Some(cancel), None)
                 .await?;
         }
         return Ok(subscription);
@@ -425,15 +423,11 @@ mod tests {
         );
         let mut msg = PubsubMessage::default();
         msg.data = "test_message".into();
-        pubc.publish(
-            CancellationToken::new(),
-            PublishRequest {
-                topic: "projects/local-project/topics/test-topic1".to_string(),
-                messages: vec![msg],
-            },
-            None,
-        )
-        .await;
+        let req = PublishRequest {
+            topic: "projects/local-project/topics/test-topic1".to_string(),
+            messages: vec![msg],
+        };
+        pubc.publish(req, Some(CancellationToken::new()), None).await;
     }
 
     #[tokio::test]
@@ -442,36 +436,73 @@ mod tests {
         let subscription = create_subscription().await.unwrap();
 
         let topic_name = "projects/local-project/topics/test-topic1";
-        let ctx = CancellationToken::new();
-        let config = subscription.config(ctx.clone(), None).await?;
+        let cancel = CancellationToken::new();
+        let config = subscription.config(Some(cancel.clone()), None).await?;
         assert_eq!(config.0, topic_name);
 
         let mut updating = SubscriptionConfigToUpdate::default();
         updating.ack_deadline_seconds = Some(100);
-        let new_config = subscription.update(ctx.clone(), updating, None).await?;
+        let new_config = subscription.update(updating, Some(cancel.clone()), None).await?;
         assert_eq!(new_config.0, topic_name);
         assert_eq!(new_config.1.ack_deadline_seconds, 100);
 
-        let cancellation_token = CancellationToken::new();
-        let cancel_receiver = cancellation_token.clone();
+        let receiver_ctx = CancellationToken::new();
+        let cancel_receiver = receiver_ctx.clone();
         let handle = tokio::spawn(async move {
             let _ = subscription
                 .receive(
-                    cancel_receiver,
                     |message, _ctx| async move {
                         println!("{}", message.message.message_id);
                         message.ack();
                     },
+                    cancel_receiver,
                     None,
                 )
                 .await;
-            subscription.delete(ctx.clone(), None).await.unwrap();
-            assert!(!subscription.exists(ctx.clone(), None).await.unwrap())
+            subscription.delete(Some(cancel.clone()), None).await.unwrap();
+            assert!(!subscription.exists(Some(cancel.clone()), None).await.unwrap())
         });
         tokio::time::sleep(Duration::from_secs(3)).await;
-        cancellation_token.cancel();
+        receiver_ctx.cancel();
         handle.await;
+        Ok(())
+    }
 
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_pull() -> Result<(), anyhow::Error> {
+        let subscription = create_subscription().await.unwrap();
+        publish().await;
+        publish().await;
+        publish().await;
+        let messages = subscription.pull(2, None, None).await?;
+        assert_eq!(messages.len(), 2);
+        for m in messages {
+            m.ack().await.unwrap();
+        }
+        subscription.delete(None, None).await?;
+        Ok(())
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_pull_cancel() -> Result<(), anyhow::Error> {
+        let subscription = create_subscription().await.unwrap();
+        let cancel = CancellationToken::new();
+        let cancel2 = cancel.clone();
+        let j = tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_secs(5)).await;
+            log::info!("cancelled");
+            cancel2.clone().cancel();
+        });
+        let messages = subscription.pull(2, Some(cancel), None).await;
+        match messages {
+            Ok(_v) => panic!("must error"),
+            Err(e) => {
+                assert_eq!(e.code(), Code::Cancelled);
+            }
+        }
+        j.await;
         Ok(())
     }
 
@@ -488,7 +519,6 @@ mod tests {
         let handle = tokio::spawn(async move {
             let _ = subscription
                 .receive(
-                    cancel_receiver,
                     move |message, _ctx| {
                         let v2 = v2.clone();
                         async move {
@@ -496,6 +526,7 @@ mod tests {
                             message.ack();
                         }
                     },
+                    cancel_receiver,
                     None,
                 )
                 .await;
@@ -522,7 +553,6 @@ mod tests {
             let handle = tokio::spawn(async move {
                 let _ = subscription
                     .receive(
-                        ctx,
                         move |message, _ctx| {
                             let v2 = v2.clone();
                             async move {
@@ -530,6 +560,7 @@ mod tests {
                                 message.ack();
                             }
                         },
+                        ctx,
                         None,
                     )
                     .await;

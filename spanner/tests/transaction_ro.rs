@@ -13,13 +13,9 @@ mod common;
 use common::*;
 
 use std::collections::HashMap;
-use tokio_util::sync::CancellationToken;
 
 async fn assert_read(tx: &mut ReadOnlyTransaction, user_id: &str, now: &DateTime<Utc>, cts: &DateTime<Utc>) {
-    let reader = match tx
-        .read(CancellationToken::new(), "User", &user_columns(), Key::key(&user_id))
-        .await
-    {
+    let reader = match tx.read("User", &user_columns(), Key::key(&user_id)).await {
         Ok(tx) => tx,
         Err(status) => panic!("read error {:?}", status),
     };
@@ -39,7 +35,7 @@ async fn assert_query(tx: &mut ReadOnlyTransaction, user_id: &str, now: &DateTim
 }
 
 async fn execute_query(tx: &mut ReadOnlyTransaction, stmt: Statement) -> Vec<Row> {
-    let reader = match tx.query(CancellationToken::new(), stmt).await {
+    let reader = match tx.query(stmt).await {
         Ok(tx) => tx,
         Err(status) => panic!("query error {:?}", status),
     };
@@ -118,18 +114,12 @@ async fn test_complex_query() {
     assert_eq!(first_item.user_id, user_id_1);
     assert_eq!(first_item.item_id, 2);
     assert_eq!(first_item.quantity, 100);
-    assert_ne!(
-        DateTime::<Utc>::from(first_item.updated_at).to_string(),
-        now.to_string()
-    );
+    assert_ne!(DateTime::<Utc>::from(first_item.updated_at).to_string(), now.to_string());
     let second_item = user_items.pop().unwrap();
     assert_eq!(second_item.user_id, user_id_1);
     assert_eq!(second_item.item_id, 1);
     assert_eq!(second_item.quantity, 100);
-    assert_ne!(
-        DateTime::<Utc>::from(second_item.updated_at).to_string(),
-        now.to_string()
-    );
+    assert_ne!(DateTime::<Utc>::from(second_item.updated_at).to_string(), now.to_string());
     assert!(user_items.is_empty());
 
     let mut user_characters = row.column_by_name::<Vec<UserCharacter>>("UserCharacter").unwrap();
@@ -137,18 +127,12 @@ async fn test_complex_query() {
     assert_eq!(first_character.user_id, user_id_1);
     assert_eq!(first_character.character_id, 20);
     assert_eq!(first_character.level, 1);
-    assert_ne!(
-        DateTime::<Utc>::from(first_character.updated_at).to_string(),
-        now.to_string()
-    );
+    assert_ne!(DateTime::<Utc>::from(first_character.updated_at).to_string(), now.to_string());
     let second_character = user_characters.pop().unwrap();
     assert_eq!(second_character.user_id, user_id_1);
     assert_eq!(second_character.character_id, 10);
     assert_eq!(second_character.level, 1);
-    assert_ne!(
-        DateTime::<Utc>::from(second_character.updated_at).to_string(),
-        now.to_string()
-    );
+    assert_ne!(DateTime::<Utc>::from(second_character.updated_at).to_string(), now.to_string());
     assert!(user_characters.is_empty());
 }
 
@@ -176,17 +160,11 @@ async fn test_batch_partition_query_and_read() {
         .collect();
     let cr2 = replace_test_data(session.deref_mut(), many).await.unwrap();
 
-    let mut tx = match BatchReadOnlyTransaction::begin(
-        CancellationToken::new(),
-        session,
-        TimestampBound::strong_read(),
-        CallOptions::default(),
-    )
-    .await
-    {
-        Ok(tx) => tx,
-        Err(status) => panic!("begin error {:?}", status),
-    };
+    let mut tx =
+        match BatchReadOnlyTransaction::begin(session, TimestampBound::strong_read(), CallOptions::default()).await {
+            Ok(tx) => tx,
+            Err(status) => panic!("begin error {:?}", status),
+        };
 
     let ts = cr.commit_timestamp.as_ref().unwrap();
     let ts = Utc.timestamp(ts.seconds, ts.nanos as u32);
@@ -282,10 +260,7 @@ async fn test_read_row() {
     let _ = replace_test_data(&mut session, mutations).await.unwrap();
 
     let mut tx = read_only_transaction(session).await;
-    let row = tx
-        .read_row(CancellationToken::new(), "User", &["UserId"], Key::key(&user_id))
-        .await
-        .unwrap();
+    let row = tx.read_row("User", &["UserId"], Key::key(&user_id)).await.unwrap();
     assert!(row.is_some())
 }
 
@@ -304,12 +279,7 @@ async fn test_read_multi_row() {
 
     let mut tx = read_only_transaction(session).await;
     let row = tx
-        .read(
-            CancellationToken::new(),
-            "User",
-            &["UserId"],
-            vec![Key::key(&user_id), Key::key(&user_id2)],
-        )
+        .read("User", &["UserId"], vec![Key::key(&user_id), Key::key(&user_id2)])
         .await
         .unwrap();
     assert_eq!(2, all_rows(row).await.len());

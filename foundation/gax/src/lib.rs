@@ -1,6 +1,7 @@
 use tonic::IntoRequest;
 use tonic::Request;
 
+pub mod cancel;
 pub mod conn;
 pub mod retry;
 pub mod status;

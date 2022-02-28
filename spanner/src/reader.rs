@@ -2,9 +2,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use google_cloud_gax::retry::RetrySetting;
 use prost_types::{value::Kind, Value};
-use tokio_util::sync::CancellationToken;
 use tonic::{Response, Streaming};
 
 use google_cloud_gax::status::Status;
@@ -13,20 +11,21 @@ use google_cloud_googleapis::spanner::v1::{ExecuteSqlRequest, PartialResultSet, 
 
 use crate::row::Row;
 use crate::session::SessionHandle;
+use crate::transaction::CallOptions;
 
 #[async_trait]
 pub trait AsyncIterator {
     fn column_metadata(&self, column_name: &str) -> Option<(usize, Field)>;
 
-    async fn next(&mut self, ctx: CancellationToken) -> Result<Option<Row>, Status>;
+    async fn next(&mut self, option: Option<CallOptions>) -> Result<Option<Row>, Status>;
 }
 
 #[async_trait]
 pub trait Reader {
     async fn read(
         &self,
-        ctx: CancellationToken,
         session: &mut SessionHandle,
+        option: Option<CallOptions>,
     ) -> Result<Response<Streaming<PartialResultSet>>, Status>;
 
     fn update_token(&mut self, resume_token: Vec<u8>);
@@ -36,19 +35,19 @@ pub trait Reader {
 
 pub struct StatementReader {
     pub request: ExecuteSqlRequest,
-    pub call_setting: Option<RetrySetting>,
 }
 
 #[async_trait]
 impl Reader for StatementReader {
     async fn read(
         &self,
-        ctx: CancellationToken,
         session: &mut SessionHandle,
+        option: Option<CallOptions>,
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
+        let option = option.unwrap_or_default();
         let client = &mut session.spanner_client;
         let result = client
-            .execute_streaming_sql(ctx, self.request.clone(), self.call_setting.clone())
+            .execute_streaming_sql(self.request.clone(), option.cancel, option.retry)
             .await;
         return session.invalidate_if_needed(result).await;
     }
@@ -64,19 +63,19 @@ impl Reader for StatementReader {
 
 pub struct TableReader {
     pub request: ReadRequest,
-    pub call_setting: Option<RetrySetting>,
 }
 
 #[async_trait]
 impl Reader for TableReader {
     async fn read(
         &self,
-        ctx: CancellationToken,
         session: &mut SessionHandle,
+        option: Option<CallOptions>,
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
+        let option = option.unwrap_or_default();
         let client = &mut session.spanner_client;
         let result = client
-            .streaming_read(ctx, self.request.clone(), self.call_setting.clone())
+            .streaming_read(self.request.clone(), option.cancel, option.retry)
             .await;
         return session.invalidate_if_needed(result).await;
     }
@@ -103,11 +102,11 @@ pub struct RowIterator<'a> {
 
 impl<'a> RowIterator<'a> {
     pub(crate) async fn new(
-        ctx: CancellationToken,
         session: &'a mut SessionHandle,
         reader: Box<dyn Reader + Sync + Send>,
+        option: Option<CallOptions>,
     ) -> Result<RowIterator<'a>, Status> {
-        let streaming = reader.read(ctx, session).await?.into_inner();
+        let streaming = reader.read(session, option).await?.into_inner();
         Ok(Self {
             streaming,
             session,
@@ -164,7 +163,7 @@ impl<'a> RowIterator<'a> {
         };
     }
 
-    async fn try_recv(&mut self, ctx: CancellationToken) -> Result<bool, Status> {
+    async fn try_recv(&mut self, option: Option<CallOptions>) -> Result<bool, Status> {
         // try getting records from server
         let result_set_option = match self.streaming.message().await {
             Ok(s) => s,
@@ -173,7 +172,7 @@ impl<'a> RowIterator<'a> {
                     return Err(e.into());
                 }
                 log::debug!("streaming error: {}. resume reading by resume_token", e);
-                let result = self.reader.read(ctx, &mut self.session).await?;
+                let result = self.reader.read(&mut self.session, option).await?;
                 self.streaming = result.into_inner();
                 self.streaming.message().await?
             }
@@ -239,7 +238,7 @@ impl<'a> AsyncIterator for RowIterator<'a> {
 
     /// next returns the next result.
     /// Its second return value is None if there are no more results.
-    async fn next(&mut self, ctx: CancellationToken) -> Result<Option<Row>, Status> {
+    async fn next(&mut self, option: Option<CallOptions>) -> Result<Option<Row>, Status> {
         if !self.rows.is_empty() {
             let column_length = self.fields.len();
             let target_record_is_chunked = self.rows.len() < column_length;
@@ -251,18 +250,14 @@ impl<'a> AsyncIterator for RowIterator<'a> {
                 for _ in 0..column_length {
                     values.push(self.rows.pop_front().unwrap());
                 }
-                return Ok(Some(Row::new(
-                    Arc::clone(&self.index),
-                    Arc::clone(&self.fields),
-                    values,
-                )));
+                return Ok(Some(Row::new(Arc::clone(&self.index), Arc::clone(&self.fields), values)));
             }
         }
 
         // no data found or record chunked.
-        if !self.try_recv(ctx.clone()).await? {
+        if !self.try_recv(option.clone()).await? {
             return Ok(None);
         }
-        return self.next(ctx.clone()).await;
+        return self.next(option).await;
     }
 }

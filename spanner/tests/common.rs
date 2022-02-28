@@ -16,7 +16,6 @@ use google_cloud_spanner::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTra
 use google_cloud_spanner::value::{CommitTimestamp, TimestampBound};
 use rust_decimal::Decimal;
 use std::str::FromStr;
-use tokio_util::sync::CancellationToken;
 
 pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
@@ -102,7 +101,6 @@ pub async fn replace_test_data(
     session
         .spanner_client
         .commit(
-            CancellationToken::new(),
             CommitRequest {
                 session: session.session.name.to_string(),
                 mutations,
@@ -112,6 +110,7 @@ pub async fn replace_test_data(
                     mode: Some(Mode::ReadWrite(ReadWrite {})),
                 })),
             },
+            None,
             None,
         )
         .await
@@ -212,14 +211,7 @@ pub fn assert_user_row(row: &Row, source_user_id: &str, now: &DateTime<Utc>, com
 }
 
 pub async fn read_only_transaction(session: ManagedSession) -> ReadOnlyTransaction {
-    match ReadOnlyTransaction::begin(
-        CancellationToken::new(),
-        session,
-        TimestampBound::strong_read(),
-        CallOptions::default(),
-    )
-    .await
-    {
+    match ReadOnlyTransaction::begin(session, TimestampBound::strong_read(), CallOptions::default()).await {
         Ok(tx) => tx,
         Err(status) => panic!("begin error {:?}", status),
     }
@@ -228,7 +220,7 @@ pub async fn read_only_transaction(session: ManagedSession) -> ReadOnlyTransacti
 pub async fn all_rows(mut itr: RowIterator<'_>) -> Vec<Row> {
     let mut rows = vec![];
     loop {
-        match itr.next(CancellationToken::new()).await {
+        match itr.next(None).await {
             Ok(row) => {
                 if row.is_some() {
                     rows.push(row.unwrap());
@@ -256,14 +248,14 @@ pub async fn assert_partitioned_query(
 }
 
 pub async fn execute_partitioned_query(tx: &mut BatchReadOnlyTransaction, stmt: Statement) -> Vec<Row> {
-    let partitions = match tx.partition_query(CancellationToken::new(), stmt).await {
+    let partitions = match tx.partition_query(stmt).await {
         Ok(tx) => tx,
         Err(status) => panic!("query error {:?}", status),
     };
     println!("partition count = {}", partitions.len());
     let mut rows = vec![];
     for p in partitions.into_iter() {
-        let reader = match tx.execute(CancellationToken::new(), p).await {
+        let reader = match tx.execute(p, None).await {
             Ok(tx) => tx,
             Err(status) => panic!("query error {:?}", status),
         };
@@ -282,12 +274,7 @@ pub async fn assert_partitioned_read(
     cts: &DateTime<Utc>,
 ) {
     let partitions = match tx
-        .partition_read(
-            CancellationToken::new(),
-            "User",
-            &user_columns(),
-            vec![Key::key(&user_id)],
-        )
+        .partition_read("User", &user_columns(), vec![Key::key(&user_id)])
         .await
     {
         Ok(tx) => tx,
@@ -296,7 +283,7 @@ pub async fn assert_partitioned_read(
     println!("partition count = {}", partitions.len());
     let mut rows = vec![];
     for p in partitions.into_iter() {
-        let reader = match tx.execute(CancellationToken::new(), p).await {
+        let reader = match tx.execute(p, None).await {
             Ok(tx) => tx,
             Err(status) => panic!("query error {:?}", status),
         };

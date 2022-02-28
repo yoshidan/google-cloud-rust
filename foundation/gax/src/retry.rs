@@ -4,11 +4,55 @@ use std::iter::Take;
 
 use std::time::Duration;
 use tokio::select;
-use tokio_retry::strategy::ExponentialBackoff;
-use tokio_retry::{Action, Condition};
-use tokio_util::sync::CancellationToken;
 
-use tokio_retry::RetryIf;
+use crate::cancel::CancellationToken;
+
+#[derive(Debug, Clone)]
+pub struct ExponentialBackoff {
+    current: u64,
+    base: u64,
+    factor: u64,
+    max_delay: Option<Duration>,
+}
+
+impl ExponentialBackoff {
+    pub fn from_millis(base: u64) -> ExponentialBackoff {
+        ExponentialBackoff {
+            current: base,
+            base,
+            factor: 1u64,
+            max_delay: None,
+        }
+    }
+}
+
+impl Iterator for ExponentialBackoff {
+    type Item = Duration;
+
+    fn next(&mut self) -> Option<Duration> {
+        // set delay duration by applying factor
+        let duration = if let Some(duration) = self.current.checked_mul(self.factor) {
+            Duration::from_millis(duration)
+        } else {
+            Duration::from_millis(u64::MAX)
+        };
+
+        // check if we reached max delay
+        if let Some(ref max_delay) = self.max_delay {
+            if duration > *max_delay {
+                return Some(*max_delay);
+            }
+        }
+
+        if let Some(next) = self.current.checked_mul(self.base) {
+            self.current = next;
+        } else {
+            self.current = u64::MAX;
+        }
+
+        Some(duration)
+    }
+}
 
 pub trait TryAs<T> {
     fn try_as(&self) -> Result<&T, ()>;
@@ -20,22 +64,26 @@ impl TryAs<Status> for Status {
     }
 }
 
-pub trait Retry<E: TryAs<Status>, T: Condition<E>> {
-    fn strategy(&self) -> Take<ExponentialBackoff>;
-    fn condition(&self) -> T;
+pub trait Predicate<E> {
+    fn should_retry(&mut self, error: &E) -> bool;
 }
 
-pub struct CodeCondition {
+pub trait Retry<E: TryAs<Status>, T: Predicate<E>> {
+    fn strategy(&self) -> Take<ExponentialBackoff>;
+    fn predicate(&self) -> T;
+}
+
+pub struct CodePredicate {
     codes: Vec<Code>,
 }
 
-impl CodeCondition {
+impl CodePredicate {
     pub fn new(codes: Vec<Code>) -> Self {
         Self { codes }
     }
 }
 
-impl<E> Condition<E> for CodeCondition
+impl<E> Predicate<E> for CodePredicate
 where
     E: TryAs<Status>,
 {
@@ -62,17 +110,15 @@ pub struct RetrySetting {
     pub codes: Vec<Code>,
 }
 
-impl Retry<Status, CodeCondition> for RetrySetting {
+impl Retry<Status, CodePredicate> for RetrySetting {
     fn strategy(&self) -> Take<ExponentialBackoff> {
-        let mut st = tokio_retry::strategy::ExponentialBackoff::from_millis(self.from_millis);
-        if let Some(max_delay) = self.max_delay {
-            st = st.max_delay(max_delay);
-        }
+        let mut st = ExponentialBackoff::from_millis(self.from_millis);
+        st.max_delay = self.max_delay;
         return st.take(self.take);
     }
 
-    fn condition(&self) -> CodeCondition {
-        CodeCondition::new(self.codes.clone())
+    fn predicate(&self) -> CodePredicate {
+        CodePredicate::new(self.codes.clone())
     }
 }
 
@@ -88,36 +134,64 @@ impl Default for RetrySetting {
     }
 }
 
-pub async fn invoke<A, R, RT, C, E>(ctx: CancellationToken, opt: Option<RT>, action: A) -> Result<R, E>
+pub async fn invoke<A, R, RT, C, E>(
+    cancel: Option<CancellationToken>,
+    retry: Option<RT>,
+    mut a: impl FnMut() -> A,
+) -> Result<R, E>
 where
     E: TryAs<Status> + From<Status>,
-    A: Action<Item = R, Error = E>,
-    C: Condition<E>,
+    A: Future<Output = Result<R, E>>,
+    C: Predicate<E>,
     RT: Retry<E, C> + Default,
 {
-    let setting = opt.unwrap_or_default();
-    select! {
-        _ = ctx.cancelled() => Err(Status::new(tonic::Status::cancelled("client cancel")).into()),
-        v = RetryIf::spawn(setting.strategy(), action, setting.condition()) => v
+    let fn_loop = async {
+        let retry = retry.unwrap_or_default();
+        let mut strategy = retry.strategy();
+        loop {
+            let result = a().await;
+            let status = match result {
+                Ok(s) => return Ok(s),
+                Err(e) => e,
+            };
+            if !retry.predicate().should_retry(&status) {
+                return Err(status);
+            }
+            match strategy.next() {
+                None => return Err(status),
+                Some(duration) => tokio::time::sleep(duration).await,
+            };
+        }
+    };
+
+    match cancel {
+        Some(cancel) => {
+            select! {
+                _ = cancel.cancelled() => Err(Status::new(tonic::Status::cancelled("client cancel")).into()),
+                v = fn_loop => v
+            }
+        }
+        None => fn_loop.await,
     }
 }
+
 /// Repeats retries when the specified error is detected.
 /// The argument specified by 'v' can be reused for each retry.
 pub async fn invoke_fn<R, V, A, RT, C, E>(
-    ctx: CancellationToken,
-    opt: Option<RT>,
+    cancel: Option<CancellationToken>,
+    retry: Option<RT>,
     mut f: impl FnMut(V) -> A,
     mut v: V,
 ) -> Result<R, E>
 where
     E: TryAs<Status> + From<Status>,
     A: Future<Output = Result<R, (E, V)>>,
-    C: Condition<E>,
+    C: Predicate<E>,
     RT: Retry<E, C> + Default,
 {
     let fn_loop = async {
-        let opt = opt.unwrap_or_default();
-        let mut strategy = opt.strategy();
+        let retry = retry.unwrap_or_default();
+        let mut strategy = retry.strategy();
         loop {
             let result = f(v).await;
             let status = match result {
@@ -127,20 +201,23 @@ where
                     e.0
                 }
             };
-            if opt.condition().should_retry(&status) {
-                let duration = match strategy.next() {
-                    None => return Err(status),
-                    Some(s) => s,
-                };
-                tokio::time::sleep(duration).await
-            } else {
+            if !retry.predicate().should_retry(&status) {
                 return Err(status);
+            }
+            match strategy.next() {
+                None => return Err(status),
+                Some(duration) => tokio::time::sleep(duration).await,
             };
         }
     };
 
-    select! {
-       _ = ctx.cancelled() => Err(Status::new(tonic::Status::cancelled("client cancel")).into()),
-       v = fn_loop => v
+    match cancel {
+        Some(cancel) => {
+            select! {
+                _ = cancel.cancelled() => Err(Status::new(tonic::Status::cancelled("client cancel")).into()),
+                v = fn_loop => v
+            }
+        }
+        None => fn_loop.await,
     }
 }

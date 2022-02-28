@@ -15,7 +15,6 @@ use google_cloud_gax::status::{Code, Status};
 use tokio::sync::broadcast;
 use tokio::sync::oneshot;
 use tokio::time::{sleep, timeout, Duration};
-use tokio_util::sync::CancellationToken;
 
 type Waiters = Mutex<VecDeque<oneshot::Sender<SessionHandle>>>;
 
@@ -58,11 +57,7 @@ impl SessionHandle {
         let request = DeleteSessionRequest {
             name: self.session.name.to_string(),
         };
-        match self
-            .spanner_client
-            .delete_session(CancellationToken::new(), request, None)
-            .await
-        {
+        match self.spanner_client.delete_session(request, None, None).await {
             Ok(_s) => self.valid = false,
             Err(e) => {
                 log::error!("session remove error {} error={:?}", self.session.name, e);
@@ -474,11 +469,7 @@ async fn health_check(now: Instant, session_alive_trust_duration: Duration, sess
         };
 
         let request = ping_query_request(s.session.name.clone());
-        match s
-            .spanner_client
-            .execute_sql(CancellationToken::new(), request, None)
-            .await
-        {
+        match s.spanner_client.execute_sql(request, None, None).await {
             Ok(_) => {
                 s.last_checked_at = now;
                 s.last_pong_at = now;
@@ -542,11 +533,7 @@ async fn delete_session(session: &mut SessionHandle) {
     let request = DeleteSessionRequest {
         name: session_name.to_string(),
     };
-    match session
-        .spanner_client
-        .delete_session(CancellationToken::new(), request, None)
-        .await
-    {
+    match session.spanner_client.delete_session(request, None, None).await {
         Ok(_) => {}
         Err(e) => log::error!("failed to delete session {}, {:?}", session_name, e),
     }
@@ -565,7 +552,7 @@ async fn batch_create_session(
 
     log::debug!("spawn session creation request : count to create = {}", creation_count);
     let response = spanner_client
-        .batch_create_sessions(CancellationToken::new(), request, None)
+        .batch_create_sessions(request, None, None)
         .await?
         .into_inner();
 
@@ -618,18 +605,8 @@ mod tests {
         sleep(tokio::time::Duration::from_millis(100)).await;
         assert_eq!(sm.session_pool.inner.lock().inuse, 0);
         let num_opened = sm.num_opened();
-        assert!(
-            num_opened <= max,
-            "idle session must be lteq {} now is {}",
-            max,
-            num_opened
-        );
-        assert!(
-            num_opened >= min,
-            "idle session must be gteq {} now is {}",
-            min,
-            num_opened
-        );
+        assert!(num_opened <= max, "idle session must be lteq {} now is {}", max, num_opened);
+        assert!(num_opened >= min, "idle session must be gteq {} now is {}", min, num_opened);
     }
 
     #[tokio::test(flavor = "multi_thread")]

@@ -228,21 +228,11 @@ where
 {
     fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         let maybe_array = match field.r#type.as_ref() {
-            None => {
-                return Err(Error::StructParseError(
-                    field.name.to_string(),
-                    "field type must not be none",
-                ))
-            }
+            None => return Err(Error::StructParseError(field.name.to_string(), "field type must not be none")),
             Some(tp) => tp.array_element_type.as_ref(),
         };
         let maybe_struct_type = match maybe_array {
-            None => {
-                return Err(Error::StructParseError(
-                    field.name.to_string(),
-                    "array must not be none",
-                ))
-            }
+            None => return Err(Error::StructParseError(field.name.to_string(), "array must not be none")),
             Some(tp) => tp.struct_type.as_ref(),
         };
         let struct_type = match maybe_struct_type {

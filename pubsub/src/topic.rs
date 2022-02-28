@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
+use google_cloud_gax::cancel::CancellationToken;
 use std::time::Duration;
 
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_gax::status::{Code, Status};
-use tokio_util::sync::CancellationToken;
 
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
@@ -71,59 +71,40 @@ impl Topic {
     /// create creates the topic.
     pub async fn create(
         &self,
-        ctx: CancellationToken,
         cfg: Option<TopicConfig>,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<(), Status> {
         let topic_config = cfg.unwrap_or_default();
-        self.pubc
-            .create_topic(
-                ctx,
-                InternalTopic {
-                    name: self.fully_qualified_name().to_string(),
-                    labels: topic_config.labels,
-                    message_storage_policy: topic_config.message_storage_policy,
-                    kms_key_name: topic_config.kms_key_name,
-                    schema_settings: topic_config.schema_settings,
-                    satisfies_pzs: topic_config.satisfies_pzs,
-                    message_retention_duration: topic_config.message_retention_duration.map(|v| v.into()),
-                },
-                opt,
-            )
-            .await
-            .map(|_v| ())
+        let req = InternalTopic {
+            name: self.fully_qualified_name().to_string(),
+            labels: topic_config.labels,
+            message_storage_policy: topic_config.message_storage_policy,
+            kms_key_name: topic_config.kms_key_name,
+            schema_settings: topic_config.schema_settings,
+            satisfies_pzs: topic_config.satisfies_pzs,
+            message_retention_duration: topic_config.message_retention_duration.map(|v| v.into()),
+        };
+        self.pubc.create_topic(req, cancel, retry).await.map(|_v| ())
     }
 
     /// delete deletes the topic.
-    pub async fn delete(&self, ctx: CancellationToken, opt: Option<RetrySetting>) -> Result<(), Status> {
-        self.pubc
-            .delete_topic(
-                ctx,
-                DeleteTopicRequest {
-                    topic: self.fqtn.to_string(),
-                },
-                opt,
-            )
-            .await
-            .map(|v| v.into_inner())
+    pub async fn delete(&self, cancel: Option<CancellationToken>, retry: Option<RetrySetting>) -> Result<(), Status> {
+        let req = DeleteTopicRequest {
+            topic: self.fqtn.to_string(),
+        };
+        self.pubc.delete_topic(req, cancel, retry).await.map(|v| v.into_inner())
     }
 
     /// exists reports whether the topic exists on the server.
-    pub async fn exists(&self, ctx: CancellationToken, opt: Option<RetrySetting>) -> Result<bool, Status> {
+    pub async fn exists(&self, cancel: Option<CancellationToken>, retry: Option<RetrySetting>) -> Result<bool, Status> {
         if self.fqtn == "_deleted-topic_" {
             return Ok(false);
         }
-        match self
-            .pubc
-            .get_topic(
-                ctx,
-                GetTopicRequest {
-                    topic: self.fqtn.to_string(),
-                },
-                opt,
-            )
-            .await
-        {
+        let req = GetTopicRequest {
+            topic: self.fqtn.to_string(),
+        };
+        match self.pubc.get_topic(req, cancel, retry).await {
             Ok(_) => Ok(true),
             Err(e) => {
                 if e.code() == Code::NotFound {
@@ -140,25 +121,19 @@ impl Topic {
     /// Some of the returned subscriptions may belong to a project other than t.
     pub async fn subscriptions(
         &self,
-        ctx: CancellationToken,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Vec<Subscription>, Status> {
-        self.pubc
-            .list_topic_subscriptions(
-                ctx,
-                ListTopicSubscriptionsRequest {
-                    topic: self.fqtn.to_string(),
-                    page_size: 0,
-                    page_token: "".to_string(),
-                },
-                opt,
-            )
-            .await
-            .map(|v| {
-                v.into_iter()
-                    .map(|sub_name| Subscription::new(sub_name, self.subc.clone()))
-                    .collect()
-            })
+        let req = ListTopicSubscriptionsRequest {
+            topic: self.fqtn.to_string(),
+            page_size: 0,
+            page_token: "".to_string(),
+        };
+        self.pubc.list_topic_subscriptions(req, cancel, retry).await.map(|v| {
+            v.into_iter()
+                .map(|sub_name| Subscription::new(sub_name, self.subc.clone()))
+                .collect()
+        })
     }
 }
 
@@ -170,13 +145,13 @@ mod tests {
     use crate::apiv1::subscriber_client::SubscriberClient;
     use crate::publisher::{Publisher, PublisherConfig};
     use crate::topic::Topic;
+    use google_cloud_gax::cancel::CancellationToken;
     use google_cloud_gax::status::Status;
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
     use serial_test::serial;
     use std::time::Duration;
     use tokio::task::JoinHandle;
     use tokio::time::sleep;
-    use tokio_util::sync::CancellationToken;
     use uuid::Uuid;
 
     #[ctor::ctor]
@@ -197,8 +172,8 @@ mod tests {
 
         // Create topic.
         let topic = Topic::new(topic_name, pubc, subc);
-        if !topic.exists(ctx.clone(), None).await? {
-            topic.create(ctx.clone(), None, None).await?;
+        if !topic.exists(Some(ctx.clone()), None).await? {
+            topic.create(None, Some(ctx.clone()), None).await?;
         }
         return Ok(topic);
     }
@@ -213,7 +188,7 @@ mod tests {
                     let mut msg = PubsubMessage::default();
                     msg.data = "abc".into();
                     let awaiter = publisher.publish(msg).await;
-                    awaiter.get(ctx).await
+                    awaiter.get(Some(ctx)).await
                 })
             })
             .collect()
@@ -241,10 +216,14 @@ mod tests {
         publisher.shutdown().await;
 
         // Can't publish messages
-        let result = publisher.publish(PubsubMessage::default()).await.get(ctx.clone()).await;
+        let result = publisher
+            .publish(PubsubMessage::default())
+            .await
+            .get(Some(ctx.clone()))
+            .await;
         assert!(result.is_err());
 
-        topic.delete(ctx.clone(), None).await?;
+        topic.delete(Some(ctx.clone()), None).await?;
 
         Ok(())
     }
@@ -275,11 +254,15 @@ mod tests {
         }
 
         // Can't publish messages
-        let result = publisher.publish(PubsubMessage::default()).await.get(ctx.clone()).await;
+        let result = publisher
+            .publish(PubsubMessage::default())
+            .await
+            .get(Some(ctx.clone()))
+            .await;
         assert!(result.is_err());
 
-        topic.delete(ctx.clone(), None).await?;
-        assert!(!topic.exists(ctx, None).await?);
+        topic.delete(Some(ctx.clone()), None).await?;
+        assert!(!topic.exists(Some(ctx), None).await?);
 
         Ok(())
     }

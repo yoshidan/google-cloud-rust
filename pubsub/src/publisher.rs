@@ -1,3 +1,4 @@
+use async_channel::Receiver;
 use parking_lot::Mutex;
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -5,6 +6,7 @@ use std::time::Duration;
 
 use tokio::select;
 
+use google_cloud_gax::cancel::CancellationToken;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
@@ -12,7 +14,6 @@ use tokio::time::timeout;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_gax::status::Status;
 use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
-use tokio_util::sync::CancellationToken;
 
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::util::ToUsize;
@@ -52,14 +53,20 @@ impl Awaiter {
     pub(crate) fn new(consumer: oneshot::Receiver<Result<String, Status>>) -> Self {
         Self { consumer }
     }
-    pub async fn get(self, ctx: CancellationToken) -> Result<String, Status> {
+    pub async fn get(self, cancel: Option<CancellationToken>) -> Result<String, Status> {
         let onetime = self.consumer;
-        select! {
-            _ = ctx.cancelled() => Err(tonic::Status::cancelled("cancelled").into()),
-            v = onetime => match v {
-                Ok(vv) => vv,
-                Err(_e) => Err(tonic::Status::cancelled("closed").into())
+        let awaited = match cancel {
+            Some(cancel) => {
+                select! {
+                    _ = cancel.cancelled() => return Err(tonic::Status::cancelled("cancelled").into()),
+                    v = onetime => v
+                }
             }
+            None => onetime.await,
+        };
+        match awaited {
+            Ok(v) => v,
+            Err(_e) => Err(tonic::Status::cancelled("closed").into()),
         }
     }
 }
@@ -72,7 +79,7 @@ impl Awaiter {
 pub struct Publisher {
     ordering_senders: Arc<Vec<async_channel::Sender<ReservedMessage>>>,
     sender: async_channel::Sender<ReservedMessage>,
-    worker: Arc<Mutex<Worker>>,
+    tasks: Arc<Mutex<Tasks>>,
 }
 
 impl Publisher {
@@ -99,7 +106,7 @@ impl Publisher {
         Self {
             sender,
             ordering_senders: Arc::new(ordering_senders),
-            worker: Arc::new(Mutex::new(Worker::start(fqtn.to_string(), pubc, receivers, config))),
+            tasks: Arc::new(Mutex::new(Tasks::new(fqtn.to_string(), pubc, receivers, config))),
         }
     }
 
@@ -137,16 +144,16 @@ impl Publisher {
         for s in self.ordering_senders.iter() {
             s.close();
         }
-        self.worker.lock().done().await;
+        self.tasks.lock().done().await;
     }
 }
 
-struct Worker {
-    tasks: Option<Vec<JoinHandle<()>>>,
+struct Tasks {
+    inner: Option<Vec<JoinHandle<()>>>,
 }
 
-impl Worker {
-    pub fn start(
+impl Tasks {
+    pub fn new(
         topic: String,
         pubc: PublisherClient,
         receivers: Vec<async_channel::Receiver<ReservedMessage>>,
@@ -155,50 +162,63 @@ impl Worker {
         let tasks = receivers
             .into_iter()
             .map(|receiver| {
-                let mut client = pubc.clone();
-                let topic_for_worker = topic.clone();
-                let retry_setting = config.retry_setting.clone();
-                tokio::spawn(async move {
-                    let mut bundle = VecDeque::<ReservedMessage>::new();
-                    while !receiver.is_closed() {
-                        let result = match timeout(config.flush_interval, &mut receiver.recv()).await {
-                            Ok(result) => result,
-                            //timed out
-                            Err(_e) => {
-                                if !bundle.is_empty() {
-                                    log::trace!("elapsed: flush buffer : {}", topic_for_worker);
-                                    Self::flush(&mut client, topic_for_worker.as_str(), bundle, retry_setting.clone())
-                                        .await;
-                                    bundle = VecDeque::new();
-                                }
-                                continue;
-                            }
-                        };
-                        match result {
-                            Ok(message) => {
-                                bundle.push_back(message);
-                                if bundle.len() >= config.bundle_size {
-                                    log::trace!("maximum buffer {} : {}", bundle.len(), topic_for_worker);
-                                    Self::flush(&mut client, topic_for_worker.as_str(), bundle, retry_setting.clone())
-                                        .await;
-                                    bundle = VecDeque::new();
-                                }
-                            }
-                            //closed
-                            Err(_e) => break,
-                        };
-                    }
-
-                    log::trace!("stop publisher : {}", topic_for_worker);
-                    if !bundle.is_empty() {
-                        log::trace!("flush rest buffer : {}", topic_for_worker);
-                        Self::flush(&mut client, topic_for_worker.as_str(), bundle, retry_setting.clone()).await;
-                    }
-                })
+                Self::run_task(
+                    receiver,
+                    pubc.clone(),
+                    topic.clone(),
+                    config.retry_setting.clone(),
+                    config.flush_interval,
+                    config.bundle_size,
+                )
             })
             .collect();
 
-        Self { tasks: Some(tasks) }
+        Self { inner: Some(tasks) }
+    }
+
+    fn run_task(
+        receiver: Receiver<ReservedMessage>,
+        mut client: PublisherClient,
+        topic: String,
+        retry: Option<RetrySetting>,
+        flush_interval: Duration,
+        bundle_size: usize,
+    ) -> JoinHandle<()> {
+        tokio::spawn(async move {
+            let mut bundle = VecDeque::<ReservedMessage>::new();
+            while !receiver.is_closed() {
+                let result = match timeout(flush_interval, &mut receiver.recv()).await {
+                    Ok(result) => result,
+                    //timed out
+                    Err(_e) => {
+                        if !bundle.is_empty() {
+                            log::trace!("elapsed: flush buffer : {}", topic);
+                            Self::flush(&mut client, topic.as_str(), bundle, retry.clone()).await;
+                            bundle = VecDeque::new();
+                        }
+                        continue;
+                    }
+                };
+                match result {
+                    Ok(message) => {
+                        bundle.push_back(message);
+                        if bundle.len() >= bundle_size {
+                            log::trace!("maximum buffer {} : {}", bundle.len(), topic);
+                            Self::flush(&mut client, topic.as_str(), bundle, retry.clone()).await;
+                            bundle = VecDeque::new();
+                        }
+                    }
+                    //closed
+                    Err(_e) => break,
+                };
+            }
+
+            log::trace!("stop publisher : {}", topic);
+            if !bundle.is_empty() {
+                log::trace!("flush rest buffer : {}", topic);
+                Self::flush(&mut client, topic.as_str(), bundle, retry.clone()).await;
+            }
+        })
     }
 
     /// flush publishes the messages in buffer.
@@ -214,15 +234,12 @@ impl Worker {
             data.push(r.message);
             callback.push(r.producer);
         });
+        let req = PublishRequest {
+            topic: topic.to_string(),
+            messages: data,
+        };
         let result = client
-            .publish(
-                CancellationToken::new(),
-                PublishRequest {
-                    topic: topic.to_string(),
-                    messages: data,
-                },
-                retry_setting,
-            )
+            .publish(req, None, retry_setting)
             .await
             .map(|v| v.into_inner().message_ids);
 
@@ -246,7 +263,7 @@ impl Worker {
 
     /// done waits for all the workers finish.
     pub async fn done(&mut self) {
-        if let Some(tasks) = self.tasks.take() {
+        if let Some(tasks) = self.inner.take() {
             for task in tasks {
                 task.await;
             }
