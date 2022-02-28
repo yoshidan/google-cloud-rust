@@ -276,7 +276,7 @@ mod tests {
         }
         let ctx = CancellationToken::new();
         for v in awaiters {
-            log::info!("sent message_id = {}", v.get(ctx.clone()).await.unwrap());
+            log::info!("sent message_id = {}", v.get(Some(ctx.clone())).await.unwrap());
         }
 
         tokio::time::sleep(std::time::Duration::from_secs(3)).await;

@@ -11,7 +11,7 @@
 //!
 //! ```
 //! use google_cloud_pubsub::client::Client;
-//! use tokio_util::sync::CancellationToken;
+//! use google_cloud_gax::cancel::CancellationToken;
 //! use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 //! use google_cloud_pubsub::topic::TopicConfig;
 //! use google_cloud_pubsub::subscription::SubscriptionConfig;
@@ -65,7 +65,7 @@
 //!
 //! ```
 //! use google_cloud_pubsub::client::Client;
-//! use tokio_util::sync::CancellationToken;
+//! use google_cloud_gax::cancel::CancellationToken;
 //! use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 //! use google_cloud_pubsub::subscription::SubscriptionConfig;
 //! use google_cloud_gax::status::Status;
@@ -110,7 +110,7 @@
 //!     }, cancel.clone(), None).await;
 //!
 //!     // Delete subscription if needed.
-//!     subscription.delete(ctx, None).await;
+//!     subscription.delete(None, None).await;
 //!
 //!     Ok(())
 //! }
