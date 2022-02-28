@@ -5,6 +5,7 @@ use google_cloud_googleapis::iam::v1::{
 use google_cloud_googleapis::spanner::admin::instance::v1::instance_admin_client::InstanceAdminClient as InternalInstanceAdminClient;
 
 use crate::admin::{default_internal_client, default_retry_setting};
+use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::{Channel, Error};
 use google_cloud_gax::create_request;
 use google_cloud_gax::retry::{invoke, RetrySetting};
@@ -16,7 +17,6 @@ use google_cloud_googleapis::spanner::admin::instance::v1::{
 use google_cloud_longrunning::autogen::operations_client::OperationsClient;
 use google_cloud_longrunning::longrunning::Operation;
 use tonic::Response;
-use google_cloud_gax::cancel::CancellationToken;
 
 #[derive(Clone)]
 pub struct InstanceAdminClient {

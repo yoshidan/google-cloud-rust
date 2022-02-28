@@ -13,13 +13,13 @@ use google_cloud_googleapis::spanner::admin::database::v1::{
 
 use crate::admin::{default_internal_client, default_retry_setting};
 
+use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::{Channel, Error};
 use google_cloud_gax::create_request;
 use google_cloud_gax::status::Status;
 use google_cloud_longrunning::autogen::operations_client::OperationsClient;
 use google_cloud_longrunning::longrunning::Operation;
 use tonic::Response;
-use google_cloud_gax::cancel::CancellationToken;
 
 #[derive(Clone)]
 pub struct DatabaseAdminClient {

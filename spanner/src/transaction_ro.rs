@@ -13,7 +13,6 @@ use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, ReadOptions, Transaction};
 use crate::value::TimestampBound;
 use chrono::{DateTime, TimeZone, Utc};
-use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::status::Status;
 
 /// ReadOnlyTransaction provides a snapshot transaction with guaranteed
@@ -181,7 +180,7 @@ impl BatchReadOnlyTransaction {
         let result = match self
             .as_mut_session()
             .spanner_client
-            .partition_read(request, ro.call_options.cancel.clone(), ro.call_options.retry.clone())
+            .partition_read(request, ro.call_options.cancel, ro.call_options.retry)
             .await
         {
             Ok(r) => Ok(r
@@ -202,7 +201,6 @@ impl BatchReadOnlyTransaction {
                             partition_token: x.partition_token,
                             request_options: Transaction::create_request_options(ro.call_options.priority),
                         },
-                        retry: ro.call_options.retry.clone(),
                     },
                 })
                 .collect()),
@@ -212,10 +210,7 @@ impl BatchReadOnlyTransaction {
     }
 
     /// partition_query returns a list of Partitions that can be used to execute a query against the database.
-    pub async fn partition_query(
-        &mut self,
-        stmt: Statement,
-    ) -> Result<Vec<Partition<StatementReader>>, Status> {
+    pub async fn partition_query(&mut self, stmt: Statement) -> Result<Vec<Partition<StatementReader>>, Status> {
         return self
             .partition_query_with_option(stmt, None, QueryOptions::default())
             .await;
@@ -265,7 +260,6 @@ impl BatchReadOnlyTransaction {
                             query_options: qo.optimizer_options.clone(),
                             request_options: Transaction::create_request_options(qo.call_options.priority),
                         },
-                        retry: qo.call_options.retry.clone(),
                     },
                 })
                 .collect()),
@@ -278,9 +272,9 @@ impl BatchReadOnlyTransaction {
     pub async fn execute<T: Reader + Sync + Send + 'static>(
         &mut self,
         partition: Partition<T>,
-        cancel: Option<CancellationToken>,
+        option: Option<CallOptions>,
     ) -> Result<RowIterator<'_>, Status> {
         let session = self.as_mut_session();
-        return RowIterator::new(session, Box::new(partition.reader), cancel).await;
+        return RowIterator::new(session, Box::new(partition.reader), option).await;
     }
 }

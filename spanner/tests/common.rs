@@ -111,7 +111,8 @@ pub async fn replace_test_data(
                     mode: Some(Mode::ReadWrite(ReadWrite {})),
                 })),
             },
-            None, None,
+            None,
+            None,
         )
         .await
         .map(|x| x.into_inner())
@@ -211,13 +212,7 @@ pub fn assert_user_row(row: &Row, source_user_id: &str, now: &DateTime<Utc>, com
 }
 
 pub async fn read_only_transaction(session: ManagedSession) -> ReadOnlyTransaction {
-    match ReadOnlyTransaction::begin(
-        session,
-        TimestampBound::strong_read(),
-        CallOptions::default(),
-    )
-    .await
-    {
+    match ReadOnlyTransaction::begin(session, TimestampBound::strong_read(), CallOptions::default()).await {
         Ok(tx) => tx,
         Err(status) => panic!("begin error {:?}", status),
     }
@@ -289,7 +284,7 @@ pub async fn assert_partitioned_read(
     println!("partition count = {}", partitions.len());
     let mut rows = vec![];
     for p in partitions.into_iter() {
-        let reader = match tx.execute( p).await {
+        let reader = match tx.execute(p, None).await {
             Ok(tx) => tx,
             Err(status) => panic!("query error {:?}", status),
         };

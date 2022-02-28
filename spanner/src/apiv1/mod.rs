@@ -32,10 +32,7 @@ mod tests {
             database: DATABASE.to_string(),
             session: None,
         };
-        let session_response = client
-            .create_session(session_request, None,None)
-            .await
-            .unwrap();
+        let session_response = client.create_session(session_request, None, None).await.unwrap();
         session_response.into_inner()
     }
 
@@ -66,7 +63,7 @@ mod tests {
             request_options: None,
         };
         return client
-            .begin_transaction(request, None,None)
+            .begin_transaction(request, None, None)
             .await
             .unwrap()
             .into_inner();
@@ -100,10 +97,7 @@ mod tests {
             session_template: None,
         };
 
-        match client
-            .batch_create_sessions(request, None, None)
-            .await
-        {
+        match client.batch_create_sessions(request, None, None).await {
             Ok(res) => {
                 assert_eq!(
                     res.get_ref().session.len(),
@@ -163,10 +157,7 @@ mod tests {
             session_count: 2,
             session_template: None,
         };
-        let session_response = client
-            .batch_create_sessions(batch_request, None, None)
-            .await
-            .unwrap();
+        let session_response = client.batch_create_sessions(batch_request, None, None).await.unwrap();
         let sessions = &session_response.get_ref().session;
 
         // all delete
@@ -227,10 +218,7 @@ mod tests {
             request_options: None,
         };
 
-        let resume_token = match client
-            .execute_streaming_sql(request.clone(), None,None)
-            .await
-        {
+        let resume_token = match client.execute_streaming_sql(request.clone(), None, None).await {
             Ok(res) => {
                 let mut result = res.into_inner();
                 if let Some(next_message) = result.message().await.unwrap() {
@@ -245,10 +233,7 @@ mod tests {
         println!("resume token = {:?}", resume_token.clone().unwrap());
         request.resume_token = resume_token.unwrap();
 
-        match client
-            .execute_streaming_sql(request, None, None)
-            .await
-        {
+        match client.execute_streaming_sql(request, None, None).await {
             Ok(res) => {
                 let mut result = res.into_inner();
                 assert!(!result.message().await.unwrap().unwrap().values.is_empty())

@@ -10,11 +10,11 @@ use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
 use crate::value::{Timestamp, TimestampBound};
 
 use crate::retry::TransactionRetrySetting;
+use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::status::{Code, Status};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use google_cloud_gax::cancel::CancellationToken;
 
 #[derive(Clone)]
 pub struct PartitionedUpdateOption {
@@ -238,9 +238,7 @@ impl Client {
     /// for partitioned reads or queries from a snapshot of the database. This is
     /// useful in batch processing pipelines where one wants to divide the work of
     /// reading from the database across multiple machines.
-    pub async fn batch_read_only_transaction(
-        &self,
-    ) -> Result<BatchReadOnlyTransaction, TxError> {
+    pub async fn batch_read_only_transaction(&self) -> Result<BatchReadOnlyTransaction, TxError> {
         return self
             .batch_read_only_transaction_with_option(ReadOnlyTransactionOption::default())
             .await;
@@ -255,8 +253,7 @@ impl Client {
         options: ReadOnlyTransactionOption,
     ) -> Result<BatchReadOnlyTransaction, TxError> {
         let session = self.get_session().await?;
-        let result =
-            BatchReadOnlyTransaction::begin(session, options.timestamp_bound, options.call_options).await?;
+        let result = BatchReadOnlyTransaction::begin(session, options.timestamp_bound, options.call_options).await?;
         Ok(result)
     }
 
@@ -295,15 +292,13 @@ impl Client {
             options.begin_options.cancel.clone(),
             Some(ro),
             |session| async {
-                let mut tx = match ReadWriteTransaction::begin_partitioned_dml(
-                    session.unwrap(),
-                    options.begin_options.clone(),
-                )
-                .await
-                {
-                    Ok(tx) => tx,
-                    Err(e) => return Err((TxError::GRPC(e.status), Some(e.session))),
-                };
+                let mut tx =
+                    match ReadWriteTransaction::begin_partitioned_dml(session.unwrap(), options.begin_options.clone())
+                        .await
+                    {
+                        Ok(tx) => tx,
+                        Err(e) => return Err((TxError::GRPC(e.status), Some(e.session))),
+                    };
                 let qo = match options.query_options.clone() {
                     Some(o) => o,
                     None => QueryOptions::default(),
@@ -326,13 +321,8 @@ impl Client {
     /// apply's default replay protection may require an additional RPC.  So this
     /// method may be appropriate for latency sensitive and/or high throughput blind
     /// writing.
-    pub async fn apply_at_least_once(
-        &self,
-        ms: Vec<Mutation>,
-    ) -> Result<Option<Timestamp>, TxError> {
-        return self
-            .apply_at_least_once_with_option(ms, CommitOptions::default())
-            .await;
+    pub async fn apply_at_least_once(&self, ms: Vec<Mutation>) -> Result<Option<Timestamp>, TxError> {
+        return self.apply_at_least_once_with_option(ms, CommitOptions::default()).await;
     }
 
     /// apply_at_least_once may attempt to apply mutations more than once; if
@@ -373,10 +363,8 @@ impl Client {
     }
 
     /// Apply applies a list of mutations atomically to the database.
-    pub async fn apply(&self,  ms: Vec<Mutation>) -> Result<Option<Timestamp>, TxError> {
-        return self
-            .apply_with_option(ms, ReadWriteTransactionOption::default())
-            .await;
+    pub async fn apply(&self, ms: Vec<Mutation>) -> Result<Option<Timestamp>, TxError> {
+        return self.apply_with_option(ms, ReadWriteTransactionOption::default()).await;
     }
 
     pub async fn apply_with_option(
@@ -414,10 +402,7 @@ impl Client {
     ///
     /// See <https://godoc.org/cloud.google.com/go/spanner#ReadWriteTransaction> for
     /// more details.
-    pub async fn read_write_transaction<'a, T, E, F>(
-        &self,
-        f: F,
-    ) -> Result<(Option<Timestamp>, T), E>
+    pub async fn read_write_transaction<'a, T, E, F>(&self, f: F) -> Result<(Option<Timestamp>, T), E>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
         F: for<'tx> Fn(
@@ -471,9 +456,7 @@ impl Client {
             Some(ro),
             |session| async {
                 let cancel = cancel.clone().map(|v| v.child_token());
-                let mut tx = self
-                    .create_read_write_transaction::<E>(session, bo.clone())
-                    .await?;
+                let mut tx = self.create_read_write_transaction::<E>(session, bo.clone()).await?;
                 let result = f(&mut tx, cancel).await;
                 tx.finish(result, Some(co.clone())).await
             },
@@ -507,9 +490,7 @@ impl Client {
             Some(ro),
             |session| async {
                 let cancel = cancel.clone().map(|v| v.child_token());
-                let mut tx = self
-                    .create_read_write_transaction::<E>(session, bo.clone())
-                    .await?;
+                let mut tx = self.create_read_write_transaction::<E>(session, bo.clone()).await?;
                 let result = f(&mut tx, cancel);
                 tx.finish(result, Some(co.clone())).await
             },

@@ -2,8 +2,8 @@ use std::ops::Deref;
 use std::ops::DerefMut;
 use std::sync::atomic::{AtomicI64, Ordering};
 
-use prost_types::Struct;
 use google_cloud_gax::cancel::CancellationToken;
+use prost_types::Struct;
 
 use crate::session::ManagedSession;
 use crate::statement::Statement;
@@ -111,10 +111,7 @@ pub struct BeginError {
 }
 
 impl ReadWriteTransaction {
-    pub async fn begin(
-        session: ManagedSession,
-        options: CallOptions,
-    ) -> Result<ReadWriteTransaction, BeginError> {
+    pub async fn begin(session: ManagedSession, options: CallOptions) -> Result<ReadWriteTransaction, BeginError> {
         return ReadWriteTransaction::begin_internal(
             session,
             transaction_options::Mode::ReadWrite(transaction_options::ReadWrite {}),
@@ -177,11 +174,7 @@ impl ReadWriteTransaction {
         return self.update_with_option(stmt, QueryOptions::default()).await;
     }
 
-    pub async fn update_with_option(
-        &mut self,
-        stmt: Statement,
-        options: QueryOptions,
-    ) -> Result<i64, Status> {
+    pub async fn update_with_option(&mut self, stmt: Statement, options: QueryOptions) -> Result<i64, Status> {
         let request = ExecuteSqlRequest {
             session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
@@ -300,7 +293,7 @@ impl ReadWriteTransaction {
         return commit(session, mutations, TransactionId(tx_id), options).await;
     }
 
-    pub async fn rollback(&mut self, cancel: Option<CancellationToken> ,retry: Option<RetrySetting>) {
+    pub async fn rollback(&mut self, cancel: Option<CancellationToken>, retry: Option<RetrySetting>) {
         let request = RollbackRequest {
             transaction_id: self.tx_id.clone(),
             session: self.get_session_name(),

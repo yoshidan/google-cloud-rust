@@ -1,5 +1,3 @@
-use crate::cancel::CancellationToken;
-use crate::retry::RetrySetting;
 use tonic::IntoRequest;
 use tonic::Request;
 

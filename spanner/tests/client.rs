@@ -57,25 +57,16 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
     let ts = Utc.timestamp(value.seconds, value.nanos as u32);
 
     let mut ro = client.read_only_transaction().await?;
-    let record = ro
-        .read( "User", &user_columns(), Key::key(&"user_client_1x"))
-        .await?;
+    let record = ro.read("User", &user_columns(), Key::key(&"user_client_1x")).await?;
     let row = all_rows(record).await.pop().unwrap();
     assert_user_row(&row, "user_client_1x", &now, &ts);
 
-    let record = ro
-        .read( "User", &user_columns(), Key::key(&"user_client_2x"))
-        .await?;
+    let record = ro.read("User", &user_columns(), Key::key(&"user_client_2x")).await?;
     let row = all_rows(record).await.pop().unwrap();
     assert_user_row(&row, "user_client_2x", &now, &ts);
 
     let record = ro
-        .read(
-            
-            "UserItem",
-            &["UpdatedAt"],
-            Key::composite(&[&user_id, &1]),
-        )
+        .read("UserItem", &["UpdatedAt"], Key::composite(&[&user_id, &1]))
         .await?;
     let row = all_rows(record).await.pop().unwrap();
     let cts = row.column_by_name::<DateTime<Utc>>("UpdatedAt").unwrap();
@@ -91,14 +82,12 @@ async fn test_apply() -> Result<(), anyhow::Error> {
     let client = Client::new(DATABASE).await.context("error")?;
     let now = Utc::now();
     let ms = users.iter().map(|id| create_user_mutation(id, &now)).collect();
-    let value = client.apply( ms).await.unwrap().unwrap();
+    let value = client.apply(ms).await.unwrap().unwrap();
     let ts = Utc.timestamp(value.seconds, value.nanos as u32);
 
     let mut ro = client.read_only_transaction().await?;
     for x in users {
-        let record = ro
-            .read( "User", &user_columns(), Key::key(&x))
-            .await?;
+        let record = ro.read("User", &user_columns(), Key::key(&x)).await?;
         let row = all_rows(record).await.pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
     }
@@ -113,18 +102,12 @@ async fn test_apply_at_least_once() -> Result<(), anyhow::Error> {
     let client = Client::new(DATABASE).await.context("error")?;
     let now = Utc::now();
     let ms = users.iter().map(|id| create_user_mutation(id, &now)).collect();
-    let value = client
-        .apply_at_least_once( ms)
-        .await
-        .unwrap()
-        .unwrap();
+    let value = client.apply_at_least_once(ms).await.unwrap().unwrap();
     let ts = Utc.timestamp(value.seconds, value.nanos as u32);
 
     let mut ro = client.read_only_transaction().await?;
     for x in users {
-        let record = ro
-            .read( "User", &user_columns(), Key::key(&x))
-            .await?;
+        let record = ro.read("User", &user_columns(), Key::key(&x)).await?;
         let row = all_rows(record).await.pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
     }
@@ -143,11 +126,11 @@ async fn test_partitioned_update() -> Result<(), anyhow::Error> {
         .unwrap();
     let client = Client::new(DATABASE).await.context("error")?;
     let stmt = Statement::new("UPDATE User SET NullableString = 'aaa' WHERE NullableString IS NOT NULL");
-    client.partitioned_update( stmt).await.unwrap();
+    client.partitioned_update(stmt).await.unwrap();
 
     let mut single = client.single().await.unwrap();
     let rows = single
-        .read( "User", &["NullableString"], Key::key(&user_id))
+        .read("User", &["NullableString"], Key::key(&user_id))
         .await
         .unwrap();
     let row = all_rows(rows).await.pop().unwrap();
@@ -169,10 +152,7 @@ async fn test_batch_read_only_transaction() -> Result<(), anyhow::Error> {
     replace_test_data(&mut session, many).await.unwrap();
 
     let client = Client::new(DATABASE).await.context("error")?;
-    let mut tx = client
-        .batch_read_only_transaction()
-        .await
-        .unwrap();
+    let mut tx = client.batch_read_only_transaction().await.unwrap();
 
     let stmt = Statement::new(format!(
         "SELECT * FROM User p WHERE p.UserId LIKE 'user_partition_{}_%' ",

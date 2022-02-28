@@ -1,4 +1,4 @@
-use tokio_util::sync::{CancellationToken as InternalCancellationToken, WaitForCancellationFuture};
+use tokio_util::sync::{CancellationToken as InternalCancellationToken};
 
 #[derive(Clone)]
 pub struct CancellationToken {
@@ -42,7 +42,7 @@ impl CancellationToken {
     }
 
     /// Returns a `Future` that gets fulfilled when cancellation is requested.
-    pub(crate) fn cancelled(&self) -> WaitForCancellationFuture<'_> {
-        self.inner.cancelled()
+    pub async fn cancelled(&self) {
+        self.inner.cancelled().await
     }
 }

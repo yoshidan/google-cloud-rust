@@ -58,7 +58,7 @@ impl Awaiter {
         let awaited = match cancel {
             Some(cancel) => {
                 select! {
-                    _ = ctx.cancelled() => return Err(tonic::Status::cancelled("cancelled").into()),
+                    _ = cancel.cancelled() => return Err(tonic::Status::cancelled("cancelled").into()),
                     v = onetime => v
                 }
             }
@@ -106,7 +106,7 @@ impl Publisher {
         Self {
             sender,
             ordering_senders: Arc::new(ordering_senders),
-            tasks: Arc::new(Mutex::new(Worker::start(fqtn.to_string(), pubc, receivers, config))),
+            tasks: Arc::new(Mutex::new(Tasks::new(fqtn.to_string(), pubc, receivers, config))),
         }
     }
 
@@ -144,7 +144,7 @@ impl Publisher {
         for s in self.ordering_senders.iter() {
             s.close();
         }
-        self.worker.lock().done().await;
+        self.tasks.lock().done().await;
     }
 }
 
@@ -153,7 +153,7 @@ struct Tasks {
 }
 
 impl Tasks {
-    pub fn start(
+    pub fn new(
         topic: String,
         pubc: PublisherClient,
         receivers: Vec<async_channel::Receiver<ReservedMessage>>,
@@ -168,6 +168,7 @@ impl Tasks {
                     topic.clone(),
                     config.retry_setting.clone(),
                     config.flush_interval,
+                    config.bundle_size
                 )
             })
             .collect();
@@ -181,6 +182,7 @@ impl Tasks {
         topic: String,
         retry: Option<RetrySetting>,
         flush_interval: Duration,
+        bundle_size: usize
     ) -> JoinHandle<()> {
         tokio::spawn(async move {
             let mut bundle = VecDeque::<ReservedMessage>::new();
@@ -200,7 +202,7 @@ impl Tasks {
                 match result {
                     Ok(message) => {
                         bundle.push_back(message);
-                        if bundle.len() >= config.bundle_size {
+                        if bundle.len() >= bundle_size {
                             log::trace!("maximum buffer {} : {}", bundle.len(), topic);
                             Self::flush(&mut client, topic.as_str(), bundle, retry.clone()).await;
                             bundle = VecDeque::new();
@@ -261,7 +263,7 @@ impl Tasks {
 
     /// done waits for all the workers finish.
     pub async fn done(&mut self) {
-        if let Some(tasks) = self.tasks.take() {
+        if let Some(tasks) = self.inner.take() {
             for task in tasks {
                 task.await;
             }

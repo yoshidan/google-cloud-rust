@@ -12,7 +12,6 @@ mod tests {
     };
 
     use serial_test::serial;
-    use google_cloud_gax::cancel::CancellationToken;
 
     async fn create_database() -> Database {
         std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
@@ -67,7 +66,7 @@ mod tests {
         let request = DropDatabaseRequest {
             database: database.name.to_string(),
         };
-        match client.drop_database(request, None,  None).await {
+        match client.drop_database(request, None, None).await {
             Ok(_res) => assert!(true),
             Err(err) => panic!("err: {:?}", err),
         };
@@ -123,10 +122,7 @@ mod tests {
             operation_id: "".to_string(),
         };
 
-        let update_result = match client
-            .update_database_ddl(request, None, None)
-            .await
-        {
+        let update_result = match client.update_database_ddl(request, None, None).await {
             Ok(mut res) => res.wait(None, None).await,
             Err(err) => panic!("err: {:?}", err),
         };

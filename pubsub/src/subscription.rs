@@ -7,7 +7,6 @@ use google_cloud_gax::status::{Code, Status};
 use prost_types::FieldMask;
 use std::time::Duration;
 use tokio::select;
-use tokio_util::sync::CancellationToken;
 
 use crate::apiv1::subscriber_client::SubscriberClient;
 use google_cloud_googleapis::pubsub::v1::{
@@ -314,7 +313,7 @@ impl Subscription {
             .into_iter()
             .map(|queue| {
                 Subscriber::start(
-                    ctx.clone(),
+                    cancel.clone(),
                     self.fqsn.clone(),
                     self.subc.clone(),
                     queue,
@@ -326,14 +325,14 @@ impl Subscription {
         let mut message_receivers = Vec::with_capacity(receivers.len());
         for receiver in receivers {
             let f_clone = f.clone();
-            let ctx_clone = ctx.clone();
+            let cancel_clone = cancel.clone();
             let name = self.fqsn.clone();
             message_receivers.push(tokio::spawn(async move {
                 loop {
                     select! {
-                        _ = ctx_clone.cancelled() => break,
+                        _ = cancel_clone.cancelled() => break,
                         msg = receiver.recv() => match msg {
-                            Ok(message) => f_clone(message, ctx_clone.clone()).await,
+                            Ok(message) => f_clone(message, cancel_clone.clone()).await,
                             Err(_) => break
                         }
 
@@ -342,7 +341,7 @@ impl Subscription {
                 log::trace!("stop message receiver : {}", name);
             }));
         }
-        ctx.cancelled().await;
+        cancel.cancelled().await;
 
         // wait for all the treads finish.
         for mut subscriber in subscribers {

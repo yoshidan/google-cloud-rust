@@ -16,10 +16,7 @@ use std::collections::HashMap;
 use tokio_util::sync::CancellationToken;
 
 async fn assert_read(tx: &mut ReadOnlyTransaction, user_id: &str, now: &DateTime<Utc>, cts: &DateTime<Utc>) {
-    let reader = match tx
-        .read("User", &user_columns(), Key::key(&user_id))
-        .await
-    {
+    let reader = match tx.read("User", &user_columns(), Key::key(&user_id)).await {
         Ok(tx) => tx,
         Err(status) => panic!("read error {:?}", status),
     };
@@ -164,16 +161,11 @@ async fn test_batch_partition_query_and_read() {
         .collect();
     let cr2 = replace_test_data(session.deref_mut(), many).await.unwrap();
 
-    let mut tx = match BatchReadOnlyTransaction::begin(
-        session,
-        TimestampBound::strong_read(),
-        CallOptions::default(),
-    )
-    .await
-    {
-        Ok(tx) => tx,
-        Err(status) => panic!("begin error {:?}", status),
-    };
+    let mut tx =
+        match BatchReadOnlyTransaction::begin(session, TimestampBound::strong_read(), CallOptions::default()).await {
+            Ok(tx) => tx,
+            Err(status) => panic!("begin error {:?}", status),
+        };
 
     let ts = cr.commit_timestamp.as_ref().unwrap();
     let ts = Utc.timestamp(ts.seconds, ts.nanos as u32);
@@ -269,10 +261,7 @@ async fn test_read_row() {
     let _ = replace_test_data(&mut session, mutations).await.unwrap();
 
     let mut tx = read_only_transaction(session).await;
-    let row = tx
-        .read_row("User", &["UserId"], Key::key(&user_id))
-        .await
-        .unwrap();
+    let row = tx.read_row("User", &["UserId"], Key::key(&user_id)).await.unwrap();
     assert!(row.is_some())
 }
 
@@ -291,12 +280,7 @@ async fn test_read_multi_row() {
 
     let mut tx = read_only_transaction(session).await;
     let row = tx
-        .read(
-            
-            "User",
-            &["UserId"],
-            vec![Key::key(&user_id), Key::key(&user_id2)],
-        )
+        .read("User", &["UserId"], vec![Key::key(&user_id), Key::key(&user_id2)])
         .await
         .unwrap();
     assert_eq!(2, all_rows(row).await.len());

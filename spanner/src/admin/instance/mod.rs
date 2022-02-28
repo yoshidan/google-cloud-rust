@@ -116,10 +116,7 @@ mod tests {
             page_token: "".to_string(),
         };
 
-        match client
-            .list_instance_configs(request, None, None)
-            .await
-        {
+        match client.list_instance_configs(request, None, None).await {
             Ok(res) => {
                 println!("size = {}", res.len());
                 assert!(res.len() > 0);
@@ -136,10 +133,7 @@ mod tests {
         let name = "projects/local-project/instanceConfigs/emulator-config".to_string();
         let request = GetInstanceConfigRequest { name: name.clone() };
 
-        match client
-            .get_instance_config(request, None, None)
-            .await
-        {
+        match client.get_instance_config(request, None, None).await {
             Ok(res) => {
                 let instance = res;
                 assert_eq!(instance.name, name);

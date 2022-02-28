@@ -5,7 +5,6 @@ use std::time::Duration;
 
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_gax::status::{Code, Status};
-use tokio_util::sync::CancellationToken;
 
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;

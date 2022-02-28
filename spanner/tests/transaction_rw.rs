@@ -43,7 +43,7 @@ async fn test_mutation_and_statement() {
         .await
         .unwrap();
 
-    let mut tx = match ReadWriteTransaction::begin( session, CallOptions::default()).await {
+    let mut tx = match ReadWriteTransaction::begin(session, CallOptions::default()).await {
         Ok(tx) => tx,
         Err(e) => panic!("begin first error {:?}", e.status),
     };
@@ -63,7 +63,7 @@ async fn test_mutation_and_statement() {
         return tx.update( stmt2).await;
     }.await;
 
-    let result = tx.finish( result, None).await;
+    let result = tx.finish(result, None).await;
     let commit_timestamp = match result {
         Ok(s) => {
             assert!(s.0.is_some());
@@ -91,16 +91,13 @@ async fn test_partitioned_dml() {
         .await
         .unwrap();
 
-    let mut tx =
-        match ReadWriteTransaction::begin_partitioned_dml( session, CallOptions::default())
-            .await
-        {
-            Ok(tx) => tx,
-            Err(e) => panic!("begin first error {:?}", e.status),
-        };
+    let mut tx = match ReadWriteTransaction::begin_partitioned_dml(session, CallOptions::default()).await {
+        Ok(tx) => tx,
+        Err(e) => panic!("begin first error {:?}", e.status),
+    };
     let result = async {
         let stmt1 = Statement::new("UPDATE User SET NullableString = 'aaa' WHERE NullableString IS NOT NULL");
-        tx.update( stmt1).await
+        tx.update(stmt1).await
     }
     .await;
 
@@ -109,10 +106,7 @@ async fn test_partitioned_dml() {
 
     let session = create_session().await;
     let mut tx = read_only_transaction(session).await;
-    let reader = tx
-        .read( "User", &["NullableString"], Key::key(&user_id))
-        .await
-        .unwrap();
+    let reader = tx.read("User", &["NullableString"], Key::key(&user_id)).await.unwrap();
     let row = all_rows(reader).await.unwrap().pop().unwrap();
     let value = row.column_by_name::<String>("NullableString").unwrap();
     assert_eq!(value, "aaa");
@@ -129,27 +123,24 @@ async fn test_rollback() {
         .await
         .unwrap();
 
-    let mut tx = match ReadWriteTransaction::begin( session, CallOptions::default()).await {
+    let mut tx = match ReadWriteTransaction::begin(session, CallOptions::default()).await {
         Ok(tx) => tx,
         Err(e) => panic!("begin first error {:?}", e.status),
     };
     let result = async {
         let mut stmt1 = Statement::new("UPDATE User SET NullableString = 'aaaaaaa' WHERE UserId = @UserId");
         stmt1.add_param("UserId", &past_user);
-        tx.update( stmt1).await?;
+        tx.update(stmt1).await?;
 
         let stmt2 = Statement::new("UPDATE UserNoteFound SET Quantity = 10000");
-        tx.update( stmt2).await
+        tx.update(stmt2).await
     }
     .await;
 
-    let _ = tx.finish( result, None).await;
+    let _ = tx.finish(result, None).await;
     let session = create_session().await;
     let mut tx = read_only_transaction(session).await;
-    let reader = tx
-        .read( "User", &user_columns(), Key::key(&past_user))
-        .await
-        .unwrap();
+    let reader = tx.read("User", &user_columns(), Key::key(&past_user)).await.unwrap();
     let row = all_rows(reader).await.unwrap().pop().unwrap();
     let ts = cr.commit_timestamp.as_ref().unwrap();
     let ts = Utc.timestamp(ts.seconds, ts.nanos as u32);
@@ -164,7 +155,7 @@ async fn assert_data(
 ) {
     // get by another transaction
     let session = create_session().await;
-    let mut tx = match ReadWriteTransaction::begin( session, CallOptions::default()).await {
+    let mut tx = match ReadWriteTransaction::begin(session, CallOptions::default()).await {
         Ok(tx) => tx,
         Err(e) => panic!("begin second error {:?}", e.status),
     };
@@ -177,13 +168,13 @@ async fn assert_data(
     ",
         );
         stmt.add_param("UserId", user_id);
-        let result = tx.query( stmt).await?;
+        let result = tx.query(stmt).await?;
         all_rows(result).await
     }
     .await;
 
     // commit or rollback is required for rw transaction
-    let rows = match tx.finish( result, None).await {
+    let rows = match tx.finish(result, None).await {
         Ok(s) => s.1,
         Err(e) => panic!("tx error {:?}", e.0),
     };

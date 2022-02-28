@@ -57,11 +57,7 @@ impl SessionHandle {
         let request = DeleteSessionRequest {
             name: self.session.name.to_string(),
         };
-        match self
-            .spanner_client
-            .delete_session(request, None, None)
-            .await
-        {
+        match self.spanner_client.delete_session(request, None, None).await {
             Ok(_s) => self.valid = false,
             Err(e) => {
                 log::error!("session remove error {} error={:?}", self.session.name, e);
@@ -473,11 +469,7 @@ async fn health_check(now: Instant, session_alive_trust_duration: Duration, sess
         };
 
         let request = ping_query_request(s.session.name.clone());
-        match s
-            .spanner_client
-            .execute_sql(request, None, None)
-            .await
-        {
+        match s.spanner_client.execute_sql(request, None, None).await {
             Ok(_) => {
                 s.last_checked_at = now;
                 s.last_pong_at = now;
@@ -541,11 +533,7 @@ async fn delete_session(session: &mut SessionHandle) {
     let request = DeleteSessionRequest {
         name: session_name.to_string(),
     };
-    match session
-        .spanner_client
-        .delete_session(request, None, None)
-        .await
-    {
+    match session.spanner_client.delete_session(request, None, None).await {
         Ok(_) => {}
         Err(e) => log::error!("failed to delete session {}, {:?}", session_name, e),
     }

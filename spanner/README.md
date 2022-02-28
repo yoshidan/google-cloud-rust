@@ -26,7 +26,6 @@ Create `Client` and call transaction API same as [Google Cloud Go](https://githu
  use google_cloud_spanner::reader::AsyncIterator;
  use google_cloud_spanner::value::CommitTimestamp;
  use google_cloud_spanner::client::RunInTxError;
- use tokio_util::sync::CancellationToken;
 
  #[tokio::main]
  async fn main() -> Result<(), anyhow::Error> {
@@ -36,18 +35,16 @@ Create `Client` and call transaction API same as [Google Cloud Go](https://githu
      // Create spanner client
      let mut client = Client::new(DATABASE).await?;
 
-     let ctx = CancellationToken::new();
-
      // Insert
      let mutation = insert("Guild", &["GuildId", "OwnerUserID", "UpdatedAt"], &[&"guildId", &"ownerId", &CommitTimestamp::new()]);
-     let commit_timestamp = client.apply(ctx.clone(), vec![mutation]).await?;
+     let commit_timestamp = client.apply(vec![mutation]).await?;
 
      // Read with query
      let mut stmt = Statement::new("SELECT GuildId FROM Guild WHERE OwnerUserID = @OwnerUserID");
      stmt.add_param("OwnerUserID",&"ownerId");
      let mut tx = client.single().await?;
-     let mut iter = tx.query(ctx.clone(), stmt).await?;
-     while let Some(row) = iter.next(ctx.clone()).await? {
+     let mut iter = tx.query(stmt).await?;
+     while let Some(row) = iter.next(None).await? {
          let guild_id = row.column_by_name::<String>("GuildId");
      }
      Ok(())
