@@ -15,7 +15,7 @@
 //! use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 //! use google_cloud_pubsub::topic::TopicConfig;
 //! use google_cloud_pubsub::subscription::SubscriptionConfig;
-//! use google_cloud_gax::status::Status;
+//! use google_cloud_gax::grpc::Status;
 //! use tokio::task::JoinHandle;
 //!
 //! #[tokio::main]
@@ -68,7 +68,7 @@
 //! use google_cloud_gax::cancel::CancellationToken;
 //! use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 //! use google_cloud_pubsub::subscription::SubscriptionConfig;
-//! use google_cloud_gax::status::Status;
+//! use google_cloud_gax::grpc::Status;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Status> {

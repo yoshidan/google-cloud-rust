@@ -11,8 +11,8 @@ use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 
+use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
-use google_cloud_gax::status::Status;
 use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
 
 use crate::apiv1::publisher_client::PublisherClient;
@@ -58,7 +58,7 @@ impl Awaiter {
         let awaited = match cancel {
             Some(cancel) => {
                 select! {
-                    _ = cancel.cancelled() => return Err(tonic::Status::cancelled("cancelled").into()),
+                    _ = cancel.cancelled() => return Err(Status::cancelled("cancelled")),
                     v = onetime => v
                 }
             }
@@ -66,7 +66,7 @@ impl Awaiter {
         };
         match awaited {
             Ok(v) => v,
-            Err(_e) => Err(tonic::Status::cancelled("closed").into()),
+            Err(_e) => Err(Status::cancelled("closed")),
         }
     }
 }
@@ -252,10 +252,7 @@ impl Tasks {
             }
             Err(status) => {
                 for p in callback.into_iter() {
-                    p.send(Err(Status::new(tonic::Status::new(
-                        status.source.code().clone(),
-                        &(*status.source.message()).to_string(),
-                    ))));
+                    p.send(Err(Status::new(status.code().clone(), &(*status.message()).to_string())));
                 }
             }
         };

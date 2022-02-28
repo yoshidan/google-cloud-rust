@@ -6,8 +6,8 @@ use google_cloud_gax::cancel::CancellationToken;
 use crate::subscription::{Subscription, SubscriptionConfig};
 use crate::topic::{Topic, TopicConfig};
 use google_cloud_gax::conn::Error;
+use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
-use google_cloud_gax::status::Status;
 use google_cloud_googleapis::pubsub::v1::{DetachSubscriptionRequest, ListSubscriptionsRequest, ListTopicsRequest};
 
 pub struct ClientConfig {
