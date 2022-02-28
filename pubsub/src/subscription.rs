@@ -388,7 +388,7 @@ mod tests {
     use std::sync::atomic::AtomicU32;
     use std::sync::atomic::Ordering::SeqCst;
     use std::sync::Arc;
-    use std::thread::sleep;
+    
     use std::time::Duration;
     use uuid::Uuid;
 
@@ -497,7 +497,7 @@ mod tests {
         });
         let messages = subscription.pull(2, Some(cancel), None).await;
         match messages {
-            Ok(v) => panic!("must error"),
+            Ok(_v) => panic!("must error"),
             Err(e) => {
                 assert_eq!(e.code(), Code::Cancelled);
             }
