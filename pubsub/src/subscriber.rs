@@ -3,7 +3,9 @@ use std::time::Duration;
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_gax::status::{Code, Status};
-use google_cloud_googleapis::pubsub::v1::{AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage};
+use google_cloud_googleapis::pubsub::v1::{
+    AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage, ReceivedMessage as InternalReceivedMessage,
+};
 use tokio::select;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
@@ -18,6 +20,15 @@ pub struct ReceivedMessage {
 }
 
 impl ReceivedMessage {
+    pub(crate) fn new(subscription: String, subc: SubscriberClient, message: PubsubMessage, ack_id: String) -> Self {
+        Self {
+            message,
+            ack_id,
+            subscription,
+            subscriber_client: subc,
+        }
+    }
+
     pub async fn ack(&self) -> Result<(), Status> {
         let req = AcknowledgeRequest {
             subscription: self.subscription.to_string(),
@@ -132,12 +143,7 @@ impl Subscriber {
                         for m in message.received_messages {
                             if let Some(mes) = m.message {
                                 log::debug!("message received: {}", mes.message_id);
-                                queue.send(ReceivedMessage {
-                                    message: mes,
-                                    ack_id: m.ack_id,
-                                    subscription: subscription.to_string(),
-                                    subscriber_client: client.clone()
-                                }).await;
+                                queue.send(ReceivedMessage::new(subscription.to_string(), client.clone(), mes, m.ack_id)).await;
                             }
                         }
                     }

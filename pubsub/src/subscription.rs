@@ -10,8 +10,8 @@ use tokio::select;
 
 use crate::apiv1::subscriber_client::SubscriberClient;
 use google_cloud_googleapis::pubsub::v1::{
-    DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest, PushConfig, RetryPolicy,
-    Subscription as InternalSubscription, UpdateSubscriptionRequest,
+    DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest, PullRequest, PushConfig,
+    RetryPolicy, Subscription as InternalSubscription, UpdateSubscriptionRequest,
 };
 
 use crate::subscriber::{ReceivedMessage, Subscriber, SubscriberConfig};
@@ -273,8 +273,29 @@ impl Subscription {
         })
     }
 
+    /// pull get message synchronously.
+    /// It blocks until at least one message is available.
+    pub async fn pull(
+        &self,
+        max_messages: i32,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Vec<ReceivedMessage>, Status> {
+        let req = PullRequest {
+            subscription: self.fqsn.clone(),
+            return_immediately: false,
+            max_messages,
+        };
+        let messages = self.subc.pull(req, cancel, retry).await?.into_inner().received_messages;
+        Ok(messages
+            .into_iter()
+            .filter(|m| m.message.is_some())
+            .map(|m| ReceivedMessage::new(self.fqsn.clone(), self.subc.clone(), m.message.unwrap(), m.ack_id))
+            .collect())
+    }
+
     /// receive calls f with the outstanding messages from the subscription.
-    /// It blocks until ctx is done, or the service returns a non-retryable error.
+    /// It blocks until cancellation token is cancelled, or the service returns a non-retryable error.
     /// The standard way to terminate a receive is to use CancellationToken.
     pub async fn receive<F>(
         &self,
@@ -361,11 +382,13 @@ mod tests {
     use crate::apiv1::subscriber_client::SubscriberClient;
     use crate::subscription::{Subscription, SubscriptionConfig, SubscriptionConfigToUpdate};
     use google_cloud_gax::cancel::CancellationToken;
+    use google_cloud_gax::status::Code;
     use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
     use serial_test::serial;
     use std::sync::atomic::AtomicU32;
     use std::sync::atomic::Ordering::SeqCst;
     use std::sync::Arc;
+    use std::thread::sleep;
     use std::time::Duration;
     use uuid::Uuid;
 
@@ -442,7 +465,44 @@ mod tests {
         tokio::time::sleep(Duration::from_secs(3)).await;
         receiver_ctx.cancel();
         handle.await;
+        Ok(())
+    }
 
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_pull() -> Result<(), anyhow::Error> {
+        let subscription = create_subscription().await.unwrap();
+        publish().await;
+        publish().await;
+        publish().await;
+        let messages = subscription.pull(2, None, None).await?;
+        assert_eq!(messages.len(), 2);
+        for m in messages {
+            m.ack().await.unwrap();
+        }
+        subscription.delete(None, None).await?;
+        Ok(())
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_pull_cancel() -> Result<(), anyhow::Error> {
+        let subscription = create_subscription().await.unwrap();
+        let cancel = CancellationToken::new();
+        let cancel2 = cancel.clone();
+        let j = tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_secs(5)).await;
+            log::info!("cancelled");
+            cancel2.clone().cancel();
+        });
+        let messages = subscription.pull(2, Some(cancel), None).await;
+        match messages {
+            Ok(v) => panic!("must error"),
+            Err(e) => {
+                assert_eq!(e.code(), Code::Cancelled);
+            }
+        }
+        j.await;
         Ok(())
     }
 

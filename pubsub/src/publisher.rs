@@ -168,7 +168,7 @@ impl Tasks {
                     topic.clone(),
                     config.retry_setting.clone(),
                     config.flush_interval,
-                    config.bundle_size
+                    config.bundle_size,
                 )
             })
             .collect();
@@ -182,7 +182,7 @@ impl Tasks {
         topic: String,
         retry: Option<RetrySetting>,
         flush_interval: Duration,
-        bundle_size: usize
+        bundle_size: usize,
     ) -> JoinHandle<()> {
         tokio::spawn(async move {
             let mut bundle = VecDeque::<ReservedMessage>::new();
