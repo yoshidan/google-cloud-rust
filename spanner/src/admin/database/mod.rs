@@ -12,7 +12,7 @@ mod tests {
     };
 
     use serial_test::serial;
-    use tokio_util::sync::CancellationToken;
+    use google_cloud_gax::cancel::CancellationToken;
 
     async fn create_database() -> Database {
         std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
@@ -25,8 +25,8 @@ mod tests {
             encryption_config: None,
         };
 
-        let creation_result = match client.create_database(CancellationToken::new(), request, None).await {
-            Ok(mut res) => res.wait(CancellationToken::new(), None).await,
+        let creation_result = match client.create_database(request, None, None).await {
+            Ok(mut res) => res.wait(None, None).await,
             Err(err) => panic!("err: {:?}", err),
         };
         match creation_result {
@@ -50,7 +50,7 @@ mod tests {
         let name = format!("projects/local-project/instances/test-instance/databases/local-database");
         let request = GetDatabaseRequest { name: name.clone() };
 
-        match client.get_database(CancellationToken::new(), request, None).await {
+        match client.get_database(request, None, None).await {
             Ok(res) => {
                 let db = res.into_inner();
                 assert_eq!(db.name, name);
@@ -67,7 +67,7 @@ mod tests {
         let request = DropDatabaseRequest {
             database: database.name.to_string(),
         };
-        match client.drop_database(CancellationToken::new(), request, None).await {
+        match client.drop_database(request, None,  None).await {
             Ok(_res) => assert!(true),
             Err(err) => panic!("err: {:?}", err),
         };
@@ -84,7 +84,7 @@ mod tests {
             page_token: "".to_string(),
         };
 
-        match client.list_databases(CancellationToken::new(), request, None).await {
+        match client.list_databases(request, None, None).await {
             Ok(res) => {
                 println!("size = {}", res.len());
                 assert!(res.len() > 0);
@@ -103,7 +103,7 @@ mod tests {
             database: database.name.to_string(),
         };
 
-        match client.get_database_ddl(CancellationToken::new(), request, None).await {
+        match client.get_database_ddl(request, None, None).await {
             Ok(res) => {
                 assert_eq!(res.into_inner().statements.len(), 1);
             }
@@ -124,10 +124,10 @@ mod tests {
         };
 
         let update_result = match client
-            .update_database_ddl(CancellationToken::new(), request, None)
+            .update_database_ddl(request, None, None)
             .await
         {
-            Ok(mut res) => res.wait(CancellationToken::new(), None).await,
+            Ok(mut res) => res.wait(None, None).await,
             Err(err) => panic!("err: {:?}", err),
         };
         match update_result {

@@ -1,5 +1,3 @@
-use tokio_util::sync::CancellationToken;
-
 use google_cloud_gax::retry::{invoke, RetrySetting};
 use google_cloud_googleapis::iam::v1::{
     GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest, TestIamPermissionsResponse,
@@ -21,6 +19,7 @@ use google_cloud_gax::status::Status;
 use google_cloud_longrunning::autogen::operations_client::OperationsClient;
 use google_cloud_longrunning::longrunning::Operation;
 use tonic::Response;
+use google_cloud_gax::cancel::CancellationToken;
 
 #[derive(Clone)]
 pub struct DatabaseAdminClient {
@@ -41,11 +40,11 @@ impl DatabaseAdminClient {
     /// list_databases lists Cloud Spanner databases.
     pub async fn list_databases(
         &self,
-        ctx: CancellationToken,
         mut req: ListDatabasesRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Vec<Database>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let parent = &req.parent;
         let mut all_databases = vec![];
         //eager loading
@@ -59,7 +58,7 @@ impl DatabaseAdminClient {
                     .map_err(|e| e.into())
                     .map(|d| d.into_inner())
             };
-            let response = invoke(ctx.clone(), opt.clone(), action).await?;
+            let response = invoke(cancel.clone(), retry.clone(), action).await?;
             all_databases.extend(response.databases.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all_databases);
@@ -75,17 +74,17 @@ impl DatabaseAdminClient {
     /// The response field type is Database, if successful.
     pub async fn create_database(
         &self,
-        ctx: CancellationToken,
         req: CreateDatabaseRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Operation<Database>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let parent = &req.parent;
         let action = || async {
             let request = create_request(format!("parent={}", parent), req.clone());
             self.inner.clone().create_database(request).await.map_err(|e| e.into())
         };
-        invoke(ctx, opt, action)
+        invoke(cancel, retry, action)
             .await
             .map(|d| Operation::new(self.lro_client.clone(), d.into_inner()))
     }
@@ -93,17 +92,17 @@ impl DatabaseAdminClient {
     /// get_database gets the state of a Cloud Spanner database.
     pub async fn get_database(
         &self,
-        ctx: CancellationToken,
         req: GetDatabaseRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<Database>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={}", name), req.clone());
             self.inner.clone().get_database(request).await.map_err(|e| e.into())
         };
-        invoke(ctx, opt, action).await
+        invoke(cancel, retry, action).await
     }
 
     /// update_database_ddl updates the schema of a Cloud Spanner database by
@@ -116,11 +115,11 @@ impl DatabaseAdminClient {
     /// The operation has no response.
     pub async fn update_database_ddl(
         &self,
-        ctx: CancellationToken,
         req: UpdateDatabaseDdlRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Operation<()>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let database = &req.database;
         let action = || async {
             let request = create_request(format!("database={}", database), req.clone());
@@ -130,7 +129,7 @@ impl DatabaseAdminClient {
                 .await
                 .map_err(|e| e.into())
         };
-        invoke(ctx, opt, action)
+        invoke(cancel, retry, action)
             .await
             .map(|d| Operation::new(self.lro_client.clone(), d.into_inner()))
     }
@@ -140,17 +139,17 @@ impl DatabaseAdminClient {
     /// expire_time.
     pub async fn drop_database(
         &self,
-        ctx: CancellationToken,
         req: DropDatabaseRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let database = &req.database;
         let action = || async {
             let request = create_request(format!("database={}", database), req.clone());
             self.inner.clone().drop_database(request).await.map_err(|e| e.into())
         };
-        invoke(ctx, opt, action).await
+        invoke(cancel, retry, action).await
     }
 
     /// get_database_ddl returns the schema of a Cloud Spanner database as a list of formatted
@@ -158,17 +157,17 @@ impl DatabaseAdminClient {
     /// be queried using the Operations API.
     pub async fn get_database_ddl(
         &self,
-        ctx: CancellationToken,
         req: GetDatabaseDdlRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<GetDatabaseDdlResponse>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let database = &req.database;
         let action = || async {
             let request = create_request(format!("database={}", database), req.clone());
             self.inner.clone().get_database_ddl(request).await.map_err(|e| e.into())
         };
-        invoke(ctx, opt, action).await
+        invoke(cancel, retry, action).await
     }
 
     /// set_iam_policy sets the access control policy on a database or backup resource.
@@ -180,17 +179,17 @@ impl DatabaseAdminClient {
     /// permission on resource.
     pub async fn set_iam_policy(
         &self,
-        ctx: CancellationToken,
         req: SetIamPolicyRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<Policy>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let resource = &req.resource;
         let action = || async {
             let request = create_request(format!("resource={}", resource), req.clone());
             self.inner.clone().set_iam_policy(request).await.map_err(|e| e.into())
         };
-        invoke(ctx, opt, action).await
+        invoke(cancel, retry, action).await
     }
 
     /// get_iam_policy gets the access control policy for a database or backup resource.
@@ -203,17 +202,17 @@ impl DatabaseAdminClient {
     /// permission on resource.
     pub async fn get_iam_policy(
         &self,
-        ctx: CancellationToken,
         req: GetIamPolicyRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<Policy>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let resource = &req.resource;
         let action = || async {
             let request = create_request(format!("resource={}", resource), req.clone());
             self.inner.clone().get_iam_policy(request).await.map_err(|e| e.into())
         };
-        invoke(ctx, opt, action).await
+        invoke(cancel, retry, action).await
     }
 
     /// test_iam_permissions returns permissions that the caller has on the specified database or backup
@@ -228,11 +227,11 @@ impl DatabaseAdminClient {
     /// spanner.backups.list permission on the containing instance
     pub async fn test_iam_permissions(
         &self,
-        ctx: CancellationToken,
         req: TestIamPermissionsRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<TestIamPermissionsResponse>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let resource = &req.resource;
         let action = || async {
             let request = create_request(format!("resource={}", resource), req.clone());
@@ -242,7 +241,7 @@ impl DatabaseAdminClient {
                 .await
                 .map_err(|e| e.into())
         };
-        invoke(ctx, opt, action).await
+        invoke(cancel, retry, action).await
     }
 
     /// create_backup starts creating a new Cloud Spanner Backup.
@@ -259,17 +258,17 @@ impl DatabaseAdminClient {
     /// creation of different databases can run concurrently.
     pub async fn create_backup(
         &self,
-        ctx: CancellationToken,
         req: CreateBackupRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Operation<Backup>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let parent = &req.parent;
         let action = || async {
             let request = create_request(format!("parent={}", parent), req.clone());
             self.inner.clone().create_backup(request).await.map_err(|e| e.into())
         };
-        invoke(ctx, opt, action)
+        invoke(cancel, retry, action)
             .await
             .map(|d| Operation::new(self.lro_client.clone(), d.into_inner()))
     }
@@ -277,49 +276,49 @@ impl DatabaseAdminClient {
     /// get_backup gets metadata on a pending or completed Backup.
     pub async fn get_backup(
         &self,
-        ctx: CancellationToken,
         req: GetBackupRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<Backup>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={}", name), req.clone());
             self.inner.clone().get_backup(request).await.map_err(|e| e.into())
         };
-        invoke(ctx, opt, action).await
+        invoke(cancel, retry, action).await
     }
 
     /// update_backup updates a pending or completed Backup.
     pub async fn update_backup(
         &self,
-        ctx: CancellationToken,
         req: UpdateBackupRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<Backup>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let name = &req.backup.as_ref().unwrap().name;
         let action = || async {
             let request = create_request(format!("backup.name={}", name), req.clone());
             self.inner.clone().update_backup(request).await.map_err(|e| e.into())
         };
-        invoke(ctx, opt, action).await
+        invoke(cancel, retry, action).await
     }
 
     /// delete_backup deletes a pending or completed Backup.
     pub async fn delete_backup(
         &self,
-        ctx: CancellationToken,
         req: DeleteBackupRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={}", name), req.clone());
             self.inner.clone().delete_backup(request).await.map_err(|e| e.into())
         };
-        invoke(ctx, opt, action).await
+        invoke(cancel, retry, action).await
     }
 
     /// list_backups lists completed and pending backups.
@@ -327,11 +326,11 @@ impl DatabaseAdminClient {
     /// starting from the most recent create_time.
     pub async fn list_backups(
         &self,
-        ctx: CancellationToken,
         mut req: ListBackupsRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Vec<Backup>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let parent = &req.parent;
         let mut all_backups = vec![];
         //eager loading
@@ -345,7 +344,7 @@ impl DatabaseAdminClient {
                     .map_err(|e| e.into())
                     .map(|d| d.into_inner())
             };
-            let response = invoke(ctx.clone(), opt.clone(), action).await?;
+            let response = invoke(cancel.clone(), retry.clone(), action).await?;
             all_backups.extend(response.backups.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all_backups);
@@ -373,17 +372,17 @@ impl DatabaseAdminClient {
     /// first restore to complete.
     pub async fn restore_database(
         &self,
-        ctx: CancellationToken,
         req: RestoreDatabaseRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Operation<Database>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let parent = &req.parent;
         let action = || async {
             let request = create_request(format!("parent={}", parent), req.clone());
             self.inner.clone().restore_database(request).await.map_err(|e| e.into())
         };
-        invoke(ctx, opt, action)
+        invoke(cancel, retry, action)
             .await
             .map(|d| Operation::new(self.lro_client.clone(), d.into_inner()))
     }
@@ -400,11 +399,11 @@ impl DatabaseAdminClient {
     /// from the most recently started operation.
     pub async fn list_backup_operations(
         &self,
-        ctx: CancellationToken,
         mut req: ListBackupOperationsRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Vec<InternalOperation>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let parent = &req.parent;
         let mut all_operations = vec![];
         //eager loading
@@ -418,7 +417,7 @@ impl DatabaseAdminClient {
                     .map_err(|e| e.into())
                     .map(|d| d.into_inner())
             };
-            let response = invoke(ctx.clone(), opt.clone(), action).await?;
+            let response = invoke(cancel.clone(), retry.clone(), action).await?;
             all_operations.extend(response.operations.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all_operations);
@@ -437,11 +436,11 @@ impl DatabaseAdminClient {
     /// and pending operations.
     pub async fn list_database_operations(
         &self,
-        ctx: CancellationToken,
         mut req: ListDatabaseOperationsRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Vec<InternalOperation>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let parent = &req.parent;
         let mut all_operations = vec![];
         //eager loading
@@ -455,7 +454,7 @@ impl DatabaseAdminClient {
                     .map_err(|e| e.into())
                     .map(|d| d.into_inner())
             };
-            let response = invoke(ctx.clone(), opt.clone(), action).await?;
+            let response = invoke(cancel.clone(), retry.clone(), action).await?;
             all_operations.extend(response.operations.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all_operations);

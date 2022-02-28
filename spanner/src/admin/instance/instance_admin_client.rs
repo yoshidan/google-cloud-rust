@@ -1,5 +1,3 @@
-use tokio_util::sync::CancellationToken;
-
 use google_cloud_googleapis::iam::v1::{
     GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest, TestIamPermissionsResponse,
 };
@@ -18,6 +16,7 @@ use google_cloud_googleapis::spanner::admin::instance::v1::{
 use google_cloud_longrunning::autogen::operations_client::OperationsClient;
 use google_cloud_longrunning::longrunning::Operation;
 use tonic::Response;
+use google_cloud_gax::cancel::CancellationToken;
 
 #[derive(Clone)]
 pub struct InstanceAdminClient {
@@ -38,11 +37,11 @@ impl InstanceAdminClient {
     /// list_instance_configs lists the supported instance configurations for a given project.
     pub async fn list_instance_configs(
         &self,
-        ctx: CancellationToken,
         mut req: ListInstanceConfigsRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Vec<InstanceConfig>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let parent = &req.parent;
         let mut all = vec![];
         //eager loading
@@ -56,7 +55,7 @@ impl InstanceAdminClient {
                     .map_err(|e| e.into())
                     .map(|d| d.into_inner())
             };
-            let response = invoke(ctx.clone(), opt.clone(), action).await?;
+            let response = invoke(cancel.clone(), retry.clone(), action).await?;
             all.extend(response.instance_configs.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -68,11 +67,11 @@ impl InstanceAdminClient {
     /// get_instance_config gets information about a particular instance configuration.
     pub async fn get_instance_config(
         &self,
-        ctx: CancellationToken,
         req: GetInstanceConfigRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<InstanceConfig, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={}", name), req.clone());
@@ -83,17 +82,17 @@ impl InstanceAdminClient {
                 .map_err(|e| e.into())
                 .map(|d| d.into_inner())
         };
-        invoke(ctx, opt, action).await
+        invoke(cancel, retry, action).await
     }
 
     /// list_instances lists all instances in the given project.
     pub async fn list_instances(
         &self,
-        ctx: CancellationToken,
         mut req: ListInstancesRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Vec<Instance>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let parent = &req.parent;
         let mut all = vec![];
         //eager loading
@@ -107,7 +106,7 @@ impl InstanceAdminClient {
                     .map_err(|e| e.into())
                     .map(|d| d.into_inner())
             };
-            let response = invoke(ctx.clone(), opt.clone(), action).await?;
+            let response = invoke(cancel.clone(), retry.clone(), action).await?;
             all.extend(response.instances.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -119,17 +118,17 @@ impl InstanceAdminClient {
     /// gets information about a particular instance.
     pub async fn get_instance(
         &self,
-        ctx: CancellationToken,
         req: GetInstanceRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<Instance>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={}", name), req.clone());
             self.inner.clone().get_instance(request).await.map_err(|e| e.into())
         };
-        invoke(ctx, opt, action).await
+        invoke(cancel, retry, action).await
     }
 
     /// create_instance creates an instance and begins preparing it to begin serving. The
@@ -173,17 +172,17 @@ impl InstanceAdminClient {
     /// Instance, if successful.
     pub async fn create_instance(
         &mut self,
-        ctx: CancellationToken,
         req: CreateInstanceRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Operation<Instance>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let parent = &req.parent;
         let action = || async {
             let request = create_request(format!("parent={}", parent), req.clone());
             self.inner.clone().create_instance(request).await.map_err(|e| e.into())
         };
-        invoke(ctx, opt, action)
+        invoke(cancel, retry, action)
             .await
             .map(|d| Operation::new(self.lro_client.clone(), d.into_inner()))
     }
@@ -234,17 +233,17 @@ impl InstanceAdminClient {
     /// resource [name][google.spanner.admin.instance.v1.Instance.name (at http://google.spanner.admin.instance.v1.Instance.name)].
     pub async fn update_instance(
         &self,
-        ctx: CancellationToken,
         req: UpdateInstanceRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Operation<Instance>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let instance_name = &req.instance.as_ref().unwrap().name;
         let action = || async {
             let request = create_request(format!("instance.name={}", instance_name), req.clone());
             self.inner.clone().update_instance(request).await.map_err(|e| e.into())
         };
-        invoke(ctx, opt, action)
+        invoke(cancel, retry, action)
             .await
             .map(|d| Operation::new(self.lro_client.clone(), d.into_inner()))
     }
@@ -262,17 +261,17 @@ impl InstanceAdminClient {
     ///   is permanently deleted.
     pub async fn delete_instance(
         &self,
-        ctx: CancellationToken,
         req: DeleteInstanceRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={}", name), req.clone());
             self.inner.clone().delete_instance(request).await.map_err(|e| e.into())
         };
-        invoke(ctx, opt, action).await
+        invoke(cancel, retry, action).await
     }
 
     /// set_iam_policy sets the access control policy on an instance resource. Replaces any
@@ -281,17 +280,17 @@ impl InstanceAdminClient {
     /// Authorization requires spanner.instances.setIamPolicy on resource.
     pub async fn set_iam_policy(
         &self,
-        ctx: CancellationToken,
         req: SetIamPolicyRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<Policy>, Status> {
         let resource = &req.resource;
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let action = || async {
             let request = create_request(format!("resource={}", resource), req.clone());
             self.inner.clone().set_iam_policy(request).await.map_err(|e| e.into())
         };
-        invoke(ctx, opt, action).await
+        invoke(cancel, retry, action).await
     }
 
     /// get_iam_policy sets the access control policy on an instance resource. Replaces any
@@ -300,17 +299,17 @@ impl InstanceAdminClient {
     /// Authorization requires spanner.instances.setIamPolicy on resource.
     pub async fn get_iam_policy(
         &self,
-        ctx: CancellationToken,
         req: GetIamPolicyRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<Policy>, Status> {
         let resource = &req.resource;
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let action = || async {
             let request = create_request(format!("resource={}", resource), req.clone());
             self.inner.clone().get_iam_policy(request).await.map_err(|e| e.into())
         };
-        invoke(ctx, opt, action).await
+        invoke(cancel, retry, action).await
     }
 
     /// test_iam_permissions returns permissions that the caller has on the specified instance resource.
@@ -321,12 +320,12 @@ impl InstanceAdminClient {
     /// empty set of permissions.
     pub async fn test_iam_permissions(
         &self,
-        ctx: CancellationToken,
         req: TestIamPermissionsRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<TestIamPermissionsResponse>, Status> {
         let resource = &req.resource;
-        let opt = Some(opt.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or(default_retry_setting()));
         let action = || async {
             let request = create_request(format!("resource={}", resource), req.clone());
             self.inner
@@ -335,6 +334,6 @@ impl InstanceAdminClient {
                 .await
                 .map_err(|e| e.into())
         };
-        invoke(ctx, opt, action).await
+        invoke(cancel, retry, action).await
     }
 }

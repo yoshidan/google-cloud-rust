@@ -88,29 +88,29 @@ impl Default for RetrySetting {
     }
 }
 
-pub async fn invoke<A, R, RT, C, E>(ctx: Option<CancellationToken>, opt: Option<RT>, action: A) -> Result<R, E>
+pub async fn invoke<A, R, RT, C, E>(cancel: Option<CancellationToken>, retry: Option<RT>, action: A) -> Result<R, E>
 where
     E: TryAs<Status> + From<Status>,
     A: Action<Item = R, Error = E>,
     C: Condition<E>,
     RT: Retry<E, C> + Default,
 {
-    let setting = opt.unwrap_or_default();
-    match ctx {
-        Some(ctx) => {
+    let retry = retry.unwrap_or_default();
+    match cancel {
+        Some(cancel) => {
             select! {
-                _ = ctx.cancelled() => Err(Status::new(tonic::Status::cancelled("client cancel")).into()),
-                v = RetryIf::spawn(setting.strategy(), action, setting.condition()) => v
+                _ = cancel.cancelled() => Err(Status::new(tonic::Status::cancelled("client cancel")).into()),
+                v = RetryIf::spawn(retry.strategy(), action, retry.condition()) => v
             }
         }
-        None => RetryIf::spawn(setting.strategy(), action, setting.condition()).await,
+        None => RetryIf::spawn(retry.strategy(), action, retry.condition()).await,
     }
 }
 /// Repeats retries when the specified error is detected.
 /// The argument specified by 'v' can be reused for each retry.
 pub async fn invoke_fn<R, V, A, RT, C, E>(
-    ctx: Option<CancellationToken>,
-    opt: Option<RT>,
+    cancel: Option<CancellationToken>,
+    retry: Option<RT>,
     mut f: impl FnMut(V) -> A,
     mut v: V,
 ) -> Result<R, E>
@@ -121,8 +121,8 @@ where
     RT: Retry<E, C> + Default,
 {
     let fn_loop = async {
-        let opt = opt.unwrap_or_default();
-        let mut strategy = opt.strategy();
+        let retry = retry.unwrap_or_default();
+        let mut strategy = retry.strategy();
         loop {
             let result = f(v).await;
             let status = match result {
@@ -132,7 +132,7 @@ where
                     e.0
                 }
             };
-            if opt.condition().should_retry(&status) {
+            if retry.condition().should_retry(&status) {
                 let duration = match strategy.next() {
                     None => return Err(status),
                     Some(s) => s,
@@ -144,13 +144,13 @@ where
         }
     };
 
-    match ctx {
-        Some(ctx) => {
+    match cancel {
+        Some(cancel) => {
             select! {
-                _ = ctx.cancelled() => Err(Status::new(tonic::Status::cancelled("client cancel")).into()),
-                v = n_loop => v
+                _ = cancel.cancelled() => Err(Status::new(tonic::Status::cancelled("client cancel")).into()),
+                v = fn_loop => v
             }
         }
-        None => n_loop.await,
+        None => fn_loop.await,
     }
 }

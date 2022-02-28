@@ -15,7 +15,6 @@ use google_cloud_gax::status::{Code, Status};
 use tokio::sync::broadcast;
 use tokio::sync::oneshot;
 use tokio::time::{sleep, timeout, Duration};
-use tokio_util::sync::CancellationToken;
 
 type Waiters = Mutex<VecDeque<oneshot::Sender<SessionHandle>>>;
 
@@ -60,7 +59,7 @@ impl SessionHandle {
         };
         match self
             .spanner_client
-            .delete_session(CancellationToken::new(), request, None)
+            .delete_session(request, None, None)
             .await
         {
             Ok(_s) => self.valid = false,
@@ -476,7 +475,7 @@ async fn health_check(now: Instant, session_alive_trust_duration: Duration, sess
         let request = ping_query_request(s.session.name.clone());
         match s
             .spanner_client
-            .execute_sql(CancellationToken::new(), request, None)
+            .execute_sql(request, None, None)
             .await
         {
             Ok(_) => {
@@ -544,7 +543,7 @@ async fn delete_session(session: &mut SessionHandle) {
     };
     match session
         .spanner_client
-        .delete_session(CancellationToken::new(), request, None)
+        .delete_session(request, None, None)
         .await
     {
         Ok(_) => {}
@@ -565,7 +564,7 @@ async fn batch_create_session(
 
     log::debug!("spawn session creation request : count to create = {}", creation_count);
     let response = spanner_client
-        .batch_create_sessions(CancellationToken::new(), request, None)
+        .batch_create_sessions(request, None, None)
         .await?
         .into_inner();
 

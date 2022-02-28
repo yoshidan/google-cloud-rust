@@ -1,6 +1,6 @@
 use std::time::Duration;
-use tokio_util::sync::CancellationToken;
 use tonic::{Response, Streaming};
+use google_cloud_gax::cancel::CancellationToken;
 
 use google_cloud_gax::conn::Channel;
 use google_cloud_gax::create_request;
@@ -73,14 +73,14 @@ impl Client {
     /// periodically, e.g., "SELECT 1".
     pub async fn create_session(
         &mut self,
-        ctx: CancellationToken,
         req: CreateSessionRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<Session>, Status> {
-        let setting = opt.unwrap_or(default_setting());
+        let setting = retry.unwrap_or(default_setting());
         let database = &req.database;
         return invoke_fn(
-            ctx,
+            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("database={}", database), req.clone());
@@ -100,14 +100,14 @@ impl Client {
     /// See https:///goo.gl/TgSFN2 (at https:///goo.gl/TgSFN2) for best practices on session cache management.
     pub async fn batch_create_sessions(
         &mut self,
-        ctx: CancellationToken,
         req: BatchCreateSessionsRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<tonic::Response<BatchCreateSessionsResponse>, Status> {
-        let setting = opt.unwrap_or(default_setting());
+        let setting = retry.unwrap_or(default_setting());
         let database = &req.database;
         return invoke_fn(
-            ctx,
+            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("database={}", database), req.clone());
@@ -126,14 +126,14 @@ impl Client {
     /// alive.
     pub async fn get_session(
         &mut self,
-        ctx: CancellationToken,
         req: GetSessionRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<Session>, Status> {
-        let setting = opt.unwrap_or(default_setting());
+        let setting = retry.unwrap_or(default_setting());
         let name = &req.name;
         return invoke_fn(
-            ctx,
+            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("name={}", name), req.clone());
@@ -150,14 +150,14 @@ impl Client {
     /// list_sessions lists all sessions in a given database.
     pub async fn list_sessions(
         &mut self,
-        ctx: CancellationToken,
         req: ListSessionsRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<ListSessionsResponse>, Status> {
-        let setting = opt.unwrap_or(default_setting());
+        let setting = retry.unwrap_or(default_setting());
         let database = &req.database;
         return invoke_fn(
-            ctx,
+            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("database={}", database), req.clone());
@@ -176,14 +176,14 @@ impl Client {
     /// this session.
     pub async fn delete_session(
         &mut self,
-        ctx: CancellationToken,
         req: DeleteSessionRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let setting = opt.unwrap_or(default_setting());
+        let setting = retry.unwrap_or(default_setting());
         let name = &req.name;
         return invoke_fn(
-            ctx,
+            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("name={}", name), req.clone());
@@ -210,14 +210,14 @@ impl Client {
     /// ExecuteStreamingSql instead.
     pub async fn execute_sql(
         &mut self,
-        ctx: CancellationToken,
         req: ExecuteSqlRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<ResultSet>, Status> {
-        let setting = opt.unwrap_or(default_setting());
+        let setting = retry.unwrap_or(default_setting());
         let session = &req.session;
         return invoke_fn(
-            ctx,
+            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
@@ -238,14 +238,14 @@ impl Client {
     /// column value can exceed 10 MiB.
     pub async fn execute_streaming_sql(
         &mut self,
-        ctx: CancellationToken,
         req: ExecuteSqlRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
-        let setting = opt.unwrap_or(default_setting());
+        let setting = retry.unwrap_or(default_setting());
         let session = &req.session;
         return invoke_fn(
-            ctx,
+            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
@@ -272,14 +272,14 @@ impl Client {
     /// are not executed.
     pub async fn execute_batch_dml(
         &mut self,
-        ctx: CancellationToken,
         req: ExecuteBatchDmlRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<ExecuteBatchDmlResponse>, Status> {
-        let setting = opt.unwrap_or(default_setting());
+        let setting = retry.unwrap_or(default_setting());
         let session = &req.session;
         return invoke_fn(
-            ctx,
+            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
@@ -319,14 +319,14 @@ impl Client {
     /// StreamingRead instead.
     pub async fn read(
         &mut self,
-        ctx: CancellationToken,
         req: ReadRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<ResultSet>, Status> {
-        let setting = opt.unwrap_or(default_setting());
+        let setting = retry.unwrap_or(default_setting());
         let session = &req.session;
         return invoke_fn(
-            ctx,
+            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
@@ -347,14 +347,14 @@ impl Client {
     /// 10 MiB.
     pub async fn streaming_read(
         &mut self,
-        ctx: CancellationToken,
         req: ReadRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
-        let setting = opt.unwrap_or(default_setting());
+        let setting = retry.unwrap_or(default_setting());
         let session = &req.session;
         return invoke_fn(
-            ctx,
+            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
@@ -374,14 +374,14 @@ impl Client {
     /// side-effect.
     pub async fn begin_transaction(
         &mut self,
-        ctx: CancellationToken,
         req: BeginTransactionRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<Transaction>, Status> {
-        let setting = opt.unwrap_or(default_setting());
+        let setting = retry.unwrap_or(default_setting());
         let session = &req.session;
         return invoke_fn(
-            ctx,
+            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
@@ -411,14 +411,14 @@ impl Client {
     /// state of things as they are now.
     pub async fn commit(
         &mut self,
-        ctx: CancellationToken,
         req: CommitRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<CommitResponse>, Status> {
-        let setting = opt.unwrap_or(default_setting());
+        let setting = retry.unwrap_or(default_setting());
         let session = &req.session;
         return invoke_fn(
-            ctx,
+            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
@@ -442,14 +442,14 @@ impl Client {
     /// found. Rollback never returns ABORTED.
     pub async fn rollback(
         &mut self,
-        ctx: CancellationToken,
         req: RollbackRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let setting = opt.unwrap_or(default_setting());
+        let setting = retry.unwrap_or(default_setting());
         let session = &req.session;
         return invoke_fn(
-            ctx,
+            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
@@ -476,14 +476,14 @@ impl Client {
     /// the whole operation must be restarted from the beginning.
     pub async fn partition_query(
         &mut self,
-        ctx: CancellationToken,
         req: PartitionQueryRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<PartitionResponse>, Status> {
-        let setting = opt.unwrap_or(default_setting());
+        let setting = retry.unwrap_or(default_setting());
         let session = &req.session;
         return invoke_fn(
-            ctx,
+            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
@@ -512,14 +512,14 @@ impl Client {
     /// the whole operation must be restarted from the beginning.
     pub async fn partition_read(
         &mut self,
-        ctx: CancellationToken,
         req: PartitionReadRequest,
-        opt: Option<RetrySetting>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Response<PartitionResponse>, Status> {
-        let setting = opt.unwrap_or(default_setting());
+        let setting = retry.unwrap_or(default_setting());
         let session = &req.session;
         return invoke_fn(
-            ctx,
+            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
