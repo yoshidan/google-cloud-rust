@@ -35,7 +35,7 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
     let client = Client::new(DATABASE).await.context("error")?;
     let result: Result<(Option<Timestamp>, i64), RunInTxError> = client
         .read_write_transaction(
-            |tx, cancel| {
+            |tx, _cancel| {
                 let user_id= user_id.to_string();
                 Box::pin(async move {
                     let ms = vec![create_user_mutation("user_client_1x", &now), create_user_mutation("user_client_2x", &now)];
