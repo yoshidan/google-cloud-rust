@@ -8,7 +8,7 @@ use prost_types::{value, ListValue, Struct, Value};
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::{StructType, Type, TypeCode};
 
-use crate::value::CommitTimestamp;
+use crate::value::{CommitTimestamp, SpannerNumeric};
 use std::fmt::Display;
 
 /// A Statement is a SQL query with named parameters.
@@ -193,9 +193,9 @@ impl ToKind for Vec<u8> {
     }
 }
 
-impl ToKind for rust_decimal::Decimal {
+impl ToKind for SpannerNumeric {
     fn to_kind(&self) -> Kind {
-        self.to_string().to_kind()
+        self.as_str().to_string().to_kind()
     }
     fn get_type() -> Type {
         single_type(TypeCode::Numeric)

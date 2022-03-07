@@ -13,8 +13,7 @@ use google_cloud_spanner::session::{ManagedSession, SessionConfig, SessionHandle
 use google_cloud_spanner::statement::Statement;
 use google_cloud_spanner::transaction::CallOptions;
 use google_cloud_spanner::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
-use google_cloud_spanner::value::{CommitTimestamp, TimestampBound};
-use rust_decimal::Decimal;
+use google_cloud_spanner::value::{CommitTimestamp, SpannerNumeric, TimestampBound};
 use std::str::FromStr;
 
 pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
@@ -131,8 +130,8 @@ pub fn create_user_mutation(user_id: &str, now: &DateTime<Utc>) -> Mutation {
             &None::<bool>,
             &vec![1_u8],
             &None::<Vec<u8>>,
-            &Decimal::from_str("100.24").unwrap(),
-            &Some(Decimal::from_str("1000.42342").unwrap()),
+            &SpannerNumeric::new("100.24"),
+            &Some(SpannerNumeric::new("1000.42342")),
             now,
             &Some(*now),
             &now.naive_utc().date(),
@@ -180,10 +179,10 @@ pub fn assert_user_row(row: &Row, source_user_id: &str, now: &DateTime<Utc>, com
     assert_eq!(not_null_byte_array.pop().unwrap(), 1_u8);
     let nullable_byte_array = row.column_by_name::<Option<Vec<u8>>>("NullableByteArray").unwrap();
     assert_eq!(nullable_byte_array, None);
-    let not_null_decimal = row.column_by_name::<Decimal>("NotNullNumeric").unwrap();
-    assert_eq!(not_null_decimal.to_string(), "100.24");
-    let nullable_decimal = row.column_by_name::<Option<Decimal>>("NullableNumeric").unwrap();
-    assert_eq!(nullable_decimal.unwrap().to_string(), "1000.42342");
+    let not_null_decimal = row.column_by_name::<SpannerNumeric>("NotNullNumeric").unwrap();
+    assert_eq!(not_null_decimal.as_str(), "100.24");
+    let nullable_decimal = row.column_by_name::<Option<SpannerNumeric>>("NullableNumeric").unwrap();
+    assert_eq!(nullable_decimal.unwrap().as_str(), "1000.42342");
     let not_null_ts = row.column_by_name::<DateTime<Utc>>("NotNullTimestamp").unwrap();
     assert_eq!(not_null_ts.to_string(), now.to_string());
     let nullable_ts = row
