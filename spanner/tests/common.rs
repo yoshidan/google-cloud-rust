@@ -14,7 +14,7 @@ use google_cloud_spanner::statement::Statement;
 use google_cloud_spanner::transaction::CallOptions;
 use google_cloud_spanner::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use google_cloud_spanner::value::{CommitTimestamp, SpannerNumeric, TimestampBound};
-use std::str::FromStr;
+
 
 pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
