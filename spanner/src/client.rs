@@ -11,7 +11,7 @@ use crate::value::{Timestamp, TimestampBound};
 
 use crate::retry::TransactionRetrySetting;
 use google_cloud_gax::cancel::CancellationToken;
-use google_cloud_gax::status::{Code, Status};
+use google_cloud_gax::grpc::{Code, Status};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;

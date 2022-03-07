@@ -11,7 +11,7 @@ use google_cloud_googleapis::spanner::v1::{BatchCreateSessionsRequest, DeleteSes
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::spanner_client::{ping_query_request, Client};
 
-use google_cloud_gax::status::{Code, Status};
+use google_cloud_gax::grpc::{Code, Status};
 use tokio::sync::broadcast;
 use tokio::sync::oneshot;
 use tokio::time::{sleep, timeout, Duration};

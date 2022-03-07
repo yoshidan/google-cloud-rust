@@ -2,8 +2,8 @@ use std::iter::Take;
 use std::marker::PhantomData;
 
 use crate::session::SessionError;
-use google_cloud_gax::retry::{CodeCondition, ExponentialBackoff, Condition, Retry, RetrySetting, TryAs};
-use google_cloud_gax::status::{Code, Status};
+use google_cloud_gax::grpc::{Code, Status};
+use google_cloud_gax::retry::{CodeCondition, Condition, ExponentialBackoff, Retry, RetrySetting, TryAs};
 
 pub struct TransactionCondition<E>
 where
@@ -76,8 +76,8 @@ impl Default for TransactionRetrySetting {
 mod tests {
     use crate::client::{RunInTxError, TxError};
     use crate::retry::TransactionRetrySetting;
+    use google_cloud_gax::grpc::Status;
     use google_cloud_gax::retry::{Condition, Retry};
-    use google_cloud_gax::status::Status;
 
     #[test]
     fn test_transaction_Condition() {

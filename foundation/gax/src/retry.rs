@@ -1,8 +1,8 @@
 pub use tokio_retry::strategy::ExponentialBackoff;
 pub use tokio_retry::Condition;
 
-use crate::status::{Code, Status};
 use crate::cancel::CancellationToken;
+use crate::grpc::{Code, Status};
 use std::future::Future;
 use std::iter::Take;
 
@@ -38,8 +38,8 @@ impl CodeCondition {
 }
 
 impl<E> Condition<E> for CodeCondition
-    where
-        E: TryAs<Status>,
+where
+    E: TryAs<Status>,
 {
     fn should_retry(&mut self, error: &E) -> bool {
         let status = match error.try_as() {
@@ -91,21 +91,21 @@ impl Default for RetrySetting {
 }
 
 pub async fn invoke<A, R, RT, C, E>(cancel: Option<CancellationToken>, retry: Option<RT>, action: A) -> Result<R, E>
-    where
-        E: TryAs<Status> + From<Status>,
-        A: Action<Item = R, Error = E>,
-        C: Condition<E>,
-        RT: Retry<E, C> + Default,
+where
+    E: TryAs<Status> + From<Status>,
+    A: Action<Item = R, Error = E>,
+    C: Condition<E>,
+    RT: Retry<E, C> + Default,
 {
     let retry = retry.unwrap_or_default();
     match cancel {
         Some(cancel) => {
             select! {
-                _ = cancel.cancelled() => Err(Status::new(tonic::Status::cancelled("client cancel")).into()),
+                _ = cancel.cancelled() => Err(Status::cancelled("client cancel").into()),
                 v = RetryIf::spawn(retry.strategy(), action, retry.condition()) => v
             }
-        },
-        None => RetryIf::spawn(retry.strategy(), action, retry.condition()).await
+        }
+        None => RetryIf::spawn(retry.strategy(), action, retry.condition()).await,
     }
 }
 /// Repeats retries when the specified error is detected.
@@ -116,11 +116,11 @@ pub async fn invoke_fn<R, V, A, RT, C, E>(
     mut f: impl FnMut(V) -> A,
     mut v: V,
 ) -> Result<R, E>
-    where
-        E: TryAs<Status> + From<Status>,
-        A: Future<Output = Result<R, (E, V)>>,
-        C: Condition<E>,
-        RT: Retry<E, C> + Default,
+where
+    E: TryAs<Status> + From<Status>,
+    A: Future<Output = Result<R, (E, V)>>,
+    C: Condition<E>,
+    RT: Retry<E, C> + Default,
 {
     let fn_loop = async {
         let retry = retry.unwrap_or_default();
@@ -148,10 +148,10 @@ pub async fn invoke_fn<R, V, A, RT, C, E>(
     match cancel {
         Some(cancel) => {
             select! {
-                _ = cancel.cancelled() => Err(Status::new(tonic::Status::cancelled("client cancel")).into()),
+                _ = cancel.cancelled() => Err(Status::cancelled("client cancel").into()),
                 v = fn_loop => v
             }
-        },
-        None => fn_loop.await
+        }
+        None => fn_loop.await,
     }
 }

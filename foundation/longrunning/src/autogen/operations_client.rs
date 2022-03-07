@@ -1,8 +1,8 @@
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::{Channel, Error};
 use google_cloud_gax::create_request;
+use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::{invoke, RetrySetting};
-use google_cloud_gax::status::{Code, Status};
 use google_cloud_googleapis::longrunning::operations_client::OperationsClient as InternalOperationsClient;
 use google_cloud_googleapis::longrunning::{
     CancelOperationRequest, DeleteOperationRequest, GetOperationRequest, Operation, WaitOperationRequest,

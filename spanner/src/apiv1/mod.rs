@@ -6,7 +6,7 @@ mod tests {
 
     use crate::apiv1::conn_pool::ConnectionManager;
     use crate::apiv1::spanner_client::Client;
-    use google_cloud_gax::status::Code;
+    use google_cloud_gax::grpc::Code;
     use google_cloud_googleapis::spanner::v1::mutation::{Operation, Write};
     use google_cloud_googleapis::spanner::v1::{
         commit_request, transaction_options, transaction_selector, BatchCreateSessionsRequest, BeginTransactionRequest,

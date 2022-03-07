@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::{DateTime, NaiveDate, Utc};
-use google_cloud_gax::status::Status;
+use google_cloud_gax::grpc::Status;
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::SingleUseTransaction;
 use google_cloud_googleapis::spanner::v1::transaction_options::{Mode, ReadWrite};
 use google_cloud_googleapis::spanner::v1::{CommitRequest, CommitResponse, Mutation, TransactionOptions};

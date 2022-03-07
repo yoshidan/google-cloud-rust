@@ -3,9 +3,8 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use prost_types::{value::Kind, Value};
-use tonic::{Response, Streaming};
 
-use google_cloud_gax::status::Status;
+use google_cloud_gax::grpc::{Code, Response, Status, Streaming};
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::{ExecuteSqlRequest, PartialResultSet, ReadRequest};
 
@@ -130,10 +129,10 @@ impl<'a> RowIterator<'a> {
                     })
                 }
                 _ => {
-                    return Err(Status::new(tonic::Status::new(
-                        tonic::Code::Internal,
+                    return Err(Status::new(
+                        Code::Internal,
                         "chunks kind mismatch: current_first must be StringKind",
-                    )))
+                    ))
                 }
             },
             Kind::ListValue(mut last) => match current_first.kind.unwrap() {
@@ -148,17 +147,17 @@ impl<'a> RowIterator<'a> {
                     })
                 }
                 _ => {
-                    return Err(Status::new(tonic::Status::new(
-                        tonic::Code::Internal,
+                    return Err(Status::new(
+                        Code::Internal,
                         "chunks kind mismatch: current_first must be ListValue",
-                    )))
+                    ))
                 }
             },
             _ => {
-                return Err(Status::new(tonic::Status::new(
-                    tonic::Code::Internal,
+                return Err(Status::new(
+                    Code::Internal,
                     "previous_last kind mismatch: only StringValue and ListValue can be chunked",
-                )))
+                ))
             }
         };
     }
@@ -192,12 +191,7 @@ impl<'a> RowIterator<'a> {
             let metadata = result_set.metadata.unwrap();
             self.fields = match metadata.row_type {
                 Some(row_type) => Arc::new(row_type.fields),
-                None => {
-                    return Err(Status::new(tonic::Status::new(
-                        tonic::Code::Internal,
-                        "no field metadata found {}",
-                    )))
-                }
+                None => return Err(Status::new(Code::Internal, "no field metadata found {}")),
             };
             // create index for Row::column_by_name("column_name")
             let mut index = HashMap::new();

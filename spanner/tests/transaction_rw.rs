@@ -10,7 +10,7 @@ use serial_test::serial;
 
 mod common;
 use common::*;
-use google_cloud_gax::status::Status;
+use google_cloud_gax::grpc::Status;
 use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
 use google_cloud_spanner::transaction_rw::ReadWriteTransaction;
 
