@@ -1,7 +1,7 @@
 use google_cloud_gax::conn::Channel;
 use google_cloud_gax::conn::{ConnectionManager as GRPCConnectionManager, Error};
 
-pub const AUDIENCE: &str = "https://spanner.googleapis.com/";
+pub const AUDIENCE: &str = "https://pubsub.googleapis.com/";
 pub const PUBSUB: &str = "pubsub.googleapis.com";
 const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
