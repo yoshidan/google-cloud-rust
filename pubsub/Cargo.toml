@@ -12,14 +12,10 @@ documentation = "https://docs.rs/google-cloud-pubsub/0.1.0/google-cloud-pubsub/"
 
 [dependencies]
 log = "0.4"
-prost = "0.9"
 prost-types = "0.9"
-tokio = { version = "1.14", features = ["full"] }
-thiserror = "1.0"
+tokio = { version = "1.17", features = ["full"] }
 async-trait = "0.1"
 parking_lot = "0.11"
-base64 = "0.13"
-anyhow = "1.0"
 async-channel = "1.6"
 async-stream = "0.3"
 
