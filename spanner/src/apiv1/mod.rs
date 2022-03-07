@@ -314,7 +314,7 @@ mod tests {
                 let status = res.into_inner().status.unwrap();
                 assert_eq!(
                     Code::Ok,
-                    Code::from(tonic::Code::from(status.code)),
+                    Code::from(status.code),
                     "gRPC success but error found : {:?}",
                     status
                 );
