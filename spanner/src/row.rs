@@ -10,7 +10,7 @@ use base64::DecodeError;
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::StructType;
 use std::num::ParseIntError;
-use std::str::FromStr;
+
 
 #[derive(Clone)]
 pub struct Row {

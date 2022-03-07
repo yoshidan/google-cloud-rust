@@ -80,14 +80,14 @@ mod tests {
     use google_cloud_gax::retry::{Condition, Retry};
 
     #[test]
-    fn test_transaction_Condition() {
+    fn test_transaction_condition() {
         let status = tonic::Status::new(tonic::Code::Internal, "stream terminated by RST_STREAM");
         let default = TransactionRetrySetting::default();
-        assert!(!default.Condition().should_retry(&TxError::GRPC(Status::from(status))));
+        assert!(!default.condition().should_retry(&TxError::GRPC(Status::from(status))));
 
         let status = tonic::Status::new(tonic::Code::Aborted, "default");
         assert!(default
-            .Condition()
+            .condition()
             .should_retry(&RunInTxError::GRPC(Status::from(status))));
     }
 }
