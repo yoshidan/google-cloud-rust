@@ -4,15 +4,15 @@ use crate::apiv1::conn_pool::ConnectionManager;
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Channel;
 use google_cloud_gax::create_request;
+use google_cloud_gax::grpc::Response;
+use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::{invoke, RetrySetting};
-use google_cloud_gax::status::{Code, Status};
 use google_cloud_googleapis::pubsub::v1::publisher_client::PublisherClient as InternalPublisherClient;
 use google_cloud_googleapis::pubsub::v1::{
     DeleteTopicRequest, DetachSubscriptionRequest, DetachSubscriptionResponse, GetTopicRequest,
     ListTopicSnapshotsRequest, ListTopicSubscriptionsRequest, ListTopicsRequest, PublishRequest, PublishResponse,
     Topic, UpdateTopicRequest,
 };
-use tonic::Response;
 
 #[derive(Clone)]
 pub(crate) struct PublisherClient {
@@ -40,7 +40,7 @@ impl PublisherClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={}", name), req.clone());
-            client.create_topic(request).await.map_err(|e| e.into())
+            client.create_topic(request).await
         };
         invoke(cancel, retry, action).await
     }

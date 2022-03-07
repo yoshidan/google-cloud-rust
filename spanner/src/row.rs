@@ -5,12 +5,11 @@ use chrono::{DateTime, NaiveDate, ParseError, Utc};
 use prost_types::value::Kind;
 use prost_types::{value, Value};
 
-use crate::value::CommitTimestamp;
+use crate::value::{CommitTimestamp, SpannerNumeric};
 use base64::DecodeError;
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::StructType;
 use std::num::ParseIntError;
-use std::str::FromStr;
 
 #[derive(Clone)]
 pub struct Row {
@@ -31,8 +30,6 @@ pub enum Error {
     DateParseError(String, #[source] ParseError),
     #[error("Failed to parse as ByteArray {0}")]
     ByteParseError(String, #[source] DecodeError),
-    #[error("Failed to parse as Decimal {0}")]
-    DecimalParseError(String, #[source] rust_decimal::Error),
     #[error("FAiled to parse as Struct name={0}, {1}")]
     StructParseError(String, &'static str),
     #[error("No column found: name={0}")]
@@ -202,12 +199,10 @@ impl TryFromValue for Vec<u8> {
     }
 }
 
-impl TryFromValue for rust_decimal::Decimal {
+impl TryFromValue for SpannerNumeric {
     fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
-            Kind::StringValue(s) => {
-                rust_decimal::Decimal::from_str(&s).map_err(|e| Error::DecimalParseError(field.name.to_string(), e))
-            }
+            Kind::StringValue(s) => Ok(SpannerNumeric::new(s.to_string())),
             v => kind_to_error(v, field),
         }
     }

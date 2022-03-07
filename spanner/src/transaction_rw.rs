@@ -9,8 +9,8 @@ use crate::session::ManagedSession;
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, Transaction};
 use crate::value::Timestamp;
+use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::{RetrySetting, TryAs};
-use google_cloud_gax::status::{Code, Status};
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::TransactionId;
 use google_cloud_googleapis::spanner::v1::{
     commit_request, execute_batch_dml_request, result_set_stats, transaction_options, transaction_selector,

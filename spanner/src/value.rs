@@ -6,6 +6,23 @@ use chrono::{DateTime, TimeZone, Utc};
 use google_cloud_googleapis::spanner::v1::transaction_options::read_only::TimestampBound as InternalTimestampBound;
 use google_cloud_googleapis::spanner::v1::transaction_options::ReadOnly;
 
+#[derive(Clone)]
+pub struct SpannerNumeric {
+    /// https://cloud.google.com/spanner/docs/storing-numeric-data#precision_of_numeric_types
+    /// -99999999999999999999999999999.999999999～99999999999999999999999999999.999999999
+    pub inner: String,
+}
+
+impl SpannerNumeric {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self { inner: value.into() }
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.inner.as_str()
+    }
+}
+
 #[derive(Clone, PartialEq)]
 pub struct Timestamp {
     /// Represents seconds of UTC time since Unix epoch

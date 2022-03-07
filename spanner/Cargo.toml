@@ -12,14 +12,12 @@ documentation = "https://docs.rs/google-cloud-spanner/0.4.0/google-cloud-spanner
 
 [dependencies]
 log = "0.4"
-tonic = { version = "0.6", features = ["tls", "prost"] }
 prost = "0.9"
 prost-types = "0.9"
 tokio = { version = "1.14", features = ["full"] }
 chrono = "0.4"
 thiserror = "1.0"
 async-trait = "0.1"
-rust_decimal = "1.18"
 parking_lot = "0.11"
 base64 = "0.13"
 anyhow = "1.0"

@@ -12,12 +12,11 @@ description = "Google Cloud Platform gRPC retry library."
 [dependencies]
 log = "0.4"
 rand = "0.8"
-tokio = { version = "1.7" }
+tokio = { version = "1.17" }
 tonic = { version = "0.6", features = ["tls", "prost"] }
 thiserror = "1.0"
 tower = { version = "0.4", features = ["filter"] }
 http = "0.2"
-prost = "0.9"
 prost-types = "0.9"
 google-cloud-auth= { version = "0.1.2", path = "../auth" }
 google-cloud-googleapis = { version = "0.3.0", path = "../../googleapis" }

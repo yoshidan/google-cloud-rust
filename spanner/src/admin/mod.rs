@@ -1,7 +1,7 @@
 use crate::{AUDIENCE, SPANNER};
 use google_cloud_gax::conn::{Channel, ConnectionManager, Error};
+use google_cloud_gax::grpc::Code;
 use google_cloud_gax::retry::RetrySetting;
-use google_cloud_gax::status::Code;
 use google_cloud_longrunning::autogen::operations_client::OperationsClient;
 use std::time::Duration;
 

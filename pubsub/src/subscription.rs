@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::future::Future;
 
 use google_cloud_gax::cancel::CancellationToken;
+use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::RetrySetting;
-use google_cloud_gax::status::{Code, Status};
 use prost_types::FieldMask;
 use std::time::Duration;
 use tokio::select;
@@ -382,7 +382,7 @@ mod tests {
     use crate::apiv1::subscriber_client::SubscriberClient;
     use crate::subscription::{Subscription, SubscriptionConfig, SubscriptionConfigToUpdate};
     use google_cloud_gax::cancel::CancellationToken;
-    use google_cloud_gax::status::Code;
+    use google_cloud_gax::grpc::Code;
     use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
     use serial_test::serial;
     use std::sync::atomic::AtomicU32;

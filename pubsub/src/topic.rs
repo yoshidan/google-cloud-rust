@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use google_cloud_gax::cancel::CancellationToken;
 use std::time::Duration;
 
+use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::RetrySetting;
-use google_cloud_gax::status::{Code, Status};
 
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
@@ -146,7 +146,7 @@ mod tests {
     use crate::publisher::{Publisher, PublisherConfig};
     use crate::topic::Topic;
     use google_cloud_gax::cancel::CancellationToken;
-    use google_cloud_gax::status::Status;
+    use google_cloud_gax::grpc::Status;
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
     use serial_test::serial;
     use std::time::Duration;

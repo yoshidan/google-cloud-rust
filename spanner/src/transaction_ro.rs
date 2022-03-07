@@ -13,7 +13,7 @@ use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, ReadOptions, Transaction};
 use crate::value::TimestampBound;
 use chrono::{DateTime, TimeZone, Utc};
-use google_cloud_gax::status::Status;
+use google_cloud_gax::grpc::Status;
 
 /// ReadOnlyTransaction provides a snapshot transaction with guaranteed
 /// consistency across reads, but does not allow writes.  Read-only transactions

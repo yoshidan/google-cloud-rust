@@ -1,7 +1,7 @@
 use crate::autogen::operations_client::{default_retry_setting, OperationsClient};
 use google_cloud_gax::cancel::CancellationToken;
+use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::{invoke_fn, RetrySetting};
-use google_cloud_gax::status::{Code, Status};
 use google_cloud_googleapis::longrunning::{
     operation, CancelOperationRequest, DeleteOperationRequest, GetOperationRequest, Operation as InternalOperation,
 };

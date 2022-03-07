@@ -1,12 +1,9 @@
-use tonic::IntoRequest;
-use tonic::Request;
-
 pub mod cancel;
 pub mod conn;
+pub mod grpc;
 pub mod retry;
-pub mod status;
 
-pub fn create_request<T>(param_string: String, into_request: impl IntoRequest<T>) -> Request<T> {
+pub fn create_request<T>(param_string: String, into_request: impl grpc::IntoRequest<T>) -> grpc::Request<T> {
     let mut request = into_request.into_request();
     let target = request.metadata_mut();
     if !param_string.is_empty() {
