@@ -312,12 +312,7 @@ mod tests {
         match result {
             Ok(res) => {
                 let status = res.into_inner().status.unwrap();
-                assert_eq!(
-                    Code::Ok,
-                    Code::from(status.code),
-                    "gRPC success but error found : {:?}",
-                    status
-                );
+                assert_eq!(Code::Ok, Code::from(status.code), "gRPC success but error found : {:?}", status);
             }
             Err(err) => panic!("err: {:?}", err),
         };

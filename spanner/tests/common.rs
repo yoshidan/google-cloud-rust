@@ -15,7 +15,6 @@ use google_cloud_spanner::transaction::CallOptions;
 use google_cloud_spanner::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use google_cloud_spanner::value::{CommitTimestamp, SpannerNumeric, TimestampBound};
 
-
 pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
 pub struct UserCharacter {

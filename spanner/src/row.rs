@@ -11,7 +11,6 @@ use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::StructType;
 use std::num::ParseIntError;
 
-
 #[derive(Clone)]
 pub struct Row {
     index: Arc<HashMap<String, usize>>,
