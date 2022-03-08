@@ -117,8 +117,6 @@ impl Topic {
     }
 
     /// Subscriptions returns an iterator which returns the subscriptions for this topic.
-    ///
-    /// Some of the returned subscriptions may belong to a project other than t.
     pub async fn subscriptions(
         &self,
         cancel: Option<CancellationToken>,

@@ -16,7 +16,6 @@ use google_cloud_googleapis::pubsub::v1::{
 
 use crate::subscriber::{ReceivedMessage, Subscriber, SubscriberConfig};
 
-/// SubscriptionConfigToUpdate describes how to update a subscription.
 pub struct SubscriptionConfig {
     pub push_config: Option<PushConfig>,
     pub ack_deadline_seconds: i32,
@@ -132,7 +131,7 @@ impl Subscription {
             .map_or("".to_string(), |i| self.fqsn[(i + 1)..].to_string())
     }
 
-    /// string returns the globally unique printable name of the subscription.
+    /// fully_qualified_name returns the globally unique printable name of the subscription.
     pub fn fully_qualified_name(&self) -> &str {
         self.fqsn.as_str()
     }

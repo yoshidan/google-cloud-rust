@@ -115,14 +115,10 @@ impl Publisher {
     ///
     /// publish returns a non-nil Awaiter which will be ready when the
     /// message has been sent (or has failed to be sent) to the server.
-    ///
-    /// publish creates tasks for batching and sending messages. These tasks
-    /// need to be stopped by calling t.stop(). Once stopped, future calls to Publish
-    /// will immediately return a Awaiter with an error.
     pub async fn publish(&self, message: PubsubMessage) -> Awaiter {
         if self.sender.is_closed() {
             let (mut tx, rx) = tokio::sync::oneshot::channel();
-            tx.closed().await;
+            drop(tx);
             return Awaiter::new(rx);
         }
 
