@@ -122,7 +122,7 @@ impl Publisher {
     pub async fn publish(&self, message: PubsubMessage) -> Awaiter {
         if self.sender.is_closed() {
             let (mut tx, rx) = tokio::sync::oneshot::channel();
-            tx.closed();
+            tx.closed().await;
             return Awaiter::new(rx);
         }
 
