@@ -16,16 +16,16 @@ use google_cloud_googleapis::pubsub::v1::{
 
 use crate::apiv1::conn_pool::ConnectionManager;
 
-pub(crate) fn create_default_streaming_pull_request(subscription: String) -> StreamingPullRequest {
+pub(crate) fn create_empty_streaming_pull_request() -> StreamingPullRequest {
     return StreamingPullRequest {
-        subscription,
+        subscription: "".to_string(),
         ack_ids: vec![],
         modify_deadline_seconds: vec![],
         modify_deadline_ack_ids: vec![],
-        stream_ack_deadline_seconds: 10,
+        stream_ack_deadline_seconds: 0,
         client_id: "".to_string(),
-        max_outstanding_messages: 1000,
-        max_outstanding_bytes: 1000 * 1000 * 1000,
+        max_outstanding_messages: 0,
+        max_outstanding_bytes: 0,
     };
 }
 
@@ -236,9 +236,10 @@ impl SubscriberClient {
             let request = Box::pin(async_stream::stream! {
                 yield base_req.clone();
 
-                // ping message
+                // ping message.
+                // must be empty request
                 while let Ok(_r) = rx.recv().await {
-                   yield create_default_streaming_pull_request("".to_string())
+                   yield create_empty_streaming_pull_request();
                 }
             });
             let mut v = request.into_streaming_request();

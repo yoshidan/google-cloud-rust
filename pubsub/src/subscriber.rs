@@ -8,7 +8,7 @@ use tokio::select;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
 
-use crate::apiv1::subscriber_client::{create_default_streaming_pull_request, SubscriberClient};
+use crate::apiv1::subscriber_client::{create_empty_streaming_pull_request, SubscriberClient};
 
 pub struct ReceivedMessage {
     pub message: PubsubMessage,
@@ -56,6 +56,9 @@ pub struct SubscriberConfig {
     /// ping interval for Bi Directional Streaming
     pub ping_interval: Duration,
     pub retry_setting: Option<RetrySetting>,
+    pub stream_ack_deadline_seconds: i32,
+    pub max_outstanding_messages: i64,
+    pub max_outstanding_bytes: i64,
 }
 
 impl Default for SubscriberConfig {
@@ -63,6 +66,9 @@ impl Default for SubscriberConfig {
         Self {
             ping_interval: std::time::Duration::from_secs(10),
             retry_setting: None,
+            stream_ack_deadline_seconds: 60,
+            max_outstanding_messages: 1000,
+            max_outstanding_bytes: 1000 * 1000 * 1000,
         }
     }
 }
@@ -106,7 +112,11 @@ impl Subscriber {
         let cancel_receiver = ctx.clone();
         let inner = tokio::spawn(async move {
             log::trace!("start subscriber: {}", subscription);
-            let request = create_default_streaming_pull_request(subscription.to_string());
+            let mut request = create_empty_streaming_pull_request();
+            request.subscription = subscription.to_string();
+            request.stream_ack_deadline_seconds = config.stream_ack_deadline_seconds;
+            request.max_outstanding_messages = config.max_outstanding_messages;
+            request.max_outstanding_bytes = config.max_outstanding_bytes;
             let response = client
                 .streaming_pull(request, Some(cancel_receiver.clone()), ping_receiver, config.retry_setting)
                 .await;
@@ -131,7 +141,10 @@ impl Subscriber {
                     }
                     maybe = stream.message() => {
                         let message = match maybe{
-                           Err(_e) => break,
+                           Err(e) => {
+                                log::error!("message receive error: {}",e);
+                                break;
+                            },
                            Ok(message) => message
                         };
                         let message = match message {
