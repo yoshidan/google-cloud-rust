@@ -1,9 +1,9 @@
 use std::time::Duration;
 
 use google_cloud_gax::cancel::CancellationToken;
-use google_cloud_gax::grpc::{Code, Status};
+use google_cloud_gax::grpc::{Code, Status, Streaming};
 use google_cloud_gax::retry::RetrySetting;
-use google_cloud_googleapis::pubsub::v1::{AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage};
+use google_cloud_googleapis::pubsub::v1::{AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage, StreamingPullRequest, StreamingPullResponse};
 use tokio::select;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
@@ -112,50 +112,37 @@ impl Subscriber {
         let cancel_receiver = ctx.clone();
         let inner = tokio::spawn(async move {
             log::trace!("start subscriber: {}", subscription);
-            let mut request = create_empty_streaming_pull_request();
-            request.subscription = subscription.to_string();
-            request.stream_ack_deadline_seconds = config.stream_ack_deadline_seconds;
-            request.max_outstanding_messages = config.max_outstanding_messages;
-            request.max_outstanding_bytes = config.max_outstanding_bytes;
-            let response = client
-                .streaming_pull(request, Some(cancel_receiver.clone()), ping_receiver, config.retry_setting)
-                .await;
-
-            let mut stream = match response {
-                Ok(r) => r.into_inner(),
-                Err(e) => {
-                    if e.code() == Code::Cancelled {
-                        log::trace!("stop subscriber : {}", subscription);
-                    } else {
-                        log::error!("subscriber error {:?} : {}", e, subscription);
-                    }
-                    return;
-                }
-            };
-            log::trace!("start streaming: {}", subscription);
             loop {
-                select! {
-                    _ = cancel_receiver.cancelled() => {
-                        queue.close();
+                let mut request = create_empty_streaming_pull_request();
+                request.subscription = subscription.to_string();
+                request.stream_ack_deadline_seconds = config.stream_ack_deadline_seconds;
+                request.max_outstanding_messages = config.max_outstanding_messages;
+                request.max_outstanding_bytes = config.max_outstanding_bytes;
+
+                let response = client
+                    .streaming_pull(request, Some(cancel_receiver.clone()), ping_receiver.clone(), config.retry_setting.clone())
+                    .await;
+
+                let mut stream = match response {
+                    Ok(r) => r.into_inner(),
+                    Err(e) => {
+                        if e.code() == Code::Cancelled {
+                            log::trace!("stop subscriber : {}", subscription);
+                        } else {
+                            log::error!("subscriber error {:?} : {}", e, subscription);
+                        }
                         break;
                     }
-                    maybe = stream.message() => {
-                        let message = match maybe{
-                           Err(e) => {
-                                log::error!("message receive error: {}",e);
-                                break;
-                            },
-                           Ok(message) => message
-                        };
-                        let message = match message {
-                            Some(m) => m,
-                            None => break
-                        };
-                        for m in message.received_messages {
-                            if let Some(mes) = m.message {
-                                log::debug!("message received: {}", mes.message_id);
-                                queue.send(ReceivedMessage::new(subscription.to_string(), client.clone(), mes, m.ack_id)).await;
-                            }
+                };
+                match Self::recv(client.clone(), stream, subscription.as_str(), cancel_receiver.clone(), queue.clone()).await {
+                    Ok(_) => break,
+                    Err(e)  => {
+                        if e.code() == Code::Unavailable || e.code() == Code::Unknown || e.code() == Code::Internal {
+                            log::trace!("reconnect - '{:?}' : {} ", e, subscription);
+                            continue;
+                        } else {
+                            log::error!("streaming error {:?} : {}", e, subscription);
+                            break;
                         }
                     }
                 }
@@ -167,6 +154,34 @@ impl Subscriber {
             pinger: Some(pinger),
             inner: Some(inner),
         };
+    }
+
+    async fn recv(client: SubscriberClient, mut stream: Streaming<StreamingPullResponse>, subscription: &str, cancel: CancellationToken, queue: async_channel::Sender<ReceivedMessage>)  -> Result<(),Status>{
+        log::trace!("start streaming: {}", subscription);
+        loop {
+            select! {
+                _ = cancel.cancelled() => {
+                    queue.close();
+                    return Ok(());
+                }
+                maybe = stream.message() => {
+                    let message = match maybe{
+                       Err(e) => return Err(e),
+                       Ok(message) => message
+                    };
+                    let message = match message {
+                        Some(m) => m,
+                        None => return Ok(())
+                    };
+                    for m in message.received_messages {
+                        if let Some(mes) = m.message {
+                            log::debug!("message received: {}", mes.message_id);
+                            queue.send(ReceivedMessage::new(subscription.to_string(), client.clone(), mes, m.ack_id)).await;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     pub async fn done(&mut self) {

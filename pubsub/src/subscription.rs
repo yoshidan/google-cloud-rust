@@ -391,6 +391,9 @@ mod tests {
     use std::time::Duration;
     use uuid::Uuid;
 
+    const PROJECT_NAME: &str = "local-project";
+    const EMULATOR: Option<&str> = Some("localhost:8681");
+
     #[ctor::ctor]
     fn init() {
         std::env::set_var("RUST_LOG", "google_cloud_pubsub=trace".to_string());
@@ -398,17 +401,17 @@ mod tests {
     }
 
     async fn create_subscription() -> Result<Subscription, anyhow::Error> {
-        let cm = ConnectionManager::new(4, Some("localhost:8681".to_string())).await?;
+        let cm = ConnectionManager::new(4, EMULATOR.map(|v|v.to_string())).await?;
         let client = SubscriberClient::new(cm);
 
         let uuid = Uuid::new_v4().to_hyphenated().to_string();
-        let subscription_name = format!("projects/loca-lproject/subscriptions/s{}", &uuid);
-        let topic_name = "projects/local-project/topics/test-topic1";
+        let subscription_name = format!("projects/{}/subscriptions/s{}", PROJECT_NAME, &uuid);
+        let topic_name = format!("projects/{}/topics/test-topic1", PROJECT_NAME);
         let cancel = CancellationToken::new();
         let subscription = Subscription::new(subscription_name, client);
         if !subscription.exists(Some(cancel.clone()), None).await? {
             subscription
-                .create(topic_name, SubscriptionConfig::default(), Some(cancel), None)
+                .create(topic_name.as_str(), SubscriptionConfig::default(), Some(cancel), None)
                 .await?;
         }
         return Ok(subscription);
@@ -416,14 +419,14 @@ mod tests {
 
     async fn publish() {
         let pubc = PublisherClient::new(
-            ConnectionManager::new(4, Some("localhost:8681".to_string()))
+            ConnectionManager::new(4, EMULATOR.map(|v|v.to_string()))
                 .await
                 .unwrap(),
         );
         let mut msg = PubsubMessage::default();
         msg.data = "test_message".into();
         let req = PublishRequest {
-            topic: "projects/local-project/topics/test-topic1".to_string(),
+            topic: format!("projects/{}/topics/test-topic1", PROJECT_NAME),
             messages: vec![msg],
         };
         pubc.publish(req, Some(CancellationToken::new()), None).await;
@@ -434,7 +437,7 @@ mod tests {
     async fn test_subscription() -> Result<(), anyhow::Error> {
         let subscription = create_subscription().await.unwrap();
 
-        let topic_name = "projects/local-project/topics/test-topic1";
+        let topic_name =format!("projects/{}/topics/test-topic1", PROJECT_NAME);
         let cancel = CancellationToken::new();
         let config = subscription.config(Some(cancel.clone()), None).await?;
         assert_eq!(config.0, topic_name);
@@ -509,8 +512,6 @@ mod tests {
     #[serial]
     async fn test_multi_subscriber_single_subscription() -> Result<(), anyhow::Error> {
         let subscription = create_subscription().await.unwrap();
-        let _ctx = CancellationToken::new();
-
         let cancellation_token = CancellationToken::new();
         let cancel_receiver = cancellation_token.clone();
         let v = Arc::new(AtomicU32::new(0));
@@ -577,4 +578,18 @@ mod tests {
         }
         Ok(())
     }
+
+    /*
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn long_polling() -> Result<(), anyhow::Error> {
+        let subscription = create_subscription().await.unwrap();
+        let cancel = CancellationToken::new();
+        subscription.receive(|message, _| async move{
+            log::info!("received {}", message.message.message_id);
+            message.ack().await;
+        }, cancel, None).await;
+        Ok(())
+    }
+     */
 }
