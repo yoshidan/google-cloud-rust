@@ -3,7 +3,9 @@ use std::time::Duration;
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::{Code, Status, Streaming};
 use google_cloud_gax::retry::RetrySetting;
-use google_cloud_googleapis::pubsub::v1::{AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage, StreamingPullRequest, StreamingPullResponse};
+use google_cloud_googleapis::pubsub::v1::{
+    AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage, StreamingPullRequest, StreamingPullResponse,
+};
 use tokio::select;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
@@ -120,7 +122,12 @@ impl Subscriber {
                 request.max_outstanding_bytes = config.max_outstanding_bytes;
 
                 let response = client
-                    .streaming_pull(request, Some(cancel_receiver.clone()), ping_receiver.clone(), config.retry_setting.clone())
+                    .streaming_pull(
+                        request,
+                        Some(cancel_receiver.clone()),
+                        ping_receiver.clone(),
+                        config.retry_setting.clone(),
+                    )
                     .await;
 
                 let mut stream = match response {
@@ -134,9 +141,17 @@ impl Subscriber {
                         break;
                     }
                 };
-                match Self::recv(client.clone(), stream, subscription.as_str(), cancel_receiver.clone(), queue.clone()).await {
+                match Self::recv(
+                    client.clone(),
+                    stream,
+                    subscription.as_str(),
+                    cancel_receiver.clone(),
+                    queue.clone(),
+                )
+                .await
+                {
                     Ok(_) => break,
-                    Err(e)  => {
+                    Err(e) => {
                         if e.code() == Code::Unavailable || e.code() == Code::Unknown || e.code() == Code::Internal {
                             log::trace!("reconnect - '{:?}' : {} ", e, subscription);
                             continue;
@@ -156,7 +171,13 @@ impl Subscriber {
         };
     }
 
-    async fn recv(client: SubscriberClient, mut stream: Streaming<StreamingPullResponse>, subscription: &str, cancel: CancellationToken, queue: async_channel::Sender<ReceivedMessage>)  -> Result<(),Status>{
+    async fn recv(
+        client: SubscriberClient,
+        mut stream: Streaming<StreamingPullResponse>,
+        subscription: &str,
+        cancel: CancellationToken,
+        queue: async_channel::Sender<ReceivedMessage>,
+    ) -> Result<(), Status> {
         log::trace!("start streaming: {}", subscription);
         loop {
             select! {

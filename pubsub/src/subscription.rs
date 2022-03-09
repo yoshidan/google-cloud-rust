@@ -401,7 +401,7 @@ mod tests {
     }
 
     async fn create_subscription() -> Result<Subscription, anyhow::Error> {
-        let cm = ConnectionManager::new(4, EMULATOR.map(|v|v.to_string())).await?;
+        let cm = ConnectionManager::new(4, EMULATOR.map(|v| v.to_string())).await?;
         let client = SubscriberClient::new(cm);
 
         let uuid = Uuid::new_v4().to_hyphenated().to_string();
@@ -419,7 +419,7 @@ mod tests {
 
     async fn publish() {
         let pubc = PublisherClient::new(
-            ConnectionManager::new(4, EMULATOR.map(|v|v.to_string()))
+            ConnectionManager::new(4, EMULATOR.map(|v| v.to_string()))
                 .await
                 .unwrap(),
         );
@@ -437,7 +437,7 @@ mod tests {
     async fn test_subscription() -> Result<(), anyhow::Error> {
         let subscription = create_subscription().await.unwrap();
 
-        let topic_name =format!("projects/{}/topics/test-topic1", PROJECT_NAME);
+        let topic_name = format!("projects/{}/topics/test-topic1", PROJECT_NAME);
         let cancel = CancellationToken::new();
         let config = subscription.config(Some(cancel.clone()), None).await?;
         assert_eq!(config.0, topic_name);
