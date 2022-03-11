@@ -69,12 +69,12 @@
 //! use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 //! use google_cloud_pubsub::subscription::SubscriptionConfig;
 //! use google_cloud_gax::grpc::Status;
+//! use std::time::Duration;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Status> {
 //!
 //!     // Create pubsub client
-//!     use std::time::Duration;
 //!     let mut client = Client::new("local-project", None).await.unwrap();
 //!
 //!     // Get the topic to subscribe to.
