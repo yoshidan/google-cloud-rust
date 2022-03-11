@@ -218,7 +218,7 @@ pub async fn read_only_transaction(session: ManagedSession) -> ReadOnlyTransacti
 pub async fn all_rows(mut itr: RowIterator<'_>) -> Vec<Row> {
     let mut rows = vec![];
     loop {
-        match itr.next(None).await {
+        match itr.next().await {
             Ok(row) => {
                 if row.is_some() {
                     rows.push(row.unwrap());

@@ -44,7 +44,7 @@ Create `Client` and call transaction API same as [Google Cloud Go](https://githu
      stmt.add_param("OwnerUserID",&"ownerId");
      let mut tx = client.single().await?;
      let mut iter = tx.query(stmt).await?;
-     while let Some(row) = iter.next(None).await? {
+     while let Some(row) = iter.next().await? {
          let guild_id = row.column_by_name::<String>("GuildId");
      }
      Ok(())

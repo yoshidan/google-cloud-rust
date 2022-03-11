@@ -15,8 +15,7 @@ use crate::transaction::CallOptions;
 #[async_trait]
 pub trait AsyncIterator {
     fn column_metadata(&self, column_name: &str) -> Option<(usize, Field)>;
-
-    async fn next(&mut self, option: Option<CallOptions>) -> Result<Option<Row>, Status>;
+    async fn next(&mut self) -> Result<Option<Row>, Status>;
 }
 
 #[async_trait]
@@ -97,6 +96,7 @@ pub struct RowIterator<'a> {
     rows: VecDeque<Value>,
     chunked_value: bool,
     chunked_record: bool,
+    reader_option: Option<CallOptions>,
 }
 
 impl<'a> RowIterator<'a> {
@@ -115,7 +115,12 @@ impl<'a> RowIterator<'a> {
             rows: VecDeque::new(),
             chunked_value: false,
             chunked_record: false,
+            reader_option: None,
         })
+    }
+
+    pub fn set_call_options(&mut self, option: CallOptions) {
+       self.reader_option = Some(option);
     }
 
     /// Merge tries to combine two protobuf Values if possible.
@@ -232,7 +237,7 @@ impl<'a> AsyncIterator for RowIterator<'a> {
 
     /// next returns the next result.
     /// Its second return value is None if there are no more results.
-    async fn next(&mut self, option: Option<CallOptions>) -> Result<Option<Row>, Status> {
+    async fn next(&mut self) -> Result<Option<Row>, Status> {
         if !self.rows.is_empty() {
             let column_length = self.fields.len();
             let target_record_is_chunked = self.rows.len() < column_length;
@@ -252,6 +257,6 @@ impl<'a> AsyncIterator for RowIterator<'a> {
         if !self.try_recv(option.clone()).await? {
             return Ok(None);
         }
-        return self.next(option).await;
+        return self.next().await;
     }
 }
