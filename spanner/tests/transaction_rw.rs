@@ -17,7 +17,7 @@ use google_cloud_spanner::transaction_rw::ReadWriteTransaction;
 pub async fn all_rows(mut itr: RowIterator<'_>) -> Result<Vec<Row>, Status> {
     let mut rows = vec![];
     loop {
-        match itr.next(None).await {
+        match itr.next().await {
             Ok(row) => {
                 if row.is_some() {
                     rows.push(row.unwrap());

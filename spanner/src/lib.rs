@@ -34,7 +34,7 @@
 //!     stmt.add_param("OwnerUserID",&"ownerId");
 //!     let mut tx = client.single().await?;
 //!     let mut iter = tx.query(stmt).await?;
-//!     while let Some(row) = iter.next(None).await? {
+//!     while let Some(row) = iter.next().await? {
 //!         let guild_id = row.column_by_name::<String>("GuildId");
 //!     }
 //!     Ok(())
@@ -240,7 +240,7 @@
 //!         Key::key(&"pk2")
 //!     ]).await?;
 //!
-//!     while let Some(row) = iter.next(None).await? {
+//!     while let Some(row) = iter.next().await? {
 //!         // use row
 //!     };
 //!     Ok(())
@@ -493,7 +493,7 @@
 //!             let key = Key::key(&"user1");
 //!             let mut reader = tx.read("UserItem", &["UserId", "ItemId", "Quantity"], key).await?;
 //!             let mut ms = vec![];
-//!             while let Some(row) = reader.next(None).await? {
+//!             while let Some(row) = reader.next().await? {
 //!                 let user_id = row.column_by_name::<i64>("UserId")?;
 //!                 let item_id = row.column_by_name::<i64>("ItemId")?;
 //!                 let quantity = row.column_by_name::<i64>("Quantity")? + 1;

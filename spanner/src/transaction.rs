@@ -185,7 +185,8 @@ impl Transaction {
         let mut reader = self
             .read_with_option(table, columns, KeySet::from(key), options)
             .await?;
-        return reader.next(Some(call_options)).await;
+        reader.set_call_options(call_options);
+        return reader.next().await;
     }
 
     pub(crate) fn get_session_name(&self) -> String {
