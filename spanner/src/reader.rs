@@ -120,7 +120,7 @@ impl<'a> RowIterator<'a> {
     }
 
     pub fn set_call_options(&mut self, option: CallOptions) {
-       self.reader_option = Some(option);
+        self.reader_option = Some(option);
     }
 
     /// Merge tries to combine two protobuf Values if possible.
@@ -254,7 +254,7 @@ impl<'a> AsyncIterator for RowIterator<'a> {
         }
 
         // no data found or record chunked.
-        if !self.try_recv(option.clone()).await? {
+        if !self.try_recv(self.reader_option.clone()).await? {
             return Ok(None);
         }
         return self.next().await;
