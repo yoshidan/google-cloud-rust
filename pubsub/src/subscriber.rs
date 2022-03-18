@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use crate::apiv1::default_retry_setting;
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::{Code, Status, Streaming};
 use google_cloud_gax::retry::RetrySetting;
@@ -67,7 +68,7 @@ impl Default for SubscriberConfig {
     fn default() -> Self {
         Self {
             ping_interval: std::time::Duration::from_secs(10),
-            retry_setting: None,
+            retry_setting: Some(default_retry_setting()),
             stream_ack_deadline_seconds: 60,
             max_outstanding_messages: 1000,
             max_outstanding_bytes: 1000 * 1000 * 1000,
@@ -135,10 +136,17 @@ impl Subscriber {
                     Err(e) => {
                         if e.code() == Code::Cancelled {
                             log::trace!("stop subscriber : {}", subscription);
+                            break;
                         } else {
-                            log::error!("subscriber error {:?} : {}", e, subscription);
+                            let retryable_codes = config.retry_setting.unwrap_or_default().codes;
+                            if retryable_codes.contains(&e.code()) {
+                                log::warn!("failed to start streaming: will reconnect {:?} : {}", e, subscription);
+                                continue;
+                            } else {
+                                log::error!("failed to start streaming: will stop {:?} : {}", e, subscription);
+                                break;
+                            }
                         }
-                        break;
                     }
                 };
                 match Self::recv(
@@ -152,11 +160,12 @@ impl Subscriber {
                 {
                     Ok(_) => break,
                     Err(e) => {
-                        if e.code() == Code::Unavailable || e.code() == Code::Unknown || e.code() == Code::Internal {
+                        let retryable_codes = config.retry_setting.unwrap_or_default().codes;
+                        if retryable_codes.contains(&e.code()) {
                             log::trace!("reconnect - '{:?}' : {} ", e, subscription);
                             continue;
                         } else {
-                            log::error!("streaming error {:?} : {}", e, subscription);
+                            log::error!("terminated subscriber streaming with error {:?} : {}", e, subscription);
                             break;
                         }
                     }
