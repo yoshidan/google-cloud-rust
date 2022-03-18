@@ -117,7 +117,7 @@ impl Publisher {
     /// message has been sent (or has failed to be sent) to the server.
     pub async fn publish(&self, message: PubsubMessage) -> Awaiter {
         if self.sender.is_closed() {
-            let (mut tx, rx) = tokio::sync::oneshot::channel();
+            let (tx, rx) = tokio::sync::oneshot::channel();
             drop(tx);
             return Awaiter::new(rx);
         }
