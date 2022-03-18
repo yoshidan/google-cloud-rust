@@ -5,7 +5,7 @@ use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::{Code, Status, Streaming};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::{
-    AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage, StreamingPullRequest, StreamingPullResponse,
+    AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage, StreamingPullResponse,
 };
 use tokio::select;
 use tokio::task::JoinHandle;
@@ -135,7 +135,7 @@ impl Subscriber {
                     )
                     .await;
 
-                let mut stream = match response {
+                let stream = match response {
                     Ok(r) => r.into_inner(),
                     Err(e) => {
                         if e.code() == Code::Cancelled {
