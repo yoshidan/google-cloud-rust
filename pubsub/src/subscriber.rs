@@ -115,6 +115,10 @@ impl Subscriber {
         let cancel_receiver = ctx.clone();
         let inner = tokio::spawn(async move {
             log::trace!("start subscriber: {}", subscription);
+            let retryable_codes = match &config.retry_setting {
+                Some(v) => v.codes.clone(),
+                None => default_retry_setting().codes,
+            };
             loop {
                 let mut request = create_empty_streaming_pull_request();
                 request.subscription = subscription.to_string();
@@ -138,7 +142,6 @@ impl Subscriber {
                             log::trace!("stop subscriber : {}", subscription);
                             break;
                         } else {
-                            let retryable_codes = config.retry_setting.unwrap_or_default().codes;
                             if retryable_codes.contains(&e.code()) {
                                 log::warn!("failed to start streaming: will reconnect {:?} : {}", e, subscription);
                                 continue;
@@ -160,7 +163,6 @@ impl Subscriber {
                 {
                     Ok(_) => break,
                     Err(e) => {
-                        let retryable_codes = config.retry_setting.unwrap_or_default().codes;
                         if retryable_codes.contains(&e.code()) {
                             log::trace!("reconnect - '{:?}' : {} ", e, subscription);
                             continue;
