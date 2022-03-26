@@ -413,7 +413,7 @@ fn listen_session_creation_request(
                 _ = cancel.cancelled() => break
             }
             let num_opened = session_pool.num_opened();
-            if num_opened >= config.min_opened && allocation_request_size >= { session_pool.waiters.lock().len() } {
+            if num_opened >= config.min_opened && allocation_request_size >= session_pool.num_waiting() {
                 continue;
             }
 
