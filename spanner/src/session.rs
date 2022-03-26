@@ -140,27 +140,68 @@ impl Sessions {
 pub struct SessionPool {
     inner: Arc<Mutex<Sessions>>,
     waiters: Arc<Waiters>,
-    creation_producer: broadcast::Sender<bool>,
+    allocation_request_sender: broadcast::Sender<bool>,
 }
 
 impl SessionPool {
-    fn new(
-        init_pool: VecDeque<SessionHandle>,
-        waiters: Arc<Waiters>,
-        creation_producer: broadcast::Sender<bool>,
-    ) -> Self {
-        SessionPool {
+    async fn new(
+        database: String,
+        conn_pool: &ConnectionManager,
+        min_opened: usize,
+        allocation_request_sender: broadcast::Sender<bool>,
+    ) -> Result<Self, Status> {
+        let init_pool = Self::init_pool(database, conn_pool, min_opened).await?;
+        let waiters = Arc::new(Waiters::new(VecDeque::new()));
+
+        Ok(SessionPool {
             inner: Arc::new(Mutex::new(Sessions {
                 sessions: init_pool,
                 inuse: 0,
             })),
             waiters,
-            creation_producer,
+            allocation_request_sender,
+        })
+    }
+
+    async fn init_pool(
+        database: String,
+        conn_pool: &ConnectionManager,
+        min_opened: usize,
+    ) -> Result<VecDeque<SessionHandle>, Status> {
+        let channel_num = conn_pool.num();
+        let creation_count_per_channel = min_opened / channel_num;
+
+        let mut sessions = Vec::<SessionHandle>::new();
+        for _ in 0..channel_num {
+            let next_client = conn_pool.conn();
+            match batch_create_session(next_client, database.clone(), creation_count_per_channel).await {
+                Ok(r) => {
+                    for i in r {
+                        sessions.push(i);
+                    }
+                }
+                Err(e) => return Err(e),
+            }
         }
+        log::debug!("initial session created count = {}", sessions.len());
+        Ok(sessions.into())
+    }
+
+    fn request(&self) -> oneshot::Receiver<SessionHandle> {
+        let (sender, receiver) = oneshot::channel();
+        {
+            self.waiters.lock().push_back(sender);
+        }
+        let _ = self.allocation_request_sender.send(true);
+        return receiver;
     }
 
     fn num_opened(&self) -> usize {
         self.inner.lock().num_opened()
+    }
+
+    fn num_waiting(&self) -> usize {
+        self.waiters.lock().len()
     }
 
     fn grow(&self, mut sessions: Vec<SessionHandle>) {
@@ -196,7 +237,7 @@ impl SessionPool {
             self.inner.lock().release(session);
 
             // request session creation
-            let _ = self.creation_producer.send(true);
+            let _ = self.allocation_request_sender.send(true);
         }
     }
 }
@@ -206,7 +247,7 @@ impl Clone for SessionPool {
         SessionPool {
             inner: Arc::clone(&self.inner),
             waiters: Arc::clone(&self.waiters),
-            creation_producer: self.creation_producer.clone(),
+            allocation_request_sender: self.allocation_request_sender.clone(),
         }
     }
 }
@@ -266,8 +307,6 @@ impl Default for SessionConfig {
 pub struct SessionManager {
     session_pool: SessionPool,
     session_get_timeout: Duration,
-    waiters: Arc<Waiters>,
-    creation_producer: broadcast::Sender<bool>,
     cancel: CancellationToken,
     tasks: Vec<JoinHandle<()>>,
 }
@@ -288,13 +327,9 @@ impl SessionManager {
         conn_pool: ConnectionManager,
         config: SessionConfig,
     ) -> Result<SessionManager, Status> {
-        let database_name = database.into();
-        let init_pool = SessionManager::init_pool(database_name.clone(), &conn_pool, config.min_opened).await?;
-
-        let waiters = Arc::new(Waiters::new(VecDeque::new()));
-        let (creation_producer, creation_consumer) = broadcast::channel(1);
-
-        let session_pool = SessionPool::new(init_pool, Arc::clone(&waiters), creation_producer.clone());
+        let database = database.into();
+        let (sender, receiver) = broadcast::channel(1);
+        let session_pool = SessionPool::new(database.clone(), &conn_pool, config.min_opened, sender).await?;
 
         let cancel = CancellationToken::new();
         let session_get_timeout = config.session_get_timeout;
@@ -302,17 +337,15 @@ impl SessionManager {
         let task_listener = listen_session_creation_request(
             config,
             session_pool.clone(),
-            database_name,
+            database,
             conn_pool,
-            creation_consumer,
+            receiver,
             cancel.clone(),
         );
 
         let sm = SessionManager {
             session_get_timeout,
             session_pool,
-            waiters,
-            creation_producer,
             cancel,
             tasks: vec![task_cleaner, task_listener],
         };
@@ -324,31 +357,7 @@ impl SessionManager {
     }
 
     pub fn session_waiters(&self) -> usize {
-        self.waiters.lock().len()
-    }
-
-    async fn init_pool(
-        database: String,
-        conn_pool: &ConnectionManager,
-        min_opened: usize,
-    ) -> Result<VecDeque<SessionHandle>, Status> {
-        let channel_num = conn_pool.num();
-        let creation_count_per_channel = min_opened / channel_num;
-
-        let mut sessions = Vec::<SessionHandle>::new();
-        for _ in 0..channel_num {
-            let next_client = conn_pool.conn();
-            match batch_create_session(next_client, database.clone(), creation_count_per_channel).await {
-                Ok(r) => {
-                    for i in r {
-                        sessions.push(i);
-                    }
-                }
-                Err(e) => return Err(e),
-            }
-        }
-        log::debug!("initial session created count = {}", sessions.len());
-        Ok(sessions.into())
+        self.session_pool.num_waiting()
     }
 
     pub async fn get(&self) -> Result<ManagedSession, SessionError> {
@@ -357,16 +366,8 @@ impl SessionManager {
             return Ok(ManagedSession::new(self.session_pool.clone(), s));
         }
 
-        let (sender, receiver) = oneshot::channel();
-        {
-            self.waiters.lock().push_back(sender);
-        }
-
-        // Request for creating batch.
-        let _ = self.creation_producer.send(true);
-
         // Wait for the session creation.
-        return match timeout(self.session_get_timeout, receiver).await {
+        return match timeout(self.session_get_timeout, self.session_pool.request()).await {
             Ok(Ok(mut session)) => {
                 session.last_used_at = Instant::now();
                 Ok(ManagedSession {
