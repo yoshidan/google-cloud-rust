@@ -264,7 +264,6 @@ impl Default for SessionConfig {
 }
 
 pub struct SessionManager {
-    database: String,
     session_pool: SessionPool,
     session_get_timeout: Duration,
     waiters: Arc<Waiters>,
@@ -303,14 +302,13 @@ impl SessionManager {
         let task_listener = listen_session_creation_request(
             config,
             session_pool.clone(),
-            database_name.clone(),
+            database_name,
             conn_pool,
             creation_consumer,
             cancel.clone(),
         );
 
         let sm = SessionManager {
-            database: database_name,
             session_get_timeout,
             session_pool,
             waiters,
@@ -441,6 +439,7 @@ fn listen_session_creation_request(
                 }
             };
         }
+        log::trace!("stop session creating listener")
     })
 }
 
@@ -476,6 +475,7 @@ fn schedule_refresh(config: SessionConfig, session_pool: SessionPool, cancel: Ca
             )
             .await;
         }
+        log::trace!("stop session cleaner")
     })
 }
 
@@ -616,16 +616,14 @@ async fn batch_create_session(
 mod tests {
     use crate::apiv1::conn_pool::ConnectionManager;
     use crate::session::{
-        health_check, schedule_refresh, shrink_idle_sessions, SessionConfig, SessionManager, SessionPool, Waiters,
+        health_check, shrink_idle_sessions, SessionConfig, SessionManager,
     };
     use serial_test::serial;
-    use std::collections::VecDeque;
 
     use google_cloud_gax::cancel::CancellationToken;
     use std::sync::atomic::{AtomicI64, Ordering};
     use std::sync::Arc;
     use std::time::Instant;
-    use tokio::sync::broadcast;
     use tokio::time::{sleep, Duration};
 
     pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
@@ -838,5 +836,19 @@ mod tests {
         config.max_idle = 20;
         config.max_opened = 45;
         assert_rush(false, config).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_close() {
+        let _ = env_logger::try_init();
+        let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
+            .await
+            .unwrap();
+        let config = SessionConfig::default();
+        let sm = SessionManager::new(DATABASE, cm, config.clone()).await.unwrap();
+        assert_eq!(sm.num_opened(), config.min_opened);
+        sm.close().await;
+        assert_eq!(sm.num_opened(), 0)
     }
 }
