@@ -615,9 +615,7 @@ async fn batch_create_session(
 #[cfg(test)]
 mod tests {
     use crate::apiv1::conn_pool::ConnectionManager;
-    use crate::session::{
-        health_check, shrink_idle_sessions, SessionConfig, SessionManager,
-    };
+    use crate::session::{health_check, shrink_idle_sessions, SessionConfig, SessionManager};
     use serial_test::serial;
 
     use google_cloud_gax::cancel::CancellationToken;
