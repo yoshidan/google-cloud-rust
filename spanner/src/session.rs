@@ -5,15 +5,18 @@ use std::time::Instant;
 
 use parking_lot::Mutex;
 use thiserror;
+use tokio::select;
 
 use google_cloud_googleapis::spanner::v1::{BatchCreateSessionsRequest, DeleteSessionRequest, Session};
 
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::spanner_client::{ping_query_request, Client};
 
+use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::{Code, Status};
 use tokio::sync::broadcast;
 use tokio::sync::oneshot;
+use tokio::task::JoinHandle;
 use tokio::time::{sleep, timeout, Duration};
 
 type Waiters = Mutex<VecDeque<oneshot::Sender<SessionHandle>>>;
@@ -208,6 +211,7 @@ impl Clone for SessionPool {
     }
 }
 
+#[derive(Clone)]
 pub struct SessionConfig {
     /// max_opened is the maximum number of opened sessions allowed by the session
     /// pool. If the client tries to open a session and there are already
@@ -261,11 +265,12 @@ impl Default for SessionConfig {
 
 pub struct SessionManager {
     database: String,
-    conn_pool: Arc<ConnectionManager>,
     session_pool: SessionPool,
-    config: Arc<SessionConfig>,
+    session_get_timeout: Duration,
     waiters: Arc<Waiters>,
     creation_producer: broadcast::Sender<bool>,
+    cancel: CancellationToken,
+    tasks: Vec<JoinHandle<()>>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -290,18 +295,29 @@ impl SessionManager {
         let waiters = Arc::new(Waiters::new(VecDeque::new()));
         let (creation_producer, creation_consumer) = broadcast::channel(1);
 
+        let session_pool = SessionPool::new(init_pool, Arc::clone(&waiters), creation_producer.clone());
+
+        let cancel = CancellationToken::new();
+        let session_get_timeout = config.session_get_timeout;
+        let task_cleaner = schedule_refresh(config.clone(), session_pool.clone(), cancel.clone());
+        let task_listener = listen_session_creation_request(
+            config,
+            session_pool.clone(),
+            database_name.clone(),
+            conn_pool,
+            creation_consumer,
+            cancel.clone(),
+        );
+
         let sm = SessionManager {
             database: database_name,
-            config: Arc::new(config),
-            conn_pool: Arc::new(conn_pool),
-            session_pool: SessionPool::new(init_pool, Arc::clone(&waiters), creation_producer.clone()),
+            session_get_timeout,
+            session_pool,
             waiters,
             creation_producer,
+            cancel,
+            tasks: vec![task_cleaner, task_listener],
         };
-
-        // wait for batch creation request
-        sm.listen_session_creation_request(creation_consumer);
-
         Ok(sm)
     }
 
@@ -352,7 +368,7 @@ impl SessionManager {
         let _ = self.creation_producer.send(true);
 
         // Wait for the session creation.
-        return match timeout(self.config.session_get_timeout, receiver).await {
+        return match timeout(self.session_get_timeout, receiver).await {
             Ok(Ok(mut session)) => {
                 session.last_used_at = Instant::now();
                 Ok(ManagedSession {
@@ -364,48 +380,15 @@ impl SessionManager {
         };
     }
 
-    fn listen_session_creation_request(&self, mut rx: broadcast::Receiver<bool>) {
-        let config = Arc::clone(&self.config);
-        let session_pool = self.session_pool.clone();
-        let database = self.database.clone();
-        let conn_pool = Arc::clone(&self.conn_pool);
-        tokio::spawn(async move {
-            let mut allocation_request_size = 0;
-            loop {
-                let _ = rx.recv().await;
-
-                let num_opened = session_pool.num_opened();
-                if num_opened >= config.min_opened && allocation_request_size >= { session_pool.waiters.lock().len() } {
-                    continue;
-                }
-
-                let mut creation_count = config.max_opened - num_opened;
-                if creation_count > config.inc_step {
-                    creation_count = config.inc_step;
-                }
-                if creation_count == 0 {
-                    continue;
-                }
-                allocation_request_size += creation_count;
-
-                let database = database.clone();
-                let next_client = conn_pool.conn();
-
-                match batch_create_session(next_client, database, creation_count).await {
-                    Ok(fresh_sessions) => {
-                        allocation_request_size -= creation_count;
-                        session_pool.grow(fresh_sessions)
-                    }
-                    Err(e) => {
-                        allocation_request_size -= creation_count;
-                        log::error!("failed to create new sessions {:?}", e)
-                    }
-                };
-            }
-        });
-    }
-
     pub(crate) async fn close(&self) {
+        if self.cancel.is_cancelled() {
+            return;
+        }
+        self.cancel.cancel();
+        sleep(Duration::from_secs(1)).await;
+        for task in &self.tasks {
+            task.abort();
+        }
         let mut sessions = self.session_pool.inner.lock();
         while let Some(mut session) = sessions.take() {
             delete_session(&mut session).await;
@@ -413,40 +396,101 @@ impl SessionManager {
             sessions.release(session);
         }
     }
-
-    pub(crate) fn schedule_refresh(&self) {
-        let config = Arc::clone(&self.config);
-        let start = Instant::now() + config.refresh_interval;
-        let mut interval = tokio::time::interval_at(start.into(), config.refresh_interval);
-        let session_pool = self.session_pool.clone();
-
-        tokio::spawn(async move {
-            loop {
-                let _ = interval.tick().await;
-
-                let max_removing_count = session_pool.num_opened() as i64 - config.max_idle as i64;
-                if max_removing_count < 0 {
-                    continue;
-                }
-
-                let now = Instant::now();
-                shrink_idle_sessions(now, config.idle_timeout, &session_pool, max_removing_count as usize).await;
-                health_check(
-                    now + Duration::from_nanos(1),
-                    config.session_alive_trust_duration,
-                    &session_pool,
-                )
-                .await;
-            }
-        });
-    }
 }
 
-async fn health_check(now: Instant, session_alive_trust_duration: Duration, sessions: &SessionPool) {
+fn listen_session_creation_request(
+    config: SessionConfig,
+    session_pool: SessionPool,
+    database: String,
+    conn_pool: ConnectionManager,
+    mut rx: broadcast::Receiver<bool>,
+    cancel: CancellationToken,
+) -> JoinHandle<()> {
+    tokio::spawn(async move {
+        let mut allocation_request_size = 0;
+        loop {
+            select! {
+                _ = rx.recv() => {},
+                _ = cancel.cancelled() => break
+            }
+            let num_opened = session_pool.num_opened();
+            if num_opened >= config.min_opened && allocation_request_size >= { session_pool.waiters.lock().len() } {
+                continue;
+            }
+
+            let mut creation_count = config.max_opened - num_opened;
+            if creation_count > config.inc_step {
+                creation_count = config.inc_step;
+            }
+            if creation_count == 0 {
+                continue;
+            }
+            allocation_request_size += creation_count;
+
+            let database = database.clone();
+            let next_client = conn_pool.conn();
+
+            match batch_create_session(next_client, database, creation_count).await {
+                Ok(fresh_sessions) => {
+                    allocation_request_size -= creation_count;
+                    session_pool.grow(fresh_sessions)
+                }
+                Err(e) => {
+                    allocation_request_size -= creation_count;
+                    log::error!("failed to create new sessions {:?}", e)
+                }
+            };
+        }
+    })
+}
+
+fn schedule_refresh(config: SessionConfig, session_pool: SessionPool, cancel: CancellationToken) -> JoinHandle<()> {
+    let start = Instant::now() + config.refresh_interval;
+    let mut interval = tokio::time::interval_at(start.into(), config.refresh_interval);
+
+    tokio::spawn(async move {
+        loop {
+            select! {
+                _ = interval.tick() => {},
+                _ = cancel.cancelled() => break
+            }
+            let max_removing_count = session_pool.num_opened() as i64 - config.max_idle as i64;
+            if max_removing_count < 0 {
+                continue;
+            }
+
+            let now = Instant::now();
+            shrink_idle_sessions(
+                now,
+                config.idle_timeout,
+                &session_pool,
+                max_removing_count as usize,
+                cancel.clone(),
+            )
+            .await;
+            health_check(
+                now + Duration::from_nanos(1),
+                config.session_alive_trust_duration,
+                &session_pool,
+                cancel.clone(),
+            )
+            .await;
+        }
+    })
+}
+
+async fn health_check(
+    now: Instant,
+    session_alive_trust_duration: Duration,
+    sessions: &SessionPool,
+    cancel: CancellationToken,
+) {
     let sleep_duration = Duration::from_millis(10);
     loop {
-        sleep(sleep_duration).await;
-
+        select! {
+            _ = sleep(sleep_duration) => {},
+            _ = cancel.cancelled() => break
+        }
         let mut s = {
             // temporary take
             let mut locked = sessions.inner.lock();
@@ -489,6 +533,7 @@ async fn shrink_idle_sessions(
     idle_timeout: Duration,
     session_pool: &SessionPool,
     max_shrink_count: usize,
+    cancel: CancellationToken,
 ) {
     let mut removed_count = 0;
     let sleep_duration = Duration::from_millis(10);
@@ -497,7 +542,10 @@ async fn shrink_idle_sessions(
             break;
         }
 
-        sleep(sleep_duration).await;
+        select! {
+            _ = sleep(sleep_duration) => {},
+            _ = cancel.cancelled() => break
+        }
 
         // get old session
         let mut s = {
@@ -567,12 +615,17 @@ async fn batch_create_session(
 #[cfg(test)]
 mod tests {
     use crate::apiv1::conn_pool::ConnectionManager;
-    use crate::session::{health_check, shrink_idle_sessions, SessionConfig, SessionManager};
+    use crate::session::{
+        health_check, schedule_refresh, shrink_idle_sessions, SessionConfig, SessionManager, SessionPool, Waiters,
+    };
     use serial_test::serial;
+    use std::collections::VecDeque;
 
+    use google_cloud_gax::cancel::CancellationToken;
     use std::sync::atomic::{AtomicI64, Ordering};
     use std::sync::Arc;
     use std::time::Instant;
+    use tokio::sync::broadcast;
     use tokio::time::{sleep, Duration};
 
     pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
@@ -584,7 +637,6 @@ mod tests {
         let max = config.max_opened;
         let min = config.min_opened;
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
-        sm.schedule_refresh();
 
         let counter = Arc::new(AtomicI64::new(0));
         for _ in 0..100 {
@@ -622,9 +674,12 @@ mod tests {
         config.max_opened = 5;
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
         sleep(Duration::from_secs(1)).await;
-        shrink_idle_sessions(Instant::now(), idle_timeout, &sm.session_pool, 5).await;
+
+        let cancel = CancellationToken::new();
+        shrink_idle_sessions(Instant::now(), idle_timeout, &sm.session_pool, 5, cancel.clone()).await;
 
         assert_eq!(sm.num_opened(), 5);
+        cancel.cancel();
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -640,9 +695,12 @@ mod tests {
         config.max_opened = 5;
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
         sleep(Duration::from_secs(1)).await;
-        shrink_idle_sessions(Instant::now(), idle_timeout, &sm.session_pool, 100).await;
+        let cancel = CancellationToken::new();
+        shrink_idle_sessions(Instant::now(), idle_timeout, &sm.session_pool, 100, cancel.clone()).await;
 
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+        cancel.cancel();
+
         // expired but created by allocation batch
         assert_eq!(sm.num_opened(), 5);
     }
@@ -661,10 +719,12 @@ mod tests {
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
         sleep(Duration::from_secs(1)).await;
 
-        health_check(Instant::now(), session_alive_trust_duration, &sm.session_pool).await;
+        let cancel = CancellationToken::new();
+        health_check(Instant::now(), session_alive_trust_duration, &sm.session_pool, cancel.clone()).await;
 
         assert_eq!(sm.num_opened(), 5);
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+        cancel.cancel();
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -681,16 +741,18 @@ mod tests {
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
         sleep(Duration::from_secs(1)).await;
 
-        health_check(Instant::now(), session_alive_trust_duration, &sm.session_pool).await;
+        let cancel = CancellationToken::new();
+        health_check(Instant::now(), session_alive_trust_duration, &sm.session_pool, cancel.clone()).await;
 
         assert_eq!(sm.num_opened(), 5);
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+        cancel.cancel();
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_schedule_refresh() {
-        let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
+        let conn_pool = ConnectionManager::new(1, Some("localhost:9010".to_string()))
             .await
             .unwrap();
         let mut config = SessionConfig::default();
@@ -700,9 +762,7 @@ mod tests {
         config.min_opened = 10;
         config.max_idle = 20;
         config.max_opened = 45;
-        let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
-        sm.schedule_refresh();
-
+        let sm = SessionManager::new(DATABASE, conn_pool, config).await.unwrap();
         {
             let mut sessions = Vec::new();
             for _ in 0..45 {
