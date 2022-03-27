@@ -8,7 +8,7 @@ keywords = ["gcp","pubsub","googleapis","google-cloud-rust"]
 license = "MIT"
 readme = "README.md"
 description = "Google Cloud Platform pubsub client library."
-documentation = "https://docs.rs/google-cloud-pubsub/0.1.0/google-cloud-pubsub/"
+documentation = "https://docs.rs/google-cloud-pubsub/0.1.2/google-cloud-pubsub/"
 
 [dependencies]
 log = "0.4"
