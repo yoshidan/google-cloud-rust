@@ -308,6 +308,13 @@ mod tests {
             r#type: None,
         }
     }
+
+    fn value(to_kind: impl ToKind) -> Value {
+        Value {
+            kind: Some(to_kind.to_kind()),
+        }
+    }
+
     #[test]
     fn test_rs_next_empty() {
         let mut rs = ResultSet {
@@ -327,18 +334,9 @@ mod tests {
             rows: VecDeque::from(values),
             chunked_value: false,
         };
-        let mut rs1 = rs(vec![Value {
-            kind: Some("value1".to_kind()),
-        }]);
+        let mut rs1 = rs(vec![value("value1")]);
         assert!(rs1.next().is_none());
-        let mut rs2 = rs(vec![
-            Value {
-                kind: Some("value1".to_kind()),
-            },
-            Value {
-                kind: Some("value2".to_kind()),
-            },
-        ]);
+        let mut rs2 = rs(vec![value("value1"), value("value2")]);
         assert_eq!(rs2.next().unwrap().column::<String>(0).unwrap(), "value1".to_string());
     }
 
@@ -347,14 +345,7 @@ mod tests {
         let rs = |chunked_value| ResultSet {
             fields: Arc::new(vec![field("column1"), field("column2")]),
             index: Arc::new(Default::default()),
-            rows: VecDeque::from(vec![
-                Value {
-                    kind: Some("value1".to_kind()),
-                },
-                Value {
-                    kind: Some("value2".to_kind()),
-                },
-            ]),
+            rows: VecDeque::from(vec![value("value1"), value("value2")]),
             chunked_value,
         };
         assert!(rs(true).next().is_none());
@@ -366,17 +357,7 @@ mod tests {
         let rs = |chunked_value| ResultSet {
             fields: Arc::new(vec![field("column1")]),
             index: Arc::new(Default::default()),
-            rows: VecDeque::from(vec![
-                Value {
-                    kind: Some("value1".to_kind()),
-                },
-                Value {
-                    kind: Some("value2".to_kind()),
-                },
-                Value {
-                    kind: Some("value3".to_kind()),
-                },
-            ]),
+            rows: VecDeque::from(vec![value("value1"), value("value2"), value("value3")]),
             chunked_value,
         };
         let mut incomplete = rs(true);
@@ -395,17 +376,7 @@ mod tests {
         let rs = |chunked_value| ResultSet {
             fields: Arc::new(vec![field("column1"), field("column2")]),
             index: Arc::new(Default::default()),
-            rows: VecDeque::from(vec![
-                Value {
-                    kind: Some("value1".to_kind()),
-                },
-                Value {
-                    kind: Some("value2".to_kind()),
-                },
-                Value {
-                    kind: Some("value3".to_kind()),
-                },
-            ]),
+            rows: VecDeque::from(vec![value("value1"), value("value2"), value("value3")]),
             chunked_value,
         };
         let mut incomplete = rs(true);
@@ -418,13 +389,7 @@ mod tests {
 
     #[test]
     fn test_rs_merge_string_value() {
-        let previous_last = Value {
-            kind: Some("val".to_kind()),
-        };
-        let current_first = Value {
-            kind: Some("ue1".to_kind()),
-        };
-        let result = ResultSet::merge(previous_last, current_first);
+        let result = ResultSet::merge(value("val"), value("ue1"));
         assert!(result.is_ok());
         let kind = result.unwrap().kind.unwrap();
         match kind {
@@ -435,12 +400,8 @@ mod tests {
 
     #[test]
     fn test_rs_merge_list_value() {
-        let previous_last = Value {
-            kind: Some(vec!["value1-1", "value1-2", "val"].to_kind()),
-        };
-        let current_first = Value {
-            kind: Some(vec!["ue1-3", "value2-1", "valu"].to_kind()),
-        };
+        let previous_last = value(vec!["value1-1", "value1-2", "val"]);
+        let current_first = value(vec!["ue1-3", "value2-1", "valu"]);
         let result = ResultSet::merge(previous_last, current_first);
         assert!(result.is_ok());
         let kind = result.unwrap().kind.unwrap();
@@ -481,17 +442,7 @@ mod tests {
             }),
             transaction: None,
         });
-        let values = vec![
-            Value {
-                kind: Some("value1".to_kind()),
-            },
-            Value {
-                kind: Some("value2".to_kind()),
-            },
-            Value {
-                kind: Some("value3".to_kind()),
-            },
-        ];
+        let values = vec![value("value1"), value("value2"), value("value3")];
         assert!(rs.add(metadata, values, false).unwrap());
         assert_eq!(rs.rows.len(), 3);
         assert_eq!(rs.fields.len(), 1);
@@ -514,17 +465,7 @@ mod tests {
             }),
             transaction: None,
         });
-        let values = vec![
-            Value {
-                kind: Some("value1".to_kind()),
-            },
-            Value {
-                kind: Some("value2".to_kind()),
-            },
-            Value {
-                kind: Some("value3".to_kind()),
-            },
-        ];
+        let values = vec![value("value1"), value("value2"), value("value3")];
         assert!(rs.add(metadata, values, false).unwrap());
         assert_eq!(rs.rows.len(), 3);
         assert_eq!(rs.fields.len(), 2);
@@ -547,20 +488,7 @@ mod tests {
             }),
             transaction: None,
         });
-        let values = vec![
-            Value {
-                kind: Some("value1".to_kind()),
-            },
-            Value {
-                kind: Some("value2".to_kind()),
-            },
-            Value {
-                kind: Some("value3".to_kind()),
-            },
-            Value {
-                kind: Some("value4".to_kind()),
-            },
-        ];
+        let values = vec![value("value1"), value("value2"), value("value3"), value("value4")];
         assert!(rs.add(metadata, values, false).unwrap());
         assert_eq!(rs.rows.len(), 4);
         assert_eq!(rs.fields.len(), 2);
@@ -584,17 +512,7 @@ mod tests {
             }),
             transaction: None,
         });
-        let values = vec![
-            Value {
-                kind: Some("value1".to_kind()),
-            },
-            Value {
-                kind: Some("value2".to_kind()),
-            },
-            Value {
-                kind: Some("val".to_kind()),
-            },
-        ];
+        let values = vec![value("value1"), value("value2"), value("val")];
         assert!(rs.add(metadata.clone(), values, true).unwrap());
         assert_eq!(rs.rows.len(), 3);
         assert_eq!(rs.fields.len(), 1);
@@ -607,15 +525,7 @@ mod tests {
         assert!(rs.next().is_none());
 
         // add next stream data
-        assert!(rs
-            .add(
-                metadata,
-                vec![Value {
-                    kind: Some("ue3".to_kind())
-                },],
-                false
-            )
-            .unwrap());
+        assert!(rs.add(metadata, vec![value("ue3")], false).unwrap());
         assert_eq!(rs.chunked_value, false);
         assert_eq!(rs.rows.len(), 1);
         assert!(rs.next().is_some());
@@ -631,17 +541,7 @@ mod tests {
             }),
             transaction: None,
         });
-        let values = vec![
-            Value {
-                kind: Some("value1".to_kind()),
-            },
-            Value {
-                kind: Some("value2".to_kind()),
-            },
-            Value {
-                kind: Some("val".to_kind()),
-            },
-        ];
+        let values = vec![value("value1"), value("value2"), value("val")];
         assert!(rs.add(metadata.clone(), values, true).unwrap());
         assert_eq!(rs.rows.len(), 3);
         assert_eq!(rs.fields.len(), 2);
@@ -655,29 +555,13 @@ mod tests {
         assert!(rs.next().is_none());
 
         // add next stream data
-        assert!(rs
-            .add(
-                metadata.clone(),
-                vec![Value {
-                    kind: Some("ue3".to_kind())
-                },],
-                false
-            )
-            .unwrap());
+        assert!(rs.add(metadata.clone(), vec![value("ue3")], false).unwrap());
         assert_eq!(rs.chunked_value, false);
         assert_eq!(rs.rows.len(), 1);
         assert!(rs.next().is_none());
 
         // add next stream data
-        assert!(rs
-            .add(
-                metadata,
-                vec![Value {
-                    kind: Some("value4".to_kind())
-                },],
-                false
-            )
-            .unwrap());
+        assert!(rs.add(metadata, vec![value("value4")], false).unwrap());
         assert_eq!(rs.chunked_value, false);
         assert_eq!(rs.rows.len(), 2);
         assert!(rs.next().is_some());
@@ -692,9 +576,7 @@ mod tests {
             }),
             transaction: None,
         });
-        let values = vec![Value {
-            kind: Some(vec!["value1-1", "value1-2"].to_kind()),
-        }];
+        let values = vec![value(vec!["value1-1", "value1-2"])];
         assert!(rs.add(metadata.clone(), values, false).unwrap());
         assert_eq!(rs.rows.len(), 1);
         assert_eq!(rs.fields.len(), 2);
@@ -704,15 +586,8 @@ mod tests {
         assert_eq!(*rs.index.get("column2").unwrap(), 1);
         assert_eq!(rs.chunked_value, false);
         assert!(rs.next().is_none());
-
         assert!(rs
-            .add(
-                metadata,
-                vec![Value {
-                    kind: Some(vec!["value2-1", "value2-2"].to_kind())
-                },],
-                false
-            )
+            .add(metadata, vec![value(vec!["value2-1", "value2-2"])], false)
             .unwrap());
         assert_eq!(rs.chunked_value, false);
         assert_eq!(rs.rows.len(), 2);
@@ -729,14 +604,7 @@ mod tests {
             }),
             transaction: None,
         });
-        let values = vec![
-            Value {
-                kind: Some(vec!["value1-1", "value1-2"].to_kind()),
-            },
-            Value {
-                kind: Some(vec!["value2-1"].to_kind()),
-            },
-        ];
+        let values = vec![value(vec!["value1-1", "value1-2"]), value(vec!["value2-1"])];
         assert!(rs.add(metadata.clone(), values, true).unwrap());
         assert_eq!(rs.rows.len(), 2);
         assert_eq!(rs.fields.len(), 2);
@@ -748,29 +616,13 @@ mod tests {
         assert!(rs.next().is_none());
 
         // add next stream data
-        assert!(rs
-            .add(
-                metadata.clone(),
-                vec![Value {
-                    kind: Some(vec!["valu"].to_kind())
-                },],
-                true
-            )
-            .unwrap());
+        assert!(rs.add(metadata.clone(), vec![value(vec!["valu"])], true).unwrap());
         assert_eq!(rs.chunked_value, true);
         assert_eq!(rs.rows.len(), 2);
         assert!(rs.next().is_none());
 
         // add next stream data
-        assert!(rs
-            .add(
-                metadata,
-                vec![Value {
-                    kind: Some(vec!["e2-2"].to_kind())
-                },],
-                false
-            )
-            .unwrap());
+        assert!(rs.add(metadata, vec![value(vec!["e2-2"])], false).unwrap());
         assert_eq!(rs.chunked_value, false);
         assert_eq!(rs.rows.len(), 2);
         assert!(rs.next().is_some());
