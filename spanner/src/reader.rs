@@ -287,18 +287,31 @@ mod tests {
     use crate::reader::ResultSet;
     use crate::statement::ToKind;
     use google_cloud_googleapis::spanner::v1::struct_type::Field;
+    use google_cloud_googleapis::spanner::v1::{ResultSetMetadata, StructType};
     use prost_types::value::Kind;
     use prost_types::Value;
     use std::collections::VecDeque;
     use std::sync::Arc;
 
+    fn empty_rs() -> ResultSet {
+        ResultSet {
+            fields: Arc::new(vec![]),
+            index: Arc::new(Default::default()),
+            rows: Default::default(),
+            chunked_value: false,
+        }
+    }
+
+    fn field(name: &str) -> Field {
+        Field {
+            name: name.to_string(),
+            r#type: None,
+        }
+    }
     #[test]
     fn test_rs_next_empty() {
         let mut rs = ResultSet {
-            fields: Arc::new(vec![Field {
-                name: "column1".to_string(),
-                r#type: None,
-            }]),
+            fields: Arc::new(vec![field("column1")]),
             index: Arc::new(Default::default()),
             rows: Default::default(),
             chunked_value: false,
@@ -309,29 +322,22 @@ mod tests {
     #[test]
     fn test_rs_next_record_chunked_or_not() {
         let rs = |values| ResultSet {
-            fields: Arc::new(vec![
-                Field {
-                    name: "column1".to_string(),
-                    r#type: None,
-                },
-                Field {
-                    name: "column2".to_string(),
-                    r#type: None,
-                },
-            ]),
+            fields: Arc::new(vec![field("column1"), field("column2")]),
             index: Arc::new(Default::default()),
             rows: VecDeque::from(values),
             chunked_value: false,
         };
         let mut rs1 = rs(vec![Value {
-            kind: Some("value1".to_kind())
+            kind: Some("value1".to_kind()),
         }]);
         assert!(rs1.next().is_none());
-        let mut rs2 = rs(vec![Value {
-            kind: Some("value1".to_kind())
-        }, Value {
-            kind: Some("value2".to_kind())
-        }
+        let mut rs2 = rs(vec![
+            Value {
+                kind: Some("value1".to_kind()),
+            },
+            Value {
+                kind: Some("value2".to_kind()),
+            },
         ]);
         assert_eq!(rs2.next().unwrap().column::<String>(0).unwrap(), "value1".to_string());
     }
@@ -339,16 +345,7 @@ mod tests {
     #[test]
     fn test_rs_next_value_chunked_or_not() {
         let rs = |chunked_value| ResultSet {
-            fields: Arc::new(vec![
-                Field {
-                    name: "column1".to_string(),
-                    r#type: None,
-                },
-                Field {
-                    name: "column2".to_string(),
-                    r#type: None,
-                },
-            ]),
+            fields: Arc::new(vec![field("column1"), field("column2")]),
             index: Arc::new(Default::default()),
             rows: VecDeque::from(vec![
                 Value {
@@ -367,10 +364,7 @@ mod tests {
     #[test]
     fn test_rs_next_plural_record_one_column() {
         let rs = |chunked_value| ResultSet {
-            fields: Arc::new(vec![Field {
-                name: "column1".to_string(),
-                r#type: None,
-            }]),
+            fields: Arc::new(vec![field("column1")]),
             index: Arc::new(Default::default()),
             rows: VecDeque::from(vec![
                 Value {
@@ -399,16 +393,7 @@ mod tests {
     #[test]
     fn test_rs_next_plural_record_multi_column() {
         let rs = |chunked_value| ResultSet {
-            fields: Arc::new(vec![
-                Field {
-                    name: "column1".to_string(),
-                    r#type: None,
-                },
-                Field {
-                    name: "column2".to_string(),
-                    r#type: None,
-                },
-            ]),
+            fields: Arc::new(vec![field("column1"), field("column2")]),
             index: Arc::new(Default::default()),
             rows: VecDeque::from(vec![
                 Value {
@@ -433,7 +418,7 @@ mod tests {
 
     #[test]
     fn test_rs_merge_string_value() {
-        let previous_last  = Value {
+        let previous_last = Value {
             kind: Some("val".to_kind()),
         };
         let current_first = Value {
@@ -444,13 +429,13 @@ mod tests {
         let kind = result.unwrap().kind.unwrap();
         match kind {
             Kind::StringValue(v) => assert_eq!(v, "value1".to_string()),
-            _ => assert!(false, "must be string value")
+            _ => assert!(false, "must be string value"),
         }
     }
 
     #[test]
     fn test_rs_merge_list_value() {
-        let previous_last  = Value {
+        let previous_last = Value {
             kind: Some(vec!["value1-1", "value1-2", "val"].to_kind()),
         };
         let current_first = Value {
@@ -461,29 +446,334 @@ mod tests {
         let kind = result.unwrap().kind.unwrap();
         match kind {
             Kind::ListValue(v) => {
-                assert_eq!(v.values.len(),5);
+                assert_eq!(v.values.len(), 5);
                 match v.values[0].kind.as_ref().unwrap() {
-                    Kind::StringValue(v)  => assert_eq!(*v, "value1-1".to_string()),
-                    _ => assert!(false, "must be string value")
+                    Kind::StringValue(v) => assert_eq!(*v, "value1-1".to_string()),
+                    _ => assert!(false, "must be string value"),
                 };
                 match v.values[1].kind.as_ref().unwrap() {
-                    Kind::StringValue(v)  => assert_eq!(*v, "value1-2".to_string()),
-                    _ => assert!(false, "must be string value")
+                    Kind::StringValue(v) => assert_eq!(*v, "value1-2".to_string()),
+                    _ => assert!(false, "must be string value"),
                 };
                 match v.values[2].kind.as_ref().unwrap() {
-                    Kind::StringValue(v)  => assert_eq!(*v, "value1-3".to_string()),
-                    _ => assert!(false, "must be string value")
+                    Kind::StringValue(v) => assert_eq!(*v, "value1-3".to_string()),
+                    _ => assert!(false, "must be string value"),
                 };
                 match v.values[3].kind.as_ref().unwrap() {
-                    Kind::StringValue(v)  => assert_eq!(*v, "value2-1".to_string()),
-                    _ => assert!(false, "must be string value")
+                    Kind::StringValue(v) => assert_eq!(*v, "value2-1".to_string()),
+                    _ => assert!(false, "must be string value"),
                 }
                 match v.values[4].kind.as_ref().unwrap() {
-                    Kind::StringValue(v)  => assert_eq!(*v, "valu".to_string()),
-                    _ => assert!(false, "must be string value")
+                    Kind::StringValue(v) => assert_eq!(*v, "valu".to_string()),
+                    _ => assert!(false, "must be string value"),
                 }
             }
-            _ => assert!(false, "must be string value")
+            _ => assert!(false, "must be string value"),
         }
+    }
+
+    #[test]
+    fn test_rs_add_one_column_no_chunked_value() {
+        let mut rs = empty_rs();
+        let metadata = Some(ResultSetMetadata {
+            row_type: Some(StructType {
+                fields: vec![field("column1")],
+            }),
+            transaction: None,
+        });
+        let values = vec![
+            Value {
+                kind: Some("value1".to_kind()),
+            },
+            Value {
+                kind: Some("value2".to_kind()),
+            },
+            Value {
+                kind: Some("value3".to_kind()),
+            },
+        ];
+        assert!(rs.add(metadata, values, false).unwrap());
+        assert_eq!(rs.rows.len(), 3);
+        assert_eq!(rs.fields.len(), 1);
+        assert_eq!(rs.fields[0].name, "column1".to_string());
+        assert_eq!(*rs.index.get("column1").unwrap(), 0);
+        assert_eq!(rs.chunked_value, false);
+
+        assert!(rs.next().is_some());
+        assert!(rs.next().is_some());
+        assert!(rs.next().is_some());
+        assert!(rs.next().is_none());
+    }
+
+    #[test]
+    fn test_rs_add_multi_column_no_chunked_value() {
+        let mut rs = empty_rs();
+        let metadata = Some(ResultSetMetadata {
+            row_type: Some(StructType {
+                fields: vec![field("column1"), field("column2")],
+            }),
+            transaction: None,
+        });
+        let values = vec![
+            Value {
+                kind: Some("value1".to_kind()),
+            },
+            Value {
+                kind: Some("value2".to_kind()),
+            },
+            Value {
+                kind: Some("value3".to_kind()),
+            },
+        ];
+        assert!(rs.add(metadata, values, false).unwrap());
+        assert_eq!(rs.rows.len(), 3);
+        assert_eq!(rs.fields.len(), 2);
+        assert_eq!(rs.fields[0].name, "column1".to_string());
+        assert_eq!(rs.fields[1].name, "column2".to_string());
+        assert_eq!(*rs.index.get("column1").unwrap(), 0);
+        assert_eq!(*rs.index.get("column2").unwrap(), 1);
+        assert_eq!(rs.chunked_value, false);
+
+        assert!(rs.next().is_some());
+        assert!(rs.next().is_none());
+    }
+
+    #[test]
+    fn test_rs_add_multi_column_no_chunked_value_just() {
+        let mut rs = empty_rs();
+        let metadata = Some(ResultSetMetadata {
+            row_type: Some(StructType {
+                fields: vec![field("column1"), field("column2")],
+            }),
+            transaction: None,
+        });
+        let values = vec![
+            Value {
+                kind: Some("value1".to_kind()),
+            },
+            Value {
+                kind: Some("value2".to_kind()),
+            },
+            Value {
+                kind: Some("value3".to_kind()),
+            },
+            Value {
+                kind: Some("value4".to_kind()),
+            },
+        ];
+        assert!(rs.add(metadata, values, false).unwrap());
+        assert_eq!(rs.rows.len(), 4);
+        assert_eq!(rs.fields.len(), 2);
+        assert_eq!(rs.fields[0].name, "column1".to_string());
+        assert_eq!(rs.fields[1].name, "column2".to_string());
+        assert_eq!(*rs.index.get("column1").unwrap(), 0);
+        assert_eq!(*rs.index.get("column2").unwrap(), 1);
+        assert_eq!(rs.chunked_value, false);
+
+        assert!(rs.next().is_some());
+        assert!(rs.next().is_some());
+        assert!(rs.next().is_none());
+    }
+
+    #[test]
+    fn test_rs_add_one_column_chunked_value() {
+        let mut rs = empty_rs();
+        let metadata = Some(ResultSetMetadata {
+            row_type: Some(StructType {
+                fields: vec![field("column1")],
+            }),
+            transaction: None,
+        });
+        let values = vec![
+            Value {
+                kind: Some("value1".to_kind()),
+            },
+            Value {
+                kind: Some("value2".to_kind()),
+            },
+            Value {
+                kind: Some("val".to_kind()),
+            },
+        ];
+        assert!(rs.add(metadata.clone(), values, true).unwrap());
+        assert_eq!(rs.rows.len(), 3);
+        assert_eq!(rs.fields.len(), 1);
+        assert_eq!(rs.fields[0].name, "column1".to_string());
+        assert_eq!(*rs.index.get("column1").unwrap(), 0);
+        assert_eq!(rs.chunked_value, true);
+
+        assert!(rs.next().is_some());
+        assert!(rs.next().is_some());
+        assert!(rs.next().is_none());
+
+        // add next stream data
+        assert!(rs
+            .add(
+                metadata,
+                vec![Value {
+                    kind: Some("ue3".to_kind())
+                },],
+                false
+            )
+            .unwrap());
+        assert_eq!(rs.chunked_value, false);
+        assert_eq!(rs.rows.len(), 1);
+        assert!(rs.next().is_some());
+        assert!(rs.next().is_none());
+    }
+
+    #[test]
+    fn test_rs_add_multi_column_chunked_value() {
+        let mut rs = empty_rs();
+        let metadata = Some(ResultSetMetadata {
+            row_type: Some(StructType {
+                fields: vec![field("column1"), field("column2")],
+            }),
+            transaction: None,
+        });
+        let values = vec![
+            Value {
+                kind: Some("value1".to_kind()),
+            },
+            Value {
+                kind: Some("value2".to_kind()),
+            },
+            Value {
+                kind: Some("val".to_kind()),
+            },
+        ];
+        assert!(rs.add(metadata.clone(), values, true).unwrap());
+        assert_eq!(rs.rows.len(), 3);
+        assert_eq!(rs.fields.len(), 2);
+        assert_eq!(rs.fields[0].name, "column1".to_string());
+        assert_eq!(rs.fields[1].name, "column2".to_string());
+        assert_eq!(*rs.index.get("column1").unwrap(), 0);
+        assert_eq!(*rs.index.get("column2").unwrap(), 1);
+        assert_eq!(rs.chunked_value, true);
+
+        assert!(rs.next().is_some());
+        assert!(rs.next().is_none());
+
+        // add next stream data
+        assert!(rs
+            .add(
+                metadata.clone(),
+                vec![Value {
+                    kind: Some("ue3".to_kind())
+                },],
+                false
+            )
+            .unwrap());
+        assert_eq!(rs.chunked_value, false);
+        assert_eq!(rs.rows.len(), 1);
+        assert!(rs.next().is_none());
+
+        // add next stream data
+        assert!(rs
+            .add(
+                metadata,
+                vec![Value {
+                    kind: Some("value4".to_kind())
+                },],
+                false
+            )
+            .unwrap());
+        assert_eq!(rs.chunked_value, false);
+        assert_eq!(rs.rows.len(), 2);
+        assert!(rs.next().is_some());
+    }
+
+    #[test]
+    fn test_rs_add_multi_column_no_chunked_value_list_value() {
+        let mut rs = empty_rs();
+        let metadata = Some(ResultSetMetadata {
+            row_type: Some(StructType {
+                fields: vec![field("column1"), field("column2")],
+            }),
+            transaction: None,
+        });
+        let values = vec![Value {
+            kind: Some(vec!["value1-1", "value1-2"].to_kind()),
+        }];
+        assert!(rs.add(metadata.clone(), values, false).unwrap());
+        assert_eq!(rs.rows.len(), 1);
+        assert_eq!(rs.fields.len(), 2);
+        assert_eq!(rs.fields[0].name, "column1".to_string());
+        assert_eq!(rs.fields[1].name, "column2".to_string());
+        assert_eq!(*rs.index.get("column1").unwrap(), 0);
+        assert_eq!(*rs.index.get("column2").unwrap(), 1);
+        assert_eq!(rs.chunked_value, false);
+        assert!(rs.next().is_none());
+
+        assert!(rs
+            .add(
+                metadata,
+                vec![Value {
+                    kind: Some(vec!["value2-1", "value2-2"].to_kind())
+                },],
+                false
+            )
+            .unwrap());
+        assert_eq!(rs.chunked_value, false);
+        assert_eq!(rs.rows.len(), 2);
+        assert!(rs.next().is_some());
+        assert!(rs.next().is_none());
+    }
+
+    #[test]
+    fn test_rs_add_multi_column_chunked_value_list_value() {
+        let mut rs = empty_rs();
+        let metadata = Some(ResultSetMetadata {
+            row_type: Some(StructType {
+                fields: vec![field("column1"), field("column2")],
+            }),
+            transaction: None,
+        });
+        let values = vec![
+            Value {
+                kind: Some(vec!["value1-1", "value1-2"].to_kind()),
+            },
+            Value {
+                kind: Some(vec!["value2-1"].to_kind()),
+            },
+        ];
+        assert!(rs.add(metadata.clone(), values, true).unwrap());
+        assert_eq!(rs.rows.len(), 2);
+        assert_eq!(rs.fields.len(), 2);
+        assert_eq!(rs.fields[0].name, "column1".to_string());
+        assert_eq!(rs.fields[1].name, "column2".to_string());
+        assert_eq!(*rs.index.get("column1").unwrap(), 0);
+        assert_eq!(*rs.index.get("column2").unwrap(), 1);
+        assert_eq!(rs.chunked_value, true);
+        assert!(rs.next().is_none());
+
+        // add next stream data
+        assert!(rs
+            .add(
+                metadata.clone(),
+                vec![Value {
+                    kind: Some(vec!["valu"].to_kind())
+                },],
+                true
+            )
+            .unwrap());
+        assert_eq!(rs.chunked_value, true);
+        assert_eq!(rs.rows.len(), 2);
+        assert!(rs.next().is_none());
+
+        // add next stream data
+        assert!(rs
+            .add(
+                metadata,
+                vec![Value {
+                    kind: Some(vec!["e2-2"].to_kind())
+                },],
+                false
+            )
+            .unwrap());
+        assert_eq!(rs.chunked_value, false);
+        assert_eq!(rs.rows.len(), 2);
+        assert!(rs.next().is_some());
+        assert!(rs.next().is_none());
     }
 }
