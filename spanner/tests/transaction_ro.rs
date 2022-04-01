@@ -234,7 +234,7 @@ async fn test_few_records_value() {
 #[tokio::test]
 #[serial]
 async fn test_many_records_value() {
-    test_query(40000, "many").await ;
+    test_query(40000, "many").await;
 }
 
 #[tokio::test]
