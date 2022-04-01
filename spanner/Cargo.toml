@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-spanner"
-version = "0.6.2"
+version = "0.6.3"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/spanner"
@@ -8,7 +8,7 @@ keywords = ["gcp","spanner","googleapis","google-cloud-rust"]
 license = "MIT"
 readme = "README.md"
 description = "Google Cloud Platform spanner client library."
-documentation = "https://docs.rs/google-cloud-spanner/0.6.2/google-cloud-spanner/"
+documentation = "https://docs.rs/google-cloud-spanner/0.6.3/google-cloud-spanner/"
 
 [dependencies]
 log = "0.4"
