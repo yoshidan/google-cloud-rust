@@ -194,7 +194,8 @@ async fn test_batch_partition_query_and_read() {
 
 #[tokio::test]
 #[serial]
-async fn test_many_records() {
+async fn test_many_records_value() {
+    env_logger::try_init();
     let now = Utc::now();
     let mut session = create_session().await;
     let mutations = (0..40000)
@@ -203,7 +204,7 @@ async fn test_many_records() {
     let cr = replace_test_data(&mut session, mutations).await.unwrap();
 
     let mut tx = read_only_transaction(session).await;
-    let stmt = Statement::new("SELECT *, Array[UserId,UserId,UserId,UserId,UserId] as UserIds FROM User p WHERE p.UserId LIKE 'user_many_%' ORDER BY UserId ");
+    let stmt = Statement::new("SELECT *, Array[UserId,UserId,UserId,UserId,UserId] as UserIds, Array[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20] as NumArray FROM User p WHERE p.UserId LIKE 'user_many_%' ORDER BY UserId ");
     let rows = execute_query(&mut tx, stmt).await;
     assert_eq!(40000, rows.len());
 
@@ -216,6 +217,12 @@ async fn test_many_records() {
         assert_user_row(row, user_id, &now, &ts);
         let user_ids = row.column_by_name::<Vec<String>>("UserIds").unwrap();
         user_ids.iter().for_each(|u| assert_eq!(u, user_id));
+        let nums = row.column_by_name::<Vec<i64>>("NumArray").unwrap();
+        let mut start = 0 as i64;
+        nums.iter().for_each(|u| {
+            start += 1;
+            assert_eq!(*u, start)
+        });
     }
 }
 
