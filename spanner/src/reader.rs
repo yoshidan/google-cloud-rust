@@ -87,14 +87,14 @@ impl Reader for TableReader {
     }
 }
 
-pub struct Chunk {
+pub struct ResultSet {
     fields: Arc<Vec<Field>>,
     index: Arc<HashMap<String, usize>>,
     rows: VecDeque<Value>,
     chunked_value: bool,
 }
 
-impl Chunk {
+impl ResultSet {
     fn next(&mut self) -> Option<Row> {
         if !self.rows.is_empty() {
             let column_length = self.fields.len();
@@ -134,7 +134,7 @@ impl Chunk {
                 Kind::ListValue(mut first) => {
                     let last_value_of_previous = last.values.pop().unwrap();
                     let first_value_of_next = first.values.remove(0);
-                    let merged = Chunk::merge(last_value_of_previous, first_value_of_next)?;
+                    let merged = ResultSet::merge(last_value_of_previous, first_value_of_next)?;
                     last.values.push(merged);
                     last.values.extend(first.values);
                     Ok(Value {
@@ -181,7 +181,7 @@ impl Chunk {
         if self.chunked_value {
             //merge when the chunked value is found.
             let first = values.remove(0);
-            let merged = Chunk::merge(self.rows.pop_back().unwrap(), first)?;
+            let merged = ResultSet::merge(self.rows.pop_back().unwrap(), first)?;
             self.rows.push_back(merged);
         }
         self.rows.extend(values);
@@ -194,7 +194,7 @@ pub struct RowIterator<'a> {
     streaming: Streaming<PartialResultSet>,
     session: &'a mut SessionHandle,
     reader: Box<dyn Reader + Sync + Send>,
-    chunk: Chunk,
+    rs: ResultSet,
     reader_option: Option<CallOptions>,
 }
 
@@ -205,7 +205,7 @@ impl<'a> RowIterator<'a> {
         option: Option<CallOptions>,
     ) -> Result<RowIterator<'a>, Status> {
         let streaming = reader.read(session, option).await?.into_inner();
-        let chunk = Chunk {
+        let rs = ResultSet {
             fields: Arc::new(vec![]),
             index: Arc::new(HashMap::new()),
             rows: VecDeque::new(),
@@ -215,7 +215,7 @@ impl<'a> RowIterator<'a> {
             streaming,
             session,
             reader,
-            chunk,
+            rs,
             reader_option: None,
         })
     }
@@ -248,7 +248,7 @@ impl<'a> RowIterator<'a> {
                 if !result_set.resume_token.is_empty() {
                     self.reader.update_token(result_set.resume_token);
                 }
-                self.chunk
+                self.rs
                     .add(result_set.metadata, result_set.values, result_set.chunked_value)
             }
             None => Ok(false),
@@ -259,7 +259,7 @@ impl<'a> RowIterator<'a> {
 #[async_trait]
 impl<'a> AsyncIterator for RowIterator<'a> {
     fn column_metadata(&self, column_name: &str) -> Option<(usize, Field)> {
-        for (i, val) in self.chunk.fields.iter().enumerate() {
+        for (i, val) in self.rs.fields.iter().enumerate() {
             if val.name == column_name {
                 return Some((i, val.clone()));
             }
@@ -270,7 +270,7 @@ impl<'a> AsyncIterator for RowIterator<'a> {
     /// next returns the next result.
     /// Its second return value is None if there are no more results.
     async fn next(&mut self) -> Result<Option<Row>, Status> {
-        let row = self.chunk.next();
+        let row = self.rs.next();
         if row.is_some() {
             return Ok(row);
         }
@@ -284,7 +284,7 @@ impl<'a> AsyncIterator for RowIterator<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::reader::Chunk;
+    use crate::reader::ResultSet;
     use crate::statement::ToKind;
     use google_cloud_googleapis::spanner::v1::struct_type::Field;
     use prost_types::value::Kind;
@@ -293,8 +293,8 @@ mod tests {
     use std::sync::Arc;
 
     #[test]
-    fn test_chunk_next_empty() {
-        let mut chunk = Chunk {
+    fn test_rs_next_empty() {
+        let mut rs = ResultSet {
             fields: Arc::new(vec![Field {
                 name: "column1".to_string(),
                 r#type: None,
@@ -303,12 +303,12 @@ mod tests {
             rows: Default::default(),
             chunked_value: false,
         };
-        assert!(chunk.next().is_none());
+        assert!(rs.next().is_none());
     }
 
     #[test]
-    fn test_chunk_next_record_chunked_or_not() {
-        let mut chunk = |values| Chunk {
+    fn test_rs_next_record_chunked_or_not() {
+        let rs = |values| ResultSet {
             fields: Arc::new(vec![
                 Field {
                     name: "column1".to_string(),
@@ -323,31 +323,22 @@ mod tests {
             rows: VecDeque::from(values),
             chunked_value: false,
         };
-        assert!(chunk(vec![Value {
+        let mut rs1 = rs(vec![Value {
             kind: Some("value1".to_kind())
-        }])
-        .next()
-        .is_none());
-        assert_eq!(
-            chunk(vec![
-                Value {
-                    kind: Some("value1".to_kind())
-                },
-                Value {
-                    kind: Some("value2".to_kind())
-                }
-            ])
-            .next()
-            .unwrap()
-            .column::<String>(0)
-            .unwrap(),
-            "value1".to_string()
-        );
+        }]);
+        assert!(rs1.next().is_none());
+        let mut rs2 = rs(vec![Value {
+            kind: Some("value1".to_kind())
+        }, Value {
+            kind: Some("value2".to_kind())
+        }
+        ]);
+        assert_eq!(rs2.next().unwrap().column::<String>(0).unwrap(), "value1".to_string());
     }
 
     #[test]
-    fn test_chunk_next_value_chunked_or_not() {
-        let chunk = |chunked_value| Chunk {
+    fn test_rs_next_value_chunked_or_not() {
+        let rs = |chunked_value| ResultSet {
             fields: Arc::new(vec![
                 Field {
                     name: "column1".to_string(),
@@ -369,13 +360,13 @@ mod tests {
             ]),
             chunked_value,
         };
-        assert!(chunk(true).next().is_none());
-        assert_eq!(chunk(false).next().unwrap().column::<String>(0).unwrap(), "value1".to_string());
+        assert!(rs(true).next().is_none());
+        assert_eq!(rs(false).next().unwrap().column::<String>(0).unwrap(), "value1".to_string());
     }
 
     #[test]
-    fn test_chunk_next_plural_record_one_column() {
-        let chunk = |chunked_value| Chunk {
+    fn test_rs_next_plural_record_one_column() {
+        let rs = |chunked_value| ResultSet {
             fields: Arc::new(vec![Field {
                 name: "column1".to_string(),
                 r#type: None,
@@ -394,11 +385,11 @@ mod tests {
             ]),
             chunked_value,
         };
-        let mut incomplete = chunk(true);
+        let mut incomplete = rs(true);
         assert!(incomplete.next().is_some());
         assert!(incomplete.next().is_some());
         assert!(incomplete.next().is_none());
-        let mut complete = chunk(false);
+        let mut complete = rs(false);
         assert!(complete.next().is_some());
         assert!(complete.next().is_some());
         assert!(complete.next().is_some());
@@ -406,8 +397,8 @@ mod tests {
     }
 
     #[test]
-    fn test_chunk_next_plural_record_multi_column() {
-        let chunk = |chunked_value| Chunk {
+    fn test_rs_next_plural_record_multi_column() {
+        let rs = |chunked_value| ResultSet {
             fields: Arc::new(vec![
                 Field {
                     name: "column1".to_string(),
@@ -432,11 +423,67 @@ mod tests {
             ]),
             chunked_value,
         };
-        let mut incomplete = chunk(true);
+        let mut incomplete = rs(true);
         assert_eq!(incomplete.next().unwrap().column::<String>(1).unwrap(), "value2".to_string());
         assert!(incomplete.next().is_none());
-        let mut complete = chunk(false);
+        let mut complete = rs(false);
         assert_eq!(complete.next().unwrap().column::<String>(1).unwrap(), "value2".to_string());
         assert!(incomplete.next().is_none());
+    }
+
+    #[test]
+    fn test_rs_merge_string_value() {
+        let previous_last  = Value {
+            kind: Some("val".to_kind()),
+        };
+        let current_first = Value {
+            kind: Some("ue1".to_kind()),
+        };
+        let result = ResultSet::merge(previous_last, current_first);
+        assert!(result.is_ok());
+        let kind = result.unwrap().kind.unwrap();
+        match kind {
+            Kind::StringValue(v) => assert_eq!(v, "value1".to_string()),
+            _ => assert!(false, "must be string value")
+        }
+    }
+
+    #[test]
+    fn test_rs_merge_list_value() {
+        let previous_last  = Value {
+            kind: Some(vec!["value1-1", "value1-2", "val"].to_kind()),
+        };
+        let current_first = Value {
+            kind: Some(vec!["ue1-3", "value2-1", "valu"].to_kind()),
+        };
+        let result = ResultSet::merge(previous_last, current_first);
+        assert!(result.is_ok());
+        let kind = result.unwrap().kind.unwrap();
+        match kind {
+            Kind::ListValue(v) => {
+                assert_eq!(v.values.len(),5);
+                match v.values[0].kind.as_ref().unwrap() {
+                    Kind::StringValue(v)  => assert_eq!(*v, "value1-1".to_string()),
+                    _ => assert!(false, "must be string value")
+                };
+                match v.values[1].kind.as_ref().unwrap() {
+                    Kind::StringValue(v)  => assert_eq!(*v, "value1-2".to_string()),
+                    _ => assert!(false, "must be string value")
+                };
+                match v.values[2].kind.as_ref().unwrap() {
+                    Kind::StringValue(v)  => assert_eq!(*v, "value1-3".to_string()),
+                    _ => assert!(false, "must be string value")
+                };
+                match v.values[3].kind.as_ref().unwrap() {
+                    Kind::StringValue(v)  => assert_eq!(*v, "value2-1".to_string()),
+                    _ => assert!(false, "must be string value")
+                }
+                match v.values[4].kind.as_ref().unwrap() {
+                    Kind::StringValue(v)  => assert_eq!(*v, "valu".to_string()),
+                    _ => assert!(false, "must be string value")
+                }
+            }
+            _ => assert!(false, "must be string value")
+        }
     }
 }
