@@ -192,25 +192,23 @@ async fn test_batch_partition_query_and_read() {
     });
 }
 
-#[tokio::test]
-#[serial]
-async fn test_many_records_value() {
+async fn test_query(count: usize, prefix: &str) {
     env_logger::try_init();
     let now = Utc::now();
     let mut session = create_session().await;
-    let mutations = (0..40000)
-        .map(|x| create_user_mutation(&format!("user_many_{}", x), &now))
+    let mutations = (0..count)
+        .map(|x| create_user_mutation(&format!("user_{}_{}", prefix, x), &now))
         .collect();
     let cr = replace_test_data(&mut session, mutations).await.unwrap();
 
     let mut tx = read_only_transaction(session).await;
-    let stmt = Statement::new("SELECT *, Array[UserId,UserId,UserId,UserId,UserId] as UserIds, Array[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20] as NumArray FROM User p WHERE p.UserId LIKE 'user_many_%' ORDER BY UserId ");
+    let stmt = Statement::new(format!("SELECT *, Array[UserId,UserId,UserId,UserId,UserId] as UserIds, Array[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20] as NumArray FROM User p WHERE p.UserId LIKE 'user_{}_%' ORDER BY UserId ", prefix));
     let rows = execute_query(&mut tx, stmt).await;
-    assert_eq!(40000, rows.len());
+    assert_eq!(count, rows.len());
 
     let ts = cr.commit_timestamp.as_ref().unwrap();
     let ts = Utc.timestamp(ts.seconds, ts.nanos as u32);
-    let mut user_ids: Vec<String> = (0..40000).map(|x| format!("user_many_{}", x)).collect();
+    let mut user_ids: Vec<String> = (0..count).map(|x| format!("user_{}_{}", prefix, x)).collect();
     user_ids.sort();
     for (x, user_id) in user_ids.iter().enumerate() {
         let row = rows.get(x).unwrap();
@@ -219,6 +217,7 @@ async fn test_many_records_value() {
         user_ids.iter().for_each(|u| assert_eq!(u, user_id));
         let nums = row.column_by_name::<Vec<i64>>("NumArray").unwrap();
         let mut start = 0 as i64;
+        assert_eq!(20, nums.len());
         nums.iter().for_each(|u| {
             start += 1;
             assert_eq!(*u, start)
@@ -228,7 +227,20 @@ async fn test_many_records_value() {
 
 #[tokio::test]
 #[serial]
+async fn test_few_records_value() {
+    test_query(10, "few").await;
+}
+
+#[tokio::test]
+#[serial]
+async fn test_many_records_value() {
+    test_query(40000, "many").await ;
+}
+
+#[tokio::test]
+#[serial]
 async fn test_many_records_struct() {
+    env_logger::try_init();
     let now = Utc::now();
     let mut session = create_session().await;
     let user_id = "user_x_6";
