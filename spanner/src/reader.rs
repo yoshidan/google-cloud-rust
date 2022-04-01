@@ -628,4 +628,55 @@ mod tests {
         assert!(rs.next().is_some());
         assert!(rs.next().is_none());
     }
+
+    #[test]
+    fn test_rs_add_multi_column_chunked_value_list_and_string_value() {
+        let mut rs = empty_rs();
+        let metadata = Some(ResultSetMetadata {
+            row_type: Some(StructType {
+                fields: vec![field("column1"), field("column2")],
+            }),
+            transaction: None,
+        });
+        let values = vec![value(vec!["value1-1", "value1-2"]), value("valu")];
+        assert!(rs.add(metadata.clone(), values, true).unwrap());
+        assert_eq!(rs.rows.len(), 2);
+        assert_eq!(rs.fields.len(), 2);
+        assert_eq!(rs.fields[0].name, "column1".to_string());
+        assert_eq!(rs.fields[1].name, "column2".to_string());
+        assert_eq!(*rs.index.get("column1").unwrap(), 0);
+        assert_eq!(*rs.index.get("column2").unwrap(), 1);
+        assert_eq!(rs.chunked_value, true);
+        assert!(rs.next().is_none());
+
+        // add next stream data
+        assert!(rs
+            .add(metadata.clone(), vec![value("lueA"), value(vec!["valu"])], true)
+            .unwrap());
+        assert_eq!(rs.chunked_value, true);
+        assert_eq!(rs.rows.len(), 3);
+        assert!(rs.next().is_some());
+        assert!(rs.next().is_none());
+
+        // add next stream data
+        assert!(rs
+            .add(metadata.clone(), vec![value(vec!["e2-1", "value2-2"])], false)
+            .unwrap());
+        assert_eq!(rs.chunked_value, false);
+        assert_eq!(rs.rows.len(), 1);
+        assert!(rs.next().is_none());
+
+        // add next stream data
+        assert!(rs.add(metadata.clone(), vec![value("value")], true).unwrap());
+        assert_eq!(rs.chunked_value, true);
+        assert_eq!(rs.rows.len(), 2);
+        assert!(rs.next().is_none());
+
+        // add next stream data
+        assert!(rs.add(metadata, vec![value("B")], false).unwrap());
+        assert_eq!(rs.chunked_value, false);
+        assert_eq!(rs.rows.len(), 2);
+        assert!(rs.next().is_some());
+        assert!(rs.next().is_none());
+    }
 }
