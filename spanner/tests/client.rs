@@ -10,8 +10,14 @@ use google_cloud_spanner::key::Key;
 
 use google_cloud_spanner::value::Timestamp;
 use serial_test::serial;
+use tracing_subscriber;
 
 const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
+
+#[ctor::ctor]
+fn init() {
+    tracing_subscriber::fmt().try_init();
+}
 
 #[derive(thiserror::Error, Debug)]
 pub enum DomainError {

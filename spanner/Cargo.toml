@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-spanner"
-version = "0.6.3"
+version = "0.6.4"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/spanner"
@@ -8,10 +8,10 @@ keywords = ["gcp","spanner","googleapis","google-cloud-rust"]
 license = "MIT"
 readme = "README.md"
 description = "Google Cloud Platform spanner client library."
-documentation = "https://docs.rs/google-cloud-spanner/0.6.3/google-cloud-spanner/"
+documentation = "https://docs.rs/google-cloud-spanner/0.6.4/google-cloud-spanner/"
 
 [dependencies]
-log = "0.4"
+tracing = "0.1"
 prost = "0.9"
 prost-types = "0.9"
 tokio = { version = "1.14", features = ["full"] }
@@ -22,11 +22,12 @@ parking_lot = "0.11"
 base64 = "0.13"
 anyhow = "1.0"
 
-google-cloud-longrunning= { version = "0.3.0", path = "../foundation/longrunning" }
-google-cloud-gax = { version = "0.4.0", path = "../foundation/gax" }
+google-cloud-longrunning= { version = "0.3.1", path = "../foundation/longrunning" }
+google-cloud-gax = { version = "0.4.1", path = "../foundation/gax" }
 google-cloud-googleapis = { version = "0.3.0", path = "../googleapis" }
 
 [dev-dependencies]
-env_logger = "0.9"
+tracing-subscriber = "0.3"
 serial_test = "0.5.1"
 anyhow = "1.0.48"
+ctor = "0.1"

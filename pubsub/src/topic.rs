@@ -154,8 +154,7 @@ mod tests {
 
     #[ctor::ctor]
     fn init() {
-        std::env::set_var("RUST_LOG", "google_cloud_pubsub=trace".to_string());
-        env_logger::try_init();
+        tracing_subscriber::fmt().init();
     }
 
     async fn create_topic() -> Result<Topic, anyhow::Error> {
@@ -205,7 +204,7 @@ mod tests {
         // Wait for all publish task finish
         for task in tasks {
             let message_id = task.await??;
-            log::trace!("{}", message_id);
+            tracing::trace!("{}", message_id);
             assert!(!message_id.is_empty())
         }
 

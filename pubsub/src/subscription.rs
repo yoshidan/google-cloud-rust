@@ -358,7 +358,7 @@ impl Subscription {
 
                     }
                 }
-                log::trace!("stop message receiver : {}", name);
+                tracing::trace!("stop message receiver : {}", name);
             }));
         }
         cancel.cancelled().await;
@@ -396,8 +396,7 @@ mod tests {
 
     #[ctor::ctor]
     fn init() {
-        std::env::set_var("RUST_LOG", "google_cloud_pubsub=trace".to_string());
-        env_logger::try_init();
+        tracing_subscriber::fmt().try_init();
     }
 
     async fn create_subscription() -> Result<Subscription, anyhow::Error> {
@@ -494,7 +493,7 @@ mod tests {
         let cancel2 = cancel.clone();
         let j = tokio::spawn(async move {
             tokio::time::sleep(Duration::from_secs(5)).await;
-            log::info!("cancelled");
+            tracing::info!("cancelled");
             cancel2.clone().cancel();
         });
         let messages = subscription.pull(2, Some(cancel), None).await;
@@ -586,7 +585,7 @@ mod tests {
         let subscription = create_subscription().await.unwrap();
         let cancel = CancellationToken::new();
         subscription.receive(|message, _| async move{
-            log::info!("received {}", message.message.message_id);
+            tracing::info!("received {}", message.message.message_id);
             message.ack().await;
         }, cancel, None).await;
         Ok(())
