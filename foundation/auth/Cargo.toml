@@ -10,7 +10,7 @@ readme = "README.md"
 description = "Google Cloud Platform server application authentication library."
 
 [dependencies]
-hyper = { version = "0.14", features = ["full"] }
+hyper = "0.14"
 hyper-tls = "0.5"
 chrono = "0.4"
 serde = { version = "1.0", features = ["derive"] }
@@ -20,8 +20,8 @@ thiserror = "1.0"
 async-trait = "0.1"
 home = "0.5"
 urlencoding = "2.1"
-tokio = { version = "1.7", features = ["fs"]}
-google-cloud-metadata = { version = "0.1.1", path = "../metadata" }
+tokio = { version = "1.17", features = ["fs"]}
+google-cloud-metadata = { version = "0.1.3", path = "../metadata" }
 
 [dev-dependencies]
 tokio = { version = "1.7", features = ["test-util", "rt-multi-thread", "macros"]}

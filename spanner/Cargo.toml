@@ -14,7 +14,7 @@ documentation = "https://docs.rs/google-cloud-spanner/0.6.4/google-cloud-spanner
 tracing = "0.1"
 prost = "0.9"
 prost-types = "0.9"
-tokio = { version = "1.14", features = ["full"] }
+tokio = "1.17"
 chrono = "0.4"
 thiserror = "1.0"
 async-trait = "0.1"
