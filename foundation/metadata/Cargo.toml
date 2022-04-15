@@ -10,7 +10,7 @@ readme = "README.md"
 description = "Google Cloud Platform rust client."
 
 [dependencies]
-tokio = { version = "1.17", features = ["sync","net"] }
+tokio = { version = "1.17", features = ["sync","net", "parking_lot"] }
 hyper = "0.14"
 thiserror = "1.0"
 
