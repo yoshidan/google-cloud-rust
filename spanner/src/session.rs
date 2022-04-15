@@ -56,14 +56,14 @@ impl SessionHandle {
     }
 
     async fn invalidate(&mut self) {
-        log::debug!("session invalidate {}", self.session.name);
+        tracing::debug!("session invalidate {}", self.session.name);
         let request = DeleteSessionRequest {
             name: self.session.name.to_string(),
         };
         match self.spanner_client.delete_session(request, None, None).await {
             Ok(_s) => self.valid = false,
             Err(e) => {
-                log::error!("session remove error {} error={:?}", self.session.name, e);
+                tracing::error!("session remove error {} error={:?}", self.session.name, e);
             }
         }
     }
@@ -183,7 +183,7 @@ impl SessionPool {
                 Err(e) => return Err(e),
             }
         }
-        log::debug!("initial session created count = {}", sessions.len());
+        tracing::debug!("initial session created count = {}", sessions.len());
         Ok(sessions.into())
     }
 
@@ -224,7 +224,7 @@ impl SessionPool {
 
     fn recycle(&self, session: SessionHandle) {
         if session.valid {
-            log::trace!("recycled name={}", session.session.name.to_string());
+            tracing::trace!("recycled name={}", session.session.name.to_string());
             match { self.waiters.lock().pop_front() } {
                 Some(c) => {
                     if let Err(session) = c.send(session) {
@@ -436,11 +436,11 @@ fn listen_session_creation_request(
                 }
                 Err(e) => {
                     allocation_request_size -= creation_count;
-                    log::error!("failed to create new sessions {:?}", e)
+                    tracing::error!("failed to create new sessions {:?}", e)
                 }
             };
         }
-        log::trace!("stop session creating listener")
+        tracing::trace!("stop session creating listener")
     })
 }
 
@@ -476,7 +476,7 @@ fn schedule_refresh(config: SessionConfig, session_pool: SessionPool, cancel: Ca
             )
             .await;
         }
-        log::trace!("stop session cleaner")
+        tracing::trace!("stop session cleaner")
     })
 }
 
@@ -584,7 +584,7 @@ async fn delete_session(session: &mut SessionHandle) {
     };
     match session.spanner_client.delete_session(request, None, None).await {
         Ok(_) => {}
-        Err(e) => log::error!("failed to delete session {}, {:?}", session_name, e),
+        Err(e) => tracing::error!("failed to delete session {}, {:?}", session_name, e),
     }
 }
 
@@ -599,7 +599,7 @@ async fn batch_create_session(
         session_count: creation_count as i32,
     };
 
-    log::debug!("spawn session creation request : count to create = {}", creation_count);
+    tracing::debug!("spawn session creation request : count to create = {}", creation_count);
     let response = spanner_client
         .batch_create_sessions(request, None, None)
         .await?
@@ -840,7 +840,6 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_close() {
-        let _ = env_logger::try_init();
         let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
             .await
             .unwrap();

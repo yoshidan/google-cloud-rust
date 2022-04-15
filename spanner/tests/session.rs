@@ -6,6 +6,11 @@ use google_cloud_spanner::apiv1::conn_pool::ConnectionManager;
 
 use google_cloud_spanner::session::{SessionConfig, SessionError, SessionManager};
 
+#[ctor::ctor]
+fn init() {
+    tracing_subscriber::fmt().try_init();
+}
+
 #[tokio::test]
 #[serial]
 async fn test_init_pool() {

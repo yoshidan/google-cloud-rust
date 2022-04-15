@@ -303,7 +303,7 @@ impl ReadWriteTransaction {
         let response = session.invalidate_if_needed(result).await;
         match response {
             Ok(_) => {}
-            Err(e) => log::error!("failed to rollback transaction {:?}", e),
+            Err(e) => tracing::error!("failed to rollback transaction {:?}", e),
         }
     }
 }

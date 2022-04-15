@@ -109,12 +109,12 @@ impl Subscriber {
                     }
                 }
             }
-            log::trace!("stop pinger : {}", subscription_clone);
+            tracing::trace!("stop pinger : {}", subscription_clone);
         });
 
         let cancel_receiver = ctx.clone();
         let inner = tokio::spawn(async move {
-            log::trace!("start subscriber: {}", subscription);
+            tracing::trace!("start subscriber: {}", subscription);
             let retryable_codes = match &config.retry_setting {
                 Some(v) => v.codes.clone(),
                 None => default_retry_setting().codes,
@@ -139,14 +139,14 @@ impl Subscriber {
                     Ok(r) => r.into_inner(),
                     Err(e) => {
                         if e.code() == Code::Cancelled {
-                            log::trace!("stop subscriber : {}", subscription);
+                            tracing::trace!("stop subscriber : {}", subscription);
                             break;
                         } else {
                             if retryable_codes.contains(&e.code()) {
-                                log::warn!("failed to start streaming: will reconnect {:?} : {}", e, subscription);
+                                tracing::warn!("failed to start streaming: will reconnect {:?} : {}", e, subscription);
                                 continue;
                             } else {
-                                log::error!("failed to start streaming: will stop {:?} : {}", e, subscription);
+                                tracing::error!("failed to start streaming: will stop {:?} : {}", e, subscription);
                                 break;
                             }
                         }
@@ -164,17 +164,17 @@ impl Subscriber {
                     Ok(_) => break,
                     Err(e) => {
                         if retryable_codes.contains(&e.code()) {
-                            log::trace!("reconnect - '{:?}' : {} ", e, subscription);
+                            tracing::trace!("reconnect - '{:?}' : {} ", e, subscription);
                             continue;
                         } else {
-                            log::error!("terminated subscriber streaming with error {:?} : {}", e, subscription);
+                            tracing::error!("terminated subscriber streaming with error {:?} : {}", e, subscription);
                             break;
                         }
                     }
                 }
             }
             // streaming request is closed when the ping_sender closed.
-            log::trace!("stop subscriber in streaming: {}", subscription);
+            tracing::trace!("stop subscriber in streaming: {}", subscription);
         });
         return Self {
             pinger: Some(pinger),
@@ -189,7 +189,7 @@ impl Subscriber {
         cancel: CancellationToken,
         queue: async_channel::Sender<ReceivedMessage>,
     ) -> Result<(), Status> {
-        log::trace!("start streaming: {}", subscription);
+        tracing::trace!("start streaming: {}", subscription);
         loop {
             select! {
                 _ = cancel.cancelled() => {
@@ -207,7 +207,7 @@ impl Subscriber {
                     };
                     for m in message.received_messages {
                         if let Some(mes) = m.message {
-                            log::debug!("message received: {}", mes.message_id);
+                            tracing::debug!("message received: {}", mes.message_id);
                             queue.send(ReceivedMessage::new(subscription.to_string(), client.clone(), mes, m.ack_id)).await;
                         }
                     }

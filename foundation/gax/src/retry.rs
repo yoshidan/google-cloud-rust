@@ -139,10 +139,11 @@ where
                     None => return Err(status),
                     Some(s) => s,
                 };
-                tokio::time::sleep(duration).await
+                tokio::time::sleep(duration).await;
+                tracing::trace!("retry fn");
             } else {
                 return Err(status);
-            };
+            }
         }
     };
     match cancel {

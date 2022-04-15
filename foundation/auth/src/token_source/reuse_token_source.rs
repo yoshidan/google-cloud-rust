@@ -10,7 +10,6 @@ pub struct ReuseTokenSource {
 
 impl ReuseTokenSource {
     pub(crate) fn new(target: Box<dyn TokenSource>, token: Token) -> ReuseTokenSource {
-        log::debug!("TokenSource = ReuseTokenSource");
         ReuseTokenSource {
             target,
             current_token: std::sync::RwLock::new(token),

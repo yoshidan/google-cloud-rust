@@ -204,8 +204,7 @@ mod tests {
 
     #[ctor::ctor]
     fn init() {
-        std::env::set_var("RUST_LOG", "google_cloud_pubsub=trace".to_string());
-        env_logger::try_init();
+        tracing_subscriber::fmt().try_init();
     }
 
     fn create_message(data: &[u8], ordering_key: &str) -> PubsubMessage {
@@ -258,7 +257,12 @@ mod tests {
                         async move {
                             let _ = v.ack().await;
                             let data = std::str::from_utf8(&v.message.data).unwrap().to_string();
-                            log::info!("tid={:?} id={} data={}", thread::current().id(), v.message.message_id, data);
+                            tracing::info!(
+                                "tid={:?} id={} data={}",
+                                thread::current().id(),
+                                v.message.message_id,
+                                data
+                            );
                             s2.send(data).await;
                         }
                     },
@@ -276,7 +280,7 @@ mod tests {
         }
         let ctx = CancellationToken::new();
         for v in awaiters {
-            log::info!("sent message_id = {}", v.get(Some(ctx.clone())).await.unwrap());
+            tracing::info!("sent message_id = {}", v.get(Some(ctx.clone())).await.unwrap());
         }
 
         tokio::time::sleep(std::time::Duration::from_secs(3)).await;
@@ -285,7 +289,7 @@ mod tests {
 
         let mut count = 0;
         while let Some(data) = r.recv().await {
-            log::debug!("{}", data);
+            tracing::debug!("{}", data);
             if order {
                 assert_eq!(format!("abc_{}", count), data);
             }

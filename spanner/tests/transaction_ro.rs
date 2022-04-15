@@ -14,6 +14,11 @@ use common::*;
 
 use std::collections::HashMap;
 
+#[ctor::ctor]
+fn init() {
+    tracing_subscriber::fmt().try_init();
+}
+
 async fn assert_read(tx: &mut ReadOnlyTransaction, user_id: &str, now: &DateTime<Utc>, cts: &DateTime<Utc>) {
     let reader = match tx.read("User", &user_columns(), Key::key(&user_id)).await {
         Ok(tx) => tx,
@@ -193,7 +198,6 @@ async fn test_batch_partition_query_and_read() {
 }
 
 async fn test_query(count: usize, prefix: &str) {
-    env_logger::try_init();
     let now = Utc::now();
     let mut session = create_session().await;
     let mutations = (0..count)
@@ -240,7 +244,6 @@ async fn test_many_records_value() {
 #[tokio::test]
 #[serial]
 async fn test_many_records_struct() {
-    env_logger::try_init();
     let now = Utc::now();
     let mut session = create_session().await;
     let user_id = "user_x_6";

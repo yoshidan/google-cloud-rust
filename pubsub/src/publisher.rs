@@ -91,13 +91,13 @@ impl Publisher {
 
         // for non-ordering key message
         for _ in 0..config.workers {
-            log::trace!("start non-ordering publisher : {}", fqtn.clone());
+            tracing::trace!("start non-ordering publisher : {}", fqtn.clone());
             receivers.push(receiver.clone());
         }
 
         // for ordering key message
         for _ in 0..config.workers {
-            log::trace!("start ordering publisher : {}", fqtn.clone());
+            tracing::trace!("start ordering publisher : {}", fqtn.clone());
             let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
             receivers.push(receiver);
             ordering_senders.push(sender);
@@ -188,7 +188,7 @@ impl Tasks {
                     //timed out
                     Err(_e) => {
                         if !bundle.is_empty() {
-                            log::trace!("elapsed: flush buffer : {}", topic);
+                            tracing::trace!("elapsed: flush buffer : {}", topic);
                             Self::flush(&mut client, topic.as_str(), bundle, retry.clone()).await;
                             bundle = VecDeque::new();
                         }
@@ -199,7 +199,7 @@ impl Tasks {
                     Ok(message) => {
                         bundle.push_back(message);
                         if bundle.len() >= bundle_size {
-                            log::trace!("maximum buffer {} : {}", bundle.len(), topic);
+                            tracing::trace!("maximum buffer {} : {}", bundle.len(), topic);
                             Self::flush(&mut client, topic.as_str(), bundle, retry.clone()).await;
                             bundle = VecDeque::new();
                         }
@@ -209,9 +209,9 @@ impl Tasks {
                 };
             }
 
-            log::trace!("stop publisher : {}", topic);
+            tracing::trace!("stop publisher : {}", topic);
             if !bundle.is_empty() {
-                log::trace!("flush rest buffer : {}", topic);
+                tracing::trace!("flush rest buffer : {}", topic);
                 Self::flush(&mut client, topic.as_str(), bundle, retry.clone()).await;
             }
         })

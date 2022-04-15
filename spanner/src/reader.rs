@@ -118,7 +118,7 @@ impl ResultSet {
         return match previous_last.kind.unwrap() {
             Kind::StringValue(last) => match current_first.kind.unwrap() {
                 Kind::StringValue(first) => {
-                    log::trace!("previous_last={}, current_first={}", &last, first);
+                    tracing::trace!("previous_last={}, current_first={}", &last, first);
                     Ok(Value {
                         kind: Some(Kind::StringValue(last + &first)),
                     })
@@ -184,7 +184,7 @@ impl ResultSet {
         }
 
         if self.chunked_value {
-            log::trace!("now chunked value found previous={}, current={}", self.rows.len(), values.len());
+            tracing::trace!("now chunked value found previous={}, current={}", self.rows.len(), values.len());
             //merge when the chunked value is found.
             let merged = ResultSet::merge(self.rows.pop_back().unwrap(), values.remove(0))?;
             self.rows.push_back(merged);
@@ -237,7 +237,7 @@ impl<'a> RowIterator<'a> {
                 if !self.reader.can_retry() {
                     return Err(e.into());
                 }
-                log::debug!("streaming error: {}. resume reading by resume_token", e);
+                tracing::debug!("streaming error: {}. resume reading by resume_token", e);
                 let result = self.reader.read(&mut self.session, option).await?;
                 self.streaming = result.into_inner();
                 self.streaming.message().await?

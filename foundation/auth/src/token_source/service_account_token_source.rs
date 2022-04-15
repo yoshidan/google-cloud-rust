@@ -40,7 +40,6 @@ pub struct ServiceAccountTokenSource {
 
 impl ServiceAccountTokenSource {
     pub(crate) fn new(cred: &credentials::CredentialsFile, audience: &str) -> Result<ServiceAccountTokenSource, Error> {
-        log::debug!("TokenSource = ServiceAccountTokenSource");
         Ok(ServiceAccountTokenSource {
             email: cred.client_email.unwrap_or_empty(),
             pk: cred.try_to_private_key()?,

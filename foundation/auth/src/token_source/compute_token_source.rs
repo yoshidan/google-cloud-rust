@@ -23,7 +23,6 @@ impl ComputeTokenSource {
             Err(_e) => METADATA_IP.to_string(),
         };
 
-        log::debug!("TokenSource = ComputeTokenSource");
         return Ok(ComputeTokenSource {
             token_url: format!(
                 "http://{}/computeMetadata/v1/instance/service-accounts/default/token?{}",
