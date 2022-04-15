@@ -840,7 +840,6 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_close() {
-        let _ = env_logger::try_init();
         let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
             .await
             .unwrap();

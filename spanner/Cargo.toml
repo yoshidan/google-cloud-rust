@@ -27,6 +27,7 @@ google-cloud-gax = { version = "0.4.1", path = "../foundation/gax" }
 google-cloud-googleapis = { version = "0.3.0", path = "../googleapis" }
 
 [dev-dependencies]
+tokio = { version="1.17", features=["rt-multi-thread"] }
 tracing-subscriber = "0.3"
 serial_test = "0.5.1"
 anyhow = "1.0.48"
