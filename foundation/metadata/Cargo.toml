@@ -11,7 +11,7 @@ description = "Google Cloud Platform rust client."
 
 [dependencies]
 tokio = { version = "1.17", features = ["sync","net", "parking_lot"] }
-hyper = "0.14"
+hyper = { version = "0.14", features = ["full"] }
 thiserror = "1.0"
 
 [dev-dependencies]

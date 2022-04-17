@@ -10,7 +10,7 @@ readme = "README.md"
 description = "Google Cloud Platform server application authentication library."
 
 [dependencies]
-hyper = "0.14"
+hyper = { version = "0.14", features = ["full"] }
 hyper-tls = "0.5"
 chrono = "0.4"
 serde = { version = "1.0", features = ["derive"] }
