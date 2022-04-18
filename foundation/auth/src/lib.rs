@@ -4,7 +4,8 @@ mod misc;
 pub mod token;
 pub mod token_source;
 
-use crate::credentials::CredentialsFile;
+use crate::credentials::{CredentialSource, CredentialsFile};
+use crate::error::Error;
 use crate::misc::EMPTY;
 use crate::token_source::authorized_user_token_source::UserAccountTokenSource;
 use crate::token_source::compute_token_source::ComputeTokenSource;
@@ -12,7 +13,8 @@ use crate::token_source::reuse_token_source::ReuseTokenSource;
 use crate::token_source::service_account_token_source::OAuth2ServiceAccountTokenSource;
 use crate::token_source::service_account_token_source::ServiceAccountTokenSource;
 use crate::token_source::TokenSource;
-use google_cloud_metadata::on_gce;
+use google_cloud_metadata::{on_gce, project_id};
+use std::sync::atomic::Ordering::AcqRel;
 
 const SERVICE_ACCOUNT_KEY: &str = "service_account";
 const USER_CREDENTIALS_KEY: &str = "authorized_user";
@@ -31,12 +33,61 @@ impl Config<'_> {
     }
 }
 
+pub struct Credentials {
+    pub from_metadata_server: bool,
+    pub project_id: Option<String>,
+    pub file: Option<CredentialsFile>,
+}
+
+pub async fn get_credentials() -> Result<Credentials, error::Error> {
+    let credentials = credentials::CredentialsFile::new().await;
+    return match credentials {
+        Ok(cred) => {
+            let project_id = cred.project_id.clone();
+            Ok(Credentials {
+                project_id,
+                file: Some(cred),
+                from_metadata_server: false,
+            })
+        }
+        Err(e) => {
+            // use metadata server on gce
+            if on_gce().await {
+                let project_id = project_id().await;
+                Ok(Credentials {
+                    project_id: Some(project_id),
+                    file: None,
+                    from_metadata_server: true,
+                })
+            } else {
+                Err(e)
+            }
+        }
+    };
+}
+
+pub async fn create_token_source_from_credentials(
+    credentials: &Credentials,
+    config: Config<'_>,
+) -> Result<Box<dyn TokenSource>, error::Error> {
+    let ts = if credentials.from_metadata_server {
+        Box::new(ComputeTokenSource::new(&config.scopes_to_string(","))?)
+    } else {
+        match &credentials.file {
+            Some(file) => credentials_from_json_with_params(file, &config)?,
+            None => return Err(Error::NoCredentialsFileFound),
+        }
+    };
+    let token = ts.token().await?;
+    Ok(Box::new(ReuseTokenSource::new(ts, token)))
+}
+
 pub async fn create_token_source(config: Config<'_>) -> Result<Box<dyn TokenSource>, error::Error> {
     let credentials = credentials::CredentialsFile::new().await;
 
     return match credentials {
-        Ok(s) => {
-            let ts = credentials_from_json_with_params(s, &config)?;
+        Ok(cred) => {
+            let ts = credentials_from_json_with_params(&cred, &config)?;
             let token = ts.token().await?;
             Ok(Box::new(ReuseTokenSource::new(ts, token)))
         }
@@ -54,7 +105,7 @@ pub async fn create_token_source(config: Config<'_>) -> Result<Box<dyn TokenSour
 }
 
 fn credentials_from_json_with_params(
-    credentials: CredentialsFile,
+    credentials: &CredentialsFile,
     config: &Config,
 ) -> Result<Box<dyn TokenSource>, error::Error> {
     match credentials.tp.as_str() {
@@ -67,12 +118,12 @@ fn credentials_from_json_with_params(
 
                     // use Standard OAuth 2.0 Flow
                     let source =
-                        OAuth2ServiceAccountTokenSource::new(&credentials, config.scopes_to_string(" ").as_str())?;
+                        OAuth2ServiceAccountTokenSource::new(credentials, config.scopes_to_string(" ").as_str())?;
                     Ok(Box::new(source))
                 }
                 Some(audience) => {
                     // use self-signed JWT.
-                    let source = ServiceAccountTokenSource::new(&credentials, audience)?;
+                    let source = ServiceAccountTokenSource::new(credentials, audience)?;
                     Ok(Box::new(source))
                 }
             }
@@ -80,6 +131,6 @@ fn credentials_from_json_with_params(
         USER_CREDENTIALS_KEY => Ok(Box::new(UserAccountTokenSource::new(&credentials)?)),
         //TODO support GDC https://console.developers.google.com,
         //TODO support external account
-        _ => Err(error::Error::UnsupportedAccountType(credentials.tp)),
+        _ => Err(error::Error::UnsupportedAccountType(credentials.tp.to_string())),
     }
 }

@@ -1,6 +1,8 @@
 use hyper::client::HttpConnector;
-use hyper::http::{Method, Request};
-use hyper::Client;
+use hyper::header::USER_AGENT;
+use hyper::http::{HeaderValue, Method, Request};
+use hyper::{Client, StatusCode};
+use std::string;
 use std::time::Duration;
 
 use tokio::net::lookup_host;
@@ -14,6 +16,8 @@ pub const METADATA_GOOGLE: &str = "Google";
 
 static ON_GCE: OnceCell<bool> = OnceCell::const_new();
 
+static PROJECT_ID: OnceCell<String> = OnceCell::const_new();
+
 pub fn default_http_connector() -> HttpConnector {
     let mut connector = HttpConnector::new();
     connector.enforce_http(false);
@@ -25,7 +29,13 @@ pub fn default_http_connector() -> HttpConnector {
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
+    Hyper(#[from] hyper::Error),
+    #[error(transparent)]
     Http(#[from] hyper::http::Error),
+    #[error("invalid response code: {0}")]
+    InvalidResponse(StatusCode),
+    #[error(transparent)]
+    FromUTF8Error(#[from] string::FromUtf8Error),
 }
 
 pub async fn on_gce() -> bool {
@@ -71,4 +81,50 @@ async fn test_on_gce() -> Result<bool, Error> {
     };
 
     Ok(false)
+}
+
+pub async fn project_id() -> String {
+    return match PROJECT_ID
+        .get_or_try_init(|| get_etag_with_trim("project/project-id"))
+        .await
+    {
+        Ok(s) => s.to_string(),
+        Err(_err) => "".to_string(),
+    };
+}
+
+async fn get_etag_with_trim(suffix: &str) -> Result<String, Error> {
+    let result = get_etag(suffix).await?;
+    return Ok(result.trim().to_string());
+}
+
+async fn get_etag(suffix: &str) -> Result<String, Error> {
+    let host = match std::env::var(METADATA_HOST_ENV) {
+        Ok(host) => host,
+        Err(_e) => METADATA_IP.to_string(),
+    };
+
+    let url = format!("http://{}//computeMetadata/v1/{}", host, suffix);
+    let body = hyper::Body::empty();
+    let mut request = Request::builder().method(Method::GET).uri(&url).body(body)?;
+    request
+        .headers_mut()
+        .insert(METADATA_FLAVOR_KEY, HeaderValue::from_str(METADATA_GOOGLE).unwrap());
+    request
+        .headers_mut()
+        .insert(USER_AGENT, HeaderValue::from_str("gcloud-rust/0.1").unwrap());
+
+    let client = Client::builder().build(default_http_connector());
+    let maybe_response = client.request(request).await;
+
+    match maybe_response {
+        Ok(response) => {
+            if response.status() == StatusCode::OK {
+                let bytes = hyper::body::to_bytes(response.into_body()).await?;
+                return String::from_utf8(bytes.to_vec()).map_err(|e| e.into());
+            }
+            return Err(Error::InvalidResponse(response.status()));
+        }
+        Err(e) => Err(e.into()),
+    }
 }

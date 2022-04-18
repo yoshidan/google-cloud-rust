@@ -35,6 +35,9 @@ pub enum Error {
     #[error("Server responded with error status is {0}")]
     DeserializeError(String),
 
-    #[error("Private Key is requred")]
+    #[error("Private Key is required")]
     NoPrivateKeyFound,
+
+    #[error("No Credentials File Found")]
+    NoCredentialsFileFound,
 }

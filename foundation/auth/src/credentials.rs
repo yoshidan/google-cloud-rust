@@ -15,7 +15,7 @@ pub(crate) struct Format {
 
 #[derive(Deserialize)]
 #[allow(dead_code)]
-pub(crate) struct CredentialSource {
+pub struct CredentialSource {
     file: String,
     url: String,
     headers: std::collections::HashMap<String, String>,
@@ -28,7 +28,7 @@ pub(crate) struct CredentialSource {
 
 #[derive(Deserialize)]
 #[allow(dead_code)]
-pub(crate) struct CredentialsFile {
+pub struct CredentialsFile {
     #[serde(rename(deserialize = "type"))]
     pub tp: String,
 
