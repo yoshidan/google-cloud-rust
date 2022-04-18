@@ -1,12 +1,17 @@
+use std::collections::HashMap;
 use crate::bucket::SignedURLError::InvalidOption;
 use chrono::{DateTime, Utc};
 use std::iter::Map;
 use std::ops::Add;
 use std::time::Duration;
+use regex::Regex;
 
 pub struct BucketHandle {
     name: String,
 }
+
+static space_regex: Regex = Regex::new(r" +").unwrap();
+static tab_regex: Regex = Regex::new(r"[\t]+").unwrap();
 
 const signed_url_methods: [&str; 5] = ["DELETE", "GET", "HEAD", "POST", "PUT"];
 
@@ -134,6 +139,34 @@ pub fn signed_url<F>(name: String, object: String, opts: &SignedURLOptions<F>) -
     Ok("".to_string())
 }
 
+fn v4_sanitize_headers(hdrs: &[String]) -> Vec<String> {
+    let mut sanitized = HashMap::<String,Vec<String>>::new();
+    for hdr in hdrs {
+        let trimmed = hdr.trim().to_string();
+        let splited = trimmed.split(":").collect_vec();
+        if splited.len() < 2 {
+            continue;
+        }
+        let key = splited[0].trim().to_lowercase();
+        let mut value = space_regex.replace_all(splited[1].trim()," ");
+        value = tab_regex.replace_all(value.as_ref(),"\t");
+        if !value.is_empty() {
+            if sanitized.contains_key(&key) {
+                sanitized.get_mut(&key).unwrap().push(value.to_string())
+            }else {
+                sanitized.insert(key, vec![value.to_string()])
+            }
+        }
+    }
+    let mut sanitized_headers = Vec::with_capacity(sanitized.len());
+    let mut index = 0;
+    for (key, value) in sanitized {
+        sanitized_headers[index] = format!("{}:{}", key, value.join(",").to_string());
+        index += 1;
+    }
+    sanitized_headers
+}
+
 fn validate_options<F>(opts: &SignedURLOptions<F>, now: &DateTime<Utc>) -> Result<(), SignedURLError> {
     if opts.google_access_id.is_empty() {
         return Err(InvalidOption("storage: missing required GoogleAccessID"));
@@ -141,7 +174,7 @@ fn validate_options<F>(opts: &SignedURLOptions<F>, now: &DateTime<Utc>) -> Resul
     if opts.private_key.is_empty() && opts.sign_bytes.is_none() {
         return Err(InvalidOption("storage: exactly one of PrivateKey or SignedBytes must be set"));
     }
-    if !signed_url_methods.contains(&opts.method.as_str()) {
+    if !signed_url_methods.contains(&opts.method.to_uppercase().as_str()) {
         return Err(InvalidOption("storage: invalid HTTP method"));
     }
     if opts.expires.is_zero() {
