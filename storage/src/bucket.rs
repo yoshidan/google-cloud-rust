@@ -2,19 +2,19 @@ use std::collections::HashMap;
 use crate::bucket::SignedURLError::InvalidOption;
 use chrono::{DateTime, Utc};
 use std::iter::Map;
-use std::ops::Add;
+use std::ops::{Add, Sub};
 use std::time::Duration;
 use regex::Regex;
+use crate::util;
+
+
+static space_regex: Regex = Regex::new(r" +").unwrap();
+static tab_regex: Regex = Regex::new(r"[\t]+").unwrap();
+const signed_url_methods: [&str; 5] = ["DELETE", "GET", "HEAD", "POST", "PUT"];
 
 pub struct BucketHandle {
     name: String,
 }
-
-static space_regex: Regex = Regex::new(r" +").unwrap();
-static tab_regex: Regex = Regex::new(r"[\t]+").unwrap();
-
-const signed_url_methods: [&str; 5] = ["DELETE", "GET", "HEAD", "POST", "PUT"];
-
 pub enum SigningScheme {
     /// V2 is deprecated. https://cloud.google.com/storage/docs/access-control/signed-urls?types#types
     /// SigningSchemeV2
@@ -23,10 +23,16 @@ pub enum SigningScheme {
     SigningSchemeV4,
 }
 
+pub trait URLStyle {
+    fn host(&self, bucket: &str) -> &str;
+    fn path(&self, bucket: &str, object: &str) -> &str;
+}
+
 /// SignedURLOptions allows you to restrict the access to the signed URL.
-pub struct SignedURLOptions<F>
+pub struct SignedURLOptions<F,U>
 where
     F: Fn(&[u8]) -> Result<Vec<u8>, SignedURLError>,
+    U: URLStyle,
 {
     /// GoogleAccessID represents the authorizer of the signed URL generation.
     /// It is typically the Google service account client email address from
@@ -105,7 +111,7 @@ where
     /// https://cloud.google.com/storage/docs/request-endpoints for details.
     /// Only supported for V4 signing.
     /// Optional.
-    ///Style URLStyle
+    style: U,
 
     /// Insecure determines whether the signed URL should use HTTPS (default) or
     /// HTTP.
@@ -125,13 +131,13 @@ pub enum SignedURLError {
 }
 
 impl BucketHandle {
-    pub fn signed_url<F>(object: String, opts: &SignedURLOptions<F>) -> Result<String, SignedURLError> {
+    pub fn signed_url<F,U>(object: String, opts: &SignedURLOptions<F,U>) -> Result<String, SignedURLError> {
         //TODO
         Ok("".to_string())
     }
 }
 
-pub fn signed_url<F>(name: String, object: String, opts: &SignedURLOptions<F>) -> Result<String, SignedURLError> {
+pub fn signed_url<F,U>(name: String, object: String, opts: &SignedURLOptions<F,U>) -> Result<String, SignedURLError> {
     let now = Utc::now();
     let _ = validate_options(opts, &now)?;
 
@@ -143,12 +149,12 @@ fn v4_sanitize_headers(hdrs: &[String]) -> Vec<String> {
     let mut sanitized = HashMap::<String,Vec<String>>::new();
     for hdr in hdrs {
         let trimmed = hdr.trim().to_string();
-        let splited = trimmed.split(":").collect_vec();
-        if splited.len() < 2 {
+        let split = trimmed.split(":").collect_vec();
+        if split.len() < 2 {
             continue;
         }
-        let key = splited[0].trim().to_lowercase();
-        let mut value = space_regex.replace_all(splited[1].trim()," ");
+        let key = split[0].trim().to_lowercase();
+        let mut value = space_regex.replace_all(split[1].trim()," ");
         value = tab_regex.replace_all(value.as_ref(),"\t");
         if !value.is_empty() {
             if sanitized.contains_key(&key) {
@@ -167,7 +173,62 @@ fn v4_sanitize_headers(hdrs: &[String]) -> Vec<String> {
     sanitized_headers
 }
 
-fn validate_options<F>(opts: &SignedURLOptions<F>, now: &DateTime<Utc>) -> Result<(), SignedURLError> {
+fn signed_url_v4<F, U>(bucket: &str, name: &str, opts: &SignedURLOptions<F,U>, now: DateTime<Utc>) -> Result<String, SignedURLError> {
+    let mut buffer : Vec<u8>= vec![] ;
+    buffer.extend_from_slice(format!("{}\n", opts.method).as_bytes());
+
+    let mut url = opts.style.path(bucket, name);
+    let raw_path = path_encode_v4(&url);
+    buffer.extend_from_slice(format!("/{}\n", raw_path).as_bytes());
+
+    let mut header_names = extract_header_names(&opts.headers);
+    header_names.push("host");
+    if !opts.content_type.is_empty() {
+        header_names.push("content-type");
+    }
+    if !opts.md5.is_empty() {
+        header_names.push("content-md5");
+    }
+    header_names.sort();
+
+    let signed_headers = header_names.join(";");
+    let timestamp = now.to_rfc3339();
+    let credential_scope = format!("{}/auto/storage/goog4_request", now.format("%Y%m%d"));
+    let mut canonical_query_string = util::QueryParam::new();
+    canonical_query_string.adds("X-Goog-Algorithm".to_string(), vec!["GOOG4-RSA-SHA256".to_string()]);
+    canonical_query_string.adds("X-Goog-Credential".to_string(), vec![format!("{}/{}", opts.google_access_id, credential_scope)]);
+    canonical_query_string.adds("X-Goog-Date".to_string(), vec![timestamp]);
+    canonical_query_string.adds("X-Goog-Expires".to_string(), vec![opts.expires.sub(now).num_seconds().to_string()]);
+    canonical_query_string.adds("X-Goog-SignedHeaders".to_string(), vec![signed_headers]);
+    for (k,v) in opts.query_parameters {
+       canonical_query_string.insert(k, v)
+    }
+    let escaped_query = canonical_query_string.encode().replace("+", "%20");
+    buffer.extend_from_slice(format!("/{}\n", escaped_query).as_bytes());
+
+    Ok("TODO".to_string())
+}
+
+fn path_encode_v4(path: &str) -> String {
+    let segments = path.split("/").collect_vec();
+    let mut encoded_segments = Vec::with_capacity(segments.len());
+    for (index, segment) in segments.into_iter().enumerate() {
+       encoded_segments[index] = url_escape::encode_query(segment).to_string();
+    }
+    let encoded_str = encoded_segments.join("/");
+    return encoded_str.replace("+", "%20")
+}
+
+fn extract_header_names(kvs: &[String]) -> Vec<&str> {
+    let mut res = vec![];
+    for header in kvs {
+        let name_value = header.split(":").collect_vec();
+        res.push(name_value[0])
+    }
+    res
+}
+
+fn validate_options<F,U>(opts: &SignedURLOptions<F,U>, now: &DateTime<Utc>) -> Result<(), SignedURLError> {
     if opts.google_access_id.is_empty() {
         return Err(InvalidOption("storage: missing required GoogleAccessID"));
     }
