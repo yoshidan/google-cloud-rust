@@ -13,6 +13,7 @@ pub mod longrunning;
 #[path = "google.r#type.rs"]
 pub mod r#type;
 
+#[cfg(feature = "spanner")]
 #[path = ""]
 pub mod spanner {
     #[path = "google.spanner.v1.rs"]
@@ -34,8 +35,16 @@ pub mod spanner {
     }
 }
 
+#[cfg(feature = "pubsub")]
 #[path = ""]
 pub mod pubsub {
     #[path = "google.pubsub.v1.rs"]
     pub mod v1;
+}
+
+#[cfg(feature = "storage")]
+#[path = ""]
+pub mod storage {
+    #[path = "google.storage.v2.rs"]
+    pub mod v2;
 }
