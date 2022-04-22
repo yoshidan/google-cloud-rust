@@ -1,27 +1,26 @@
-use std::collections::HashMap;
 use rsa::Hash;
+use std::collections::HashMap;
 
 pub struct QueryParam {
-    inner: HashMap<String, Vec<String>>
+    inner: HashMap<String, Vec<String>>,
 }
 
 impl QueryParam {
-
     pub fn new() -> Self {
         return Self {
-            inner: HashMap::default()
-        }
+            inner: HashMap::default(),
+        };
     }
     pub fn adds(&mut self, k: String, v: Vec<String>) {
         if self.inner.contains_key(&k) {
             self.inner.get_mut(&k).unwrap().extend_from_slice(&v);
-        }else {
+        } else {
             self.inner.insert(k, v);
         }
     }
 
-    pub fn add(&mut self, k: String, v: String)  {
-       self.adds(k, vec![v]);
+    pub fn add(&mut self, k: String, v: String) {
+        self.adds(k, vec![v]);
     }
 
     pub fn encode(&self) -> String {

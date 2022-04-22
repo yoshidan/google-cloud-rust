@@ -1,12 +1,13 @@
-use std::collections::HashMap;
 use crate::bucket::SignedURLError::InvalidOption;
-use chrono::{DateTime, Utc};
-use std::iter::Map;
-use std::ops::{Add, Sub};
-use std::time::Duration;
-use regex::Regex;
 use crate::util;
-
+use chrono::{DateTime, Utc};
+use regex::Regex;
+use sha2::{Digest, Sha256};
+use std::collections::HashMap;
+use std::fmt::format;
+use std::iter::Map;
+use std::ops::{Add, Index, Sub};
+use std::time::Duration;
 
 static space_regex: Regex = Regex::new(r" +").unwrap();
 static tab_regex: Regex = Regex::new(r"[\t]+").unwrap();
@@ -29,7 +30,7 @@ pub trait URLStyle {
 }
 
 /// SignedURLOptions allows you to restrict the access to the signed URL.
-pub struct SignedURLOptions<F,U>
+pub struct SignedURLOptions<F, U>
 where
     F: Fn(&[u8]) -> Result<Vec<u8>, SignedURLError>,
     U: URLStyle,
@@ -131,13 +132,19 @@ pub enum SignedURLError {
 }
 
 impl BucketHandle {
-    pub fn signed_url<F,U>(object: String, opts: &SignedURLOptions<F,U>) -> Result<String, SignedURLError> {
+    pub fn signed_url<F, U>(object: String, opts: &SignedURLOptions<F, U>) -> Result<String, SignedURLError>
+    where
+        U: URLStyle,
+    {
         //TODO
         Ok("".to_string())
     }
 }
 
-pub fn signed_url<F,U>(name: String, object: String, opts: &SignedURLOptions<F,U>) -> Result<String, SignedURLError> {
+pub fn signed_url<F, U>(name: String, object: String, opts: &SignedURLOptions<F, U>) -> Result<String, SignedURLError>
+where
+    U: URLStyle,
+{
     let now = Utc::now();
     let _ = validate_options(opts, &now)?;
 
@@ -145,8 +152,27 @@ pub fn signed_url<F,U>(name: String, object: String, opts: &SignedURLOptions<F,U
     Ok("".to_string())
 }
 
+struct Url<'a> {
+    schema: String,
+    host: String,
+    path: &'a str,
+    raw_path: String,
+}
+
+impl Url {
+    fn new(path: &str) -> Self {
+        let raw_path = path_encode_v4(path);
+        Self {
+            path,
+            raw_path,
+            schema: "https".to_string(),
+            host: "".to_string(),
+        }
+    }
+}
+
 fn v4_sanitize_headers(hdrs: &[String]) -> Vec<String> {
-    let mut sanitized = HashMap::<String,Vec<String>>::new();
+    let mut sanitized = HashMap::<String, Vec<String>>::new();
     for hdr in hdrs {
         let trimmed = hdr.trim().to_string();
         let split = trimmed.split(":").collect_vec();
@@ -154,12 +180,12 @@ fn v4_sanitize_headers(hdrs: &[String]) -> Vec<String> {
             continue;
         }
         let key = split[0].trim().to_lowercase();
-        let mut value = space_regex.replace_all(split[1].trim()," ");
-        value = tab_regex.replace_all(value.as_ref(),"\t");
+        let mut value = space_regex.replace_all(split[1].trim(), " ");
+        value = tab_regex.replace_all(value.as_ref(), "\t");
         if !value.is_empty() {
             if sanitized.contains_key(&key) {
                 sanitized.get_mut(&key).unwrap().push(value.to_string())
-            }else {
+            } else {
                 sanitized.insert(key, vec![value.to_string()])
             }
         }
@@ -173,12 +199,20 @@ fn v4_sanitize_headers(hdrs: &[String]) -> Vec<String> {
     sanitized_headers
 }
 
-fn signed_url_v4<F, U>(bucket: &str, name: &str, opts: &SignedURLOptions<F,U>, now: DateTime<Utc>) -> Result<String, SignedURLError> {
-    let mut buffer : Vec<u8>= vec![] ;
+fn signed_url_v4<F, U>(
+    bucket: &str,
+    name: &str,
+    opts: &SignedURLOptions<F, U>,
+    now: DateTime<Utc>,
+) -> Result<String, SignedURLError>
+where
+    U: URLStyle,
+{
+    let mut buffer: Vec<u8> = vec![];
     buffer.extend_from_slice(format!("{}\n", opts.method).as_bytes());
 
-    let mut url = opts.style.path(bucket, name);
-    let raw_path = path_encode_v4(&url);
+    let path = opts.style.path(bucket, name);
+    let mut url = Url::new(path);
     buffer.extend_from_slice(format!("/{}\n", raw_path).as_bytes());
 
     let mut header_names = extract_header_names(&opts.headers);
@@ -196,15 +230,61 @@ fn signed_url_v4<F, U>(bucket: &str, name: &str, opts: &SignedURLOptions<F,U>, n
     let credential_scope = format!("{}/auto/storage/goog4_request", now.format("%Y%m%d"));
     let mut canonical_query_string = util::QueryParam::new();
     canonical_query_string.adds("X-Goog-Algorithm".to_string(), vec!["GOOG4-RSA-SHA256".to_string()]);
-    canonical_query_string.adds("X-Goog-Credential".to_string(), vec![format!("{}/{}", opts.google_access_id, credential_scope)]);
+    canonical_query_string.adds(
+        "X-Goog-Credential".to_string(),
+        vec![format!("{}/{}", opts.google_access_id, credential_scope)],
+    );
     canonical_query_string.adds("X-Goog-Date".to_string(), vec![timestamp]);
-    canonical_query_string.adds("X-Goog-Expires".to_string(), vec![opts.expires.sub(now).num_seconds().to_string()]);
+    canonical_query_string.adds(
+        "X-Goog-Expires".to_string(),
+        vec![opts.expires.sub(now).num_seconds().to_string()],
+    );
     canonical_query_string.adds("X-Goog-SignedHeaders".to_string(), vec![signed_headers]);
-    for (k,v) in opts.query_parameters {
-       canonical_query_string.insert(k, v)
+    for (k, v) in opts.query_parameters {
+        canonical_query_string.insert(k, v)
     }
     let escaped_query = canonical_query_string.encode().replace("+", "%20");
     buffer.extend_from_slice(format!("/{}\n", escaped_query).as_bytes());
+
+    url.host = opts.style.host(bucket).to_string();
+    if opts.insecure {
+        url.schema = "http".to_string()
+    }
+
+    let mut header_with_value = vec![format!("host:{}", url.host)];
+    header_with_value.extend_from_slice(&opts.headers);
+    if !opts.content_type.is_empty() {
+        header_with_value.push(format!("content-type:{}", opts.content_type))
+    }
+    if !opts.md5.is_empty() {
+        header_with_value.push(format!("content-md5:{}", opts.md5))
+    }
+    header_with_value.sort();
+    let canonical_headers = header_with_value.join(" ");
+    buffer.extend_from_slice(format!("{}\n\n", canonical_headers).as_bytes());
+    buffer.extend_from_slice(format!("{}\n", signed_headers).as_bytes());
+
+    /// If the user provides a value for X-Goog-Content-SHA256, we must use
+    /// that value in the request string. If not, we use UNSIGNED-PAYLOAD.
+    let sha256_header = header_with_value
+        .iter()
+        .find_or_first(|h| {
+            let ret = h.to_lowercase().starts_with("x-goog-content-sha256") && h.contains(":");
+            if ret {
+                buffer.extend_from_slice(h.splitn(2, ":")[1])
+            }
+            ret
+        })
+        .is_some();
+    if !sha256_header {
+        buffer.extend_from_slice("UNSIGNED-PAYLOAD".as_bytes());
+    }
+    let hex_digest = Sha256::digest(buffer);
+    let mut signed_buffer: Vec<u8> = vec![];
+    signed_buffer.extend_from_slice("GOOG4-RSA-SHA256\n".as_bytes());
+    signed_buffer.extend_from_slice(format!("{}\n", timestamp).as_bytes());
+    signed_buffer.extend_from_slice(format!("{}\n", credential_scope).as_bytes());
+    signed_buffer.extend_from_slice(hex_digest.as_slice());
 
     Ok("TODO".to_string())
 }
@@ -213,10 +293,10 @@ fn path_encode_v4(path: &str) -> String {
     let segments = path.split("/").collect_vec();
     let mut encoded_segments = Vec::with_capacity(segments.len());
     for (index, segment) in segments.into_iter().enumerate() {
-       encoded_segments[index] = url_escape::encode_query(segment).to_string();
+        encoded_segments[index] = url_escape::encode_query(segment).to_string();
     }
     let encoded_str = encoded_segments.join("/");
-    return encoded_str.replace("+", "%20")
+    return encoded_str.replace("+", "%20");
 }
 
 fn extract_header_names(kvs: &[String]) -> Vec<&str> {
@@ -228,7 +308,7 @@ fn extract_header_names(kvs: &[String]) -> Vec<&str> {
     res
 }
 
-fn validate_options<F,U>(opts: &SignedURLOptions<F,U>, now: &DateTime<Utc>) -> Result<(), SignedURLError> {
+fn validate_options<F, U>(opts: &SignedURLOptions<F, U>, now: &DateTime<Utc>) -> Result<(), SignedURLError> {
     if opts.google_access_id.is_empty() {
         return Err(InvalidOption("storage: missing required GoogleAccessID"));
     }
