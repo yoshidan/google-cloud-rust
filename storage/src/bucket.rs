@@ -1,6 +1,6 @@
 use crate::bucket::SignedURLError::InvalidOption;
 use crate::util;
-use chrono::{DateTime, Timelike, Utc};
+use chrono::{DateTime, SecondsFormat, Timelike, Utc};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use ring::{rand, signature};
@@ -14,6 +14,7 @@ use std::fmt::format;
 use std::iter::Map;
 use std::ops::{Add, Index, Sub};
 use std::time::Duration;
+use url;
 
 static SPACE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r" +").unwrap());
 static TAB_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"[\t]+").unwrap());
@@ -180,27 +181,6 @@ where
     Ok("".to_string())
 }
 
-struct Url {
-    schema: String,
-    host: String,
-    path: String,
-    raw_path: String,
-    raw_query: String,
-}
-
-impl Url {
-    fn new(path: String) -> Self {
-        let raw_path = path_encode_v4(&path);
-        Self {
-            path,
-            raw_path,
-            schema: "https".to_string(),
-            host: "".to_string(),
-            raw_query: "".to_string(),
-        }
-    }
-}
-
 fn v4_sanitize_headers(hdrs: &[String]) -> Vec<String> {
     let mut sanitized = HashMap::<String, Vec<String>>::new();
     for hdr in hdrs {
@@ -239,8 +219,9 @@ fn signed_url_v4(
     buffer.extend_from_slice(format!("{}\n", opts.method).as_bytes());
 
     let path = opts.style.path(bucket, name);
-    let mut url = Url::new(path);
-    buffer.extend_from_slice(format!("/{}\n", url.raw_path).as_bytes());
+    let mut ui = url::Url::parse("https://storage.google.com").unwrap();
+    let raw_path = path_encode_v4(&path);
+    buffer.extend_from_slice(format!("/{}\n", raw_path).as_bytes());
 
     let mut header_names = extract_header_names(&opts.headers);
     header_names.push("host");
@@ -253,7 +234,7 @@ fn signed_url_v4(
     header_names.sort();
 
     let signed_headers = header_names.join(";");
-    let timestamp = now.to_rfc3339();
+    let timestamp = now.to_rfc3339_opts(SecondsFormat::Secs, true);
     let credential_scope = format!("{}/auto/storage/goog4_request", now.format("%Y%m%d"));
     let mut canonical_query_string = util::QueryParam::new();
     canonical_query_string.adds("X-Goog-Algorithm".to_string(), vec!["GOOG4-RSA-SHA256".to_string()]);
@@ -268,14 +249,17 @@ fn signed_url_v4(
         canonical_query_string.adds(k.clone(), v.clone())
     }
     let escaped_query = canonical_query_string.encode().replace("+", "%20");
+    println!("escap={}", escaped_query);
     buffer.extend_from_slice(format!("/{}\n", escaped_query).as_bytes());
 
-    url.host = opts.style.host(bucket).to_string();
+    let host = opts.style.host(bucket).to_string();
     if opts.insecure {
-        url.schema = "http".to_string()
+        ui.set_scheme("http");
     }
+    ui.set_path(&path);
+    ui.set_host(Some(host.as_str()));
 
-    let mut header_with_value = vec![format!("host:{}", url.host)];
+    let mut header_with_value = vec![format!("host:{}", host)];
     header_with_value.extend_from_slice(&opts.headers);
     if !opts.content_type.is_empty() {
         header_with_value.push(format!("content-type:{}", opts.content_type))
@@ -326,15 +310,18 @@ fn signed_url_v4(
             )
             .unwrap();
         canonical_query_string.adds("X-Goog-Signature".to_string(), vec![hex::encode(signed)]);
-        url.raw_query = canonical_query_string.encode();
     } else {
         let f = opts.sign_bytes.as_ref().unwrap();
         let signed = f(signed_buffer.as_slice()).unwrap();
         canonical_query_string.adds("X-Goog-Signature".to_string(), vec![hex::encode(signed)]);
-        url.raw_query = canonical_query_string.encode();
     }
-
-    Ok("TODO".to_string())
+    for (k,v) in &canonical_query_string.inner {
+        for v1 in v {
+            ui.query_pairs_mut().append_pair(k, v1);
+        }
+    }
+    println!("query={}",ui.query().unwrap().replace("+","%20"));
+    Ok(ui.to_string())
 }
 
 fn path_encode_v4(path: &str) -> String {
@@ -399,20 +386,24 @@ mod test {
     #[serial]
     async fn signed_url() {
         let cred = google_cloud_auth::get_credentials().await.unwrap();
+        let mut param = HashMap::new();
+        param.insert("tes t+".to_string(), vec!["++ +".to_string()]);
+        let file =cred.file.unwrap();
         let opts = SignedURLOptions {
-            google_access_id: "".to_string(),
-            private_key: cred.file.unwrap().private_key.unwrap().into(),
+            google_access_id: file.client_email.unwrap().to_string(),
+            private_key: file.private_key.unwrap().into(),
             sign_bytes: None,
             method: "".to_string(),
             expires: Duration::from_secs(86400),
             content_type: "".to_string(),
             headers: vec![],
-            query_parameters: Default::default(),
+            query_parameters: param,
             md5: "".to_string(),
             style: Box::new(PathStyle {}),
             insecure: false,
             scheme: SigningScheme::SigningSchemeV4,
         };
-        let url = crate::bucket::signed_url_v4("bucket", "test.txt", &opts, chrono::Utc::now()).unwrap();
+        let url = crate::bucket::signed_url_v4("bucket", "test.txt?日本語=TXT あいうえ+a", &opts, chrono::Utc::now()).unwrap();
+        println!("url={}", url);
     }
 }

@@ -2,7 +2,7 @@ use rsa::Hash;
 use std::collections::HashMap;
 
 pub struct QueryParam {
-    inner: HashMap<String, Vec<String>>,
+    pub inner: HashMap<String, Vec<String>>,
 }
 
 impl QueryParam {
@@ -28,7 +28,7 @@ impl QueryParam {
         for k in self.inner.keys() {
             keys.push(k.to_string());
         }
-        keys.sort();
+       // keys.sort();
         let mut buf = vec![];
         for key in keys {
             let key_escaped = urlencoding::encode(&key);
