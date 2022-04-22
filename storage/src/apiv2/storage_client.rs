@@ -1,15 +1,17 @@
+use async_stream;
 use google_cloud_gax::cancel::CancellationToken;
+use google_cloud_gax::conn::Channel;
+use std::sync::Arc;
 use std::time::Duration;
 
-use google_cloud_gax::conn::Channel;
+use crate::apiv2::conn_pool::ConnectionManager;
 use google_cloud_gax::create_request;
-use google_cloud_gax::grpc::{Code, IntoRequest, Response, Status, Streaming};
+use google_cloud_gax::grpc::{Code, IntoRequest, IntoStreamingRequest, Response, Status, Streaming};
 use google_cloud_gax::retry::{invoke, invoke_fn, RetrySetting};
 use google_cloud_googleapis::iam::v1::Policy;
 use google_cloud_googleapis::iam::v1::{
     GetIamPolicyRequest, SetIamPolicyRequest, TestIamPermissionsRequest, TestIamPermissionsResponse,
 };
-use google_cloud_googleapis::spanner::admin::database::v1::UpdateBackupRequest;
 use google_cloud_googleapis::storage::v2 as internal;
 use google_cloud_googleapis::storage::v2::storage_client::StorageClient as InternalStorageClient;
 use google_cloud_googleapis::storage::v2::{
@@ -18,9 +20,9 @@ use google_cloud_googleapis::storage::v2::{
     DeleteObjectRequest, GetBucketRequest, GetHmacKeyRequest, GetNotificationRequest, GetObjectRequest,
     GetServiceAccountRequest, HmacKeyMetadata, ListBucketsRequest, ListHmacKeysRequest, ListNotificationsRequest,
     ListObjectsRequest, LockBucketRetentionPolicyRequest, Notification, Object, QueryWriteStatusRequest,
-    QueryWriteStatusResponse, ReadObjectRequest, ReadObjectResponse, RewriteResponse, ServiceAccount,
-    StartResumableWriteRequest, StartResumableWriteResponse, UpdateHmacKeyRequest, UpdateObjectRequest,
-    WriteObjectResponse,
+    QueryWriteStatusResponse, ReadObjectRequest, ReadObjectResponse, RewriteObjectRequest, RewriteResponse,
+    ServiceAccount, StartResumableWriteRequest, StartResumableWriteResponse, UpdateBucketRequest, UpdateHmacKeyRequest,
+    UpdateObjectRequest, WriteObjectRequest, WriteObjectResponse,
 };
 
 fn default_setting() -> RetrySetting {
@@ -35,77 +37,69 @@ fn default_setting() -> RetrySetting {
 
 #[derive(Clone)]
 pub struct StorageClient {
-    inner: InternalStorageClient<Channel>,
+    cm: Arc<ConnectionManager>,
 }
 
 impl StorageClient {
     /// create new storage client
-    pub fn new(inner: InternalStorageClient<Channel>) -> Self {
-        Self { inner }
+    pub fn new(cm: ConnectionManager) -> Self {
+        Self { cm: Arc::new(cm) }
+    }
+
+    fn client(&self) -> InternalStorageClient<Channel> {
+        InternalStorageClient::new(self.cm.conn())
     }
 
     pub async fn delete_bucket(
-        &mut self,
+        &self,
         req: DeleteBucketRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                let request = req.clone().into_request();
-                client.delete_bucket(request).await.map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            let request = req.clone().into_request();
+            client.delete_bucket(request).await.map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn get_bucket(
-        &mut self,
+        &self,
         req: GetBucketRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Bucket>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                let request = req.clone().into_request();
-                client.get_bucket(request).await.map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            let request = req.clone().into_request();
+            client.get_bucket(request).await.map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn create_bucket(
-        &mut self,
+        &self,
         req: CreateBucketRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Bucket>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .create_bucket(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .create_bucket(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     /// list_sessions lists all sessions in a given database.
     pub async fn list_bucket(
-        &mut self,
+        &self,
         mut req: ListBucketsRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
@@ -115,7 +109,8 @@ impl StorageClient {
         //eager loading
         loop {
             let action = || async {
-                self.inner
+                let mut client = self.client();
+                client
                     .list_buckets(req.clone().into_request())
                     .await
                     .map_err(|e| Status::from(e))
@@ -131,129 +126,105 @@ impl StorageClient {
     }
 
     pub async fn lock_bucket_retention_policy(
-        &mut self,
+        &self,
         req: LockBucketRetentionPolicyRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Bucket>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .lock_bucket_retention_policy(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .lock_bucket_retention_policy(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn get_iam_policy(
-        &mut self,
+        &self,
         req: GetIamPolicyRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Policy>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .get_iam_policy(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .get_iam_policy(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn set_iam_policy(
-        &mut self,
+        &self,
         req: SetIamPolicyRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Policy>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .set_iam_policy(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .set_iam_policy(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn test_iam_permissions(
-        &mut self,
+        &self,
         req: TestIamPermissionsRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<TestIamPermissionsResponse>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .test_iam_permissions(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .test_iam_permissions(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn update_bucket(
-        &mut self,
-        req: UpdateBackupRequest,
+        &self,
+        req: UpdateBucketRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Bucket>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .update_bucket(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .update_bucket(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn delete_notification(
-        &mut self,
+        &self,
         req: DeleteNotificationRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .delete_notification(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .delete_notification(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     /// BeginTransaction begins a new transaction. This step can often be skipped:
@@ -261,49 +232,41 @@ impl StorageClient {
     /// Commit can begin a new transaction as a
     /// side-effect.
     pub async fn get_notification(
-        &mut self,
+        &self,
         req: GetNotificationRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Notification>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .get_notification(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .get_notification(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn create_notification(
-        &mut self,
+        &self,
         req: CreateNotificationRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Notification>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .create_notification(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .create_notification(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn list_notifications(
-        &mut self,
+        &self,
         mut req: ListNotificationsRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
@@ -313,7 +276,8 @@ impl StorageClient {
         //eager loading
         loop {
             let action = || async {
-                self.inner
+                let mut client = self.client();
+                client
                     .list_notifications(req.clone().into_request())
                     .await
                     .map_err(|e| Status::from(e))
@@ -329,133 +293,111 @@ impl StorageClient {
     }
 
     pub async fn compose_object(
-        &mut self,
+        &self,
         req: ComposeObjectRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Object>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .compose_object(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .compose_object(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn delete_object(
-        &mut self,
+        &self,
         req: DeleteObjectRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .delete_object(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .delete_object(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn get_object(
-        &mut self,
+        &self,
         req: GetObjectRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Object>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .get_object(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .get_object(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn read_object(
-        &mut self,
+        &self,
         req: ReadObjectRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Streaming<ReadObjectResponse>>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .read_object(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .read_object(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn update_object(
-        &mut self,
+        &self,
         req: UpdateObjectRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Object>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .update_object(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .update_object(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn write_object(
-        &mut self,
-        req: WriterObjectRequest,
+        &self,
+        req: WriteObjectRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<WriteObjectResponse>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .write_object(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            let base_req = req.clone();
+            let request = Box::pin(async_stream::stream! {
+                yield base_req.clone();
+            });
+            let v = request.into_streaming_request();
+            client.write_object(v).await.map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn list_objects(
-        &mut self,
+        &self,
         mut req: ListObjectsRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
@@ -465,7 +407,8 @@ impl StorageClient {
         //eager loading
         loop {
             let action = || async {
-                self.inner
+                let mut client = self.client();
+                client
                     .list_objects(req.clone().into_request())
                     .await
                     .map_err(|e| Status::from(e))
@@ -481,154 +424,126 @@ impl StorageClient {
     }
 
     pub async fn rewrite_object(
-        &mut self,
-        req: WriterObjectRequest,
+        &self,
+        req: RewriteObjectRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<RewriteResponse>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .rewrite_object(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .rewrite_object(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn start_resumable_write(
-        &mut self,
+        &self,
         req: StartResumableWriteRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<StartResumableWriteResponse>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .start_resumable_write(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .start_resumable_write(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn query_write_status(
-        &mut self,
+        &self,
         req: QueryWriteStatusRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<QueryWriteStatusResponse>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .query_write_status(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .query_write_status(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn get_service_account(
-        &mut self,
+        &self,
         req: GetServiceAccountRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<ServiceAccount>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .get_service_account(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .get_service_account(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn create_hmac_key(
-        &mut self,
+        &self,
         req: CreateHmacKeyRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<CreateHmacKeyResponse>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .create_hmac_key(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .create_hmac_key(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn delete_hmac_key(
-        &mut self,
+        &self,
         req: DeleteHmacKeyRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .delete_hmac_key(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .delete_hmac_key(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn get_hmac_key(
-        &mut self,
+        &self,
         req: GetHmacKeyRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<HmacKeyMetadata>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .get_hmac_key(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .get_hmac_key(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 
     pub async fn list_hmac_keys(
-        &mut self,
+        &self,
         mut req: ListHmacKeysRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
@@ -638,7 +553,8 @@ impl StorageClient {
         //eager loading
         loop {
             let action = || async {
-                self.inner
+                let mut client = self.client();
+                client
                     .list_hmac_keys(req.clone().into_request())
                     .await
                     .map_err(|e| Status::from(e))
@@ -654,23 +570,19 @@ impl StorageClient {
     }
 
     pub async fn update_hmac_key(
-        &mut self,
+        &self,
         req: UpdateHmacKeyRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<HmacKeyMetadata>, Status> {
-        let setting = retry.unwrap_or(default_setting());
-        return invoke_fn(
-            cancel,
-            Some(setting),
-            |client| async {
-                client
-                    .update_hmac_key(req.clone().into_request())
-                    .await
-                    .map_err(|e| (e.into(), client))
-            },
-            &mut self.inner,
-        )
-        .await;
+        let retry = retry.unwrap_or(default_setting());
+        let action = || async {
+            let mut client = self.client();
+            client
+                .update_hmac_key(req.clone().into_request())
+                .await
+                .map_err(|e| e.into())
+        };
+        invoke(cancel, Some(retry), action).await
     }
 }
