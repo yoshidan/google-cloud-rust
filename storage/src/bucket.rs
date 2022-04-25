@@ -15,6 +15,7 @@ use std::ops::{Add, Index, Sub};
 use std::time::Duration;
 use url;
 use url::ParseError;
+use google_cloud_gax::grpc::codegen::Body;
 
 static SPACE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r" +").unwrap());
 static TAB_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"[\t]+").unwrap());
@@ -185,13 +186,37 @@ pub enum SignedURLError {
     #[error(transparent)]
     ParseError(#[from] ParseError),
     #[error("cert error by: {0}")]
-    CertError(String)
+    CertError(String),
+    #[error(transparent)]
+    CredentialError(#[from] google_cloud_auth::error::Error),
 }
 
 impl BucketHandle {
-    pub fn signed_url(object: String, opts: &SignedURLOptions) -> Result<String, SignedURLError> {
-        //TODO
-        Ok("".to_string())
+    pub async fn signed_url(&self, object: String, opts: &mut SignedURLOptions) -> Result<String, SignedURLError> {
+        let signable = match &opts.sign_by {
+            SignBy::PrivateKey(v) => !v.is_empty(),
+            _ => true
+        };
+        if !opts.google_access_id.is_empty() && signable {
+           return signed_url(self.name.to_string(), object, opts);
+        }
+
+        let cred = google_cloud_auth::get_credentials().await?;
+        match cred.file {
+            Some(file) => {
+                if file.private_key.is_some() {
+                    opts.sign_by = SignBy::PrivateKey(file.private_key.unwrap().into());
+                }
+                if file.client_email.is_some() && opts.google_access_id.is_empty() {
+                    opts.google_access_id = file.client_email.unwrap();
+                }
+                return signed_url(self.name.to_string(), object, opts);
+            },
+            None => {
+                //TODO metadata.onGCE
+                panic!("error");
+            }
+        }
     }
 }
 
