@@ -371,12 +371,10 @@ fn signed_url_v4(
 }
 
 fn extract_header_names(kvs: &[String]) -> Vec<&str> {
-    let mut res = vec![];
-    for header in kvs {
+    return kvs.iter().map(|header| {
         let name_value: Vec<&str> = header.split(":").collect();
-        res.push(name_value[0])
-    }
-    res
+        name_value[0]
+    }).collect();
 }
 
 fn validate_options(opts: &SignedURLOptions, now: &DateTime<Utc>) -> Result<(), SignedURLError> {
@@ -436,6 +434,7 @@ mod test {
         opts.google_access_id = file.client_email.unwrap();
         opts.expires = Duration::from_secs(3600);
         let url = crate::bucket::signed_url("atl-dev1-test".to_string(), "test.html".to_string(), &mut opts).unwrap();
-        println!("url={}", url);
+        tracing::info!("signed_url={}",url);
+        assert!(url.starts_with("https://storage.googleapis.com/atl-dev1-test/test.html"));
     }
 }
