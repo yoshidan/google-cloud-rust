@@ -1,5 +1,7 @@
 use crate::bucket::SignedURLError::InvalidOption;
 use chrono::{DateTime, SecondsFormat, Timelike, Utc};
+use google_cloud_auth::credentials::CredentialsFile;
+use google_cloud_gax::grpc::codegen::Body;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use ring::{rand, signature};
@@ -15,7 +17,6 @@ use std::ops::{Add, Index, Sub};
 use std::time::Duration;
 use url;
 use url::ParseError;
-use google_cloud_gax::grpc::codegen::Body;
 
 static SPACE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r" +").unwrap());
 static TAB_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"[\t]+").unwrap());
@@ -68,7 +69,7 @@ impl URLStyle for PathStyle {
 
 pub enum SignBy {
     PrivateKey(Vec<u8>),
-    SignBytes(Box<dyn Fn(&[u8]) -> Result<Vec<u8>, SignedURLError>>)
+    SignBytes(Box<dyn Fn(&[u8]) -> Result<Vec<u8>, SignedURLError>>),
 }
 
 /// SignedURLOptions allows you to restrict the access to the signed URL.
@@ -174,7 +175,7 @@ impl Default for SignedURLOptions {
             md5: "".to_string(),
             style: Box::new(PathStyle {}),
             insecure: false,
-            scheme: SigningScheme::SigningSchemeV4
+            scheme: SigningScheme::SigningSchemeV4,
         }
     }
 }
@@ -189,39 +190,46 @@ pub enum SignedURLError {
     CertError(String),
     #[error(transparent)]
     CredentialError(#[from] google_cloud_auth::error::Error),
+    #[error(transparent)]
+    MetadataError(#[from] google_cloud_metadata::Error),
 }
 
 impl BucketHandle {
     pub async fn signed_url(&self, object: String, opts: &mut SignedURLOptions) -> Result<String, SignedURLError> {
         let signable = match &opts.sign_by {
             SignBy::PrivateKey(v) => !v.is_empty(),
-            _ => true
+            _ => true,
         };
         if !opts.google_access_id.is_empty() && signable {
-           return signed_url(self.name.to_string(), object, opts);
+            return signed_url(self.name.to_string(), object, opts);
         }
 
-        let cred = google_cloud_auth::get_credentials().await?;
-        match cred.file {
-            Some(file) => {
-                if file.private_key.is_some() {
-                    opts.sign_by = SignBy::PrivateKey(file.private_key.unwrap().into());
+        /// with credentials
+        match CredentialsFile::new().await {
+            Ok(cred) => {
+                if cred.private_key.is_some() {
+                    opts.sign_by = SignBy::PrivateKey(cred.private_key.unwrap().into());
                 }
-                if file.client_email.is_some() && opts.google_access_id.is_empty() {
-                    opts.google_access_id = file.client_email.unwrap();
+                if cred.client_email.is_some() && opts.google_access_id.is_empty() {
+                    opts.google_access_id = cred.client_email.unwrap();
                 }
-                return signed_url(self.name.to_string(), object, opts);
-            },
-            None => {
-                //TODO metadata.onGCE
-                panic!("error");
             }
-        }
+            Err(err) => {
+                if google_cloud_metadata::on_gce().await {
+                    let email = google_cloud_metadata::email("default").await?;
+                    if opts.google_access_id.is_empty() {
+                        opts.google_access_id = email;
+                    }
+                } else {
+                    return Err(err.into());
+                }
+            }
+        };
+        return signed_url(self.name.to_string(), object, opts);
     }
 }
 
-pub fn signed_url(name: String, object: String, opts: &mut SignedURLOptions) -> Result<String, SignedURLError>
-{
+pub fn signed_url(name: String, object: String, opts: &mut SignedURLOptions) -> Result<String, SignedURLError> {
     let now = Utc::now();
     let _ = validate_options(opts, &now)?;
 
@@ -230,7 +238,7 @@ pub fn signed_url(name: String, object: String, opts: &mut SignedURLOptions) -> 
             opts.headers = v4_sanitize_headers(&opts.headers);
             signed_url_v4(&name, &object, opts, now)
         }
-    }
+    };
 }
 
 fn v4_sanitize_headers(hdrs: &[String]) -> Vec<String> {
@@ -265,10 +273,9 @@ fn signed_url_v4(
     opts: &SignedURLOptions,
     now: DateTime<Utc>,
 ) -> Result<String, SignedURLError> {
-
     /// create base url
     let host = opts.style.host(bucket).to_string();
-    let mut builder= {
+    let mut builder = {
         let url = if opts.insecure {
             format!("http://{}", &host)
         } else {
@@ -291,7 +298,11 @@ fn signed_url_v4(
         header_names.join(";")
     };
 
-    let timestamp = now.to_rfc3339_opts(SecondsFormat::Secs, true).to_string().replace("-","").replace(":","");
+    let timestamp = now
+        .to_rfc3339_opts(SecondsFormat::Secs, true)
+        .to_string()
+        .replace("-", "")
+        .replace(":", "");
     let credential_scope = format!("{}/auto/storage/goog4_request", now.format("%Y%m%d"));
 
     /// append query parameters
@@ -308,7 +319,7 @@ fn signed_url_v4(
             }
         }
     }
-    let escaped_query= builder.query().unwrap().replace("+", "%20");
+    let escaped_query = builder.query().unwrap().replace("+", "%20");
     tracing::trace!("escaped_query={}", escaped_query);
 
     /// create header with value
@@ -328,7 +339,7 @@ fn signed_url_v4(
     builder.set_path(&path);
 
     /// create raw buffer
-    let buffer= {
+    let buffer = {
         let mut buffer: Vec<u8> = vec![];
         buffer.extend_from_slice(format!("{}\n", opts.method).as_bytes());
         buffer.extend_from_slice(format!("{}\n", builder.path().replace("+", "%20")).as_bytes());
@@ -374,7 +385,8 @@ fn signed_url_v4(
             let str = String::from_utf8_lossy(private_key);
             let pkcs = rsa::RsaPrivateKey::from_pkcs8_pem(str.as_ref())
                 .map_err(|e| SignedURLError::CertError(e.to_string()))?;
-            let der = pkcs.to_pkcs8_der()
+            let der = pkcs
+                .to_pkcs8_der()
                 .map_err(|e| SignedURLError::CertError(e.to_string()))?;
             let key_pair = ring::signature::RsaKeyPair::from_pkcs8(der.as_ref())
                 .map_err(|e| SignedURLError::CertError(e.to_string()))?;
@@ -388,18 +400,23 @@ fn signed_url_v4(
                 )
                 .map_err(|e| SignedURLError::CertError(e.to_string()))?;
             signed
-        },
-        SignBy::SignBytes(f) => f(signed_buffer.as_slice())?
+        }
+        SignBy::SignBytes(f) => f(signed_buffer.as_slice())?,
     };
-    builder.query_pairs_mut().append_pair("X-Goog-Signature",  &hex::encode(signature));
+    builder
+        .query_pairs_mut()
+        .append_pair("X-Goog-Signature", &hex::encode(signature));
     Ok(builder.to_string())
 }
 
 fn extract_header_names(kvs: &[String]) -> Vec<&str> {
-    return kvs.iter().map(|header| {
-        let name_value: Vec<&str> = header.split(":").collect();
-        name_value[0]
-    }).collect();
+    return kvs
+        .iter()
+        .map(|header| {
+            let name_value: Vec<&str> = header.split(":").collect();
+            name_value[0]
+        })
+        .collect();
 }
 
 fn validate_options(opts: &SignedURLOptions, now: &DateTime<Utc>) -> Result<(), SignedURLError> {
@@ -432,7 +449,7 @@ fn validate_options(opts: &SignedURLOptions, now: &DateTime<Utc>) -> Result<(), 
 
 #[cfg(test)]
 mod test {
-    use crate::bucket::{PathStyle, SignBy, SignedURLOptions, SigningScheme};
+    use crate::bucket::{BucketHandle, PathStyle, SignBy, SignedURLOptions, SigningScheme};
     use chrono::{DateTime, Utc};
     use serial_test::serial;
     use std::collections::HashMap;
@@ -446,20 +463,33 @@ mod test {
 
     #[tokio::test]
     #[serial]
-    async fn signed_url() {
+    async fn signed_url_internal() {
         let cred = google_cloud_auth::get_credentials().await.unwrap();
         let param = {
             let mut param = HashMap::new();
             param.insert("tes t+".to_string(), vec!["++ +".to_string()]);
             param
         };
-        let file =cred.file.unwrap();
+        let file = cred.file.unwrap();
         let mut opts = SignedURLOptions::default();
         opts.sign_by = SignBy::PrivateKey(file.private_key.unwrap().into());
         opts.google_access_id = file.client_email.unwrap();
         opts.expires = Duration::from_secs(3600);
         let url = crate::bucket::signed_url("atl-dev1-test".to_string(), "test.html".to_string(), &mut opts).unwrap();
-        tracing::info!("signed_url={}",url);
+        tracing::info!("signed_url={}", url);
+        assert!(url.starts_with("https://storage.googleapis.com/atl-dev1-test/test.html"));
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn signed_url() {
+        let bucket = BucketHandle {
+            name: "atl-dev1-test".to_string(),
+        };
+        let mut opts = SignedURLOptions::default();
+        opts.expires = Duration::from_secs(3600);
+        let url = bucket.signed_url("test.html".to_string(), &mut opts).await.unwrap();
+        tracing::info!("signed_url={}", url);
         assert!(url.starts_with("https://storage.googleapis.com/atl-dev1-test/test.html"));
     }
 }
