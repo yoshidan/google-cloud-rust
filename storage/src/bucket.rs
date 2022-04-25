@@ -1,5 +1,4 @@
 use crate::bucket::SignedURLError::InvalidOption;
-use crate::util;
 use chrono::{DateTime, SecondsFormat, Timelike, Utc};
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -40,7 +39,7 @@ pub trait URLStyle {
 
 pub struct PathStyle {}
 
-const HOST: &str = "sorage.googleapis.com";
+const HOST: &str = "storage.googleapis.com";
 
 impl URLStyle for PathStyle {
     fn host(&self, _bucket: &str) -> String {
@@ -152,9 +151,27 @@ pub struct SignedURLOptions {
     /// Optional.
     insecure: bool,
 
-    // Scheme determines the version of URL signing to use. Default is
-    // SigningSchemeV2.
+    /// Scheme determines the version of URL signing to use. Default is SigningSchemeV4.
     scheme: SigningScheme,
+}
+
+impl Default for SignedURLOptions {
+    fn default() -> Self {
+        Self {
+            google_access_id: "".to_string(),
+            private_key: vec![],
+            sign_bytes: None,
+            method: "".to_string(),
+            expires: Default::default(),
+            content_type: "".to_string(),
+            headers: vec![],
+            query_parameters: Default::default(),
+            md5: "".to_string(),
+            style: Box::new(()),
+            insecure: false,
+            scheme: SigningScheme::SigningSchemeV4
+        }
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -215,123 +232,132 @@ fn signed_url_v4(
     opts: &SignedURLOptions,
     now: DateTime<Utc>,
 ) -> Result<String, SignedURLError> {
-    let mut buffer: Vec<u8> = vec![];
-    buffer.extend_from_slice(format!("{}\n", opts.method).as_bytes());
 
-    let path = opts.style.path(bucket, name);
-    let mut ui = url::Url::parse("https://storage.google.com").unwrap();
-    let raw_path = path_encode_v4(&path);
-    buffer.extend_from_slice(format!("/{}\n", raw_path).as_bytes());
-
-    let mut header_names = extract_header_names(&opts.headers);
-    header_names.push("host");
-    if !opts.content_type.is_empty() {
-        header_names.push("content-type");
-    }
-    if !opts.md5.is_empty() {
-        header_names.push("content-md5");
-    }
-    header_names.sort();
-
-    let signed_headers = header_names.join(";");
-    let timestamp = now.to_rfc3339_opts(SecondsFormat::Secs, true);
-    let credential_scope = format!("{}/auto/storage/goog4_request", now.format("%Y%m%d"));
-    let mut canonical_query_string = util::QueryParam::new();
-    canonical_query_string.adds("X-Goog-Algorithm".to_string(), vec!["GOOG4-RSA-SHA256".to_string()]);
-    canonical_query_string.adds(
-        "X-Goog-Credential".to_string(),
-        vec![format!("{}/{}", opts.google_access_id, credential_scope)],
-    );
-    canonical_query_string.adds("X-Goog-Date".to_string(), vec![timestamp.clone()]);
-    canonical_query_string.adds("X-Goog-Expires".to_string(), vec![opts.expires.as_secs().to_string()]);
-    canonical_query_string.adds("X-Goog-SignedHeaders".to_string(), vec![signed_headers.clone()]);
-    for (k, v) in &opts.query_parameters {
-        canonical_query_string.adds(k.clone(), v.clone())
-    }
-    let escaped_query = canonical_query_string.encode().replace("+", "%20");
-    println!("escap={}", escaped_query);
-    buffer.extend_from_slice(format!("/{}\n", escaped_query).as_bytes());
-
+    /// create base url
     let host = opts.style.host(bucket).to_string();
-    if opts.insecure {
-        ui.set_scheme("http");
-    }
-    ui.set_path(&path);
-    ui.set_host(Some(host.as_str()));
+    let path = opts.style.path(bucket, name);
+    let mut builder= {
+        let url = if opts.insecure {
+            format!("http://{}", &host)
+        } else {
+            format!("https://{}", &host)
+        };
+        url::Url::parse(&format!("{}/{}",url, &path)).unwrap()
+    };
 
-    let mut header_with_value = vec![format!("host:{}", host)];
-    header_with_value.extend_from_slice(&opts.headers);
-    if !opts.content_type.is_empty() {
-        header_with_value.push(format!("content-type:{}", opts.content_type))
-    }
-    if !opts.md5.is_empty() {
-        header_with_value.push(format!("content-md5:{}", opts.md5))
-    }
-    header_with_value.sort();
-    let canonical_headers = header_with_value.join(" ");
-    buffer.extend_from_slice(format!("{}\n\n", canonical_headers).as_bytes());
-    buffer.extend_from_slice(format!("{}\n", signed_headers).as_bytes());
+    /// create signed headers
+    let signed_headers = {
+        let mut header_names = extract_header_names(&opts.headers);
+        header_names.push("host");
+        if !opts.content_type.is_empty() {
+            header_names.push("content-type");
+        }
+        if !opts.md5.is_empty() {
+            header_names.push("content-md5");
+        }
+        header_names.sort();
+        header_names.join(";")
+    };
 
-    /// If the user provides a value for X-Goog-Content-SHA256, we must use
-    /// that value in the request string. If not, we use UNSIGNED-PAYLOAD.
-    let sha256_header = header_with_value
-        .iter()
-        .find(|h| {
-            let ret = h.to_lowercase().starts_with("x-goog-content-sha256") && h.contains(":");
-            if ret {
-                let v: Vec<&str> = h.splitn(2, ":").collect();
-                buffer.extend_from_slice(v[1].as_bytes());
+    let timestamp = now.to_rfc3339_opts(SecondsFormat::Secs, true).to_string().replace("-","").replace(":","");
+    let credential_scope = format!("{}/auto/storage/goog4_request", now.format("%Y%m%d"));
+
+    /// append query parameters
+    {
+        let mut query = builder.query_pairs_mut();
+        query.append_pair("X-Goog-Algorithm", "GOOG4-RSA-SHA256");
+        query.append_pair("X-Goog-Credential", &format!("{}/{}", opts.google_access_id, credential_scope));
+        query.append_pair("X-Goog-Date", &timestamp);
+        query.append_pair("X-Goog-Expires", opts.expires.as_secs().to_string().as_str());
+        query.append_pair("X-Goog-SignedHeaders", &signed_headers);
+        for (k, values) in &opts.query_parameters {
+            for value in values {
+                query.append_pair(k.as_str(), value.as_str());
             }
-            ret
-        })
-        .is_some();
-    if !sha256_header {
-        buffer.extend_from_slice("UNSIGNED-PAYLOAD".as_bytes());
-    }
-    let hex_digest = Sha256::digest(buffer);
-    let mut signed_buffer: Vec<u8> = vec![];
-    signed_buffer.extend_from_slice("GOOG4-RSA-SHA256\n".as_bytes());
-    signed_buffer.extend_from_slice(format!("{}\n", timestamp).as_bytes());
-    signed_buffer.extend_from_slice(format!("{}\n", credential_scope).as_bytes());
-    signed_buffer.extend_from_slice(hex_digest.as_slice());
-
-    if !opts.private_key.is_empty() {
-        let str = String::from_utf8(opts.private_key.clone()).unwrap();
-        let pkcs = rsa::RsaPrivateKey::from_pkcs8_pem(&str).unwrap();
-        let der = pkcs.to_pkcs8_der().unwrap();
-        let key_pair = ring::signature::RsaKeyPair::from_pkcs8(der.as_ref()).unwrap();
-        let mut signed = vec![0; key_pair.public_modulus_len()];
-        key_pair
-            .sign(
-                &signature::RSA_PKCS1_SHA256,
-                &rand::SystemRandom::new(),
-                signed_buffer.as_slice(),
-                &mut signed,
-            )
-            .unwrap();
-        canonical_query_string.adds("X-Goog-Signature".to_string(), vec![hex::encode(signed)]);
-    } else {
-        let f = opts.sign_bytes.as_ref().unwrap();
-        let signed = f(signed_buffer.as_slice()).unwrap();
-        canonical_query_string.adds("X-Goog-Signature".to_string(), vec![hex::encode(signed)]);
-    }
-    for (k,v) in &canonical_query_string.inner {
-        for v1 in v {
-            ui.query_pairs_mut().append_pair(k, v1);
         }
     }
-    println!("query={}",ui.query().unwrap().replace("+","%20"));
-    Ok(ui.to_string())
-}
+    let escaped_query= builder.query().unwrap().replace("+", "%20");
+    tracing::trace!("escaped_query={}", escaped_query);
 
-fn path_encode_v4(path: &str) -> String {
-    let segments: Vec<&str> = path.split("/").collect();
-    let mut encoded_segments = Vec::with_capacity(segments.len());
-    for segment in segments {
-        encoded_segments.push(urlencoding::encode(segment).to_string());
-    }
-    let encoded_str = encoded_segments.join("/");
-    return encoded_str.replace("+", "%20");
+    /// create header with value
+    let header_with_value = {
+        let mut header_with_value = vec![format!("host:{}", host)];
+        header_with_value.extend_from_slice(&opts.headers);
+        if !opts.content_type.is_empty() {
+            header_with_value.push(format!("content-type:{}", opts.content_type))
+        }
+        if !opts.md5.is_empty() {
+            header_with_value.push(format!("content-md5:{}", opts.md5))
+        }
+        header_with_value.sort();
+        header_with_value
+    };
+
+    /// create raw buffer
+    let buffer= {
+        let mut buffer: Vec<u8> = vec![];
+        buffer.extend_from_slice(format!("{}\n", opts.method).as_bytes());
+        buffer.extend_from_slice(format!("{}\n", builder.path().replace("+", "%20")).as_bytes());
+        buffer.extend_from_slice(format!("{}\n", escaped_query).as_bytes());
+        buffer.extend_from_slice(format!("{}\n\n", header_with_value.join(" ")).as_bytes());
+        buffer.extend_from_slice(format!("{}\n", signed_headers).as_bytes());
+
+        /// If the user provides a value for X-Goog-Content-SHA256, we must use
+        /// that value in the request string. If not, we use UNSIGNED-PAYLOAD.
+        let sha256_header = header_with_value
+            .iter()
+            .find(|h| {
+                let ret = h.to_lowercase().starts_with("x-goog-content-sha256") && h.contains(":");
+                if ret {
+                    let v: Vec<&str> = h.splitn(2, ":").collect();
+                    buffer.extend_from_slice(v[1].as_bytes());
+                }
+                ret
+            })
+            .is_some();
+        if !sha256_header {
+            buffer.extend_from_slice("UNSIGNED-PAYLOAD".as_bytes());
+        }
+        buffer
+    };
+    tracing::trace!("raw_buffer={:?}", String::from_utf8_lossy(&buffer));
+
+    /// create signed buffer
+    let signed_buffer = {
+        let hex_digest = hex::encode(Sha256::digest(buffer));
+        let mut signed_buffer: Vec<u8> = vec![];
+        signed_buffer.extend_from_slice("GOOG4-RSA-SHA256\n".as_bytes());
+        signed_buffer.extend_from_slice(format!("{}\n", timestamp).as_bytes());
+        signed_buffer.extend_from_slice(format!("{}\n", credential_scope).as_bytes());
+        signed_buffer.extend_from_slice(hex_digest.as_bytes());
+        signed_buffer
+    };
+    tracing::trace!("signed_buffer={:?}", String::from_utf8_lossy(&signed_buffer));
+
+    /// create signature
+    let signature = {
+        if !opts.private_key.is_empty() {
+            let str = String::from_utf8(opts.private_key.clone()).unwrap();
+            let pkcs = rsa::RsaPrivateKey::from_pkcs8_pem(&str).unwrap();
+            let der = pkcs.to_pkcs8_der().unwrap();
+            let key_pair = ring::signature::RsaKeyPair::from_pkcs8(der.as_ref()).unwrap();
+            let mut signed = vec![0; key_pair.public_modulus_len()];
+            key_pair
+                .sign(
+                    &signature::RSA_PKCS1_SHA256,
+                    &rand::SystemRandom::new(),
+                    signed_buffer.as_slice(),
+                    &mut signed,
+                )
+                .unwrap();
+           signed
+        } else {
+            let f = opts.sign_bytes.as_ref().unwrap();
+            f(signed_buffer.as_slice()).unwrap()
+        }
+    };
+    builder.query_pairs_mut().append_pair("X-Goog-Signature",  &hex::encode(signature));
+    Ok(builder.to_string())
 }
 
 fn extract_header_names(kvs: &[String]) -> Vec<&str> {
@@ -381,6 +407,12 @@ mod test {
     use serial_test::serial;
     use std::collections::HashMap;
     use std::time::Duration;
+    use tracing::Level;
+
+    #[ctor::ctor]
+    fn init() {
+        tracing_subscriber::fmt::init();
+    }
 
     #[tokio::test]
     #[serial]
@@ -393,7 +425,7 @@ mod test {
             google_access_id: file.client_email.unwrap().to_string(),
             private_key: file.private_key.unwrap().into(),
             sign_bytes: None,
-            method: "".to_string(),
+            method: "GET".to_string(),
             expires: Duration::from_secs(86400),
             content_type: "".to_string(),
             headers: vec![],
@@ -403,7 +435,7 @@ mod test {
             insecure: false,
             scheme: SigningScheme::SigningSchemeV4,
         };
-        let url = crate::bucket::signed_url_v4("bucket", "test.txt?日本語=TXT あいうえ+a", &opts, chrono::Utc::now()).unwrap();
+        let url = crate::bucket::signed_url_v4("atl-dev1-test", "test.html", &opts, chrono::Utc::now()).unwrap();
         println!("url={}", url);
     }
 }
