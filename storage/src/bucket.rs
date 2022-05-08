@@ -22,10 +22,6 @@ static SPACE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r" +").unwrap());
 static TAB_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"[\t]+").unwrap());
 const SIGNED_URL_METHODS: [&str; 5] = ["DELETE", "GET", "HEAD", "POST", "PUT"];
 
-pub struct BucketHandle {
-    name: String,
-}
-
 #[derive(PartialEq)]
 pub enum SigningScheme {
     /// V2 is deprecated. https://cloud.google.com/storage/docs/access-control/signed-urls?types#types
@@ -194,7 +190,21 @@ pub enum SignedURLError {
     MetadataError(#[from] google_cloud_metadata::Error),
 }
 
-impl BucketHandle {
+pub struct BucketHandle<'a, 'b> {
+    name: &'a str,
+    private_key: &'b str,
+    service_account_email: &'b str,
+}
+
+impl<'a, 'b> BucketHandle<'a, 'b> {
+    pub(crate) fn new(name: &'a str, private_key: &'b str, service_account_email: &'b str) -> Self {
+        Self {
+            name,
+            private_key,
+            service_account_email,
+        }
+    }
+
     pub async fn signed_url(&self, object: String, opts: &mut SignedURLOptions) -> Result<String, SignedURLError> {
         let signable = match &opts.sign_by {
             SignBy::PrivateKey(v) => !v.is_empty(),
@@ -204,27 +214,12 @@ impl BucketHandle {
             return signed_url(self.name.to_string(), object, opts);
         }
 
-        /// with credentials
-        match CredentialsFile::new().await {
-            Ok(cred) => {
-                if cred.private_key.is_some() {
-                    opts.sign_by = SignBy::PrivateKey(cred.private_key.unwrap().into());
-                }
-                if cred.client_email.is_some() && opts.google_access_id.is_empty() {
-                    opts.google_access_id = cred.client_email.unwrap();
-                }
-            }
-            Err(err) => {
-                if google_cloud_metadata::on_gce().await {
-                    let email = google_cloud_metadata::email("default").await?;
-                    if opts.google_access_id.is_empty() {
-                        opts.google_access_id = email;
-                    }
-                } else {
-                    return Err(err.into());
-                }
-            }
-        };
+        if !self.private_key.is_empty() {
+            opts.sign_by = SignBy::PrivateKey(self.private_key.into());
+        }
+        if !self.service_account_email.is_empty() && opts.google_access_id.is_empty() {
+            opts.google_access_id = self.service_account_email.to_string();
+        }
         return signed_url(self.name.to_string(), object, opts);
     }
 }
@@ -459,7 +454,7 @@ mod test {
 
     #[ctor::ctor]
     fn init() {
-        tracing_subscriber::fmt::init();
+        tracing_subscriber::fmt::try_init();
     }
 
     #[tokio::test]
@@ -476,19 +471,6 @@ mod test {
         opts.google_access_id = file.client_email.unwrap();
         opts.expires = Duration::from_secs(3600);
         let url = crate::bucket::signed_url("atl-dev1-test".to_string(), "test.html".to_string(), &mut opts).unwrap();
-        tracing::info!("signed_url={}", url);
-        assert!(url.starts_with("https://storage.googleapis.com/atl-dev1-test/test.html"));
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn signed_url() {
-        let bucket = BucketHandle {
-            name: "atl-dev1-test".to_string(),
-        };
-        let mut opts = SignedURLOptions::default();
-        opts.expires = Duration::from_secs(3600);
-        let url = bucket.signed_url("test.html".to_string(), &mut opts).await.unwrap();
         tracing::info!("signed_url={}", url);
         assert!(url.starts_with("https://storage.googleapis.com/atl-dev1-test/test.html"));
     }
