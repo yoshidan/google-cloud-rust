@@ -451,6 +451,7 @@ fn validate_options(opts: &SignedURLOptions, now: &DateTime<Utc>) -> Result<(), 
 mod test {
     use crate::bucket::{BucketHandle, PathStyle, SignBy, SignedURLOptions, SigningScheme};
     use chrono::{DateTime, Utc};
+    use google_cloud_auth::credentials::CredentialsFile;
     use serial_test::serial;
     use std::collections::HashMap;
     use std::time::Duration;
@@ -464,13 +465,12 @@ mod test {
     #[tokio::test]
     #[serial]
     async fn signed_url_internal() {
-        let cred = google_cloud_auth::get_credentials().await.unwrap();
+        let file = CredentialsFile::new().await.unwrap();
         let param = {
             let mut param = HashMap::new();
             param.insert("tes t+".to_string(), vec!["++ +".to_string()]);
             param
         };
-        let file = cred.file.unwrap();
         let mut opts = SignedURLOptions::default();
         opts.sign_by = SignBy::PrivateKey(file.private_key.unwrap().into());
         opts.google_access_id = file.client_email.unwrap();

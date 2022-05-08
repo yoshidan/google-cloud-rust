@@ -33,66 +33,20 @@ impl Config<'_> {
     }
 }
 
-pub struct Credentials {
-    pub from_metadata_server: bool,
-    pub project_id: Option<String>,
-    pub file: Option<CredentialsFile>,
-}
-
-pub async fn get_credentials() -> Result<Credentials, error::Error> {
-    let credentials = credentials::CredentialsFile::new().await;
-    return match credentials {
-        Ok(cred) => {
-            let project_id = cred.project_id.clone();
-            Ok(Credentials {
-                project_id,
-                file: Some(cred),
-                from_metadata_server: false,
-            })
-        }
-        Err(e) => {
-            // use metadata server on gce
-            if on_gce().await {
-                let project_id = project_id().await;
-                Ok(Credentials {
-                    project_id: Some(project_id),
-                    file: None,
-                    from_metadata_server: true,
-                })
-            } else {
-                Err(e)
-            }
-        }
-    };
-}
-
 pub async fn create_token_source_from_credentials(
-    credentials: &Credentials,
+    credentials: &CredentialsFile,
     config: Config<'_>,
 ) -> Result<Box<dyn TokenSource>, error::Error> {
-    let ts = if credentials.from_metadata_server {
-        Box::new(ComputeTokenSource::new(&config.scopes_to_string(","))?)
-    } else {
-        match &credentials.file {
-            Some(file) => credentials_from_json_with_params(file, &config)?,
-            None => return Err(Error::NoCredentialsFileFound),
-        }
-    };
+    let ts = credentials_from_json_with_params(credentials, &config)?;
     let token = ts.token().await?;
     Ok(Box::new(ReuseTokenSource::new(ts, token)))
 }
 
 pub async fn create_token_source(config: Config<'_>) -> Result<Box<dyn TokenSource>, error::Error> {
-    let credentials = credentials::CredentialsFile::new().await;
-
-    return match credentials {
-        Ok(cred) => {
-            let ts = credentials_from_json_with_params(&cred, &config)?;
-            let token = ts.token().await?;
-            Ok(Box::new(ReuseTokenSource::new(ts, token)))
-        }
+    let maybe = credentials::CredentialsFile::new().await;
+    return match maybe {
+        Ok(c) => create_token_source_from_credentials(&c, config).await,
         Err(e) => {
-            // use metadata server on gce
             if on_gce().await {
                 let ts = ComputeTokenSource::new(&config.scopes_to_string(","))?;
                 let token = ts.token().await?;

@@ -11,22 +11,22 @@ pub enum Error {
     #[error("refresh token is required for user account credentials")]
     RefreshTokenIsRequired,
 
-    #[error(transparent)]
+    #[error("json error: {0}")]
     JsonError(#[from] json::Error),
 
-    #[error(transparent)]
+    #[error("jwt error: {0}")]
     JwtError(#[from] jwt::errors::Error),
 
-    #[error(transparent)]
+    #[error("hyper error: {0}")]
     HyperError(#[from] hyper::Error),
 
-    #[error(transparent)]
+    #[error("http error")]
     HttpError(#[from] hyper::http::Error),
 
-    #[error(transparent)]
-    IOError(#[from] std::io::Error),
+    #[error("GOOGLE_APPLICATION_CREDENTIALS or default credentials is required: {0}")]
+    CredentialsIOError(#[from] std::io::Error),
 
-    #[error(transparent)]
+    #[error("os env error: {0}")]
     VarError(#[from] VarError),
 
     #[error("user home directory not found")]

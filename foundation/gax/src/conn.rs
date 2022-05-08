@@ -54,7 +54,7 @@ pub enum Error {
     #[error(transparent)]
     AuthInitialize(#[from] google_cloud_auth::error::Error),
 
-    #[error(transparent)]
+    #[error("tonic error : {0}")]
     TonicTransport(#[from] tonic::transport::Error),
 
     #[error("invalid spanner host {0}")]
