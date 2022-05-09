@@ -19,8 +19,11 @@ use std::ops::{Add, Index, Sub};
 use std::time::Duration;
 use url;
 use url::ParseError;
-use crate::apiv1::entity::{Bucket, DeleteBucketRequest, InsertBucketRequest};
+use crate::apiv1::entity::{Bucket, BucketAccessControl, DeleteBucketRequest, InsertBucketRequest, ObjectAccessControl};
+use crate::apiv1::entity::bucket::{Versioning, Website};
 use crate::apiv1::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
+use crate::apiv1::partial::BucketCreationConfig;
+use crate::bucket;
 
 static SPACE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r" +").unwrap());
 static TAB_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"[\t]+").unwrap());
@@ -240,20 +243,20 @@ impl<'a> BucketHandle<'a> {
     pub async fn delete(&self, cancel: Option<CancellationToken>) -> Result<(), Error> {
         let req = DeleteBucketRequest {
             bucket: self.name.to_string(),
-            if_metageneration_match: None,
-            if_metageneration_not_match: None
+            ..Default::default()
         };
         self.storage_client.delete_bucket(req, cancel).await
     }
 
-    pub async fn create(&self, cancel: Option<CancellationToken>) -> Result<(), Error> {
+    pub async fn create(&self, attr: &BucketCreationConfig, cancel: Option<CancellationToken>) -> Result<(), Error> {
+        let mut bucket : Bucket = attr.into();
+        bucket.name = self.name.to_string() ;
         let req = InsertBucketRequest {
+            predefined_acl: attr.predefined_acl,
+            predefined_default_object_acl: attr.predefined_default_object_acl,
+            projection: Projection::Unspecified,
             project: self.project_id.to_string(),
-            bucket: Bucket {
-                name: self.name.to_string(),
-                ..Default::default()
-            },
-            ..Default::default()
+            bucket,
         };
         self.storage_client
             .insert_bucket(req, cancel, )

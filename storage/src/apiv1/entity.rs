@@ -933,7 +933,7 @@ pub struct UpdateBucketAccessControlRequest {
     pub bucket_access_control: Option<BucketAccessControl>,
 }
 /// Request message for DeleteBucket.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DeleteBucketRequest {
     /// Required. Name of a bucket.
@@ -960,7 +960,7 @@ pub struct GetBucketRequest {
     pub projection: Projection,
 }
 /// Request message for InsertBucket.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InsertBucketRequest {
     /// Apply a predefined set of access controls to this bucket.

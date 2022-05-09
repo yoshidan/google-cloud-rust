@@ -87,6 +87,7 @@ mod test {
     use std::collections::HashMap;
     use std::time::Duration;
     use tracing::Level;
+    use crate::apiv1::partial::BucketCreationConfig;
 
     #[ctor::ctor]
     fn init() {
@@ -115,7 +116,7 @@ mod test {
     async fn create() {
         let client = client::Client::new().await.unwrap();
         let bucket = client.bucket("atl-dev1-test4").await;
-        let result = bucket.create(Some(CancellationToken::default())).await;
+        let result = bucket.create(&BucketCreationConfig::default(), Some(CancellationToken::default())).await;
         assert!(result.is_ok(), "{}", result.unwrap_err())
     }
 }

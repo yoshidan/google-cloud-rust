@@ -64,7 +64,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
-            let url = format!("{}/b", BASE_URL);
+            let url = format!("{}/b?alt=json&prettyPrint=false", BASE_URL);
             let mut query_param: Vec<(&str, &str)> = vec![("project", req.project.as_str())];
             if let Some(predefined_acl) = to_predefined_bucket_acl_string(req.predefined_acl) {
                 query_param.push(("predefinedAcl", predefined_acl))
