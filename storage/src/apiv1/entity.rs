@@ -1918,7 +1918,7 @@ pub struct PatchObjectRequest {
     /// Not specifying any fields is an error.
     /// Not specifying a field while setting that field to a non-default value is
     /// an error.
-    pub update_mask: Option<()>,  //TODO
+    pub update_mask: Option<()>, //TODO
     /// A set of parameters common to Storage API requests concerning an object.
     pub common_object_request_params: Option<CommonObjectRequestParams>,
 }

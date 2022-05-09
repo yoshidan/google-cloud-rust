@@ -1,3 +1,5 @@
+use crate::apiv1::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
+use crate::apiv1::entity::{DeleteBucketRequest, InsertBucketRequest};
 use google_cloud_auth::token_source::TokenSource;
 use google_cloud_gax::cancel::CancellationToken;
 use reqwest::{RequestBuilder, Response};
@@ -5,8 +7,6 @@ use std::future::Future;
 use std::mem;
 use std::sync::Arc;
 use tokio::select;
-use crate::apiv1::entity::{DeleteBucketRequest, InsertBucketRequest};
-use crate::apiv1::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
 
 const BASE_URL: &str = "https://storage.googleapis.com/storage/v1";
 

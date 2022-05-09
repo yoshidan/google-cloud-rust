@@ -1,7 +1,8 @@
 extern crate core;
 
-mod apiv1;
+pub mod apiv1;
 //TODO remove
-mod apiv2;
-mod bucket;
-mod client;
+pub mod apiv2;
+pub mod bucket;
+pub mod client;
+pub mod sign;

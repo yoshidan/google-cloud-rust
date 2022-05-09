@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-use crate::apiv1::entity::{bucket, Bucket, BucketAccessControl, ObjectAccessControl};
 use crate::apiv1::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl};
+use crate::apiv1::entity::{bucket, Bucket, BucketAccessControl, ObjectAccessControl};
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct BucketCreationConfig {
@@ -94,7 +94,7 @@ impl Default for BucketCreationConfig {
             encryption: None,
             billing: None,
             retention_policy: None,
-            iam_configuration: None
+            iam_configuration: None,
         }
     }
 }
