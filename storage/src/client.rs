@@ -114,7 +114,7 @@ mod test {
     #[serial]
     async fn create() {
         let client = client::Client::new().await.unwrap();
-        let bucket = client.bucket("atl-dev1-test2").await;
+        let bucket = client.bucket("atl-dev1-test4").await;
         let result = bucket.create(Some(CancellationToken::default())).await;
         assert!(result.is_ok(), "{}", result.unwrap_err())
     }

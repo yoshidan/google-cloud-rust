@@ -23,6 +23,7 @@ url = "2.2.2"
 tracing = "0.1"
 reqwest = { version = "0.11", features = ["json"]}
 serde = "1.0"
+serde_json = "1.0"
 
 [dev-dependencies]
 google-cloud-auth = { version = "0.2.0", path = "../foundation/auth" }

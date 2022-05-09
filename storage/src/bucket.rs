@@ -248,39 +248,12 @@ impl<'a> BucketHandle<'a> {
 
     pub async fn create(&self, cancel: Option<CancellationToken>) -> Result<(), Error> {
         let req = InsertBucketRequest {
-            predefined_acl: PredefinedBucketAcl::Unspecified,
-            predefined_default_object_acl: PredefinedObjectAcl::Unspecified,
             project: self.project_id.to_string(),
-            projection: Projection::Unspecified,
             bucket: Bucket {
-                acl: vec![],
-                default_object_acl: vec![],
-                lifecycle: None,
-                time_created: None,
-                id: "".to_string(),
                 name: self.name.to_string(),
-                project_number: 0,
-                metageneration: 0,
-                cors: vec![],
-                location: "asia-northeast1".to_string(),
-                storage_class: "STANDARD".to_string(),
-                etag: "".to_string(),
-                updated: None,
-                default_event_based_hold: false,
-                labels: Default::default(),
-                website: None,
-                versioning: None,
-                logging: None,
-                owner: None,
-                encryption: None,
-                billing: None,
-                retention_policy: None,
-                location_type: "".to_string(),
-                iam_configuration: None,
-                zone_affinity: vec![],
-                satisfies_pzs: false,
-                autoclass: None
-            }
+                ..Default::default()
+            },
+            ..Default::default()
         };
         self.storage_client
             .insert_bucket(req, cancel, )

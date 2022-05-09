@@ -1,7 +1,7 @@
 use crate::apiv1::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
 
 /// A bucket.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Bucket {
     /// Access controls on the bucket.
@@ -21,6 +21,7 @@ pub struct Bucket {
     /// same.
     /// Attempting to update this field after the bucket is created will result in
     /// a \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
+    #[serde(skip_serializing_if = "is_empty")]
     pub id: String,
     /// The name of the bucket.
     /// Attempting to update this field after the bucket is created will result in
@@ -42,6 +43,7 @@ pub struct Bucket {
     /// \[<https://developers.google.com/storage/docs/concepts-techniques#specifyinglocations"\][developer's>
     /// guide] for the authoritative list. Attempting to update this field after
     /// the bucket is created will result in an error.
+    #[serde(skip_serializing_if = "is_empty")]
     pub location: String,
     /// The bucket's default storage class, used whenever no storageClass is
     /// specified for a newly-created object. This defines how objects in the
@@ -49,11 +51,13 @@ pub struct Bucket {
     /// If this value is not specified when the bucket is created, it will default
     /// to `STANDARD`. For more information, see
     /// <https://developers.google.com/storage/docs/storage-classes.>
+    #[serde(skip_serializing_if = "is_empty")]
     pub storage_class: String,
     /// HTTP 1.1 \[<https://tools.ietf.org/html/rfc7232#section-2.3"\]Entity> tag]
     /// for the bucket.
     /// Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
+    #[serde(skip_serializing_if = "is_empty")]
     pub etag: String,
     /// The modification time of the bucket.
     /// Attempting to set or update this field will result in a
@@ -102,16 +106,10 @@ pub struct Bucket {
     /// result in a PERMISSION_DENIED error.
     pub retention_policy: Option<bucket::RetentionPolicy>,
     /// The location type of the bucket (region, dual-region, multi-region, etc).
+    #[serde(skip_serializing_if = "is_empty")]
     pub location_type: String,
     /// The bucket's IAM configuration.
     pub iam_configuration: Option<bucket::IamConfiguration>,
-    /// The zone or zones from which the bucket is intended to use zonal quota.
-    /// Requests for data from outside the specified affinities are still allowed
-    /// but won't be able to use zonal quota. The values are case-insensitive.
-    /// Attempting to update this field after bucket is created will result in an
-    /// error.
-    #[deprecated]
-    pub zone_affinity: Vec<String>,
     /// Reserved for future use.
     pub satisfies_pzs: bool,
     /// The bucket's autoclass configuration. If there is no configuration, the
@@ -962,7 +960,7 @@ pub struct GetBucketRequest {
     pub projection: Projection,
 }
 /// Request message for InsertBucket.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct InsertBucketRequest {
     /// Apply a predefined set of access controls to this bucket.
@@ -2160,4 +2158,9 @@ pub mod service_constants {
         /// GetListObjectsSplitPoints RPC is valid.
         SplitTokenMaxValidDays = 14,
     }
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn is_empty(v: &str) -> bool {
+    v.is_empty()
 }
