@@ -1,7 +1,10 @@
+use crate::apiv1::storage_client::{Error, StorageClient};
 use crate::bucket::SignedURLError::InvalidOption;
 use chrono::{DateTime, SecondsFormat, Timelike, Utc};
 use google_cloud_auth::credentials::CredentialsFile;
+use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::codegen::Body;
+use google_cloud_googleapis::storage::v2::{CommonRequestParams, DeleteBucketRequest};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use ring::{rand, signature};
@@ -17,12 +20,6 @@ use std::ops::{Add, Index, Sub};
 use std::time::Duration;
 use url;
 use url::ParseError;
-use google_cloud_gax::cancel::CancellationToken;
-use google_cloud_gax::conn::Channel;
-use google_cloud_gax::grpc::Status;
-use google_cloud_gax::retry::{Retry, RetrySetting};
-use google_cloud_googleapis::storage::v2::{CommonRequestParams, DeleteBucketRequest};
-use crate::apiv2::storage_client::StorageClient;
 
 static SPACE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r" +").unwrap());
 static TAB_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"[\t]+").unwrap());
@@ -200,16 +197,21 @@ pub struct BucketHandle<'a> {
     name: String,
     private_key: &'a str,
     service_account_email: &'a str,
-    storage_client: StorageClient
+    storage_client: StorageClient,
 }
 
 impl<'a> BucketHandle<'a> {
-    pub(crate) fn new(name: String, private_key: &'a str, service_account_email: &'a str, storage_client: StorageClient) -> Self {
+    pub(crate) fn new(
+        name: String,
+        private_key: &'a str,
+        service_account_email: &'a str,
+        storage_client: StorageClient,
+    ) -> Self {
         Self {
             name,
             private_key,
             service_account_email,
-            storage_client
+            storage_client,
         }
     }
 
@@ -231,13 +233,18 @@ impl<'a> BucketHandle<'a> {
         return signed_url(self.name.to_string(), object, opts);
     }
 
-    pub async fn delete(&self, cancel: Option<CancellationToken>, retry: Option<RetrySetting>) -> Result<(), Status>{
-        self.storage_client.delete_bucket(DeleteBucketRequest {
-            name: self.name.to_string(),
-            if_metageneration_match: None,
-            if_metageneration_not_match: None,
-            common_request_params: None
-        }, cancel, retry).await.map(|x| x.into_inner())
+    pub async fn delete(&self, cancel: Option<CancellationToken>) -> Result<(), Error> {
+        self.storage_client
+            .delete_bucket(
+                DeleteBucketRequest {
+                    name: self.name.to_string(),
+                    if_metageneration_match: None,
+                    if_metageneration_not_match: None,
+                    common_request_params: None,
+                },
+                cancel,
+            )
+            .await
     }
 }
 
@@ -491,5 +498,4 @@ mod test {
         tracing::info!("signed_url={}", url);
         assert!(url.starts_with("https://storage.googleapis.com/atl-dev1-test/test.html"));
     }
-
 }

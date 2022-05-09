@@ -1,12 +1,12 @@
 use google_cloud_gax::conn::Channel;
 use google_cloud_gax::conn::{ConnectionManager as GRPCConnectionManager, Error};
 
-pub const AUDIENCE: &str = "https://storage.googleapis.com/";
-pub const STORAGE: &str = "storage.googleapis.com";
+const AUDIENCE: &str = "https://storage.googleapis.com/";
+const STORAGE: &str = "storage.googleapis.com";
 const SCOPES: [&str; 5] = [
     "https://www.googleapis.com/auth/cloud-platform",
     "https://www.googleapis.com/auth/cloud-platform.read-only",
-    "https://www.googleapis.com/auth/devstorage.full_controll",
+    "https://www.googleapis.com/auth/devstorage.full_control",
     "https://www.googleapis.com/auth/devstorage.read_only",
     "https://www.googleapis.com/auth/devstorage.read_write",
 ];
