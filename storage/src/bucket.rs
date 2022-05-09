@@ -17,6 +17,12 @@ use std::ops::{Add, Index, Sub};
 use std::time::Duration;
 use url;
 use url::ParseError;
+use google_cloud_gax::cancel::CancellationToken;
+use google_cloud_gax::conn::Channel;
+use google_cloud_gax::grpc::Status;
+use google_cloud_gax::retry::{Retry, RetrySetting};
+use google_cloud_googleapis::storage::v2::{CommonRequestParams, DeleteBucketRequest};
+use crate::apiv2::storage_client::StorageClient;
 
 static SPACE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r" +").unwrap());
 static TAB_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"[\t]+").unwrap());
@@ -190,18 +196,20 @@ pub enum SignedURLError {
     MetadataError(#[from] google_cloud_metadata::Error),
 }
 
-pub struct BucketHandle<'a, 'b> {
-    name: &'a str,
-    private_key: &'b str,
-    service_account_email: &'b str,
+pub struct BucketHandle<'a> {
+    name: String,
+    private_key: &'a str,
+    service_account_email: &'a str,
+    storage_client: StorageClient
 }
 
-impl<'a, 'b> BucketHandle<'a, 'b> {
-    pub(crate) fn new(name: &'a str, private_key: &'b str, service_account_email: &'b str) -> Self {
+impl<'a> BucketHandle<'a> {
+    pub(crate) fn new(name: String, private_key: &'a str, service_account_email: &'a str, storage_client: StorageClient) -> Self {
         Self {
             name,
             private_key,
             service_account_email,
+            storage_client
         }
     }
 
@@ -221,6 +229,15 @@ impl<'a, 'b> BucketHandle<'a, 'b> {
             opts.google_access_id = self.service_account_email.to_string();
         }
         return signed_url(self.name.to_string(), object, opts);
+    }
+
+    pub async fn delete(&self, cancel: Option<CancellationToken>, retry: Option<RetrySetting>) -> Result<(), Status>{
+        self.storage_client.delete_bucket(DeleteBucketRequest {
+            name: self.name.to_string(),
+            if_metageneration_match: None,
+            if_metageneration_not_match: None,
+            common_request_params: None
+        }, cancel, retry).await.map(|x| x.into_inner())
     }
 }
 
@@ -474,4 +491,5 @@ mod test {
         tracing::info!("signed_url={}", url);
         assert!(url.starts_with("https://storage.googleapis.com/atl-dev1-test/test.html"));
     }
+
 }

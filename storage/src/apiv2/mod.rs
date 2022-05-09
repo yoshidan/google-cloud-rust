@@ -1,2 +1,2 @@
-mod conn_pool;
-mod storage_client;
+pub mod conn_pool;
+pub mod storage_client;
