@@ -246,6 +246,20 @@ impl<'a> BucketHandle<'a> {
             )
             .await
     }
+
+    pub async fn create(&self, cancel: Option<CancellationToken>) -> Result<(), Error> {
+        self.storage_client
+            .delete_bucket(
+                DeleteBucketRequest {
+                    name: self.name.to_string(),
+                    if_metageneration_match: None,
+                    if_metageneration_not_match: None,
+                    common_request_params: None,
+                },
+                cancel,
+            )
+            .await
+    }
 }
 
 pub fn signed_url(name: String, object: String, opts: &mut SignedURLOptions) -> Result<String, SignedURLError> {
