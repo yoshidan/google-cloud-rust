@@ -4,7 +4,6 @@ use chrono::{DateTime, SecondsFormat, Timelike, Utc};
 use google_cloud_auth::credentials::CredentialsFile;
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::codegen::Body;
-use google_cloud_googleapis::storage::v2::{CommonRequestParams, DeleteBucketRequest};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use ring::{rand, signature};
@@ -20,6 +19,8 @@ use std::ops::{Add, Index, Sub};
 use std::time::Duration;
 use url;
 use url::ParseError;
+use crate::apiv1::entity::{Bucket, DeleteBucketRequest, InsertBucketRequest};
+use crate::apiv1::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
 
 static SPACE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r" +").unwrap());
 static TAB_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"[\t]+").unwrap());
@@ -197,6 +198,7 @@ pub struct BucketHandle<'a> {
     name: String,
     private_key: &'a str,
     service_account_email: &'a str,
+    project_id: &'a str,
     storage_client: StorageClient,
 }
 
@@ -205,12 +207,14 @@ impl<'a> BucketHandle<'a> {
         name: String,
         private_key: &'a str,
         service_account_email: &'a str,
+        project_id: &'a str,
         storage_client: StorageClient,
     ) -> Self {
         Self {
             name,
             private_key,
             service_account_email,
+            project_id,
             storage_client,
         }
     }
@@ -234,30 +238,52 @@ impl<'a> BucketHandle<'a> {
     }
 
     pub async fn delete(&self, cancel: Option<CancellationToken>) -> Result<(), Error> {
-        self.storage_client
-            .delete_bucket(
-                DeleteBucketRequest {
-                    name: self.name.to_string(),
-                    if_metageneration_match: None,
-                    if_metageneration_not_match: None,
-                    common_request_params: None,
-                },
-                cancel,
-            )
-            .await
+        let req = DeleteBucketRequest {
+            bucket: self.name.to_string(),
+            if_metageneration_match: None,
+            if_metageneration_not_match: None
+        };
+        self.storage_client.delete_bucket(req, cancel).await
     }
 
     pub async fn create(&self, cancel: Option<CancellationToken>) -> Result<(), Error> {
+        let req = InsertBucketRequest {
+            predefined_acl: PredefinedBucketAcl::Unspecified,
+            predefined_default_object_acl: PredefinedObjectAcl::Unspecified,
+            project: self.project_id.to_string(),
+            projection: Projection::Unspecified,
+            bucket: Bucket {
+                acl: vec![],
+                default_object_acl: vec![],
+                lifecycle: None,
+                time_created: None,
+                id: "".to_string(),
+                name: self.name.to_string(),
+                project_number: 0,
+                metageneration: 0,
+                cors: vec![],
+                location: "asia-northeast1".to_string(),
+                storage_class: "STANDARD".to_string(),
+                etag: "".to_string(),
+                updated: None,
+                default_event_based_hold: false,
+                labels: Default::default(),
+                website: None,
+                versioning: None,
+                logging: None,
+                owner: None,
+                encryption: None,
+                billing: None,
+                retention_policy: None,
+                location_type: "".to_string(),
+                iam_configuration: None,
+                zone_affinity: vec![],
+                satisfies_pzs: false,
+                autoclass: None
+            }
+        };
         self.storage_client
-            .delete_bucket(
-                DeleteBucketRequest {
-                    name: self.name.to_string(),
-                    if_metageneration_match: None,
-                    if_metageneration_not_match: None,
-                    common_request_params: None,
-                },
-                cancel,
-            )
+            .insert_bucket(req, cancel, )
             .await
     }
 }

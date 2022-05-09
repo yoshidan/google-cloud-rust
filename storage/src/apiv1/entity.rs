@@ -16,7 +16,7 @@ pub struct Bucket {
     /// \[<https://tools.ietf.org/html/rfc3339\][RFC> 3339] format.
     /// Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
-    pub time_created: Option<Timestamp>,
+    pub time_created: Option<chrono::DateTime<chrono::Utc>>,
     /// The ID of the bucket. For buckets, the `id` and `name` properties are the
     /// same.
     /// Attempting to update this field after the bucket is created will result in
@@ -58,7 +58,7 @@ pub struct Bucket {
     /// The modification time of the bucket.
     /// Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
-    pub updated: Option<Timestamp>,
+    pub updated: Option<chrono::DateTime<chrono::Utc>>,
     /// The default value for event-based hold on newly created objects in this
     /// bucket.  Event-based hold is a way to retain objects indefinitely until an
     /// event occurs, signified by the
@@ -178,7 +178,7 @@ pub mod bucket {
             /// <code>iamConfiguration.uniformBucketLevelAccess.enabled</code> from
             /// true to false in \[<https://tools.ietf.org/html/rfc3339\][RFC> 3339]. After
             /// the deadline is passed the field is immutable.
-            pub locked_time: Option<Timestamp>,
+            pub locked_time: Option<chrono::DateTime<chrono::Utc>>,
         }
         /// Public Access Prevention configuration values.
         #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize)]
@@ -242,7 +242,7 @@ pub mod bucket {
                 /// instance, "2013-01-15"). This condition is satisfied when an
                 /// object is created before midnight of the specified date in UTC.
                 /// \[1\]: <https://tools.ietf.org/html/rfc3339>
-                pub created_before: Option<Timestamp>,
+                pub created_before: Option<chrono::DateTime<chrono::Utc>>,
                 /// Relevant only for versioned objects. If the value is
                 /// `true`, this condition matches live objects; if the value
                 /// is `false`, it matches archived objects.
@@ -268,7 +268,7 @@ pub mod bucket {
                 pub days_since_custom_time: i32,
                 /// An object matches this condition if the custom timestamp set on the
                 /// object is before this timestamp.
-                pub custom_time_before: Option<Timestamp>,
+                pub custom_time_before: Option<chrono::DateTime<chrono::Utc>>,
                 /// This condition is relevant only for versioned objects. An object
                 /// version satisfies this condition only if these many days have been
                 /// passed since it became noncurrent. The value of the field must be a
@@ -278,7 +278,7 @@ pub mod bucket {
                 /// This condition is relevant only for versioned objects. An object
                 /// version satisfies this condition only if it became noncurrent before
                 /// the specified timestamp.
-                pub noncurrent_time_before: Option<Timestamp>,
+                pub noncurrent_time_before: Option<chrono::DateTime<chrono::Utc>>,
                 /// List of object name prefixes. If any prefix exactly matches the
                 /// beginning of the object name, the condition evaluates to true.
                 pub matches_prefix: Vec<String>,
@@ -304,7 +304,7 @@ pub mod bucket {
         /// Server-determined value that indicates the time from which policy was
         /// enforced and effective. This value is in
         /// \[<https://tools.ietf.org/html/rfc3339\][RFC> 3339] format.
-        pub effective_time: Option<Timestamp>,
+        pub effective_time: Option<chrono::DateTime<chrono::Utc>>,
         /// Once locked, an object retention policy cannot be modified.
         pub is_locked: bool,
         /// The duration in seconds that objects need to be retained. Retention
@@ -347,7 +347,7 @@ pub mod bucket {
         /// Enables Autoclass.
         pub enabled: bool,
         /// Latest instant at which the `enabled` bit was flipped.
-        pub toggle_time: Option<Timestamp>,
+        pub toggle_time: Option<chrono::DateTime<chrono::Utc>>,
     }
 }
 /// An access-control entry.
@@ -420,7 +420,7 @@ pub struct Channel {
     /// delivered over this channel. Optional.
     pub token: String,
     /// Date and time of notification channel expiration. Optional.
-    pub expiration: Option<Timestamp>,
+    pub expiration: Option<chrono::DateTime<chrono::Utc>>,
     /// The type of delivery mechanism used for this channel.
     pub r#type: String,
     /// The address where notifications are delivered for this channel.
@@ -452,7 +452,7 @@ pub mod list_channels_response {
         /// Email address of the subscriber.
         pub subscriber_email: String,
         /// Time when the channel was created.
-        pub creation_time: Option<Timestamp>,
+        pub creation_time: Option<chrono::DateTime<chrono::Utc>>,
     }
 }
 /// Message used to convey content being read or written, along with its
@@ -565,9 +565,9 @@ pub struct HmacKeyMetadata {
     /// State of the key. One of ACTIVE, INACTIVE, or DELETED.
     pub state: String,
     /// The creation time of the HMAC key in RFC 3339 format.
-    pub time_created: Option<Timestamp>,
+    pub time_created: Option<chrono::DateTime<chrono::Utc>>,
     /// The last modification time of the HMAC key metadata in RFC 3339 format.
-    pub updated: Option<Timestamp>,
+    pub updated: Option<chrono::DateTime<chrono::Utc>>,
     /// Tag updated with each key update.
     pub etag: String,
 }
@@ -633,7 +633,7 @@ pub struct Object {
     /// version of the object has been deleted.
     /// Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
-    pub time_deleted: Option<Timestamp>,
+    pub time_deleted: Option<chrono::DateTime<chrono::Utc>>,
     /// Content-Type of the object data, matching
     /// \[<https://tools.ietf.org/html/rfc7231#section-3.1.1.5\][RFC> 7231 §3.1.1.5].
     /// If an object is stored without a Content-Type, it is served as
@@ -647,7 +647,7 @@ pub struct Object {
     /// The creation time of the object.
     /// Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
-    pub time_created: Option<Timestamp>,
+    pub time_created: Option<chrono::DateTime<chrono::Utc>>,
     /// CRC32c checksum. For more information about using the CRC32c
     /// checksum, see
     /// \[<https://cloud.google.com/storage/docs/hashes-etags#json-api\][Hashes> and
@@ -678,7 +678,7 @@ pub struct Object {
     /// The modification time of the object metadata.
     /// Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
-    pub updated: Option<Timestamp>,
+    pub updated: Option<chrono::DateTime<chrono::Utc>>,
     /// Storage class of the object.
     pub storage_class: String,
     /// Cloud KMS Key used to encrypt this object, if the object is encrypted by
@@ -688,7 +688,7 @@ pub struct Object {
     /// object is initially created, it will be set to time_created.
     /// Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
-    pub time_storage_class_updated: Option<Timestamp>,
+    pub time_storage_class_updated: Option<chrono::DateTime<chrono::Utc>>,
     /// Whether an object is under temporary hold. While this flag is set to true,
     /// the object is protected against deletion and overwrites.  A common use case
     /// of this flag is regulatory investigations where objects need to be retained
@@ -703,7 +703,7 @@ pub struct Object {
     /// Note 2: This value can be provided even when temporary hold is set (so that
     /// the user can reason about policy without having to first unset the
     /// temporary hold).
-    pub retention_expiration_time: Option<Timestamp>,
+    pub retention_expiration_time: Option<chrono::DateTime<chrono::Utc>>,
     /// User-provided metadata, in key/value pairs.
     pub metadata: ::std::collections::HashMap<String, String>,
     /// Whether an object is under event-based hold. Event-based hold is a way to
@@ -743,7 +743,7 @@ pub struct Object {
     /// such a key.
     pub customer_encryption: Option<object::CustomerEncryption>,
     /// A user-specified timestamp set on an object.
-    pub custom_time: Option<Timestamp>,
+    pub custom_time: Option<chrono::DateTime<chrono::Utc>>,
 }
 /// Nested message and enum types in `Object`.
 pub mod object {
@@ -858,8 +858,6 @@ pub struct DeleteBucketAccessControlRequest {
     /// * `allUsers`
     /// * `allAuthenticatedUsers`
     pub entity: String,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for GetBucketAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -875,8 +873,6 @@ pub struct GetBucketAccessControlRequest {
     /// * `allUsers`
     /// * `allAuthenticatedUsers`
     pub entity: String,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for InsertBucketAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -886,8 +882,6 @@ pub struct InsertBucketAccessControlRequest {
     pub bucket: String,
     /// Properties of the new bucket access control being inserted.
     pub bucket_access_control: Option<BucketAccessControl>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for ListBucketAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -895,8 +889,6 @@ pub struct InsertBucketAccessControlRequest {
 pub struct ListBucketAccessControlsRequest {
     /// Required. Name of a bucket.
     pub bucket: String,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request for PatchBucketAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -923,9 +915,7 @@ pub struct PatchBucketAccessControlRequest {
     /// Not specifying any fields is an error.
     /// Not specifying a field while setting that field to a non-default value is
     /// an error.
-    pub update_mask: Option<FieldMask>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
+    pub update_mask: Option<()>, //TODO
 }
 /// Request for UpdateBucketAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -943,8 +933,6 @@ pub struct UpdateBucketAccessControlRequest {
     pub entity: String,
     /// The BucketAccessControl for updating.
     pub bucket_access_control: Option<BucketAccessControl>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for DeleteBucket.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -957,8 +945,6 @@ pub struct DeleteBucketRequest {
     /// If set, only deletes the bucket if its metageneration does not match this
     /// value.
     pub if_metageneration_not_match: Option<i64>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for GetBucket.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -974,8 +960,6 @@ pub struct GetBucketRequest {
     pub if_metageneration_not_match: Option<i64>,
     /// Set of properties to return. Defaults to `NO_ACL`.
     pub projection: Projection,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for InsertBucket.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -992,9 +976,7 @@ pub struct InsertBucketRequest {
     /// properties, when it defaults to `FULL`.
     pub projection: Projection,
     /// Properties of the new bucket being inserted, including its name.
-    pub bucket: Option<Bucket>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
+    pub bucket: Bucket,
 }
 /// Request message for ListChannels.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1002,8 +984,6 @@ pub struct InsertBucketRequest {
 pub struct ListChannelsRequest {
     /// Required. Name of a bucket.
     pub bucket: String,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for ListBuckets.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1021,8 +1001,6 @@ pub struct ListBucketsRequest {
     pub project: String,
     /// Set of properties to return. Defaults to `NO_ACL`.
     pub projection: Projection,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for LockRetentionPolicy.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1033,8 +1011,6 @@ pub struct LockRetentionPolicyRequest {
     /// Makes the operation conditional on whether bucket's current metageneration
     /// matches the given value. Must be positive.
     pub if_metageneration_match: i64,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request for PatchBucket method.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1066,9 +1042,7 @@ pub struct PatchBucketRequest {
     /// Not specifying any fields is an error.
     /// Not specifying a field while setting that field to a non-default value is
     /// an error.
-    pub update_mask: Option<FieldMask>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
+    pub update_mask: Option<()>, //TODO
 }
 /// Request for UpdateBucket method.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1090,8 +1064,6 @@ pub struct UpdateBucketRequest {
     pub projection: Projection,
     /// The Bucket metadata for updating.
     pub metadata: Option<Bucket>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for StopChannel.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1099,8 +1071,6 @@ pub struct UpdateBucketRequest {
 pub struct StopChannelRequest {
     /// The channel to be stopped.
     pub channel: Option<Channel>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for DeleteDefaultObjectAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1116,8 +1086,6 @@ pub struct DeleteDefaultObjectAccessControlRequest {
     /// * `allUsers`
     /// * `allAuthenticatedUsers`
     pub entity: String,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for GetDefaultObjectAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1133,8 +1101,6 @@ pub struct GetDefaultObjectAccessControlRequest {
     /// * `allUsers`
     /// * `allAuthenticatedUsers`
     pub entity: String,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for InsertDefaultObjectAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1144,8 +1110,6 @@ pub struct InsertDefaultObjectAccessControlRequest {
     pub bucket: String,
     /// Properties of the object access control being inserted.
     pub object_access_control: Option<ObjectAccessControl>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for ListDefaultObjectAccessControls.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1159,8 +1123,6 @@ pub struct ListDefaultObjectAccessControlsRequest {
     /// If present, only return default ACL listing if the bucket's current
     /// metageneration does not match the given value.
     pub if_metageneration_not_match: Option<i64>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for PatchDefaultObjectAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1188,9 +1150,7 @@ pub struct PatchDefaultObjectAccessControlRequest {
     /// Not specifying any fields is an error.
     /// Not specifying a field while setting that field to a non-default value is
     /// an error.
-    pub update_mask: Option<FieldMask>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
+    pub update_mask: Option<()>, //TODO
 }
 /// Request message for UpdateDefaultObjectAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1208,8 +1168,6 @@ pub struct UpdateDefaultObjectAccessControlRequest {
     pub entity: String,
     /// The ObjectAccessControl for updating.
     pub object_access_control: Option<ObjectAccessControl>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for DeleteNotification.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1219,8 +1177,6 @@ pub struct DeleteNotificationRequest {
     pub bucket: String,
     /// Required. ID of the notification to delete.
     pub notification: String,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for GetNotification.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1231,8 +1187,6 @@ pub struct GetNotificationRequest {
     /// Required. Notification ID.
     /// Required.
     pub notification: String,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for InsertNotification.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1242,8 +1196,6 @@ pub struct InsertNotificationRequest {
     pub bucket: String,
     /// Properties of the notification to be inserted.
     pub notification: Option<Notification>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for ListNotifications.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1251,8 +1203,6 @@ pub struct InsertNotificationRequest {
 pub struct ListNotificationsRequest {
     /// Required. Name of a Google Cloud Storage bucket.
     pub bucket: String,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for DeleteObjectAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1273,8 +1223,6 @@ pub struct DeleteObjectAccessControlRequest {
     /// If present, selects a specific revision of this object (as opposed to the
     /// latest version, the default).
     pub generation: i64,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for GetObjectAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1295,8 +1243,6 @@ pub struct GetObjectAccessControlRequest {
     /// If present, selects a specific revision of this object (as opposed to the
     /// latest version, the default).
     pub generation: i64,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for InsertObjectAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1311,8 +1257,6 @@ pub struct InsertObjectAccessControlRequest {
     pub generation: i64,
     /// Properties of the object access control to be inserted.
     pub object_access_control: Option<ObjectAccessControl>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for ListObjectAccessControls.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1325,8 +1269,6 @@ pub struct ListObjectAccessControlsRequest {
     /// If present, selects a specific revision of this object (as opposed to the
     /// latest version, the default).
     pub generation: i64,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for PatchObjectAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1350,8 +1292,7 @@ pub struct PatchObjectAccessControlRequest {
     pub generation: i64,
     /// The ObjectAccessControl for updating.
     pub object_access_control: Option<ObjectAccessControl>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
+
     /// List of fields to be updated.
     ///
     /// To specify ALL fields, equivalent to the JSON API's "update" function,
@@ -1362,7 +1303,7 @@ pub struct PatchObjectAccessControlRequest {
     /// Not specifying any fields is an error.
     /// Not specifying a field while setting that field to a non-default value is
     /// an error.
-    pub update_mask: Option<FieldMask>,
+    pub update_mask: Option<()>, //TODO
 }
 /// Request message for UpdateObjectAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1386,8 +1327,7 @@ pub struct UpdateObjectAccessControlRequest {
     pub generation: i64,
     /// The ObjectAccessControl for updating.
     pub object_access_control: Option<ObjectAccessControl>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
+
     /// List of fields to be updated.
     ///
     /// To specify ALL fields, equivalent to the JSON API's "update" function,
@@ -1398,7 +1338,7 @@ pub struct UpdateObjectAccessControlRequest {
     /// Not specifying any fields is an error.
     /// Not specifying a field while setting that field to a non-default value is
     /// an error.
-    pub update_mask: Option<FieldMask>,
+    pub update_mask: Option<()>, //TODO
 }
 /// Request message for ComposeObject.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1429,8 +1369,6 @@ pub struct ComposeObjectRequest {
     pub kms_key_name: String,
     /// A set of parameters common to Storage API requests concerning an object.
     pub common_object_request_params: Option<CommonObjectRequestParams>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Nested message and enum types in `ComposeObjectRequest`.
 pub mod compose_object_request {
@@ -1521,8 +1459,6 @@ pub struct CopyObjectRequest {
     pub destination_kms_key_name: String,
     /// A set of parameters common to Storage API requests concerning an object.
     pub common_object_request_params: Option<CommonObjectRequestParams>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Message for deleting an object.
 /// Either `bucket` and `object` *or* `upload_id` **must** be set (but not both).
@@ -1557,8 +1493,6 @@ pub struct DeleteObjectRequest {
     pub if_metageneration_not_match: Option<i64>,
     /// A set of parameters common to Storage API requests concerning an object.
     pub common_object_request_params: Option<CommonObjectRequestParams>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for GetObjectMedia.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1606,8 +1540,6 @@ pub struct GetObjectMediaRequest {
     pub if_metageneration_not_match: Option<i64>,
     /// A set of parameters common to Storage API requests concerning an object.
     pub common_object_request_params: Option<CommonObjectRequestParams>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for GetObject.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1639,8 +1571,6 @@ pub struct GetObjectRequest {
     pub projection: Projection,
     /// A set of parameters common to Storage API requests concerning an object.
     pub common_object_request_params: Option<CommonObjectRequestParams>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Response message for GetObject.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1723,8 +1653,7 @@ pub struct InsertObjectRequest {
     pub finish_write: bool,
     /// A set of parameters common to Storage API requests concerning an object.
     pub common_object_request_params: Option<CommonObjectRequestParams>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
+
     /// The first message of each stream should set one of the following.
     pub first_message: Option<insert_object_request::FirstMessage>,
     /// A portion of the data for the object.
@@ -1733,7 +1662,7 @@ pub struct InsertObjectRequest {
 /// Nested message and enum types in `InsertObjectRequest`.
 pub mod insert_object_request {
     /// The first message of each stream should set one of the following.
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
     pub enum FirstMessage {
         /// For resumable uploads. This should be the `upload_id` returned from a
         /// call to `StartResumableWriteResponse`.
@@ -1743,7 +1672,7 @@ pub mod insert_object_request {
         InsertObjectSpec(super::InsertObjectSpec),
     }
     /// A portion of the data for the object.
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
     pub enum Data {
         /// The data to insert. If a crc32c checksum is provided that doesn't match
         /// the checksum computed by the service, the request will fail.
@@ -1807,8 +1736,6 @@ pub struct ListObjectsRequest {
     /// have names between lexicographic_start (inclusive) and lexicographic_end
     /// (exclusive).
     pub lexicographic_end: String,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request object for `QueryWriteStatus`.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1819,8 +1746,6 @@ pub struct QueryWriteStatusRequest {
     pub upload_id: String,
     /// A set of parameters common to Storage API requests concerning an object.
     pub common_object_request_params: Option<CommonObjectRequestParams>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Response object for `QueryWriteStatus`.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1915,8 +1840,6 @@ pub struct RewriteObjectRequest {
     pub copy_source_encryption_key_sha256: String,
     /// A set of parameters common to Storage API requests concerning an object.
     pub common_object_request_params: Option<CommonObjectRequestParams>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// A rewrite response.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1946,8 +1869,6 @@ pub struct StartResumableWriteRequest {
     pub insert_object_spec: Option<InsertObjectSpec>,
     /// A set of parameters common to Storage API requests concerning an object.
     pub common_object_request_params: Option<CommonObjectRequestParams>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Response object for `StartResumableWrite`.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -1999,11 +1920,9 @@ pub struct PatchObjectRequest {
     /// Not specifying any fields is an error.
     /// Not specifying a field while setting that field to a non-default value is
     /// an error.
-    pub update_mask: Option<FieldMask>,
+    pub update_mask: Option<()>,  //TODO
     /// A set of parameters common to Storage API requests concerning an object.
     pub common_object_request_params: Option<CommonObjectRequestParams>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for UpdateObject.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -2039,8 +1958,6 @@ pub struct UpdateObjectRequest {
     pub metadata: Option<Object>,
     /// A set of parameters common to Storage API requests concerning an object.
     pub common_object_request_params: Option<CommonObjectRequestParams>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for WatchAllObjects.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -2078,8 +1995,6 @@ pub struct WatchAllObjectsRequest {
     pub projection: Projection,
     /// Properties of the channel to be inserted.
     pub channel: Option<Channel>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request message for GetProjectServiceAccount.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -2087,8 +2002,6 @@ pub struct WatchAllObjectsRequest {
 pub struct GetProjectServiceAccountRequest {
     /// Required. Project ID.
     pub project_id: String,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -2097,8 +2010,6 @@ pub struct CreateHmacKeyRequest {
     pub project_id: String,
     /// Required. The service account to create the HMAC for.
     pub service_account_email: String,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Create hmac response.  The only time the secret for an HMAC will be returned.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -2117,8 +2028,6 @@ pub struct DeleteHmacKeyRequest {
     pub access_id: String,
     /// Required. The project id the HMAC key lies in.
     pub project_id: String,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request object to get metadata on a given HMAC key.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -2128,8 +2037,6 @@ pub struct GetHmacKeyRequest {
     pub access_id: String,
     /// Required. The project id the HMAC key lies in.
     pub project_id: String,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Request to fetch a list of HMAC keys under a given project.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -2145,8 +2052,6 @@ pub struct ListHmacKeysRequest {
     pub max_results: i32,
     /// A previously returned token from ListHmacKeysResponse to get the next page.
     pub page_token: String,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Hmac key list response with next page information.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -2168,38 +2073,6 @@ pub struct UpdateHmacKeyRequest {
     pub project_id: String,
     /// Required. The service account owner of the HMAC key.
     pub metadata: Option<HmacKeyMetadata>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
-}
-/// A wrapper around the IAM get policy request to support our
-/// common_request_params.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GetIamPolicyRequest {
-    /// The request sent to IAM.
-    pub iam_request: Option<super::super::iam::v1::GetIamPolicyRequest>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
-}
-/// A wrapper around the IAM set policy request to support our
-/// common_request_params.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SetIamPolicyRequest {
-    /// The request sent to IAM.
-    pub iam_request: Option<super::super::iam::v1::SetIamPolicyRequest>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
-}
-/// A wrapper around the IAM test iam permissions request to support our
-/// common_request_params.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TestIamPermissionsRequest {
-    /// The request sent to IAM.
-    pub iam_request: Option<super::super::iam::v1::TestIamPermissionsRequest>,
-    /// A set of parameters common to all Storage API requests.
-    pub common_request_params: Option<CommonRequestParams>,
 }
 /// Parameters that can be passed to any object request.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -2226,7 +2099,7 @@ pub struct CommonRequestParams {
     /// is limited to 40 characters.
     pub quota_user: String,
     /// Subset of fields to include in the response.
-    pub fields: Option<FieldMask>,
+    pub fields: Option<()>, //TODO
 }
 /// Shared constants.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]

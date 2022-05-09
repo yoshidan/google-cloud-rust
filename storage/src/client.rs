@@ -69,6 +69,7 @@ impl Client {
                 None => "",
             },
             &self.service_account_email,
+            &self.project_id,
             self.storage_client.clone(),
         )
     }
@@ -106,6 +107,15 @@ mod test {
         let client = client::Client::new().await.unwrap();
         let bucket = client.bucket("atl-dev1-test").await;
         let result = bucket.delete(Some(CancellationToken::default())).await;
+        assert!(result.is_ok(), "{}", result.unwrap_err())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn create() {
+        let client = client::Client::new().await.unwrap();
+        let bucket = client.bucket("atl-dev1-test2").await;
+        let result = bucket.create(Some(CancellationToken::default())).await;
         assert!(result.is_ok(), "{}", result.unwrap_err())
     }
 }
