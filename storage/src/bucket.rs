@@ -62,7 +62,7 @@ impl<'a> BucketHandle<'a> {
         self.storage_client.delete_bucket(req, cancel).await
     }
 
-    pub async fn create(&self, attr: &BucketCreationConfig, cancel: Option<CancellationToken>) -> Result<(), Error> {
+    pub async fn create(&self, attr: &BucketCreationConfig, cancel: Option<CancellationToken>) -> Result<Bucket, Error> {
         let mut bucket: Bucket = attr.into();
         bucket.name = self.name.to_string();
         let req = InsertBucketRequest {
@@ -74,4 +74,5 @@ impl<'a> BucketHandle<'a> {
         };
         self.storage_client.insert_bucket(req, cancel).await
     }
+
 }

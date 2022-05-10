@@ -8,16 +8,16 @@ pub struct BucketCreationConfig {
     /// Apply a predefined set of default object access controls to this bucket.
     pub predefined_default_object_acl: PredefinedObjectAcl,
     /// Access controls on the bucket.
-    pub acl: Vec<BucketAccessControl>,
+    pub acl: Option<Vec<BucketAccessControl>>,
     /// Default access controls to apply to new objects when no ACL is provided.
-    pub default_object_acl: Vec<ObjectAccessControl>,
+    pub default_object_acl: Option<Vec<ObjectAccessControl>>,
     /// The bucket's lifecycle configuration. See
     /// \[<https://developers.google.com/storage/docs/lifecycle\]Lifecycle> Management]
     /// for more information.
     pub lifecycle: Option<bucket::Lifecycle>,
     /// The bucket's \[<https://www.w3.org/TR/cors/\][Cross-Origin> Resource Sharing]
     /// (CORS) configuration.
-    pub cors: Vec<bucket::Cors>,
+    pub cors: Option<Vec<bucket::Cors>>,
     /// The location of the bucket. Object data for objects in the bucket resides
     /// in physical storage within this region.  Defaults to `US`. See the
     /// \[<https://developers.google.com/storage/docs/concepts-techniques#specifyinglocations"\][developer's>
@@ -46,7 +46,7 @@ pub struct BucketCreationConfig {
     /// deleted, overwritten or archived until the hold is removed.
     pub default_event_based_hold: bool,
     /// User-provided labels, in key/value pairs.
-    pub labels: HashMap<String, String>,
+    pub labels: Option<HashMap<String, String>>,
     /// The bucket's website configuration, controlling how the service behaves
     /// when accessing bucket contents as a web site. See the
     /// \[<https://cloud.google.com/storage/docs/static-website\][Static> Website
@@ -80,10 +80,10 @@ impl Default for BucketCreationConfig {
         Self {
             predefined_acl: PredefinedBucketAcl::Unspecified,
             predefined_default_object_acl: PredefinedObjectAcl::Unspecified,
-            acl: vec![],
-            default_object_acl: vec![],
+            acl: None,
+            default_object_acl: None,
             lifecycle: None,
-            cors: vec![],
+            cors: None,
             location: "".to_string(),
             storage_class: "".to_string(),
             default_event_based_hold: false,

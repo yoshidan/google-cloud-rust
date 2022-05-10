@@ -1,5 +1,5 @@
 use crate::apiv1::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
-use crate::apiv1::entity::{DeleteBucketRequest, InsertBucketRequest};
+use crate::apiv1::entity::{Bucket, DeleteBucketRequest, InsertBucketRequest, UpdateBucketRequest};
 use google_cloud_auth::token_source::TokenSource;
 use google_cloud_gax::cancel::CancellationToken;
 use reqwest::{RequestBuilder, Response};
@@ -62,23 +62,23 @@ impl StorageClient {
         &self,
         req: InsertBucketRequest,
         cancel: Option<CancellationToken>,
-    ) -> Result<(), Error> {
+    ) -> Result<Bucket, Error> {
         let action = async {
             let url = format!("{}/b?alt=json&prettyPrint=false", BASE_URL);
             let mut query_param: Vec<(&str, &str)> = vec![("project", req.project.as_str())];
-            if let Some(predefined_acl) = to_predefined_bucket_acl_string(req.predefined_acl) {
+            if let Some(predefined_acl) = req.predefined_acl.into() {
                 query_param.push(("predefinedAcl", predefined_acl))
             }
-            if let Some(predefined_acl) = to_predefined_object_acl_string(req.predefined_default_object_acl) {
+            if let Some(predefined_acl) = req.predefined_default_object_acl.into() {
                 query_param.push(("predefinedDefaultObjectAcl", predefined_acl))
             }
-            if let Some(projection) = to_projection_string(req.projection) {
+            if let Some(projection) = req.projection.into() {
                 query_param.push(("projection", projection))
             }
             let builder = self.with_headers(reqwest::Client::new().post(url)).await?;
             let response = builder.query(&query_param).json(&req.bucket).send().await?;
             if response.status().is_success() {
-                Ok(())
+                Ok(response.json().await?)
             } else {
                 Err(map_error(response).await)
             }
@@ -87,39 +87,6 @@ impl StorageClient {
     }
 }
 
-fn to_projection_string(v: Projection) -> Option<&'static str> {
-    ///see common_enums::Projection
-    match v {
-        Projection::NoAcl => Some("noAcl"),
-        Projection::Full => Some("full"),
-        _ => None,
-    }
-}
-
-fn to_predefined_bucket_acl_string(v: PredefinedBucketAcl) -> Option<&'static str> {
-    ///see common_enums::PredefinedBucketAcl
-    match v {
-        PredefinedBucketAcl::BucketAclAuthenticatedRead => Some("allAuthenticatedUsers"),
-        PredefinedBucketAcl::BucketAclPrivate => Some("private"),
-        PredefinedBucketAcl::BucketAclProjectPrivate => Some("projectPrivate"),
-        PredefinedBucketAcl::BucketAclPublicRead => Some("publicRead"),
-        PredefinedBucketAcl::BucketAclPublicReadWrite => Some("publicReadWrite"),
-        _ => None,
-    }
-}
-
-fn to_predefined_object_acl_string(v: PredefinedObjectAcl) -> Option<&'static str> {
-    ///see common_enums::PredefinedObjectAcl
-    match v {
-        PredefinedObjectAcl::ObjectAclAuthenticatedRead => Some("allAuthenticatedUsers"),
-        PredefinedObjectAcl::ObjectAclBucketOwnerFullControl => Some("bucketOwnerFullControl"),
-        PredefinedObjectAcl::ObjectAclBucketOwnerRead => Some("bucketOwnerRead"),
-        PredefinedObjectAcl::ObjectAclPrivate => Some("private"),
-        PredefinedObjectAcl::ObjectAclProjectPrivate => Some("projectPrivate"),
-        PredefinedObjectAcl::ObjectAclPublicRead => Some("publicRead"),
-        _ => None,
-    }
-}
 
 async fn map_error(r: Response) -> Error {
     let status = r.status().as_u16();
