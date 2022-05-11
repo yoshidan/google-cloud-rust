@@ -1,10 +1,10 @@
-use crate::apiv1::entity::bucket::{Versioning, Website};
-use crate::apiv1::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
-use crate::apiv1::entity::{
+use crate::http::entity::bucket::{Versioning, Website};
+use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
+use crate::http::entity::{
     Bucket, BucketAccessControl, DeleteBucketRequest, InsertBucketRequest, ObjectAccessControl,
 };
-use crate::apiv1::partial::BucketCreationConfig;
-use crate::apiv1::storage_client::{Error, StorageClient};
+use crate::http::partial::BucketCreationConfig;
+use crate::http::storage_client::{Error, StorageClient};
 use crate::sign::{signed_url, SignBy, SignedURLError, SignedURLOptions};
 use chrono::{DateTime, SecondsFormat, Timelike, Utc};
 use google_cloud_auth::credentials::CredentialsFile;
@@ -68,7 +68,7 @@ impl<'a> BucketHandle<'a> {
         let req = InsertBucketRequest {
             predefined_acl: attr.predefined_acl,
             predefined_default_object_acl: attr.predefined_default_object_acl,
-            projection: Projection::Unspecified,
+            projection: None,
             project: self.project_id.to_string(),
             bucket,
         };

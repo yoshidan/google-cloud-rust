@@ -1,5 +1,5 @@
-use crate::apiv1::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
-use crate::apiv1::entity::{Bucket, DeleteBucketRequest, InsertBucketRequest, UpdateBucketRequest};
+use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
+use crate::http::entity::{Bucket, DeleteBucketRequest, InsertBucketRequest, UpdateBucketRequest};
 use google_cloud_auth::token_source::TokenSource;
 use google_cloud_gax::cancel::CancellationToken;
 use reqwest::{RequestBuilder, Response};
@@ -66,14 +66,14 @@ impl StorageClient {
         let action = async {
             let url = format!("{}/b?alt=json&prettyPrint=false", BASE_URL);
             let mut query_param: Vec<(&str, &str)> = vec![("project", req.project.as_str())];
-            if let Some(predefined_acl) = req.predefined_acl.into() {
-                query_param.push(("predefinedAcl", predefined_acl))
+            if let Some(predefined_acl) = req.predefined_acl {
+                query_param.push(("predefinedAcl", predefined_acl.into()))
             }
-            if let Some(predefined_acl) = req.predefined_default_object_acl.into() {
-                query_param.push(("predefinedDefaultObjectAcl", predefined_acl))
+            if let Some(predefined_acl) = req.predefined_default_object_acl {
+                query_param.push(("predefinedDefaultObjectAcl", predefined_acl.into()))
             }
-            if let Some(projection) = req.projection.into() {
-                query_param.push(("projection", projection))
+            if let Some(projection) = req.projection {
+                query_param.push(("projection", projection.into()))
             }
             let builder = self.with_headers(reqwest::Client::new().post(url)).await?;
             let response = builder.query(&query_param).json(&req.bucket).send().await?;

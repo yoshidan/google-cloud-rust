@@ -4,7 +4,7 @@ use google_cloud_gax::conn::Channel;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::apiv2::conn_pool::ConnectionManager;
+use crate::grpc::conn_pool::ConnectionManager;
 use google_cloud_gax::grpc::{Code, IntoRequest, IntoStreamingRequest, Response, Status, Streaming};
 use google_cloud_gax::retry::{invoke, invoke_fn, RetrySetting};
 use google_cloud_googleapis::iam::v1::Policy;

@@ -1,7 +1,7 @@
 use std::fmt::Display;
 use std::str::FromStr;
 use serde::{de, Deserialize, Deserializer};
-use crate::apiv1::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
+use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
 
 /// A bucket.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
@@ -113,13 +113,15 @@ pub struct Bucket {
     /// The location type of the bucket (region, dual-region, multi-region, etc).
     #[serde(skip_serializing_if = "is_empty")]
     pub location_type: String,
+    /// The recovery point objective for cross-region replication of the bucket.
+    /// Applicable only for dual- and multi-region buckets.
+    /// "DEFAULT" uses default replication.
+    /// "ASYNC_TURBO" enables turbo replication, valid for dual-region buckets only.
+    /// If rpo is not specified when the bucket is created, it defaults to "DEFAULT".
+    /// For more information, see Turbo replication.
+    pub rpo: Option<String>,
     /// The bucket's IAM configuration.
     pub iam_configuration: Option<bucket::IamConfiguration>,
-    /// Reserved for future use.
-    pub satisfies_pzs: Option<bool>,
-    /// The bucket's autoclass configuration. If there is no configuration, the
-    /// Autoclass feature will be disabled and have no effect on the bucket.
-    pub autoclass: Option<bucket::Autoclass>,
 }
 /// Nested message and enum types in `Bucket`.
 pub mod bucket {
@@ -187,8 +189,6 @@ pub mod bucket {
         #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize,Debug)]
         #[repr(i32)]
         pub enum PublicAccessPrevention {
-            /// No specified PublicAccessPrevention.
-            //Unspecified = 0,
             /// Prevents access from being granted to public members 'allUsers' and
             /// 'allAuthenticatedUsers'. Prevents attempts to grant new access to
             /// public members.
@@ -354,42 +354,20 @@ pub mod bucket {
     }
 }
 /// An access-control entry.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct BucketAccessControl {
-    /// The access permission for the entity.
-    pub role: String,
-    /// HTTP 1.1 \["<https://tools.ietf.org/html/rfc7232#section-2.3\][Entity> tag]
-    /// for the access-control entry.
-    pub etag: String,
-    /// The ID of the access-control entry.
-    pub id: String,
-    /// The name of the bucket.
     pub bucket: String,
-    /// The entity holding the permission, in one of the following forms:
-    /// * `user-{userid}`
-    /// * `user-{email}`
-    /// * `group-{groupid}`
-    /// * `group-{email}`
-    /// * `domain-{domain}`
-    /// * `project-{team-projectid}`
-    /// * `allUsers`
-    /// * `allAuthenticatedUsers`
-    /// Examples:
-    /// * The user `liz@example.com` would be `user-liz@example.com`.
-    /// * The group `example@googlegroups.com` would be
-    /// `group-example@googlegroups.com`
-    /// * All members of the Google Apps for Business domain `example.com` would be
-    /// `domain-example.com`
+    pub domain: Option<String>,
+    pub email: Option<String>,
     pub entity: String,
-    /// The ID for the entity, if any.
-    pub entity_id: String,
-    /// The email address associated with the entity, if any.
-    pub email: String,
-    /// The domain associated with the entity, if any.
-    pub domain: String,
-    /// The project team associated with the entity, if any.
+    pub entity_id: Option<String>,
+    pub etag: String,
+    pub id: Option<String>,
+    pub kind: String,
     pub project_team: Option<ProjectTeam>,
+    pub role: String,
+    pub self_link: String,
 }
 /// The response to a call to BucketAccessControls.ListBucketAccessControls.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
@@ -490,8 +468,6 @@ pub mod common_enums {
     #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize,Debug)]
     #[repr(i32)]
     pub enum Projection {
-        /// No specified projection.
-        Unspecified = 0,
         /// Omit `owner`, `acl`, and `defaultObjectAcl` properties.
         NoAcl = 1,
         /// Include all properties.
@@ -501,8 +477,6 @@ pub mod common_enums {
     #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize,Debug)]
     #[repr(i32)]
     pub enum PredefinedBucketAcl {
-        /// No predefined ACL.
-        Unspecified = 0,
         /// Project team owners get `OWNER` access, and
         /// `allAuthenticatedUsers` get `READER` access.
         BucketAclAuthenticatedRead = 1,
@@ -521,8 +495,6 @@ pub mod common_enums {
     #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize,Debug)]
     #[repr(i32)]
     pub enum PredefinedObjectAcl {
-        /// No predefined ACL.
-        Unspecified = 0,
         /// Object owner gets `OWNER` access, and
         /// `allAuthenticatedUsers` get `READER` access.
         ObjectAclAuthenticatedRead = 1,
@@ -761,46 +733,22 @@ pub mod object {
     }
 }
 /// An access-control entry.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ObjectAccessControl {
-    /// The access permission for the entity.
-    pub role: String,
-    /// HTTP 1.1 Entity tag for the access-control entry.
-    /// See \[<https://tools.ietf.org/html/rfc7232#section-2.3\][RFC> 7232 §2.3].
-    pub etag: String,
-    /// The ID of the access-control entry.
-    pub id: String,
-    /// The name of the bucket.
-    pub bucket: String,
-    /// The name of the object, if applied to an object.
-    pub object: String,
-    /// The content generation of the object, if applied to an object.
-    pub generation: i64,
-    /// The entity holding the permission, in one of the following forms:
-    /// * `user-{userid}`
-    /// * `user-{email}`
-    /// * `group-{groupid}`
-    /// * `group-{email}`
-    /// * `domain-{domain}`
-    /// * `project-{team-projectid}`
-    /// * `allUsers`
-    /// * `allAuthenticatedUsers`
-    /// Examples:
-    /// * The user `liz@example.com` would be `user-liz@example.com`.
-    /// * The group `example@googlegroups.com` would be
-    /// `group-example@googlegroups.com`.
-    /// * All members of the Google Apps for Business domain `example.com` would be
-    /// `domain-example.com`.
+    pub bucket: Option<String>,
+    pub domain: Option<String>,
+    pub email: Option<String>,
     pub entity: String,
-    /// The ID for the entity, if any.
-    pub entity_id: String,
-    /// The email address associated with the entity, if any.
-    pub email: String,
-    /// The domain associated with the entity, if any.
-    pub domain: String,
-    /// The project team associated with the entity, if any.
+    pub entity_id: Option<String>,
+    pub etag: String,
+    pub generation: Option<i64>,
+    pub id: Option<String>,
+    pub kind: String,
+    pub object: Option<String>,
     pub project_team: Option<ProjectTeam>,
+    pub role: String,
+    pub self_link: Option<String>,
 }
 /// The result of a call to ObjectAccessControls.ListObjectAccessControls.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
@@ -823,12 +771,14 @@ pub struct ListObjectsResponse {
     pub next_page_token: String,
 }
 /// Represents the Viewers, Editors, or Owners of a given project.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize,Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectTeam {
     /// The project number.
+    #[serde(default)]
     pub project_number: String,
     /// The team.
+    #[serde(default)]
     pub team: String,
 }
 /// A subscription to receive Google PubSub notifications.
@@ -839,13 +789,14 @@ pub struct ServiceAccount {
     pub email_address: String,
 }
 /// The owner of a specific resource.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize,Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Owner {
     /// The entity, in the form `user-`*userId*.
+    #[serde(default)]
     pub entity: String,
     /// The ID for the entity.
-    pub entity_id: String,
+    pub entity_id: Option<String>,
 }
 /// Request message for DeleteBucketAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
@@ -968,17 +919,10 @@ pub struct GetBucketRequest {
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InsertBucketRequest {
-    /// Apply a predefined set of access controls to this bucket.
-    pub predefined_acl: PredefinedBucketAcl,
-    /// Apply a predefined set of default object access controls to this bucket.
-    pub predefined_default_object_acl: PredefinedObjectAcl,
-    /// Required. A valid API project identifier.
+    pub predefined_acl: Option<PredefinedBucketAcl>,
+    pub predefined_default_object_acl: Option<PredefinedObjectAcl>,
     pub project: String,
-    /// Set of properties to return. Defaults to `NO_ACL`, unless the
-    /// bucket resource specifies `acl` or `defaultObjectAcl`
-    /// properties, when it defaults to `FULL`.
-    pub projection: Projection,
-    /// Properties of the new bucket being inserted, including its name.
+    pub projection: Option<Projection>,
     pub bucket: Bucket,
 }
 /// Request message for ListChannels.
@@ -2104,39 +2048,36 @@ fn from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
     T::from_str(&s).map_err(de::Error::custom)
 }
 
-impl From<Projection> for Option<&'static str> {
+impl From<Projection> for &'static str {
     fn from(v: Projection) -> Self {
         match v {
-            Projection::NoAcl => Some("noAcl"),
-            Projection::Full => Some("full"),
-            _ => None,
+            Projection::NoAcl => "noAcl",
+            Projection::Full => "full",
         }
     }
 }
 
-impl From<PredefinedBucketAcl> for Option<&'static str> {
+impl From<PredefinedBucketAcl> for &'static str {
     fn from(v: PredefinedBucketAcl) -> Self {
         match v {
-            PredefinedBucketAcl::BucketAclAuthenticatedRead => Some("allAuthenticatedUsers"),
-            PredefinedBucketAcl::BucketAclPrivate => Some("private"),
-            PredefinedBucketAcl::BucketAclProjectPrivate => Some("projectPrivate"),
-            PredefinedBucketAcl::BucketAclPublicRead => Some("publicRead"),
-            PredefinedBucketAcl::BucketAclPublicReadWrite => Some("publicReadWrite"),
-            _ => None,
+            PredefinedBucketAcl::BucketAclAuthenticatedRead => "authenticatedRead",
+            PredefinedBucketAcl::BucketAclPrivate => "private",
+            PredefinedBucketAcl::BucketAclProjectPrivate => "projectPrivate",
+            PredefinedBucketAcl::BucketAclPublicRead => "publicRead",
+            PredefinedBucketAcl::BucketAclPublicReadWrite => "publicReadWrite",
         }
     }
 }
 
-impl From<PredefinedObjectAcl> for Option<&'static str> {
+impl From<PredefinedObjectAcl> for &'static str {
     fn from(v: PredefinedObjectAcl) -> Self {
         match v {
-            PredefinedObjectAcl::ObjectAclAuthenticatedRead => Some("allAuthenticatedUsers"),
-            PredefinedObjectAcl::ObjectAclBucketOwnerFullControl => Some("bucketOwnerFullControl"),
-            PredefinedObjectAcl::ObjectAclBucketOwnerRead => Some("bucketOwnerRead"),
-            PredefinedObjectAcl::ObjectAclPrivate => Some("private"),
-            PredefinedObjectAcl::ObjectAclProjectPrivate => Some("projectPrivate"),
-            PredefinedObjectAcl::ObjectAclPublicRead => Some("publicRead"),
-            _ => None,
+            PredefinedObjectAcl::ObjectAclAuthenticatedRead => "authenticatedRead",
+            PredefinedObjectAcl::ObjectAclBucketOwnerFullControl => "bucketOwnerFullControl",
+            PredefinedObjectAcl::ObjectAclBucketOwnerRead => "bucketOwnerRead",
+            PredefinedObjectAcl::ObjectAclPrivate => "private",
+            PredefinedObjectAcl::ObjectAclProjectPrivate => "projectPrivate",
+            PredefinedObjectAcl::ObjectAclPublicRead => "publicRead",
         }
     }
 }

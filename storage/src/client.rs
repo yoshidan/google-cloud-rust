@@ -1,4 +1,4 @@
-use crate::apiv1::storage_client::StorageClient;
+use crate::http::storage_client::StorageClient;
 use crate::bucket::BucketHandle;
 use google_cloud_auth::credentials::CredentialsFile;
 use google_cloud_auth::{create_token_source_from_credentials, Config};
@@ -77,7 +77,7 @@ impl Client {
 
 #[cfg(test)]
 mod test {
-    use crate::apiv1::partial::BucketCreationConfig;
+    use crate::http::partial::BucketCreationConfig;
     use crate::client;
     use chrono::{DateTime, Utc};
     use google_cloud_auth::credentials::CredentialsFile;
@@ -85,8 +85,15 @@ mod test {
     use google_cloud_gax::retry::RetrySetting;
     use serial_test::serial;
     use std::collections::HashMap;
+    use std::time;
     use std::time::Duration;
     use tracing::Level;
+    use serde_json;
+    use crate::bucket::BucketHandle;
+    use crate::http::entity::bucket::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
+    use crate::http::entity::bucket::{IamConfiguration, Versioning};
+    use crate::http::entity::{Bucket, BucketAccessControl};
+    use crate::http::entity::common_enums::PredefinedBucketAcl;
 
     #[ctor::ctor]
     fn init() {
@@ -112,13 +119,86 @@ mod test {
 
     #[tokio::test]
     #[serial]
-    async fn create() {
+    async fn create_authenticated() {
+        let config = BucketCreationConfig {
+            //認証ユーザのみ、きめ細かい管理
+            predefined_acl: Some(PredefinedBucketAcl::BucketAclAuthenticatedRead),
+            location: "ASIA-NORTHEAST1".to_string(),
+            storage_class: "STANDARD".to_string(),
+            ..Default::default()
+        };
+        let result = do_create(&config).await;
+        assert!(result.acl.is_some());
+        assert!(!result.acl.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn create_public_uniform() {
+        let config = BucketCreationConfig {
+            predefined_acl: Some(PredefinedBucketAcl::BucketAclPublicRead),
+            iam_configuration: Some(IamConfiguration {
+                uniform_bucket_level_access: Some(UniformBucketLevelAccess {
+                    enabled: true,
+                    locked_time: None
+                }),
+                public_access_prevention: Some(PublicAccessPrevention::Enforced)
+            }),
+            location: "ASIA-NORTHEAST1".to_string(),
+            storage_class: "STANDARD".to_string(),
+            ..Default::default()
+        };
+        let result = do_create(&config).await;
+        assert!(result.acl.is_some());
+        assert!(!result.acl.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn create_private_uniform() {
+        let config = BucketCreationConfig {
+            iam_configuration: Some(IamConfiguration {
+                uniform_bucket_level_access: Some(UniformBucketLevelAccess {
+                    enabled: true,
+                    locked_time: None
+                }),
+                public_access_prevention: Some(PublicAccessPrevention::Enforced)
+            }),
+            location: "ASIA-NORTHEAST1".to_string(),
+            storage_class: "STANDARD".to_string(),
+            ..Default::default()
+        };
+        let result = do_create(&config).await;
+        assert!(result.acl.is_none());
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn create_objectacl_versioned() {
+        let config = BucketCreationConfig {
+            location: "ASIA-NORTHEAST1".to_string(),
+            storage_class: "STANDARD".to_string(),
+            versioning: Some(Versioning {
+                enabled: true
+            }),
+            ..Default::default()
+        };
+        let result = do_create(&config).await;
+        assert!(result.acl.is_none());
+    }
+
+    async fn do_create(config : &BucketCreationConfig) -> Bucket {
+        let bucket_name = format!("rust-test-{}", chrono::Utc::now().timestamp());
         let client = client::Client::new().await.unwrap();
-        let bucket = client.bucket("atl-dev1-testx43").await;
+        let bucket = client.bucket(&bucket_name).await;
         let result = bucket
-            .create(&BucketCreationConfig::default(), Some(CancellationToken::default()))
+            .create(&config, Some(CancellationToken::default()))
             .await.unwrap();
-        println!("{:?}", result);
-        assert_eq!(result.name, "atl-dev1-testx43");
+        println!("{:?}", serde_json::to_string(&result));
+       // bucket.delete(Some(CancellationToken::default())).await;
+        assert_eq!(result.name, bucket_name);
+        assert_eq!(result.storage_class, config.storage_class);
+        assert_eq!(result.location, config.location);
+        return result
     }
 }
