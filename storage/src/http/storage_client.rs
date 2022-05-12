@@ -53,12 +53,7 @@ impl StorageClient {
         let action = async {
             let url = format!("{}/b/{}?alt=json&prettyPrint=false", BASE_URL, req.bucket);
             let builder = self.with_headers(reqwest::Client::new().delete(url)).await?;
-            let response = builder.send().await?;
-            if response.status().is_success() {
-                Ok(())
-            } else {
-                Err(map_error(response).await)
-            }
+            send(builder).await
         };
         invoke(cancel, action).await
     }
@@ -75,12 +70,7 @@ impl StorageClient {
             with_projection(&mut query_param, req.projection);
             with_acl(&mut query_param, req.predefined_acl, req.predefined_default_object_acl);
             let builder = self.with_headers(reqwest::Client::new().post(url)).await?;
-            let response = builder.query(&query_param).json(&req.bucket).send().await?;
-            if response.status().is_success() {
-                Ok(response.json().await?)
-            } else {
-                Err(map_error(response).await)
-            }
+            send(builder.query(&query_param).json(&req.bucket)).await
         };
         invoke(cancel, action).await
     }
@@ -91,12 +81,7 @@ impl StorageClient {
             let mut query_param = vec![];
             with_projection(&mut query_param, req.projection);
             let builder = self.with_headers(reqwest::Client::new().get(url)).await?;
-            let response = builder.query(&query_param).send().await?;
-            if response.status().is_success() {
-                Ok(response.json().await?)
-            } else {
-                Err(map_error(response).await)
-            }
+            send(builder.query(&query_param)).await
         };
         invoke(cancel, action).await
     }
@@ -126,12 +111,7 @@ impl StorageClient {
                 query_param.push(("prefix", max_results.as_str()))
             }
             let builder = self.with_headers(reqwest::Client::new().get(url)).await?;
-            let response = builder.query(&query_param).send().await?;
-            if response.status().is_success() {
-                return Ok(response.json().await?);
-            } else {
-                Err(map_error(response).await)
-            }
+            send(builder.query(&query_param)).await
         };
         invoke(cancel, action).await
     }
@@ -149,12 +129,7 @@ impl StorageClient {
             with_projection(&mut query_param, req.projection);
             with_acl(&mut query_param, req.predefined_acl, req.predefined_default_object_acl);
             let builder = self.with_headers(reqwest::Client::new().patch(url)).await?;
-            let response = builder.query(&query_param).json(&req.metadata).send().await?;
-            if response.status().is_success() {
-                Ok(response.json().await?)
-            } else {
-                Err(map_error(response).await)
-            }
+            send(builder.query(&query_param).json(&req.metadata)).await
         };
         invoke(cancel, action).await
     }
@@ -176,14 +151,18 @@ impl StorageClient {
                 query_param.push(("optionsRequestedPolicyVersion", version.as_str()));
             }
             let builder = self.with_headers(reqwest::Client::new().get(url)).await?;
-            let response = builder.query(&query_param).send().await?;
-            if response.status().is_success() {
-                Ok(response.json().await?)
-            } else {
-                Err(map_error(response).await)
-            }
+            send(builder.query(&query_param)).await
         };
         invoke(cancel, action).await
+    }
+}
+
+async fn send<T: for<'de> serde::Deserialize<'de>>(builder: RequestBuilder) -> Result<T,Error> {
+    let response = builder.send().await?;
+    if response.status().is_success() {
+        Ok(response.json().await?)
+    } else {
+        Err(map_error(response).await)
     }
 }
 
