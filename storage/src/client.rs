@@ -77,12 +77,11 @@ impl Client {
 
 #[cfg(test)]
 mod test {
-    use crate::http::partial::BucketCreationConfig;
+    use crate::http::partial::{BucketCreationConfig, ObjectAccessControlsCreationConfig};
     use crate::client;
     use chrono::{DateTime, Utc};
     use google_cloud_auth::credentials::CredentialsFile;
-    use google_cloud_gax::cancel::CancellationToken;
-    use google_cloud_gax::retry::RetrySetting;
+    use crate::http::CancellationToken;
     use serial_test::serial;
     use std::collections::HashMap;
     use std::time;
@@ -91,8 +90,10 @@ mod test {
     use serde_json;
     use crate::bucket::BucketHandle;
     use crate::http::entity::bucket::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
-    use crate::http::entity::bucket::{IamConfiguration, Versioning};
-    use crate::http::entity::{Bucket, BucketAccessControl};
+    use crate::http::entity::bucket::{Billing, Cors, Encryption, IamConfiguration, Lifecycle, Logging, RetentionPolicy, Versioning, Website};
+    use crate::http::entity::{Bucket, BucketAccessControl, ObjectAccessControl};
+    use crate::http::entity::bucket::lifecycle::Rule;
+    use crate::http::entity::bucket::lifecycle::rule::{Action, ActionType, Condition};
     use crate::http::entity::common_enums::PredefinedBucketAcl;
 
     #[ctor::ctor]
@@ -115,6 +116,67 @@ mod test {
         let bucket = client.bucket("atl-dev1-test").await;
         let result = bucket.delete(Some(CancellationToken::default())).await;
         assert!(result.is_ok(), "{}", result.unwrap_err())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn create_with_setting() {
+        let mut labels = HashMap::new();
+        labels.insert("labelkey".to_string(), "labelvalue".to_string());
+        let config = BucketCreationConfig {
+            location: "US".to_string(),
+            storage_class: "STANDARD".to_string(),
+            default_event_based_hold: true,
+            labels: Some(labels),
+            website: Some(Website {
+                main_page_suffix: "_suffix".to_string(),
+                not_found_page: "notfound.html".to_string()
+            }),
+            billing: Some(Billing {
+                requester_pays: true
+            }),
+            retention_policy: Some(RetentionPolicy {
+                effective_time: None,
+                is_locked: None,
+                retention_period: 10000
+            }),
+            default_object_acl: Some(vec![
+                ObjectAccessControlsCreationConfig {
+                    entity: "allUsers".to_string(),
+                    role: "READER".to_string(),
+                }
+            ]),
+            cors: Some(vec![Cors {
+                origin: vec!["*".to_string()],
+                method: vec!["GET".to_string(), "HEAD".to_string()],
+                response_header: vec!["200".to_string()],
+                max_age_seconds: 100
+            }]),
+            lifecycle: Some(Lifecycle {
+                rule: vec![Rule {
+                    action: Some(Action {
+                        r#type: ActionType::Delete,
+                        storage_class: None
+                    }),
+                    condition: Some(Condition {
+                        age: 365,
+                        created_before: None,
+                        is_live: Some(true),
+                        num_newer_versions: None,
+                        matches_storage_class: None,
+                        days_since_custom_time: None,
+                        custom_time_before: None,
+                        days_since_noncurrent_time: None,
+                        noncurrent_time_before: None,
+                    })
+                }]
+            }),
+            rpo: Some("DEFAULT".to_string()),
+            ..Default::default()
+        };
+        let result = do_create(&config).await;
+        assert!(result.acl.is_some());
+        assert!(!result.acl.unwrap().is_empty());
     }
 
     #[tokio::test]

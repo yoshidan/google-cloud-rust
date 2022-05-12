@@ -7,9 +7,8 @@ use crate::http::partial::BucketCreationConfig;
 use crate::http::storage_client::{Error, StorageClient};
 use crate::sign::{signed_url, SignBy, SignedURLError, SignedURLOptions};
 use chrono::{DateTime, SecondsFormat, Timelike, Utc};
+use tokio_util::sync::CancellationToken;
 use google_cloud_auth::credentials::CredentialsFile;
-use google_cloud_gax::cancel::CancellationToken;
-use google_cloud_gax::grpc::codegen::Body;
 
 pub struct BucketHandle<'a> {
     name: String,
@@ -63,14 +62,14 @@ impl<'a> BucketHandle<'a> {
     }
 
     pub async fn create(&self, attr: &BucketCreationConfig, cancel: Option<CancellationToken>) -> Result<Bucket, Error> {
-        let mut bucket: Bucket = attr.into();
-        bucket.name = self.name.to_string();
+        let mut cloned = attr.clone();
+        cloned.name = self.name.to_string();
         let req = InsertBucketRequest {
             predefined_acl: attr.predefined_acl,
             predefined_default_object_acl: attr.predefined_default_object_acl,
             projection: None,
             project: self.project_id.to_string(),
-            bucket,
+            bucket: cloned,
         };
         self.storage_client.insert_bucket(req, cancel).await
     }

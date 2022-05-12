@@ -1,12 +1,11 @@
 use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
 use crate::http::entity::{Bucket, DeleteBucketRequest, InsertBucketRequest, UpdateBucketRequest};
 use google_cloud_auth::token_source::TokenSource;
-use google_cloud_gax::cancel::CancellationToken;
+use crate::http::CancellationToken;
 use reqwest::{RequestBuilder, Response};
 use std::future::Future;
 use std::mem;
 use std::sync::Arc;
-use tokio::select;
 
 const BASE_URL: &str = "https://storage.googleapis.com/storage/v1";
 
@@ -103,7 +102,7 @@ async fn invoke<S>(
 ) -> Result<S, Error> {
     match cancel {
         Some(cancel) => {
-            select! {
+            tokio::select! {
                 _ = cancel.cancelled() => Err(Error::Cancelled),
                 v = action => v
             }

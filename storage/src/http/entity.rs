@@ -2,6 +2,7 @@ use std::fmt::Display;
 use std::str::FromStr;
 use serde::{de, Deserialize, Deserializer};
 use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
+use crate::http::partial::BucketCreationConfig;
 
 /// A bucket.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
@@ -223,71 +224,33 @@ pub mod bucket {
         }
         /// Nested message and enum types in `Rule`.
         pub mod rule {
+            #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+            pub enum ActionType {
+                /// Deletes a Bucket.
+                Delete,
+                /// Sets the `storage_class` of a Bucket.
+                SetStorageClass,
+            }
             /// An action to take on an object.
             #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
             #[serde(rename_all = "camelCase")]
             pub struct Action {
-                /// Type of the action. Currently, only `Delete`, `SetStorageClass`, and
-                /// `AbortIncompleteMultipartUpload` are supported.
-                pub r#type: String,
-                /// Target storage class. Required iff the type of the action is
-                /// SetStorageClass.
-                pub storage_class: String,
+                pub r#type: ActionType,
+                pub storage_class: Option<String>,
             }
             /// A condition of an object which triggers some action.
-            #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+            #[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize, Debug)]
             #[serde(rename_all = "camelCase")]
             pub struct Condition {
-                /// Age of an object (in days). This condition is satisfied when an
-                /// object reaches the specified age.
                 pub age: i32,
-                /// A date in [RFC 3339]\[1\] format with only the date part (for
-                /// instance, "2013-01-15"). This condition is satisfied when an
-                /// object is created before midnight of the specified date in UTC.
-                /// \[1\]: <https://tools.ietf.org/html/rfc3339>
                 pub created_before: Option<chrono::DateTime<chrono::Utc>>,
-                /// Relevant only for versioned objects. If the value is
-                /// `true`, this condition matches live objects; if the value
-                /// is `false`, it matches archived objects.
-                pub is_live: Option<bool>,
-                /// Relevant only for versioned objects. If the value is N, this
-                /// condition is satisfied when there are at least N versions (including
-                /// the live version) newer than this version of the object.
-                pub num_newer_versions: i32,
-                /// Objects having any of the storage classes specified by this condition
-                /// will be matched. Values include `MULTI_REGIONAL`, `REGIONAL`,
-                /// `NEARLINE`, `COLDLINE`, `STANDARD`, and
-                /// `DURABLE_REDUCED_AVAILABILITY`.
-                pub matches_storage_class: Vec<String>,
-                /// A regular expression that satisfies the RE2 syntax. This condition is
-                /// satisfied when the name of the object matches the RE2 pattern.  Note:
-                /// This feature is currently in the "Early Access" launch stage and is
-                /// only available to an allowlisted set of users; that means that this
-                /// feature may be changed in backward-incompatible ways and that it is
-                /// not guaranteed to be released.
-                pub matches_pattern: String,
-                /// Number of days that has elapsed since the custom timestamp set on an
-                /// object.
-                pub days_since_custom_time: i32,
-                /// An object matches this condition if the custom timestamp set on the
-                /// object is before this timestamp.
                 pub custom_time_before: Option<chrono::DateTime<chrono::Utc>>,
-                /// This condition is relevant only for versioned objects. An object
-                /// version satisfies this condition only if these many days have been
-                /// passed since it became noncurrent. The value of the field must be a
-                /// nonnegative integer. If it's zero, the object version will become
-                /// eligible for Lifecycle action as soon as it becomes noncurrent.
-                pub days_since_noncurrent_time: i32,
-                /// This condition is relevant only for versioned objects. An object
-                /// version satisfies this condition only if it became noncurrent before
-                /// the specified timestamp.
+                pub days_since_custom_time: Option<i32>,
+                pub days_since_noncurrent_time: Option<i32>,
+                pub is_live: Option<bool>,
+                pub matches_storage_class: Option<Vec<String>>,
                 pub noncurrent_time_before: Option<chrono::DateTime<chrono::Utc>>,
-                /// List of object name prefixes. If any prefix exactly matches the
-                /// beginning of the object name, the condition evaluates to true.
-                pub matches_prefix: Vec<String>,
-                /// List of object name suffixes. If any suffix exactly matches the
-                /// end of the object name, the condition evaluates to true.
-                pub matches_suffix: Vec<String>,
+                pub num_newer_versions: Option<i32>,
             }
         }
     }
@@ -309,12 +272,12 @@ pub mod bucket {
         /// \[<https://tools.ietf.org/html/rfc3339\][RFC> 3339] format.
         pub effective_time: Option<chrono::DateTime<chrono::Utc>>,
         /// Once locked, an object retention policy cannot be modified.
-        pub is_locked: bool,
+        pub is_locked: Option<bool>,
         /// The duration in seconds that objects need to be retained. Retention
         /// duration must be greater than zero and less than 100 years. Note that
         /// enforcement of retention periods less than a day is not guaranteed. Such
         /// periods should only be used for testing purposes.
-        pub retention_period: i64,
+        pub retention_period: u64,
     }
     /// Properties of a bucket related to versioning.
     /// For more on GCS versioning, see
@@ -923,7 +886,7 @@ pub struct InsertBucketRequest {
     pub predefined_default_object_acl: Option<PredefinedObjectAcl>,
     pub project: String,
     pub projection: Option<Projection>,
-    pub bucket: Bucket,
+    pub bucket: BucketCreationConfig,
 }
 /// Request message for ListChannels.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
@@ -2047,6 +2010,26 @@ fn from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
     let s = String::deserialize(deserializer)?;
     T::from_str(&s).map_err(de::Error::custom)
 }
+
+fn from_str_opt<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
+    where
+        T: std::str::FromStr,
+        T::Err: std::fmt::Display,
+        D: serde::Deserializer<'de>,
+{
+    let s: Result<serde_json::Value, _> = serde::Deserialize::deserialize(deserializer);
+    match s {
+        Ok(serde_json::Value::String(s)) => T::from_str(&s)
+            .map_err(serde::de::Error::custom)
+            .map(Option::from),
+        Ok(serde_json::Value::Number(num)) => T::from_str(&num.to_string())
+            .map_err(serde::de::Error::custom)
+            .map(Option::from),
+        Ok(_value) => Err(serde::de::Error::custom("Incorrect type")),
+        Err(_) => Ok(None),
+    }
+}
+
 
 impl From<Projection> for &'static str {
     fn from(v: Projection) -> Self {
