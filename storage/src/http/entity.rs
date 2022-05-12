@@ -39,6 +39,26 @@ pub struct RetentionPolicyCreationConfig {
     pub retention_period: u64,
 }
 
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct BucketPatchConfig {
+    pub acl: Option<Vec<BucketAccessControl>>,
+    pub default_object_acl: Option<Vec<ObjectAccessControlsCreationConfig>>,
+    pub lifecycle: Option<bucket::Lifecycle>,
+    pub cors: Option<Vec<bucket::Cors>>,
+    pub storage_class: Option<String>,
+    pub default_event_based_hold: Option<bool>,
+    pub labels: Option<HashMap<String, String>>,
+    pub website: Option<bucket::Website>,
+    pub versioning: Option<bucket::Versioning>,
+    pub logging: Option<bucket::Logging>,
+    pub encryption: Option<bucket::Encryption>,
+    pub billing: Option<bucket::Billing>,
+    pub retention_policy: Option<RetentionPolicyCreationConfig>,
+    pub iam_configuration: Option<bucket::IamConfiguration>,
+    pub rpo: Option<String>,
+}
+
 /// A bucket.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -915,7 +935,6 @@ pub struct GetBucketRequest {
 pub struct InsertBucketRequest {
     pub predefined_acl: Option<PredefinedBucketAcl>,
     pub predefined_default_object_acl: Option<PredefinedObjectAcl>,
-    pub(crate) project: String,
     pub projection: Option<Projection>,
     pub bucket: BucketCreationConfig,
 }
@@ -938,8 +957,6 @@ pub struct ListBucketsRequest {
     pub page_token: Option<String>,
     /// Filter results to buckets whose names begin with this prefix.
     pub prefix: Option<String>,
-    /// Required. A valid API project identifier.
-    pub project: String,
     /// Set of properties to return. Defaults to `NO_ACL`.
     pub projection: Option<Projection>,
 }
@@ -954,11 +971,9 @@ pub struct LockRetentionPolicyRequest {
     pub if_metageneration_match: i64,
 }
 /// Request for PatchBucket method.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize,Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PatchBucketRequest {
-    /// Required. Name of a bucket.
-    pub bucket: String,
     /// Makes the return of the bucket metadata conditional on whether the bucket's
     /// current metageneration matches the given value.
     pub if_metageneration_match: Option<i64>,
@@ -966,24 +981,13 @@ pub struct PatchBucketRequest {
     /// current metageneration does not match the given value.
     pub if_metageneration_not_match: Option<i64>,
     /// Apply a predefined set of access controls to this bucket.
-    pub predefined_acl: PredefinedBucketAcl,
+    pub predefined_acl: Option<PredefinedBucketAcl>,
     /// Apply a predefined set of default object access controls to this bucket.
-    pub predefined_default_object_acl: PredefinedObjectAcl,
+    pub predefined_default_object_acl: Option<PredefinedObjectAcl>,
     /// Set of properties to return. Defaults to `FULL`.
-    pub projection: Projection,
+    pub projection: Option<Projection>,
     /// The Bucket metadata for updating.
-    pub metadata: Option<Bucket>,
-    /// List of fields to be updated.
-    ///
-    /// To specify ALL fields, equivalent to the JSON API's "update" function,
-    /// specify a single field with the value `*`. Note: not recommended. If a new
-    /// field is introduced at a later time, an older client updating with the `*`
-    /// may accidentally reset the new field's value.
-    ///
-    /// Not specifying any fields is an error.
-    /// Not specifying a field while setting that field to a non-default value is
-    /// an error.
-    pub update_mask: Option<()>, //TODO
+    pub metadata: Option<BucketPatchConfig>,
 }
 /// Request for UpdateBucket method.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]

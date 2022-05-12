@@ -84,11 +84,10 @@ impl Client {
             let req = ListBucketsRequest {
                 max_results: None,
                 prefix: prefix.clone(),
-                project: self.project_id.clone(),
                 page_token,
                 projection: None,
             };
-            let response = self.storage_client.list_buckets(&req, cancel.clone()).await?;
+            let response = self.storage_client.list_buckets(self.project_id.as_str(), &req, cancel.clone()).await?;
             result.extend(response.items);
             if response.next_page_token.is_none() {
                 break;
@@ -116,7 +115,7 @@ mod test {
     use crate::bucket::BucketHandle;
     use crate::http::entity::bucket::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
     use crate::http::entity::bucket::{Billing, Cors, Encryption, IamConfiguration, Lifecycle, Logging, RetentionPolicy, Versioning, Website};
-    use crate::http::entity::{Bucket, BucketAccessControl, BucketCreationConfig, InsertBucketRequest, ObjectAccessControl, ObjectAccessControlsCreationConfig, RetentionPolicyCreationConfig};
+    use crate::http::entity::{Bucket, BucketAccessControl, BucketCreationConfig, BucketPatchConfig, InsertBucketRequest, ObjectAccessControl, ObjectAccessControlsCreationConfig, PatchBucketRequest, RetentionPolicyCreationConfig};
     use crate::http::entity::bucket::lifecycle::Rule;
     use crate::http::entity::bucket::lifecycle::rule::{Action, ActionType, Condition};
     use crate::http::entity::common_enums::PredefinedBucketAcl;
@@ -321,5 +320,24 @@ mod test {
         assert_eq!(result.len(), 1);
         let result2= client.buckets(None, None).await.unwrap();
         assert!(result2.len() > 1);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn patch_bucket() {
+        let bucket_name = "atl-dev1-test";
+        let client = client::Client::new().await.unwrap();
+        let bucket = client.bucket(bucket_name).await;
+        let req = BucketPatchConfig {
+            retention_policy: Some(RetentionPolicyCreationConfig {
+                retention_period: 1000
+            }),
+            ..Default::default()
+        };
+        let result = bucket.patch(&PatchBucketRequest {
+            metadata: Some(req),
+            ..Default::default()
+        }, None).await.unwrap();
+        assert_eq!(result.name, bucket_name);
     }
 }

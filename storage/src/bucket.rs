@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use crate::http::entity::bucket::{Versioning, Website};
 use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
-use crate::http::entity::{Bucket, BucketAccessControl, BucketCreationConfig, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketsRequest, ObjectAccessControl, ObjectAccessControlsCreationConfig, RetentionPolicyCreationConfig};
+use crate::http::entity::{Bucket, BucketAccessControl, BucketCreationConfig, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketsRequest, ObjectAccessControl, ObjectAccessControlsCreationConfig, PatchBucketRequest, RetentionPolicyCreationConfig};
 use crate::http::storage_client::{Error, StorageClient};
 use crate::sign::{signed_url, SignBy, SignedURLError, SignedURLOptions};
 use chrono::{DateTime, SecondsFormat, Timelike, Utc};
@@ -61,9 +61,8 @@ impl<'a> BucketHandle<'a> {
     }
 
     pub async fn insert(&self, req: &mut InsertBucketRequest, cancel: Option<CancellationToken>) -> Result<Bucket, Error> {
-        req.project = self.project_id.to_string();
         req.bucket.name = self.name.to_string();
-        self.storage_client.insert_bucket(req, cancel).await
+        self.storage_client.insert_bucket(self.project_id, req, cancel).await
     }
 
     pub async fn get(&self, cancel: Option<CancellationToken>) -> Result<Bucket, Error> {
@@ -74,4 +73,7 @@ impl<'a> BucketHandle<'a> {
         self.storage_client.get_bucket(&req, cancel).await
     }
 
+    pub async fn patch(&self, req: &PatchBucketRequest, cancel: Option<CancellationToken>) -> Result<Bucket, Error> {
+        self.storage_client.patch_bucket(self.name.as_str(), self.project_id, &req, cancel).await
+    }
 }
