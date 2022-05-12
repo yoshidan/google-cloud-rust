@@ -148,7 +148,7 @@ impl StorageClient {
             let mut query_param = vec![("project", project)];
             with_projection(&mut query_param, req.projection);
             with_acl(&mut query_param, req.predefined_acl, req.predefined_default_object_acl);
-            let builder = self.with_headers(reqwest::Client::new().post(url)).await?;
+            let builder = self.with_headers(reqwest::Client::new().patch(url)).await?;
             let response = builder.query(&query_param).json(&req.metadata).send().await?;
             if response.status().is_success() {
                 Ok(response.json().await?)
