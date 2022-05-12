@@ -3,7 +3,7 @@ use crate::http::entity::{
     Bucket, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketsRequest, ListBucketsResponse,
     PatchBucketRequest, UpdateBucketRequest,
 };
-use crate::http::iam::{GetIamPolicyRequest, Policy};
+use crate::http::iam::{GetIamPolicyRequest, Policy, TestIamPermissionsRequest, TestIamPermissionsResponse};
 use crate::http::CancellationToken;
 use google_cloud_auth::token_source::TokenSource;
 use google_cloud_metadata::project_id;
@@ -149,6 +149,23 @@ impl StorageClient {
             let mut query_param = vec![];
             if !version.is_empty() {
                 query_param.push(("optionsRequestedPolicyVersion", version.as_str()));
+            }
+            let builder = self.with_headers(reqwest::Client::new().get(url)).await?;
+            send(builder.query(&query_param)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn test_iam_permission(
+        &self,
+        req: &TestIamPermissionsRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<TestIamPermissionsResponse, Error> {
+        let action = async {
+            let url = format!("{}/b/{}/iam/testPermissions?alt=json&prettyPrint=false", BASE_URL, req.resource);
+            let mut query_param = vec![];
+            for permission in &req.permissions {
+                query_param.push(("permissions", permission));
             }
             let builder = self.with_headers(reqwest::Client::new().get(url)).await?;
             send(builder.query(&query_param)).await

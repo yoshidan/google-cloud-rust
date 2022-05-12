@@ -1,4 +1,5 @@
-use crate::http::iam::{GetIamPolicyRequest, Policy};
+use std::fs::Permissions;
+use crate::http::iam::{GetIamPolicyRequest, Policy, TestIamPermissionsRequest};
 use crate::http::storage_client::{Error, StorageClient};
 use tokio_util::sync::CancellationToken;
 
@@ -11,12 +12,22 @@ impl<'a> IAMHandle<'a> {
     pub(crate) fn new(name: &'a str, storage_client: &'a StorageClient) -> Self {
         Self { name, storage_client }
     }
+
     pub async fn get(&self, cancel: Option<CancellationToken>) -> Result<Policy, Error> {
         let req = GetIamPolicyRequest {
             resource: self.name.to_string(),
             requested_policy_version: None,
         };
         self.storage_client.get_iam_policy(&req, cancel).await
+    }
+
+    pub async fn test(&self, permissions: &[&str], cancel: Option<CancellationToken>) -> Result<Vec<String>, Error> {
+        let req = TestIamPermissionsRequest {
+            resource: self.name.to_string(),
+            permissions: permissions.iter().map(|v| v.to_string()).collect()
+        };
+        let result = self.storage_client.test_iam_permission(&req, cancel).await?;
+        return Ok(result.permissions);
     }
 }
 
@@ -59,5 +70,17 @@ mod test {
         let policy = iam.get(None).await.unwrap();
         assert_eq!(policy.version, 1);
         info!("{:?}", serde_json::to_string(&policy));
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test() {
+        let client = client::Client::new().await.unwrap();
+        let bucket = client.bucket("atl-dev1-test").await;
+        let iam = bucket.iam();
+        let permissions = iam.test(&vec!["storage.buckets.get"], None).await.unwrap();
+        assert!(!permissions.is_empty());
+        assert_eq!(permissions[0], "storage.buckets.get");
+        info!("{:?}", permissions);
     }
 }
