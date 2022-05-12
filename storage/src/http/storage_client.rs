@@ -6,6 +6,7 @@ use reqwest::{RequestBuilder, Response};
 use std::future::Future;
 use std::mem;
 use std::sync::Arc;
+use google_cloud_metadata::project_id;
 
 const BASE_URL: &str = "https://storage.googleapis.com/storage/v1";
 
@@ -91,7 +92,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Bucket, Error> {
         let action = async {
-            let url = format!("{}/b?alt=json&prettyPrint=false", BASE_URL);
+            let url = format!("{}/b/{}?alt=json&prettyPrint=false", BASE_URL, req.bucket);
             let mut query_param: Vec<(&str, &str)> = vec![];
             if let Some(projection) = req.projection {
                 query_param.push(("projection", projection.into()))

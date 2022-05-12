@@ -269,11 +269,20 @@ mod test {
         let result = bucket
             .insert(req, Some(CancellationToken::default()))
             .await.unwrap();
-        println!("{:?}", serde_json::to_string(&result));
-        bucket.delete(Some(CancellationToken::default())).await;
+        bucket.delete(None).await;
         assert_eq!(result.name, bucket_name);
         assert_eq!(result.storage_class, req.bucket.storage_class);
         assert_eq!(result.location, req.bucket.location);
         return result
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn get_bucket() {
+        let bucket_name = "atl-dev1-test";
+        let client = client::Client::new().await.unwrap();
+        let bucket = client.bucket(bucket_name).await;
+        let result = bucket.get(None).await.unwrap();
+        assert_eq!(result.name, bucket_name);
     }
 }
