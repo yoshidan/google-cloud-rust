@@ -77,7 +77,6 @@ impl Client {
 
 #[cfg(test)]
 mod test {
-    use crate::http::partial::{BucketCreationConfig, ObjectAccessControlsCreationConfig, RetentionPolicyCreationConfig};
     use crate::client;
     use chrono::{DateTime, Utc};
     use google_cloud_auth::credentials::CredentialsFile;
@@ -91,7 +90,7 @@ mod test {
     use crate::bucket::BucketHandle;
     use crate::http::entity::bucket::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
     use crate::http::entity::bucket::{Billing, Cors, Encryption, IamConfiguration, Lifecycle, Logging, RetentionPolicy, Versioning, Website};
-    use crate::http::entity::{Bucket, BucketAccessControl, ObjectAccessControl};
+    use crate::http::entity::{Bucket, BucketAccessControl, BucketCreationConfig, ObjectAccessControl, ObjectAccessControlsCreationConfig, RetentionPolicyCreationConfig};
     use crate::http::entity::bucket::lifecycle::Rule;
     use crate::http::entity::bucket::lifecycle::rule::{Action, ActionType, Condition};
     use crate::http::entity::common_enums::PredefinedBucketAcl;
@@ -255,7 +254,7 @@ mod test {
             .create(&config, Some(CancellationToken::default()))
             .await.unwrap();
         println!("{:?}", serde_json::to_string(&result));
-       // bucket.delete(Some(CancellationToken::default())).await;
+        bucket.delete(Some(CancellationToken::default())).await;
         assert_eq!(result.name, bucket_name);
         assert_eq!(result.storage_class, config.storage_class);
         assert_eq!(result.location, config.location);

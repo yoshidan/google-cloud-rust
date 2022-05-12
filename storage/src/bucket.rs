@@ -1,9 +1,6 @@
 use crate::http::entity::bucket::{Versioning, Website};
 use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
-use crate::http::entity::{
-    Bucket, BucketAccessControl, DeleteBucketRequest, InsertBucketRequest, ObjectAccessControl,
-};
-use crate::http::partial::BucketCreationConfig;
+use crate::http::entity::{Bucket, BucketAccessControl, BucketCreationConfig, DeleteBucketRequest, InsertBucketRequest, ObjectAccessControl};
 use crate::http::storage_client::{Error, StorageClient};
 use crate::sign::{signed_url, SignBy, SignedURLError, SignedURLOptions};
 use chrono::{DateTime, SecondsFormat, Timelike, Utc};
