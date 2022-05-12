@@ -3,6 +3,9 @@ use crate::bucket::BucketHandle;
 use google_cloud_auth::credentials::CredentialsFile;
 use google_cloud_auth::{create_token_source_from_credentials, Config};
 use std::sync::Arc;
+use tokio_util::sync::CancellationToken;
+use crate::http;
+use crate::http::entity::{Bucket, ListBucketsRequest};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -73,6 +76,29 @@ impl Client {
             self.storage_client.clone(),
         )
     }
+
+    pub async fn buckets(&self, prefix: Option<String>, cancel: Option<CancellationToken>) -> Result<Vec<Bucket>, http::storage_client::Error> {
+        let mut result :Vec<Bucket> = vec![];
+        let mut page_token = None;
+        loop {
+            let req = ListBucketsRequest {
+                max_results: None,
+                prefix: prefix.clone(),
+                project: self.project_id.clone(),
+                page_token,
+                projection: None,
+            };
+            let response = self.storage_client.list_buckets(&req, cancel.clone()).await?;
+            result.extend(response.items);
+            if response.next_page_token.is_none() {
+                break;
+            }else {
+                page_token = response.next_page_token;
+            }
+        }
+        return Ok(result)
+    }
+
 }
 
 #[cfg(test)]
@@ -284,5 +310,16 @@ mod test {
         let bucket = client.bucket(bucket_name).await;
         let result = bucket.get(None).await.unwrap();
         assert_eq!(result.name, bucket_name);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn buckets() {
+        let prefix = Some("atl-dev1-test".to_string());
+        let client = client::Client::new().await.unwrap();
+        let result = client.buckets(prefix, None).await.unwrap();
+        assert_eq!(result.len(), 1);
+        let result2= client.buckets(None, None).await.unwrap();
+        assert!(result2.len() > 1);
     }
 }

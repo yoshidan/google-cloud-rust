@@ -1,5 +1,5 @@
 use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
-use crate::http::entity::{Bucket, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, UpdateBucketRequest};
+use crate::http::entity::{Bucket, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketsRequest, ListBucketsResponse, UpdateBucketRequest};
 use google_cloud_auth::token_source::TokenSource;
 use crate::http::CancellationToken;
 use reqwest::{RequestBuilder, Response};
@@ -101,6 +101,42 @@ impl StorageClient {
             let response = builder.query(&query_param).send().await?;
             if response.status().is_success() {
                 Ok(response.json().await?)
+            } else {
+                Err(map_error(response).await)
+            }
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn list_buckets(
+        &self,
+        req: &ListBucketsRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ListBucketsResponse, Error> {
+        let max_results = if let Some(max_results) = &req.max_results {
+            max_results.to_string()
+        }else {
+            "".to_string()
+        };
+        let action = async {
+            let url = format!("{}/b?alt=json&prettyPrint=false", BASE_URL);
+            let mut query_param: Vec<(&str, &str)> = vec![("project", req.project.as_str())];
+            if let Some(projection) = req.projection {
+                query_param.push(("projection", projection.into()))
+            }
+            if let Some(page_token) = &req.page_token {
+                query_param.push(("pageToken", page_token))
+            }
+            if let Some(prefix) = &req.prefix {
+                query_param.push(("prefix", prefix))
+            }
+            if !max_results.is_empty() {
+                query_param.push(("prefix", max_results.as_str()))
+            }
+            let builder = self.with_headers(reqwest::Client::new().get(url)).await?;
+            let response = builder.query(&query_param).send().await?;
+            if response.status().is_success() {
+                return Ok(response.json().await?)
             } else {
                 Err(map_error(response).await)
             }

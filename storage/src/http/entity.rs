@@ -60,7 +60,6 @@ pub struct Bucket {
     /// same.
     /// Attempting to update this field after the bucket is created will result in
     /// a \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
-    #[serde(skip_serializing_if = "is_empty")]
     pub id: String,
     /// The name of the bucket.
     /// Attempting to update this field after the bucket is created will result in
@@ -84,7 +83,6 @@ pub struct Bucket {
     /// \[<https://developers.google.com/storage/docs/concepts-techniques#specifyinglocations"\][developer's>
     /// guide] for the authoritative list. Attempting to update this field after
     /// the bucket is created will result in an error.
-    #[serde(skip_serializing_if = "is_empty")]
     pub location: String,
     /// The bucket's default storage class, used whenever no storageClass is
     /// specified for a newly-created object. This defines how objects in the
@@ -92,13 +90,11 @@ pub struct Bucket {
     /// If this value is not specified when the bucket is created, it will default
     /// to `STANDARD`. For more information, see
     /// <https://developers.google.com/storage/docs/storage-classes.>
-    #[serde(skip_serializing_if = "is_empty")]
     pub storage_class: String,
     /// HTTP 1.1 \[<https://tools.ietf.org/html/rfc7232#section-2.3"\]Entity> tag]
     /// for the bucket.
     /// Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
-    #[serde(skip_serializing_if = "is_empty")]
     pub etag: String,
     /// The modification time of the bucket.
     /// Attempting to set or update this field will result in a
@@ -117,7 +113,7 @@ pub struct Bucket {
     /// duration of the objects begins from the moment event-based hold
     /// transitioned from true to false.  Objects under event-based hold cannot be
     /// deleted, overwritten or archived until the hold is removed.
-    pub default_event_based_hold: bool,
+    pub default_event_based_hold: Option<bool>,
     /// User-provided labels, in key/value pairs.
     pub labels: Option<::std::collections::HashMap<String, String>>,
     /// The bucket's website configuration, controlling how the service behaves
@@ -147,7 +143,6 @@ pub struct Bucket {
     /// result in a PERMISSION_DENIED error.
     pub retention_policy: Option<bucket::RetentionPolicy>,
     /// The location type of the bucket (region, dual-region, multi-region, etc).
-    #[serde(skip_serializing_if = "is_empty")]
     pub location_type: String,
     /// The recovery point objective for cross-region replication of the bucket.
     /// Applicable only for dual- and multi-region buckets.
@@ -383,7 +378,7 @@ pub struct ListBucketsResponse {
     pub items: Vec<Bucket>,
     /// The continuation token, used to page through large result sets. Provide
     /// this value in a subsequent request to return the next page of results.
-    pub next_page_token: String,
+    pub next_page_token: Option<String>,
 }
 /// An notification channel used to watch for resource changes.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
@@ -937,16 +932,16 @@ pub struct ListChannelsRequest {
 pub struct ListBucketsRequest {
     /// Maximum number of buckets to return in a single response. The service will
     /// use this parameter or 1,000 items, whichever is smaller.
-    pub max_results: i32,
+    pub max_results: Option<i32>,
     /// A previously-returned page token representing part of the larger set of
     /// results to view.
-    pub page_token: String,
+    pub page_token: Option<String>,
     /// Filter results to buckets whose names begin with this prefix.
-    pub prefix: String,
+    pub prefix: Option<String>,
     /// Required. A valid API project identifier.
     pub project: String,
     /// Set of properties to return. Defaults to `NO_ACL`.
-    pub projection: Projection,
+    pub projection: Option<Projection>,
 }
 /// Request message for LockRetentionPolicy.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]

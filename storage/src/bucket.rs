@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use crate::http::entity::bucket::{Versioning, Website};
 use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
-use crate::http::entity::{Bucket, BucketAccessControl, BucketCreationConfig, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ObjectAccessControl, ObjectAccessControlsCreationConfig, RetentionPolicyCreationConfig};
+use crate::http::entity::{Bucket, BucketAccessControl, BucketCreationConfig, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketsRequest, ObjectAccessControl, ObjectAccessControlsCreationConfig, RetentionPolicyCreationConfig};
 use crate::http::storage_client::{Error, StorageClient};
 use crate::sign::{signed_url, SignBy, SignedURLError, SignedURLOptions};
 use chrono::{DateTime, SecondsFormat, Timelike, Utc};
