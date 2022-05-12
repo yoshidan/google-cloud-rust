@@ -14,9 +14,7 @@ pub struct ObjectAccessControlsCreationConfig {
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct BucketCreationConfig {
-    pub name: String,
-    pub predefined_acl: Option<PredefinedBucketAcl>,
-    pub predefined_default_object_acl: Option<PredefinedObjectAcl>,
+    pub(crate) name: String,
     pub acl: Option<Vec<BucketAccessControl>>,
     pub default_object_acl: Option<Vec<ObjectAccessControlsCreationConfig>>,
     pub lifecycle: Option<bucket::Lifecycle>,
@@ -902,7 +900,7 @@ pub struct DeleteBucketRequest {
     pub if_metageneration_not_match: Option<i64>,
 }
 /// Request message for GetBucket.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize,Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetBucketRequest {
     /// Required. Name of a bucket.
@@ -914,15 +912,15 @@ pub struct GetBucketRequest {
     /// current metageneration does not match the given value.
     pub if_metageneration_not_match: Option<i64>,
     /// Set of properties to return. Defaults to `NO_ACL`.
-    pub projection: Projection,
+    pub projection: Option<Projection>,
 }
 /// Request message for InsertBucket.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize,Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InsertBucketRequest {
     pub predefined_acl: Option<PredefinedBucketAcl>,
     pub predefined_default_object_acl: Option<PredefinedObjectAcl>,
-    pub project: String,
+    pub(crate) project: String,
     pub projection: Option<Projection>,
     pub bucket: BucketCreationConfig,
 }

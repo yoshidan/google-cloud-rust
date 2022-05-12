@@ -1,5 +1,5 @@
 use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
-use crate::http::entity::{Bucket, DeleteBucketRequest, InsertBucketRequest, UpdateBucketRequest};
+use crate::http::entity::{Bucket, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, UpdateBucketRequest};
 use google_cloud_auth::token_source::TokenSource;
 use crate::http::CancellationToken;
 use reqwest::{RequestBuilder, Response};
@@ -59,7 +59,7 @@ impl StorageClient {
 
     pub async fn insert_bucket(
         &self,
-        req: InsertBucketRequest,
+        req: &InsertBucketRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<Bucket, Error> {
         let action = async {
@@ -76,6 +76,28 @@ impl StorageClient {
             }
             let builder = self.with_headers(reqwest::Client::new().post(url)).await?;
             let response = builder.query(&query_param).json(&req.bucket).send().await?;
+            if response.status().is_success() {
+                Ok(response.json().await?)
+            } else {
+                Err(map_error(response).await)
+            }
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn get_bucket(
+        &self,
+        req: &GetBucketRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Bucket, Error> {
+        let action = async {
+            let url = format!("{}/b?alt=json&prettyPrint=false", BASE_URL);
+            let mut query_param: Vec<(&str, &str)> = vec![];
+            if let Some(projection) = req.projection {
+                query_param.push(("projection", projection.into()))
+            }
+            let builder = self.with_headers(reqwest::Client::new().get(url)).await?;
+            let response = builder.query(&query_param).send().await?;
             if response.status().is_success() {
                 Ok(response.json().await?)
             } else {

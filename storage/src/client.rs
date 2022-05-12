@@ -90,7 +90,7 @@ mod test {
     use crate::bucket::BucketHandle;
     use crate::http::entity::bucket::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
     use crate::http::entity::bucket::{Billing, Cors, Encryption, IamConfiguration, Lifecycle, Logging, RetentionPolicy, Versioning, Website};
-    use crate::http::entity::{Bucket, BucketAccessControl, BucketCreationConfig, ObjectAccessControl, ObjectAccessControlsCreationConfig, RetentionPolicyCreationConfig};
+    use crate::http::entity::{Bucket, BucketAccessControl, BucketCreationConfig, InsertBucketRequest, ObjectAccessControl, ObjectAccessControlsCreationConfig, RetentionPolicyCreationConfig};
     use crate::http::entity::bucket::lifecycle::Rule;
     use crate::http::entity::bucket::lifecycle::rule::{Action, ActionType, Condition};
     use crate::http::entity::common_enums::PredefinedBucketAcl;
@@ -171,7 +171,10 @@ mod test {
             rpo: Some("DEFAULT".to_string()),
             ..Default::default()
         };
-        let result = do_create(&config).await;
+        let result = do_create(&mut InsertBucketRequest {
+            bucket: config,
+            ..Default::default()
+        }).await;
         assert!(result.acl.is_some());
         assert!(!result.acl.unwrap().is_empty());
     }
@@ -179,14 +182,17 @@ mod test {
     #[tokio::test]
     #[serial]
     async fn create_authenticated() {
-        let config = BucketCreationConfig {
+        let mut req = InsertBucketRequest {
             //認証ユーザのみ、きめ細かい管理
             predefined_acl: Some(PredefinedBucketAcl::BucketAclAuthenticatedRead),
-            location: "ASIA-NORTHEAST1".to_string(),
-            storage_class: "STANDARD".to_string(),
+            bucket: BucketCreationConfig {
+                location: "ASIA-NORTHEAST1".to_string(),
+                storage_class: "STANDARD".to_string(),
+                ..Default::default()
+            },
             ..Default::default()
         };
-        let result = do_create(&config).await;
+        let result = do_create(&mut req).await;
         assert!(result.acl.is_some());
         assert!(!result.acl.unwrap().is_empty());
     }
@@ -194,20 +200,23 @@ mod test {
     #[tokio::test]
     #[serial]
     async fn create_public_uniform() {
-        let config = BucketCreationConfig {
+        let mut req = InsertBucketRequest {
             predefined_acl: Some(PredefinedBucketAcl::BucketAclPublicRead),
-            iam_configuration: Some(IamConfiguration {
-                uniform_bucket_level_access: Some(UniformBucketLevelAccess {
-                    enabled: true,
-                    locked_time: None
+            bucket: BucketCreationConfig {
+                iam_configuration: Some(IamConfiguration {
+                    uniform_bucket_level_access: Some(UniformBucketLevelAccess {
+                        enabled: true,
+                        locked_time: None
+                    }),
+                    public_access_prevention: Some(PublicAccessPrevention::Enforced)
                 }),
-                public_access_prevention: Some(PublicAccessPrevention::Enforced)
-            }),
-            location: "ASIA-NORTHEAST1".to_string(),
-            storage_class: "STANDARD".to_string(),
+                location: "ASIA-NORTHEAST1".to_string(),
+                storage_class: "STANDARD".to_string(),
+                ..Default::default()
+            },
             ..Default::default()
         };
-        let result = do_create(&config).await;
+        let result = do_create(&mut req).await;
         assert!(result.acl.is_some());
         assert!(!result.acl.unwrap().is_empty());
     }
@@ -227,37 +236,44 @@ mod test {
             storage_class: "STANDARD".to_string(),
             ..Default::default()
         };
-        let result = do_create(&config).await;
+        let result = do_create(&mut InsertBucketRequest {
+            bucket: config,
+            ..Default::default()
+        }).await;
         assert!(result.acl.is_none());
     }
 
     #[tokio::test]
     #[serial]
     async fn create_objectacl_versioned() {
-        let config = BucketCreationConfig {
-            location: "ASIA-NORTHEAST1".to_string(),
-            storage_class: "STANDARD".to_string(),
-            versioning: Some(Versioning {
-                enabled: true
-            }),
+        let mut req = InsertBucketRequest {
+            bucket: BucketCreationConfig {
+                location: "ASIA-NORTHEAST1".to_string(),
+                storage_class: "STANDARD".to_string(),
+                versioning: Some(Versioning
+                {
+                    enabled: true
+                }),
+                ..Default::default()
+            },
             ..Default::default()
         };
-        let result = do_create(&config).await;
+        let result = do_create(&mut req).await;
         assert!(result.acl.is_none());
     }
 
-    async fn do_create(config : &BucketCreationConfig) -> Bucket {
+    async fn do_create(req: &mut InsertBucketRequest) -> Bucket {
         let bucket_name = format!("rust-test-{}", chrono::Utc::now().timestamp());
         let client = client::Client::new().await.unwrap();
         let bucket = client.bucket(&bucket_name).await;
         let result = bucket
-            .create(&config, Some(CancellationToken::default()))
+            .insert(req, Some(CancellationToken::default()))
             .await.unwrap();
         println!("{:?}", serde_json::to_string(&result));
         bucket.delete(Some(CancellationToken::default())).await;
         assert_eq!(result.name, bucket_name);
-        assert_eq!(result.storage_class, config.storage_class);
-        assert_eq!(result.location, config.location);
+        assert_eq!(result.storage_class, req.bucket.storage_class);
+        assert_eq!(result.location, req.bucket.location);
         return result
     }
 }

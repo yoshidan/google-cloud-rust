@@ -1,11 +1,13 @@
+use std::collections::HashMap;
 use crate::http::entity::bucket::{Versioning, Website};
 use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
-use crate::http::entity::{Bucket, BucketAccessControl, BucketCreationConfig, DeleteBucketRequest, InsertBucketRequest, ObjectAccessControl};
+use crate::http::entity::{Bucket, BucketAccessControl, BucketCreationConfig, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ObjectAccessControl, ObjectAccessControlsCreationConfig, RetentionPolicyCreationConfig};
 use crate::http::storage_client::{Error, StorageClient};
 use crate::sign::{signed_url, SignBy, SignedURLError, SignedURLOptions};
 use chrono::{DateTime, SecondsFormat, Timelike, Utc};
 use tokio_util::sync::CancellationToken;
 use google_cloud_auth::credentials::CredentialsFile;
+use crate::bucket;
 
 pub struct BucketHandle<'a> {
     name: String,
@@ -58,17 +60,18 @@ impl<'a> BucketHandle<'a> {
         self.storage_client.delete_bucket(req, cancel).await
     }
 
-    pub async fn create(&self, attr: &BucketCreationConfig, cancel: Option<CancellationToken>) -> Result<Bucket, Error> {
-        let mut cloned = attr.clone();
-        cloned.name = self.name.to_string();
-        let req = InsertBucketRequest {
-            predefined_acl: attr.predefined_acl,
-            predefined_default_object_acl: attr.predefined_default_object_acl,
-            projection: None,
-            project: self.project_id.to_string(),
-            bucket: cloned,
-        };
+    pub async fn insert(&self, req: &mut InsertBucketRequest, cancel: Option<CancellationToken>) -> Result<Bucket, Error> {
+        req.project = self.project_id.to_string();
+        req.bucket.name = self.name.to_string();
         self.storage_client.insert_bucket(req, cancel).await
+    }
+
+    pub async fn get(&self, cancel: Option<CancellationToken>) -> Result<Bucket, Error> {
+        let req = GetBucketRequest {
+            bucket: self.name.to_string(),
+            ..Default::default()
+        };
+        self.storage_client.get_bucket(&req, cancel).await
     }
 
 }
