@@ -199,7 +199,7 @@ pub struct SetIamPolicyRequest {
     /// the policy is limited to a few 10s of KB. An empty policy is a
     /// valid policy but certain Cloud Platform services (such as Projects)
     /// might reject them.
-    pub policy: Option<Policy>,
+    pub policy: Policy,
 }
 /// Request message for `GetIamPolicy` method.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]

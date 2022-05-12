@@ -1,5 +1,5 @@
 use std::fs::Permissions;
-use crate::http::iam::{GetIamPolicyRequest, Policy, TestIamPermissionsRequest};
+use crate::http::iam::{GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest};
 use crate::http::storage_client::{Error, StorageClient};
 use tokio_util::sync::CancellationToken;
 
@@ -19,6 +19,14 @@ impl<'a> IAMHandle<'a> {
             requested_policy_version: None,
         };
         self.storage_client.get_iam_policy(&req, cancel).await
+    }
+
+    pub async fn set(&self, policy: Policy, cancel: Option<CancellationToken>) -> Result<(), Error> {
+        let req = SetIamPolicyRequest {
+            resource: self.name.to_string(),
+            policy
+        };
+        self.storage_client.set_iam_policy(&req, cancel).await
     }
 
     pub async fn test(&self, permissions: &[&str], cancel: Option<CancellationToken>) -> Result<Vec<String>, Error> {
@@ -68,8 +76,22 @@ mod test {
         let bucket = client.bucket("atl-dev1-test").await;
         let iam = bucket.iam();
         let policy = iam.get(None).await.unwrap();
-        assert_eq!(policy.version, 1);
         info!("{:?}", serde_json::to_string(&policy));
+        assert_eq!(policy.version, 1);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn set() {
+        let client = client::Client::new().await.unwrap();
+        let bucket = client.bucket("atl-dev1-test").await;
+        let iam = bucket.iam();
+        let mut policy = iam.get(None).await.unwrap();
+       // policy.bindings = vec![];
+        iam.set(policy, None).await.unwrap();
+        policy = iam.get(None).await.unwrap();
+        info!("{:?}", serde_json::to_string(&policy));
+        assert!(policy.bindings.is_empty());
     }
 
     #[tokio::test]
@@ -79,8 +101,8 @@ mod test {
         let bucket = client.bucket("atl-dev1-test").await;
         let iam = bucket.iam();
         let permissions = iam.test(&vec!["storage.buckets.get"], None).await.unwrap();
+        info!("{:?}", permissions);
         assert!(!permissions.is_empty());
         assert_eq!(permissions[0], "storage.buckets.get");
-        info!("{:?}", permissions);
     }
 }

@@ -3,7 +3,7 @@ use crate::http::entity::{
     Bucket, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketsRequest, ListBucketsResponse,
     PatchBucketRequest, UpdateBucketRequest,
 };
-use crate::http::iam::{GetIamPolicyRequest, Policy, TestIamPermissionsRequest, TestIamPermissionsResponse};
+use crate::http::iam::{GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest, TestIamPermissionsResponse};
 use crate::http::CancellationToken;
 use google_cloud_auth::token_source::TokenSource;
 use google_cloud_metadata::project_id;
@@ -169,6 +169,19 @@ impl StorageClient {
             }
             let builder = self.with_headers(reqwest::Client::new().get(url)).await?;
             send(builder.query(&query_param)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn set_iam_policy(
+        &self,
+        req: &SetIamPolicyRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<(), Error> {
+        let action = async {
+            let url = format!("{}/b/{}/iam?alt=json&prettyPrint=false", BASE_URL, req.resource);
+            let builder = self.with_headers(reqwest::Client::new().put(url)).await?;
+            send(builder.json(&req.policy)).await
         };
         invoke(cancel, action).await
     }
