@@ -21,7 +21,7 @@ impl<'a> IAMHandle<'a> {
         self.storage_client.get_iam_policy(&req, cancel).await
     }
 
-    pub async fn set(&self, policy: Policy, cancel: Option<CancellationToken>) -> Result<(), Error> {
+    pub async fn set(&self, policy: Policy, cancel: Option<CancellationToken>) -> Result<Policy, Error> {
         let req = SetIamPolicyRequest {
             resource: self.name.to_string(),
             policy
@@ -62,7 +62,9 @@ mod test {
     use std::collections::HashMap;
     use std::time;
     use std::time::Duration;
+    use tokio::sync::OnceCell;
     use tracing::{info, Level};
+    use crate::http::iam::Binding;
 
     #[ctor::ctor]
     fn init() {
@@ -73,7 +75,7 @@ mod test {
     #[serial]
     async fn get() {
         let client = client::Client::new().await.unwrap();
-        let bucket = client.bucket("atl-dev1-test").await;
+        let bucket = client.bucket( "rust-iam-test");
         let iam = bucket.iam();
         let policy = iam.get(None).await.unwrap();
         info!("{:?}", serde_json::to_string(&policy));
@@ -84,21 +86,25 @@ mod test {
     #[serial]
     async fn set() {
         let client = client::Client::new().await.unwrap();
-        let bucket = client.bucket("atl-dev1-test").await;
+        let bucket = client.bucket( "rust-iam-test");
         let iam = bucket.iam();
         let mut policy = iam.get(None).await.unwrap();
-       // policy.bindings = vec![];
-        iam.set(policy, None).await.unwrap();
-        policy = iam.get(None).await.unwrap();
-        info!("{:?}", serde_json::to_string(&policy));
-        assert!(policy.bindings.is_empty());
+        policy.bindings.push(Binding {
+            role: "roles/storage.objectViewer".to_string(),
+            members: vec!["allAuthenticatedUsers".to_string()],
+            condition: None
+        });
+        let mut result = iam.set(policy, None).await.unwrap();
+        info!("{:?}", serde_json::to_string(&result));
+        assert_eq!(result.bindings.len(), 5);
+        assert_eq!(result.bindings.pop().unwrap().role, "roles/storage.objectViewer");
     }
 
     #[tokio::test]
     #[serial]
     async fn test() {
         let client = client::Client::new().await.unwrap();
-        let bucket = client.bucket("atl-dev1-test").await;
+        let bucket = client.bucket( "rust-iam-test");
         let iam = bucket.iam();
         let permissions = iam.test(&vec!["storage.buckets.get"], None).await.unwrap();
         info!("{:?}", permissions);

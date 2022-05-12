@@ -63,7 +63,7 @@ impl Client {
         })
     }
 
-    pub async fn bucket(&self, name: &str) -> BucketHandle<'_> {
+    pub fn bucket(&self, name: &str) -> BucketHandle<'_> {
         BucketHandle::new(
             //format!("projects/{}/buckets/{}", self.project_id, name), <- for v2 gRPC API
             name.to_string(),
@@ -148,7 +148,7 @@ mod test {
     #[serial]
     async fn delete() {
         let client = client::Client::new().await.unwrap();
-        let bucket = client.bucket("atl-dev1-test").await;
+        let bucket = client.bucket("atl-dev1-test");
         let result = bucket.delete(Some(CancellationToken::default())).await;
         assert!(result.is_ok(), "{}", result.unwrap_err())
     }
@@ -296,7 +296,7 @@ mod test {
     async fn do_create(req: &mut InsertBucketRequest) -> Bucket {
         let bucket_name = format!("rust-test-{}", chrono::Utc::now().timestamp());
         let client = client::Client::new().await.unwrap();
-        let bucket = client.bucket(&bucket_name).await;
+        let bucket = client.bucket(&bucket_name);
         let result = bucket.insert(req, Some(CancellationToken::default())).await.unwrap();
         bucket.delete(None).await;
         assert_eq!(result.name, bucket_name);
@@ -310,7 +310,7 @@ mod test {
     async fn get_bucket() {
         let bucket_name = "atl-dev1-test";
         let client = client::Client::new().await.unwrap();
-        let bucket = client.bucket(bucket_name).await;
+        let bucket = client.bucket(bucket_name);
         let result = bucket.get(None).await.unwrap();
         assert_eq!(result.name, bucket_name);
     }
@@ -331,7 +331,7 @@ mod test {
     async fn patch_bucket() {
         let bucket_name = "atl-dev1-test";
         let client = client::Client::new().await.unwrap();
-        let bucket = client.bucket(bucket_name).await;
+        let bucket = client.bucket(bucket_name);
         let req = BucketPatchConfig {
             retention_policy: Some(RetentionPolicyCreationConfig { retention_period: 1000 }),
             ..Default::default()

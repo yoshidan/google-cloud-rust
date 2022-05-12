@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::mem;
 use std::sync::Arc;
+use tracing::info;
 
 const BASE_URL: &str = "https://storage.googleapis.com/storage/v1";
 
@@ -177,7 +178,7 @@ impl StorageClient {
         &self,
         req: &SetIamPolicyRequest,
         cancel: Option<CancellationToken>,
-    ) -> Result<(), Error> {
+    ) -> Result<Policy, Error> {
         let action = async {
             let url = format!("{}/b/{}/iam?alt=json&prettyPrint=false", BASE_URL, req.resource);
             let builder = self.with_headers(reqwest::Client::new().put(url)).await?;
