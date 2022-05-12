@@ -1,13 +1,18 @@
-use std::collections::HashMap;
+use crate::bucket;
 use crate::http::entity::bucket::{Versioning, Website};
 use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
-use crate::http::entity::{Bucket, BucketAccessControl, BucketCreationConfig, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketsRequest, ObjectAccessControl, ObjectAccessControlsCreationConfig, PatchBucketRequest, RetentionPolicyCreationConfig};
+use crate::http::entity::{
+    Bucket, BucketAccessControl, BucketCreationConfig, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest,
+    ListBucketsRequest, ObjectAccessControl, ObjectAccessControlsCreationConfig, PatchBucketRequest,
+    RetentionPolicyCreationConfig,
+};
 use crate::http::storage_client::{Error, StorageClient};
+use crate::iam::IAMHandle;
 use crate::sign::{signed_url, SignBy, SignedURLError, SignedURLOptions};
 use chrono::{DateTime, SecondsFormat, Timelike, Utc};
-use tokio_util::sync::CancellationToken;
 use google_cloud_auth::credentials::CredentialsFile;
-use crate::bucket;
+use std::collections::HashMap;
+use tokio_util::sync::CancellationToken;
 
 pub struct BucketHandle<'a> {
     name: String,
@@ -60,7 +65,11 @@ impl<'a> BucketHandle<'a> {
         self.storage_client.delete_bucket(req, cancel).await
     }
 
-    pub async fn insert(&self, req: &mut InsertBucketRequest, cancel: Option<CancellationToken>) -> Result<Bucket, Error> {
+    pub async fn insert(
+        &self,
+        req: &mut InsertBucketRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Bucket, Error> {
         req.bucket.name = self.name.to_string();
         self.storage_client.insert_bucket(self.project_id, req, cancel).await
     }
@@ -74,6 +83,12 @@ impl<'a> BucketHandle<'a> {
     }
 
     pub async fn patch(&self, req: &PatchBucketRequest, cancel: Option<CancellationToken>) -> Result<Bucket, Error> {
-        self.storage_client.patch_bucket(self.name.as_str(), self.project_id, &req, cancel).await
+        self.storage_client
+            .patch_bucket(self.name.as_str(), self.project_id, &req, cancel)
+            .await
+    }
+
+    pub fn iam(&self) -> IAMHandle {
+        IAMHandle::new(self.name.as_str(), &self.storage_client)
     }
 }

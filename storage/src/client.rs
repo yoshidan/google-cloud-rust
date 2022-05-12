@@ -1,11 +1,11 @@
-use crate::http::storage_client::StorageClient;
 use crate::bucket::BucketHandle;
+use crate::http;
+use crate::http::entity::{Bucket, ListBucketsRequest};
+use crate::http::storage_client::StorageClient;
 use google_cloud_auth::credentials::CredentialsFile;
 use google_cloud_auth::{create_token_source_from_credentials, Config};
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
-use crate::http;
-use crate::http::entity::{Bucket, ListBucketsRequest};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -77,8 +77,12 @@ impl Client {
         )
     }
 
-    pub async fn buckets(&self, prefix: Option<String>, cancel: Option<CancellationToken>) -> Result<Vec<Bucket>, http::storage_client::Error> {
-        let mut result :Vec<Bucket> = vec![];
+    pub async fn buckets(
+        &self,
+        prefix: Option<String>,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Vec<Bucket>, http::storage_client::Error> {
+        let mut result: Vec<Bucket> = vec![];
         let mut page_token = None;
         loop {
             let req = ListBucketsRequest {
@@ -87,38 +91,45 @@ impl Client {
                 page_token,
                 projection: None,
             };
-            let response = self.storage_client.list_buckets(self.project_id.as_str(), &req, cancel.clone()).await?;
+            let response = self
+                .storage_client
+                .list_buckets(self.project_id.as_str(), &req, cancel.clone())
+                .await?;
             result.extend(response.items);
             if response.next_page_token.is_none() {
                 break;
-            }else {
+            } else {
                 page_token = response.next_page_token;
             }
         }
-        return Ok(result)
+        return Ok(result);
     }
-
 }
 
 #[cfg(test)]
 mod test {
+    use crate::bucket::BucketHandle;
     use crate::client;
+    use crate::http::entity::bucket::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
+    use crate::http::entity::bucket::lifecycle::rule::{Action, ActionType, Condition};
+    use crate::http::entity::bucket::lifecycle::Rule;
+    use crate::http::entity::bucket::{
+        Billing, Cors, Encryption, IamConfiguration, Lifecycle, Logging, RetentionPolicy, Versioning, Website,
+    };
+    use crate::http::entity::common_enums::PredefinedBucketAcl;
+    use crate::http::entity::{
+        Bucket, BucketAccessControl, BucketCreationConfig, BucketPatchConfig, InsertBucketRequest, ObjectAccessControl,
+        ObjectAccessControlsCreationConfig, PatchBucketRequest, RetentionPolicyCreationConfig,
+    };
+    use crate::http::CancellationToken;
     use chrono::{DateTime, Utc};
     use google_cloud_auth::credentials::CredentialsFile;
-    use crate::http::CancellationToken;
+    use serde_json;
     use serial_test::serial;
     use std::collections::HashMap;
     use std::time;
     use std::time::Duration;
     use tracing::Level;
-    use serde_json;
-    use crate::bucket::BucketHandle;
-    use crate::http::entity::bucket::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
-    use crate::http::entity::bucket::{Billing, Cors, Encryption, IamConfiguration, Lifecycle, Logging, RetentionPolicy, Versioning, Website};
-    use crate::http::entity::{Bucket, BucketAccessControl, BucketCreationConfig, BucketPatchConfig, InsertBucketRequest, ObjectAccessControl, ObjectAccessControlsCreationConfig, PatchBucketRequest, RetentionPolicyCreationConfig};
-    use crate::http::entity::bucket::lifecycle::Rule;
-    use crate::http::entity::bucket::lifecycle::rule::{Action, ActionType, Condition};
-    use crate::http::entity::common_enums::PredefinedBucketAcl;
 
     #[ctor::ctor]
     fn init() {
@@ -154,31 +165,27 @@ mod test {
             labels: Some(labels),
             website: Some(Website {
                 main_page_suffix: "_suffix".to_string(),
-                not_found_page: "notfound.html".to_string()
+                not_found_page: "notfound.html".to_string(),
             }),
-            billing: Some(Billing {
-                requester_pays: true
-            }),
+            billing: Some(Billing { requester_pays: true }),
             retention_policy: Some(RetentionPolicyCreationConfig {
-                retention_period: 10000
+                retention_period: 10000,
             }),
-            default_object_acl: Some(vec![
-                ObjectAccessControlsCreationConfig {
-                    entity: "allUsers".to_string(),
-                    role: "READER".to_string(),
-                }
-            ]),
+            default_object_acl: Some(vec![ObjectAccessControlsCreationConfig {
+                entity: "allUsers".to_string(),
+                role: "READER".to_string(),
+            }]),
             cors: Some(vec![Cors {
                 origin: vec!["*".to_string()],
                 method: vec!["GET".to_string(), "HEAD".to_string()],
                 response_header: vec!["200".to_string()],
-                max_age_seconds: 100
+                max_age_seconds: 100,
             }]),
             lifecycle: Some(Lifecycle {
                 rule: vec![Rule {
                     action: Some(Action {
                         r#type: ActionType::Delete,
-                        storage_class: None
+                        storage_class: None,
                     }),
                     condition: Some(Condition {
                         age: 365,
@@ -190,8 +197,8 @@ mod test {
                         custom_time_before: None,
                         days_since_noncurrent_time: None,
                         noncurrent_time_before: None,
-                    })
-                }]
+                    }),
+                }],
             }),
             rpo: Some("DEFAULT".to_string()),
             ..Default::default()
@@ -199,7 +206,8 @@ mod test {
         let result = do_create(&mut InsertBucketRequest {
             bucket: config,
             ..Default::default()
-        }).await;
+        })
+        .await;
         assert!(result.acl.is_some());
         assert!(!result.acl.unwrap().is_empty());
     }
@@ -231,9 +239,9 @@ mod test {
                 iam_configuration: Some(IamConfiguration {
                     uniform_bucket_level_access: Some(UniformBucketLevelAccess {
                         enabled: true,
-                        locked_time: None
+                        locked_time: None,
                     }),
-                    public_access_prevention: Some(PublicAccessPrevention::Enforced)
+                    public_access_prevention: Some(PublicAccessPrevention::Enforced),
                 }),
                 location: "ASIA-NORTHEAST1".to_string(),
                 storage_class: "STANDARD".to_string(),
@@ -253,9 +261,9 @@ mod test {
             iam_configuration: Some(IamConfiguration {
                 uniform_bucket_level_access: Some(UniformBucketLevelAccess {
                     enabled: true,
-                    locked_time: None
+                    locked_time: None,
                 }),
-                public_access_prevention: Some(PublicAccessPrevention::Enforced)
+                public_access_prevention: Some(PublicAccessPrevention::Enforced),
             }),
             location: "ASIA-NORTHEAST1".to_string(),
             storage_class: "STANDARD".to_string(),
@@ -264,7 +272,8 @@ mod test {
         let result = do_create(&mut InsertBucketRequest {
             bucket: config,
             ..Default::default()
-        }).await;
+        })
+        .await;
         assert!(result.acl.is_none());
     }
 
@@ -275,10 +284,7 @@ mod test {
             bucket: BucketCreationConfig {
                 location: "ASIA-NORTHEAST1".to_string(),
                 storage_class: "STANDARD".to_string(),
-                versioning: Some(Versioning
-                {
-                    enabled: true
-                }),
+                versioning: Some(Versioning { enabled: true }),
                 ..Default::default()
             },
             ..Default::default()
@@ -291,14 +297,12 @@ mod test {
         let bucket_name = format!("rust-test-{}", chrono::Utc::now().timestamp());
         let client = client::Client::new().await.unwrap();
         let bucket = client.bucket(&bucket_name).await;
-        let result = bucket
-            .insert(req, Some(CancellationToken::default()))
-            .await.unwrap();
+        let result = bucket.insert(req, Some(CancellationToken::default())).await.unwrap();
         bucket.delete(None).await;
         assert_eq!(result.name, bucket_name);
         assert_eq!(result.storage_class, req.bucket.storage_class);
         assert_eq!(result.location, req.bucket.location);
-        return result
+        return result;
     }
 
     #[tokio::test]
@@ -318,7 +322,7 @@ mod test {
         let client = client::Client::new().await.unwrap();
         let result = client.buckets(prefix, None).await.unwrap();
         assert_eq!(result.len(), 1);
-        let result2= client.buckets(None, None).await.unwrap();
+        let result2 = client.buckets(None, None).await.unwrap();
         assert!(result2.len() > 1);
     }
 
@@ -329,15 +333,19 @@ mod test {
         let client = client::Client::new().await.unwrap();
         let bucket = client.bucket(bucket_name).await;
         let req = BucketPatchConfig {
-            retention_policy: Some(RetentionPolicyCreationConfig {
-                retention_period: 1000
-            }),
+            retention_policy: Some(RetentionPolicyCreationConfig { retention_period: 1000 }),
             ..Default::default()
         };
-        let result = bucket.patch(&PatchBucketRequest {
-            metadata: Some(req),
-            ..Default::default()
-        }, None).await.unwrap();
+        let result = bucket
+            .patch(
+                &PatchBucketRequest {
+                    metadata: Some(req),
+                    ..Default::default()
+                },
+                None,
+            )
+            .await
+            .unwrap();
         assert_eq!(result.name, bucket_name);
     }
 }

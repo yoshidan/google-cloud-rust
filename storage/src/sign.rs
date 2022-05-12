@@ -1,7 +1,7 @@
+use crate::http::CancellationToken;
 use crate::sign::SignedURLError::InvalidOption;
 use chrono::{DateTime, SecondsFormat, Timelike, Utc};
 use google_cloud_auth::credentials::CredentialsFile;
-use crate::http::CancellationToken;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use ring::{rand, signature};

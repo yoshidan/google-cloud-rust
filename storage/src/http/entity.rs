@@ -1,8 +1,8 @@
+use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
+use serde::{de, Deserialize, Deserializer};
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::str::FromStr;
-use serde::{de, Deserialize, Deserializer};
-use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -33,7 +33,7 @@ pub struct BucketCreationConfig {
     pub rpo: Option<String>,
 }
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RetentionPolicyCreationConfig {
     pub retention_period: u64,
@@ -88,12 +88,12 @@ pub struct Bucket {
     /// The project number of the project the bucket belongs to.
     /// Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
-    #[serde(deserialize_with="from_str")]
+    #[serde(deserialize_with = "from_str")]
     pub project_number: i64,
     /// The metadata generation of this bucket.
     /// Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
-    #[serde(deserialize_with="from_str")]
+    #[serde(deserialize_with = "from_str")]
     pub metageneration: i64,
     /// The bucket's \[<https://www.w3.org/TR/cors/\][Cross-Origin> Resource Sharing]
     /// (CORS) configuration.
@@ -177,7 +177,7 @@ pub struct Bucket {
 /// Nested message and enum types in `Bucket`.
 pub mod bucket {
     /// Billing properties of a bucket.
-    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
     #[serde(rename_all = "camelCase")]
     pub struct Billing {
         /// When set to true, Requester Pays is enabled for this bucket.
@@ -187,7 +187,7 @@ pub mod bucket {
     /// For more on GCS and CORS, see
     /// <https://cloud.google.com/storage/docs/cross-origin.>
     /// For more on CORS in general, see <https://tools.ietf.org/html/rfc6454.>
-    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
     #[serde(rename_all = "camelCase")]
     pub struct Cors {
         /// The list of Origins eligible to receive CORS response headers. See
@@ -208,7 +208,7 @@ pub mod bucket {
         pub max_age_seconds: i32,
     }
     /// Encryption properties of a bucket.
-    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
     #[serde(rename_all = "camelCase")]
     pub struct Encryption {
         /// A Cloud KMS key that will be used to encrypt objects inserted into this
@@ -216,7 +216,7 @@ pub mod bucket {
         pub default_kms_key_name: String,
     }
     /// Bucket restriction options currently enforced on the bucket.
-    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
     #[serde(rename_all = "camelCase")]
     pub struct IamConfiguration {
         pub uniform_bucket_level_access: Option<iam_configuration::UniformBucketLevelAccess>,
@@ -225,7 +225,7 @@ pub mod bucket {
     }
     /// Nested message and enum types in `IamConfiguration`.
     pub mod iam_configuration {
-        #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+        #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
         #[serde(rename_all = "camelCase")]
         pub struct UniformBucketLevelAccess {
             /// If set, access checks only use bucket-level IAM policies or above.
@@ -237,7 +237,7 @@ pub mod bucket {
             pub locked_time: Option<chrono::DateTime<chrono::Utc>>,
         }
         /// Public Access Prevention configuration values.
-        #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize,Debug)]
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize, Debug)]
         #[repr(i32)]
         pub enum PublicAccessPrevention {
             /// Prevents access from being granted to public members 'allUsers' and
@@ -282,7 +282,7 @@ pub mod bucket {
                 SetStorageClass,
             }
             /// An action to take on an object.
-            #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+            #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
             #[serde(rename_all = "camelCase")]
             pub struct Action {
                 pub r#type: ActionType,
@@ -305,7 +305,7 @@ pub mod bucket {
         }
     }
     /// Logging-related properties of a bucket.
-    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
     #[serde(rename_all = "camelCase")]
     pub struct Logging {
         /// The destination bucket where the current bucket's logs should be placed.
@@ -314,7 +314,7 @@ pub mod bucket {
         pub log_object_prefix: String,
     }
     /// Retention policy properties of a bucket.
-    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
     #[serde(rename_all = "camelCase")]
     pub struct RetentionPolicy {
         /// Server-determined value that indicates the time from which policy was
@@ -333,7 +333,7 @@ pub mod bucket {
     /// Properties of a bucket related to versioning.
     /// For more on GCS versioning, see
     /// <https://cloud.google.com/storage/docs/object-versioning.>
-    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
     #[serde(rename_all = "camelCase")]
     pub struct Versioning {
         /// While set to true, versioning is fully enabled for this bucket.
@@ -342,7 +342,7 @@ pub mod bucket {
     /// Properties of a bucket related to accessing the contents as a static
     /// website. For more on hosting a static website via GCS, see
     /// <https://cloud.google.com/storage/docs/hosting-static-website.>
-    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
     #[serde(rename_all = "camelCase")]
     pub struct Website {
         /// If the requested object path is missing, the service will ensure the path
@@ -358,7 +358,7 @@ pub mod bucket {
         pub not_found_page: String,
     }
     /// Configuration for a bucket's Autoclass feature.
-    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
     #[serde(rename_all = "camelCase")]
     pub struct Autoclass {
         /// Enables Autoclass.
@@ -384,14 +384,14 @@ pub struct BucketAccessControl {
     pub self_link: String,
 }
 /// The response to a call to BucketAccessControls.ListBucketAccessControls.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListBucketAccessControlsResponse {
     /// The list of items.
     pub items: Vec<BucketAccessControl>,
 }
 /// The result of a call to Buckets.ListBuckets
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListBucketsResponse {
     /// The list of items.
@@ -401,7 +401,7 @@ pub struct ListBucketsResponse {
     pub next_page_token: Option<String>,
 }
 /// An notification channel used to watch for resource changes.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Channel {
     /// A UUID or similar unique string that identifies this channel.
@@ -426,7 +426,7 @@ pub struct Channel {
     pub payload: bool,
 }
 /// The result of a call to Channels.ListChannels
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListChannelsResponse {
     /// The list of notification channels for a bucket.
@@ -434,7 +434,7 @@ pub struct ListChannelsResponse {
 }
 /// Nested message and enum types in `ListChannelsResponse`.
 pub mod list_channels_response {
-    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
     #[serde(rename_all = "camelCase")]
     pub struct Items {
         /// User-specified name for a channel. Needed to unsubscribe.
@@ -452,7 +452,7 @@ pub mod list_channels_response {
 }
 /// Message used to convey content being read or written, along with its
 /// checksum.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ChecksummedData {
     /// The data.
@@ -461,7 +461,7 @@ pub struct ChecksummedData {
     pub crc32c: Option<u32>,
 }
 /// Message used for storing full (not subrange) object checksums.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ObjectChecksums {
     /// CRC32C digest of the object data. Computed by the GCS service for
@@ -473,13 +473,13 @@ pub struct ObjectChecksums {
     pub md5_hash: String,
 }
 /// A collection of enums used in multiple places throughout the API.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CommonEnums {}
 /// Nested message and enum types in `CommonEnums`.
 pub mod common_enums {
     /// A set of properties to return in a response.
-    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize,Debug)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize, Debug)]
     #[repr(i32)]
     pub enum Projection {
         /// Omit `owner`, `acl`, and `defaultObjectAcl` properties.
@@ -488,7 +488,7 @@ pub mod common_enums {
         Full = 2,
     }
     /// Predefined or "canned" aliases for sets of specific bucket ACL entries.
-    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize,Debug)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize, Debug)]
     #[repr(i32)]
     pub enum PredefinedBucketAcl {
         /// Project team owners get `OWNER` access, and
@@ -506,7 +506,7 @@ pub mod common_enums {
         BucketAclPublicReadWrite = 5,
     }
     /// Predefined or "canned" aliases for sets of specific object ACL entries.
-    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize,Debug)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize, Debug)]
     #[repr(i32)]
     pub enum PredefinedObjectAcl {
         /// Object owner gets `OWNER` access, and
@@ -529,7 +529,7 @@ pub mod common_enums {
     }
 }
 /// Specifies a requested range of bytes to download.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ContentRange {
     /// The starting offset of the object data.
@@ -540,7 +540,7 @@ pub struct ContentRange {
     pub complete_length: i64,
 }
 /// Hmac Key Metadata, which includes all information other than the secret.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct HmacKeyMetadata {
     /// Resource name ID of the key in the format <projectId>/<accessId>.
@@ -561,7 +561,7 @@ pub struct HmacKeyMetadata {
     pub etag: String,
 }
 /// A subscription to receive Google PubSub notifications.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Notification {
     /// The Cloud PubSub topic to which this subscription publishes. Formatted as:
@@ -585,14 +585,14 @@ pub struct Notification {
     pub id: String,
 }
 /// The result of a call to Notifications.ListNotifications
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListNotificationsResponse {
     /// The list of items.
     pub items: Vec<Notification>,
 }
 /// An object.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Object {
     /// Content-Encoding of the object data, matching
@@ -737,7 +737,7 @@ pub struct Object {
 /// Nested message and enum types in `Object`.
 pub mod object {
     /// Describes the customer-specified mechanism used to store the data at rest.
-    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
     #[serde(rename_all = "camelCase")]
     pub struct CustomerEncryption {
         /// The encryption algorithm.
@@ -765,14 +765,14 @@ pub struct ObjectAccessControl {
     pub self_link: Option<String>,
 }
 /// The result of a call to ObjectAccessControls.ListObjectAccessControls.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListObjectAccessControlsResponse {
     /// The list of items.
     pub items: Vec<ObjectAccessControl>,
 }
 /// The result of a call to Objects.ListObjects
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListObjectsResponse {
     /// The list of prefixes of objects matching-but-not-listed up to and including
@@ -785,7 +785,7 @@ pub struct ListObjectsResponse {
     pub next_page_token: String,
 }
 /// Represents the Viewers, Editors, or Owners of a given project.
-#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectTeam {
     /// The project number.
@@ -796,14 +796,14 @@ pub struct ProjectTeam {
     pub team: String,
 }
 /// A subscription to receive Google PubSub notifications.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ServiceAccount {
     /// The ID of the notification.
     pub email_address: String,
 }
 /// The owner of a specific resource.
-#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Owner {
     /// The entity, in the form `user-`*userId*.
@@ -813,7 +813,7 @@ pub struct Owner {
     pub entity_id: Option<String>,
 }
 /// Request message for DeleteBucketAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct DeleteBucketAccessControlRequest {
     /// Required. Name of a bucket.
@@ -828,7 +828,7 @@ pub struct DeleteBucketAccessControlRequest {
     pub entity: String,
 }
 /// Request message for GetBucketAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetBucketAccessControlRequest {
     /// Required. Name of a bucket.
@@ -843,7 +843,7 @@ pub struct GetBucketAccessControlRequest {
     pub entity: String,
 }
 /// Request message for InsertBucketAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InsertBucketAccessControlRequest {
     /// Required. Name of a bucket.
@@ -852,14 +852,14 @@ pub struct InsertBucketAccessControlRequest {
     pub bucket_access_control: Option<BucketAccessControl>,
 }
 /// Request message for ListBucketAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListBucketAccessControlsRequest {
     /// Required. Name of a bucket.
     pub bucket: String,
 }
 /// Request for PatchBucketAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PatchBucketAccessControlRequest {
     /// Required. Name of a bucket.
@@ -886,7 +886,7 @@ pub struct PatchBucketAccessControlRequest {
     pub update_mask: Option<()>, //TODO
 }
 /// Request for UpdateBucketAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateBucketAccessControlRequest {
     /// Required. Name of a bucket.
@@ -915,7 +915,7 @@ pub struct DeleteBucketRequest {
     pub if_metageneration_not_match: Option<i64>,
 }
 /// Request message for GetBucket.
-#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetBucketRequest {
     /// Required. Name of a bucket.
@@ -930,7 +930,7 @@ pub struct GetBucketRequest {
     pub projection: Option<Projection>,
 }
 /// Request message for InsertBucket.
-#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InsertBucketRequest {
     pub predefined_acl: Option<PredefinedBucketAcl>,
@@ -939,14 +939,14 @@ pub struct InsertBucketRequest {
     pub bucket: BucketCreationConfig,
 }
 /// Request message for ListChannels.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListChannelsRequest {
     /// Required. Name of a bucket.
     pub bucket: String,
 }
 /// Request message for ListBuckets.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListBucketsRequest {
     /// Maximum number of buckets to return in a single response. The service will
@@ -961,7 +961,7 @@ pub struct ListBucketsRequest {
     pub projection: Option<Projection>,
 }
 /// Request message for LockRetentionPolicy.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct LockRetentionPolicyRequest {
     /// Required. Name of a bucket.
@@ -971,7 +971,7 @@ pub struct LockRetentionPolicyRequest {
     pub if_metageneration_match: i64,
 }
 /// Request for PatchBucket method.
-#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PatchBucketRequest {
     /// Makes the return of the bucket metadata conditional on whether the bucket's
@@ -990,7 +990,7 @@ pub struct PatchBucketRequest {
     pub metadata: Option<BucketPatchConfig>,
 }
 /// Request for UpdateBucket method.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateBucketRequest {
     /// Required. Name of a bucket.
@@ -1011,14 +1011,14 @@ pub struct UpdateBucketRequest {
     pub metadata: Option<Bucket>,
 }
 /// Request message for StopChannel.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct StopChannelRequest {
     /// The channel to be stopped.
     pub channel: Option<Channel>,
 }
 /// Request message for DeleteDefaultObjectAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct DeleteDefaultObjectAccessControlRequest {
     /// Required. Name of a bucket.
@@ -1033,7 +1033,7 @@ pub struct DeleteDefaultObjectAccessControlRequest {
     pub entity: String,
 }
 /// Request message for GetDefaultObjectAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetDefaultObjectAccessControlRequest {
     /// Required. Name of a bucket.
@@ -1048,7 +1048,7 @@ pub struct GetDefaultObjectAccessControlRequest {
     pub entity: String,
 }
 /// Request message for InsertDefaultObjectAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InsertDefaultObjectAccessControlRequest {
     /// Required. Name of a bucket.
@@ -1057,7 +1057,7 @@ pub struct InsertDefaultObjectAccessControlRequest {
     pub object_access_control: Option<ObjectAccessControl>,
 }
 /// Request message for ListDefaultObjectAccessControls.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListDefaultObjectAccessControlsRequest {
     /// Required. Name of a bucket.
@@ -1070,7 +1070,7 @@ pub struct ListDefaultObjectAccessControlsRequest {
     pub if_metageneration_not_match: Option<i64>,
 }
 /// Request message for PatchDefaultObjectAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PatchDefaultObjectAccessControlRequest {
     /// Required. Name of a bucket.
@@ -1098,7 +1098,7 @@ pub struct PatchDefaultObjectAccessControlRequest {
     pub update_mask: Option<()>, //TODO
 }
 /// Request message for UpdateDefaultObjectAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateDefaultObjectAccessControlRequest {
     /// Required. Name of a bucket.
@@ -1115,7 +1115,7 @@ pub struct UpdateDefaultObjectAccessControlRequest {
     pub object_access_control: Option<ObjectAccessControl>,
 }
 /// Request message for DeleteNotification.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct DeleteNotificationRequest {
     /// Required. The parent bucket of the notification.
@@ -1124,7 +1124,7 @@ pub struct DeleteNotificationRequest {
     pub notification: String,
 }
 /// Request message for GetNotification.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetNotificationRequest {
     /// Required. The parent bucket of the notification.
@@ -1134,7 +1134,7 @@ pub struct GetNotificationRequest {
     pub notification: String,
 }
 /// Request message for InsertNotification.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InsertNotificationRequest {
     /// Required. The parent bucket of the notification.
@@ -1143,14 +1143,14 @@ pub struct InsertNotificationRequest {
     pub notification: Option<Notification>,
 }
 /// Request message for ListNotifications.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListNotificationsRequest {
     /// Required. Name of a Google Cloud Storage bucket.
     pub bucket: String,
 }
 /// Request message for DeleteObjectAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct DeleteObjectAccessControlRequest {
     /// Required. Name of a bucket.
@@ -1170,7 +1170,7 @@ pub struct DeleteObjectAccessControlRequest {
     pub generation: i64,
 }
 /// Request message for GetObjectAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetObjectAccessControlRequest {
     /// Required. Name of a bucket.
@@ -1190,7 +1190,7 @@ pub struct GetObjectAccessControlRequest {
     pub generation: i64,
 }
 /// Request message for InsertObjectAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InsertObjectAccessControlRequest {
     /// Required. Name of a bucket.
@@ -1204,7 +1204,7 @@ pub struct InsertObjectAccessControlRequest {
     pub object_access_control: Option<ObjectAccessControl>,
 }
 /// Request message for ListObjectAccessControls.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListObjectAccessControlsRequest {
     /// Required. Name of a bucket.
@@ -1216,7 +1216,7 @@ pub struct ListObjectAccessControlsRequest {
     pub generation: i64,
 }
 /// Request message for PatchObjectAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PatchObjectAccessControlRequest {
     /// Required. Name of a bucket.
@@ -1251,7 +1251,7 @@ pub struct PatchObjectAccessControlRequest {
     pub update_mask: Option<()>, //TODO
 }
 /// Request message for UpdateObjectAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateObjectAccessControlRequest {
     /// Required. Name of a bucket.
@@ -1286,7 +1286,7 @@ pub struct UpdateObjectAccessControlRequest {
     pub update_mask: Option<()>, //TODO
 }
 /// Request message for ComposeObject.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ComposeObjectRequest {
     /// Required. Name of the bucket containing the source objects. The destination object is
@@ -1318,7 +1318,7 @@ pub struct ComposeObjectRequest {
 /// Nested message and enum types in `ComposeObjectRequest`.
 pub mod compose_object_request {
     /// Description of a source object for a composition request.
-    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
     #[serde(rename_all = "camelCase")]
     pub struct SourceObjects {
         /// The source object's name. All source objects must reside in the same
@@ -1332,7 +1332,7 @@ pub mod compose_object_request {
     /// Nested message and enum types in `SourceObjects`.
     pub mod source_objects {
         /// Preconditions for a source object of a composition request.
-        #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+        #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
         #[serde(rename_all = "camelCase")]
         pub struct ObjectPreconditions {
             /// Only perform the composition if the generation of the source object
@@ -1343,7 +1343,7 @@ pub mod compose_object_request {
     }
 }
 /// Request message for CopyObject.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CopyObjectRequest {
     /// Required. Name of the bucket in which to store the new object. Overrides the provided
@@ -1407,7 +1407,7 @@ pub struct CopyObjectRequest {
 }
 /// Message for deleting an object.
 /// Either `bucket` and `object` *or* `upload_id` **must** be set (but not both).
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct DeleteObjectRequest {
     /// Required. Name of the bucket in which the object resides.
@@ -1440,7 +1440,7 @@ pub struct DeleteObjectRequest {
     pub common_object_request_params: Option<CommonObjectRequestParams>,
 }
 /// Request message for GetObjectMedia.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetObjectMediaRequest {
     /// The name of the bucket containing the object to read.
@@ -1487,7 +1487,7 @@ pub struct GetObjectMediaRequest {
     pub common_object_request_params: Option<CommonObjectRequestParams>,
 }
 /// Request message for GetObject.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetObjectRequest {
     /// Required. Name of the bucket in which the object resides.
@@ -1518,7 +1518,7 @@ pub struct GetObjectRequest {
     pub common_object_request_params: Option<CommonObjectRequestParams>,
 }
 /// Response message for GetObject.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetObjectMediaResponse {
     /// A portion of the data for the object. The service **may** leave `data`
@@ -1539,7 +1539,7 @@ pub struct GetObjectMediaResponse {
     pub metadata: Option<Object>,
 }
 /// Describes an attempt to insert an object, possibly over multiple requests.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InsertObjectSpec {
     /// Destination object, including its name and its metadata.
@@ -1567,7 +1567,7 @@ pub struct InsertObjectSpec {
     pub projection: Projection,
 }
 /// Message for writing an object.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InsertObjectRequest {
     /// Required. The offset from the beginning of the object at which the data should be
@@ -1607,7 +1607,7 @@ pub struct InsertObjectRequest {
 /// Nested message and enum types in `InsertObjectRequest`.
 pub mod insert_object_request {
     /// The first message of each stream should set one of the following.
-    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
     pub enum FirstMessage {
         /// For resumable uploads. This should be the `upload_id` returned from a
         /// call to `StartResumableWriteResponse`.
@@ -1617,7 +1617,7 @@ pub mod insert_object_request {
         InsertObjectSpec(super::InsertObjectSpec),
     }
     /// A portion of the data for the object.
-    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
     pub enum Data {
         /// The data to insert. If a crc32c checksum is provided that doesn't match
         /// the checksum computed by the service, the request will fail.
@@ -1638,7 +1638,7 @@ pub mod insert_object_request {
     }
 }
 /// Request message for ListObjects.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListObjectsRequest {
     /// Required. Name of the bucket in which to look for objects.
@@ -1683,7 +1683,7 @@ pub struct ListObjectsRequest {
     pub lexicographic_end: String,
 }
 /// Request object for `QueryWriteStatus`.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct QueryWriteStatusRequest {
     /// Required. The name of the resume token for the object whose write status is being
@@ -1693,7 +1693,7 @@ pub struct QueryWriteStatusRequest {
     pub common_object_request_params: Option<CommonObjectRequestParams>,
 }
 /// Response object for `QueryWriteStatus`.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct QueryWriteStatusResponse {
     /// The number of bytes that have been processed for the given object.
@@ -1705,7 +1705,7 @@ pub struct QueryWriteStatusResponse {
     pub resource: Option<Object>,
 }
 /// Request message for RewriteObject.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RewriteObjectRequest {
     /// Required. Name of the bucket in which to store the new object. Overrides the provided
@@ -1787,7 +1787,7 @@ pub struct RewriteObjectRequest {
     pub common_object_request_params: Option<CommonObjectRequestParams>,
 }
 /// A rewrite response.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RewriteResponse {
     /// The total bytes written so far, which can be used to provide a waiting user
@@ -1807,7 +1807,7 @@ pub struct RewriteResponse {
     pub resource: Option<Object>,
 }
 /// Request message StartResumableWrite.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct StartResumableWriteRequest {
     /// The destination bucket, object, and metadata, as well as any preconditions.
@@ -1816,7 +1816,7 @@ pub struct StartResumableWriteRequest {
     pub common_object_request_params: Option<CommonObjectRequestParams>,
 }
 /// Response object for `StartResumableWrite`.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct StartResumableWriteResponse {
     /// The upload_id of the newly started resumable write operation. This
@@ -1824,7 +1824,7 @@ pub struct StartResumableWriteResponse {
     pub upload_id: String,
 }
 /// Request message for PatchObject.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PatchObjectRequest {
     /// Required. Name of the bucket in which the object resides.
@@ -1870,7 +1870,7 @@ pub struct PatchObjectRequest {
     pub common_object_request_params: Option<CommonObjectRequestParams>,
 }
 /// Request message for UpdateObject.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateObjectRequest {
     /// Required. Name of the bucket in which the object resides.
@@ -1905,7 +1905,7 @@ pub struct UpdateObjectRequest {
     pub common_object_request_params: Option<CommonObjectRequestParams>,
 }
 /// Request message for WatchAllObjects.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct WatchAllObjectsRequest {
     /// Name of the bucket in which to look for objects.
@@ -1942,13 +1942,13 @@ pub struct WatchAllObjectsRequest {
     pub channel: Option<Channel>,
 }
 /// Request message for GetProjectServiceAccount.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetProjectServiceAccountRequest {
     /// Required. Project ID.
     pub project_id: String,
 }
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateHmacKeyRequest {
     /// Required. The project that the HMAC-owning service account lives in.
@@ -1957,7 +1957,7 @@ pub struct CreateHmacKeyRequest {
     pub service_account_email: String,
 }
 /// Create hmac response.  The only time the secret for an HMAC will be returned.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateHmacKeyResponse {
     /// Key metadata.
@@ -1966,7 +1966,7 @@ pub struct CreateHmacKeyResponse {
     pub secret: String,
 }
 /// Request object to delete a given HMAC key.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct DeleteHmacKeyRequest {
     /// Required. The identifying key for the HMAC to delete.
@@ -1975,7 +1975,7 @@ pub struct DeleteHmacKeyRequest {
     pub project_id: String,
 }
 /// Request object to get metadata on a given HMAC key.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetHmacKeyRequest {
     /// Required. The identifying key for the HMAC to delete.
@@ -1984,7 +1984,7 @@ pub struct GetHmacKeyRequest {
     pub project_id: String,
 }
 /// Request to fetch a list of HMAC keys under a given project.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListHmacKeysRequest {
     /// Required. The project id to list HMAC keys for.
@@ -1999,7 +1999,7 @@ pub struct ListHmacKeysRequest {
     pub page_token: String,
 }
 /// Hmac key list response with next page information.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListHmacKeysResponse {
     /// The continuation token, used to page through large result sets. Provide
@@ -2009,7 +2009,7 @@ pub struct ListHmacKeysResponse {
     pub items: Vec<HmacKeyMetadata>,
 }
 /// Request object to update an HMAC key state.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateHmacKeyRequest {
     /// Required. The id of the HMAC key.
@@ -2020,7 +2020,7 @@ pub struct UpdateHmacKeyRequest {
     pub metadata: Option<HmacKeyMetadata>,
 }
 /// Parameters that can be passed to any object request.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CommonObjectRequestParams {
     /// Encryption algorithm used with Customer-Supplied Encryption Keys feature.
@@ -2038,25 +2038,24 @@ fn is_empty(v: &str) -> bool {
 }
 
 fn from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
-    where T: FromStr,
-          T::Err: Display,
-          D: de::Deserializer<'de>
+where
+    T: FromStr,
+    T::Err: Display,
+    D: de::Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
     T::from_str(&s).map_err(de::Error::custom)
 }
 
 fn from_str_opt<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
-    where
-        T: std::str::FromStr,
-        T::Err: std::fmt::Display,
-        D: serde::Deserializer<'de>,
+where
+    T: std::str::FromStr,
+    T::Err: std::fmt::Display,
+    D: serde::Deserializer<'de>,
 {
     let s: Result<serde_json::Value, _> = serde::Deserialize::deserialize(deserializer);
     match s {
-        Ok(serde_json::Value::String(s)) => T::from_str(&s)
-            .map_err(serde::de::Error::custom)
-            .map(Option::from),
+        Ok(serde_json::Value::String(s)) => T::from_str(&s).map_err(serde::de::Error::custom).map(Option::from),
         Ok(serde_json::Value::Number(num)) => T::from_str(&num.to_string())
             .map_err(serde::de::Error::custom)
             .map(Option::from),
@@ -2064,7 +2063,6 @@ fn from_str_opt<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
         Err(_) => Ok(None),
     }
 }
-
 
 impl From<Projection> for &'static str {
     fn from(v: Projection) -> Self {

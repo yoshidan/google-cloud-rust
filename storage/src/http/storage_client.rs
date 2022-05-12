@@ -1,13 +1,17 @@
-use std::collections::HashMap;
 use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
-use crate::http::entity::{Bucket, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketsRequest, ListBucketsResponse, PatchBucketRequest, UpdateBucketRequest};
-use google_cloud_auth::token_source::TokenSource;
+use crate::http::entity::{
+    Bucket, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketsRequest, ListBucketsResponse,
+    PatchBucketRequest, UpdateBucketRequest,
+};
+use crate::http::iam::{GetIamPolicyRequest, Policy};
 use crate::http::CancellationToken;
+use google_cloud_auth::token_source::TokenSource;
+use google_cloud_metadata::project_id;
 use reqwest::{RequestBuilder, Response};
+use std::collections::HashMap;
 use std::future::Future;
 use std::mem;
 use std::sync::Arc;
-use google_cloud_metadata::project_id;
 
 const BASE_URL: &str = "https://storage.googleapis.com/storage/v1";
 
@@ -68,7 +72,7 @@ impl StorageClient {
         let action = async {
             let url = format!("{}/b?alt=json&prettyPrint=false", BASE_URL);
             let mut query_param = vec![("project", project)];
-            with_projection(&mut query_param,req.projection);
+            with_projection(&mut query_param, req.projection);
             with_acl(&mut query_param, req.predefined_acl, req.predefined_default_object_acl);
             let builder = self.with_headers(reqwest::Client::new().post(url)).await?;
             let response = builder.query(&query_param).json(&req.bucket).send().await?;
@@ -81,15 +85,11 @@ impl StorageClient {
         invoke(cancel, action).await
     }
 
-    pub async fn get_bucket(
-        &self,
-        req: &GetBucketRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Bucket, Error> {
+    pub async fn get_bucket(&self, req: &GetBucketRequest, cancel: Option<CancellationToken>) -> Result<Bucket, Error> {
         let action = async {
             let url = format!("{}/b/{}?alt=json&prettyPrint=false", BASE_URL, req.bucket);
             let mut query_param = vec![];
-            with_projection(&mut query_param,req.projection);
+            with_projection(&mut query_param, req.projection);
             let builder = self.with_headers(reqwest::Client::new().get(url)).await?;
             let response = builder.query(&query_param).send().await?;
             if response.status().is_success() {
@@ -109,13 +109,13 @@ impl StorageClient {
     ) -> Result<ListBucketsResponse, Error> {
         let max_results = if let Some(max_results) = &req.max_results {
             max_results.to_string()
-        }else {
+        } else {
             "".to_string()
         };
         let action = async {
             let url = format!("{}/b?alt=json&prettyPrint=false", BASE_URL);
             let mut query_param = vec![(("project", project))];
-            with_projection(&mut query_param,req.projection);
+            with_projection(&mut query_param, req.projection);
             if let Some(page_token) = &req.page_token {
                 query_param.push(("pageToken", page_token))
             }
@@ -128,7 +128,7 @@ impl StorageClient {
             let builder = self.with_headers(reqwest::Client::new().get(url)).await?;
             let response = builder.query(&query_param).send().await?;
             if response.status().is_success() {
-                return Ok(response.json().await?)
+                return Ok(response.json().await?);
             } else {
                 Err(map_error(response).await)
             }
@@ -158,6 +158,33 @@ impl StorageClient {
         };
         invoke(cancel, action).await
     }
+
+    pub async fn get_iam_policy(
+        &self,
+        req: &GetIamPolicyRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Policy, Error> {
+        let version = if let Some(version) = &req.requested_policy_version {
+            version.to_string()
+        } else {
+            "".to_string()
+        };
+        let action = async {
+            let url = format!("{}/b/{}/iam?alt=json&prettyPrint=false", BASE_URL, req.resource);
+            let mut query_param = vec![];
+            if !version.is_empty() {
+                query_param.push(("optionsRequestedPolicyVersion", version.as_str()));
+            }
+            let builder = self.with_headers(reqwest::Client::new().get(url)).await?;
+            let response = builder.query(&query_param).send().await?;
+            if response.status().is_success() {
+                Ok(response.json().await?)
+            } else {
+                Err(map_error(response).await)
+            }
+        };
+        invoke(cancel, action).await
+    }
 }
 
 fn with_projection(param: &mut Vec<(&str, &str)>, projection: Option<Projection>) {
@@ -166,7 +193,11 @@ fn with_projection(param: &mut Vec<(&str, &str)>, projection: Option<Projection>
     }
 }
 
-fn with_acl(param: &mut Vec<(&str, &str)>, bucket_acl: Option<PredefinedBucketAcl>, object_acl: Option<PredefinedObjectAcl>) {
+fn with_acl(
+    param: &mut Vec<(&str, &str)>,
+    bucket_acl: Option<PredefinedBucketAcl>,
+    object_acl: Option<PredefinedObjectAcl>,
+) {
     if let Some(bucket_acl) = bucket_acl {
         param.push(("predefinedAcl", bucket_acl.into()));
     }
@@ -174,7 +205,6 @@ fn with_acl(param: &mut Vec<(&str, &str)>, bucket_acl: Option<PredefinedBucketAc
         param.push(("predefinedDefaultObjectAcl", object_acl.into()));
     }
 }
-
 
 async fn map_error(r: Response) -> Error {
     let status = r.status().as_u16();
