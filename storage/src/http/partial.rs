@@ -28,7 +28,13 @@ pub struct BucketCreationConfig {
     pub logging: Option<bucket::Logging>,
     pub encryption: Option<bucket::Encryption>,
     pub billing: Option<bucket::Billing>,
-    pub retention_policy: Option<bucket::RetentionPolicy>,
+    pub retention_policy: Option<RetentionPolicyCreationConfig>,
     pub iam_configuration: Option<bucket::IamConfiguration>,
     pub rpo: Option<String>,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize,Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RetentionPolicyCreationConfig {
+    pub retention_period: u64,
 }

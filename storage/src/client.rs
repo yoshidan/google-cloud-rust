@@ -77,7 +77,7 @@ impl Client {
 
 #[cfg(test)]
 mod test {
-    use crate::http::partial::{BucketCreationConfig, ObjectAccessControlsCreationConfig};
+    use crate::http::partial::{BucketCreationConfig, ObjectAccessControlsCreationConfig, RetentionPolicyCreationConfig};
     use crate::client;
     use chrono::{DateTime, Utc};
     use google_cloud_auth::credentials::CredentialsFile;
@@ -135,9 +135,7 @@ mod test {
             billing: Some(Billing {
                 requester_pays: true
             }),
-            retention_policy: Some(RetentionPolicy {
-                effective_time: None,
-                is_locked: None,
+            retention_policy: Some(RetentionPolicyCreationConfig {
                 retention_period: 10000
             }),
             default_object_acl: Some(vec![

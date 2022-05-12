@@ -277,6 +277,7 @@ pub mod bucket {
         /// duration must be greater than zero and less than 100 years. Note that
         /// enforcement of retention periods less than a day is not guaranteed. Such
         /// periods should only be used for testing purposes.
+        #[serde(deserialize_with = "crate::http::entity::from_str")]
         pub retention_period: u64,
     }
     /// Properties of a bucket related to versioning.
