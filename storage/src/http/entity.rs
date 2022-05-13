@@ -1666,17 +1666,21 @@ pub struct QueryWriteStatusResponse {
 pub struct RewriteObjectRequest {
     /// Required. Name of the bucket in which to store the new object. Overrides the provided
     /// object metadata's `bucket` value, if any.
-    pub destination_bucket: String,
+    #[serde(skip_serializing)]
+    pub destination_bucket: Option<&'a str>,
     /// Required. Name of the new object.
     /// Required when the object metadata is not otherwise provided. Overrides the
     /// object metadata's `name` value, if any.
+    #[serde(skip_serializing)]
     pub destination_object: String,
     /// Resource name of the Cloud KMS key, of the form
     /// `projects/my-project/locations/my-location/keyRings/my-kr/cryptoKeys/my-key`,
     /// that will be used to encrypt the object. Overrides the object
     /// metadata's `kms_key_name` value, if any.
+    #[serde(skip_serializing)]
     pub destination_kms_key_name: String,
     /// Apply a predefined set of access controls to the destination object.
+    #[serde(skip_serializing)]
     pub destination_predefined_acl: PredefinedBucketAcl,
     /// Makes the operation conditional on whether the object's current generation
     /// matches the given value. Setting to 0 makes the operation succeed only if

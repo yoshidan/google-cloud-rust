@@ -1,5 +1,6 @@
+use std::cmp::max;
 use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
-use crate::http::entity::{Bucket, BucketAccessControl, BucketAccessControlsCreationConfig, Channel, DeleteBucketRequest, GetBucketRequest, HmacKeyMetadata, InsertBucketRequest, ListBucketAccessControlsResponse, ListBucketsRequest, ListBucketsResponse, ListChannelsResponse, ListNotificationsResponse, ListObjectAccessControlsResponse, LockRetentionPolicyRequest, Notification, NotificationCreationConfig, ObjectAccessControl, ObjectAccessControlsCreationConfig, PatchBucketRequest, UpdateBucketRequest};
+use crate::http::entity::{Bucket, BucketAccessControl, BucketAccessControlsCreationConfig, Channel, DeleteBucketRequest, GetBucketRequest, HmacKeyMetadata, InsertBucketRequest, ListBucketAccessControlsResponse, ListBucketsRequest, ListBucketsResponse, ListChannelsResponse, ListNotificationsResponse, ListObjectAccessControlsResponse, ListObjectsResponse, LockRetentionPolicyRequest, Notification, NotificationCreationConfig, Object, ObjectAccessControl, ObjectAccessControlsCreationConfig, PatchBucketRequest, RewriteResponse, UpdateBucketRequest};
 use crate::http::iam::{GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest, TestIamPermissionsResponse};
 use crate::http::CancellationToken;
 use google_cloud_auth::token_source::TokenSource;
@@ -449,7 +450,6 @@ impl StorageClient {
         invoke(cancel, action).await
     }
 
-
     pub async fn list_hmac_keys(
         &self,
         project: &str,
@@ -482,6 +482,206 @@ impl StorageClient {
         };
         invoke(cancel, action).await
     }
+
+    pub async fn insert_object_simple(
+        &self,
+        bucket: &str,
+        object: &str,
+        content_encoding: Option<&str>,
+        kms_key_name: Option<&str>,
+        predefined_acl: Option<PredefinedObjectAcl>,
+        projection: Option<Projection>,
+        body: &[u8],
+        cancel: Option<CancellationToken>,
+    ) -> Result<Object, Error> {
+        let action = async {
+            let url = format!("{}/b/{}/o?uploadType=media", BASE_URL, bucket);
+            let mut query_param = vec![("name", object)];
+            with_projection(&mut query_param, projection);
+            with_acl(&mut query_param, None, predefined_acl);
+            if let Some(content_encoding) = content_encoding {
+                query_param.push(("contentEncoding", content_encoding));
+            }
+            if let Some(kms_key_name) = kms_key_name {
+                query_param.push(("kmsKeyName", kms_key_name));
+            }
+            self.send(reqwest::Client::new().post(url).query(&query_param).body(body)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn delete_object(
+        &self,
+        bucket: &str,
+        object: &str,
+        generation: Option<i64>,
+        cancel: Option<CancellationToken>,
+    ) -> Result<(), Error> {
+        let action = async {
+            let url = format!("{}/b/{}/o/{}", BASE_URL, bucket, object);
+            let mut query_param = vec![];
+            if let Some(generation) = generation {
+                query_param.push(("generation", generation));
+            }
+            self.send_get_empty(reqwest::Client::new().delete(url).query(&query_param)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn download_object(
+        &self,
+        bucket: &str,
+        object: &str,
+        projection: Option<Projection>,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Vec<u8>, Error> {
+        let action = async {
+            let url = format!("{}/b/{}/o/{}?alt=media", BASE_URL, bucket, object);
+            let mut query_param = vec![];
+            with_projection(&mut query_param, projection);
+            let builder = reqwest::Client::new().get(url).query(&query_param);
+            let builder = self.with_headers(builder).await?;
+            let response = builder.send().await?;
+            if response.status().is_success() {
+                Ok(response.bytes().await?.to_vec())
+            } else {
+                Err(map_error(response).await)
+            }
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn get_object(
+        &self,
+        bucket: &str,
+        object: &str,
+        projection: Option<Projection>,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Object, Error> {
+        let action = async {
+            let url = format!("{}/b/{}/o/{}", BASE_URL, bucket, object);
+            let mut query_param = vec![];
+            with_projection(&mut query_param, projection);
+            self.send(reqwest::Client::new().get(url).query(&query_param)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn patch_object(
+        &self,
+        bucket: &str,
+        object: &str,
+        generation: Option<i64>,
+        predefined_acl: Option<PredefinedObjectAcl>,
+        projection: Option<Projection>,
+        resource: &Object,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Object, Error> {
+        let generation = generation.map(|x| x.to_string());
+        let action = async {
+            let url = format!("{}/b/{}/o/{}", BASE_URL, bucket, object);
+            let mut query_param = vec![];
+            with_projection(&mut query_param, projection);
+            with_acl(&mut query_param, None, predefined_acl);
+            if let Some(generation) = generation {
+                query_param.push(("generation", &generation));
+            }
+            self.send(reqwest::Client::new().patch(url).query(&query_param).json(&resource)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn list_objects(
+        &self,
+        bucket: &str,
+        delimiter: Option<&str>,
+        end_offset: Option<&str>,
+        include_trailing_delimiter: Option<&bool>,
+        max_results: Option<&i32>,
+        page_token: Option<&str>,
+        prefix: Option<&str>,
+        projection: Option<Projection>,
+        start_offset: Option<&str>,
+        versions: Option<&bool>,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ListObjectsResponse, Error> {
+        let max_results = max_results.map(|x| x.to_string());
+        let versions = versions.map(|x| x.to_string());
+        let include_trailing_delimiter = include_trailing_delimiter.map(|x| x.to_string());
+        let action = async {
+            let url = format!("{}/b/{}/o/{}", BASE_URL, bucket, object);
+            let mut query_param = vec![];
+            with_projection(&mut query_param, projection);
+            if let Some(delimiter) = delimiter {
+                query_param.push(("delimiter", delimiter));
+            }
+            if let Some(v) = end_offset {
+                query_param.push(("endOffset", v));
+            }
+            if let Some(v) = include_trailing_delimiter{
+                query_param.push(("includeTrailingDelimiter", &v));
+            }
+            if let Some(v) = page_token{
+                query_param.push(("pageToken", v));
+            }
+            if let Some(v) = prefix{
+                query_param.push(("prefix", v));
+            }
+            if let Some(v) = start_offset {
+                query_param.push(("startOffset", v));
+            }
+            if let Some(v) = versions {
+                query_param.push(("versions", &v));
+            }
+            if let Some(v) = max_results {
+                query_param.push(("maxResults", &v));
+            }
+            self.send(reqwest::Client::new().get(url).query(&query_param)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn rewrite_object(
+        &self,
+        destination_bucket: &str,
+        destination_object: &str,
+        source_bucket: &str,
+        source_object: &str,
+        destination_kms_key_name: Option<&str>,
+        destination_predefined_object_acl: Option<PredefinedObjectAcl>,
+        max_bytes_rewritten_per_call: Option<&i64>,
+        projection: Option<Projection>,
+        rewrite_token: Option<&str>,
+        source_generation: Option<&i64>,
+        cancel: Option<CancellationToken>,
+    ) -> Result<RewriteResponse, Error> {
+        let max_bytes_rewritten_per_call = max_bytes_rewritten_per_call.map(|x| x.to_string());
+        let source_generation = source_generation.map(|x| x.to_string());
+        let action = async {
+            let url = format!("{}/b/{}/o/{}/rewriteTo/b/{}/o/{}", BASE_URL, source_bucket, source_object, destination_bucket, destination_object);
+            let mut query_param = vec![];
+            with_projection(&mut query_param, projection);
+            if let Some(v) = destination_kms_key_name {
+                query_param.push(("destinationKmsKeyName", v));
+            }
+            if let Some(v) = destination_predefined_object_acl {
+                query_param.push(("destinationPredefinedAcl", v.into()));
+            }
+            if let Some(v) = max_bytes_rewritten_per_call {
+                query_param.push(("maxBytesRewrittenPerCall", &v));
+            }
+            if let Some(v) = rewrite_token {
+                query_param.push(("rewriteToken", &v));
+            }
+            if let Some(v) = source_generation {
+                query_param.push(("sourceGeneration", &v));
+            }
+            self.send(reqwest::Client::new().post(url).query(&query_param)).await
+        };
+        invoke(cancel, action).await
+    }
+
+
 
     async fn with_headers(&self, builder: RequestBuilder) -> Result<RequestBuilder, Error> {
         let token = self.ts.token().await?;
