@@ -1,5 +1,5 @@
 use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
-use crate::http::entity::{Bucket, BucketAccessControl, BucketAccessControlsCreationConfig, Channel, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketAccessControlsResponse, ListBucketsRequest, ListBucketsResponse, ListChannelsResponse, ListNotificationsResponse, LockRetentionPolicyRequest, Notification, NotificationCreationConfig, ObjectAccessControl, ObjectAccessControlsCreationConfig, PatchBucketRequest, UpdateBucketRequest};
+use crate::http::entity::{Bucket, BucketAccessControl, BucketAccessControlsCreationConfig, Channel, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketAccessControlsResponse, ListBucketsRequest, ListBucketsResponse, ListChannelsResponse, ListNotificationsResponse, ListObjectAccessControlsResponse, LockRetentionPolicyRequest, Notification, NotificationCreationConfig, ObjectAccessControl, ObjectAccessControlsCreationConfig, PatchBucketRequest, UpdateBucketRequest};
 use crate::http::iam::{GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest, TestIamPermissionsResponse};
 use crate::http::CancellationToken;
 use google_cloud_auth::token_source::TokenSource;
@@ -34,14 +34,6 @@ pub(crate) struct StorageClient {
 impl StorageClient {
     pub(crate) fn new(ts: Arc<dyn TokenSource>) -> Self {
         Self { ts }
-    }
-
-    async fn with_headers(&self, builder: RequestBuilder) -> Result<RequestBuilder, Error> {
-        let token = self.ts.token().await?;
-        Ok(builder
-            .header("X-Goog-Api-Client", "rust")
-            .header(reqwest::header::USER_AGENT, "google-cloud-storage")
-            .header(reqwest::header::AUTHORIZATION, token.value()))
     }
 
     pub async fn delete_bucket(
@@ -341,6 +333,88 @@ impl StorageClient {
             self.send_get_empty(reqwest::Client::new().delete(url)).await
         };
         invoke(cancel, action).await
+    }
+
+    pub async fn insert_object_acl(
+        &self,
+        bucket: &str,
+        object: &str,
+        generation: Option<i64>,
+        config: &ObjectAccessControlsCreationConfig,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ObjectAccessControl, Error> {
+        let action = async {
+            let url = format!("{}/b/{}/o/{}/acl?alt=json&prettyPrint=false", BASE_URL, bucket, object);
+            let mut query_param = vec![];
+            if let Some(generation) = generation {
+                query_param.push(("generation", generation));
+            }
+            self.send(reqwest::Client::new().post(url).query(&query_param).json(config)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn get_object_acl(
+        &self,
+        bucket: &str,
+        object: &str,
+        entity: &str,
+        generation: Option<i64>,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ObjectAccessControl, Error> {
+        let action = async {
+            let url = format!("{}/b/{}/o/{}/acl/{}?alt=json&prettyPrint=false", BASE_URL, bucket, object,entity);
+            let mut query_param = vec![];
+            if let Some(generation) = generation {
+                query_param.push(("generation", generation));
+            }
+            self.send(reqwest::Client::new().get(url)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn list_object_acls(
+        &self,
+        bucket: &str,
+        object: &str,
+        generation: Option<i64>,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Vec<ObjectAccessControl>, Error> {
+        let action = async {
+            let url = format!("{}/b/{}/o/{}/acl?alt=json&prettyPrint=false", BASE_URL, bucket, object);
+            let mut query_param = vec![];
+            if let Some(generation) = generation {
+                query_param.push(("generation", generation));
+            }
+            self.send::<ListObjectAccessControlsResponse>(reqwest::Client::new().get(url)).await
+        };
+        invoke(cancel, action).await.map(|e| e.items )
+    }
+
+    pub async fn delete_object_acl(
+        &self,
+        bucket: &str,
+        object: &str,
+        generation: Option<i64>,
+        cancel: Option<CancellationToken>,
+    ) -> Result<(), Error> {
+        let action = async {
+            let url = format!("{}/b/{}/o/{}/acl?alt=json&prettyPrint=false", BASE_URL, bucket, object);
+            let mut query_param = vec![];
+            if let Some(generation) = generation {
+                query_param.push(("generation", generation));
+            }
+            self.send_get_empty(reqwest::Client::new().delete(url)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    async fn with_headers(&self, builder: RequestBuilder) -> Result<RequestBuilder, Error> {
+        let token = self.ts.token().await?;
+        Ok(builder
+            .header("X-Goog-Api-Client", "rust")
+            .header(reqwest::header::USER_AGENT, "google-cloud-storage")
+            .header(reqwest::header::AUTHORIZATION, token.value()))
     }
 
 
