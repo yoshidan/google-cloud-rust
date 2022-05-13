@@ -1,5 +1,5 @@
 use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
-use crate::http::entity::{Bucket, BucketAccessControl, BucketAccessControlsCreationConfig, Channel, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketAccessControlsResponse, ListBucketsRequest, ListBucketsResponse, ListChannelsResponse, ListNotificationsResponse, ListObjectAccessControlsResponse, LockRetentionPolicyRequest, Notification, NotificationCreationConfig, ObjectAccessControl, ObjectAccessControlsCreationConfig, PatchBucketRequest, UpdateBucketRequest};
+use crate::http::entity::{Bucket, BucketAccessControl, BucketAccessControlsCreationConfig, Channel, DeleteBucketRequest, GetBucketRequest, HmacKeyMetadata, InsertBucketRequest, ListBucketAccessControlsResponse, ListBucketsRequest, ListBucketsResponse, ListChannelsResponse, ListNotificationsResponse, ListObjectAccessControlsResponse, LockRetentionPolicyRequest, Notification, NotificationCreationConfig, ObjectAccessControl, ObjectAccessControlsCreationConfig, PatchBucketRequest, UpdateBucketRequest};
 use crate::http::iam::{GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest, TestIamPermissionsResponse};
 use crate::http::CancellationToken;
 use google_cloud_auth::token_source::TokenSource;
@@ -96,7 +96,7 @@ impl StorageClient {
                 query_param.push(("prefix", prefix))
             }
             if !max_results.is_empty() {
-                query_param.push(("prefix", max_results.as_str()))
+                query_param.push(("maxResults", max_results.as_str()))
             }
             self.send(reqwest::Client::new().get(url).query(&query_param)).await
         };
@@ -405,6 +405,80 @@ impl StorageClient {
                 query_param.push(("generation", generation));
             }
             self.send_get_empty(reqwest::Client::new().delete(url)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn create_hmac_keys(
+        &self,
+        project: &str,
+        service_account_email: &str,
+        cancel: Option<CancellationToken>,
+    ) -> Result<HmacKeyMetadata, Error> {
+        let action = async {
+            let url = format!("{}/projects/{}/hmacKeys?alt=json&prettyPrint=false", BASE_URL, project);
+            let query_param = vec![("generation", service_account_email)];
+            self.send(reqwest::Client::new().post(url).query(&query_param)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn delete_hmac_keys(
+        &self,
+        project: &str,
+        access_id: &str,
+        cancel: Option<CancellationToken>,
+    ) -> Result<(), Error> {
+        let action = async {
+            let url = format!("{}/projects/{}/hmacKeys/{}?alt=json&prettyPrint=false", BASE_URL, project, access_id);
+            self.send_get_empty(reqwest::Client::new().delete(url)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn get_hmac_keys(
+        &self,
+        project: &str,
+        access_id: &str,
+        cancel: Option<CancellationToken>,
+    ) -> Result<HmacKeyMetadata, Error> {
+        let action = async {
+            let url = format!("{}/projects/{}/hmacKeys/{}?alt=json&prettyPrint=false", BASE_URL, project, access_id);
+            self.send(reqwest::Client::new().get(url)).await
+        };
+        invoke(cancel, action).await
+    }
+
+
+    pub async fn list_hmac_keys(
+        &self,
+        project: &str,
+        max_results: Option<&u32>,
+        page_token: Option<&str>,
+        service_account_email: Option<&str>,
+        show_deleted_keys: bool,
+        cancel: Option<CancellationToken>,
+    ) -> Result<HmacKeyMetadata, Error> {
+        let max_results = if let Some(max_results) = max_results {
+            max_results.to_string()
+        } else {
+            "".to_string()
+        };
+        let show_deleted_keys = show_deleted_keys.to_string();
+        let action = async {
+            let url = format!("{}/projects/{}/mackKeys?alt=json&prettyPrint=false", BASE_URL, project);
+            let mut query_param = vec![];
+            if let Some(page_token) = page_token {
+                query_param.push(("pageToken", page_token));
+            }
+            if let Some(service_account_email) = service_account_email {
+                query_param.push(("serviceAccountEmail", service_account_email));
+            }
+            query_param.push(("showDeletedKeys", show_deleted_keys.as_str()));
+            if !max_results.is_empty() {
+                query_param.push(("maxResults", max_results.as_str()));
+            }
+            self.send(reqwest::Client::new().get(url).query(&query_param)).await
         };
         invoke(cancel, action).await
     }
