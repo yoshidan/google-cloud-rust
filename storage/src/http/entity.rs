@@ -11,6 +11,13 @@ pub struct ObjectAccessControlsCreationConfig {
     pub role: String,
 }
 
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct BucketAccessControlsCreationConfig {
+    pub entity: String,
+    pub role: ACLRole,
+}
+
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct BucketCreationConfig {
@@ -472,6 +479,15 @@ pub struct ObjectChecksums {
     /// checksum is provided and validated is service-dependent.
     pub md5_hash: String,
 }
+
+/// A set of properties to return in a response.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize, Debug)]
+pub enum ACLRole {
+    OWNER,
+    READER,
+    WRITER,
+}
+
 /// A collection of enums used in multiple places throughout the API.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

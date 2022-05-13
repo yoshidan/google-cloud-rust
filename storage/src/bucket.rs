@@ -13,6 +13,7 @@ use chrono::{DateTime, SecondsFormat, Timelike, Utc};
 use google_cloud_auth::credentials::CredentialsFile;
 use std::collections::HashMap;
 use tokio_util::sync::CancellationToken;
+use crate::acl::BucketACLHandle;
 
 pub struct BucketHandle<'a> {
     name: String,
@@ -90,6 +91,10 @@ impl<'a> BucketHandle<'a> {
 
     pub fn iam(&self) -> IAMHandle {
         IAMHandle::new(self.name.as_str(), &self.storage_client)
+    }
+
+    pub fn acl<'b>(&self, entity: &'b str) -> BucketACLHandle<'_, 'b> {
+        BucketACLHandle::new(self.name.as_str(), entity, &self.storage_client)
     }
 }
 
@@ -266,7 +271,7 @@ mod test {
         let client = Client::new().await.unwrap();
         let bucket = client.bucket(&bucket_name);
         let result = bucket.insert(req, Some(CancellationToken::default())).await.unwrap();
-        bucket.delete(None).await;
+        bucket.delete(None).await.unwrap();
         assert_eq!(result.name, bucket_name);
         assert_eq!(result.storage_class, req.bucket.storage_class);
         assert_eq!(result.location, req.bucket.location);

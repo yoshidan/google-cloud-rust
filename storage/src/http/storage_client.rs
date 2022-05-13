@@ -1,8 +1,5 @@
 use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
-use crate::http::entity::{
-    Bucket, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketsRequest, ListBucketsResponse,
-    PatchBucketRequest, UpdateBucketRequest,
-};
+use crate::http::entity::{Bucket, BucketAccessControl, BucketAccessControlsCreationConfig, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketsRequest, ListBucketsResponse, PatchBucketRequest, UpdateBucketRequest};
 use crate::http::iam::{GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest, TestIamPermissionsResponse};
 use crate::http::CancellationToken;
 use google_cloud_auth::token_source::TokenSource;
@@ -53,8 +50,7 @@ impl StorageClient {
     ) -> Result<(), Error> {
         let action = async {
             let url = format!("{}/b/{}?alt=json&prettyPrint=false", BASE_URL, req.bucket);
-            let builder = self.with_headers(reqwest::Client::new().delete(url)).await?;
-            send(builder).await
+            self.send_get_empty(reqwest::Client::new().delete(url)).await
         };
         invoke(cancel, action).await
     }
@@ -70,8 +66,7 @@ impl StorageClient {
             let mut query_param = vec![("project", project)];
             with_projection(&mut query_param, req.projection);
             with_acl(&mut query_param, req.predefined_acl, req.predefined_default_object_acl);
-            let builder = self.with_headers(reqwest::Client::new().post(url)).await?;
-            send(builder.query(&query_param).json(&req.bucket)).await
+            self.send(reqwest::Client::new().post(url).query(&query_param).json(&req.bucket)).await
         };
         invoke(cancel, action).await
     }
@@ -81,8 +76,7 @@ impl StorageClient {
             let url = format!("{}/b/{}?alt=json&prettyPrint=false", BASE_URL, req.bucket);
             let mut query_param = vec![];
             with_projection(&mut query_param, req.projection);
-            let builder = self.with_headers(reqwest::Client::new().get(url)).await?;
-            send(builder.query(&query_param)).await
+            self.send(reqwest::Client::new().get(url).query(&query_param)).await
         };
         invoke(cancel, action).await
     }
@@ -111,8 +105,7 @@ impl StorageClient {
             if !max_results.is_empty() {
                 query_param.push(("prefix", max_results.as_str()))
             }
-            let builder = self.with_headers(reqwest::Client::new().get(url)).await?;
-            send(builder.query(&query_param)).await
+            self.send(reqwest::Client::new().get(url).query(&query_param)).await
         };
         invoke(cancel, action).await
     }
@@ -129,8 +122,7 @@ impl StorageClient {
             let mut query_param = vec![("project", project)];
             with_projection(&mut query_param, req.projection);
             with_acl(&mut query_param, req.predefined_acl, req.predefined_default_object_acl);
-            let builder = self.with_headers(reqwest::Client::new().patch(url)).await?;
-            send(builder.query(&query_param).json(&req.metadata)).await
+            self.send(reqwest::Client::new().patch(url).query(&query_param).json(&req.metadata)).await
         };
         invoke(cancel, action).await
     }
@@ -151,8 +143,7 @@ impl StorageClient {
             if !version.is_empty() {
                 query_param.push(("optionsRequestedPolicyVersion", version.as_str()));
             }
-            let builder = self.with_headers(reqwest::Client::new().get(url)).await?;
-            send(builder.query(&query_param)).await
+            self.send(reqwest::Client::new().get(url).query(&query_param)).await
         };
         invoke(cancel, action).await
     }
@@ -168,8 +159,7 @@ impl StorageClient {
             for permission in &req.permissions {
                 query_param.push(("permissions", permission));
             }
-            let builder = self.with_headers(reqwest::Client::new().get(url)).await?;
-            send(builder.query(&query_param)).await
+            self.send(reqwest::Client::new().get(url).query(&query_param)).await
         };
         invoke(cancel, action).await
     }
@@ -181,21 +171,71 @@ impl StorageClient {
     ) -> Result<Policy, Error> {
         let action = async {
             let url = format!("{}/b/{}/iam?alt=json&prettyPrint=false", BASE_URL, req.resource);
-            let builder = self.with_headers(reqwest::Client::new().put(url)).await?;
-            send(builder.json(&req.policy)).await
+            self.send(reqwest::Client::new().put(url).json(&req.policy)).await
         };
         invoke(cancel, action).await
     }
-}
 
-async fn send<T: for<'de> serde::Deserialize<'de>>(builder: RequestBuilder) -> Result<T,Error> {
-    let response = builder.send().await?;
-    if response.status().is_success() {
-        Ok(response.json().await?)
-    } else {
-        Err(map_error(response).await)
+    pub async fn insert_bucket_acl(
+        &self,
+        bucket: &str,
+        config: &BucketAccessControlsCreationConfig,
+        cancel: Option<CancellationToken>,
+    ) -> Result<BucketAccessControl, Error> {
+        let action = async {
+            let url = format!("{}/b/{}/acl?alt=json&prettyPrint=false", BASE_URL, bucket);
+            self.send(reqwest::Client::new().post(url).json(config)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn get_bucket_acl(
+        &self,
+        bucket: &str,
+        entity: &str,
+        cancel: Option<CancellationToken>,
+    ) -> Result<BucketAccessControl, Error> {
+        let action = async {
+            let url = format!("{}/b/{}/acl/{}?alt=json&prettyPrint=false", BASE_URL, bucket, entity);
+            self.send(reqwest::Client::new().get(url)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn delete_bucket_acl(
+        &self,
+        bucket: &str,
+        entity: &str,
+        cancel: Option<CancellationToken>,
+    ) -> Result<(), Error> {
+        let action = async {
+            let url = format!("{}/b/{}/acl/{}?alt=json&prettyPrint=false", BASE_URL, bucket, entity);
+            self.send_get_empty(reqwest::Client::new().delete(url)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    async fn send<T: for<'de> serde::Deserialize<'de>>(&self, builder: RequestBuilder) -> Result<T,Error> {
+        let builder = self.with_headers(builder).await?;
+        let response = builder.send().await?;
+        if response.status().is_success() {
+            Ok(response.json().await?)
+        } else {
+            Err(map_error(response).await)
+        }
+    }
+
+    async fn send_get_empty(&self, builder: RequestBuilder) -> Result<(),Error> {
+        let builder = self.with_headers(builder).await?;
+        let response = builder.send().await?;
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(map_error(response).await)
+        }
     }
 }
+
 
 fn with_projection(param: &mut Vec<(&str, &str)>, projection: Option<Projection>) {
     if let Some(projection) = projection {
