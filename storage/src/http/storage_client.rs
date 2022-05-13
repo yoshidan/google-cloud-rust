@@ -1,7 +1,4 @@
 use std::cmp::max;
-use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
-use crate::http::entity::{Bucket, BucketAccessControl, BucketAccessControlsCreationConfig, Channel, DeleteBucketRequest, GetBucketRequest, HmacKeyMetadata, InsertBucketRequest, ListBucketAccessControlsResponse, ListBucketsRequest, ListBucketsResponse, ListChannelsResponse, ListNotificationsResponse, ListObjectAccessControlsResponse, ListObjectsResponse, LockRetentionPolicyRequest, Notification, NotificationCreationConfig, Object, ObjectAccessControl, ObjectAccessControlsCreationConfig, PatchBucketRequest, RewriteResponse, UpdateBucketRequest};
-use crate::http::iam::{GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest, TestIamPermissionsResponse};
 use crate::http::CancellationToken;
 use google_cloud_auth::token_source::TokenSource;
 use google_cloud_metadata::project_id;
@@ -11,7 +8,12 @@ use std::future::Future;
 use std::mem;
 use std::sync::Arc;
 use tracing::info;
-use crate::http::entity::list_channels_response::Items;
+use crate::http::entity2::acl::{BucketAccessControl, BucketAccessControlsCreationConfig, DeleteBucketAccessControlsRequest, GetBucketAccessControlsRequest, InsertBucketAccessControlsRequest, InsertObjectAccessControlRequest, ObjectAccessControl};
+use crate::http::entity2::bucket::{Bucket, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketsRequest, ListBucketsResponse, PatchBucketRequest};
+use crate::http::entity2::channel::{Channel, ListChannelsResponse, StopChannelRequest, WatchableChannel};
+use crate::http::entity2::iam::{GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest, TestIamPermissionsResponse};
+use crate::http::entity2::notification::{DeleteNotificationRequest, GetNotificationRequest, InsertNotificationRequest, ListNotificationsResponse, Notification};
+use crate::http::entity::{InsertDefaultObjectAccessControlRequest, ListBucketAccessControlsResponse};
 
 const BASE_URL: &str = "https://storage.googleapis.com/storage/v1";
 
@@ -43,33 +45,50 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
-            let url = format!("{}/b/{}?alt=json&prettyPrint=false", BASE_URL, req.bucket);
-            self.send_get_empty(reqwest::Client::new().delete(url)).await
+            let url = format!("{}/b/{}", BASE_URL, req.bucket);
+            let param = req.metageneration.to_param();
+            self.send_get_empty(reqwest::Client::new().delete(url).query(&param)).await
         };
         invoke(cancel, action).await
     }
 
     pub async fn insert_bucket(
         &self,
-        project: &str,
         req: &InsertBucketRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<Bucket, Error> {
         let action = async {
-            let url = format!("{}/b?alt=json&prettyPrint=false", BASE_URL);
-            let mut query_param = vec![("project", project)];
-            with_projection(&mut query_param, req.projection);
-            with_acl(&mut query_param, req.predefined_acl, req.predefined_default_object_acl);
-            self.send(reqwest::Client::new().post(url).query(&query_param).json(&req.bucket)).await
+            let url = format!("{}/b", BASE_URL);
+            let mut p = vec![req.project.as_param()];
+            if let Some(v) = req.projection {
+                p.push(v.as_param());
+            }
+            if let Some(v) = req.predefined_acl {
+                p.push(v.as_param());
+            }
+            if let Some(v) = req.predefined_default_object_acl{
+                p.push(v.as_default_object_acl());
+            }
+            self.send(reqwest::Client::new().post(url).query(&p).json(&req.bucket)).await
         };
         invoke(cancel, action).await
     }
 
-    pub async fn get_bucket(&self, req: &GetBucketRequest, cancel: Option<CancellationToken>) -> Result<Bucket, Error> {
+    pub async fn get_bucket(
+        &self,
+        req: &GetBucketRequest,
+        cancel: Option<CancellationToken>
+    ) -> Result<Bucket, Error> {
+        let metageneration =  req.metageneration.to_param();
         let action = async {
-            let url = format!("{}/b/{}?alt=json&prettyPrint=false", BASE_URL, req.bucket);
-            let mut query_param = vec![];
-            with_projection(&mut query_param, req.projection);
+            let url = format!("{}/b/{}", BASE_URL, req.bucket);
+            let mut p = vec![];
+            if let Some(v) = req.projection {
+                p.push(v.as_param());
+            }
+            for v in metageneration {
+                p.push(v.as_param());
+            }
             self.send(reqwest::Client::new().get(url).query(&query_param)).await
         };
         invoke(cancel, action).await
@@ -77,46 +96,51 @@ impl StorageClient {
 
     pub async fn list_buckets(
         &self,
-        project: &str,
         req: &ListBucketsRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<ListBucketsResponse, Error> {
-        let max_results = if let Some(max_results) = &req.max_results {
-            max_results.to_string()
-        } else {
-            "".to_string()
-        };
+        let max_results =  req.max_results.map(|x| x.to_param());
         let action = async {
             let url = format!("{}/b?alt=json&prettyPrint=false", BASE_URL);
-            let mut query_param = vec![(("project", project))];
-            with_projection(&mut query_param, req.projection);
-            if let Some(page_token) = &req.page_token {
-                query_param.push(("pageToken", page_token))
+            let mut p = vec![req.project.as_param()];
+            if let Some(v) = req.projection {
+                p.push(v.as_param());
             }
-            if let Some(prefix) = &req.prefix {
-                query_param.push(("prefix", prefix))
+            if let Some(v) = &req.page_token {
+                p.push(v.as_param());
             }
-            if !max_results.is_empty() {
-                query_param.push(("maxResults", max_results.as_str()))
+            if let Some(v) = &req.prefix {
+                p.push(v.as_param());
             }
-            self.send(reqwest::Client::new().get(url).query(&query_param)).await
+            if let Some(v) = &max_results {
+                p.push(v.as_param());
+            }
+            self.send(reqwest::Client::new().get(url).query(&p)).await
         };
         invoke(cancel, action).await
     }
 
     pub async fn patch_bucket(
         &self,
-        bucket: &str,
-        project: &str,
         req: &PatchBucketRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<Bucket, Error> {
+        let metageneration =  req.metageneration.to_param();
         let action = async {
-            let url = format!("{}/b/{}?alt=json&prettyPrint=false", BASE_URL, bucket);
-            let mut query_param = vec![("project", project)];
-            with_projection(&mut query_param, req.projection);
-            with_acl(&mut query_param, req.predefined_acl, req.predefined_default_object_acl);
-            self.send(reqwest::Client::new().patch(url).query(&query_param).json(&req.metadata)).await
+            let url = format!("{}/b/{}", BASE_URL, req.bucket);
+            if let Some(v) = req.projection {
+                p.push(v.as_param());
+            }
+            if let Some(v) = req.predefined_acl {
+                p.push(v.as_param());
+            }
+            if let Some(v) = req.predefined_default_object_acl{
+                p.push(v.as_default_object_acl());
+            }
+            for v in metageneration {
+                p.push(v.as_param());
+            }
+            self.send(reqwest::Client::new().patch(url).query(&p).json(&req.metadata)).await
         };
         invoke(cancel, action).await
     }
@@ -126,18 +150,14 @@ impl StorageClient {
         req: &GetIamPolicyRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<Policy, Error> {
-        let version = if let Some(version) = &req.requested_policy_version {
-            version.to_string()
-        } else {
-            "".to_string()
-        };
+        let requested_policy_version = req.requested_policy_version.map(|x| x.to_string());
         let action = async {
             let url = format!("{}/b/{}/iam?alt=json&prettyPrint=false", BASE_URL, req.resource);
-            let mut query_param = vec![];
-            if !version.is_empty() {
-                query_param.push(("optionsRequestedPolicyVersion", version.as_str()));
+            let mut p= vec![];
+            if let Some(v) = requested_policy_version {
+                p.push(("optionsRequestedPolicyVersion", v.as_str()));
             }
-            self.send(reqwest::Client::new().get(url).query(&query_param)).await
+            self.send(reqwest::Client::new().get(url).query(&p)).await
         };
         invoke(cancel, action).await
     }
@@ -148,12 +168,12 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<TestIamPermissionsResponse, Error> {
         let action = async {
-            let url = format!("{}/b/{}/iam/testPermissions?alt=json&prettyPrint=false", BASE_URL, req.resource);
-            let mut query_param = vec![];
+            let url = format!("{}/b/{}/iam/testPermissions", BASE_URL, req.resource);
+            let mut p = vec![];
             for permission in &req.permissions {
-                query_param.push(("permissions", permission));
+                p.push(("permissions", permission));
             }
-            self.send(reqwest::Client::new().get(url).query(&query_param)).await
+            self.send(reqwest::Client::new().get(url).query(&p)).await
         };
         invoke(cancel, action).await
     }
@@ -164,7 +184,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Policy, Error> {
         let action = async {
-            let url = format!("{}/b/{}/iam?alt=json&prettyPrint=false", BASE_URL, req.resource);
+            let url = format!("{}/b/{}/iam", BASE_URL, req.resource);
             self.send(reqwest::Client::new().put(url).json(&req.policy)).await
         };
         invoke(cancel, action).await
@@ -172,25 +192,23 @@ impl StorageClient {
 
     pub async fn insert_bucket_acl(
         &self,
-        bucket: &str,
-        config: &BucketAccessControlsCreationConfig,
+        req: &InsertBucketAccessControlsRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<BucketAccessControl, Error> {
         let action = async {
-            let url = format!("{}/b/{}/acl?alt=json&prettyPrint=false", BASE_URL, bucket);
-            self.send(reqwest::Client::new().post(url).json(config)).await
+            let url = format!("{}/b/{}/acl", BASE_URL, req.bucket);
+            self.send(reqwest::Client::new().post(url).json(&req.acl)).await
         };
         invoke(cancel, action).await
     }
 
     pub async fn get_bucket_acl(
         &self,
-        bucket: &str,
-        entity: &str,
+        req: GetBucketAccessControlsRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<BucketAccessControl, Error> {
         let action = async {
-            let url = format!("{}/b/{}/acl/{}?alt=json&prettyPrint=false", BASE_URL, bucket, entity);
+            let url = format!("{}/b/{}/acl/{}", BASE_URL, req.bucket, req.entity);
             self.send(reqwest::Client::new().get(url)).await
         };
         invoke(cancel, action).await
@@ -198,12 +216,11 @@ impl StorageClient {
 
     pub async fn delete_bucket_acl(
         &self,
-        bucket: &str,
-        entity: &str,
+        req: DeleteBucketAccessControlsRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
-            let url = format!("{}/b/{}/acl/{}?alt=json&prettyPrint=false", BASE_URL, bucket, entity);
+            let url = format!("{}/b/{}/acl/{}", BASE_URL, req.bucket, req.entity);
             self.send_get_empty(reqwest::Client::new().delete(url)).await
         };
         invoke(cancel, action).await
@@ -215,22 +232,20 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Vec<BucketAccessControl>, Error> {
         let action = async {
-            let url = format!("{}/b/{}/acl?alt=json&prettyPrint=false", BASE_URL, bucket);
+            let url = format!("{}/b/{}/acl", BASE_URL, bucket);
             self.send::<ListBucketAccessControlsResponse>(reqwest::Client::new().get(url)).await
         };
         invoke(cancel, action).await.map(|e| e.items )
     }
 
-
     pub async fn insert_notification(
         &self,
-        bucket: &str,
-        config: &NotificationCreationConfig,
+        req: &InsertNotificationRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<Notification, Error> {
         let action = async {
-            let url = format!("{}/b/{}/notificationConfigs?alt=json&prettyPrint=false", BASE_URL, bucket);
-            self.send(reqwest::Client::new().post(url).json(config)).await
+            let url = format!("{}/b/{}/notificationConfigs", BASE_URL, req.bucket);
+            self.send(reqwest::Client::new().post(url).json(&req.notification)).await
         };
         invoke(cancel, action).await
     }
@@ -241,7 +256,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Vec<Notification>, Error> {
         let action = async {
-            let url = format!("{}/b/{}/notificationConfigs?alt=json&prettyPrint=false", BASE_URL, bucket);
+            let url = format!("{}/b/{}/notificationConfigs", BASE_URL, bucket);
             self.send::<ListNotificationsResponse>(reqwest::Client::new().get(url)).await
         };
         invoke(cancel, action).await.map(|e| e.items )
@@ -249,12 +264,11 @@ impl StorageClient {
 
     pub async fn get_notification(
         &self,
-        bucket: &str,
-        notification: &str,
+        req: GetNotificationRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<Notification, Error> {
         let action = async {
-            let url = format!("{}/b/{}/notificationConfigs/{}?alt=json&prettyPrint=false", BASE_URL, bucket, notification);
+            let url = format!("{}/b/{}/notificationConfigs/{}", BASE_URL, req.bucket, req.notification);
             self.send(reqwest::Client::new().get(url)).await
         };
         invoke(cancel, action).await
@@ -262,12 +276,11 @@ impl StorageClient {
 
     pub async fn delete_notification(
         &self,
-        bucket: &str,
-        notification: &str,
+        req: DeleteNotificationRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
-            let url = format!("{}/b/{}/notificationConfigs/{}?alt=json&prettyPrint=false", BASE_URL, bucket, notification);
+            let url = format!("{}/b/{}/notificationConfigs/{}", BASE_URL, req.bucket, req.notification);
             self.send_get_empty(reqwest::Client::new().delete(url)).await
         };
         invoke(cancel, action).await
@@ -277,9 +290,9 @@ impl StorageClient {
         &self,
         bucket: &str,
         cancel: Option<CancellationToken>,
-    ) -> Result<Vec<Items>, Error> {
+    ) -> Result<Vec<Channel>, Error> {
         let action = async {
-            let url = format!("{}/b/{}/channels?alt=json&prettyPrint=false", BASE_URL, bucket);
+            let url = format!("{}/b/{}/channels", BASE_URL, bucket);
             self.send::<ListChannelsResponse>(reqwest::Client::new().get(url)).await
         };
         invoke(cancel, action).await.map(|e| e.items )
@@ -287,25 +300,24 @@ impl StorageClient {
 
     pub async fn stop_channel(
         &self,
-        channel: &Items,
+        req: &StopChannelRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
-            let url = format!("{}/channels/stop?alt=json&prettyPrint=false", BASE_URL);
-            self.send_get_empty(reqwest::Client::new().post(url).json(channel)).await
+            let url = format!("{}/channels/stop", BASE_URL);
+            self.send_get_empty(reqwest::Client::new().post(url).json(&req.channel)).await
         };
         invoke(cancel, action).await
     }
 
     pub async fn insert_default_object_acl(
         &self,
-        bucket: &str,
-        config: &ObjectAccessControlsCreationConfig,
+        req: &InsertDefaultObjectAccessControlRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
         let action = async {
-            let url = format!("{}/b/{}/defaultObjectAcl?alt=json&prettyPrint=false", BASE_URL, bucket);
-            self.send(reqwest::Client::new().post(url).json(config)).await
+            let url = format!("{}/b/{}/defaultObjectAcl", BASE_URL, req.bucket);
+            self.send(reqwest::Client::new().post(url).json(&req.object_access_control)).await
         };
         invoke(cancel, action).await
     }

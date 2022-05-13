@@ -3,12 +3,23 @@ use serde::{de, Deserialize, Deserializer};
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::str::FromStr;
+use crate::http::entity2::acl::ObjectACLRole;
+
+/// Metadata generation match parameter.
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default)]
+pub struct MetadataGenerationMatch {
+    /// If set, only deletes the bucket if its metageneration matches this value.
+    pub if_metageneration_match: Option<i64>,
+    /// If set, only deletes the bucket if its metageneration does not match this
+    /// value.
+    pub if_metageneration_not_match: Option<i64>,
+}
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ObjectAccessControlsCreationConfig {
     pub entity: String,
-    pub role: String,
+    pub role: ObjectACLRole,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
@@ -870,6 +881,8 @@ pub struct DeleteBucketRequest {
     /// value.
     pub if_metageneration_not_match: Option<i64>,
 }
+
+
 /// Request message for GetBucket.
 #[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -1010,7 +1023,7 @@ pub struct InsertDefaultObjectAccessControlRequest {
     /// Required. Name of a bucket.
     pub bucket: String,
     /// Properties of the object access control being inserted.
-    pub object_access_control: Option<ObjectAccessControl>,
+    pub object_access_control: ObjectAccessControlsCreationConfig,
 }
 /// Request message for ListDefaultObjectAccessControls.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
