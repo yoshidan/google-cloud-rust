@@ -96,6 +96,10 @@ impl<'a> BucketHandle<'a> {
     pub fn acl<'b>(&self, entity: &'b str) -> BucketACLHandle<'_, 'b> {
         BucketACLHandle::new(self.name.as_str(), entity, &self.storage_client)
     }
+
+    pub async fn acls<'b>(&self, cancel: Option<CancellationToken>) -> Result<Vec<BucketAccessControl>, Error> {
+        self.storage_client.list_bucket_acls(self.name.as_str(), cancel).await
+    }
 }
 
 
@@ -310,5 +314,15 @@ mod test {
             .unwrap();
         assert_eq!(result.name, bucket_name);
         assert_eq!(result.retention_policy.unwrap().retention_period, 1000);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn acls() {
+        let bucket_name = "rust-bucket-acl-test";
+        let client = Client::new().await.unwrap();
+        let bucket = client.bucket(bucket_name);
+        let acls = bucket.acls(None).await.unwrap();
+        assert!(!acls.is_empty());
     }
 }

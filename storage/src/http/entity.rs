@@ -828,36 +828,7 @@ pub struct Owner {
     /// The ID for the entity.
     pub entity_id: Option<String>,
 }
-/// Request message for DeleteBucketAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct DeleteBucketAccessControlRequest {
-    /// Required. Name of a bucket.
-    pub bucket: String,
-    /// Required. The entity holding the permission. Can be one of:
-    /// * `user-`*userId*
-    /// * `user-`*emailAddress*
-    /// * `group-`*groupId*
-    /// * `group-`*emailAddress*
-    /// * `allUsers`
-    /// * `allAuthenticatedUsers`
-    pub entity: String,
-}
-/// Request message for GetBucketAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct GetBucketAccessControlRequest {
-    /// Required. Name of a bucket.
-    pub bucket: String,
-    /// Required. The entity holding the permission. Can be one of:
-    /// * `user-`*userId*
-    /// * `user-`*emailAddress*
-    /// * `group-`*groupId*
-    /// * `group-`*emailAddress*
-    /// * `allUsers`
-    /// * `allAuthenticatedUsers`
-    pub entity: String,
-}
+
 /// Request message for InsertBucketAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -867,57 +838,7 @@ pub struct InsertBucketAccessControlRequest {
     /// Properties of the new bucket access control being inserted.
     pub bucket_access_control: Option<BucketAccessControl>,
 }
-/// Request message for ListBucketAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ListBucketAccessControlsRequest {
-    /// Required. Name of a bucket.
-    pub bucket: String,
-}
-/// Request for PatchBucketAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct PatchBucketAccessControlRequest {
-    /// Required. Name of a bucket.
-    pub bucket: String,
-    /// Required. The entity holding the permission. Can be one of:
-    /// * `user-`*userId*
-    /// * `user-`*emailAddress*
-    /// * `group-`*groupId*
-    /// * `group-`*emailAddress*
-    /// * `allUsers`
-    /// * `allAuthenticatedUsers`
-    pub entity: String,
-    /// The BucketAccessControl for updating.
-    pub bucket_access_control: Option<BucketAccessControl>,
-    /// List of fields to be updated.
-    ///
-    /// To specify ALL fields, equivalent to the JSON API's "update" function,
-    /// specify a single field with the value `*`.
-    ///
-    ///
-    /// Not specifying any fields is an error.
-    /// Not specifying a field while setting that field to a non-default value is
-    /// an error.
-    pub update_mask: Option<()>, //TODO
-}
-/// Request for UpdateBucketAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateBucketAccessControlRequest {
-    /// Required. Name of a bucket.
-    pub bucket: String,
-    /// Required. The entity holding the permission. Can be one of:
-    /// * `user-`*userId*
-    /// * `user-`*emailAddress*
-    /// * `group-`*groupId*
-    /// * `group-`*emailAddress*
-    /// * `allUsers`
-    /// * `allAuthenticatedUsers`
-    pub entity: String,
-    /// The BucketAccessControl for updating.
-    pub bucket_access_control: Option<BucketAccessControl>,
-}
+
 /// Request message for DeleteBucket.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default)]
 #[serde(rename_all = "camelCase")]

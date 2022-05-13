@@ -1,5 +1,5 @@
 use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
-use crate::http::entity::{Bucket, BucketAccessControl, BucketAccessControlsCreationConfig, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketsRequest, ListBucketsResponse, PatchBucketRequest, UpdateBucketRequest};
+use crate::http::entity::{Bucket, BucketAccessControl, BucketAccessControlsCreationConfig, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketAccessControlsResponse, ListBucketsRequest, ListBucketsResponse, PatchBucketRequest, UpdateBucketRequest};
 use crate::http::iam::{GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest, TestIamPermissionsResponse};
 use crate::http::CancellationToken;
 use google_cloud_auth::token_source::TokenSource;
@@ -213,6 +213,18 @@ impl StorageClient {
             self.send_get_empty(reqwest::Client::new().delete(url)).await
         };
         invoke(cancel, action).await
+    }
+
+    pub async fn list_bucket_acls(
+        &self,
+        bucket: &str,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Vec<BucketAccessControl>, Error> {
+        let action = async {
+            let url = format!("{}/b/{}/acl?alt=json&prettyPrint=false", BASE_URL, bucket);
+            self.send::<ListBucketAccessControlsResponse>(reqwest::Client::new().get(url)).await
+        };
+        invoke(cancel, action).await.map(|e| e.items )
     }
 
     async fn send<T: for<'de> serde::Deserialize<'de>>(&self, builder: RequestBuilder) -> Result<T,Error> {
