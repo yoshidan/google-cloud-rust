@@ -15,7 +15,7 @@ use crate::http::entity2::common::Projection;
 use crate::http::entity2::iam::{GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest, TestIamPermissionsResponse};
 use crate::http::entity2::notification::{DeleteNotificationRequest, GetNotificationRequest, InsertNotificationRequest, ListNotificationsResponse, Notification};
 use crate::http::entity2::hmac_key::{CreateHmacKeyRequest, CreateHmacKeyResponse, DeleteHmacKeyRequest, GetHmacKeyRequest, HmacKeyMetadata, ListHmacKeysRequest};
-use crate::http::entity2::object::{DeleteObjectRequest, InsertSimpleObjectRequest, Object};
+use crate::http::entity2::object::{DeleteObjectRequest, InsertSimpleObjectRequest, ListObjectsRequest, ListObjectsResponse, Object, PatchObjectRequest, RewriteObjectRequest, RewriteObjectResponse};
 
 const BASE_URL: &str = "https://storage.googleapis.com/storage/v1";
 
@@ -482,8 +482,8 @@ impl StorageClient {
         req: InsertSimpleObjectRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
-        let metageneration = req.metageneration_match.map(|x| x.to_param());
-        let generation = req.generation_match.map(|x| x.to_param());
+        let metageneration_match  = req.metageneration_match.map(|x| x.to_param());
+        let generation_match = req.generation_match.map(|x| x.to_param());
         let action = async {
             let url = format!("{}/b/{}/o?uploadType=media", BASE_URL, bucket);
             let mut p= vec![("name", object)];
@@ -578,7 +578,9 @@ impl StorageClient {
         let action = async {
             let url = format!("{}/b/{}/o/{}", BASE_URL, bucket, object);
             let mut query_param = vec![];
-            with_projection(&mut query_param, projection);
+            if let Some(v) = projection{
+                p.push(v.as_param());
+            };
             self.send(reqwest::Client::new().get(url).query(&query_param)).await
         };
         invoke(cancel, action).await
@@ -586,22 +588,33 @@ impl StorageClient {
 
     pub async fn patch_object(
         &self,
-        bucket: &str,
-        object: &str,
-        generation: Option<i64>,
-        predefined_acl: Option<PredefinedObjectAcl>,
-        projection: Option<Projection>,
-        resource: &Object,
+        req: &PatchObjectRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
-        let generation = generation.map(|x| x.to_string());
+        let metageneration_match = req.metageneration_match.map(|x| x.to_param());
+        let generation_match = req.generation_match.map(|x| x.to_param());
+        let generation = req.generation.map(|x| x.to_param());
         let action = async {
             let url = format!("{}/b/{}/o/{}", BASE_URL, bucket, object);
             let mut query_param = vec![];
-            with_projection(&mut query_param, projection);
-            with_acl(&mut query_param, None, predefined_acl);
-            if let Some(generation) = generation {
-                query_param.push(("generation", &generation));
+            if let Some(v) = generation {
+                p.push(v.as_param());
+            }
+            if let Some(v) = generation_match {
+                for v in v {
+                    p.push(v.as_param());
+                }
+            }
+            if let Some(v) = metageneration_match {
+                for v in v {
+                    p.push(v.as_param());
+                }
+            }
+            if let Some(v) = req.projection {
+                p.push(v.as_param());
+            }
+            if let Some(v) = req.predefined_acl {
+                p.push(v.as_param());
             }
             self.send(reqwest::Client::new().patch(url).query(&query_param).json(&resource)).await
         };
@@ -610,95 +623,103 @@ impl StorageClient {
 
     pub async fn list_objects(
         &self,
-        bucket: &str,
-        delimiter: Option<&str>,
-        end_offset: Option<&str>,
-        include_trailing_delimiter: Option<&bool>,
-        max_results: Option<&i32>,
-        page_token: Option<&str>,
-        prefix: Option<&str>,
-        projection: Option<Projection>,
-        start_offset: Option<&str>,
-        versions: Option<&bool>,
+        req: ListObjectsRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<ListObjectsResponse, Error> {
-        let max_results = max_results.map(|x| x.to_string());
-        let versions = versions.map(|x| x.to_string());
-        let include_trailing_delimiter = include_trailing_delimiter.map(|x| x.to_string());
+        let max_results = req.max_results.map(|x| x.to_param());
+        let versions = req.versions.map(|x| x.to_string());
+        let include_trailing_delimiter = req.include_trailing_delimiter.map(|x| x.to_string());
         let action = async {
             let url = format!("{}/b/{}/o/{}", BASE_URL, bucket, object);
-            let mut query_param = vec![];
-            with_projection(&mut query_param, projection);
-            if let Some(delimiter) = delimiter {
-                query_param.push(("delimiter", delimiter));
+            let mut p = vec![];
+            if let Some(v) = req.projection {
+                p.push(v.as_param());
             }
-            if let Some(v) = end_offset {
-                query_param.push(("endOffset", v));
+            if let Some(v) = req.delimiter {
+                p.push(("delimiter", &v));
+            }
+            if let Some(v) = req.end_offset {
+                p.push(("endOffset", &v));
             }
             if let Some(v) = include_trailing_delimiter{
-                query_param.push(("includeTrailingDelimiter", &v));
+                p.push(("includeTrailingDelimiter", &v));
             }
-            if let Some(v) = page_token{
-                query_param.push(("pageToken", v));
+            if let Some(v) = req.page_token{
+                p.push(v.as_param());
             }
-            if let Some(v) = prefix{
-                query_param.push(("prefix", v));
+            if let Some(v) = req.prefix{
+                p.push(v.as_param());
             }
-            if let Some(v) = start_offset {
-                query_param.push(("startOffset", v));
+            if let Some(v) = req.start_offset {
+                p.push(("startOffset", &v));
             }
             if let Some(v) = versions {
-                query_param.push(("versions", &v));
+                p.push(("versions", &v));
             }
             if let Some(v) = max_results {
-                query_param.push(("maxResults", &v));
+                p.push(v.as_param());
             }
-            self.send(reqwest::Client::new().get(url).query(&query_param)).await
+            self.send(reqwest::Client::new().get(url).query(&p)).await
         };
         invoke(cancel, action).await
     }
 
     pub async fn rewrite_object(
         &self,
-        destination_bucket: &str,
-        destination_object: &str,
-        source_bucket: &str,
-        source_object: &str,
-        destination_kms_key_name: Option<&str>,
-        destination_predefined_object_acl: Option<PredefinedObjectAcl>,
-        max_bytes_rewritten_per_call: Option<&i64>,
-        projection: Option<Projection>,
-        rewrite_token: Option<&str>,
-        source_generation: Option<&i64>,
+        req: RewriteObjectRequest,
         cancel: Option<CancellationToken>,
-    ) -> Result<RewriteResponse, Error> {
-        let max_bytes_rewritten_per_call = max_bytes_rewritten_per_call.map(|x| x.to_string());
-        let source_generation = source_generation.map(|x| x.to_string());
+    ) -> Result<RewriteObjectResponse, Error> {
+        let max_bytes_rewritten_per_call = req.max_bytes_rewritten_per_call.map(|x| x.to_string());
+        let metageneration_match = req.metageneration_match.map(|x| x.to_param());
+        let generation_match = req.generation_match.map(|x| x.to_param());
+        let src_metageneration_match = req.source_metageneration_match.map(|x| x.to_source_param());
+        let src_generation_match = req.source_generation_match.map(|x| x.to_source_param());
+        let source_generation = req.source_generation.map(|x| x.to_string());
         let action = async {
             let url = format!("{}/b/{}/o/{}/rewriteTo/b/{}/o/{}", BASE_URL, source_bucket, source_object, destination_bucket, destination_object);
-            let mut query_param = vec![];
-            with_projection(&mut query_param, projection);
-            if let Some(v) = destination_kms_key_name {
-                query_param.push(("destinationKmsKeyName", v));
+            let mut p = vec![];
+            if let Some(v)  = req.projection {
+                p.push(v.as_param());
             }
-            if let Some(v) = destination_predefined_object_acl {
-                query_param.push(("destinationPredefinedAcl", v.into()));
+            if let Some(v) = req.destination_kms_key_name {
+                p.push(("destinationKmsKeyName", &v));
+            }
+            if let Some(v) = req.destination_predefined_object_acl {
+                p.push(("destinationPredefinedAcl", v.as_str()));
+            }
+            if let Some(v) = metageneration_match {
+                for v in v {
+                    p.push(v.as_param());
+                }
+            }
+            if let Some(v) = generation_match {
+                for v in v {
+                    p.push(v.as_param());
+                }
+            }
+            if let Some(v) = src_metageneration_match {
+                for v in v {
+                    p.push(v.as_param());
+                }
+            }
+            if let Some(v) = src_generation_match {
+                for v in v {
+                    p.push(v.as_param());
+                }
             }
             if let Some(v) = max_bytes_rewritten_per_call {
-                query_param.push(("maxBytesRewrittenPerCall", &v));
+                p.push(("maxBytesRewrittenPerCall", &v));
             }
-            if let Some(v) = rewrite_token {
-                query_param.push(("rewriteToken", &v));
+            if let Some(v) = req.rewrite_token {
+                p.push(("rewriteToken", &v));
             }
             if let Some(v) = source_generation {
-                query_param.push(("sourceGeneration", &v));
+                p.push(("sourceGeneration", &v));
             }
-            self.send(reqwest::Client::new().post(url).query(&query_param)).await
+            self.send(reqwest::Client::new().post(url).query(&p)).await
         };
         invoke(cancel, action).await
     }
-
-
 
     async fn with_headers(&self, builder: RequestBuilder) -> Result<RequestBuilder, Error> {
         let token = self.ts.token().await?;
@@ -727,26 +748,6 @@ impl StorageClient {
         } else {
             Err(map_error(response).await)
         }
-    }
-}
-
-
-fn with_projection(param: &mut Vec<(&str, &str)>, projection: Option<Projection>) {
-    if let Some(projection) = projection {
-        param.push(("projection", projection.into()));
-    }
-}
-
-fn with_acl(
-    param: &mut Vec<(&str, &str)>,
-    bucket_acl: Option<PredefinedBucketAcl>,
-    object_acl: Option<PredefinedObjectAcl>,
-) {
-    if let Some(bucket_acl) = bucket_acl {
-        param.push(("predefinedAcl", bucket_acl.into()));
-    }
-    if let Some(object_acl) = object_acl {
-        param.push(("predefinedDefaultObjectAcl", object_acl.into()));
     }
 }
 

@@ -1,5 +1,6 @@
 use crate::http::entity2::acl::{Generation, ObjectAccessControl};
 use crate::http::entity2::common::{GenerationMatch, MetadataGenerationMatch, PredefinedObjectAcl, Projection};
+use crate::http::entity2::{MaxResults, PageToken, Prefix};
 
 /// Message for deleting an object.
 /// Either `bucket` and `object` *or* `upload_id` **must** be set (but not both).
@@ -27,14 +28,98 @@ pub struct DeleteObjectRequest {
 pub struct InsertSimpleObjectRequest {
     pub bucket: String,
     pub object: String,
-    pub metageneration_match: MetadataGenerationMatch,
-    pub generation_match: GenerationMatch,
+    pub generation: Option<Generation>,
+    pub metageneration_match: Option<MetadataGenerationMatch>,
+    pub generation_match: Option<GenerationMatch>,
     pub content_encoding: Option<String>,
     pub kms_key_name: Option<String>,
     pub predefined_acl: Option<PredefinedObjectAcl>,
     pub projection: Option<Projection>,
     pub body: Vec<u8>
 }
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct PatchObjectRequest {
+    pub bucket: String,
+    pub object: String,
+    pub generation: Option<Generation>,
+    pub metageneration_match: Option<MetadataGenerationMatch>,
+    pub generation_match: Option<GenerationMatch>,
+    pub predefined_acl: Option<PredefinedObjectAcl>,
+    pub projection: Option<Projection>,
+    pub resource: Object,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ListObjectsRequest {
+    pub bucket: String,
+    pub delimiter: Option<String>,
+    pub end_offset: Option<String>,
+    pub include_trailing_delimiter: Option<bool>,
+    pub max_results: Option<MaxResults>,
+    pub page_token: Option<PageToken>,
+    pub prefix: Option<Prefix>,
+    pub projection: Option<Projection>,
+    pub start_offset: Option<String>,
+    pub versions: Option<bool>,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RewriteObjectRequest {
+    pub destination_bucket: String,
+    pub destination_object: String,
+    pub source_bucket: String,
+    pub source_object: String,
+    pub metageneration_match: Option<MetadataGenerationMatch>,
+    pub generation_match: Option<GenerationMatch>,
+    pub source_metageneration_match: Option<MetadataGenerationMatch>,
+    pub source_generation_match: Option<GenerationMatch>,
+    pub destination_kms_key_name: Option<String>,
+    pub destination_predefined_object_acl: Option<PredefinedObjectAcl>,
+    pub max_bytes_rewritten_per_call: Option<i64>,
+    pub projection: Option<Projection>,
+    pub rewrite_token: Option<String>,
+    pub source_generation: Option<i64>,
+}
+
+/// The result of a call to Objects.ListObjects
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ListObjectsResponse {
+    /// The list of prefixes of objects matching-but-not-listed up to and including
+    /// the requested delimiter.
+    pub prefixes: Vec<String>,
+    /// The list of items.
+    pub items: Vec<Object>,
+    /// The continuation token, used to page through large result sets. Provide
+    /// this value in a subsequent request to return the next page of results.
+    pub next_page_token: String,
+}
+
+/// A rewrite response.
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RewriteObjectResponse {
+    /// The total bytes written so far, which can be used to provide a waiting user
+    /// with a progress indicator. This property is always present in the response.
+    pub total_bytes_rewritten: i64,
+    /// The total size of the object being copied in bytes. This property is always
+    /// present in the response.
+    pub object_size: i64,
+    /// `true` if the copy is finished; otherwise, `false` if
+    /// the copy is in progress. This property is always present in the response.
+    pub done: bool,
+    /// A token to use in subsequent requests to continue copying data. This token
+    /// is present in the response only when there is more data to copy.
+    pub rewrite_token: String,
+    /// A resource containing the metadata for the copied-to object. This property
+    /// is present in the response only when copying completes.
+    pub resource: Option<Object>,
+}
+
 /// An object.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

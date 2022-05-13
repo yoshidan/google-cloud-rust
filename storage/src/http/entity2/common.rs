@@ -21,6 +21,16 @@ impl MetadataGenerationMatch {
         }
         v
     }
+    pub fn to_source_param(&self) -> Vec<StringParam>{
+        let mut v = vec![];
+        if let Some(v) = self.if_metageneration_match {
+            v.push(StringParam("ifSourceMetagenerationMatch", v.to_string()));
+        }
+        if let Some(v) = self.if_metageneration_not_match {
+            v.push(StringParam("ifSourceMetagenerationNotMatch", v.to_string()));
+        }
+        v
+    }
 }
 
 
@@ -42,6 +52,16 @@ impl GenerationMatch {
         }
         if let Some(v) = self.if_generation_not_match {
             v.push(StringParam("ifGenerationNotMatch", v.to_string()));
+        }
+        v
+    }
+    pub fn to_source_param(&self) -> Vec<StringParam>{
+        let mut v = vec![];
+        if let Some(v) = self.if_generation_match {
+            v.push(StringParam("ifSourceGenerationMatch", v.to_string()));
+        }
+        if let Some(v) = self.if_generation_not_match {
+            v.push(StringParam("ifSourceGenerationNotMatch", v.to_string()));
         }
         v
     }
@@ -144,7 +164,7 @@ impl PredefinedObjectAcl {
 }
 
 impl PredefinedObjectAcl {
-    fn as_str(&self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         match v {
             PredefinedObjectAcl::ObjectAclAuthenticatedRead => "authenticatedRead",
             PredefinedObjectAcl::ObjectAclBucketOwnerFullControl => "bucketOwnerFullControl",
