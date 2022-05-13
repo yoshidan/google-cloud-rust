@@ -1,5 +1,5 @@
 use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
-use crate::http::entity::{Bucket, BucketAccessControl, BucketAccessControlsCreationConfig, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketAccessControlsResponse, ListBucketsRequest, ListBucketsResponse, PatchBucketRequest, UpdateBucketRequest};
+use crate::http::entity::{Bucket, BucketAccessControl, BucketAccessControlsCreationConfig, Channel, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketAccessControlsResponse, ListBucketsRequest, ListBucketsResponse, ListChannelsResponse, ListNotificationsResponse, LockRetentionPolicyRequest, Notification, NotificationCreationConfig, ObjectAccessControl, ObjectAccessControlsCreationConfig, PatchBucketRequest, UpdateBucketRequest};
 use crate::http::iam::{GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest, TestIamPermissionsResponse};
 use crate::http::CancellationToken;
 use google_cloud_auth::token_source::TokenSource;
@@ -10,6 +10,7 @@ use std::future::Future;
 use std::mem;
 use std::sync::Arc;
 use tracing::info;
+use crate::http::entity::list_channels_response::Items;
 
 const BASE_URL: &str = "https://storage.googleapis.com/storage/v1";
 
@@ -226,6 +227,122 @@ impl StorageClient {
         };
         invoke(cancel, action).await.map(|e| e.items )
     }
+
+
+    pub async fn insert_notification(
+        &self,
+        bucket: &str,
+        config: &NotificationCreationConfig,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Notification, Error> {
+        let action = async {
+            let url = format!("{}/b/{}/notificationConfigs?alt=json&prettyPrint=false", BASE_URL, bucket);
+            self.send(reqwest::Client::new().post(url).json(config)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn list_notifications(
+        &self,
+        bucket: &str,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Vec<Notification>, Error> {
+        let action = async {
+            let url = format!("{}/b/{}/notificationConfigs?alt=json&prettyPrint=false", BASE_URL, bucket);
+            self.send::<ListNotificationsResponse>(reqwest::Client::new().get(url)).await
+        };
+        invoke(cancel, action).await.map(|e| e.items )
+    }
+
+    pub async fn get_notification(
+        &self,
+        bucket: &str,
+        notification: &str,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Notification, Error> {
+        let action = async {
+            let url = format!("{}/b/{}/notificationConfigs/{}?alt=json&prettyPrint=false", BASE_URL, bucket, notification);
+            self.send(reqwest::Client::new().get(url)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn delete_notification(
+        &self,
+        bucket: &str,
+        notification: &str,
+        cancel: Option<CancellationToken>,
+    ) -> Result<(), Error> {
+        let action = async {
+            let url = format!("{}/b/{}/notificationConfigs/{}?alt=json&prettyPrint=false", BASE_URL, bucket, notification);
+            self.send_get_empty(reqwest::Client::new().delete(url)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn list_channels(
+        &self,
+        bucket: &str,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Vec<Items>, Error> {
+        let action = async {
+            let url = format!("{}/b/{}/channels?alt=json&prettyPrint=false", BASE_URL, bucket);
+            self.send::<ListChannelsResponse>(reqwest::Client::new().get(url)).await
+        };
+        invoke(cancel, action).await.map(|e| e.items )
+    }
+
+    pub async fn stop_channel(
+        &self,
+        channel: &Items,
+        cancel: Option<CancellationToken>,
+    ) -> Result<(), Error> {
+        let action = async {
+            let url = format!("{}/channels/stop?alt=json&prettyPrint=false", BASE_URL);
+            self.send_get_empty(reqwest::Client::new().post(url).json(channel)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn insert_default_object_acl(
+        &self,
+        bucket: &str,
+        config: &ObjectAccessControlsCreationConfig,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ObjectAccessControl, Error> {
+        let action = async {
+            let url = format!("{}/b/{}/defaultObjectAcl?alt=json&prettyPrint=false", BASE_URL, bucket);
+            self.send(reqwest::Client::new().post(url).json(config)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn get_default_object_acl(
+        &self,
+        bucket: &str,
+        entity: &str,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ObjectAccessControl, Error> {
+        let action = async {
+            let url = format!("{}/b/{}/defaultObjectAcl/{}?alt=json&prettyPrint=false", BASE_URL, bucket, entity);
+            self.send(reqwest::Client::new().get(url)).await
+        };
+        invoke(cancel, action).await
+    }
+
+    pub async fn delete_default_object_acl(
+        &self,
+        bucket: &str,
+        entity: &str,
+        cancel: Option<CancellationToken>,
+    ) -> Result<(), Error> {
+        let action = async {
+            let url = format!("{}/b/{}/acl/{}?defaultObjectAcl=json&prettyPrint=false", BASE_URL, bucket, entity);
+            self.send_get_empty(reqwest::Client::new().delete(url)).await
+        };
+        invoke(cancel, action).await
+    }
+
 
     async fn send<T: for<'de> serde::Deserialize<'de>>(&self, builder: RequestBuilder) -> Result<T,Error> {
         let builder = self.with_headers(builder).await?;

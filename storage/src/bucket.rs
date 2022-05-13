@@ -1,11 +1,7 @@
 use crate::bucket;
 use crate::http::entity::bucket::{Versioning, Website};
 use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
-use crate::http::entity::{
-    Bucket, BucketAccessControl, BucketCreationConfig, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest,
-    ListBucketsRequest, ObjectAccessControl, ObjectAccessControlsCreationConfig, PatchBucketRequest,
-    RetentionPolicyCreationConfig,
-};
+use crate::http::entity::{Bucket, BucketAccessControl, BucketCreationConfig, Channel, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketsRequest, Notification, NotificationCreationConfig, ObjectAccessControl, ObjectAccessControlsCreationConfig, PatchBucketRequest, RetentionPolicyCreationConfig};
 use crate::http::storage_client::{Error, StorageClient};
 use crate::iam::IAMHandle;
 use crate::sign::{signed_url, SignBy, SignedURLError, SignedURLOptions};
@@ -13,7 +9,8 @@ use chrono::{DateTime, SecondsFormat, Timelike, Utc};
 use google_cloud_auth::credentials::CredentialsFile;
 use std::collections::HashMap;
 use tokio_util::sync::CancellationToken;
-use crate::acl::BucketACLHandle;
+use crate::acl::{BucketACLHandle, DefaultObjectACLHandle};
+use crate::http::entity::list_channels_response::Items;
 
 pub struct BucketHandle<'a> {
     name: String,
@@ -97,8 +94,36 @@ impl<'a> BucketHandle<'a> {
         BucketACLHandle::new(self.name.as_str(), entity, &self.storage_client)
     }
 
+    pub fn default_object_acl<'b>(&self, entity: &'b str) -> DefaultObjectACLHandle<'_, 'b> {
+        DefaultObjectACLHandle::new(self.name.as_str(), entity, &self.storage_client)
+    }
+
     pub async fn acls<'b>(&self, cancel: Option<CancellationToken>) -> Result<Vec<BucketAccessControl>, Error> {
         self.storage_client.list_bucket_acls(self.name.as_str(), cancel).await
+    }
+
+    pub async fn notifications(&self, cancel: Option<CancellationToken>) -> Result<Vec<Notification>, Error> {
+        self.storage_client.list_notifications(self.name.as_str(), cancel).await
+    }
+
+    pub async fn get_notification(&self, id: &str, cancel: Option<CancellationToken>) -> Result<Notification, Error> {
+        self.storage_client.get_notification(self.name.as_str(), id, cancel).await
+    }
+
+    pub async fn delete_notification(&self, id: &str, cancel: Option<CancellationToken>) -> Result<Notification, Error> {
+        self.storage_client.get_notification(self.name.as_str(), id, cancel).await
+    }
+
+    pub async fn create_notification(&self, config: &NotificationCreationConfig, cancel: Option<CancellationToken>) -> Result<Notification, Error> {
+        self.storage_client.insert_notification(self.name.as_str(), config, cancel).await
+    }
+
+    pub async fn channels(&self, cancel: Option<CancellationToken>) -> Result<Vec<Items>, Error> {
+        self.storage_client.list_channels(self.name.as_str(), cancel).await
+    }
+
+    pub async fn stop_channel(&self, channel: &Items, cancel: Option<CancellationToken>) -> Result<(), Error> {
+        self.storage_client.stop_channel(channel, cancel).await
     }
 }
 
