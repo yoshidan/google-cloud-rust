@@ -8,6 +8,7 @@ pub mod bucket;
 pub mod channel;
 pub mod common;
 pub mod iam;
+pub mod object;
 pub mod notification;
 
 pub struct Prefix(String);

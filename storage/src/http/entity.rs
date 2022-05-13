@@ -3,7 +3,7 @@ use serde::{de, Deserialize, Deserializer};
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::str::FromStr;
-use crate::http::entity2::acl::ObjectACLRole;
+use crate::http::entity2::acl::{Generation, ObjectACLRole};
 
 /// Metadata generation match parameter.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default)]
@@ -1156,7 +1156,7 @@ pub struct GetObjectAccessControlRequest {
     pub object: String,
     /// If present, selects a specific revision of this object (as opposed to the
     /// latest version, the default).
-    pub generation: i64,
+    pub generation: Option<Generation>,
 }
 /// Request message for InsertObjectAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]

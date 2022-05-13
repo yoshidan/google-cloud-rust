@@ -23,6 +23,31 @@ impl MetadataGenerationMatch {
     }
 }
 
+
+/// Generation match parameter.
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default)]
+pub struct GenerationMatch {
+    /// If set, only deletes the bucket if its generation matches this value.
+    pub if_generation_match: Option<i64>,
+    /// If set, only deletes the bucket if its generation does not match this
+    /// value.
+    pub if_generation_not_match: Option<i64>,
+}
+
+impl GenerationMatch {
+    pub fn to_param(&self) -> Vec<StringParam>{
+        let mut v = vec![];
+        if let Some(v) = self.if_generation_match {
+            v.push(StringParam("ifGenerationMatch", v.to_string()));
+        }
+        if let Some(v) = self.if_generation_not_match {
+            v.push(StringParam("ifGenerationNotMatch", v.to_string()));
+        }
+        v
+    }
+}
+
+
 /// A set of properties to return in a response.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize, Debug)]
 #[repr(i32)]
@@ -112,6 +137,9 @@ impl PredefinedBucketAcl {
 impl PredefinedObjectAcl {
     pub fn as_default_object_acl(&self) ->  (&'static str, &'static str) {
         ("predefinedObjectAcl", self.as_str())
+    }
+    pub fn as_param(&self) ->  (&'static str, &'static str) {
+        ("predefinedAcl", self.as_str())
     }
 }
 

@@ -156,6 +156,14 @@ pub struct ListObjectAccessControlsRequest {
     /// latest version, the default).
     pub generation: i64,
 }
+/// The response to a call to BucketAccessControls.ListBucketAccessControls.
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ListBucketAccessControlsResponse {
+    /// The list of items.
+    pub items: Vec<BucketAccessControl>,
+}
+
 /// Request message for PatchObjectAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -224,6 +232,30 @@ pub struct ListDefaultObjectAccessControlsRequest {
     pub bucket: String,
     /// Metageneration matches this value.
     pub metageneration: MetadataGenerationMatch,
+}
+/// Request message for GetDefaultObjectAccessControl.
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GetDefaultObjectAccessControlRequest {
+    /// Required. Name of a bucket.
+    pub bucket: String,
+    /// Required. The entity holding the permission. Can be one of:
+    /// * `user-`*userId*
+    /// * `user-`*emailAddress*
+    /// * `group-`*groupId*
+    /// * `group-`*emailAddress*
+    /// * `allUsers`
+    /// * `allAuthenticatedUsers`
+    pub entity: String,
+}
+/// Request message for InsertDefaultObjectAccessControl.
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct InsertDefaultObjectAccessControlRequest {
+    /// Required. Name of a bucket.
+    pub bucket: String,
+    /// Properties of the object access control being inserted.
+    pub object_access_control: ObjectAccessControlsCreationConfig,
 }
 
 /// Represents the Viewers, Editors, or Owners of a given project.

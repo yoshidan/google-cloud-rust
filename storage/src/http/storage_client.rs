@@ -8,12 +8,14 @@ use std::future::Future;
 use std::mem;
 use std::sync::Arc;
 use tracing::info;
-use crate::http::entity2::acl::{BucketAccessControl, BucketAccessControlsCreationConfig, DeleteBucketAccessControlsRequest, GetBucketAccessControlsRequest, InsertBucketAccessControlsRequest, InsertObjectAccessControlRequest, ObjectAccessControl};
+use crate::http::entity2::acl::{BucketAccessControl, BucketAccessControlsCreationConfig, DeleteBucketAccessControlsRequest, DeleteDefaultObjectAccessControlRequest, GetBucketAccessControlsRequest, GetDefaultObjectAccessControlRequest, GetObjectAccessControlRequest, InsertBucketAccessControlsRequest, InsertDefaultObjectAccessControlRequest, InsertObjectAccessControlRequest, ListBucketAccessControlsResponse, ListObjectAccessControlsRequest, ListObjectAccessControlsResponse, ObjectAccessControl, ObjectAccessControlsCreationConfig};
 use crate::http::entity2::bucket::{Bucket, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketsRequest, ListBucketsResponse, PatchBucketRequest};
 use crate::http::entity2::channel::{Channel, ListChannelsResponse, StopChannelRequest, WatchableChannel};
+use crate::http::entity2::common::Projection;
 use crate::http::entity2::iam::{GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest, TestIamPermissionsResponse};
 use crate::http::entity2::notification::{DeleteNotificationRequest, GetNotificationRequest, InsertNotificationRequest, ListNotificationsResponse, Notification};
-use crate::http::entity::{InsertDefaultObjectAccessControlRequest, ListBucketAccessControlsResponse};
+use crate::http::entity2::hmac_key::{CreateHmacKeyRequest, CreateHmacKeyResponse, DeleteHmacKeyRequest, GetHmacKeyRequest, HmacKeyMetadata, ListHmacKeysRequest};
+use crate::http::entity2::object::{DeleteObjectRequest, InsertSimpleObjectRequest, Object};
 
 const BASE_URL: &str = "https://storage.googleapis.com/storage/v1";
 
@@ -324,12 +326,11 @@ impl StorageClient {
 
     pub async fn get_default_object_acl(
         &self,
-        bucket: &str,
-        entity: &str,
+        req: GetDefaultObjectAccessControlRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
         let action = async {
-            let url = format!("{}/b/{}/defaultObjectAcl/{}?alt=json&prettyPrint=false", BASE_URL, bucket, entity);
+            let url = format!("{}/b/{}/defaultObjectAcl/{}", BASE_URL, req.bucket, req.entity);
             self.send(reqwest::Client::new().get(url)).await
         };
         invoke(cancel, action).await
@@ -337,12 +338,11 @@ impl StorageClient {
 
     pub async fn delete_default_object_acl(
         &self,
-        bucket: &str,
-        entity: &str,
+        req: DeleteDefaultObjectAccessControlRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
-            let url = format!("{}/b/{}/acl/{}?defaultObjectAcl=json&prettyPrint=false", BASE_URL, bucket, entity);
+            let url = format!("{}/b/{}/defaultObjectAcl/{}", BASE_URL, req.bucket, req.entity);
             self.send_get_empty(reqwest::Client::new().delete(url)).await
         };
         invoke(cancel, action).await
@@ -350,72 +350,66 @@ impl StorageClient {
 
     pub async fn insert_object_acl(
         &self,
-        bucket: &str,
-        object: &str,
-        generation: Option<i64>,
-        config: &ObjectAccessControlsCreationConfig,
+        req: InsertObjectAccessControlRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
+        let generation = req.generation.map(|x| x.to_param());
         let action = async {
-            let url = format!("{}/b/{}/o/{}/acl?alt=json&prettyPrint=false", BASE_URL, bucket, object);
-            let mut query_param = vec![];
+            let url = format!("{}/b/{}/o/{}/acl", BASE_URL, req.bucket, req.object);
+            let mut p= vec![];
             if let Some(generation) = generation {
-                query_param.push(("generation", generation));
+                p.push(generation.as_param());
             }
-            self.send(reqwest::Client::new().post(url).query(&query_param).json(config)).await
+            self.send(reqwest::Client::new().post(url).query(&p).json(config)).await
         };
         invoke(cancel, action).await
     }
 
     pub async fn get_object_acl(
         &self,
-        bucket: &str,
-        object: &str,
-        entity: &str,
-        generation: Option<i64>,
+        req: GetObjectAccessControlRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
+        let generation = req.generation.map(|x| x.to_param());
         let action = async {
-            let url = format!("{}/b/{}/o/{}/acl/{}?alt=json&prettyPrint=false", BASE_URL, bucket, object,entity);
-            let mut query_param = vec![];
+            let url = format!("{}/b/{}/o/{}/acl/{}", BASE_URL, req.bucket, req.object,req.entity);
+            let mut p = vec![];
             if let Some(generation) = generation {
-                query_param.push(("generation", generation));
+                p.push(generation.as_param());
             }
-            self.send(reqwest::Client::new().get(url)).await
+            self.send(reqwest::Client::new().get(url).query(&p)).await
         };
         invoke(cancel, action).await
     }
 
     pub async fn list_object_acls(
         &self,
-        bucket: &str,
-        object: &str,
-        generation: Option<i64>,
+        req: ListObjectAccessControlsRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<Vec<ObjectAccessControl>, Error> {
+        let generation = req.generation.map(|x| x.to_param());
         let action = async {
-            let url = format!("{}/b/{}/o/{}/acl?alt=json&prettyPrint=false", BASE_URL, bucket, object);
-            let mut query_param = vec![];
+            let url = format!("{}/b/{}/o/{}/acl", BASE_URL, req.bucket, req.object);
+            let mut p = vec![];
             if let Some(generation) = generation {
-                query_param.push(("generation", generation));
+                p.push(generation.as_param());
             }
-            self.send::<ListObjectAccessControlsResponse>(reqwest::Client::new().get(url)).await
+            self.send::<ListObjectAccessControlsResponse>(reqwest::Client::new().get(url).query(&p)).await
         };
         invoke(cancel, action).await.map(|e| e.items )
     }
 
     pub async fn delete_object_acl(
         &self,
-        bucket: &str,
-        object: &str,
-        generation: Option<i64>,
+        req: DeleteBucketRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
+        let generation = req.generation.map(|x| x.to_param());
         let action = async {
-            let url = format!("{}/b/{}/o/{}/acl?alt=json&prettyPrint=false", BASE_URL, bucket, object);
-            let mut query_param = vec![];
+            let url = format!("{}/b/{}/o/{}/acl", BASE_URL, req.bucket, req.object);
+            let mut p = vec![];
             if let Some(generation) = generation {
-                query_param.push(("generation", generation));
+                p.push(generation.as_param());
             }
             self.send_get_empty(reqwest::Client::new().delete(url)).await
         };
@@ -424,26 +418,24 @@ impl StorageClient {
 
     pub async fn create_hmac_keys(
         &self,
-        project: &str,
-        service_account_email: &str,
+        req: CreateHmacKeyRequest,
         cancel: Option<CancellationToken>,
-    ) -> Result<HmacKeyMetadata, Error> {
+    ) -> Result<CreateHmacKeyResponse, Error> {
         let action = async {
-            let url = format!("{}/projects/{}/hmacKeys?alt=json&prettyPrint=false", BASE_URL, project);
-            let query_param = vec![("generation", service_account_email)];
-            self.send(reqwest::Client::new().post(url).query(&query_param)).await
+            let url = format!("{}/projects/{}/hmacKeys", BASE_URL, req.project_id);
+            let p= vec![("service_account_email", req.service_account_email.as_str())];
+            self.send(reqwest::Client::new().post(url).query(&p)).await
         };
         invoke(cancel, action).await
     }
 
     pub async fn delete_hmac_keys(
         &self,
-        project: &str,
-        access_id: &str,
+        req: DeleteHmacKeyRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
-            let url = format!("{}/projects/{}/hmacKeys/{}?alt=json&prettyPrint=false", BASE_URL, project, access_id);
+            let url = format!("{}/projects/{}/hmacKeys/{}", BASE_URL, req.project_id, req.access_id);
             self.send_get_empty(reqwest::Client::new().delete(url)).await
         };
         invoke(cancel, action).await
@@ -451,12 +443,11 @@ impl StorageClient {
 
     pub async fn get_hmac_keys(
         &self,
-        project: &str,
-        access_id: &str,
+        req: GetHmacKeyRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<HmacKeyMetadata, Error> {
         let action = async {
-            let url = format!("{}/projects/{}/hmacKeys/{}?alt=json&prettyPrint=false", BASE_URL, project, access_id);
+            let url = format!("{}/projects/{}/hmacKeys/{}", BASE_URL, req.project_id, req.access_id);
             self.send(reqwest::Client::new().get(url)).await
         };
         invoke(cancel, action).await
@@ -464,31 +455,22 @@ impl StorageClient {
 
     pub async fn list_hmac_keys(
         &self,
-        project: &str,
-        max_results: Option<&u32>,
-        page_token: Option<&str>,
-        service_account_email: Option<&str>,
-        show_deleted_keys: bool,
+        req: ListHmacKeysRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<HmacKeyMetadata, Error> {
-        let max_results = if let Some(max_results) = max_results {
-            max_results.to_string()
-        } else {
-            "".to_string()
-        };
-        let show_deleted_keys = show_deleted_keys.to_string();
+        let show_deleted_keys = req.show_deleted_keys.to_string();
+        let max_results = req.max_results.map(|x| x.to_param());
         let action = async {
-            let url = format!("{}/projects/{}/mackKeys?alt=json&prettyPrint=false", BASE_URL, project);
-            let mut query_param = vec![];
-            if let Some(page_token) = page_token {
-                query_param.push(("pageToken", page_token));
+            let url = format!("{}/projects/{}/mackKeys", BASE_URL, req.project_id);
+            let mut p= vec![("showDeletedKeys", show_deleted_keys.as_str())];
+            if let Some(v) = req.page_token {
+                p.push(v.as_param());
             }
-            if let Some(service_account_email) = service_account_email {
-                query_param.push(("serviceAccountEmail", service_account_email));
+            if let Some(v) = req.service_account_email {
+                p.push(("serviceAccountEmail", v.as_str()));
             }
-            query_param.push(("showDeletedKeys", show_deleted_keys.as_str()));
-            if !max_results.is_empty() {
-                query_param.push(("maxResults", max_results.as_str()));
+            if let Some(v) = max_results {
+                p.push(v.as_param());
             }
             self.send(reqwest::Client::new().get(url).query(&query_param)).await
         };
@@ -497,25 +479,35 @@ impl StorageClient {
 
     pub async fn insert_object_simple(
         &self,
-        bucket: &str,
-        object: &str,
-        content_encoding: Option<&str>,
-        kms_key_name: Option<&str>,
-        predefined_acl: Option<PredefinedObjectAcl>,
-        projection: Option<Projection>,
-        body: &[u8],
+        req: InsertSimpleObjectRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
+        let metageneration = req.metageneration_match.map(|x| x.to_param());
+        let generation = req.generation_match.map(|x| x.to_param());
         let action = async {
             let url = format!("{}/b/{}/o?uploadType=media", BASE_URL, bucket);
-            let mut query_param = vec![("name", object)];
-            with_projection(&mut query_param, projection);
-            with_acl(&mut query_param, None, predefined_acl);
-            if let Some(content_encoding) = content_encoding {
-                query_param.push(("contentEncoding", content_encoding));
+            let mut p= vec![("name", object)];
+            if let Some(v) = req.content_encoding {
+                p.push(("contentEncoding", v.as_str()));
             }
-            if let Some(kms_key_name) = kms_key_name {
-                query_param.push(("kmsKeyName", kms_key_name));
+            if let Some(v) = generation_match {
+                for v in v {
+                    p.push(v.as_param());
+                }
+            }
+            if let Some(v) = metageneration_match {
+                for v in v {
+                    p.push(v.as_param());
+                }
+            }
+            if let Some(v) = req.kms_key_name {
+                p.push(("kmsKeyName", v.as_str()));
+            }
+            if let Some(v) = req.predefined_acl{
+                p.push(v.as_param());
+            }
+            if let Some(v) = req.projection {
+                p.push(v.as_param());
             }
             self.send(reqwest::Client::new().post(url).query(&query_param).body(body)).await
         };
@@ -524,16 +516,27 @@ impl StorageClient {
 
     pub async fn delete_object(
         &self,
-        bucket: &str,
-        object: &str,
-        generation: Option<i64>,
+        req: DeleteObjectRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
+        let metageneration_match = req.metageneration_match.map(|x| x.to_param());
+        let generation_match = req.generation_match.map(|x| x.to_param());
+        let generation = req.generation.map(|x| x.to_param());
         let action = async {
             let url = format!("{}/b/{}/o/{}", BASE_URL, bucket, object);
-            let mut query_param = vec![];
-            if let Some(generation) = generation {
-                query_param.push(("generation", generation));
+            let mut p = vec![];
+            if let Some(v) = generation {
+                p.push(v.as_param());
+            }
+            if let Some(v) = generation_match {
+                for v in v {
+                    p.push(v.as_param());
+                }
+            }
+            if let Some(v) = metageneration_match {
+                for v in v {
+                    p.push(v.as_param());
+                }
             }
             self.send_get_empty(reqwest::Client::new().delete(url).query(&query_param)).await
         };
@@ -549,9 +552,11 @@ impl StorageClient {
     ) -> Result<Vec<u8>, Error> {
         let action = async {
             let url = format!("{}/b/{}/o/{}?alt=media", BASE_URL, bucket, object);
-            let mut query_param = vec![];
-            with_projection(&mut query_param, projection);
-            let builder = reqwest::Client::new().get(url).query(&query_param);
+            let mut p = vec![];
+            if let Some(v) = projection {
+                p.push(v.as_param());
+            }
+            let builder = reqwest::Client::new().get(url).query(&p);
             let builder = self.with_headers(builder).await?;
             let response = builder.send().await?;
             if response.status().is_success() {
