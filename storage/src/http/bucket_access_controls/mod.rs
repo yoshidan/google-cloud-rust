@@ -54,11 +54,11 @@ pub struct BucketAccessControl {
     /// `domain-example.com`
     pub entity: String,
     /// The ID for the entity, if any.
-    pub entity_id: String,
+    pub entity_id: Option<String>,
     /// The email address associated with the entity, if any.
-    pub email: String,
+    pub email: Option<String>,
     /// The domain associated with the entity, if any.
-    pub domain: String,
+    pub domain: Option<String>,
     /// The project team associated with the entity, if any.
     pub project_team: Option<ProjectTeam>,
     /// The link to this access-control entry.

@@ -4,6 +4,8 @@ use crate::http::objects::Owner;
 
 pub mod delete;
 pub mod insert;
+pub mod get;
+pub mod patch;
 
 /// A bucket.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]

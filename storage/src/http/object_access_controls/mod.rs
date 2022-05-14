@@ -15,15 +15,21 @@ pub struct ObjectAccessControl {
     pub kind: String,
     pub object: Option<String>,
     pub project_team: Option<ProjectTeam>,
-    pub role: String,
+    pub role: ObjectACLRole,
     pub self_link: Option<String>,
 }
 
 /// A set of properties to return in a response.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize, Debug)]
 pub enum ObjectACLRole {
-    OWNER,
     READER,
+    OWNER,
+}
+
+impl Default for ObjectACLRole {
+    fn default() -> Self {
+        ObjectACLRole::READER
+    }
 }
 
 /// Predefined or "canned" aliases for sets of specific object ACL entries.
