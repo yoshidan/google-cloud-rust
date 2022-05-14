@@ -1,6 +1,6 @@
-use crate::http::entity2::acl::{Generation, ObjectAccessControl};
-use crate::http::entity2::common::{GenerationMatch, MetadataGenerationMatch, PredefinedObjectAcl, Projection};
-use crate::http::entity2::{MaxResults, PageToken, Prefix};
+use crate::http::entity::acl::{ObjectAccessControl};
+use crate::http::entity::common::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
+use crate::http::entity::{MaxResults, PageToken, Prefix};
 
 /// Message for deleting an object.
 /// Either `bucket` and `object` *or* `upload_id` **must** be set (but not both).
@@ -13,14 +13,22 @@ pub struct DeleteObjectRequest {
     pub object: String,
     /// If present, permanently deletes a specific revision of this object (as
     /// opposed to the latest version, the default).
-    pub generation: Option<Generation>,
+    pub generation: Option<i64>,
     /// Makes the operation conditional on whether the object's current generation
     /// matches the given value. Setting to 0 makes the operation succeed only if
     /// there are no live versions of the object.
-    pub generation_match: Option<GenerationMatch>,
+    pub if_generation_match: Option<i64>,
+    /// Makes the operation conditional on whether the object's current generation
+    /// does not match the given value. If no live object exists, the precondition
+    /// fails. Setting to 0 makes the operation succeed only if there is a live
+    /// version of the object.
+    pub if_generation_not_match: Option<i64>,
+    /// Makes the operation conditional on whether the object's current
+    /// metageneration matches the given value.
+    pub if_metageneration_match: Option<i64>,
     /// Makes the operation conditional on whether the object's current
     /// metageneration does not match the given value.
-    pub metageneration_match: Option<MetadataGenerationMatch>,
+    pub if_metageneration_not_match: Option<i64>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
@@ -28,9 +36,22 @@ pub struct DeleteObjectRequest {
 pub struct InsertSimpleObjectRequest {
     pub bucket: String,
     pub object: String,
-    pub generation: Option<Generation>,
-    pub metageneration_match: Option<MetadataGenerationMatch>,
-    pub generation_match: Option<GenerationMatch>,
+    pub generation: Option<i64>,
+    /// Makes the operation conditional on whether the object's current generation
+    /// matches the given value. Setting to 0 makes the operation succeed only if
+    /// there are no live versions of the object.
+    pub if_generation_match: Option<i64>,
+    /// Makes the operation conditional on whether the object's current generation
+    /// does not match the given value. If no live object exists, the precondition
+    /// fails. Setting to 0 makes the operation succeed only if there is a live
+    /// version of the object.
+    pub if_generation_not_match: Option<i64>,
+    /// Makes the operation conditional on whether the object's current
+    /// metageneration matches the given value.
+    pub if_metageneration_match: Option<i64>,
+    /// Makes the operation conditional on whether the object's current
+    /// metageneration does not match the given value.
+    pub if_metageneration_not_match: Option<i64>,
     pub content_encoding: Option<String>,
     pub kms_key_name: Option<String>,
     pub predefined_acl: Option<PredefinedObjectAcl>,
@@ -43,9 +64,22 @@ pub struct InsertSimpleObjectRequest {
 pub struct PatchObjectRequest {
     pub bucket: String,
     pub object: String,
-    pub generation: Option<Generation>,
-    pub metageneration_match: Option<MetadataGenerationMatch>,
-    pub generation_match: Option<GenerationMatch>,
+    pub generation: Option<i64>,
+    /// Makes the operation conditional on whether the object's current generation
+    /// matches the given value. Setting to 0 makes the operation succeed only if
+    /// there are no live versions of the object.
+    pub if_generation_match: Option<i64>,
+    /// Makes the operation conditional on whether the object's current generation
+    /// does not match the given value. If no live object exists, the precondition
+    /// fails. Setting to 0 makes the operation succeed only if there is a live
+    /// version of the object.
+    pub if_generation_not_match: Option<i64>,
+    /// Makes the operation conditional on whether the object's current
+    /// metageneration matches the given value.
+    pub if_metageneration_match: Option<i64>,
+    /// Makes the operation conditional on whether the object's current
+    /// metageneration does not match the given value.
+    pub if_metageneration_not_match: Option<i64>,
     pub predefined_acl: Option<PredefinedObjectAcl>,
     pub projection: Option<Projection>,
     pub resource: Object,
@@ -58,9 +92,9 @@ pub struct ListObjectsRequest {
     pub delimiter: Option<String>,
     pub end_offset: Option<String>,
     pub include_trailing_delimiter: Option<bool>,
-    pub max_results: Option<MaxResults>,
-    pub page_token: Option<PageToken>,
-    pub prefix: Option<Prefix>,
+    pub max_results: Option<i32>,
+    pub page_token: Option<String>,
+    pub prefix: Option<String>,
     pub projection: Option<Projection>,
     pub start_offset: Option<String>,
     pub versions: Option<bool>,
@@ -73,16 +107,51 @@ pub struct RewriteObjectRequest {
     pub destination_object: String,
     pub source_bucket: String,
     pub source_object: String,
-    pub metageneration_match: Option<MetadataGenerationMatch>,
-    pub generation_match: Option<GenerationMatch>,
-    pub source_metageneration_match: Option<MetadataGenerationMatch>,
-    pub source_generation_match: Option<GenerationMatch>,
+    /// If set, only deletes the bucket if its metageneration matches this value.
+    pub if_destination_metageneration_match: Option<i64>,
+    /// If set, only deletes the bucket if its metageneration does not match this
+    /// value.
+    pub if_destination_metageneration_not_match: Option<i64>,
+    /// If set, only deletes the bucket if its metageneration matches this value.
+    pub if_source_metageneration_match: Option<i64>,
+    /// If set, only deletes the bucket if its metageneration does not match this
+    /// value.
+    pub if_source_metageneration_not_match: Option<i64>,
     pub destination_kms_key_name: Option<String>,
     pub destination_predefined_object_acl: Option<PredefinedObjectAcl>,
     pub max_bytes_rewritten_per_call: Option<i64>,
     pub projection: Option<Projection>,
-    pub rewrite_token: Option<String>,
     pub source_generation: Option<i64>,
+    pub rewrite_token: Option<String>,
+}
+
+/// Request message for ComposeObject.
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ComposeObjectRequest {
+    /// Required. Name of the bucket containing the source objects. The destination object is
+    /// stored in this bucket.
+    pub bucket: String,
+    /// Required. Name of the new object.
+    pub destination_object: String,
+    /// Apply a predefined set of access controls to the destination object.
+    pub destination_predefined_acl: Option<PredefinedObjectAcl>,
+    /// Properties of the resulting object.
+    pub destination: Option<Object>,
+    /// The list of source objects that will be concatenated into a single object.
+    pub source_objects: Vec<SourceObjects>,
+    /// Makes the operation conditional on whether the object's current generation
+    /// matches the given value. Setting to 0 makes the operation succeed only if
+    /// there are no live versions of the object.
+    pub if_generation_match: Option<i64>,
+    /// Makes the operation conditional on whether the object's current
+    /// metageneration matches the given value.
+    pub if_metageneration_match: Option<i64>,
+    /// Resource name of the Cloud KMS key, of the form
+    /// `projects/my-project/locations/my-location/keyRings/my-kr/cryptoKeys/my-key`,
+    /// that will be used to encrypt the object. Overrides the object
+    /// metadata's `kms_key_name` value, if any.
+    pub kms_key_name: String,
 }
 
 /// The result of a call to Objects.ListObjects
@@ -285,4 +354,29 @@ pub struct Owner {
     pub entity: String,
     /// The ID for the entity.
     pub entity_id: Option<String>,
+}
+
+/// Description of a source object for a composition request.
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SourceObjects {
+    /// The source object's name. All source objects must reside in the same
+    /// bucket.
+    pub name: String,
+    /// The generation of this object to use as the source.
+    pub generation: Generation,
+    /// Conditions that must be met for this operation to execute.
+    pub object_preconditions: Option<source_objects::ObjectPreconditions>,
+}
+/// Nested message and enum types in `SourceObjects`.
+pub mod source_objects {
+    /// Preconditions for a source object of a composition request.
+    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+    #[serde(rename_all = "camelCase")]
+    pub struct ObjectPreconditions {
+        /// Only perform the composition if the generation of the source object
+        /// that would be used matches this value.  If this value and a generation
+        /// are both specified, they must be the same value or the call will fail.
+        pub if_generation_match: Option<i64>,
+    }
 }

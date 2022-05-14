@@ -1,13 +1,4 @@
-use crate::http::entity2::common::MetadataGenerationMatch;
-use crate::http::entity2::StringParam;
-
-pub struct Generation(i64);
-
-impl Generation {
-    pub fn to_param(&self) -> StringParam  {
-        StringParam("generation", v.0.to_string())
-    }
-}
+use crate::http::entity::StringParam;
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -140,7 +131,7 @@ pub struct InsertObjectAccessControlRequest {
     pub object: String,
     /// If present, selects a specific revision of this object (as opposed to the
     /// latest version, the default).
-    pub generation: Option<Generation>,
+    pub generation: Option<i64>,
     /// Properties of the object access control to be inserted.
     pub object_access_control: ObjectAccessControlsCreationConfig,
 }
@@ -230,8 +221,11 @@ pub struct DeleteDefaultObjectAccessControlRequest {
 pub struct ListDefaultObjectAccessControlsRequest {
     /// Required. Name of a bucket.
     pub bucket: String,
-    /// Metageneration matches this value.
-    pub metageneration: MetadataGenerationMatch,
+    /// If set, only deletes the bucket if its metageneration matches this value.
+    pub if_metageneration_match: Option<i64>,
+    /// If set, only deletes the bucket if its metageneration does not match this
+    /// value.
+    pub if_metageneration_not_match: Option<i64>,
 }
 /// Request message for GetDefaultObjectAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]

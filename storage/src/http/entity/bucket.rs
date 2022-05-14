@@ -1,8 +1,8 @@
 use std::collections::HashMap;
-use crate::http::entity2::acl::{BucketAccessControl, ObjectAccessControl, ObjectAccessControlsCreationConfig};
-use crate::http::entity2::common::{MaxResults, MetadataGenerationMatch, PredefinedBucketAcl, PredefinedObjectAcl, Project, Projection};
-use crate::http::entity2::{MaxResults, PageToken, Prefix, Project};
-use crate::http::entity::Owner;
+use crate::http::entity::acl::{BucketAccessControl, ObjectAccessControl, ObjectAccessControlsCreationConfig};
+use crate::http::entity::{MaxResults, PageToken, Prefix, Project};
+use crate::http::entity::common::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
+use crate::http::entity::object::Owner;
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -81,12 +81,12 @@ pub struct Bucket {
     /// The project number of the project the bucket belongs to.
     /// Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
-    #[serde(deserialize_with = "from_str")]
+    #[serde(deserialize_with = "crate::http::entity::from_str")]
     pub project_number: i64,
     /// The metadata generation of this bucket.
     /// Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
-    #[serde(deserialize_with = "from_str")]
+    #[serde(deserialize_with = "crate::http::entity::from_str")]
     pub metageneration: i64,
     /// The bucket's \[<https://www.w3.org/TR/cors/\][Cross-Origin> Resource Sharing]
     /// (CORS) configuration.
@@ -358,6 +358,16 @@ pub struct Bucket {
         pub toggle_time: Option<chrono::DateTime<chrono::Utc>>,
     }
 
+/// Request message for DeleteBucket.
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteBucketParam {
+    /// If set, only deletes the bucket if its metageneration matches this value.
+    pub if_metageneration_match: Option<i64>,
+    /// If set, only deletes the bucket if its metageneration does not match this
+    /// value.
+    pub if_metageneration_not_match: Option<i64>,
+}
 
 /// Request message for DeleteBucket.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default)]
@@ -365,8 +375,8 @@ pub struct Bucket {
 pub struct DeleteBucketRequest {
     /// Required. Name of a bucket.
     pub bucket: String,
-    /// Metageneration matches this value.
-    pub metageneration: MetadataGenerationMatch,
+    /// Parameter
+    pub param: DeleteBucketParam
 }
 
 /// Request message for GetBucket.
@@ -375,9 +385,21 @@ pub struct DeleteBucketRequest {
 pub struct GetBucketRequest {
     /// Required. Name of a bucket.
     pub bucket: String,
-    /// Metageneration matches this value.
-    pub metageneration: MetadataGenerationMatch,
+    /// If set, only deletes the bucket if its metageneration matches this value.
+    pub if_metageneration_match: Option<i64>,
+    /// If set, only deletes the bucket if its metageneration does not match this
+    /// value.
+    pub if_metageneration_not_match: Option<i64>,
     /// Set of properties to return. Defaults to `NO_ACL`.
+    pub projection: Option<Projection>,
+}
+
+/// Request message for InsertBucket.
+#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct InsertBucketParam {
+    pub predefined_acl: Option<PredefinedBucketAcl>,
+    pub predefined_default_object_acl: Option<PredefinedObjectAcl>,
     pub projection: Option<Projection>,
 }
 /// Request message for InsertBucket.
@@ -385,9 +407,7 @@ pub struct GetBucketRequest {
 #[serde(rename_all = "camelCase")]
 pub struct InsertBucketRequest {
     pub project: Project,
-    pub predefined_acl: Option<PredefinedBucketAcl>,
-    pub predefined_default_object_acl: Option<PredefinedObjectAcl>,
-    pub projection: Option<Projection>,
+    pub param: InsertBucketParam,
     pub bucket: BucketCreationConfig,
 }
 
@@ -398,12 +418,12 @@ pub struct ListBucketsRequest {
     pub project: Project,
     /// Maximum number of buckets to return in a single response. The service will
     /// use this parameter or 1,000 items, whichever is smaller.
-    pub max_results: Option<MaxResults>,
+    pub max_results: Option<i32>,
     /// A previously-returned page token representing part of the larger set of
     /// results to view.
-    pub page_token: Option<PageToken>,
+    pub page_token: Option<String>,
     /// Filter results to buckets whose names begin with this prefix.
-    pub prefix: Option<Prefix>,
+    pub prefix: Option<String>,
     /// Set of properties to return. Defaults to `NO_ACL`.
     pub projection: Option<Projection>,
 }
@@ -433,8 +453,11 @@ pub struct LockRetentionPolicyRequest {
 pub struct PatchBucketRequest {
     /// Required. Name of a bucket.
     pub bucket: String,
-    /// Metageneration matches the given value.
-    pub metageneration_match: MetadataGenerationMatch,
+    /// If set, only deletes the bucket if its metageneration matches this value.
+    pub if_metageneration_match: Option<i64>,
+    /// If set, only deletes the bucket if its metageneration does not match this
+    /// value.
+    pub if_metageneration_not_match: Option<i64>,
     /// Apply a predefined set of access controls to this bucket.
     pub predefined_acl: Option<PredefinedBucketAcl>,
     /// Apply a predefined set of default object access controls to this bucket.
@@ -450,8 +473,11 @@ pub struct PatchBucketRequest {
 pub struct UpdateBucketRequest {
     /// Required. Name of a bucket.
     pub bucket: String,
-    /// Metageneration matches the given value.
-    pub metageneration_match: MetadataGenerationMatch,
+    /// If set, only deletes the bucket if its metageneration matches this value.
+    pub if_metageneration_match: Option<i64>,
+    /// If set, only deletes the bucket if its metageneration does not match this
+    /// value.
+    pub if_metageneration_not_match: Option<i64>,
     /// Apply a predefined set of access controls to this bucket.
     pub predefined_acl: PredefinedBucketAcl,
     /// Apply a predefined set of default object access controls to this bucket.

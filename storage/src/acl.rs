@@ -1,5 +1,5 @@
 use tokio_util::sync::CancellationToken;
-use crate::http::entity::{ACLRole, BucketAccessControl, BucketAccessControlsCreationConfig, ObjectAccessControl, ObjectAccessControlsCreationConfig};
+use crate::http::old_entity::{ACLRole, BucketAccessControl, BucketAccessControlsCreationConfig, ObjectAccessControl, ObjectAccessControlsCreationConfig};
 use crate::http::storage_client::{Error, StorageClient};
 
 pub struct BucketACLHandle<'a,'b> {
@@ -63,14 +63,14 @@ impl <'a,'b> DefaultObjectACLHandle<'a,'b> {
 mod test {
     use crate::bucket::BucketHandle;
     use crate::client;
-    use crate::http::entity::bucket::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
-    use crate::http::entity::bucket::lifecycle::rule::{Action, ActionType, Condition};
-    use crate::http::entity::bucket::lifecycle::Rule;
-    use crate::http::entity::bucket::{
+    use crate::http::old_entity::bucket::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
+    use crate::http::old_entity::bucket::lifecycle::rule::{Action, ActionType, Condition};
+    use crate::http::old_entity::bucket::lifecycle::Rule;
+    use crate::http::old_entity::bucket::{
         Billing, Cors, Encryption, IamConfiguration, Lifecycle, Logging, RetentionPolicy, Versioning, Website,
     };
-    use crate::http::entity::common_enums::PredefinedBucketAcl;
-    use crate::http::entity::{ACLRole, Bucket, BucketAccessControl, BucketCreationConfig, BucketPatchConfig, InsertBucketRequest, ObjectAccessControl, ObjectAccessControlsCreationConfig, PatchBucketRequest, RetentionPolicyCreationConfig};
+    use crate::http::old_entity::common_enums::PredefinedBucketAcl;
+    use crate::http::old_entity::{ACLRole, Bucket, BucketAccessControl, BucketCreationConfig, BucketPatchConfig, InsertBucketRequest, ObjectAccessControl, ObjectAccessControlsCreationConfig, PatchBucketRequest, RetentionPolicyCreationConfig};
     use crate::http::CancellationToken;
     use chrono::{DateTime, Utc};
     use google_cloud_auth::credentials::CredentialsFile;

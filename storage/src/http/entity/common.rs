@@ -1,14 +1,4 @@
-use crate::http::entity2::StringParam;
-
-/// Metadata generation match parameter.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default)]
-pub struct MetadataGenerationMatch {
-    /// If set, only deletes the bucket if its metageneration matches this value.
-    pub if_metageneration_match: Option<i64>,
-    /// If set, only deletes the bucket if its metageneration does not match this
-    /// value.
-    pub if_metageneration_not_match: Option<i64>,
-}
+use crate::http::entity::StringParam;
 
 impl MetadataGenerationMatch {
     pub fn to_param(&self) -> Vec<StringParam>{

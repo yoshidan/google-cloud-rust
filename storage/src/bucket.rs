@@ -1,7 +1,7 @@
 use crate::bucket;
-use crate::http::entity::bucket::{Versioning, Website};
-use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
-use crate::http::entity::{Bucket, BucketAccessControl, BucketCreationConfig, Channel, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketsRequest, Notification, NotificationCreationConfig, ObjectAccessControl, ObjectAccessControlsCreationConfig, PatchBucketRequest, RetentionPolicyCreationConfig};
+use crate::http::old_entity::bucket::{Versioning, Website};
+use crate::http::old_entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
+use crate::http::old_entity::{Bucket, BucketAccessControl, BucketCreationConfig, Channel, DeleteBucketRequest, GetBucketRequest, InsertBucketRequest, ListBucketsRequest, Notification, NotificationCreationConfig, ObjectAccessControl, ObjectAccessControlsCreationConfig, PatchBucketRequest, RetentionPolicyCreationConfig};
 use crate::http::storage_client::{Error, StorageClient};
 use crate::iam::IAMHandle;
 use crate::sign::{signed_url, SignBy, SignedURLError, SignedURLOptions};
@@ -10,7 +10,7 @@ use google_cloud_auth::credentials::CredentialsFile;
 use std::collections::HashMap;
 use tokio_util::sync::CancellationToken;
 use crate::acl::{BucketACLHandle, DefaultObjectACLHandle};
-use crate::http::entity::list_channels_response::Items;
+use crate::http::old_entity::list_channels_response::Items;
 
 pub struct BucketHandle<'a> {
     name: String,
@@ -133,12 +133,12 @@ mod test {
     use std::collections::HashMap;
     use tokio_util::sync::CancellationToken;
     use crate::client::Client;
-    use crate::http::entity::bucket::{Billing, Cors, IamConfiguration, Lifecycle, Versioning, Website};
-    use crate::http::entity::{Bucket, BucketCreationConfig, BucketPatchConfig, InsertBucketRequest, ObjectAccessControlsCreationConfig, PatchBucketRequest, RetentionPolicyCreationConfig};
-    use crate::http::entity::bucket::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
-    use crate::http::entity::bucket::lifecycle::Rule;
-    use crate::http::entity::bucket::lifecycle::rule::{Action, ActionType, Condition};
-    use crate::http::entity::common_enums::PredefinedBucketAcl;
+    use crate::http::old_entity::bucket::{Billing, Cors, IamConfiguration, Lifecycle, Versioning, Website};
+    use crate::http::old_entity::{Bucket, BucketCreationConfig, BucketPatchConfig, InsertBucketRequest, ObjectAccessControlsCreationConfig, PatchBucketRequest, RetentionPolicyCreationConfig};
+    use crate::http::old_entity::bucket::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
+    use crate::http::old_entity::bucket::lifecycle::Rule;
+    use crate::http::old_entity::bucket::lifecycle::rule::{Action, ActionType, Condition};
+    use crate::http::old_entity::common_enums::PredefinedBucketAcl;
     use serial_test::serial;
 
     #[ctor::ctor]

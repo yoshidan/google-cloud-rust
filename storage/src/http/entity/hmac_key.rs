@@ -1,4 +1,4 @@
-use crate::http::entity2::{MaxResults, PageToken};
+use crate::http::entity::{MaxResults, PageToken};
 
 /// Hmac Key Metadata, which includes all information other than the secret.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
@@ -57,9 +57,9 @@ pub struct ListHmacKeysRequest {
     /// An optional bool to return deleted keys that have not been wiped out yet.
     pub show_deleted_keys: bool,
     /// The maximum number of keys to return.
-    pub max_results: Option<MaxResults>,
+    pub max_results: Option<i32>,
     /// A previously returned token from ListHmacKeysResponse to get the next page.
-    pub page_token: Option<PageToken>,
+    pub page_token: Option<String>,
 }
 /// Hmac key list response with next page information.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]

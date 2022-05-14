@@ -1,9 +1,9 @@
-use crate::http::entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
+use crate::http::old_entity::common_enums::{PredefinedBucketAcl, PredefinedObjectAcl, Projection};
 use serde::{de, Deserialize, Deserializer};
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::str::FromStr;
-use crate::http::entity2::acl::{Generation, ObjectACLRole};
+use crate::http::entity::acl::{Generation, ObjectACLRole};
 
 /// Metadata generation match parameter.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default)]

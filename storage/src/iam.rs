@@ -43,14 +43,14 @@ impl<'a> IAMHandle<'a> {
 mod test {
     use crate::bucket::BucketHandle;
     use crate::client;
-    use crate::http::entity::bucket::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
-    use crate::http::entity::bucket::lifecycle::rule::{Action, ActionType, Condition};
-    use crate::http::entity::bucket::lifecycle::Rule;
-    use crate::http::entity::bucket::{
+    use crate::http::old_entity::bucket::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
+    use crate::http::old_entity::bucket::lifecycle::rule::{Action, ActionType, Condition};
+    use crate::http::old_entity::bucket::lifecycle::Rule;
+    use crate::http::old_entity::bucket::{
         Billing, Cors, Encryption, IamConfiguration, Lifecycle, Logging, RetentionPolicy, Versioning, Website,
     };
-    use crate::http::entity::common_enums::PredefinedBucketAcl;
-    use crate::http::entity::{
+    use crate::http::old_entity::common_enums::PredefinedBucketAcl;
+    use crate::http::old_entity::{
         Bucket, BucketAccessControl, BucketCreationConfig, BucketPatchConfig, InsertBucketRequest, ObjectAccessControl,
         ObjectAccessControlsCreationConfig, PatchBucketRequest, RetentionPolicyCreationConfig,
     };

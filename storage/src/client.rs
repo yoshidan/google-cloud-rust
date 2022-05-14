@@ -1,6 +1,6 @@
 use crate::bucket::BucketHandle;
 use crate::http;
-use crate::http::entity::{Bucket, ListBucketsRequest};
+use crate::http::old_entity::{Bucket, ListBucketsRequest};
 use crate::http::storage_client::StorageClient;
 use google_cloud_auth::credentials::CredentialsFile;
 use google_cloud_auth::{create_token_source_from_credentials, Config};
