@@ -11,6 +11,7 @@ pub mod get_iam_policy;
 pub mod set_iam_policy;
 pub mod test_iam_permissions;
 pub mod lock_retention_policy;
+pub mod list_channels;
 
 /// A bucket.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]

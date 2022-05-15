@@ -1,8 +1,10 @@
 //pub mod entity;
 pub mod buckets;
 pub mod objects;
+pub mod channels;
 pub mod bucket_access_controls;
 pub mod object_access_controls;
+pub mod default_object_access_controls;
 pub mod storage_client;
 
 use std::fmt::Display;

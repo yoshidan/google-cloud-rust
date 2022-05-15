@@ -1,5 +1,5 @@
 use std::cmp::max;
-use crate::http::{buckets, CancellationToken, Error};
+use crate::http::{buckets, CancellationToken, channels, default_object_access_controls, Error};
 use google_cloud_auth::token_source::TokenSource;
 use google_cloud_metadata::project_id;
 use reqwest::{Client, RequestBuilder, Response};
@@ -16,9 +16,17 @@ use crate::http::buckets::get::GetBucketRequest;
 use crate::http::buckets::get_iam_policy::GetIamPolicyRequest;
 use crate::http::buckets::insert::InsertBucketRequest;
 use crate::http::buckets::list::{ListBucketsRequest, ListBucketsResponse};
+use crate::http::buckets::list_channels::{ListChannelsRequest, ListChannelsResponse};
 use crate::http::buckets::patch::PatchBucketRequest;
 use crate::http::buckets::set_iam_policy::SetIamPolicyRequest;
 use crate::http::buckets::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
+use crate::http::channels::stop::StopChannelRequest;
+use crate::http::channels::WatchableChannel;
+use crate::http::default_object_access_controls::delete::DeleteDefaultObjectAccessControlRequest;
+use crate::http::default_object_access_controls::get::GetDefaultObjectAccessControlRequest;
+use crate::http::default_object_access_controls::insert::InsertDefaultObjectAccessControlRequest;
+use crate::http::default_object_access_controls::list::{ListDefaultObjectAccessControlsRequest, ListDefaultObjectAccessControlsResponse};
+use crate::http::object_access_controls::ObjectAccessControl;
 
 pub const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
@@ -135,6 +143,97 @@ impl StorageClient {
         let action = async {
             let builder = buckets::test_iam_permissions::build(&Client::new(), &req);
             self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Lists the channels.
+    pub async fn list_channels(
+        &self,
+        req: &ListChannelsRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ListChannelsResponse, Error> {
+        let action = async {
+            let builder = buckets::list_channels::build(&Client::new(), &req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Stops the channel.
+    pub async fn stop_channel(
+        &self,
+        req: &StopChannelRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<(), Error> {
+        let action = async {
+            let builder = channels::stop::build(&Client::new(), &req);
+            self.send_get_empty(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Lists the default object ACL.
+    pub async fn list_default_object_access_controls(
+        &self,
+        req: &ListDefaultObjectAccessControlsRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ListDefaultObjectAccessControlsResponse, Error> {
+        let action = async {
+            let builder = default_object_access_controls::list::build(&Client::new(), &req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Gets the default object ACL.
+    pub async fn get_default_object_access_controls(
+        &self,
+        req: &GetDefaultObjectAccessControlRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ObjectAccessControl, Error> {
+        let action = async {
+            let builder = default_object_access_controls::get::build(&Client::new(), &req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Inserts the default object ACL.
+    pub async fn insert_default_object_access_controls(
+        &self,
+        req: &InsertDefaultObjectAccessControlRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ObjectAccessControl, Error> {
+        let action = async {
+            let builder = default_object_access_controls::insert::build(&Client::new(), &req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Patchs the default object ACL.
+    pub async fn patch_default_object_access_controls(
+        &self,
+        req: &PatchBucketRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ObjectAccessControl, Error> {
+        let action = async {
+            let builder = default_object_access_controls::patch::build(&Client::new(), &req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Deletes the default object ACL.
+    pub async fn delete_default_object_access_controls(
+        &self,
+        req: &DeleteDefaultObjectAccessControlRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<(), Error> {
+        let action = async {
+            let builder = default_object_access_controls::delete::build(&Client::new(), &req);
+            self.send_get_empty(builder).await
         };
         invoke(cancel, action).await
     }
