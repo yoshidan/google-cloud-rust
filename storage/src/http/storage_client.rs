@@ -15,6 +15,7 @@ use crate::http::buckets::delete::DeleteBucketRequest;
 use crate::http::buckets::get::GetBucketRequest;
 use crate::http::buckets::get_iam_policy::GetIamPolicyRequest;
 use crate::http::buckets::insert::InsertBucketRequest;
+use crate::http::buckets::list::{ListBucketsRequest, ListBucketsResponse};
 use crate::http::buckets::patch::PatchBucketRequest;
 use crate::http::buckets::set_iam_policy::SetIamPolicyRequest;
 use crate::http::buckets::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
@@ -81,6 +82,19 @@ impl StorageClient {
     ) -> Result<Bucket, Error> {
         let action = async {
             let builder = buckets::patch::build(&Client::new(), &req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Lists the bucket.
+    pub async fn list_buckets(
+        &self,
+        req: &ListBucketsRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ListBucketsResponse, Error> {
+        let action = async {
+            let builder = buckets::list::build(&Client::new(), &req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -193,6 +207,7 @@ mod test {
     use crate::http::buckets::get::GetBucketRequest;
     use crate::http::buckets::get_iam_policy::GetIamPolicyRequest;
     use crate::http::buckets::insert::{BucketCreationConfig, InsertBucketParam, InsertBucketRequest, RetentionPolicyCreationConfig};
+    use crate::http::buckets::list::ListBucketsRequest;
     use crate::http::buckets::patch::{BucketPatchConfig, PatchBucketRequest};
     use crate::http::buckets::set_iam_policy::SetIamPolicyRequest;
     use crate::http::buckets::test_iam_permissions::TestIamPermissionsRequest;
@@ -212,6 +227,20 @@ mod test {
             scopes: Some(&SCOPES)
         }).await.unwrap();
         return StorageClient::new(Arc::from(ts));
+    }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn list_buckets() {
+        let client = client().await;
+        let buckets = client.list_buckets(&ListBucketsRequest {
+            project: PROJECT.to_string(),
+            max_results: None,
+            page_token: None,
+            prefix: Some("rust-iam-test".to_string()),
+            projection: None
+        }, None).await.unwrap();
+        assert_eq!(1, buckets.items.len());
     }
 
     #[tokio::test]

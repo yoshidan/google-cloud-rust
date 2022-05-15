@@ -5,6 +5,7 @@ use crate::http::objects::Owner;
 pub mod delete;
 pub mod insert;
 pub mod get;
+pub mod list;
 pub mod patch;
 pub mod get_iam_policy;
 pub mod set_iam_policy;
