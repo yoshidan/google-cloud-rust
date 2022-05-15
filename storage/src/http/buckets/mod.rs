@@ -8,7 +8,8 @@ pub mod get;
 pub mod patch;
 pub mod get_iam_policy;
 pub mod set_iam_policy;
-pub mod test_iam_permissons;
+pub mod test_iam_permissions;
+pub mod lock_retention_policy;
 
 /// A bucket.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]

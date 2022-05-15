@@ -33,6 +33,6 @@ pub struct GetIamPolicyRequest {
 }
 
 pub(crate) fn build(client: &Client, req: &GetIamPolicyRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/acl/{}", BASE_URL, req.resource.escape());
+    let url = format!("{}/b/{}/iam", BASE_URL, req.resource.escape());
     client.get(url).query(&req)
 }

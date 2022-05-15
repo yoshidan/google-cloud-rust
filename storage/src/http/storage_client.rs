@@ -17,7 +17,7 @@ use crate::http::buckets::get_iam_policy::GetIamPolicyRequest;
 use crate::http::buckets::insert::InsertBucketRequest;
 use crate::http::buckets::patch::PatchBucketRequest;
 use crate::http::buckets::set_iam_policy::SetIamPolicyRequest;
-use crate::http::buckets::test_iam_permissons::{TestIamPermissionsRequest, TestIamPermissionsResponse};
+use crate::http::buckets::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
 
 pub const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
@@ -119,7 +119,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<TestIamPermissionsResponse, Error> {
         let action = async {
-            let builder = buckets::test_iam_permissons::build(&Client::new(), &req);
+            let builder = buckets::test_iam_permissions::build(&Client::new(), &req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -135,11 +135,11 @@ impl StorageClient {
 
 
     async fn send<T: for<'de> serde::Deserialize<'de>>(&self, builder: RequestBuilder) -> Result<T,Error> {
-        let builder = self.with_headers(builder).await?;
-        let response = builder.send().await?;
+        let request = self.with_headers(builder).await?;
+        let response = request.send().await?;
         if response.status().is_success() {
             let text = response.text().await?;
-            tracing::info!("{}", text);
+            tracing::trace!("{}", text);
             Ok(serde_json::from_str(&text).unwrap())
         } else {
             Err(map_error(response).await)
@@ -195,7 +195,7 @@ mod test {
     use crate::http::buckets::insert::{BucketCreationConfig, InsertBucketParam, InsertBucketRequest, RetentionPolicyCreationConfig};
     use crate::http::buckets::patch::{BucketPatchConfig, PatchBucketRequest};
     use crate::http::buckets::set_iam_policy::SetIamPolicyRequest;
-    use crate::http::buckets::test_iam_permissons::TestIamPermissionsRequest;
+    use crate::http::buckets::test_iam_permissions::TestIamPermissionsRequest;
     use crate::http::object_access_controls::insert::ObjectAccessControlsCreationConfig;
     use crate::http::object_access_controls::{ObjectACLRole, PredefinedObjectAcl};
 
@@ -279,15 +279,17 @@ mod test {
             condition: None
         });
 
-        client.set_iam_policy(&SetIamPolicyRequest {
+        let mut result = client.set_iam_policy(&SetIamPolicyRequest {
             resource: bucket_name.to_string(),
             policy,
         }, None).await.unwrap();
+        assert_eq!(result.bindings.len(), 5);
+        assert_eq!(result.bindings.pop().unwrap().role, "roles/storage.objectViewer");
 
         let permissions = client.test_iam_permissions(&TestIamPermissionsRequest {
             resource: bucket_name.to_string(),
             permissions: vec!["storage.buckets.get".to_string()],
         }, None).await.unwrap();
-        assert_eq!(permissions[0], "storage.buckets.get");
+        assert_eq!(permissions.permissions[0], "storage.buckets.get");
     }
 }

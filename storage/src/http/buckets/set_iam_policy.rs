@@ -20,5 +20,5 @@ pub struct SetIamPolicyRequest {
 
 pub(crate) fn build(client: &Client, req: &SetIamPolicyRequest) -> RequestBuilder {
     let url = format!("{}/b/{}/iam", BASE_URL, req.resource.escape());
-    client.post(url).json(&req.policy)
+    client.put(url).json(&req.policy)
 }

@@ -10,7 +10,6 @@ use crate::http::object_access_controls::Projection;
 pub struct TestIamPermissionsRequest {
     /// REQUIRED: The resource for which the policy detail is being requested.
     /// See the operation documentation for the appropriate value for this field.
-    #[serde(skip_serializing)]
     pub resource: String,
     /// The set of permissions to check for the `resource`. Permissions with
     /// wildcards (such as '*' or 'storage.*') are not allowed. For more
@@ -30,5 +29,8 @@ pub struct TestIamPermissionsResponse {
 
 pub(crate) fn build(client: &Client, req: &TestIamPermissionsRequest) -> RequestBuilder {
     let url = format!("{}/b/{}/iam/testPermissions", BASE_URL, req.resource.escape());
-    client.get(url).query(&req)
+    let query : Vec<_> = req.permissions.iter().map(|x| {
+        ("permissions", x)
+    }).collect();
+    client.get(url).query(&query)
 }
