@@ -10,11 +10,14 @@ use std::mem;
 use std::sync::Arc;
 use tracing::info;
 use crate::http::bucket_access_controls::insert::InsertBucketAccessControlsRequest;
-use crate::http::buckets::Bucket;
+use crate::http::buckets::{Bucket, Policy};
 use crate::http::buckets::delete::DeleteBucketRequest;
 use crate::http::buckets::get::GetBucketRequest;
+use crate::http::buckets::get_iam_policy::GetIamPolicyRequest;
 use crate::http::buckets::insert::InsertBucketRequest;
 use crate::http::buckets::patch::PatchBucketRequest;
+use crate::http::buckets::set_iam_policy::SetIamPolicyRequest;
+use crate::http::buckets::test_iam_permissons::{TestIamPermissionsRequest, TestIamPermissionsResponse};
 
 pub const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
@@ -78,6 +81,45 @@ impl StorageClient {
     ) -> Result<Bucket, Error> {
         let action = async {
             let builder = buckets::patch::build(&Client::new(), &req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Sets the iam policy.
+    pub async fn set_iam_policy(
+        &self,
+        req: &SetIamPolicyRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Policy, Error> {
+        let action = async {
+            let builder = buckets::set_iam_policy::build(&Client::new(), &req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Gets the iam policy.
+    pub async fn get_iam_policy(
+        &self,
+        req: &GetIamPolicyRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Policy, Error> {
+        let action = async {
+            let builder = buckets::get_iam_policy::build(&Client::new(), &req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Tests the iam permissions.
+    pub async fn test_iam_permissions(
+        &self,
+        req: &TestIamPermissionsRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<TestIamPermissionsResponse, Error> {
+        let action = async {
+            let builder = buckets::test_iam_permissons::build(&Client::new(), &req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -147,10 +189,13 @@ mod test {
     use crate::http::storage_client::{SCOPES, StorageClient};
     use serial_test::serial;
     use crate::http::bucket_access_controls::PredefinedBucketAcl;
-    use crate::http::buckets::Bucket;
+    use crate::http::buckets::{Binding, Bucket, Policy};
     use crate::http::buckets::get::GetBucketRequest;
+    use crate::http::buckets::get_iam_policy::GetIamPolicyRequest;
     use crate::http::buckets::insert::{BucketCreationConfig, InsertBucketParam, InsertBucketRequest, RetentionPolicyCreationConfig};
     use crate::http::buckets::patch::{BucketPatchConfig, PatchBucketRequest};
+    use crate::http::buckets::set_iam_policy::SetIamPolicyRequest;
+    use crate::http::buckets::test_iam_permissons::TestIamPermissionsRequest;
     use crate::http::object_access_controls::insert::ObjectAccessControlsCreationConfig;
     use crate::http::object_access_controls::{ObjectACLRole, PredefinedObjectAcl};
 
@@ -217,5 +262,32 @@ mod test {
             bucket: bucket.name,
             param: Default::default()
         }, None).await.unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn set_get_test_iam() {
+        let bucket_name = "rust-iam-test";
+        let client = client().await;
+        let mut policy = client.get_iam_policy(&GetIamPolicyRequest {
+            resource: bucket_name.to_string(),
+            options_requested_policy_version: None
+        }, None).await.unwrap();
+        policy.bindings.push(Binding {
+            role: "roles/storage.objectViewer".to_string(),
+            members: vec!["allAuthenticatedUsers".to_string()],
+            condition: None
+        });
+
+        client.set_iam_policy(&SetIamPolicyRequest {
+            resource: bucket_name.to_string(),
+            policy,
+        }, None).await.unwrap();
+
+        let permissions = client.test_iam_permissions(&TestIamPermissionsRequest {
+            resource: bucket_name.to_string(),
+            permissions: vec!["storage.buckets.get".to_string()],
+        }, None).await.unwrap();
+        assert_eq!(permissions[0], "storage.buckets.get");
     }
 }
