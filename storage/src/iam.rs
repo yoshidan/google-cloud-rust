@@ -2,6 +2,10 @@ use std::fs::Permissions;
 use crate::http::iam::{GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest};
 use crate::http::storage_client::{Error, StorageClient};
 use tokio_util::sync::CancellationToken;
+use crate::http::buckets::get_iam_policy::GetIamPolicyRequest;
+use crate::http::buckets::Policy;
+use crate::http::buckets::set_iam_policy::SetIamPolicyRequest;
+use crate::http::buckets::test_iam_permissions::TestIamPermissionsRequest;
 
 pub struct IAMHandle<'a> {
     name: &'a str,
@@ -13,15 +17,17 @@ impl<'a> IAMHandle<'a> {
         Self { name, storage_client }
     }
 
-    pub async fn get(&self, cancel: Option<CancellationToken>) -> Result<Policy, Error> {
+    /// Gets the iam policy
+    pub async fn get(&self, options_requested_policy_version: Option<i32>, cancel: Option<CancellationToken>) -> Result<Policy, Error> {
         let req = GetIamPolicyRequest {
             resource: self.name.to_string(),
-            requested_policy_version: None,
+            options_requested_policy_version
         };
         self.storage_client.get_iam_policy(&req, cancel).await
     }
 
-    pub async fn set(&self, policy: Policy, cancel: Option<CancellationToken>) -> Result<Policy, Error> {
+    /// Sets the iam policy
+    pub async fn set(&self, policy: impl Into<Policy>, cancel: Option<CancellationToken>) -> Result<Policy, Error> {
         let req = SetIamPolicyRequest {
             resource: self.name.to_string(),
             policy
@@ -29,13 +35,13 @@ impl<'a> IAMHandle<'a> {
         self.storage_client.set_iam_policy(&req, cancel).await
     }
 
-    pub async fn test(&self, permissions: &[&str], cancel: Option<CancellationToken>) -> Result<Vec<String>, Error> {
+    /// Tests the iam policy
+    pub async fn test(&self, permissions: impl Into<Vec<String>>, cancel: Option<CancellationToken>) -> Result<Vec<String>, Error> {
         let req = TestIamPermissionsRequest {
             resource: self.name.to_string(),
-            permissions: permissions.iter().map(|v| v.to_string()).collect()
+            permissions: permissions.into()
         };
-        let result = self.storage_client.test_iam_permission(&req, cancel).await?;
-        return Ok(result.permissions);
+        Ok(self.storage_client.test_iam_permissions(&req, cancel).await?.permissions)
     }
 }
 
@@ -60,24 +66,37 @@ mod test {
     use serde_json;
     use serial_test::serial;
     use std::collections::HashMap;
+    use std::sync::Arc;
     use std::time;
     use std::time::Duration;
     use tokio::sync::OnceCell;
     use tracing::{info, Level};
+    use google_cloud_auth::{Config, create_token_source};
+    use crate::http::buckets::Binding;
     use crate::http::iam::Binding;
+    use crate::http::storage_client::{SCOPES, StorageClient};
+    use crate::iam::IAMHandle;
 
     #[ctor::ctor]
     fn init() {
         let _ = tracing_subscriber::fmt::try_init();
     }
 
+    async fn client() -> StorageClient{
+        let ts = create_token_source(Config {
+            audience: None,
+            scopes: Some(&SCOPES),
+        })
+            .await
+            .unwrap();
+        StorageClient::new(Arc::from(ts))
+    }
+
     #[tokio::test]
     #[serial]
     async fn get() {
-        let client = client::Client::new().await.unwrap();
-        let bucket = client.bucket( "rust-iam-test");
-        let iam = bucket.iam();
-        let policy = iam.get(None).await.unwrap();
+        let iam = IAMHandle::new("rust-iam-test",  client().await?);
+        let policy = iam.get(None, None).await.unwrap();
         info!("{:?}", serde_json::to_string(&policy));
         assert_eq!(policy.version, 1);
     }
@@ -85,10 +104,8 @@ mod test {
     #[tokio::test]
     #[serial]
     async fn set() {
-        let client = client::Client::new().await.unwrap();
-        let bucket = client.bucket( "rust-iam-test");
-        let iam = bucket.iam();
-        let mut policy = iam.get(None).await.unwrap();
+        let iam = IAMHandle::new("rust-iam-test",  client().await?);
+        let mut policy = iam.get(None, None).await.unwrap();
         policy.bindings.push(Binding {
             role: "roles/storage.objectViewer".to_string(),
             members: vec!["allAuthenticatedUsers".to_string()],
@@ -103,9 +120,7 @@ mod test {
     #[tokio::test]
     #[serial]
     async fn test() {
-        let client = client::Client::new().await.unwrap();
-        let bucket = client.bucket( "rust-iam-test");
-        let iam = bucket.iam();
+        let iam = IAMHandle::new("rust-iam-test",  client().await?);
         let permissions = iam.test(&vec!["storage.buckets.get"], None).await.unwrap();
         info!("{:?}", permissions);
         assert!(!permissions.is_empty());
