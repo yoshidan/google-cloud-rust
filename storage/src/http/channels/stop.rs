@@ -1,7 +1,7 @@
-use reqwest::{Client, RequestBuilder};
-use crate::http::BASE_URL;
 use crate::http::buckets::list_channels::ListChannelsRequest;
 use crate::http::channels::WatchableChannel;
+use crate::http::BASE_URL;
+use reqwest::{Client, RequestBuilder};
 
 /// Request message for StopChannel.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]

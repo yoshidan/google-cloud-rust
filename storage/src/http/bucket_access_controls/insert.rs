@@ -1,10 +1,10 @@
-use reqwest::{Client, RequestBuilder};
-use crate::http::{BASE_URL, Error, Escape};
 use crate::http::bucket_access_controls::BucketACLRole;
+use crate::http::{Error, Escape, BASE_URL};
+use reqwest::{Client, RequestBuilder};
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct BucketAccessControlsCreationConfig {
+pub struct BucketAccessControlCreationConfig {
     /// The entity holding the permission. Can be user-emailAddress, group-groupId, group-emailAddress, allUsers, or allAuthenticatedUsers.
     pub entity: String,
     pub role: BucketACLRole,
@@ -12,13 +12,13 @@ pub struct BucketAccessControlsCreationConfig {
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct InsertBucketAccessControlsRequest {
+pub struct InsertBucketAccessControlRequest {
     /// Name of a bucket.
     pub bucket: String,
-    pub acl: BucketAccessControlsCreationConfig,
+    pub acl: BucketAccessControlCreationConfig,
 }
 
-pub fn build(client: &Client, req: &InsertBucketAccessControlsRequest) -> RequestBuilder {
+pub fn build(client: &Client, req: &InsertBucketAccessControlRequest) -> RequestBuilder {
     let url = format!("{}/b/{}/acl", BASE_URL, req.bucket.escape());
     client.post(url).json(&req.acl)
 }

@@ -1,6 +1,6 @@
+use crate::http::{Error, Escape, BASE_URL};
 use percent_encoding::utf8_percent_encode;
 use reqwest::{Client, RequestBuilder};
-use crate::http::{BASE_URL, Error, Escape};
 
 /// Request message for DeleteBucket.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default)]
@@ -20,7 +20,7 @@ pub struct DeleteBucketRequest {
     /// Required. Name of a bucket.
     pub bucket: String,
     /// Parameter.
-    pub param: DeleteBucketParam
+    pub param: DeleteBucketParam,
 }
 
 pub(crate) fn build(client: &Client, req: &DeleteBucketRequest) -> RequestBuilder {

@@ -1,16 +1,16 @@
 //pub mod entity;
-pub mod buckets;
-pub mod objects;
-pub mod channels;
 pub mod bucket_access_controls;
-pub mod object_access_controls;
+pub mod buckets;
+pub mod channels;
 pub mod default_object_access_controls;
+pub mod object_access_controls;
+pub mod objects;
 pub mod storage_client;
 
+use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
+use serde::{de, Deserialize};
 use std::fmt::Display;
 use std::str::FromStr;
-use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
-use serde::{de, Deserialize};
 pub use tokio_util::sync::CancellationToken;
 
 pub(crate) const BASE_URL: &str = "https://storage.googleapis.com/storage/v1";
@@ -38,11 +38,7 @@ impl Escape for String {
 }
 
 /// https://github.com/ThouCheese/cloud-storage-rs/blob/0b09eccf5f6795becb50c4b2f444daeae7995141/src/resources/object.rs
-const ENCODE_SET: &AsciiSet = &NON_ALPHANUMERIC
-    .remove(b'*')
-    .remove(b'-')
-    .remove(b'.')
-    .remove(b'_');
+const ENCODE_SET: &AsciiSet = &NON_ALPHANUMERIC.remove(b'*').remove(b'-').remove(b'.').remove(b'_');
 
 const NOSLASH_ENCODE_SET: &AsciiSet = &ENCODE_SET.remove(b'/').remove(b'~');
 
@@ -54,27 +50,26 @@ pub(crate) fn percent_encode(input: &str) -> String {
     utf8_percent_encode(input, ENCODE_SET).to_string()
 }
 
-
 #[allow(clippy::trivially_copy_pass_by_ref)]
-fn is_empty(v: &str) -> bool {
+pub fn is_empty(v: &str) -> bool {
     v.is_empty()
 }
 
-fn from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
-    where
-        T: FromStr,
-        T::Err: Display,
-        D: de::Deserializer<'de>,
+pub fn from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+where
+    T: FromStr,
+    T::Err: Display,
+    D: de::Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
     T::from_str(&s).map_err(de::Error::custom)
 }
 
-fn from_str_opt<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
-    where
-        T: std::str::FromStr,
-        T::Err: std::fmt::Display,
-        D: serde::Deserializer<'de>,
+pub fn from_str_opt<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    T: std::str::FromStr,
+    T::Err: std::fmt::Display,
+    D: serde::Deserializer<'de>,
 {
     let s: Result<serde_json::Value, _> = serde::Deserialize::deserialize(deserializer);
     match s {

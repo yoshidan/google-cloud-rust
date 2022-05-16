@@ -1,4 +1,8 @@
+pub mod delete;
+pub mod get;
 pub mod insert;
+pub mod list;
+pub mod patch;
 
 /// An access-control entry.
 #[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize, Debug)]
@@ -10,6 +14,7 @@ pub struct ObjectAccessControl {
     pub entity: String,
     pub entity_id: Option<String>,
     pub etag: String,
+    #[serde(deserialize_with = "crate::http::from_str_opt")]
     pub generation: Option<i64>,
     pub id: Option<String>,
     pub kind: String,
@@ -37,26 +42,26 @@ impl Default for ObjectACLRole {
 pub enum PredefinedObjectAcl {
     /// Object owner gets `OWNER` access, and
     /// `allAuthenticatedUsers` get `READER` access.
-    #[serde(rename="authenticatedRead")]
+    #[serde(rename = "authenticatedRead")]
     ObjectAclAuthenticatedRead = 1,
     /// Object owner gets `OWNER` access, and project team owners get
     /// `OWNER` access.
-    #[serde(rename="bucketOwnerFullControl")]
+    #[serde(rename = "bucketOwnerFullControl")]
     ObjectAclBucketOwnerFullControl = 2,
     /// Object owner gets `OWNER` access, and project team owners get
     /// `READER` access.
-    #[serde(rename="bucketOwnerRead")]
+    #[serde(rename = "bucketOwnerRead")]
     ObjectAclBucketOwnerRead = 3,
     /// Object owner gets `OWNER` access.
-    #[serde(rename="private")]
+    #[serde(rename = "private")]
     ObjectAclPrivate = 4,
     /// Object owner gets `OWNER` access, and project team members get
     /// access according to their roles.
-    #[serde(rename="projectPrivate")]
+    #[serde(rename = "projectPrivate")]
     ObjectAclProjectPrivate = 5,
     /// Object owner gets `OWNER` access, and `allUsers`
     /// get `READER` access.
-    #[serde(rename="publicRead")]
+    #[serde(rename = "publicRead")]
     ObjectAclPublicRead = 6,
 }
 

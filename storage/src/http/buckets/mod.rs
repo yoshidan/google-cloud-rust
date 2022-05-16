@@ -3,15 +3,15 @@ use crate::http::object_access_controls::ObjectAccessControl;
 use crate::http::objects::Owner;
 
 pub mod delete;
-pub mod insert;
 pub mod get;
-pub mod list;
-pub mod patch;
 pub mod get_iam_policy;
+pub mod insert;
+pub mod list;
+pub mod list_channels;
+pub mod lock_retention_policy;
+pub mod patch;
 pub mod set_iam_policy;
 pub mod test_iam_permissions;
-pub mod lock_retention_policy;
-pub mod list_channels;
 
 /// A bucket.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]

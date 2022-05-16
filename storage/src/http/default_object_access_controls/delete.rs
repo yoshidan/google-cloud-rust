@@ -1,6 +1,6 @@
-use reqwest::{Client, RequestBuilder};
-use crate::http::{BASE_URL, Escape};
 use crate::http::channels::Channel;
+use crate::http::{Escape, BASE_URL};
+use reqwest::{Client, RequestBuilder};
 
 /// Request message for DeleteDefaultObjectAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
@@ -19,6 +19,11 @@ pub struct DeleteDefaultObjectAccessControlRequest {
 }
 
 pub(crate) fn build(client: &Client, req: &DeleteDefaultObjectAccessControlRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/defaultObjectAcl/{}", BASE_URL, req.bucket.escape(), req.entity.escape());
+    let url = format!(
+        "{}/b/{}/defaultObjectAcl/{}",
+        BASE_URL,
+        req.bucket.escape(),
+        req.entity.escape()
+    );
     client.delete(url)
 }

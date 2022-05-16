@@ -1,8 +1,7 @@
-use reqwest::{Client, RequestBuilder};
-use crate::http::{BASE_URL, Escape};
 use crate::http::channels::Channel;
-use crate::http::object_access_controls::insert::ObjectAccessControlsCreationConfig;
 use crate::http::object_access_controls::ObjectAccessControl;
+use crate::http::{Escape, BASE_URL};
+use reqwest::{Client, RequestBuilder};
 
 /// Request message for InsertDefaultObjectAccessControl.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
@@ -23,6 +22,11 @@ pub struct PatchDefaultObjectAccessControlRequest {
 }
 
 pub(crate) fn build(client: &Client, req: &PatchDefaultObjectAccessControlRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/defaultObjectAcl/{}", BASE_URL, req.bucket.escape(), req.entity.escape());
+    let url = format!(
+        "{}/b/{}/defaultObjectAcl/{}",
+        BASE_URL,
+        req.bucket.escape(),
+        req.entity.escape()
+    );
     client.patch(url).json(&req.object_access_control)
 }

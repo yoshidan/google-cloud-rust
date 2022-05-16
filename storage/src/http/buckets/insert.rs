@@ -1,17 +1,17 @@
-use std::collections::HashMap;
-use percent_encoding::utf8_percent_encode;
-use reqwest::{Client, RequestBuilder};
-use crate::http::{BASE_URL, Error, Escape};
 use crate::http::bucket_access_controls::{BucketAccessControl, PredefinedBucketAcl};
 use crate::http::buckets::{Billing, Cors, Encryption, IamConfiguration, Lifecycle, Logging, Versioning, Website};
-use crate::http::object_access_controls::insert::ObjectAccessControlsCreationConfig;
+use crate::http::object_access_controls::insert::ObjectAccessControlCreationConfig;
 use crate::http::object_access_controls::{PredefinedObjectAcl, Projection};
+use crate::http::{Error, Escape, BASE_URL};
+use percent_encoding::utf8_percent_encode;
+use reqwest::{Client, RequestBuilder};
+use std::collections::HashMap;
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct BucketCreationConfig {
     pub acl: Option<Vec<BucketAccessControl>>,
-    pub default_object_acl: Option<Vec<ObjectAccessControlsCreationConfig>>,
+    pub default_object_acl: Option<Vec<ObjectAccessControlCreationConfig>>,
     pub lifecycle: Option<Lifecycle>,
     pub cors: Option<Vec<Cors>>,
     pub location: String,

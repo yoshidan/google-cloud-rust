@@ -1,8 +1,8 @@
-use percent_encoding::utf8_percent_encode;
-use reqwest::{Client, RequestBuilder};
-use crate::http::{BASE_URL, Error, Escape};
 use crate::http::buckets::Policy;
 use crate::http::object_access_controls::Projection;
+use crate::http::{Error, Escape, BASE_URL};
+use percent_encoding::utf8_percent_encode;
+use reqwest::{Client, RequestBuilder};
 
 /// Request message for `TestIamPermissions` method.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
@@ -29,8 +29,6 @@ pub struct TestIamPermissionsResponse {
 
 pub(crate) fn build(client: &Client, req: &TestIamPermissionsRequest) -> RequestBuilder {
     let url = format!("{}/b/{}/iam/testPermissions", BASE_URL, req.resource.escape());
-    let query : Vec<_> = req.permissions.iter().map(|x| {
-        ("permissions", x)
-    }).collect();
+    let query: Vec<_> = req.permissions.iter().map(|x| ("permissions", x)).collect();
     client.get(url).query(&query)
 }

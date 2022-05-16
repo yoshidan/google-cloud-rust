@@ -1,21 +1,9 @@
-use std::cmp::max;
-use crate::http::{bucket_access_controls, buckets, CancellationToken, channels, default_object_access_controls, Error};
-use google_cloud_auth::token_source::TokenSource;
-use google_cloud_metadata::project_id;
-use reqwest::{Client, RequestBuilder, Response};
-use std::collections::HashMap;
-use std::future::Future;
-use std::iter::Cycle;
-use std::mem;
-use std::sync::Arc;
-use tracing::info;
-use crate::http::bucket_access_controls::BucketAccessControl;
-use crate::http::bucket_access_controls::delete::DeleteBucketAccessControlsRequest;
-use crate::http::bucket_access_controls::get::GetBucketAccessControlsRequest;
-use crate::http::bucket_access_controls::insert::InsertBucketAccessControlsRequest;
+use crate::http::bucket_access_controls::delete::DeleteBucketAccessControlRequest;
+use crate::http::bucket_access_controls::get::GetBucketAccessControlRequest;
+use crate::http::bucket_access_controls::insert::InsertBucketAccessControlRequest;
 use crate::http::bucket_access_controls::list::{ListBucketAccessControlsRequest, ListBucketAccessControlsResponse};
-use crate::http::bucket_access_controls::patch::PatchBucketAccessControlsRequest;
-use crate::http::buckets::{Bucket, Policy};
+use crate::http::bucket_access_controls::patch::PatchBucketAccessControlRequest;
+use crate::http::bucket_access_controls::BucketAccessControl;
 use crate::http::buckets::delete::DeleteBucketRequest;
 use crate::http::buckets::get::GetBucketRequest;
 use crate::http::buckets::get_iam_policy::GetIamPolicyRequest;
@@ -25,14 +13,36 @@ use crate::http::buckets::list_channels::{ListChannelsRequest, ListChannelsRespo
 use crate::http::buckets::patch::PatchBucketRequest;
 use crate::http::buckets::set_iam_policy::SetIamPolicyRequest;
 use crate::http::buckets::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
+use crate::http::buckets::{Bucket, Policy};
 use crate::http::channels::stop::StopChannelRequest;
 use crate::http::channels::WatchableChannel;
 use crate::http::default_object_access_controls::delete::DeleteDefaultObjectAccessControlRequest;
 use crate::http::default_object_access_controls::get::GetDefaultObjectAccessControlRequest;
 use crate::http::default_object_access_controls::insert::InsertDefaultObjectAccessControlRequest;
-use crate::http::default_object_access_controls::list::{ListDefaultObjectAccessControlsRequest, ListDefaultObjectAccessControlsResponse};
+use crate::http::default_object_access_controls::list::{
+    ListDefaultObjectAccessControlsRequest, ListDefaultObjectAccessControlsResponse,
+};
 use crate::http::default_object_access_controls::patch::PatchDefaultObjectAccessControlRequest;
+use crate::http::object_access_controls::delete::DeleteObjectAccessControlRequest;
+use crate::http::object_access_controls::get::GetObjectAccessControlRequest;
+use crate::http::object_access_controls::insert::InsertObjectAccessControlRequest;
+use crate::http::object_access_controls::list::ListObjectAccessControlsRequest;
+use crate::http::object_access_controls::patch::PatchObjectAccessControlRequest;
 use crate::http::object_access_controls::ObjectAccessControl;
+use crate::http::{
+    bucket_access_controls, buckets, channels, default_object_access_controls, object_access_controls,
+    CancellationToken, Error,
+};
+use google_cloud_auth::token_source::TokenSource;
+use google_cloud_metadata::project_id;
+use reqwest::{Client, RequestBuilder, Response};
+use std::cmp::max;
+use std::collections::HashMap;
+use std::future::Future;
+use std::iter::Cycle;
+use std::mem;
+use std::sync::Arc;
+use tracing::info;
 
 pub const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
@@ -76,11 +86,7 @@ impl StorageClient {
     }
 
     /// Gets the bucket.
-    pub async fn get_bucket(
-        &self,
-        req: &GetBucketRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Bucket, Error> {
+    pub async fn get_bucket(&self, req: &GetBucketRequest, cancel: Option<CancellationToken>) -> Result<Bucket, Error> {
         let action = async {
             let builder = buckets::get::build(&Client::new(), req);
             self.send(builder).await
@@ -167,11 +173,7 @@ impl StorageClient {
     }
 
     /// Stops the channel.
-    pub async fn stop_channel(
-        &self,
-        req: &StopChannelRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<(), Error> {
+    pub async fn stop_channel(&self, req: &StopChannelRequest, cancel: Option<CancellationToken>) -> Result<(), Error> {
         let action = async {
             let builder = channels::stop::build(&Client::new(), req);
             self.send_get_empty(builder).await
@@ -193,7 +195,7 @@ impl StorageClient {
     }
 
     /// Gets the default object ACL.
-    pub async fn get_default_object_access_controls(
+    pub async fn get_default_object_access_control(
         &self,
         req: &GetDefaultObjectAccessControlRequest,
         cancel: Option<CancellationToken>,
@@ -206,7 +208,7 @@ impl StorageClient {
     }
 
     /// Inserts the default object ACL.
-    pub async fn insert_default_object_access_controls(
+    pub async fn insert_default_object_access_control(
         &self,
         req: &InsertDefaultObjectAccessControlRequest,
         cancel: Option<CancellationToken>,
@@ -219,7 +221,7 @@ impl StorageClient {
     }
 
     /// Patchs the default object ACL.
-    pub async fn patch_default_object_access_controls(
+    pub async fn patch_default_object_access_control(
         &self,
         req: &PatchDefaultObjectAccessControlRequest,
         cancel: Option<CancellationToken>,
@@ -232,7 +234,7 @@ impl StorageClient {
     }
 
     /// Deletes the default object ACL.
-    pub async fn delete_default_object_access_controls(
+    pub async fn delete_default_object_access_control(
         &self,
         req: &DeleteDefaultObjectAccessControlRequest,
         cancel: Option<CancellationToken>,
@@ -260,7 +262,7 @@ impl StorageClient {
     /// Gets the bucket ACL.
     pub async fn get_bucket_access_control(
         &self,
-        req: &GetBucketAccessControlsRequest,
+        req: &GetBucketAccessControlRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<BucketAccessControl, Error> {
         let action = async {
@@ -271,9 +273,9 @@ impl StorageClient {
     }
 
     /// Inserts the default object ACL.
-    pub async fn insert_bucket_access_controls(
+    pub async fn insert_bucket_access_control(
         &self,
-        req: &InsertBucketAccessControlsRequest,
+        req: &InsertBucketAccessControlRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<BucketAccessControl, Error> {
         let action = async {
@@ -284,9 +286,9 @@ impl StorageClient {
     }
 
     /// Patchs the bucket ACL.
-    pub async fn patch_bucket_access_controls(
+    pub async fn patch_bucket_access_control(
         &self,
-        req: &PatchBucketAccessControlsRequest,
+        req: &PatchBucketAccessControlRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<BucketAccessControl, Error> {
         let action = async {
@@ -297,13 +299,78 @@ impl StorageClient {
     }
 
     /// Deletes the bucket ACL.
-    pub async fn delete_bucket_access_controls(
+    pub async fn delete_bucket_access_control(
         &self,
-        req: &DeleteBucketAccessControlsRequest,
+        req: &DeleteBucketAccessControlRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
             let builder = bucket_access_controls::delete::build(&Client::new(), req);
+            self.send_get_empty(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Lists the object ACL.
+    pub async fn list_object_access_controls(
+        &self,
+        req: &ListObjectAccessControlsRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ListBucketAccessControlsResponse, Error> {
+        let action = async {
+            let builder = object_access_controls::list::build(&Client::new(), req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Gets the object ACL.
+    pub async fn get_object_access_control(
+        &self,
+        req: &GetObjectAccessControlRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ObjectAccessControl, Error> {
+        let action = async {
+            let builder = object_access_controls::get::build(&Client::new(), req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Inserts the object ACL.
+    pub async fn insert_object_access_control(
+        &self,
+        req: &InsertObjectAccessControlRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ObjectAccessControl, Error> {
+        let action = async {
+            let builder = object_access_controls::insert::build(&Client::new(), req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Patchs the bucket ACL.
+    pub async fn patch_object_access_control(
+        &self,
+        req: &PatchObjectAccessControlRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ObjectAccessControl, Error> {
+        let action = async {
+            let builder = object_access_controls::patch::build(&Client::new(), req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Deletes the bucket ACL.
+    pub async fn delete_object_access_control(
+        &self,
+        req: &DeleteObjectAccessControlRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<(), Error> {
+        let action = async {
+            let builder = object_access_controls::delete::build(&Client::new(), req);
             self.send_get_empty(builder).await
         };
         invoke(cancel, action).await
@@ -317,8 +384,7 @@ impl StorageClient {
             .header(reqwest::header::AUTHORIZATION, token.value()))
     }
 
-
-    async fn send<T: for<'de> serde::Deserialize<'de>>(&self, builder: RequestBuilder) -> Result<T,Error> {
+    async fn send<T: for<'de> serde::Deserialize<'de>>(&self, builder: RequestBuilder) -> Result<T, Error> {
         let request = self.with_headers(builder).await?;
         let response = request.send().await?;
         if response.status().is_success() {
@@ -330,7 +396,7 @@ impl StorageClient {
         }
     }
 
-    async fn send_get_empty(&self, builder: RequestBuilder) -> Result<(),Error> {
+    async fn send_get_empty(&self, builder: RequestBuilder) -> Result<(), Error> {
         let builder = self.with_headers(builder).await?;
         let response = builder.send().await?;
         if response.status().is_success() {
@@ -367,32 +433,41 @@ async fn invoke<S>(
 
 #[cfg(test)]
 mod test {
-    use std::sync::Arc;
-    use google_cloud_auth::{Config, create_token_source};
-    use crate::http::buckets::delete::DeleteBucketRequest;
-    use crate::http::storage_client::{SCOPES, StorageClient};
-    use serial_test::serial;
-    use crate::http::bucket_access_controls::insert::{BucketAccessControlsCreationConfig, InsertBucketAccessControlsRequest};
-    use crate::http::bucket_access_controls::{BucketAccessControl, BucketACLRole, PredefinedBucketAcl};
-    use crate::http::bucket_access_controls::delete::DeleteBucketAccessControlsRequest;
-    use crate::http::bucket_access_controls::get::GetBucketAccessControlsRequest;
+    use crate::http::bucket_access_controls::delete::DeleteBucketAccessControlRequest;
+    use crate::http::bucket_access_controls::get::GetBucketAccessControlRequest;
+    use crate::http::bucket_access_controls::insert::{
+        BucketAccessControlCreationConfig, InsertBucketAccessControlRequest,
+    };
     use crate::http::bucket_access_controls::list::ListBucketAccessControlsRequest;
-    use crate::http::buckets::{Binding, Bucket, Policy};
+    use crate::http::bucket_access_controls::{BucketACLRole, BucketAccessControl, PredefinedBucketAcl};
+    use crate::http::buckets::delete::DeleteBucketRequest;
     use crate::http::buckets::get::GetBucketRequest;
     use crate::http::buckets::get_iam_policy::GetIamPolicyRequest;
-    use crate::http::buckets::insert::{BucketCreationConfig, InsertBucketParam, InsertBucketRequest, RetentionPolicyCreationConfig};
+    use crate::http::buckets::insert::{
+        BucketCreationConfig, InsertBucketParam, InsertBucketRequest, RetentionPolicyCreationConfig,
+    };
     use crate::http::buckets::list::ListBucketsRequest;
     use crate::http::buckets::patch::{BucketPatchConfig, PatchBucketRequest};
     use crate::http::buckets::set_iam_policy::SetIamPolicyRequest;
     use crate::http::buckets::test_iam_permissions::TestIamPermissionsRequest;
+    use crate::http::buckets::{Binding, Bucket, Policy};
     use crate::http::default_object_access_controls::delete::DeleteDefaultObjectAccessControlRequest;
     use crate::http::default_object_access_controls::get::GetDefaultObjectAccessControlRequest;
     use crate::http::default_object_access_controls::insert::InsertDefaultObjectAccessControlRequest;
     use crate::http::default_object_access_controls::list::ListDefaultObjectAccessControlsRequest;
-    use crate::http::object_access_controls::insert::ObjectAccessControlsCreationConfig;
+    use crate::http::object_access_controls::delete::DeleteObjectAccessControlRequest;
+    use crate::http::object_access_controls::get::GetObjectAccessControlRequest;
+    use crate::http::object_access_controls::insert::{
+        InsertObjectAccessControlRequest, ObjectAccessControlCreationConfig,
+    };
+    use crate::http::object_access_controls::list::ListObjectAccessControlsRequest;
     use crate::http::object_access_controls::{ObjectACLRole, PredefinedObjectAcl};
+    use crate::http::storage_client::{StorageClient, SCOPES};
+    use google_cloud_auth::{create_token_source, Config};
+    use serial_test::serial;
+    use std::sync::Arc;
 
-    const PROJECT : &str = "atl-dev1";
+    const PROJECT: &str = "atl-dev1";
 
     #[ctor::ctor]
     fn init() {
@@ -400,10 +475,12 @@ mod test {
     }
 
     async fn client() -> StorageClient {
-        let ts  = create_token_source(Config {
+        let ts = create_token_source(Config {
             audience: None,
-            scopes: Some(&SCOPES)
-        }).await.unwrap();
+            scopes: Some(&SCOPES),
+        })
+        .await
+        .unwrap();
         return StorageClient::new(Arc::from(ts));
     }
 
@@ -411,13 +488,19 @@ mod test {
     #[serial]
     pub async fn list_buckets() {
         let client = client().await;
-        let buckets = client.list_buckets(&ListBucketsRequest {
-            project: PROJECT.to_string(),
-            max_results: None,
-            page_token: None,
-            prefix: Some("rust-iam-test".to_string()),
-            projection: None
-        }, None).await.unwrap();
+        let buckets = client
+            .list_buckets(
+                &ListBucketsRequest {
+                    project: PROJECT.to_string(),
+                    max_results: None,
+                    page_token: None,
+                    prefix: Some("rust-iam-test".to_string()),
+                    projection: None,
+                },
+                None,
+            )
+            .await
+            .unwrap();
         assert_eq!(1, buckets.items.len());
     }
 
@@ -425,38 +508,56 @@ mod test {
     #[serial]
     pub async fn crud_bucket() {
         let client = client().await;
-        let name = format!("rust-test-insert-{}", chrono::Utc::now().timestamp()) ;
-        let bucket = client.insert_bucket(&InsertBucketRequest {
-            name,
-            param: InsertBucketParam {
-                project: PROJECT.to_string(),
-                ..Default::default()
-            },
-            bucket: BucketCreationConfig {
-                location: "ASIA-NORTHEAST1".to_string(),
-                storage_class: Some("STANDARD".to_string()),
-                ..Default::default()
-            }
-        }, None).await.unwrap();
+        let name = format!("rust-test-insert-{}", chrono::Utc::now().timestamp());
+        let bucket = client
+            .insert_bucket(
+                &InsertBucketRequest {
+                    name,
+                    param: InsertBucketParam {
+                        project: PROJECT.to_string(),
+                        ..Default::default()
+                    },
+                    bucket: BucketCreationConfig {
+                        location: "ASIA-NORTHEAST1".to_string(),
+                        storage_class: Some("STANDARD".to_string()),
+                        ..Default::default()
+                    },
+                },
+                None,
+            )
+            .await
+            .unwrap();
 
-        let found = client.get_bucket(&GetBucketRequest {
-            bucket: bucket.name.to_string(),
-           ..Default::default()
-        }, None).await.unwrap();
+        let found = client
+            .get_bucket(
+                &GetBucketRequest {
+                    bucket: bucket.name.to_string(),
+                    ..Default::default()
+                },
+                None,
+            )
+            .await
+            .unwrap();
 
         assert_eq!(found.location.as_str(), "ASIA-NORTHEAST1");
 
-        let patched = client.patch_bucket(&PatchBucketRequest {
-            bucket: bucket.name.to_string(),
-            metadata: Some(BucketPatchConfig {
-                default_object_acl: Some(vec![ObjectAccessControlsCreationConfig {
-                    entity: "allAuthenticatedUsers".to_string(),
-                    role: ObjectACLRole::READER,
-                }]),
-                ..Default::default()
-            }),
-            ..Default::default()
-        }, None).await.unwrap();
+        let patched = client
+            .patch_bucket(
+                &PatchBucketRequest {
+                    bucket: bucket.name.to_string(),
+                    metadata: Some(BucketPatchConfig {
+                        default_object_acl: Some(vec![ObjectAccessControlCreationConfig {
+                            entity: "allAuthenticatedUsers".to_string(),
+                            role: ObjectACLRole::READER,
+                        }]),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                None,
+            )
+            .await
+            .unwrap();
 
         let default_object_acl = patched.default_object_acl.unwrap();
         assert_eq!(default_object_acl.len(), 1);
@@ -465,10 +566,16 @@ mod test {
         assert_eq!(found.storage_class.as_str(), patched.storage_class.as_str());
         assert_eq!(found.location.as_str(), patched.location.as_str());
 
-        client.delete_bucket(&DeleteBucketRequest {
-            bucket: bucket.name,
-            param: Default::default()
-        }, None).await.unwrap();
+        client
+            .delete_bucket(
+                &DeleteBucketRequest {
+                    bucket: bucket.name,
+                    param: Default::default(),
+                },
+                None,
+            )
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
@@ -476,27 +583,45 @@ mod test {
     async fn set_get_test_iam() {
         let bucket_name = "rust-iam-test";
         let client = client().await;
-        let mut policy = client.get_iam_policy(&GetIamPolicyRequest {
-            resource: bucket_name.to_string(),
-            options_requested_policy_version: None
-        }, None).await.unwrap();
+        let mut policy = client
+            .get_iam_policy(
+                &GetIamPolicyRequest {
+                    resource: bucket_name.to_string(),
+                    options_requested_policy_version: None,
+                },
+                None,
+            )
+            .await
+            .unwrap();
         policy.bindings.push(Binding {
             role: "roles/storage.objectViewer".to_string(),
             members: vec!["allAuthenticatedUsers".to_string()],
-            condition: None
+            condition: None,
         });
 
-        let mut result = client.set_iam_policy(&SetIamPolicyRequest {
-            resource: bucket_name.to_string(),
-            policy,
-        }, None).await.unwrap();
+        let mut result = client
+            .set_iam_policy(
+                &SetIamPolicyRequest {
+                    resource: bucket_name.to_string(),
+                    policy,
+                },
+                None,
+            )
+            .await
+            .unwrap();
         assert_eq!(result.bindings.len(), 5);
         assert_eq!(result.bindings.pop().unwrap().role, "roles/storage.objectViewer");
 
-        let permissions = client.test_iam_permissions(&TestIamPermissionsRequest {
-            resource: bucket_name.to_string(),
-            permissions: vec!["storage.buckets.get".to_string()],
-        }, None).await.unwrap();
+        let permissions = client
+            .test_iam_permissions(
+                &TestIamPermissionsRequest {
+                    resource: bucket_name.to_string(),
+                    permissions: vec!["storage.buckets.get".to_string()],
+                },
+                None,
+            )
+            .await
+            .unwrap();
         assert_eq!(permissions.permissions[0], "storage.buckets.get");
     }
 
@@ -506,65 +631,176 @@ mod test {
         let bucket_name = "rust-default-object-acl-test";
         let client = client().await;
 
-        let _ = client.delete_default_object_access_controls(&DeleteDefaultObjectAccessControlRequest {
-            bucket: bucket_name.to_string(),
-            entity: "allAuthenticatedUsers".to_string()
-        }, None).await.unwrap();
+        let _ = client
+            .delete_default_object_access_control(
+                &DeleteDefaultObjectAccessControlRequest {
+                    bucket: bucket_name.to_string(),
+                    entity: "allAuthenticatedUsers".to_string(),
+                },
+                None,
+            )
+            .await
+            .unwrap();
 
-        let post = client.insert_default_object_access_controls(&InsertDefaultObjectAccessControlRequest {
-            bucket: bucket_name.to_string(),
-            object_access_control: ObjectAccessControlsCreationConfig {
-                entity: "allAuthenticatedUsers".to_string(),
-                role: ObjectACLRole::READER,
-            }
-        }, None).await.unwrap();
+        let post = client
+            .insert_default_object_access_control(
+                &InsertDefaultObjectAccessControlRequest {
+                    bucket: bucket_name.to_string(),
+                    object_access_control: ObjectAccessControlCreationConfig {
+                        entity: "allAuthenticatedUsers".to_string(),
+                        role: ObjectACLRole::READER,
+                    },
+                },
+                None,
+            )
+            .await
+            .unwrap();
 
-        let found   = client.get_default_object_access_controls(&GetDefaultObjectAccessControlRequest {
-            bucket: bucket_name.to_string(),
-            entity: "allAuthenticatedUsers".to_string(),
-        }, None).await.unwrap();
+        let found = client
+            .get_default_object_access_control(
+                &GetDefaultObjectAccessControlRequest {
+                    bucket: bucket_name.to_string(),
+                    entity: "allAuthenticatedUsers".to_string(),
+                },
+                None,
+            )
+            .await
+            .unwrap();
         assert_eq!(found.entity, "allAuthenticatedUsers");
         assert_eq!(found.role, ObjectACLRole::READER);
 
-        let acls = client.list_default_object_access_controls(&ListDefaultObjectAccessControlsRequest{
-            bucket: bucket_name.to_string(),
-            ..Default::default()
-        }, None).await.unwrap();
+        let acls = client
+            .list_default_object_access_controls(
+                &ListDefaultObjectAccessControlsRequest {
+                    bucket: bucket_name.to_string(),
+                    ..Default::default()
+                },
+                None,
+            )
+            .await
+            .unwrap();
         assert!(acls.items.is_some());
         assert_eq!(1, acls.items.unwrap().len());
     }
 
     #[tokio::test]
     #[serial]
-    pub async fn curd_bucket_access_controls() {
+    pub async fn crud_bucket_access_controls() {
         let bucket_name = "rust-bucket-acl-test";
         let client = client().await;
 
-        let post = client.insert_bucket_access_controls(&InsertBucketAccessControlsRequest{
-            bucket: bucket_name.to_string(),
-            acl: BucketAccessControlsCreationConfig {
-                entity: "allAuthenticatedUsers".to_string(),
-                role: BucketACLRole::READER,
-            }
-        }, None).await.unwrap();
+        let post = client
+            .insert_bucket_access_control(
+                &InsertBucketAccessControlRequest {
+                    bucket: bucket_name.to_string(),
+                    acl: BucketAccessControlCreationConfig {
+                        entity: "allAuthenticatedUsers".to_string(),
+                        role: BucketACLRole::READER,
+                    },
+                },
+                None,
+            )
+            .await
+            .unwrap();
 
-        let found   = client.get_bucket_access_control(&GetBucketAccessControlsRequest {
-            bucket: bucket_name.to_string(),
-            entity: "allAuthenticatedUsers".to_string(),
-        }, None).await.unwrap();
+        let found = client
+            .get_bucket_access_control(
+                &GetBucketAccessControlRequest {
+                    bucket: bucket_name.to_string(),
+                    entity: "allAuthenticatedUsers".to_string(),
+                },
+                None,
+            )
+            .await
+            .unwrap();
         assert_eq!(found.entity, "allAuthenticatedUsers");
         assert_eq!(found.role, BucketACLRole::READER);
 
-        let acls = client.list_bucket_access_controls(&ListBucketAccessControlsRequest{
-            bucket: bucket_name.to_string(),
-        }, None).await.unwrap();
+        let acls = client
+            .list_bucket_access_controls(
+                &ListBucketAccessControlsRequest {
+                    bucket: bucket_name.to_string(),
+                },
+                None,
+            )
+            .await
+            .unwrap();
         assert_eq!(5, acls.items.len());
 
-        let _ = client.delete_bucket_access_controls(&DeleteBucketAccessControlsRequest{
-            bucket: bucket_name.to_string(),
-            entity: "allAuthenticatedUsers".to_string(),
-        }, None).await.unwrap();
-
+        let _ = client
+            .delete_bucket_access_control(
+                &DeleteBucketAccessControlRequest {
+                    bucket: bucket_name.to_string(),
+                    entity: "allAuthenticatedUsers".to_string(),
+                },
+                None,
+            )
+            .await
+            .unwrap();
     }
 
+    #[tokio::test]
+    #[serial]
+    pub async fn crud_object_access_controls() {
+        let bucket_name = "rust-default-object-acl-test";
+        let object_name = "test.txt";
+        let client = client().await;
+
+        let post = client
+            .insert_object_access_control(
+                &InsertObjectAccessControlRequest {
+                    bucket: bucket_name.to_string(),
+                    object: object_name.to_string(),
+                    generation: None,
+                    acl: ObjectAccessControlCreationConfig {
+                        entity: "allAuthenticatedUsers".to_string(),
+                        role: ObjectACLRole::READER,
+                    },
+                },
+                None,
+            )
+            .await
+            .unwrap();
+
+        let found = client
+            .get_object_access_control(
+                &GetObjectAccessControlRequest {
+                    bucket: bucket_name.to_string(),
+                    entity: "allAuthenticatedUsers".to_string(),
+                    object: object_name.to_string(),
+                    generation: None,
+                },
+                None,
+            )
+            .await
+            .unwrap();
+        assert_eq!(found.entity, "allAuthenticatedUsers");
+        assert_eq!(found.role, ObjectACLRole::READER);
+
+        let acls = client
+            .list_object_access_controls(
+                &ListObjectAccessControlsRequest {
+                    bucket: bucket_name.to_string(),
+                    object: object_name.to_string(),
+                    generation: None,
+                },
+                None,
+            )
+            .await
+            .unwrap();
+        assert_eq!(2, acls.items.len());
+
+        let _ = client
+            .delete_object_access_control(
+                &DeleteObjectAccessControlRequest {
+                    bucket: bucket_name.to_string(),
+                    object: object_name.to_string(),
+                    entity: "allAuthenticatedUsers".to_string(),
+                    generation: None,
+                },
+                None,
+            )
+            .await
+            .unwrap();
+    }
 }

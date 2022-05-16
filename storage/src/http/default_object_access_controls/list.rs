@@ -1,7 +1,7 @@
-use reqwest::{Client, RequestBuilder};
-use crate::http::{BASE_URL, Escape};
 use crate::http::channels::Channel;
 use crate::http::object_access_controls::ObjectAccessControl;
+use crate::http::{Escape, BASE_URL};
+use reqwest::{Client, RequestBuilder};
 
 /// Request message for ListDefaultObjectAccessControls.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -22,7 +22,7 @@ pub struct ListDefaultObjectAccessControlsRequest {
 #[serde(rename_all = "camelCase")]
 pub struct ListDefaultObjectAccessControlsResponse {
     pub kind: String,
-    pub items: Option<Vec<ObjectAccessControl>>
+    pub items: Option<Vec<ObjectAccessControl>>,
 }
 
 pub(crate) fn build(client: &Client, req: &ListDefaultObjectAccessControlsRequest) -> RequestBuilder {

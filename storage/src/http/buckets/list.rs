@@ -1,8 +1,8 @@
-use percent_encoding::utf8_percent_encode;
-use reqwest::{Client, RequestBuilder};
-use crate::http::{BASE_URL, Error, Escape};
 use crate::http::buckets::Bucket;
 use crate::http::object_access_controls::Projection;
+use crate::http::{Error, Escape, BASE_URL};
+use percent_encoding::utf8_percent_encode;
+use reqwest::{Client, RequestBuilder};
 
 /// Request message for DeleteBucket.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
