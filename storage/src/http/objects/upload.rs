@@ -4,18 +4,17 @@ use crate::http::object_access_controls::insert::ObjectAccessControlCreationConf
 use crate::http::object_access_controls::{PredefinedObjectAcl, Projection};
 use crate::http::objects::get::GetObjectRequest;
 use crate::http::objects::{Encryption, Object};
-use crate::http::{Escape, BASE_URL};
+use crate::http::{Escape, UPLOAD_BASE_URL};
+use reqwest::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use reqwest::{Client, RequestBuilder};
 use std::collections::HashMap;
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct UploadObjectRequest {
     #[serde(skip_serializing)]
     pub bucket: String,
-    #[serde(skip_serializing)]
     pub name: String,
-    #[serde(skip_serializing)]
     pub generation: Option<i64>,
     /// Makes the operation conditional on whether the object's current generation
     /// matches the given value. Setting to 0 makes the operation succeed only if
@@ -40,9 +39,20 @@ pub struct UploadObjectRequest {
     pub encryption: Option<Encryption>,
 }
 
-pub(crate) fn build<T: Into<reqwest::Body>>(client: &Client, req: &UploadObjectRequest, body: T) -> RequestBuilder {
-    let url = format!("{}/b/{}/o", BASE_URL, req.bucket.escape());
-    let mut builder = client.post(url).query(&req).body(body);
+pub(crate) fn build<T: Into<reqwest::Body>>(
+    client: &Client,
+    req: &UploadObjectRequest,
+    content_length: usize,
+    content_type: &str,
+    body: T,
+) -> RequestBuilder {
+    let url = format!("{}/b/{}/o", UPLOAD_BASE_URL, req.bucket.escape());
+    let mut builder = client
+        .post(url)
+        .query(&req)
+        .body(body)
+        .header(CONTENT_LENGTH, &content_length.to_string())
+        .header(CONTENT_TYPE, content_type);
     if let Some(e) = &req.encryption {
         e.with_headers(builder)
     } else {

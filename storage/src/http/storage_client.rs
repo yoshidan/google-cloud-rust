@@ -40,7 +40,20 @@ use crate::http::object_access_controls::insert::InsertObjectAccessControlReques
 use crate::http::object_access_controls::list::ListObjectAccessControlsRequest;
 use crate::http::object_access_controls::patch::PatchObjectAccessControlRequest;
 use crate::http::object_access_controls::ObjectAccessControl;
-use crate::http::{bucket_access_controls, buckets, channels, default_object_access_controls, hmac_keys, notifications, object_access_controls, CancellationToken, Error, objects};
+use crate::http::objects::compose::ComposeObjectRequest;
+use crate::http::objects::delete::DeleteObjectRequest;
+use crate::http::objects::get::GetObjectRequest;
+use crate::http::objects::list::{ListObjectsRequest, ListObjectsResponse};
+use crate::http::objects::patch::PatchObjectRequest;
+use crate::http::objects::rewrite::{RewriteObjectRequest, RewriteObjectResponse};
+use crate::http::objects::upload::UploadObjectRequest;
+use crate::http::objects::watch_all::WatchAllObjectsRequest;
+use crate::http::objects::Object;
+use crate::http::{
+    bucket_access_controls, buckets, channels, default_object_access_controls, hmac_keys, notifications,
+    object_access_controls, objects, CancellationToken, Error,
+};
+use futures_util::{Stream, StreamExt, TryStream};
 use google_cloud_auth::token_source::TokenSource;
 use google_cloud_metadata::project_id;
 use reqwest::{Body, Client, RequestBuilder, Response};
@@ -52,17 +65,7 @@ use std::io::Bytes;
 use std::iter::Cycle;
 use std::mem;
 use std::sync::Arc;
-use futures_util::{Stream, StreamExt, TryStream};
 use tracing::info;
-use crate::http::objects::compose::ComposeObjectRequest;
-use crate::http::objects::delete::DeleteObjectRequest;
-use crate::http::objects::get::GetObjectRequest;
-use crate::http::objects::list::{ListObjectsRequest, ListObjectsResponse};
-use crate::http::objects::Object;
-use crate::http::objects::patch::PatchObjectRequest;
-use crate::http::objects::rewrite::{RewriteObjectRequest, RewriteObjectResponse};
-use crate::http::objects::upload::UploadObjectRequest;
-use crate::http::objects::watch_all::WatchAllObjectsRequest;
 
 pub const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
@@ -175,28 +178,6 @@ impl StorageClient {
         let action = async {
             let builder = buckets::test_iam_permissions::build(&Client::new(), req);
             self.send(builder).await
-        };
-        invoke(cancel, action).await
-    }
-
-    /// Lists the channels.
-    pub async fn list_channels(
-        &self,
-        req: &ListChannelsRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ListChannelsResponse, Error> {
-        let action = async {
-            let builder = buckets::list_channels::build(&Client::new(), req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
-    }
-
-    /// Stops the channel.
-    pub async fn stop_channel(&self, req: &StopChannelRequest, cancel: Option<CancellationToken>) -> Result<(), Error> {
-        let action = async {
-            let builder = channels::stop::build(&Client::new(), req);
-            self.send_get_empty(builder).await
         };
         invoke(cancel, action).await
     }
@@ -527,11 +508,7 @@ impl StorageClient {
     }
 
     /// Gets the object.
-    pub async fn get_object(
-        &self,
-        req: &GetObjectRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Object, Error> {
+    pub async fn get_object(&self, req: &GetObjectRequest, cancel: Option<CancellationToken>) -> Result<Object, Error> {
         let action = async {
             let builder = objects::get::build(&Client::new(), req);
             self.send(builder).await
@@ -582,10 +559,11 @@ impl StorageClient {
         &self,
         req: &UploadObjectRequest,
         data: Vec<u8>,
+        content_type: &str,
         cancel: Option<CancellationToken>,
-    ) -> Result<CreateHmacKeyResponse, Error> {
+    ) -> Result<Object, Error> {
         let action = async {
-            let builder = objects::upload::build(&Client::new(), req, data);
+            let builder = objects::upload::build(&Client::new(), req, data.len(), content_type, data);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -596,15 +574,18 @@ impl StorageClient {
         &self,
         req: &UploadObjectRequest,
         data: S,
+        content_type: &str,
+        content_length: usize,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error>
-        where
-            S: TryStream + Send + Sync + 'static,
-            S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
-            bytes::Bytes: From<S::Ok>,
+    where
+        S: TryStream + Send + Sync + 'static,
+        S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+        bytes::Bytes: From<S::Ok>,
     {
         let action = async {
-            let builder = objects::upload::build(&Client::new(), req, Body::wrap_stream(data));
+            let builder =
+                objects::upload::build(&Client::new(), req, content_length, content_type, Body::wrap_stream(data));
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -657,19 +638,6 @@ impl StorageClient {
     ) -> Result<Object, Error> {
         let action = async {
             let builder = objects::compose::build(&Client::new(), req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
-    }
-
-    /// Watches the all objects.
-    pub async fn watch_all_objects(
-        &self,
-        req: &WatchAllObjectsRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<WatchableChannel, Error> {
-        let action = async {
-            let builder = objects::watch_all::build(&Client::new(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -771,6 +739,14 @@ mod test {
     };
     use crate::http::object_access_controls::list::ListObjectAccessControlsRequest;
     use crate::http::object_access_controls::{ObjectACLRole, PredefinedObjectAcl};
+    use crate::http::objects::compose::{ComposeObjectRequest, ComposingTargets};
+    use crate::http::objects::delete::DeleteObjectRequest;
+    use crate::http::objects::get::GetObjectRequest;
+    use crate::http::objects::list::ListObjectsRequest;
+    use crate::http::objects::rewrite::RewriteObjectRequest;
+    use crate::http::objects::upload::UploadObjectRequest;
+    use crate::http::objects::watch_all::WatchAllObjectsRequest;
+    use crate::http::objects::SourceObjects;
     use crate::http::storage_client::{StorageClient, SCOPES};
     use google_cloud_auth::{create_token_source, Config};
     use serial_test::serial;
@@ -1247,6 +1223,94 @@ mod test {
     #[tokio::test]
     #[serial]
     pub async fn crud_object() {
+        let bucket_name = "rust-object-test";
+        let client = client().await;
 
+        let objects = client
+            .list_objects(
+                &ListObjectsRequest {
+                    bucket: bucket_name.to_string(),
+                    ..Default::default()
+                },
+                None,
+            )
+            .await
+            .unwrap()
+            .items
+            .unwrap_or(vec![]);
+        for o in objects {
+            client
+                .delete_object(
+                    &DeleteObjectRequest {
+                        bucket: o.bucket.to_string(),
+                        object: o.name.to_string(),
+                        ..Default::default()
+                    },
+                    None,
+                )
+                .await
+                .unwrap();
+        }
+
+        let uploaded = client
+            .upload_object(
+                &UploadObjectRequest {
+                    bucket: bucket_name.to_string(),
+                    name: "test1".to_string(),
+                    ..Default::default()
+                },
+                vec![01],
+                "text/plain",
+                None,
+            )
+            .await
+            .unwrap();
+
+        let downloaded = client
+            .download_object(
+                &GetObjectRequest {
+                    bucket: uploaded.bucket.to_string(),
+                    object: uploaded.name.to_string(),
+                    ..Default::default()
+                },
+                None,
+            )
+            .await
+            .unwrap();
+        assert_eq!(downloaded, vec![01]);
+
+        let rewrited = client
+            .rewrite_object(
+                &RewriteObjectRequest {
+                    destination_bucket: bucket_name.to_string(),
+                    destination_object: format!("{}_rewrite", uploaded.name),
+                    source_bucket: bucket_name.to_string(),
+                    source_object: uploaded.name.to_string(),
+                    ..Default::default()
+                },
+                None,
+            )
+            .await
+            .unwrap();
+
+        let composed = client
+            .compose_object(
+                &ComposeObjectRequest {
+                    bucket: bucket_name.to_string(),
+                    destination_object: format!("{}_composed", uploaded.name),
+                    destination_predefined_acl: None,
+                    composing_targets: ComposingTargets {
+                        destination: None,
+                        source_objects: vec![SourceObjects {
+                            name: format!("{}_rewrite", uploaded.name),
+                            ..Default::default()
+                        }],
+                    },
+                    ..Default::default()
+                },
+                None,
+            )
+            .await
+            .unwrap();
     }
 }

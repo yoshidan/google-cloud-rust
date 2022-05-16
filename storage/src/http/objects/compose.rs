@@ -9,7 +9,7 @@ use reqwest::{Client, RequestBuilder};
 use std::collections::HashMap;
 
 /// Request message for ComposeObject.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ComposeObjectRequest {
     /// Required. Name of the bucket containing the source objects. The destination object is
@@ -21,6 +21,7 @@ pub struct ComposeObjectRequest {
     pub destination_object: String,
     /// Apply a predefined set of access controls to the destination object.
     pub destination_predefined_acl: Option<PredefinedObjectAcl>,
+    #[serde(skip_serializing)]
     pub composing_targets: ComposingTargets,
     /// Makes the operation conditional on whether the object's current generation
     /// matches the given value. Setting to 0 makes the operation succeed only if
@@ -33,13 +34,13 @@ pub struct ComposeObjectRequest {
     /// `projects/my-project/locations/my-location/keyRings/my-kr/cryptoKeys/my-key`,
     /// that will be used to encrypt the object. Overrides the object
     /// metadata's `kms_key_name` value, if any.
-    pub kms_key_name: String,
+    pub kms_key_name: Option<String>,
     /// A set of parameters common to Storage API requests concerning an object.
     #[serde(skip_serializing)]
     pub encryption: Option<Encryption>,
 }
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ComposingTargets {
     /// Properties of the resulting object.

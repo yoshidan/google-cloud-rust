@@ -16,6 +16,7 @@ use std::str::FromStr;
 pub use tokio_util::sync::CancellationToken;
 
 pub(crate) const BASE_URL: &str = "https://storage.googleapis.com/storage/v1";
+pub(crate) const UPLOAD_BASE_URL: &str = "https://storage.googleapis.com/upload/storage/v1";
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {

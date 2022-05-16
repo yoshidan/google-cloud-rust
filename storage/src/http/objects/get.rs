@@ -8,7 +8,7 @@ use reqwest::{Client, RequestBuilder};
 use std::collections::HashMap;
 
 /// Request message for GetObject.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct GetObjectRequest {
     /// Required. Name of the bucket in which the object resides.

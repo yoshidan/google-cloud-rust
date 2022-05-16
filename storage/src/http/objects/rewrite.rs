@@ -8,7 +8,7 @@ use crate::http::{Escape, BASE_URL};
 use reqwest::{Client, RequestBuilder};
 use std::collections::HashMap;
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct RewriteObjectRequest {
     #[serde(skip_serializing)]
@@ -49,16 +49,18 @@ pub struct RewriteObjectRequest {
 pub struct RewriteObjectResponse {
     /// The total bytes written so far, which can be used to provide a waiting user
     /// with a progress indicator. This property is always present in the response.
+    #[serde(deserialize_with = "crate::http::from_str")]
     pub total_bytes_rewritten: i64,
     /// The total size of the object being copied in bytes. This property is always
     /// present in the response.
+    #[serde(deserialize_with = "crate::http::from_str")]
     pub object_size: i64,
     /// `true` if the copy is finished; otherwise, `false` if
     /// the copy is in progress. This property is always present in the response.
     pub done: bool,
     /// A token to use in subsequent requests to continue copying data. This token
     /// is present in the response only when there is more data to copy.
-    pub rewrite_token: String,
+    pub rewrite_token: Option<String>,
     /// A resource containing the metadata for the copied-to object. This property
     /// is present in the response only when copying completes.
     pub resource: Option<Object>,
@@ -66,12 +68,12 @@ pub struct RewriteObjectResponse {
 
 pub(crate) fn build(client: &Client, req: &RewriteObjectRequest) -> RequestBuilder {
     let url = format!(
-        "{}/b/{}/o/{}/rewriteTo/b/{}/o{}",
+        "{}/b/{}/o/{}/rewriteTo/b/{}/o/{}",
         BASE_URL,
         req.source_bucket.escape(),
         req.source_object.escape(),
         req.destination_bucket.escape(),
-        req.destination_bucket.escape()
+        req.destination_object.escape()
     );
     let mut builder = client.post(url).query(&req).json(&req.destination_metadata);
     if let Some(e) = &req.destination_encryption {
