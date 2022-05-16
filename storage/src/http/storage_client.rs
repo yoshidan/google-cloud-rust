@@ -748,8 +748,12 @@ mod test {
     use crate::http::objects::watch_all::WatchAllObjectsRequest;
     use crate::http::objects::SourceObjects;
     use crate::http::storage_client::{StorageClient, SCOPES};
+    use bytes::Buf;
+    use futures_util::StreamExt;
     use google_cloud_auth::{create_token_source, Config};
+    use serde_json::de::Read;
     use serial_test::serial;
+    use std::io::BufReader;
     use std::sync::Arc;
 
     const PROJECT: &str = "atl-dev1";
@@ -1312,5 +1316,52 @@ mod test {
             )
             .await
             .unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn streamed_object() {
+        let bucket_name = "rust-object-test";
+        let file_name = format!("stream_{}", chrono::Utc::now().timestamp());
+        let client = client().await;
+
+        let source = vec!["hello", " ", "world"];
+        let size = source.iter().map(|x| x.len()).sum();
+        let chunks: Vec<Result<_, ::std::io::Error>> = source.clone().into_iter().map(|x| Ok(x)).collect();
+        let stream = futures_util::stream::iter(chunks);
+        let uploaded = client
+            .upload_streamed_object(
+                &UploadObjectRequest {
+                    bucket: bucket_name.to_string(),
+                    name: file_name.to_string(),
+                    predefined_acl: None,
+                    ..Default::default()
+                },
+                stream,
+                "application/octet-stream",
+                size,
+                None,
+            )
+            .await
+            .unwrap();
+
+        let mut downloaded = client
+            .download_streamed_object(
+                &GetObjectRequest {
+                    bucket: uploaded.bucket.to_string(),
+                    object: uploaded.name.to_string(),
+                    ..Default::default()
+                },
+                None,
+            )
+            .await
+            .unwrap();
+
+        let mut data = Vec::with_capacity(size);
+        while let Some(v) = downloaded.next().await {
+            let d: bytes::Bytes = v.unwrap();
+            data.extend_from_slice(d.chunk());
+        }
+        assert_eq!("hello world", String::from_utf8_lossy(data.as_slice()));
     }
 }
