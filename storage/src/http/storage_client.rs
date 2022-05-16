@@ -23,6 +23,11 @@ use crate::http::default_object_access_controls::list::{
     ListDefaultObjectAccessControlsRequest, ListDefaultObjectAccessControlsResponse,
 };
 use crate::http::default_object_access_controls::patch::PatchDefaultObjectAccessControlRequest;
+use crate::http::notifications::delete::DeleteNotificationRequest;
+use crate::http::notifications::get::GetNotificationRequest;
+use crate::http::notifications::insert::InsertNotificationRequest;
+use crate::http::notifications::list::{ListNotificationsRequest, ListNotificationsResponse};
+use crate::http::notifications::Notification;
 use crate::http::object_access_controls::delete::DeleteObjectAccessControlRequest;
 use crate::http::object_access_controls::get::GetObjectAccessControlRequest;
 use crate::http::object_access_controls::insert::InsertObjectAccessControlRequest;
@@ -30,7 +35,7 @@ use crate::http::object_access_controls::list::ListObjectAccessControlsRequest;
 use crate::http::object_access_controls::patch::PatchObjectAccessControlRequest;
 use crate::http::object_access_controls::ObjectAccessControl;
 use crate::http::{
-    bucket_access_controls, buckets, channels, default_object_access_controls, object_access_controls,
+    bucket_access_controls, buckets, channels, default_object_access_controls, notifications, object_access_controls,
     CancellationToken, Error,
 };
 use google_cloud_auth::token_source::TokenSource;
@@ -376,6 +381,58 @@ impl StorageClient {
         invoke(cancel, action).await
     }
 
+    /// Lists the notification.
+    pub async fn list_notifications(
+        &self,
+        req: &ListNotificationsRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ListNotificationsResponse, Error> {
+        let action = async {
+            let builder = notifications::list::build(&Client::new(), req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Gets the notification.
+    pub async fn get_notification(
+        &self,
+        req: &GetNotificationRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Notification, Error> {
+        let action = async {
+            let builder = notifications::get::build(&Client::new(), req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Inserts the notification.
+    pub async fn insert_notification(
+        &self,
+        req: &InsertNotificationRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Notification, Error> {
+        let action = async {
+            let builder = notifications::insert::build(&Client::new(), req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Deletes the notification.
+    pub async fn delete_notification(
+        &self,
+        req: &DeleteNotificationRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<(), Error> {
+        let action = async {
+            let builder = notifications::delete::build(&Client::new(), req);
+            self.send_get_empty(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
     async fn with_headers(&self, builder: RequestBuilder) -> Result<RequestBuilder, Error> {
         let token = self.ts.token().await?;
         Ok(builder
@@ -455,6 +512,10 @@ mod test {
     use crate::http::default_object_access_controls::get::GetDefaultObjectAccessControlRequest;
     use crate::http::default_object_access_controls::insert::InsertDefaultObjectAccessControlRequest;
     use crate::http::default_object_access_controls::list::ListDefaultObjectAccessControlsRequest;
+    use crate::http::notifications::delete::DeleteNotificationRequest;
+    use crate::http::notifications::get::GetNotificationRequest;
+    use crate::http::notifications::insert::{InsertNotificationRequest, NotificationCreationConfig};
+    use crate::http::notifications::list::ListNotificationsRequest;
     use crate::http::object_access_controls::delete::DeleteObjectAccessControlRequest;
     use crate::http::object_access_controls::get::GetObjectAccessControlRequest;
     use crate::http::object_access_controls::insert::{
@@ -802,5 +863,66 @@ mod test {
             )
             .await
             .unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn crud_notification() {
+        let bucket_name = "rust-bucket-test";
+        let client = client().await;
+
+        let notifications = client
+            .list_notifications(
+                &ListNotificationsRequest {
+                    bucket: bucket_name.to_string(),
+                },
+                None,
+            )
+            .await
+            .unwrap();
+        assert!(!notifications.items.is_empty());
+
+        for n in notifications.items {
+            let _ = client
+                .delete_notification(
+                    &DeleteNotificationRequest {
+                        bucket: bucket_name.to_string(),
+                        notification: n.id.to_string(),
+                    },
+                    None,
+                )
+                .await
+                .unwrap();
+        }
+
+        let post = client
+            .insert_notification(
+                &InsertNotificationRequest {
+                    bucket: bucket_name.to_string(),
+                    notification: NotificationCreationConfig {
+                        topic: format!("projects/{}/topics/{}", PROJECT, bucket_name.to_string()),
+                        event_types: Some(vec!["OBJECT_METADATA_UPDATE".to_string(), "OBJECT_DELETE".to_string()]),
+                        custom_attributes: Default::default(),
+                        object_name_prefix: Some("notification-test".to_string()),
+                        payload_format: "JSON_API_V1".to_string(),
+                    },
+                },
+                None,
+            )
+            .await
+            .unwrap();
+
+        let found = client
+            .get_notification(
+                &GetNotificationRequest {
+                    bucket: bucket_name.to_string(),
+                    notification: post.id.to_string(),
+                },
+                None,
+            )
+            .await
+            .unwrap();
+        assert_eq!(found.id, post.id);
+        assert_eq!(found.event_types.unwrap().len(), 2);
     }
 }

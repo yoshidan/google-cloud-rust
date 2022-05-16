@@ -3,6 +3,7 @@ pub mod bucket_access_controls;
 pub mod buckets;
 pub mod channels;
 pub mod default_object_access_controls;
+pub mod notifications;
 pub mod object_access_controls;
 pub mod objects;
 pub mod storage_client;
