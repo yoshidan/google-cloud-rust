@@ -1,5 +1,6 @@
 use crate::http::object_access_controls::ProjectTeam;
 
+pub mod list;
 pub mod delete;
 pub mod get;
 pub mod insert;
@@ -34,7 +35,7 @@ pub enum PredefinedBucketAcl {
 #[serde(rename_all = "camelCase")]
 pub struct BucketAccessControl {
     /// The access permission for the entity.
-    pub role: String,
+    pub role: BucketACLRole,
     /// The ID of the access-control entry.
     pub id: String,
     /// The entity holding the permission, in one of the following forms:
@@ -73,5 +74,11 @@ pub enum BucketACLRole {
     OWNER,
     READER,
     WRITER,
+}
+
+impl Default for BucketACLRole {
+    fn default() -> Self {
+        Self::READER
+    }
 }
 

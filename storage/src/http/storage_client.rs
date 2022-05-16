@@ -1,5 +1,5 @@
 use std::cmp::max;
-use crate::http::{buckets, CancellationToken, channels, default_object_access_controls, Error};
+use crate::http::{bucket_access_controls, buckets, CancellationToken, channels, default_object_access_controls, Error};
 use google_cloud_auth::token_source::TokenSource;
 use google_cloud_metadata::project_id;
 use reqwest::{Client, RequestBuilder, Response};
@@ -9,7 +9,12 @@ use std::iter::Cycle;
 use std::mem;
 use std::sync::Arc;
 use tracing::info;
+use crate::http::bucket_access_controls::BucketAccessControl;
+use crate::http::bucket_access_controls::delete::DeleteBucketAccessControlsRequest;
+use crate::http::bucket_access_controls::get::GetBucketAccessControlsRequest;
 use crate::http::bucket_access_controls::insert::InsertBucketAccessControlsRequest;
+use crate::http::bucket_access_controls::list::{ListBucketAccessControlsRequest, ListBucketAccessControlsResponse};
+use crate::http::bucket_access_controls::patch::PatchBucketAccessControlsRequest;
 use crate::http::buckets::{Bucket, Policy};
 use crate::http::buckets::delete::DeleteBucketRequest;
 use crate::http::buckets::get::GetBucketRequest;
@@ -239,6 +244,71 @@ impl StorageClient {
         invoke(cancel, action).await
     }
 
+    /// Lists the bucket ACL.
+    pub async fn list_bucket_access_controls(
+        &self,
+        req: &ListBucketAccessControlsRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ListBucketAccessControlsResponse, Error> {
+        let action = async {
+            let builder = bucket_access_controls::list::build(&Client::new(), req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Gets the bucket ACL.
+    pub async fn get_bucket_access_control(
+        &self,
+        req: &GetBucketAccessControlsRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<BucketAccessControl, Error> {
+        let action = async {
+            let builder = bucket_access_controls::get::build(&Client::new(), req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Inserts the default object ACL.
+    pub async fn insert_bucket_access_controls(
+        &self,
+        req: &InsertBucketAccessControlsRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<BucketAccessControl, Error> {
+        let action = async {
+            let builder = bucket_access_controls::insert::build(&Client::new(), req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Patchs the bucket ACL.
+    pub async fn patch_bucket_access_controls(
+        &self,
+        req: &PatchBucketAccessControlsRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<BucketAccessControl, Error> {
+        let action = async {
+            let builder = bucket_access_controls::patch::build(&Client::new(), req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Deletes the bucket ACL.
+    pub async fn delete_bucket_access_controls(
+        &self,
+        req: &DeleteBucketAccessControlsRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<(), Error> {
+        let action = async {
+            let builder = bucket_access_controls::delete::build(&Client::new(), req);
+            self.send_get_empty(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
     async fn with_headers(&self, builder: RequestBuilder) -> Result<RequestBuilder, Error> {
         let token = self.ts.token().await?;
         Ok(builder
@@ -302,7 +372,11 @@ mod test {
     use crate::http::buckets::delete::DeleteBucketRequest;
     use crate::http::storage_client::{SCOPES, StorageClient};
     use serial_test::serial;
-    use crate::http::bucket_access_controls::PredefinedBucketAcl;
+    use crate::http::bucket_access_controls::insert::{BucketAccessControlsCreationConfig, InsertBucketAccessControlsRequest};
+    use crate::http::bucket_access_controls::{BucketAccessControl, BucketACLRole, PredefinedBucketAcl};
+    use crate::http::bucket_access_controls::delete::DeleteBucketAccessControlsRequest;
+    use crate::http::bucket_access_controls::get::GetBucketAccessControlsRequest;
+    use crate::http::bucket_access_controls::list::ListBucketAccessControlsRequest;
     use crate::http::buckets::{Binding, Bucket, Policy};
     use crate::http::buckets::get::GetBucketRequest;
     use crate::http::buckets::get_iam_policy::GetIamPolicyRequest;
@@ -458,6 +532,39 @@ mod test {
         }, None).await.unwrap();
         assert!(acls.items.is_some());
         assert_eq!(1, acls.items.unwrap().len());
+    }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn curd_bucket_access_controls() {
+        let bucket_name = "rust-bucket-acl-test";
+        let client = client().await;
+
+        let post = client.insert_bucket_access_controls(&InsertBucketAccessControlsRequest{
+            bucket: bucket_name.to_string(),
+            acl: BucketAccessControlsCreationConfig {
+                entity: "allAuthenticatedUsers".to_string(),
+                role: BucketACLRole::READER,
+            }
+        }, None).await.unwrap();
+
+        let found   = client.get_bucket_access_control(&GetBucketAccessControlsRequest {
+            bucket: bucket_name.to_string(),
+            entity: "allAuthenticatedUsers".to_string(),
+        }, None).await.unwrap();
+        assert_eq!(found.entity, "allAuthenticatedUsers");
+        assert_eq!(found.role, BucketACLRole::READER);
+
+        let acls = client.list_bucket_access_controls(&ListBucketAccessControlsRequest{
+            bucket: bucket_name.to_string(),
+        }, None).await.unwrap();
+        assert_eq!(5, acls.items.len());
+
+        let _ = client.delete_bucket_access_controls(&DeleteBucketAccessControlsRequest{
+            bucket: bucket_name.to_string(),
+            entity: "allAuthenticatedUsers".to_string(),
+        }, None).await.unwrap();
+
     }
 
 }
