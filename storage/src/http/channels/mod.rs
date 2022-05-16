@@ -1,5 +1,4 @@
-use crate::http::entity::common::Projection;
-use crate::http::entity::{MaxResults, Prefix};
+use std::collections::HashMap;
 use crate::http::object_access_controls::Projection;
 
 pub mod stop;
@@ -25,11 +24,13 @@ pub struct WatchableChannel {
     /// The address where notifications are delivered for this channel.
     pub address: String,
     /// Additional parameters controlling delivery channel behavior. Optional.
-    pub params: ::std::collections::HashMap<String, String>,
+    pub params: HashMap<String, String>,
     /// A Boolean value to indicate whether payload is wanted. Optional.
     pub payload: bool,
 }
 
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct Channel {
     /// User-specified name for a channel. Needed to unsubscribe.
     pub channel_id: String,

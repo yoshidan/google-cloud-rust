@@ -4,7 +4,7 @@ use crate::http::channels::Channel;
 use crate::http::object_access_controls::ObjectAccessControl;
 
 /// Request message for ListDefaultObjectAccessControls.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ListDefaultObjectAccessControlsRequest {
     /// Required. Name of a bucket.
@@ -22,7 +22,7 @@ pub struct ListDefaultObjectAccessControlsRequest {
 #[serde(rename_all = "camelCase")]
 pub struct ListDefaultObjectAccessControlsResponse {
     pub kind: String,
-    pub items: Vec<ObjectAccessControl>
+    pub items: Option<Vec<ObjectAccessControl>>
 }
 
 pub(crate) fn build(client: &Client, req: &ListDefaultObjectAccessControlsRequest) -> RequestBuilder {

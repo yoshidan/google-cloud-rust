@@ -19,6 +19,6 @@ pub struct GetDefaultObjectAccessControlRequest {
 }
 
 pub(crate) fn build(client: &Client, req: &GetDefaultObjectAccessControlRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/defaultObjectAcl", BASE_URL, req.bucket.escape(), req.entity.es);
+    let url = format!("{}/b/{}/defaultObjectAcl/{}", BASE_URL, req.bucket.escape(), req.entity.escape());
     client.get(url)
 }

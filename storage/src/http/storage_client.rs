@@ -26,6 +26,7 @@ use crate::http::default_object_access_controls::delete::DeleteDefaultObjectAcce
 use crate::http::default_object_access_controls::get::GetDefaultObjectAccessControlRequest;
 use crate::http::default_object_access_controls::insert::InsertDefaultObjectAccessControlRequest;
 use crate::http::default_object_access_controls::list::{ListDefaultObjectAccessControlsRequest, ListDefaultObjectAccessControlsResponse};
+use crate::http::default_object_access_controls::patch::PatchDefaultObjectAccessControlRequest;
 use crate::http::object_access_controls::ObjectAccessControl;
 
 pub const SCOPES: [&str; 2] = [
@@ -50,7 +51,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
-            let builder = buckets::delete::build(&Client::new(), &req);
+            let builder = buckets::delete::build(&Client::new(), req);
             self.send_get_empty(builder).await
         };
         invoke(cancel, action).await
@@ -63,7 +64,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Bucket, Error> {
         let action = async {
-            let builder = buckets::insert::build(&Client::new(), &req);
+            let builder = buckets::insert::build(&Client::new(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -76,7 +77,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Bucket, Error> {
         let action = async {
-            let builder = buckets::get::build(&Client::new(), &req);
+            let builder = buckets::get::build(&Client::new(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -89,7 +90,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Bucket, Error> {
         let action = async {
-            let builder = buckets::patch::build(&Client::new(), &req);
+            let builder = buckets::patch::build(&Client::new(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -102,7 +103,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ListBucketsResponse, Error> {
         let action = async {
-            let builder = buckets::list::build(&Client::new(), &req);
+            let builder = buckets::list::build(&Client::new(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -115,7 +116,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Policy, Error> {
         let action = async {
-            let builder = buckets::set_iam_policy::build(&Client::new(), &req);
+            let builder = buckets::set_iam_policy::build(&Client::new(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -128,7 +129,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Policy, Error> {
         let action = async {
-            let builder = buckets::get_iam_policy::build(&Client::new(), &req);
+            let builder = buckets::get_iam_policy::build(&Client::new(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -141,7 +142,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<TestIamPermissionsResponse, Error> {
         let action = async {
-            let builder = buckets::test_iam_permissions::build(&Client::new(), &req);
+            let builder = buckets::test_iam_permissions::build(&Client::new(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -154,7 +155,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ListChannelsResponse, Error> {
         let action = async {
-            let builder = buckets::list_channels::build(&Client::new(), &req);
+            let builder = buckets::list_channels::build(&Client::new(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -167,7 +168,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
-            let builder = channels::stop::build(&Client::new(), &req);
+            let builder = channels::stop::build(&Client::new(), req);
             self.send_get_empty(builder).await
         };
         invoke(cancel, action).await
@@ -180,7 +181,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ListDefaultObjectAccessControlsResponse, Error> {
         let action = async {
-            let builder = default_object_access_controls::list::build(&Client::new(), &req);
+            let builder = default_object_access_controls::list::build(&Client::new(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -193,7 +194,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
         let action = async {
-            let builder = default_object_access_controls::get::build(&Client::new(), &req);
+            let builder = default_object_access_controls::get::build(&Client::new(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -206,7 +207,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
         let action = async {
-            let builder = default_object_access_controls::insert::build(&Client::new(), &req);
+            let builder = default_object_access_controls::insert::build(&Client::new(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -215,11 +216,11 @@ impl StorageClient {
     /// Patchs the default object ACL.
     pub async fn patch_default_object_access_controls(
         &self,
-        req: &PatchBucketRequest,
+        req: &PatchDefaultObjectAccessControlRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
         let action = async {
-            let builder = default_object_access_controls::patch::build(&Client::new(), &req);
+            let builder = default_object_access_controls::patch::build(&Client::new(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -232,7 +233,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
-            let builder = default_object_access_controls::delete::build(&Client::new(), &req);
+            let builder = default_object_access_controls::delete::build(&Client::new(), req);
             self.send_get_empty(builder).await
         };
         invoke(cancel, action).await
@@ -252,7 +253,7 @@ impl StorageClient {
         let response = request.send().await?;
         if response.status().is_success() {
             let text = response.text().await?;
-            tracing::trace!("{}", text);
+            tracing::trace!("response={}", text);
             Ok(serde_json::from_str(&text).unwrap())
         } else {
             Err(map_error(response).await)
@@ -310,6 +311,10 @@ mod test {
     use crate::http::buckets::patch::{BucketPatchConfig, PatchBucketRequest};
     use crate::http::buckets::set_iam_policy::SetIamPolicyRequest;
     use crate::http::buckets::test_iam_permissions::TestIamPermissionsRequest;
+    use crate::http::default_object_access_controls::delete::DeleteDefaultObjectAccessControlRequest;
+    use crate::http::default_object_access_controls::get::GetDefaultObjectAccessControlRequest;
+    use crate::http::default_object_access_controls::insert::InsertDefaultObjectAccessControlRequest;
+    use crate::http::default_object_access_controls::list::ListDefaultObjectAccessControlsRequest;
     use crate::http::object_access_controls::insert::ObjectAccessControlsCreationConfig;
     use crate::http::object_access_controls::{ObjectACLRole, PredefinedObjectAcl};
 
@@ -420,4 +425,39 @@ mod test {
         }, None).await.unwrap();
         assert_eq!(permissions.permissions[0], "storage.buckets.get");
     }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn crud_default_object_controls() {
+        let bucket_name = "rust-default-object-acl-test";
+        let client = client().await;
+
+        let _ = client.delete_default_object_access_controls(&DeleteDefaultObjectAccessControlRequest {
+            bucket: bucket_name.to_string(),
+            entity: "allAuthenticatedUsers".to_string()
+        }, None).await.unwrap();
+
+        let post = client.insert_default_object_access_controls(&InsertDefaultObjectAccessControlRequest {
+            bucket: bucket_name.to_string(),
+            object_access_control: ObjectAccessControlsCreationConfig {
+                entity: "allAuthenticatedUsers".to_string(),
+                role: ObjectACLRole::READER,
+            }
+        }, None).await.unwrap();
+
+        let found   = client.get_default_object_access_controls(&GetDefaultObjectAccessControlRequest {
+            bucket: bucket_name.to_string(),
+            entity: "allAuthenticatedUsers".to_string(),
+        }, None).await.unwrap();
+        assert_eq!(found.entity, "allAuthenticatedUsers");
+        assert_eq!(found.role, ObjectACLRole::READER);
+
+        let acls = client.list_default_object_access_controls(&ListDefaultObjectAccessControlsRequest{
+            bucket: bucket_name.to_string(),
+            ..Default::default()
+        }, None).await.unwrap();
+        assert!(acls.items.is_some());
+        assert_eq!(1, acls.items.unwrap().len());
+    }
+
 }
