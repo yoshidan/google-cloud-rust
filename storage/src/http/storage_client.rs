@@ -40,21 +40,29 @@ use crate::http::object_access_controls::insert::InsertObjectAccessControlReques
 use crate::http::object_access_controls::list::ListObjectAccessControlsRequest;
 use crate::http::object_access_controls::patch::PatchObjectAccessControlRequest;
 use crate::http::object_access_controls::ObjectAccessControl;
-use crate::http::{
-    bucket_access_controls, buckets, channels, default_object_access_controls, hmac_keys, notifications,
-    object_access_controls, CancellationToken, Error,
-};
+use crate::http::{bucket_access_controls, buckets, channels, default_object_access_controls, hmac_keys, notifications, object_access_controls, CancellationToken, Error, objects};
 use google_cloud_auth::token_source::TokenSource;
 use google_cloud_metadata::project_id;
-use reqwest::{Client, RequestBuilder, Response};
+use reqwest::{Body, Client, RequestBuilder, Response};
 use sha2::digest::Update;
 use std::cmp::max;
 use std::collections::HashMap;
 use std::future::Future;
+use std::io::Bytes;
 use std::iter::Cycle;
 use std::mem;
 use std::sync::Arc;
+use futures_util::{Stream, StreamExt, TryStream};
 use tracing::info;
+use crate::http::objects::compose::ComposeObjectRequest;
+use crate::http::objects::delete::DeleteObjectRequest;
+use crate::http::objects::get::GetObjectRequest;
+use crate::http::objects::list::{ListObjectsRequest, ListObjectsResponse};
+use crate::http::objects::Object;
+use crate::http::objects::patch::PatchObjectRequest;
+use crate::http::objects::rewrite::{RewriteObjectRequest, RewriteObjectResponse};
+use crate::http::objects::upload::UploadObjectRequest;
+use crate::http::objects::watch_all::WatchAllObjectsRequest;
 
 pub const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
@@ -501,6 +509,168 @@ impl StorageClient {
         let action = async {
             let builder = hmac_keys::delete::build(&Client::new(), req);
             self.send_get_empty(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Lists the objects.
+    pub async fn list_objects(
+        &self,
+        req: &ListObjectsRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ListObjectsResponse, Error> {
+        let action = async {
+            let builder = objects::list::build(&Client::new(), req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Gets the object.
+    pub async fn get_object(
+        &self,
+        req: &GetObjectRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Object, Error> {
+        let action = async {
+            let builder = objects::get::build(&Client::new(), req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Download the object.
+    pub async fn download_object(
+        &self,
+        req: &GetObjectRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Vec<u8>, Error> {
+        let action = async {
+            let builder = objects::download::build(&Client::new(), req);
+            let request = self.with_headers(builder).await?;
+            let response = request.send().await?;
+            if response.status().is_success() {
+                Ok(response.bytes().await?.to_vec())
+            } else {
+                Err(map_error(response).await)
+            }
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Download the object.
+    pub async fn download_streamed_object(
+        &self,
+        req: &GetObjectRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<impl Stream<Item = reqwest::Result<bytes::Bytes>>, Error> {
+        let action = async {
+            let builder = objects::download::build(&Client::new(), req);
+            let request = self.with_headers(builder).await?;
+            let response = request.send().await?;
+            if response.status().is_success() {
+                Ok(response.bytes_stream())
+            } else {
+                Err(map_error(response).await)
+            }
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Uploads the object.
+    pub async fn upload_object(
+        &self,
+        req: &UploadObjectRequest,
+        data: Vec<u8>,
+        cancel: Option<CancellationToken>,
+    ) -> Result<CreateHmacKeyResponse, Error> {
+        let action = async {
+            let builder = objects::upload::build(&Client::new(), req, data);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Uploads the streamed object.
+    pub async fn upload_streamed_object<S>(
+        &self,
+        req: &UploadObjectRequest,
+        data: S,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Object, Error>
+        where
+            S: TryStream + Send + Sync + 'static,
+            S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+            bytes::Bytes: From<S::Ok>,
+    {
+        let action = async {
+            let builder = objects::upload::build(&Client::new(), req, Body::wrap_stream(data));
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Updates the object.
+    pub async fn patch_object(
+        &self,
+        req: &PatchObjectRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Object, Error> {
+        let action = async {
+            let builder = objects::patch::build(&Client::new(), req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Deletes the object.
+    pub async fn delete_object(
+        &self,
+        req: &DeleteObjectRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<(), Error> {
+        let action = async {
+            let builder = objects::delete::build(&Client::new(), req);
+            self.send_get_empty(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Rewrites the object.
+    pub async fn rewrite_object(
+        &self,
+        req: &RewriteObjectRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<RewriteObjectResponse, Error> {
+        let action = async {
+            let builder = objects::rewrite::build(&Client::new(), req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Composes the object.
+    pub async fn compose_object(
+        &self,
+        req: &ComposeObjectRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<Object, Error> {
+        let action = async {
+            let builder = objects::compose::build(&Client::new(), req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Watches the all objects.
+    pub async fn watch_all_objects(
+        &self,
+        req: &WatchAllObjectsRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<WatchableChannel, Error> {
+        let action = async {
+            let builder = objects::watch_all::build(&Client::new(), req);
+            self.send(builder).await
         };
         invoke(cancel, action).await
     }
@@ -1072,5 +1242,11 @@ mod test {
                 .await
                 .unwrap();
         }
+    }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn crud_object() {
+
     }
 }

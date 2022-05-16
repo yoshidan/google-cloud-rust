@@ -4,6 +4,7 @@ use reqwest::RequestBuilder;
 pub mod compose;
 pub mod download;
 pub mod get;
+pub mod delete;
 pub mod list;
 pub mod patch;
 pub mod rewrite;
