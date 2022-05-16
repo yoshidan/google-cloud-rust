@@ -18,7 +18,7 @@ pub struct ListNotificationsRequest {
 #[serde(rename_all = "camelCase")]
 pub struct ListNotificationsResponse {
     /// The list of items.
-    pub items: Vec<Notification>,
+    pub items: Option<Vec<Notification>>,
 }
 
 pub(crate) fn build(client: &Client, req: &ListNotificationsRequest) -> RequestBuilder {

@@ -23,6 +23,12 @@ use crate::http::default_object_access_controls::list::{
     ListDefaultObjectAccessControlsRequest, ListDefaultObjectAccessControlsResponse,
 };
 use crate::http::default_object_access_controls::patch::PatchDefaultObjectAccessControlRequest;
+use crate::http::hmac_keys::create::{CreateHmacKeyRequest, CreateHmacKeyResponse};
+use crate::http::hmac_keys::delete::DeleteHmacKeyRequest;
+use crate::http::hmac_keys::get::GetHmacKeyRequest;
+use crate::http::hmac_keys::list::{ListHmacKeysRequest, ListHmacKeysResponse};
+use crate::http::hmac_keys::update::UpdateHmacKeyRequest;
+use crate::http::hmac_keys::HmacKeyMetadata;
 use crate::http::notifications::delete::DeleteNotificationRequest;
 use crate::http::notifications::get::GetNotificationRequest;
 use crate::http::notifications::insert::InsertNotificationRequest;
@@ -35,12 +41,13 @@ use crate::http::object_access_controls::list::ListObjectAccessControlsRequest;
 use crate::http::object_access_controls::patch::PatchObjectAccessControlRequest;
 use crate::http::object_access_controls::ObjectAccessControl;
 use crate::http::{
-    bucket_access_controls, buckets, channels, default_object_access_controls, notifications, object_access_controls,
-    CancellationToken, Error,
+    bucket_access_controls, buckets, channels, default_object_access_controls, hmac_keys, notifications,
+    object_access_controls, CancellationToken, Error,
 };
 use google_cloud_auth::token_source::TokenSource;
 use google_cloud_metadata::project_id;
 use reqwest::{Client, RequestBuilder, Response};
+use sha2::digest::Update;
 use std::cmp::max;
 use std::collections::HashMap;
 use std::future::Future;
@@ -433,6 +440,71 @@ impl StorageClient {
         invoke(cancel, action).await
     }
 
+    /// Lists the hmac keys.
+    pub async fn list_hmac_keys(
+        &self,
+        req: &ListHmacKeysRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ListHmacKeysResponse, Error> {
+        let action = async {
+            let builder = hmac_keys::list::build(&Client::new(), req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Gets the hmac keys.
+    pub async fn get_hmac_key(
+        &self,
+        req: &GetHmacKeyRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<HmacKeyMetadata, Error> {
+        let action = async {
+            let builder = hmac_keys::get::build(&Client::new(), req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Creates the hmac key.
+    pub async fn create_hmac_key(
+        &self,
+        req: &CreateHmacKeyRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<CreateHmacKeyResponse, Error> {
+        let action = async {
+            let builder = hmac_keys::create::build(&Client::new(), req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Updates the hmac key.
+    pub async fn update_hmac_key(
+        &self,
+        req: &UpdateHmacKeyRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<HmacKeyMetadata, Error> {
+        let action = async {
+            let builder = hmac_keys::update::build(&Client::new(), req);
+            self.send(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
+    /// Deletes the hmac key.
+    pub async fn delete_hmac_key(
+        &self,
+        req: &DeleteHmacKeyRequest,
+        cancel: Option<CancellationToken>,
+    ) -> Result<(), Error> {
+        let action = async {
+            let builder = hmac_keys::delete::build(&Client::new(), req);
+            self.send_get_empty(builder).await
+        };
+        invoke(cancel, action).await
+    }
+
     async fn with_headers(&self, builder: RequestBuilder) -> Result<RequestBuilder, Error> {
         let token = self.ts.token().await?;
         Ok(builder
@@ -512,6 +584,12 @@ mod test {
     use crate::http::default_object_access_controls::get::GetDefaultObjectAccessControlRequest;
     use crate::http::default_object_access_controls::insert::InsertDefaultObjectAccessControlRequest;
     use crate::http::default_object_access_controls::list::ListDefaultObjectAccessControlsRequest;
+    use crate::http::hmac_keys::create::CreateHmacKeyRequest;
+    use crate::http::hmac_keys::delete::DeleteHmacKeyRequest;
+    use crate::http::hmac_keys::get::GetHmacKeyRequest;
+    use crate::http::hmac_keys::list::ListHmacKeysRequest;
+    use crate::http::hmac_keys::update::UpdateHmacKeyRequest;
+    use crate::http::hmac_keys::HmacKeyMetadata;
     use crate::http::notifications::delete::DeleteNotificationRequest;
     use crate::http::notifications::get::GetNotificationRequest;
     use crate::http::notifications::insert::{InsertNotificationRequest, NotificationCreationConfig};
@@ -880,9 +958,8 @@ mod test {
             )
             .await
             .unwrap();
-        assert!(!notifications.items.is_empty());
 
-        for n in notifications.items {
+        for n in notifications.items.unwrap_or(vec![]) {
             let _ = client
                 .delete_notification(
                     &DeleteNotificationRequest {
@@ -924,5 +1001,76 @@ mod test {
             .unwrap();
         assert_eq!(found.id, post.id);
         assert_eq!(found.event_types.unwrap().len(), 2);
+    }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn crud_hmac_key() {
+        let key_name = "rust-hmac-test";
+        let client = client().await;
+
+        let post = client
+            .create_hmac_key(
+                &CreateHmacKeyRequest {
+                    project_id: PROJECT.to_string(),
+                    service_account_email: format!("spanner@{}.iam.gserviceaccount.com", PROJECT),
+                },
+                None,
+            )
+            .await
+            .unwrap();
+
+        let found = client
+            .get_hmac_key(
+                &GetHmacKeyRequest {
+                    access_id: post.metadata.access_id.to_string(),
+                    project_id: PROJECT.to_string(),
+                },
+                None,
+            )
+            .await
+            .unwrap();
+        assert_eq!(found.id, post.metadata.id);
+        assert_eq!(found.state, "ACTIVE");
+
+        let keys = client
+            .list_hmac_keys(
+                &ListHmacKeysRequest {
+                    project_id: PROJECT.to_string(),
+                    ..Default::default()
+                },
+                None,
+            )
+            .await
+            .unwrap();
+
+        for n in keys.items.unwrap_or(vec![]) {
+            let result = client
+                .update_hmac_key(
+                    &UpdateHmacKeyRequest {
+                        access_id: n.access_id.to_string(),
+                        project_id: n.project_id.to_string(),
+                        metadata: HmacKeyMetadata {
+                            state: "INACTIVE".to_string(),
+                            ..n.clone()
+                        },
+                    },
+                    None,
+                )
+                .await
+                .unwrap();
+            assert_eq!(result.state, "INACTIVE");
+
+            let _ = client
+                .delete_hmac_key(
+                    &DeleteHmacKeyRequest {
+                        access_id: n.access_id.to_string(),
+                        project_id: n.project_id.to_string(),
+                    },
+                    None,
+                )
+                .await
+                .unwrap();
+        }
     }
 }
