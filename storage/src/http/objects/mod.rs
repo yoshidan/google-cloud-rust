@@ -215,7 +215,7 @@ pub struct Encryption {
 }
 
 impl Encryption {
-    pub(crate) fn with_headers(&self, mut builder: RequestBuilder) -> RequestBuilder {
+    pub(crate) fn with_headers(&self, builder: RequestBuilder) -> RequestBuilder {
         builder
             .header("X-Goog-Encryption-Algorithm", &self.encryption_algorithm)
             .header("X-Goog-Encryption-Key", &self.encryption_key)

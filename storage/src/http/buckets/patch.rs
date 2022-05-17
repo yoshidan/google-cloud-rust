@@ -3,8 +3,8 @@ use crate::http::buckets::insert::RetentionPolicyCreationConfig;
 use crate::http::buckets::{Billing, Cors, Encryption, IamConfiguration, Lifecycle, Logging, Versioning, Website};
 use crate::http::object_access_controls::insert::ObjectAccessControlCreationConfig;
 use crate::http::object_access_controls::{PredefinedObjectAcl, Projection};
-use crate::http::{Error, Escape, BASE_URL};
-use percent_encoding::utf8_percent_encode;
+use crate::http::{Escape, BASE_URL};
+
 use reqwest::{Client, RequestBuilder};
 use std::collections::HashMap;
 

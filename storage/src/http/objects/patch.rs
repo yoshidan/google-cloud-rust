@@ -1,12 +1,12 @@
 use crate::http::bucket_access_controls::PredefinedBucketAcl;
-use crate::http::channels::Channel;
-use crate::http::notifications::Notification;
-use crate::http::object_access_controls::insert::ObjectAccessControlCreationConfig;
+
+
+
 use crate::http::object_access_controls::Projection;
 use crate::http::objects::{Encryption, Object};
 use crate::http::{Escape, BASE_URL};
 use reqwest::{Client, RequestBuilder};
-use std::collections::HashMap;
+
 
 /// Request message for PatchObject.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
@@ -50,7 +50,7 @@ pub struct PatchObjectRequest {
 
 pub(crate) fn build(client: &Client, req: &PatchObjectRequest) -> RequestBuilder {
     let url = format!("{}/b/{}/o/{}", BASE_URL, req.bucket.escape(), req.object.escape());
-    let mut builder = client.patch(url).query(&req).json(&req.metadata);
+    let builder = client.patch(url).query(&req).json(&req.metadata);
     if let Some(e) = &req.encryption {
         e.with_headers(builder)
     } else {

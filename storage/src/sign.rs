@@ -1,19 +1,19 @@
-use crate::http::CancellationToken;
+
 use crate::sign::SignedURLError::InvalidOption;
-use chrono::{DateTime, SecondsFormat, Timelike, Utc};
-use google_cloud_auth::credentials::CredentialsFile;
+use chrono::{DateTime, SecondsFormat, Utc};
+
 use once_cell::sync::Lazy;
 use regex::Regex;
 use ring::{rand, signature};
-use rsa::pkcs1::der::Document;
-use rsa::pkcs1::DecodeRsaPrivateKey;
+
+
 use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey};
-use rsa::{PaddingScheme, PublicKeyParts};
+
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use std::fmt::format;
-use std::iter::Map;
-use std::ops::{Add, Index, Sub};
+
+
+
 use std::time::Duration;
 use url;
 use url::ParseError;
@@ -382,7 +382,7 @@ fn extract_header_names(kvs: &[String]) -> Vec<&str> {
         .collect();
 }
 
-fn validate_options(opts: &SignedURLOptions, now: &DateTime<Utc>) -> Result<(), SignedURLError> {
+fn validate_options(opts: &SignedURLOptions, _now: &DateTime<Utc>) -> Result<(), SignedURLError> {
     if opts.google_access_id.is_empty() {
         return Err(InvalidOption("storage: missing required GoogleAccessID"));
     }
@@ -413,12 +413,12 @@ fn validate_options(opts: &SignedURLOptions, now: &DateTime<Utc>) -> Result<(), 
 #[cfg(test)]
 mod test {
     use crate::sign::{signed_url, SignBy, SignedURLOptions};
-    use chrono::{DateTime, Utc};
+    
     use google_cloud_auth::credentials::CredentialsFile;
     use serial_test::serial;
     use std::collections::HashMap;
     use std::time::Duration;
-    use tracing::Level;
+    
 
     #[ctor::ctor]
     fn init() {
@@ -429,7 +429,7 @@ mod test {
     #[serial]
     async fn signed_url_internal() {
         let file = CredentialsFile::new().await.unwrap();
-        let param = {
+        let _param = {
             let mut param = HashMap::new();
             param.insert("tes t+".to_string(), vec!["++ +".to_string()]);
             param

@@ -1,12 +1,12 @@
-use crate::http::bucket_access_controls::PredefinedBucketAcl;
-use crate::http::channels::Channel;
-use crate::http::notifications::Notification;
-use crate::http::object_access_controls::insert::ObjectAccessControlCreationConfig;
-use crate::http::object_access_controls::{PredefinedObjectAcl, Projection};
+
+
+
+
+use crate::http::object_access_controls::{PredefinedObjectAcl};
 use crate::http::objects::{Encryption, Object, SourceObjects};
 use crate::http::{Escape, BASE_URL};
 use reqwest::{Client, RequestBuilder};
-use std::collections::HashMap;
+
 
 /// Request message for ComposeObject.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -56,7 +56,7 @@ pub(crate) fn build(client: &Client, req: &ComposeObjectRequest) -> RequestBuild
         req.bucket.escape(),
         req.destination_object.escape()
     );
-    let mut builder = client.post(url).query(&req).json(&req.composing_targets);
+    let builder = client.post(url).query(&req).json(&req.composing_targets);
     if let Some(e) = &req.encryption {
         e.with_headers(builder)
     } else {

@@ -1,7 +1,7 @@
 use crate::http::buckets::Policy;
-use crate::http::object_access_controls::Projection;
-use crate::http::{Error, Escape, BASE_URL};
-use percent_encoding::utf8_percent_encode;
+
+use crate::http::{Escape, BASE_URL};
+
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for `SetIamPolicy` method.

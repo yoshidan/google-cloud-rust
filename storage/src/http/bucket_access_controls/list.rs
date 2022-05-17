@@ -1,5 +1,5 @@
 use crate::http::bucket_access_controls::BucketAccessControl;
-use crate::http::{Error, Escape, BASE_URL};
+use crate::http::{Escape, BASE_URL};
 use reqwest::{Client, RequestBuilder};
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]

@@ -1,13 +1,13 @@
-use crate::http::channels::Channel;
-use crate::http::notifications::Notification;
-use crate::http::object_access_controls::insert::ObjectAccessControlCreationConfig;
+
+
+
 use crate::http::object_access_controls::{PredefinedObjectAcl, Projection};
-use crate::http::objects::get::GetObjectRequest;
-use crate::http::objects::{Encryption, Object};
+
+use crate::http::objects::{Encryption};
 use crate::http::{Escape, UPLOAD_BASE_URL};
 use reqwest::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use reqwest::{Client, RequestBuilder};
-use std::collections::HashMap;
+
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
@@ -47,7 +47,7 @@ pub(crate) fn build<T: Into<reqwest::Body>>(
     body: T,
 ) -> RequestBuilder {
     let url = format!("{}/b/{}/o", UPLOAD_BASE_URL, req.bucket.escape());
-    let mut builder = client
+    let builder = client
         .post(url)
         .query(&req)
         .body(body)

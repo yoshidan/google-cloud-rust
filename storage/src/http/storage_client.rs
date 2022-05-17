@@ -9,13 +9,13 @@ use crate::http::buckets::get::GetBucketRequest;
 use crate::http::buckets::get_iam_policy::GetIamPolicyRequest;
 use crate::http::buckets::insert::InsertBucketRequest;
 use crate::http::buckets::list::{ListBucketsRequest, ListBucketsResponse};
-use crate::http::buckets::list_channels::{ListChannelsRequest, ListChannelsResponse};
+
 use crate::http::buckets::patch::PatchBucketRequest;
 use crate::http::buckets::set_iam_policy::SetIamPolicyRequest;
 use crate::http::buckets::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
 use crate::http::buckets::{Bucket, Policy};
-use crate::http::channels::stop::StopChannelRequest;
-use crate::http::channels::WatchableChannel;
+
+
 use crate::http::default_object_access_controls::delete::DeleteDefaultObjectAccessControlRequest;
 use crate::http::default_object_access_controls::get::GetDefaultObjectAccessControlRequest;
 use crate::http::default_object_access_controls::insert::InsertDefaultObjectAccessControlRequest;
@@ -47,25 +47,25 @@ use crate::http::objects::list::{ListObjectsRequest, ListObjectsResponse};
 use crate::http::objects::patch::PatchObjectRequest;
 use crate::http::objects::rewrite::{RewriteObjectRequest, RewriteObjectResponse};
 use crate::http::objects::upload::UploadObjectRequest;
-use crate::http::objects::watch_all::WatchAllObjectsRequest;
+
 use crate::http::objects::Object;
 use crate::http::{
-    bucket_access_controls, buckets, channels, default_object_access_controls, hmac_keys, notifications,
+    bucket_access_controls, buckets, default_object_access_controls, hmac_keys, notifications,
     object_access_controls, objects, CancellationToken, Error,
 };
 use futures_util::{Stream, StreamExt, TryStream};
 use google_cloud_auth::token_source::TokenSource;
-use google_cloud_metadata::project_id;
+
 use reqwest::{Body, Client, RequestBuilder, Response};
-use sha2::digest::Update;
-use std::cmp::max;
-use std::collections::HashMap;
+
+
+
 use std::future::Future;
-use std::io::Bytes;
-use std::iter::Cycle;
-use std::mem;
+
+
+
 use std::sync::Arc;
-use tracing::info;
+
 
 pub const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
@@ -706,18 +706,18 @@ mod test {
         BucketAccessControlCreationConfig, InsertBucketAccessControlRequest,
     };
     use crate::http::bucket_access_controls::list::ListBucketAccessControlsRequest;
-    use crate::http::bucket_access_controls::{BucketACLRole, BucketAccessControl, PredefinedBucketAcl};
+    use crate::http::bucket_access_controls::{BucketACLRole};
     use crate::http::buckets::delete::DeleteBucketRequest;
     use crate::http::buckets::get::GetBucketRequest;
     use crate::http::buckets::get_iam_policy::GetIamPolicyRequest;
     use crate::http::buckets::insert::{
-        BucketCreationConfig, InsertBucketParam, InsertBucketRequest, RetentionPolicyCreationConfig,
+        BucketCreationConfig, InsertBucketParam, InsertBucketRequest,
     };
     use crate::http::buckets::list::ListBucketsRequest;
     use crate::http::buckets::patch::{BucketPatchConfig, PatchBucketRequest};
     use crate::http::buckets::set_iam_policy::SetIamPolicyRequest;
     use crate::http::buckets::test_iam_permissions::TestIamPermissionsRequest;
-    use crate::http::buckets::{Binding, Bucket, Policy};
+    use crate::http::buckets::{Binding};
     use crate::http::default_object_access_controls::delete::DeleteDefaultObjectAccessControlRequest;
     use crate::http::default_object_access_controls::get::GetDefaultObjectAccessControlRequest;
     use crate::http::default_object_access_controls::insert::InsertDefaultObjectAccessControlRequest;
@@ -738,14 +738,14 @@ mod test {
         InsertObjectAccessControlRequest, ObjectAccessControlCreationConfig,
     };
     use crate::http::object_access_controls::list::ListObjectAccessControlsRequest;
-    use crate::http::object_access_controls::{ObjectACLRole, PredefinedObjectAcl};
+    use crate::http::object_access_controls::{ObjectACLRole};
     use crate::http::objects::compose::{ComposeObjectRequest, ComposingTargets};
     use crate::http::objects::delete::DeleteObjectRequest;
     use crate::http::objects::get::GetObjectRequest;
     use crate::http::objects::list::ListObjectsRequest;
     use crate::http::objects::rewrite::RewriteObjectRequest;
     use crate::http::objects::upload::UploadObjectRequest;
-    use crate::http::objects::watch_all::WatchAllObjectsRequest;
+    
     use crate::http::objects::SourceObjects;
     use crate::http::storage_client::{StorageClient, SCOPES};
     use bytes::Buf;
@@ -753,7 +753,7 @@ mod test {
     use google_cloud_auth::{create_token_source, Config};
     use serde_json::de::Read;
     use serial_test::serial;
-    use std::io::BufReader;
+    
     use std::sync::Arc;
 
     const PROJECT: &str = "atl-dev1";
@@ -931,7 +931,7 @@ mod test {
             .await
             .unwrap();
 
-        let post = client
+        let _post = client
             .insert_default_object_access_control(
                 &InsertDefaultObjectAccessControlRequest {
                     bucket: bucket_name.to_string(),
@@ -978,7 +978,7 @@ mod test {
         let bucket_name = "rust-bucket-acl-test";
         let client = client().await;
 
-        let post = client
+        let _post = client
             .insert_bucket_access_control(
                 &InsertBucketAccessControlRequest {
                     bucket: bucket_name.to_string(),
@@ -1035,7 +1035,7 @@ mod test {
         let object_name = "test.txt";
         let client = client().await;
 
-        let post = client
+        let _post = client
             .insert_object_access_control(
                 &InsertObjectAccessControlRequest {
                     bucket: bucket_name.to_string(),
@@ -1156,7 +1156,7 @@ mod test {
     #[tokio::test]
     #[serial]
     pub async fn crud_hmac_key() {
-        let key_name = "rust-hmac-test";
+        let _key_name = "rust-hmac-test";
         let client = client().await;
 
         let post = client
@@ -1283,7 +1283,7 @@ mod test {
             .unwrap();
         assert_eq!(downloaded, vec![01]);
 
-        let rewrited = client
+        let _rewrited = client
             .rewrite_object(
                 &RewriteObjectRequest {
                     destination_bucket: bucket_name.to_string(),
@@ -1297,7 +1297,7 @@ mod test {
             .await
             .unwrap();
 
-        let composed = client
+        let _composed = client
             .compose_object(
                 &ComposeObjectRequest {
                     bucket: bucket_name.to_string(),

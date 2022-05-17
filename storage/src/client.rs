@@ -4,8 +4,8 @@ use crate::http::storage_client::StorageClient;
 use google_cloud_auth::credentials::CredentialsFile;
 use google_cloud_auth::{create_token_source_from_credentials, Config};
 use std::sync::Arc;
-use tokio_util::sync::CancellationToken;
-use google_cloud_metadata::project_id;
+
+
 use crate::sign::{SignBy, signed_url, SignedURLError, SignedURLOptions};
 
 #[derive(thiserror::Error, Debug)]
@@ -114,11 +114,11 @@ mod test {
     use crate::client::Client;
     use crate::http::bucket_access_controls::PredefinedBucketAcl;
     use crate::http::buckets::insert::{BucketCreationConfig, InsertBucketParam, InsertBucketRequest, RetentionPolicyCreationConfig};
-    use crate::http::buckets::{Billing, Condition, Cors, IamConfiguration, Lifecycle, lifecycle, Website};
+    use crate::http::buckets::{Billing, Cors, IamConfiguration, Lifecycle, lifecycle, Website};
     use crate::http::buckets::delete::DeleteBucketRequest;
     use crate::http::buckets::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
-    use crate::http::buckets::lifecycle::Rule;
-    use crate::http::buckets::lifecycle::rule::{Action, ActionType};
+    
+    
     use crate::http::buckets::list::ListBucketsRequest;
     use crate::http::object_access_controls::insert::ObjectAccessControlCreationConfig;
     use crate::http::object_access_controls::ObjectACLRole;
