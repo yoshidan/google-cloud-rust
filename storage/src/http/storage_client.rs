@@ -73,7 +73,7 @@ pub const SCOPES: [&str; 2] = [
 ];
 
 #[derive(Clone)]
-pub(crate) struct StorageClient {
+pub struct StorageClient {
     ts: Arc<dyn TokenSource>,
 }
 

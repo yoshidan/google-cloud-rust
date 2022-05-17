@@ -5,7 +5,7 @@ use percent_encoding::utf8_percent_encode;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for DeleteBucket.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ListBucketsRequest {
     /// Required. A valid API project identifier.

@@ -1,6 +1,5 @@
 use std::ops::Deref;
 use crate::http;
-use crate::http::old_entity::{Bucket, ListBucketsRequest};
 use crate::http::storage_client::StorageClient;
 use google_cloud_auth::credentials::CredentialsFile;
 use google_cloud_auth::{create_token_source_from_credentials, Config};
@@ -39,7 +38,7 @@ impl Client {
             cred,
             Config {
                 audience: None,
-                scopes: Some(&StorageClient::SCOPES),
+                scopes: Some(&http::storage_client::SCOPES),
             },
         )
             .await?;
@@ -94,12 +93,12 @@ impl Client {
             _ => true,
         };
         if !opts.google_access_id.is_empty() && signable {
-            return signed_url(self.bucket.into(), object, opts);
+            return signed_url(bucket, object, opts);
         }
 
         let mut opts = opts;
-        if !self.private_key.is_empty() {
-            opts.sign_by = SignBy::PrivateKey(self.private_key.into());
+        if let Some(private_key) = &self.private_key {
+            opts.sign_by = SignBy::PrivateKey(private_key.as_bytes().to_vec());
         }
         if !self.service_account_email.is_empty() && opts.google_access_id.is_empty() {
             opts.google_access_id = self.service_account_email.to_string();
@@ -121,6 +120,8 @@ mod test {
     use crate::http::buckets::lifecycle::Rule;
     use crate::http::buckets::lifecycle::rule::{Action, ActionType};
     use crate::http::buckets::list::ListBucketsRequest;
+    use crate::http::object_access_controls::insert::ObjectAccessControlCreationConfig;
+    use crate::http::object_access_controls::ObjectACLRole;
 
     #[ctor::ctor]
     fn init() {
@@ -137,7 +138,7 @@ mod test {
             prefix,
             ..Default::default()
         }, None).await.unwrap();
-        assert_eq!(result.len(), 1);
+        assert_eq!(result.items.len(), 1);
     }
 
     #[tokio::test]
@@ -165,9 +166,9 @@ mod test {
             retention_policy: Some(RetentionPolicyCreationConfig {
                 retention_period: 10000,
             }),
-            default_object_acl: Some(vec![ObjectAccessControlsCreationConfig {
+            default_object_acl: Some(vec![ObjectAccessControlCreationConfig {
                 entity: "allUsers".to_string(),
-                role: "READER".to_string(),
+                role: ObjectACLRole::READER,
             }]),
             cors: Some(vec![Cors {
                 origin: vec!["*".to_string()],
@@ -194,7 +195,7 @@ mod test {
 
         let bucket_name = format!("rust-test-{}", chrono::Utc::now().timestamp());
         let req = InsertBucketRequest {
-            name: bucket_name,
+            name: bucket_name.clone(),
             param : InsertBucketParam {
                 predefined_acl: Some(PredefinedBucketAcl::BucketAclPublicRead),
                 ..Default::default()
@@ -205,11 +206,11 @@ mod test {
         let client = Client::new().await.unwrap();
         let result = client.insert_bucket(&req, None).await.unwrap();
         client.delete_bucket(&DeleteBucketRequest {
-            bucket: result.lifecycle.to_string(),
+            bucket: result.name.to_string(),
             ..Default::default()
         }, None).await.unwrap();
         assert_eq!(result.name, bucket_name);
-        assert_eq!(result.storage_class, req.bucket.storage_class);
+        assert_eq!(result.storage_class, req.bucket.storage_class.unwrap());
         assert_eq!(result.location, req.bucket.location);
         assert!(result.acl.is_some());
         assert!(!result.acl.unwrap().is_empty());
