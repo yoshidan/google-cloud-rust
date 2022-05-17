@@ -190,14 +190,16 @@ pub enum SignedURLError {
     MetadataError(#[from] google_cloud_metadata::Error),
 }
 
-pub fn signed_url(name: String, object: String, opts: &mut SignedURLOptions) -> Result<String, SignedURLError> {
+///
+pub(crate) fn signed_url(bucket: &str, object: &str, opts: SignedURLOptions) -> Result<String, SignedURLError> {
     let now = Utc::now();
-    let _ = validate_options(opts, &now)?;
+    let _ = validate_options(&opts, &now)?;
 
     return match &opts.scheme {
         SigningScheme::SigningSchemeV4 => {
+            let mut opts = opts;
             opts.headers = v4_sanitize_headers(&opts.headers);
-            signed_url_v4(&name, &object, opts, now)
+            signed_url_v4(bucket, object, &opts, now)
         }
     };
 }
@@ -436,8 +438,8 @@ mod test {
         opts.sign_by = SignBy::PrivateKey(file.private_key.unwrap().into());
         opts.google_access_id = file.client_email.unwrap();
         opts.expires = Duration::from_secs(3600);
-        let url = signed_url("atl-dev1-test".to_string(), "test.html".to_string(), &mut opts).unwrap();
+        let url = signed_url("rust-bucket-test", "test.html", opts).unwrap();
         tracing::info!("signed_url={}", url);
-        assert!(url.starts_with("https://storage.googleapis.com/atl-dev1-test/test.html"));
+        assert!(url.starts_with("https://storage.googleapis.com/rust-bucket-test/test.html"));
     }
 }
