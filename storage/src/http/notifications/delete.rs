@@ -1,8 +1,5 @@
-
-
 use crate::http::{Escape, BASE_URL};
 use reqwest::{Client, RequestBuilder};
-
 
 /// Request message for DeleteNotification.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]

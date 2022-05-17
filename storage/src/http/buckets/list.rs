@@ -1,6 +1,6 @@
 use crate::http::buckets::Bucket;
 use crate::http::object_access_controls::Projection;
-use crate::http::{BASE_URL};
+use crate::http::BASE_URL;
 
 use reqwest::{Client, RequestBuilder};
 

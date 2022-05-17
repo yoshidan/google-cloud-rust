@@ -1,12 +1,11 @@
-use std::ops::Deref;
 use crate::http;
 use crate::http::storage_client::StorageClient;
 use google_cloud_auth::credentials::CredentialsFile;
 use google_cloud_auth::{create_token_source_from_credentials, Config};
+use std::ops::Deref;
 use std::sync::Arc;
 
-
-use crate::sign::{SignBy, signed_url, SignedURLError, SignedURLOptions};
+use crate::sign::{signed_url, SignBy, SignedURLError, SignedURLOptions};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -41,7 +40,7 @@ impl Client {
                 scopes: Some(&http::storage_client::SCOPES),
             },
         )
-            .await?;
+        .await?;
         Ok(Client {
             private_key: cred.private_key.clone(),
             service_account_email: match &cred.client_email {
@@ -74,7 +73,6 @@ impl Client {
         Self::from_credentials(&cred).await
     }
 
-
     /// Gets the project_id from Credentials
     pub fn project_id(&self) -> &str {
         &self.project_id
@@ -87,7 +85,12 @@ impl Client {
     /// access to a restricted resource for a limited time without needing a
     /// Google account or signing in. For more information about signed URLs, see
     /// https://cloud.google.com/storage/docs/accesscontrol#signed_urls_query_string_authentication
-    pub async fn signed_url(&self, bucket: &str, object: &str, opts: SignedURLOptions) -> Result<String, SignedURLError> {
+    pub async fn signed_url(
+        &self,
+        bucket: &str,
+        object: &str,
+        opts: SignedURLOptions,
+    ) -> Result<String, SignedURLError> {
         let signable = match &opts.sign_by {
             SignBy::PrivateKey(v) => !v.is_empty(),
             _ => true,
@@ -109,16 +112,17 @@ impl Client {
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashMap;
-    use serial_test::serial;
     use crate::client::Client;
     use crate::http::bucket_access_controls::PredefinedBucketAcl;
-    use crate::http::buckets::insert::{BucketCreationConfig, InsertBucketParam, InsertBucketRequest, RetentionPolicyCreationConfig};
-    use crate::http::buckets::{Billing, Cors, IamConfiguration, Lifecycle, lifecycle, Website};
     use crate::http::buckets::delete::DeleteBucketRequest;
     use crate::http::buckets::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
-    
-    
+    use crate::http::buckets::insert::{
+        BucketCreationConfig, InsertBucketParam, InsertBucketRequest, RetentionPolicyCreationConfig,
+    };
+    use crate::http::buckets::{lifecycle, Billing, Cors, IamConfiguration, Lifecycle, Website};
+    use serial_test::serial;
+    use std::collections::HashMap;
+
     use crate::http::buckets::list::ListBucketsRequest;
     use crate::http::object_access_controls::insert::ObjectAccessControlCreationConfig;
     use crate::http::object_access_controls::ObjectACLRole;
@@ -133,11 +137,17 @@ mod test {
     async fn buckets() {
         let prefix = Some("rust-bucket-test".to_string());
         let client = Client::new().await.unwrap();
-        let result = client.list_buckets(&ListBucketsRequest {
-            project: client.project_id().to_string(),
-            prefix,
-            ..Default::default()
-        }, None).await.unwrap();
+        let result = client
+            .list_buckets(
+                &ListBucketsRequest {
+                    project: client.project_id().to_string(),
+                    prefix,
+                    ..Default::default()
+                },
+                None,
+            )
+            .await
+            .unwrap();
         assert_eq!(result.items.len(), 1);
     }
 
@@ -196,7 +206,7 @@ mod test {
         let bucket_name = format!("rust-test-{}", chrono::Utc::now().timestamp());
         let req = InsertBucketRequest {
             name: bucket_name.clone(),
-            param : InsertBucketParam {
+            param: InsertBucketParam {
                 predefined_acl: Some(PredefinedBucketAcl::BucketAclPublicRead),
                 ..Default::default()
             },
@@ -205,15 +215,20 @@ mod test {
         };
         let client = Client::new().await.unwrap();
         let result = client.insert_bucket(&req, None).await.unwrap();
-        client.delete_bucket(&DeleteBucketRequest {
-            bucket: result.name.to_string(),
-            ..Default::default()
-        }, None).await.unwrap();
+        client
+            .delete_bucket(
+                &DeleteBucketRequest {
+                    bucket: result.name.to_string(),
+                    ..Default::default()
+                },
+                None,
+            )
+            .await
+            .unwrap();
         assert_eq!(result.name, bucket_name);
         assert_eq!(result.storage_class, req.bucket.storage_class.unwrap());
         assert_eq!(result.location, req.bucket.location);
         assert!(result.acl.is_some());
         assert!(!result.acl.unwrap().is_empty());
     }
-
 }

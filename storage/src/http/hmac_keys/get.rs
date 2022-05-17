@@ -1,4 +1,3 @@
-
 use crate::http::{Escape, BASE_URL};
 use reqwest::{Client, RequestBuilder};
 

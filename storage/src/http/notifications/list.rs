@@ -1,9 +1,7 @@
-
 use crate::http::notifications::Notification;
 
 use crate::http::{Escape, BASE_URL};
 use reqwest::{Client, RequestBuilder};
-
 
 /// Request message for GetNotification.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]

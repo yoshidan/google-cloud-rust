@@ -1,12 +1,7 @@
-
-
-
-
 use crate::http::object_access_controls::{PredefinedObjectAcl, Projection};
 use crate::http::objects::{Encryption, Object};
 use crate::http::{Escape, BASE_URL};
 use reqwest::{Client, RequestBuilder};
-
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]

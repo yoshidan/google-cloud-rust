@@ -1,4 +1,3 @@
-
 use crate::sign::SignedURLError::InvalidOption;
 use chrono::{DateTime, SecondsFormat, Utc};
 
@@ -6,13 +5,10 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use ring::{rand, signature};
 
-
 use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey};
 
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-
-
 
 use std::time::Duration;
 use url;
@@ -413,12 +409,11 @@ fn validate_options(opts: &SignedURLOptions, _now: &DateTime<Utc>) -> Result<(),
 #[cfg(test)]
 mod test {
     use crate::sign::{signed_url, SignBy, SignedURLOptions};
-    
+
     use google_cloud_auth::credentials::CredentialsFile;
     use serial_test::serial;
     use std::collections::HashMap;
     use std::time::Duration;
-    
 
     #[ctor::ctor]
     fn init() {

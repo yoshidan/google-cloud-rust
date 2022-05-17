@@ -15,7 +15,6 @@ use crate::http::buckets::set_iam_policy::SetIamPolicyRequest;
 use crate::http::buckets::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
 use crate::http::buckets::{Bucket, Policy};
 
-
 use crate::http::default_object_access_controls::delete::DeleteDefaultObjectAccessControlRequest;
 use crate::http::default_object_access_controls::get::GetDefaultObjectAccessControlRequest;
 use crate::http::default_object_access_controls::insert::InsertDefaultObjectAccessControlRequest;
@@ -50,22 +49,17 @@ use crate::http::objects::upload::UploadObjectRequest;
 
 use crate::http::objects::Object;
 use crate::http::{
-    bucket_access_controls, buckets, default_object_access_controls, hmac_keys, notifications,
-    object_access_controls, objects, CancellationToken, Error,
+    bucket_access_controls, buckets, default_object_access_controls, hmac_keys, notifications, object_access_controls,
+    objects, CancellationToken, Error,
 };
 use futures_util::{Stream, StreamExt, TryStream};
 use google_cloud_auth::token_source::TokenSource;
 
 use reqwest::{Body, Client, RequestBuilder, Response};
 
-
-
 use std::future::Future;
 
-
-
 use std::sync::Arc;
-
 
 pub const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
@@ -706,18 +700,16 @@ mod test {
         BucketAccessControlCreationConfig, InsertBucketAccessControlRequest,
     };
     use crate::http::bucket_access_controls::list::ListBucketAccessControlsRequest;
-    use crate::http::bucket_access_controls::{BucketACLRole};
+    use crate::http::bucket_access_controls::BucketACLRole;
     use crate::http::buckets::delete::DeleteBucketRequest;
     use crate::http::buckets::get::GetBucketRequest;
     use crate::http::buckets::get_iam_policy::GetIamPolicyRequest;
-    use crate::http::buckets::insert::{
-        BucketCreationConfig, InsertBucketParam, InsertBucketRequest,
-    };
+    use crate::http::buckets::insert::{BucketCreationConfig, InsertBucketParam, InsertBucketRequest};
     use crate::http::buckets::list::ListBucketsRequest;
     use crate::http::buckets::patch::{BucketPatchConfig, PatchBucketRequest};
     use crate::http::buckets::set_iam_policy::SetIamPolicyRequest;
     use crate::http::buckets::test_iam_permissions::TestIamPermissionsRequest;
-    use crate::http::buckets::{Binding};
+    use crate::http::buckets::Binding;
     use crate::http::default_object_access_controls::delete::DeleteDefaultObjectAccessControlRequest;
     use crate::http::default_object_access_controls::get::GetDefaultObjectAccessControlRequest;
     use crate::http::default_object_access_controls::insert::InsertDefaultObjectAccessControlRequest;
@@ -738,14 +730,14 @@ mod test {
         InsertObjectAccessControlRequest, ObjectAccessControlCreationConfig,
     };
     use crate::http::object_access_controls::list::ListObjectAccessControlsRequest;
-    use crate::http::object_access_controls::{ObjectACLRole};
+    use crate::http::object_access_controls::ObjectACLRole;
     use crate::http::objects::compose::{ComposeObjectRequest, ComposingTargets};
     use crate::http::objects::delete::DeleteObjectRequest;
     use crate::http::objects::get::GetObjectRequest;
     use crate::http::objects::list::ListObjectsRequest;
     use crate::http::objects::rewrite::RewriteObjectRequest;
     use crate::http::objects::upload::UploadObjectRequest;
-    
+
     use crate::http::objects::SourceObjects;
     use crate::http::storage_client::{StorageClient, SCOPES};
     use bytes::Buf;
@@ -753,7 +745,7 @@ mod test {
     use google_cloud_auth::{create_token_source, Config};
     use serde_json::de::Read;
     use serial_test::serial;
-    
+
     use std::sync::Arc;
 
     const PROJECT: &str = "atl-dev1";

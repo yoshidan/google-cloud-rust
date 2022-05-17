@@ -1,11 +1,8 @@
+use crate::http::channels::WatchableChannel;
 
-use crate::http::channels::{WatchableChannel};
-
-
-use crate::http::object_access_controls::{Projection};
+use crate::http::object_access_controls::Projection;
 use crate::http::{Escape, BASE_URL};
 use reqwest::{Client, RequestBuilder};
-
 
 /// Request message for WatchAllObjects.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]

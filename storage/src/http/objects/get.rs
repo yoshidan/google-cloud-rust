@@ -1,11 +1,7 @@
-
-
-
 use crate::http::object_access_controls::Projection;
-use crate::http::objects::{Encryption};
+use crate::http::objects::Encryption;
 use crate::http::{Escape, BASE_URL};
 use reqwest::{Client, RequestBuilder};
-
 
 /// Request message for GetObject.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]

@@ -2,7 +2,6 @@ use crate::http::hmac_keys::HmacKeyMetadata;
 use crate::http::{Escape, BASE_URL};
 use reqwest::{Client, RequestBuilder};
 
-
 /// Request object to update an HMAC key state.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

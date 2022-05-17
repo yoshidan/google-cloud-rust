@@ -1,12 +1,9 @@
 use crate::http::bucket_access_controls::PredefinedBucketAcl;
 
-
-
 use crate::http::object_access_controls::Projection;
 use crate::http::objects::{Encryption, Object};
 use crate::http::{Escape, BASE_URL};
 use reqwest::{Client, RequestBuilder};
-
 
 /// Request message for PatchObject.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
