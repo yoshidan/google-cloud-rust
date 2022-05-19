@@ -77,6 +77,16 @@ impl StorageClient {
     }
 
     /// Deletes the bucket.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::buckets::delete::DeleteBucketRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.delete_bucket(&DeleteBucketRequest {
+    ///     bucket: "bucket".to_string(),
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn delete_bucket(
         &self,
         req: &DeleteBucketRequest,
@@ -90,6 +100,20 @@ impl StorageClient {
     }
 
     /// Inserts the bucket.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::buckets::insert::{BucketCreationConfig, InsertBucketParam, InsertBucketRequest};
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.insert_bucket(&InsertBucketRequest {
+    ///     name: "bucket".to_string(),
+    ///     param: InsertBucketParam {
+    ///         project: client.project_id().to_string(),
+    ///         ..Default::default()
+    ///     },
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn insert_bucket(
         &self,
         req: &InsertBucketRequest,
@@ -103,6 +127,16 @@ impl StorageClient {
     }
 
     /// Gets the bucket.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::buckets::get::GetBucketRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.get_bucket(&GetBucketRequest {
+    ///     bucket: "bucket".to_string(),
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn get_bucket(&self, req: &GetBucketRequest, cancel: Option<CancellationToken>) -> Result<Bucket, Error> {
         let action = async {
             let builder = buckets::get::build(&Client::new(), req);
@@ -112,6 +146,19 @@ impl StorageClient {
     }
 
     /// Update the bucket.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::buckets::patch::{BucketPatchConfig, PatchBucketRequest};
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.patch_bucket(&PatchBucketRequest {
+    ///     bucket: "bucket".to_string(),
+    ///     metadata: Some(BucketPatchConfig {
+    ///        ..Default::default()
+    ///     }),
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn patch_bucket(
         &self,
         req: &PatchBucketRequest,
@@ -125,6 +172,16 @@ impl StorageClient {
     }
 
     /// Lists the bucket.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::buckets::list::ListBucketsRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.list_buckets(&ListBucketsRequest{
+    ///     project: client.project_id().to_string(),
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn list_buckets(
         &self,
         req: &ListBucketsRequest,
@@ -138,6 +195,25 @@ impl StorageClient {
     }
 
     /// Sets the iam policy.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::buckets::{Binding, Policy};
+    /// use google_cloud_storage::http::buckets::set_iam_policy::SetIamPolicyRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.set_iam_policy(&SetIamPolicyRequest{
+    ///     resource: "bucket".to_string(),
+    ///     policy: Policy {
+    ///         bindings: vec![Binding {
+    ///             role: "roles/storage.objectViewer".to_string(),
+    ///             members: vec!["allAuthenticatedUsers".to_string()],
+    ///             condition: None,
+    ///         }],
+    ///         ..Default::default()
+    ///     },
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn set_iam_policy(
         &self,
         req: &SetIamPolicyRequest,
@@ -151,6 +227,17 @@ impl StorageClient {
     }
 
     /// Gets the iam policy.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::buckets::get_iam_policy::GetIamPolicyRequest;
+    /// use google_cloud_storage::http::buckets::list::ListBucketsRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.get_iam_policy(&GetIamPolicyRequest{
+    ///     resource: "bucket".to_string(),
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn get_iam_policy(
         &self,
         req: &GetIamPolicyRequest,
@@ -164,6 +251,16 @@ impl StorageClient {
     }
 
     /// Tests the iam permissions.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::buckets::test_iam_permissions::TestIamPermissionsRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.test_iam_permissions(&TestIamPermissionsRequest{
+    ///     resource: "bucket".to_string(),
+    ///     permissions: vec!["storage.buckets.get".to_string()],
+    /// }, None).await;
+    /// ```
     pub async fn test_iam_permissions(
         &self,
         req: &TestIamPermissionsRequest,
@@ -177,6 +274,17 @@ impl StorageClient {
     }
 
     /// Lists the default object ACL.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::buckets::test_iam_permissions::TestIamPermissionsRequest;
+    /// use google_cloud_storage::http::default_object_access_controls::list::ListDefaultObjectAccessControlsRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.list_default_object_access_controls(&ListDefaultObjectAccessControlsRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn list_default_object_access_controls(
         &self,
         req: &ListDefaultObjectAccessControlsRequest,
@@ -190,6 +298,16 @@ impl StorageClient {
     }
 
     /// Gets the default object ACL.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::default_object_access_controls::get::GetDefaultObjectAccessControlRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.get_default_object_access_control(&GetDefaultObjectAccessControlRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     entity: "allAuthenticatedUsers".to_string(),
+    /// }, None).await;
+    /// ```
     pub async fn get_default_object_access_control(
         &self,
         req: &GetDefaultObjectAccessControlRequest,
@@ -203,6 +321,21 @@ impl StorageClient {
     }
 
     /// Inserts the default object ACL.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::default_object_access_controls::insert::InsertDefaultObjectAccessControlRequest;
+    /// use google_cloud_storage::http::object_access_controls::insert::ObjectAccessControlCreationConfig;
+    /// use google_cloud_storage::http::object_access_controls::ObjectACLRole;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.insert_default_object_access_control(&InsertDefaultObjectAccessControlRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     object_access_control: ObjectAccessControlCreationConfig {
+    ///         entity: "allAuthenticatedUsers".to_string(),
+    ///         role: ObjectACLRole::READER
+    ///    } ,
+    /// }, None).await;
+    /// ```
     pub async fn insert_default_object_access_control(
         &self,
         req: &InsertDefaultObjectAccessControlRequest,
@@ -215,7 +348,24 @@ impl StorageClient {
         invoke(cancel, action).await
     }
 
-    /// Patchs the default object ACL.
+    /// Patches the default object ACL.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::default_object_access_controls::patch::PatchDefaultObjectAccessControlRequest;
+    /// use google_cloud_storage::http::object_access_controls::insert::ObjectAccessControlCreationConfig;
+    /// use google_cloud_storage::http::object_access_controls::{ObjectAccessControl, ObjectACLRole};
+    /// use google_cloud_storage::http::object_access_controls::patch::PatchObjectAccessControlRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.patch_default_object_access_control(&PatchDefaultObjectAccessControlRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     entity: "allAuthenticatedUsers".to_string(),
+    ///     object_access_control: ObjectAccessControl {
+    ///         role: ObjectACLRole::READER,
+    ///         ..Default::default()
+    ///    } ,
+    /// }, None).await;
+    /// ```
     pub async fn patch_default_object_access_control(
         &self,
         req: &PatchDefaultObjectAccessControlRequest,
@@ -229,6 +379,16 @@ impl StorageClient {
     }
 
     /// Deletes the default object ACL.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::default_object_access_controls::delete::DeleteDefaultObjectAccessControlRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.delete_default_object_access_control(&DeleteDefaultObjectAccessControlRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     entity: "allAuthenticatedUsers".to_string(),
+    /// }, None).await;
+    /// ```
     pub async fn delete_default_object_access_control(
         &self,
         req: &DeleteDefaultObjectAccessControlRequest,
@@ -242,6 +402,15 @@ impl StorageClient {
     }
 
     /// Lists the bucket ACL.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::bucket_access_controls::list::ListBucketAccessControlsRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.list_bucket_access_controls(&ListBucketAccessControlsRequest{
+    ///     bucket: "bucket".to_string(),
+    /// }, None).await;
+    /// ```
     pub async fn list_bucket_access_controls(
         &self,
         req: &ListBucketAccessControlsRequest,
@@ -255,6 +424,16 @@ impl StorageClient {
     }
 
     /// Gets the bucket ACL.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::bucket_access_controls::get::GetBucketAccessControlRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.get_bucket_access_control(&GetBucketAccessControlRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     entity: "allAuthenticatedUsers".to_string(),
+    /// }, None).await;
+    /// ```
     pub async fn get_bucket_access_control(
         &self,
         req: &GetBucketAccessControlRequest,
@@ -268,6 +447,20 @@ impl StorageClient {
     }
 
     /// Inserts the default object ACL.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::bucket_access_controls::BucketACLRole;
+    /// use google_cloud_storage::http::bucket_access_controls::insert::{BucketAccessControlCreationConfig, InsertBucketAccessControlRequest};
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.insert_bucket_access_control(&InsertBucketAccessControlRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     acl: BucketAccessControlCreationConfig {
+    ///         entity: "allAuthenticatedUsers".to_string(),
+    ///         role: BucketACLRole::READER
+    ///     }
+    /// }, None).await;
+    /// ```
     pub async fn insert_bucket_access_control(
         &self,
         req: &InsertBucketAccessControlRequest,
@@ -280,7 +473,22 @@ impl StorageClient {
         invoke(cancel, action).await
     }
 
-    /// Patchs the bucket ACL.
+    /// Patches the bucket ACL.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::bucket_access_controls::BucketAccessControl;
+    /// use google_cloud_storage::http::bucket_access_controls::patch::PatchBucketAccessControlRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.patch_bucket_access_control(&PatchBucketAccessControlRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     entity: "allAuthenticatedUsers".to_string(),
+    ///     acl: BucketAccessControl {
+    ///         role: BucketACLRole::READER,
+    ///         ..Default::default()
+    ///     }
+    /// }, None).await;
+    /// ```
     pub async fn patch_bucket_access_control(
         &self,
         req: &PatchBucketAccessControlRequest,
@@ -294,6 +502,17 @@ impl StorageClient {
     }
 
     /// Deletes the bucket ACL.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::bucket_access_controls::BucketAccessControl;
+    /// use google_cloud_storage::http::bucket_access_controls::delete::DeleteBucketAccessControlRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.delete_bucket_access_control(&DeleteBucketAccessControlRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     entity: "allAuthenticatedUsers".to_string(),
+    /// }, None).await;
+    /// ```
     pub async fn delete_bucket_access_control(
         &self,
         req: &DeleteBucketAccessControlRequest,
@@ -307,6 +526,17 @@ impl StorageClient {
     }
 
     /// Lists the object ACL.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::object_access_controls::list::ListObjectAccessControlsRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.list_object_access_controls(&ListObjectAccessControlsRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     object: "filename".to_string(),
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn list_object_access_controls(
         &self,
         req: &ListObjectAccessControlsRequest,
@@ -320,6 +550,17 @@ impl StorageClient {
     }
 
     /// Gets the object ACL.
+    /// ```
+    /// use google_cloud_storage::http::object_access_controls::get::GetObjectAccessControlRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.get_object_access_control(&GetObjectAccessControlRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     object: "filename".to_string(),
+    ///     entity: "allAuthenticatedUsers".to_string(),
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn get_object_access_control(
         &self,
         req: &GetObjectAccessControlRequest,
@@ -333,6 +574,21 @@ impl StorageClient {
     }
 
     /// Inserts the object ACL.
+    /// ```
+    /// use google_cloud_storage::http::object_access_controls::insert::{InsertObjectAccessControlRequest, ObjectAccessControlCreationConfig};
+    /// use google_cloud_storage::http::object_access_controls::ObjectACLRole;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.insert_object_access_control(&InsertObjectAccessControlRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     object: "filename".to_string(),
+    ///     acl: ObjectAccessControlCreationConfig {
+    ///         entity: "allAuthenticatedUsers".to_string(),
+    ///         role: ObjectACLRole::READER
+    ///     }   ,
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn insert_object_access_control(
         &self,
         req: &InsertObjectAccessControlRequest,
@@ -345,7 +601,23 @@ impl StorageClient {
         invoke(cancel, action).await
     }
 
-    /// Patchs the bucket ACL.
+    /// Patches the bucket ACL.
+    /// ```
+    /// use google_cloud_storage::http::object_access_controls::{ObjectAccessControl, ObjectACLRole};
+    /// use google_cloud_storage::http::object_access_controls::patch::PatchObjectAccessControlRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.patch_object_access_control(&PatchObjectAccessControlRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     object: "filename".to_string(),
+    ///     entity: "allAuthenticatedUsers".to_string(),
+    ///     acl: ObjectAccessControl {
+    ///         role: ObjectACLRole::READER,
+    ///         ..Default::default()
+    ///     },
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn patch_object_access_control(
         &self,
         req: &PatchObjectAccessControlRequest,
@@ -359,6 +631,18 @@ impl StorageClient {
     }
 
     /// Deletes the bucket ACL.
+    /// ```
+    /// use google_cloud_storage::http::object_access_controls::{ObjectAccessControl, ObjectACLRole};
+    /// use google_cloud_storage::http::object_access_controls::delete::DeleteObjectAccessControlRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.delete_object_access_control(&DeleteObjectAccessControlRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     object: "filename".to_string(),
+    ///     entity: "allAuthenticatedUsers".to_string(),
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn delete_object_access_control(
         &self,
         req: &DeleteObjectAccessControlRequest,
@@ -372,6 +656,15 @@ impl StorageClient {
     }
 
     /// Lists the notification.
+    /// ```
+    /// use google_cloud_storage::http::notifications::list::ListNotificationsRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.list_notifications(&ListNotificationsRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn list_notifications(
         &self,
         req: &ListNotificationsRequest,
@@ -385,6 +678,15 @@ impl StorageClient {
     }
 
     /// Gets the notification.
+    /// ```
+    /// use google_cloud_storage::http::notifications::get::GetNotificationRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.get_notification(&GetNotificationRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     notification: "notification".to_string()
+    /// }, None).await;
+    /// ```
     pub async fn get_notification(
         &self,
         req: &GetNotificationRequest,
@@ -398,6 +700,20 @@ impl StorageClient {
     }
 
     /// Inserts the notification.
+    /// ```
+    /// use google_cloud_storage::http::notifications::insert::{InsertNotificationRequest, NotificationCreationConfig};
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.insert_notification(&InsertNotificationRequest {
+    ///     bucket: "bucket".to_string(),
+    ///     notification: NotificationCreationConfig {
+    ///         topic: format!("projects/{}/topics/{}", PROJECT, bucket_name.to_string()),
+    ///         event_types: Some(vec!["OBJECT_METADATA_UPDATE".to_string(), "OBJECT_DELETE".to_string()]),
+    ///         payload_format: "JSON_API_V1".to_string(),
+    ///         ..Default::default()
+    ///     }
+    /// }, None).await;
+    /// ```
     pub async fn insert_notification(
         &self,
         req: &InsertNotificationRequest,
@@ -411,6 +727,15 @@ impl StorageClient {
     }
 
     /// Deletes the notification.
+    /// ```
+    /// use google_cloud_storage::http::notifications::delete::DeleteNotificationRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.delete_notification(&DeleteNotificationRequest {
+    ///     bucket: "bucket".to_string(),
+    ///     notification: "notification".to_string()
+    /// }, None).await;
+    /// ```
     pub async fn delete_notification(
         &self,
         req: &DeleteNotificationRequest,
@@ -424,6 +749,16 @@ impl StorageClient {
     }
 
     /// Lists the hmac keys.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::hmac_keys::list::ListHmacKeysRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.list_hmac_keys(&ListHmacKeysRequest {
+    ///     project_id: client.project_id().to_string(),
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn list_hmac_keys(
         &self,
         req: &ListHmacKeysRequest,
@@ -437,6 +772,17 @@ impl StorageClient {
     }
 
     /// Gets the hmac keys.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::hmac_keys::get::GetHmacKeyRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.get_hmac_key(&GetHmacKeyRequest {
+    ///     access_id: "access_id".to_string(),
+    ///     project_id: client.project_id().to_string(),
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn get_hmac_key(
         &self,
         req: &GetHmacKeyRequest,
@@ -450,6 +796,16 @@ impl StorageClient {
     }
 
     /// Creates the hmac key.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::hmac_keys::create::CreateHmacKeyRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.create_hmac_key(&CreateHmacKeyRequest {
+    ///     service_account_email: "service_account_email".to_string(),
+    ///     project_id: client.project_id().to_string(),
+    /// }, None).await;
+    /// ```
     pub async fn create_hmac_key(
         &self,
         req: &CreateHmacKeyRequest,
@@ -463,6 +819,22 @@ impl StorageClient {
     }
 
     /// Updates the hmac key.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::hmac_keys::HmacKeyMetadata;
+    /// use google_cloud_storage::http::hmac_keys::update::UpdateHmacKeyRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.update_hmac_key(&UpdateHmacKeyRequest{
+    ///     access_id: "access_id".to_string(),
+    ///     project_id: client.project_id().to_string(),
+    ///     metadata: HmacKeyMetadata {
+    ///         state: "INACTIVE".to_string(),
+    ///         ..Default::default()
+    ///     },
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn update_hmac_key(
         &self,
         req: &UpdateHmacKeyRequest,
@@ -476,6 +848,16 @@ impl StorageClient {
     }
 
     /// Deletes the hmac key.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::hmac_keys::delete::DeleteHmacKeyRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.delete_hmac_key(&DeleteHmacKeyRequest{
+    ///     access_id: "access_id".to_string(),
+    ///     project_id: client.project_id().to_string(),
+    /// }, None).await;
+    /// ```
     pub async fn delete_hmac_key(
         &self,
         req: &DeleteHmacKeyRequest,
@@ -489,6 +871,16 @@ impl StorageClient {
     }
 
     /// Lists the objects.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::objects::list::ListObjectsRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.list_objects(&ListObjectsRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn list_objects(
         &self,
         req: &ListObjectsRequest,
@@ -502,6 +894,17 @@ impl StorageClient {
     }
 
     /// Gets the object.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::objects::get::GetObjectRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.get_object(&GetObjectRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     object: "object".to_string(),
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn get_object(&self, req: &GetObjectRequest, cancel: Option<CancellationToken>) -> Result<Object, Error> {
         let action = async {
             let builder = objects::get::build(&Client::new(), req);
@@ -511,6 +914,17 @@ impl StorageClient {
     }
 
     /// Download the object.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::objects::get::GetObjectRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.download_object(&GetObjectRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     object: "object".to_string(),
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn download_object(
         &self,
         req: &GetObjectRequest,
@@ -530,6 +944,21 @@ impl StorageClient {
     }
 
     /// Download the object.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::objects::get::GetObjectRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.download_streamed_object(&GetObjectRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     object: "object".to_string(),
+    ///     ..Default::default()
+    /// }, None).await?;
+    ///
+    /// while let Some(v) = downloaded.next().await? {
+    ///     let d: bytes::Bytes = v.unwrap();
+    /// }
+    /// ```
     pub async fn download_streamed_object(
         &self,
         req: &GetObjectRequest,
@@ -549,6 +978,17 @@ impl StorageClient {
     }
 
     /// Uploads the object.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::objects::upload::UploadObjectRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.upload_object(&UploadObjectRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     name: "filename".to_string(),
+    ///     ..Default::default()
+    /// }, vec![1 as u8, 2, 3 ], "application/octet-stream", None).await;
+    /// ```
     pub async fn upload_object(
         &self,
         req: &UploadObjectRequest,
@@ -564,6 +1004,21 @@ impl StorageClient {
     }
 
     /// Uploads the streamed object.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::objects::upload::UploadObjectRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let source = vec!["hello", " ", "world"];
+    /// let size = source.iter().map(|x| x.len()).sum();
+    /// let chunks: Vec<Result<_, ::std::io::Error>> = source.clone().into_iter().map(|x| Ok(x)).collect();
+    /// let stream = futures_util::stream::iter(chunks);
+    /// let result = client.upload_streamed_object(&UploadObjectRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     name: "filename".to_string(),
+    ///     ..Default::default()
+    /// }, stream, "application/octet-stream", size, None).await;
+    /// ```
     pub async fn upload_streamed_object<S>(
         &self,
         req: &UploadObjectRequest,
@@ -586,6 +1041,17 @@ impl StorageClient {
     }
 
     /// Updates the object.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::objects::patch::PatchObjectRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.patch_object(&PatchObjectRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     object: "object".to_string(),
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn patch_object(
         &self,
         req: &PatchObjectRequest,
@@ -599,6 +1065,17 @@ impl StorageClient {
     }
 
     /// Deletes the object.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::objects::delete::DeleteObjectRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.delete_object(&DeleteObjectRequest{
+    ///     bucket: "bucket".to_string(),
+    ///     object: "object".to_string(),
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn delete_object(
         &self,
         req: &DeleteObjectRequest,
@@ -612,6 +1089,19 @@ impl StorageClient {
     }
 
     /// Rewrites the object.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::objects::rewrite::RewriteObjectRequest;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.rewrite_object(&RewriteObjectRequest{
+    ///     source_bucket: "bucket1".to_string(),
+    ///     source_object: "object".to_string(),
+    ///     destination_bucket: "bucket2".to_string(),
+    ///     destination_object: "object1".to_string(),
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn rewrite_object(
         &self,
         req: &RewriteObjectRequest,
@@ -625,6 +1115,26 @@ impl StorageClient {
     }
 
     /// Composes the object.
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::objects::compose::{ComposeObjectRequest, ComposingTargets};
+    /// use google_cloud_storage::http::objects::rewrite::RewriteObjectRequest;
+    /// use google_cloud_storage::http::objects::SourceObjects;
+    ///
+    /// let client = Client::new().await.unwrap();
+    /// let result = client.compose_object(&ComposeObjectRequest{
+    ///     bucket: "bucket1".to_string(),
+    ///     destination_object: "object1".to_string(),
+    ///     composing_targets: ComposingTargets {
+    ///         source_objects: vec![SourceObjects {
+    ///             name: format!("{}_src", uploaded.name),
+    ///             ..Default::default()
+    ///         }],
+    ///         ..Default::default()
+    ///     },
+    ///     ..Default::default()
+    /// }, None).await;
+    /// ```
     pub async fn compose_object(
         &self,
         req: &ComposeObjectRequest,

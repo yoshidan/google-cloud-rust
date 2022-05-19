@@ -1,5 +1,5 @@
 [package]
-name = "goole-cloud-storage"
+name = "google-cloud-storage"
 version = "0.1.0"
 edition = "2021"
 

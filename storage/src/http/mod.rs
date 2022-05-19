@@ -40,18 +40,7 @@ impl Escape for String {
     }
 }
 
-/// https://github.com/ThouCheese/cloud-storage-rs/blob/0b09eccf5f6795becb50c4b2f444daeae7995141/src/resources/object.rs
 const ENCODE_SET: &AsciiSet = &NON_ALPHANUMERIC.remove(b'*').remove(b'-').remove(b'.').remove(b'_');
-
-const NOSLASH_ENCODE_SET: &AsciiSet = &ENCODE_SET.remove(b'/').remove(b'~');
-
-pub(crate) fn percent_encode_noslash(input: &str) -> String {
-    utf8_percent_encode(input, NOSLASH_ENCODE_SET).to_string()
-}
-
-pub(crate) fn percent_encode(input: &str) -> String {
-    utf8_percent_encode(input, ENCODE_SET).to_string()
-}
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
 pub fn is_empty(v: &str) -> bool {
