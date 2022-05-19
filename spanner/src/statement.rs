@@ -219,7 +219,7 @@ where
         Type {
             code: TypeCode::Struct.into(),
             array_element_type: None,
-            type_annotation: TypeAnnotationCode::Unspecified.into()
+            type_annotation: TypeAnnotationCode::Unspecified.into(),
             struct_type: Some(StructType {
                 fields: T::get_types()
                     .into_iter()
