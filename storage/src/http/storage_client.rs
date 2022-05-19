@@ -1207,8 +1207,6 @@ async fn invoke<S>(
 
 #[cfg(test)]
 mod test {
-    use std::fs::File;
-    use std::io::{BufReader, Seek};
     use crate::http::bucket_access_controls::delete::DeleteBucketAccessControlRequest;
     use crate::http::bucket_access_controls::get::GetBucketAccessControlRequest;
     use crate::http::bucket_access_controls::insert::{
@@ -1252,6 +1250,8 @@ mod test {
     use crate::http::objects::list::ListObjectsRequest;
     use crate::http::objects::rewrite::RewriteObjectRequest;
     use crate::http::objects::upload::UploadObjectRequest;
+    use std::fs::File;
+    use std::io::{BufReader, Seek};
 
     use crate::http::objects::SourceObjects;
     use crate::http::storage_client::{StorageClient, SCOPES};
@@ -1263,9 +1263,9 @@ mod test {
     use tokio_util::codec::{BytesCodec, FramedRead};
 
     use crate::http::notifications::EventType;
-    use std::sync::Arc;
     use regex::internal::Input;
     use reqwest::Body;
+    use std::sync::Arc;
 
     const PROJECT: &str = "atl-dev1";
 
@@ -1773,7 +1773,7 @@ mod test {
                     name: "test1".to_string(),
                     ..Default::default()
                 },
-                vec![01],
+                &vec![01],
                 "text/plain",
                 None,
             )
@@ -1835,7 +1835,7 @@ mod test {
         let file_name = format!("stream_{}", chrono::Utc::now().timestamp());
         let client = client().await;
 
-       // let stream= reqwest::Client::new().get("https://avatars.githubusercontent.com/u/958174?s=96&v=4").send().await.unwrap().bytes_stream();
+        // let stream= reqwest::Client::new().get("https://avatars.githubusercontent.com/u/958174?s=96&v=4").send().await.unwrap().bytes_stream();
         let source = vec!["hello", " ", "world"];
         let size = source.iter().map(|x| x.len()).sum();
         let chunks: Vec<Result<_, ::std::io::Error>> = source.clone().into_iter().map(|x| Ok(x)).collect();

@@ -326,7 +326,8 @@ fn signed_url_v4(
             escaped_query,
             header_with_value.join(" "),
             signed_headers
-        ).into_bytes();
+        )
+        .into_bytes();
 
         /// If the user provides a value for X-Goog-Content-SHA256, we must use
         /// that value in the request string. If not, we use UNSIGNED-PAYLOAD.
