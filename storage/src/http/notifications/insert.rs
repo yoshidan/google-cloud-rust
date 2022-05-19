@@ -1,15 +1,16 @@
+use crate::http::notifications::{EventType, PayloadFormat};
 use crate::http::{Escape, BASE_URL};
 use reqwest::{Client, RequestBuilder};
 use std::collections::HashMap;
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
 pub struct NotificationCreationConfig {
     /// The Cloud PubSub topic to which this subscription publishes. Formatted as:
     /// '//pubsub.googleapis.com/projects/{project-identifier}/topics/{my-topic}'
     pub topic: String,
     /// If present, only send notifications about listed event types. If empty,
     /// sent notifications for all event types.
-    pub event_types: Option<Vec<String>>,
+    pub event_types: Option<Vec<EventType>>,
     /// An optional list of additional attributes to attach to each Cloud PubSub
     /// message published for this notification subscription.
     pub custom_attributes: HashMap<String, String>,
@@ -17,7 +18,7 @@ pub struct NotificationCreationConfig {
     /// begin with this prefix.
     pub object_name_prefix: Option<String>,
     /// The desired content of the Payload.
-    pub payload_format: String,
+    pub payload_format: PayloadFormat,
 }
 
 /// Request message for InsertNotification.

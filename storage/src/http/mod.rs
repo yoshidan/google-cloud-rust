@@ -42,11 +42,6 @@ impl Escape for String {
 
 const ENCODE_SET: &AsciiSet = &NON_ALPHANUMERIC.remove(b'*').remove(b'-').remove(b'.').remove(b'_');
 
-#[allow(clippy::trivially_copy_pass_by_ref)]
-pub fn is_empty(v: &str) -> bool {
-    v.is_empty()
-}
-
 pub fn from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
 where
     T: FromStr,
@@ -55,21 +50,4 @@ where
 {
     let s = String::deserialize(deserializer)?;
     T::from_str(&s).map_err(de::Error::custom)
-}
-
-pub fn from_str_opt<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
-where
-    T: std::str::FromStr,
-    T::Err: std::fmt::Display,
-    D: serde::Deserializer<'de>,
-{
-    let s: Result<serde_json::Value, _> = serde::Deserialize::deserialize(deserializer);
-    match s {
-        Ok(serde_json::Value::String(s)) => T::from_str(&s).map_err(serde::de::Error::custom).map(Option::from),
-        Ok(serde_json::Value::Number(num)) => T::from_str(&num.to_string())
-            .map_err(serde::de::Error::custom)
-            .map(Option::from),
-        Ok(_value) => Err(serde::de::Error::custom("Incorrect type")),
-        Err(_) => Ok(None),
-    }
 }

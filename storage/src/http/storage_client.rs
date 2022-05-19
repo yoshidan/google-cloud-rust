@@ -701,6 +701,7 @@ impl StorageClient {
 
     /// Inserts the notification.
     /// ```
+    /// use google_cloud_storage::http::notifications::EventType;
     /// use google_cloud_storage::http::notifications::insert::{InsertNotificationRequest, NotificationCreationConfig};
     ///
     /// let client = Client::new().await.unwrap();
@@ -708,8 +709,7 @@ impl StorageClient {
     ///     bucket: "bucket".to_string(),
     ///     notification: NotificationCreationConfig {
     ///         topic: format!("projects/{}/topics/{}", PROJECT, bucket_name.to_string()),
-    ///         event_types: Some(vec!["OBJECT_METADATA_UPDATE".to_string(), "OBJECT_DELETE".to_string()]),
-    ///         payload_format: "JSON_API_V1".to_string(),
+    ///         event_types: Some(vec![EventType::ObjectMetadataUpdate, EventType::ObjectDelete]),
     ///         ..Default::default()
     ///     }
     /// }, None).await;
@@ -1256,6 +1256,7 @@ mod test {
     use serde_json::de::Read;
     use serial_test::serial;
 
+    use crate::http::notifications::EventType;
     use std::sync::Arc;
 
     const PROJECT: &str = "atl-dev1";
@@ -1630,10 +1631,9 @@ mod test {
                     bucket: bucket_name.to_string(),
                     notification: NotificationCreationConfig {
                         topic: format!("projects/{}/topics/{}", PROJECT, bucket_name.to_string()),
-                        event_types: Some(vec!["OBJECT_METADATA_UPDATE".to_string(), "OBJECT_DELETE".to_string()]),
-                        custom_attributes: Default::default(),
+                        event_types: Some(vec![EventType::ObjectMetadataUpdate, EventType::ObjectDelete]),
                         object_name_prefix: Some("notification-test".to_string()),
-                        payload_format: "JSON_API_V1".to_string(),
+                        ..Default::default()
                     },
                 },
                 None,

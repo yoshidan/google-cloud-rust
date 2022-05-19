@@ -24,7 +24,7 @@ pub struct PatchObjectAccessControlRequest {
     pub object: String,
     /// If present, selects a specific revision of this object (as opposed to the
     /// latest version, the default).
-    pub generation: i64,
+    pub generation: Option<i64>,
     /// The ObjectAccessControl for updating.
     #[serde(skip_serializing)]
     pub acl: ObjectAccessControl,
