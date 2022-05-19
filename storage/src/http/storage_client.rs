@@ -1250,21 +1250,21 @@ mod test {
     use crate::http::objects::list::ListObjectsRequest;
     use crate::http::objects::rewrite::RewriteObjectRequest;
     use crate::http::objects::upload::UploadObjectRequest;
-    use std::fs::File;
-    use std::io::{BufReader, Seek};
+    
+    
 
     use crate::http::objects::SourceObjects;
     use crate::http::storage_client::{StorageClient, SCOPES};
-    use bytes::{Buf, BytesMut};
-    use futures_util::{StreamExt, TryFutureExt};
+    use bytes::{Buf};
+    use futures_util::{StreamExt};
     use google_cloud_auth::{create_token_source, Config};
     use serde_json::de::Read;
     use serial_test::serial;
-    use tokio_util::codec::{BytesCodec, FramedRead};
+    
 
     use crate::http::notifications::EventType;
     use regex::internal::Input;
-    use reqwest::Body;
+    
     use std::sync::Arc;
 
     const PROJECT: &str = "atl-dev1";
