@@ -10,7 +10,6 @@ use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 
-
 use std::time::Duration;
 use url;
 use url::ParseError;
@@ -58,17 +57,8 @@ const HOST: &str = "storage.googleapis.com";
 
 impl URLStyle for PathStyle {
     fn host(&self, _bucket: &str) -> String {
-        match std::env::var("STORAGE_EMULATOR_HOST") {
-            Ok(host) => {
-                if host.contains("://") {
-                    let v: Vec<&str> = host.splitn(2, "://").collect();
-                    v[1].to_string()
-                } else {
-                    host.to_string()
-                }
-            }
-            Err(_e) => HOST.to_string(),
-        }
+        //TODO emulator support
+        HOST.to_string()
     }
 
     fn path(&self, bucket: &str, object: &str) -> String {
