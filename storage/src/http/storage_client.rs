@@ -77,6 +77,8 @@ impl StorageClient {
     }
 
     /// Deletes the bucket.
+    /// https://cloud.google.com/storage/docs/json_api/v1/buckets/delete
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::buckets::delete::DeleteBucketRequest;
@@ -100,6 +102,8 @@ impl StorageClient {
     }
 
     /// Inserts the bucket.
+    /// https://cloud.google.com/storage/docs/json_api/v1/buckets/insert
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::buckets::insert::{BucketCreationConfig, InsertBucketParam, InsertBucketRequest};
@@ -127,6 +131,8 @@ impl StorageClient {
     }
 
     /// Gets the bucket.
+    /// https://cloud.google.com/storage/docs/json_api/v1/buckets/get
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::buckets::get::GetBucketRequest;
@@ -145,7 +151,9 @@ impl StorageClient {
         invoke(cancel, action).await
     }
 
-    /// Update the bucket.
+    /// Patches the bucket.
+    /// https://cloud.google.com/storage/docs/json_api/v1/buckets/patch
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::buckets::patch::{BucketPatchConfig, PatchBucketRequest};
@@ -172,6 +180,8 @@ impl StorageClient {
     }
 
     /// Lists the bucket.
+    /// https://cloud.google.com/storage/docs/json_api/v1/buckets/list
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::buckets::list::ListBucketsRequest;
@@ -195,6 +205,8 @@ impl StorageClient {
     }
 
     /// Sets the iam policy.
+    /// https://cloud.google.com/storage/docs/json_api/v1/buckets/setIamPolicy
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::buckets::{Binding, Policy};
@@ -227,6 +239,8 @@ impl StorageClient {
     }
 
     /// Gets the iam policy.
+    /// https://cloud.google.com/storage/docs/json_api/v1/buckets/getIamPolicy
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::buckets::get_iam_policy::GetIamPolicyRequest;
@@ -251,6 +265,8 @@ impl StorageClient {
     }
 
     /// Tests the iam permissions.
+    /// https://cloud.google.com/storage/docs/json_api/v1/buckets/testIamPermissions
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::buckets::test_iam_permissions::TestIamPermissionsRequest;
@@ -274,6 +290,8 @@ impl StorageClient {
     }
 
     /// Lists the default object ACL.
+    /// https://cloud.google.com/storage/docs/json_api/v1/defaultObjectAccessControls/list
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::buckets::test_iam_permissions::TestIamPermissionsRequest;
@@ -298,6 +316,8 @@ impl StorageClient {
     }
 
     /// Gets the default object ACL.
+    /// https://cloud.google.com/storage/docs/json_api/v1/defaultObjectAccessControls/get
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::default_object_access_controls::get::GetDefaultObjectAccessControlRequest;
@@ -321,6 +341,8 @@ impl StorageClient {
     }
 
     /// Inserts the default object ACL.
+    /// https://cloud.google.com/storage/docs/json_api/v1/defaultObjectAccessControls/insert
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::default_object_access_controls::insert::InsertDefaultObjectAccessControlRequest;
@@ -349,6 +371,8 @@ impl StorageClient {
     }
 
     /// Patches the default object ACL.
+    /// https://cloud.google.com/storage/docs/json_api/v1/defaultObjectAccessControls/patch
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::default_object_access_controls::patch::PatchDefaultObjectAccessControlRequest;
@@ -379,6 +403,8 @@ impl StorageClient {
     }
 
     /// Deletes the default object ACL.
+    /// https://cloud.google.com/storage/docs/json_api/v1/defaultObjectAccessControls/delete
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::default_object_access_controls::delete::DeleteDefaultObjectAccessControlRequest;
@@ -402,6 +428,8 @@ impl StorageClient {
     }
 
     /// Lists the bucket ACL.
+    /// https://cloud.google.com/storage/docs/json_api/v1/bucketAccessControls/list
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::bucket_access_controls::list::ListBucketAccessControlsRequest;
@@ -424,6 +452,8 @@ impl StorageClient {
     }
 
     /// Gets the bucket ACL.
+    /// https://cloud.google.com/storage/docs/json_api/v1/bucketAccessControls/get
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::bucket_access_controls::get::GetBucketAccessControlRequest;
@@ -446,7 +476,9 @@ impl StorageClient {
         invoke(cancel, action).await
     }
 
-    /// Inserts the default object ACL.
+    /// Inserts the bucket ACL.
+    /// https://cloud.google.com/storage/docs/json_api/v1/bucketAccessControls/insert
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::bucket_access_controls::BucketACLRole;
@@ -474,6 +506,8 @@ impl StorageClient {
     }
 
     /// Patches the bucket ACL.
+    /// https://cloud.google.com/storage/docs/json_api/v1/bucketAccessControls/patch
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::bucket_access_controls::BucketAccessControl;
@@ -526,6 +560,8 @@ impl StorageClient {
     }
 
     /// Lists the object ACL.
+    /// https://cloud.google.com/storage/docs/json_api/v1/objectAccessControls/list
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::object_access_controls::list::ListObjectAccessControlsRequest;
@@ -550,6 +586,8 @@ impl StorageClient {
     }
 
     /// Gets the object ACL.
+    /// https://cloud.google.com/storage/docs/json_api/v1/objectAccessControls/get
+    ///
     /// ```
     /// use google_cloud_storage::http::object_access_controls::get::GetObjectAccessControlRequest;
     ///
@@ -574,6 +612,8 @@ impl StorageClient {
     }
 
     /// Inserts the object ACL.
+    /// https://cloud.google.com/storage/docs/json_api/v1/objectAccessControls/insert
+    ///
     /// ```
     /// use google_cloud_storage::http::object_access_controls::insert::{InsertObjectAccessControlRequest, ObjectAccessControlCreationConfig};
     /// use google_cloud_storage::http::object_access_controls::ObjectACLRole;
@@ -602,6 +642,8 @@ impl StorageClient {
     }
 
     /// Patches the bucket ACL.
+    /// https://cloud.google.com/storage/docs/json_api/v1/objectAccessControls/patch
+    ///
     /// ```
     /// use google_cloud_storage::http::object_access_controls::{ObjectAccessControl, ObjectACLRole};
     /// use google_cloud_storage::http::object_access_controls::patch::PatchObjectAccessControlRequest;
@@ -631,6 +673,8 @@ impl StorageClient {
     }
 
     /// Deletes the bucket ACL.
+    /// https://cloud.google.com/storage/docs/json_api/v1/objectAccessControls/delete
+    ///
     /// ```
     /// use google_cloud_storage::http::object_access_controls::{ObjectAccessControl, ObjectACLRole};
     /// use google_cloud_storage::http::object_access_controls::delete::DeleteObjectAccessControlRequest;
@@ -656,6 +700,8 @@ impl StorageClient {
     }
 
     /// Lists the notification.
+    /// https://cloud.google.com/storage/docs/json_api/v1/notifications/list
+    ///
     /// ```
     /// use google_cloud_storage::http::notifications::list::ListNotificationsRequest;
     ///
@@ -678,6 +724,8 @@ impl StorageClient {
     }
 
     /// Gets the notification.
+    /// https://cloud.google.com/storage/docs/json_api/v1/notifications/get
+    ///
     /// ```
     /// use google_cloud_storage::http::notifications::get::GetNotificationRequest;
     ///
@@ -700,6 +748,8 @@ impl StorageClient {
     }
 
     /// Inserts the notification.
+    /// https://cloud.google.com/storage/docs/json_api/v1/notifications/insert
+    ///
     /// ```
     /// use google_cloud_storage::http::notifications::EventType;
     /// use google_cloud_storage::http::notifications::insert::{InsertNotificationRequest, NotificationCreationConfig};
@@ -727,6 +777,8 @@ impl StorageClient {
     }
 
     /// Deletes the notification.
+    /// https://cloud.google.com/storage/docs/json_api/v1/notifications/delete
+    ///
     /// ```
     /// use google_cloud_storage::http::notifications::delete::DeleteNotificationRequest;
     ///
@@ -749,6 +801,8 @@ impl StorageClient {
     }
 
     /// Lists the hmac keys.
+    /// https://cloud.google.com/storage/docs/json_api/v1/projects/hmacKeys/list
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::hmac_keys::list::ListHmacKeysRequest;
@@ -772,6 +826,8 @@ impl StorageClient {
     }
 
     /// Gets the hmac keys.
+    /// https://cloud.google.com/storage/docs/json_api/v1/projects/hmacKeys/get
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::hmac_keys::get::GetHmacKeyRequest;
@@ -796,6 +852,8 @@ impl StorageClient {
     }
 
     /// Creates the hmac key.
+    /// https://cloud.google.com/storage/docs/json_api/v1/projects/hmacKeys/create
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::hmac_keys::create::CreateHmacKeyRequest;
@@ -819,6 +877,8 @@ impl StorageClient {
     }
 
     /// Updates the hmac key.
+    /// https://cloud.google.com/storage/docs/json_api/v1/projects/hmacKeys/update
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::hmac_keys::HmacKeyMetadata;
@@ -848,6 +908,8 @@ impl StorageClient {
     }
 
     /// Deletes the hmac key.
+    /// https://cloud.google.com/storage/docs/json_api/v1/projects/hmacKeys/delete
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::hmac_keys::delete::DeleteHmacKeyRequest;
@@ -871,6 +933,8 @@ impl StorageClient {
     }
 
     /// Lists the objects.
+    /// https://cloud.google.com/storage/docs/json_api/v1/projects/hmacKeys/delete
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::list::ListObjectsRequest;
@@ -894,6 +958,8 @@ impl StorageClient {
     }
 
     /// Gets the object.
+    /// https://cloud.google.com/storage/docs/json_api/v1/objects/get
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::get::GetObjectRequest;
@@ -914,6 +980,9 @@ impl StorageClient {
     }
 
     /// Download the object.
+    /// https://cloud.google.com/storage/docs/json_api/v1/objects/get
+    /// alt is always media
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::get::GetObjectRequest;
@@ -944,6 +1013,9 @@ impl StorageClient {
     }
 
     /// Download the object.
+    /// https://cloud.google.com/storage/docs/json_api/v1/objects/get
+    /// alt is always media
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::get::GetObjectRequest;
@@ -1007,6 +1079,9 @@ impl StorageClient {
     }
 
     /// Uploads the streamed object.
+    /// https://cloud.google.com/storage/docs/json_api/v1/objects/insert
+    /// 'uploadType' is always media - Data-only upload. Upload the object data only, without any metadata.
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::upload::UploadObjectRequest;
@@ -1043,7 +1118,9 @@ impl StorageClient {
         invoke(cancel, action).await
     }
 
-    /// Updates the object.
+    /// Patches the object.
+    /// https://cloud.google.com/storage/docs/json_api/v1/objects/patch
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::patch::PatchObjectRequest;
@@ -1068,6 +1145,8 @@ impl StorageClient {
     }
 
     /// Deletes the object.
+    /// https://cloud.google.com/storage/docs/json_api/v1/objects/delete
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::delete::DeleteObjectRequest;
@@ -1092,6 +1171,8 @@ impl StorageClient {
     }
 
     /// Rewrites the object.
+    /// https://cloud.google.com/storage/docs/json_api/v1/objects/rewrite
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::rewrite::RewriteObjectRequest;
@@ -1118,6 +1199,8 @@ impl StorageClient {
     }
 
     /// Composes the object.
+    /// https://cloud.google.com/storage/docs/json_api/v1/objects/compose
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::compose::{ComposeObjectRequest, ComposingTargets};
