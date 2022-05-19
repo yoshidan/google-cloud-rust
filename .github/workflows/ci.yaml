@@ -97,3 +97,24 @@ jobs:
           args: --release --all-features --manifest-path spanner/Cargo.toml
         env:
           SPANNER_EMULATOR_HOST: localhost:9010
+  storage:
+    name: storage
+    runs-on: ubuntu-latest
+    steps:
+      - name Setup gcloud
+        uses: google-github-actions/setup-gcloud@0.6.0
+        with:
+          service_account_key: ${{ secrets[env.STORAGE_CREDENTIALS }}
+          export_default_credentials: true
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions-rs/cargo@v1
+        name: test
+        with:
+          command: test
+          args: --release --all-features --manifest-path storage/Cargo.toml
