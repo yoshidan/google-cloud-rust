@@ -101,7 +101,7 @@ jobs:
     name: storage
     runs-on: ubuntu-latest
     steps:
-      - name Setup gcloud
+      - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@0.6.0
         with:
           service_account_key: ${{ secrets[env.STORAGE_CREDENTIALS }}
