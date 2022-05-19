@@ -65,7 +65,7 @@ where
         array_element_type: None,
         struct_type: None,
         //TODO support PG Numeric
-        type_annotation: TypeAnnotationCode::Unspecified.into()
+        type_annotation: TypeAnnotationCode::Unspecified.into(),
     }
 }
 
@@ -267,7 +267,7 @@ where
             code: TypeCode::Array.into(),
             array_element_type: Some(Box::new(T::get_type())),
             struct_type: None,
-            type_annotation: TypeAnnotationCode::Unspecified.into()
+            type_annotation: TypeAnnotationCode::Unspecified.into(),
         }
     }
 }

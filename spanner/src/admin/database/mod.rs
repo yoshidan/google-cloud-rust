@@ -6,7 +6,10 @@ mod tests {
     use chrono::Utc;
 
     use google_cloud_googleapis::spanner::admin::database::v1::database::State;
-    use google_cloud_googleapis::spanner::admin::database::v1::{CreateDatabaseRequest, Database, DatabaseDialect, DropDatabaseRequest, GetDatabaseDdlRequest, GetDatabaseRequest, ListDatabasesRequest, UpdateDatabaseDdlRequest};
+    use google_cloud_googleapis::spanner::admin::database::v1::{
+        CreateDatabaseRequest, Database, DatabaseDialect, DropDatabaseRequest, GetDatabaseDdlRequest,
+        GetDatabaseRequest, ListDatabasesRequest, UpdateDatabaseDdlRequest,
+    };
 
     use serial_test::serial;
 
@@ -19,7 +22,7 @@ mod tests {
             create_statement: format!("CREATE DATABASE {}", database_id),
             extra_statements: vec!["CREATE TABLE Tbl (ID STRING(MAX)) PRIMARY KEY(ID)".to_string()],
             encryption_config: None,
-            database_dialect: DatabaseDialect::GoogleStandardSql.into()
+            database_dialect: DatabaseDialect::GoogleStandardSql.into(),
         };
 
         let creation_result = match client.create_database(request, None, None).await {

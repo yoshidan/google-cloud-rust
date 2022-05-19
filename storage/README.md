@@ -14,9 +14,7 @@ google-cloud-storage = <version>
 
 ## Quick Start
 
-### Publish Message
-
-```
+```rust
 use google_cloud_storage::client::Client;
 use google_cloud_storage::client::http::Error;
 use google_cloud_storage::sign::SignedURLOptions;

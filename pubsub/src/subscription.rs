@@ -30,7 +30,7 @@ pub struct SubscriptionConfig {
     pub retry_policy: Option<RetryPolicy>,
     pub detached: bool,
     pub topic_message_retention_duration: Option<Duration>,
-    pub enable_exactly_once_delivery: bool
+    pub enable_exactly_once_delivery: bool,
 }
 
 impl Into<SubscriptionConfig> for InternalSubscription {
@@ -52,7 +52,7 @@ impl Into<SubscriptionConfig> for InternalSubscription {
             topic_message_retention_duration: self
                 .topic_message_retention_duration
                 .map(|v| std::time::Duration::new(v.seconds as u64, v.nanos as u32)),
-            enable_exactly_once_delivery: self.enable_exactly_once_delivery
+            enable_exactly_once_delivery: self.enable_exactly_once_delivery,
         }
     }
 }
@@ -145,7 +145,7 @@ impl Subscription {
                     message_retention_duration: cfg.message_retention_duration.map(|v| v.into()),
                     retain_acked_messages: cfg.retain_acked_messages,
                     topic_message_retention_duration: cfg.topic_message_retention_duration.map(|v| v.into()),
-                    enable_exactly_once_delivery: cfg.enable_exactly_once_delivery
+                    enable_exactly_once_delivery: cfg.enable_exactly_once_delivery,
                 },
                 cancel,
                 retry,
