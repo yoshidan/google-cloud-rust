@@ -8,26 +8,21 @@ pub mod patch;
 
 /// Predefined or "canned" aliases for sets of specific bucket ACL entries.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize, Debug)]
-#[repr(i32)]
+#[serde(rename_all = "camelCase")]
 pub enum PredefinedBucketAcl {
     /// Project team owners get `OWNER` access, and
     /// `allAuthenticatedUsers` get `READER` access.
-    #[serde(rename = "authenticatedRead")]
-    BucketAclAuthenticatedRead = 1,
+    AuthenticatedRead,
     /// Project team owners get `OWNER` access.
-    #[serde(rename = "private")]
-    BucketAclPrivate = 2,
+    Private,
     /// Project team members get access according to their roles.
-    #[serde(rename = "projectPrivate")]
-    BucketAclProjectPrivate = 3,
+    ProjectPrivate,
     /// Project team owners get `OWNER` access, and
     /// `allUsers` get `READER` access.
-    #[serde(rename = "publicRead")]
-    BucketAclPublicRead = 4,
+    PublicRead,
     /// Project team owners get `OWNER` access, and
     /// `allUsers` get `WRITER` access.
-    #[serde(rename = "publicReadWrite")]
-    BucketAclPublicReadWrite = 5,
+    PublicReadWrite,
 }
 
 /// An access-control entry.

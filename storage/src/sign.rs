@@ -9,6 +9,7 @@ use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey};
 
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::time;
 
 use std::time::Duration;
 use url;
@@ -16,7 +17,26 @@ use url::ParseError;
 
 static SPACE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r" +").unwrap());
 static TAB_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"[\t]+").unwrap());
-const SIGNED_URL_METHODS: [&str; 5] = ["DELETE", "GET", "HEAD", "POST", "PUT"];
+
+pub enum SignedURLMethod {
+    DELETE,
+    GET,
+    HEAD,
+    POST,
+    PUT,
+}
+
+impl SignedURLMethod {
+    pub fn as_str(&self) -> &str {
+        match self {
+            SignedURLMethod::DELETE => "DELETE",
+            SignedURLMethod::GET => "GET",
+            SignedURLMethod::HEAD => "HEAD",
+            SignedURLMethod::POST => "POST",
+            SignedURLMethod::PUT => "PUT",
+        }
+    }
+}
 
 #[derive(PartialEq)]
 pub enum SigningScheme {
@@ -105,7 +125,7 @@ pub struct SignedURLOptions {
     /// Method is the HTTP method to be used with the signed URL.
     /// Signed URLs can be used with GET, HEAD, PUT, and DELETE requests.
     /// Required.
-    pub method: String,
+    pub method: SignedURLMethod,
 
     /// Expires is the expiration time on the signed URL. It must be
     /// a datetime in the future. For SigningSchemeV4, the expiration may be no
@@ -159,9 +179,9 @@ impl Default for SignedURLOptions {
         Self {
             google_access_id: "".to_string(),
             sign_by: SignBy::PrivateKey(vec![]),
-            method: "GET".to_string(),
-            expires: Default::default(),
-            content_type: "".to_string(),
+            method: SignedURLMethod::GET,
+            expires: std::time::Duration::from_secs(600),
+            content_type: "application/octet-stream".to_string(),
             headers: vec![],
             query_parameters: Default::default(),
             md5: "".to_string(),
@@ -299,12 +319,15 @@ fn signed_url_v4(
 
     /// create raw buffer
     let buffer = {
-        let mut buffer: Vec<u8> = vec![];
-        buffer.extend_from_slice(format!("{}\n", opts.method).as_bytes());
-        buffer.extend_from_slice(format!("{}\n", builder.path().replace("+", "%20")).as_bytes());
-        buffer.extend_from_slice(format!("{}\n", escaped_query).as_bytes());
-        buffer.extend_from_slice(format!("{}\n\n", header_with_value.join(" ")).as_bytes());
-        buffer.extend_from_slice(format!("{}\n", signed_headers).as_bytes());
+        let mut buffer = format!(
+            "{}\n{}\n{}\n{}\n\n{}\n",
+            opts.method.as_str(),
+            builder.path().replace("+", "%20"),
+            escaped_query,
+            header_with_value.join(" "),
+            signed_headers
+        )
+        .as_bytes();
 
         /// If the user provides a value for X-Goog-Content-SHA256, we must use
         /// that value in the request string. If not, we use UNSIGNED-PAYLOAD.

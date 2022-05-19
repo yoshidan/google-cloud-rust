@@ -38,30 +38,25 @@ impl Default for ObjectACLRole {
 
 /// Predefined or "canned" aliases for sets of specific object ACL entries.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub enum PredefinedObjectAcl {
     /// Object owner gets `OWNER` access, and
     /// `allAuthenticatedUsers` get `READER` access.
-    #[serde(rename = "authenticatedRead")]
-    ObjectAclAuthenticatedRead = 1,
+    AuthenticatedRead,
     /// Object owner gets `OWNER` access, and project team owners get
     /// `OWNER` access.
-    #[serde(rename = "bucketOwnerFullControl")]
-    ObjectAclBucketOwnerFullControl = 2,
+    BucketOwnerFullControl,
     /// Object owner gets `OWNER` access, and project team owners get
     /// `READER` access.
-    #[serde(rename = "bucketOwnerRead")]
-    ObjectAclBucketOwnerRead = 3,
+    BucketOwnerRead,
     /// Object owner gets `OWNER` access.
-    #[serde(rename = "private")]
-    ObjectAclPrivate = 4,
+    Private,
     /// Object owner gets `OWNER` access, and project team members get
     /// access according to their roles.
-    #[serde(rename = "projectPrivate")]
-    ObjectAclProjectPrivate = 5,
+    ProjectPrivate,
     /// Object owner gets `OWNER` access, and `allUsers`
     /// get `READER` access.
-    #[serde(rename = "publicRead")]
-    ObjectAclPublicRead = 6,
+    PublicRead,
 }
 
 /// Represents the Viewers, Editors, or Owners of a given project.
@@ -78,10 +73,10 @@ pub struct ProjectTeam {
 
 /// A set of properties to return in a response.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize, Debug)]
-#[repr(i32)]
+#[serde(rename_all = "camelCase")]
 pub enum Projection {
     /// Omit `owner`, `acl`, and `defaultObjectAcl` properties.
-    NoAcl = 1,
+    NoAcl,
     /// Include all properties.
-    Full = 2,
+    Full,
 }

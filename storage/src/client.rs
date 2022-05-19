@@ -79,12 +79,22 @@ impl Client {
     }
 
     /// Get signed url.
-    /// https://github.com/googleapis/google-cloud-go/blob/a33861fe46be42ae150d6015ad39dae6e35e04e8/storage/bucket.go#L271
-    ///
     /// SignedURL returns a URL for the specified object. Signed URLs allow anyone
     /// access to a restricted resource for a limited time without needing a
     /// Google account or signing in. For more information about signed URLs, see
     /// https://cloud.google.com/storage/docs/accesscontrol#signed_urls_query_string_authentication
+    ///
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::sign::{SignedURLOptions, SignedURLMethod};
+    ///
+    /// let client = Client::new().await?;
+    /// let url_for_download = client.signed_url("bucket", "file.txt", SignedURLOptions::default()).await?;
+    /// let url_for_upload = client.signed_url("bucket", "file.txt", SignedURLOptions {
+    ///     method: SignedURLMethod::PUT,
+    ///     ..Default::default()
+    /// }).await?;
+    /// ```
     pub async fn signed_url(
         &self,
         bucket: &str,
