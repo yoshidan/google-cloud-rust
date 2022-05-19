@@ -1000,7 +1000,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
         let action = async {
-            let builder = objects::upload::build(&Client::new(), req, Some(data.len()), content_type, data);
+            let builder = objects::upload::build(&Client::new(), req, Some(data.len()), content_type, Vec::from(data));
             self.send(builder).await
         };
         invoke(cancel, action).await
