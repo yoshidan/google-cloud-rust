@@ -978,6 +978,9 @@ impl StorageClient {
     }
 
     /// Uploads the object.
+    /// https://cloud.google.com/storage/docs/json_api/v1/objects/insert
+    /// 'uploadType' is always media - Data-only upload. Upload the object data only, without any metadata.
+    ///
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::upload::UploadObjectRequest;
@@ -987,17 +990,17 @@ impl StorageClient {
     ///     bucket: "bucket".to_string(),
     ///     name: "filename".to_string(),
     ///     ..Default::default()
-    /// }, vec![1 as u8, 2, 3 ], "application/octet-stream", None).await;
+    /// }, "hello world".as_bytes(), "application/octet-stream", None).await;
     /// ```
     pub async fn upload_object(
         &self,
         req: &UploadObjectRequest,
-        data: Vec<u8>,
+        data: &[u8],
         content_type: &str,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
         let action = async {
-            let builder = objects::upload::build(&Client::new(), req, data.len(), content_type, data);
+            let builder = objects::upload::build(&Client::new(), req, Some(data.len()), content_type, data);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1017,14 +1020,14 @@ impl StorageClient {
     ///     bucket: "bucket".to_string(),
     ///     name: "filename".to_string(),
     ///     ..Default::default()
-    /// }, stream, "application/octet-stream", size, None).await;
+    /// }, stream, "application/octet-stream", Some(size), None).await;
     /// ```
     pub async fn upload_streamed_object<S>(
         &self,
         req: &UploadObjectRequest,
         data: S,
         content_type: &str,
-        content_length: usize,
+        content_length: Option<usize>,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error>
     where
@@ -1204,6 +1207,8 @@ async fn invoke<S>(
 
 #[cfg(test)]
 mod test {
+    use std::fs::File;
+    use std::io::{BufReader, Seek};
     use crate::http::bucket_access_controls::delete::DeleteBucketAccessControlRequest;
     use crate::http::bucket_access_controls::get::GetBucketAccessControlRequest;
     use crate::http::bucket_access_controls::insert::{
@@ -1250,14 +1255,17 @@ mod test {
 
     use crate::http::objects::SourceObjects;
     use crate::http::storage_client::{StorageClient, SCOPES};
-    use bytes::Buf;
-    use futures_util::StreamExt;
+    use bytes::{Buf, BytesMut};
+    use futures_util::{StreamExt, TryFutureExt};
     use google_cloud_auth::{create_token_source, Config};
     use serde_json::de::Read;
     use serial_test::serial;
+    use tokio_util::codec::{BytesCodec, FramedRead};
 
     use crate::http::notifications::EventType;
     use std::sync::Arc;
+    use regex::internal::Input;
+    use reqwest::Body;
 
     const PROJECT: &str = "atl-dev1";
 
@@ -1827,6 +1835,7 @@ mod test {
         let file_name = format!("stream_{}", chrono::Utc::now().timestamp());
         let client = client().await;
 
+       // let stream= reqwest::Client::new().get("https://avatars.githubusercontent.com/u/958174?s=96&v=4").send().await.unwrap().bytes_stream();
         let source = vec!["hello", " ", "world"];
         let size = source.iter().map(|x| x.len()).sum();
         let chunks: Vec<Result<_, ::std::io::Error>> = source.clone().into_iter().map(|x| Ok(x)).collect();
@@ -1841,7 +1850,7 @@ mod test {
                 },
                 stream,
                 "application/octet-stream",
-                size,
+                Some(size),
                 None,
             )
             .await
@@ -1859,7 +1868,7 @@ mod test {
             .await
             .unwrap();
 
-        let mut data = Vec::with_capacity(size);
+        let mut data = Vec::with_capacity(10);
         while let Some(v) = downloaded.next().await {
             let d: bytes::Bytes = v.unwrap();
             data.extend_from_slice(d.chunk());

@@ -326,8 +326,7 @@ fn signed_url_v4(
             escaped_query,
             header_with_value.join(" "),
             signed_headers
-        )
-        .as_bytes();
+        ).into_bytes();
 
         /// If the user provides a value for X-Goog-Content-SHA256, we must use
         /// that value in the request string. If not, we use UNSIGNED-PAYLOAD.
@@ -404,9 +403,6 @@ fn extract_header_names(kvs: &[String]) -> Vec<&str> {
 fn validate_options(opts: &SignedURLOptions, _now: &DateTime<Utc>) -> Result<(), SignedURLError> {
     if opts.google_access_id.is_empty() {
         return Err(InvalidOption("storage: missing required GoogleAccessID"));
-    }
-    if !SIGNED_URL_METHODS.contains(&opts.method.to_uppercase().as_str()) {
-        return Err(InvalidOption("storage: invalid HTTP method"));
     }
     if opts.expires.is_zero() {
         return Err(InvalidOption("missing required expires option"));

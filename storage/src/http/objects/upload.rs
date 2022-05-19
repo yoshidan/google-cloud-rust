@@ -38,17 +38,20 @@ pub struct UploadObjectRequest {
 pub(crate) fn build<T: Into<reqwest::Body>>(
     client: &Client,
     req: &UploadObjectRequest,
-    content_length: usize,
+    content_length: Option<usize>,
     content_type: &str,
     body: T,
 ) -> RequestBuilder {
     let url = format!("{}/b/{}/o", UPLOAD_BASE_URL, req.bucket.escape());
-    let builder = client
+    let mut builder = client
         .post(url)
         .query(&req)
         .body(body)
-        .header(CONTENT_LENGTH, &content_length.to_string())
         .header(CONTENT_TYPE, content_type);
+
+    if let Some(len) = content_length {
+        builder = builder.header(CONTENT_LENGTH, len.to_string())
+    }
     if let Some(e) = &req.encryption {
         e.with_headers(builder)
     } else {

@@ -217,7 +217,7 @@ mod test {
         let req = InsertBucketRequest {
             name: bucket_name.clone(),
             param: InsertBucketParam {
-                predefined_acl: Some(PredefinedBucketAcl::BucketAclPublicRead),
+                predefined_acl: Some(PredefinedBucketAcl::PublicRead),
                 ..Default::default()
             },
             bucket: config,
