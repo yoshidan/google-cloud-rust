@@ -9,8 +9,8 @@ on:
       - main
 
 jobs:
-  storage1:
-    name: storage1
+  storage:
+    name: storage
     runs-on: ubuntu-latest
     steps:
       - uses: actions/cache@v2
@@ -23,5 +23,6 @@ jobs:
       - uses: actions-rs/cargo@v1
         name: test
         with:
+          working-directory: storage
           command: test
-          args: --release --all-features --manifest-path storage/Cargo.toml
+          args: --release --all-features --manifest-path Cargo.toml
