@@ -21,7 +21,7 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: check path
-        run: ls -ltr storage
+        run: ls -ltr
       - uses: actions-rs/cargo@v1
         name: test
         with:
