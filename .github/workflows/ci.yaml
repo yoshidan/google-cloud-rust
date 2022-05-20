@@ -9,10 +9,11 @@ on:
       - main
 
 jobs:
-  storage:
-    name: storage
+  common:
+    name: common
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
       - uses: actions/cache@v2
         with:
           path: |
@@ -20,10 +21,110 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: check path
-        run: ls -ltr
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - uses: actions-rs/cargo@v1
+        name: format check
+        with:
+          command: fmt
+          args: --all -- --check
+  pubsub:
+    name: pubsub
+    runs-on: ubuntu-latest
+    services:
+      pubsub:
+        image: messagebird/gcloud-pubsub-emulator:latest
+        ports:
+          - 8681:8681
+        env:
+          PUBSUB_PROJECT1: "local-project,test-topic:test-subscription,test-topic1:test-subscription1"
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
       - uses: actions-rs/cargo@v1
         name: test
         with:
           command: test
-          args: --release --all-features --manifest-path Cargo.toml
+          args: --release --all-features --manifest-path pubsub/Cargo.toml
+        env:
+          PUBSUB_EMULATOR_HOST: localhost:8681
+  spanner:
+    name: spanner
+    runs-on: ubuntu-latest
+    services:
+      spanner:
+        image: gcr.io/cloud-spanner-emulator/emulator
+        ports:
+          - 9020:9020
+          - 9010:9010
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: setup spanner
+        run: |
+          gcloud config configurations create emulator
+          gcloud config set auth/disable_credentials true
+          gcloud config set project local-project
+          gcloud config set api_endpoint_overrides/spanner http://localhost:9020/
+          gcloud spanner instances create test-instance --config=emulator-config --description="Test Instance" --nodes=1
+      - name: migration
+        uses: docker://mercari/wrench:1.0.4
+        with:
+          args: "create --directory spanner/tests/ddl"
+        env:
+          SPANNER_PROJECT_ID: local-project
+          SPANNER_INSTANCE_ID: test-instance
+          SPANNER_DATABASE_ID: local-database
+          SPANNER_EMULATOR_HOST: 172.17.0.1:9010
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: actions-rs/cargo@v1
+        name: test
+        with:
+          command: test
+          args: --release --all-features --manifest-path spanner/Cargo.toml
+        env:
+          SPANNER_EMULATOR_HOST: localhost:9010
+  storage:
+    name: storage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v0.6.0
+        with:
+          service_account_key: ${{ secrets.STORAGE_CREDENTIALS }}
+          export_default_credentials: true
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: actions-rs/cargo@v1
+        name: test
+        with:
+          command: test
+          args: --release --all-features --manifest-path storage/Cargo.toml
