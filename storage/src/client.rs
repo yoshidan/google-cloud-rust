@@ -186,10 +186,6 @@ mod test {
             retention_policy: Some(RetentionPolicyCreationConfig {
                 retention_period: 10000,
             }),
-            default_object_acl: Some(vec![ObjectAccessControlCreationConfig {
-                entity: "allUsers".to_string(),
-                role: ObjectACLRole::READER,
-            }]),
             cors: Some(vec![Cors {
                 origin: vec!["*".to_string()],
                 method: vec!["GET".to_string(), "HEAD".to_string()],
@@ -209,7 +205,7 @@ mod test {
                     }),
                 }],
             }),
-            rpo: Some("DEFAULT".to_string()),
+            rpo: None,
             ..Default::default()
         };
 
@@ -219,7 +215,6 @@ mod test {
             name: bucket_name.clone(),
             param: InsertBucketParam {
                 project: client.project_id().to_string(),
-                predefined_acl: Some(PredefinedBucketAcl::PublicRead),
                 ..Default::default()
             },
             bucket: config,
@@ -239,7 +234,14 @@ mod test {
         assert_eq!(result.name, bucket_name);
         assert_eq!(result.storage_class, req.bucket.storage_class.unwrap());
         assert_eq!(result.location, req.bucket.location);
-        assert!(result.acl.is_some());
-        assert!(!result.acl.unwrap().is_empty());
+        assert!(result.iam_configuration.is_some());
+        assert!(
+            result
+                .iam_configuration
+                .unwrap()
+                .uniform_bucket_level_access
+                .unwrap()
+                .enabled
+        );
     }
 }
