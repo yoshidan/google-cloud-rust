@@ -57,6 +57,18 @@ pub mod encryption_info {
         CustomerManagedEncryption = 2,
     }
 }
+/// Indicates the dialect type of a database.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum DatabaseDialect {
+    /// Default value. This value will create a database with the
+    /// GOOGLE_STANDARD_SQL dialect.
+    Unspecified = 0,
+    /// Google standard SQL.
+    GoogleStandardSql = 1,
+    /// PostgreSQL supported SQL.
+    Postgresql = 2,
+}
 /// A backup of a Cloud Spanner database.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Backup {
@@ -119,6 +131,25 @@ pub struct Backup {
     /// Output only. The encryption information for the backup.
     #[prost(message, optional, tag = "8")]
     pub encryption_info: ::core::option::Option<EncryptionInfo>,
+    /// Output only. The database dialect information for the backup.
+    #[prost(enumeration = "DatabaseDialect", tag = "10")]
+    pub database_dialect: i32,
+    /// Output only. The names of the destination backups being created by copying
+    /// this source backup. The backup names are of the form
+    /// `projects/<project>/instances/<instance>/backups/<backup>`.
+    /// Referencing backups may exist in different instances. The existence of
+    /// any referencing backup prevents the backup from being deleted. When the
+    /// copy operation is done (either successfully completed or cancelled or the
+    /// destination backup is deleted), the reference to the backup is removed.
+    #[prost(string, repeated, tag = "11")]
+    pub referencing_backups: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// Output only. The max allowed expiration time of the backup, with
+    /// microseconds granularity. A backup's expiration time can be configured in
+    /// multiple APIs: CreateBackup, UpdateBackup, CopyBackup. When updating or
+    /// copying an existing backup, the expiration time specified must be
+    /// less than `Backup.max_expire_time`.
+    #[prost(message, optional, tag = "12")]
+    pub max_expire_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// Nested message and enum types in `Backup`.
 pub mod backup {
@@ -177,6 +208,74 @@ pub struct CreateBackupMetadata {
     #[prost(message, optional, tag = "3")]
     pub progress: ::core::option::Option<OperationProgress>,
     /// The time at which cancellation of this operation was received.
+    /// \[Operations.CancelOperation][google.longrunning.Operations.CancelOperation\]
+    /// starts asynchronous cancellation on a long-running operation. The server
+    /// makes a best effort to cancel the operation, but success is not guaranteed.
+    /// Clients can use
+    /// \[Operations.GetOperation][google.longrunning.Operations.GetOperation\] or
+    /// other methods to check whether the cancellation succeeded or whether the
+    /// operation completed despite cancellation. On successful cancellation,
+    /// the operation is not deleted; instead, it becomes an operation with
+    /// an \[Operation.error][google.longrunning.Operation.error\] value with a
+    /// \[google.rpc.Status.code][google.rpc.Status.code\] of 1,
+    /// corresponding to `Code.CANCELLED`.
+    #[prost(message, optional, tag = "4")]
+    pub cancel_time: ::core::option::Option<::prost_types::Timestamp>,
+}
+/// The request for \[CopyBackup][google.spanner.admin.database.v1.DatabaseAdmin.CopyBackup\].
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CopyBackupRequest {
+    /// Required. The name of the destination instance that will contain the backup copy.
+    /// Values are of the form: `projects/<project>/instances/<instance>`.
+    #[prost(string, tag = "1")]
+    pub parent: ::prost::alloc::string::String,
+    /// Required. The id of the backup copy.
+    /// The `backup_id` appended to `parent` forms the full backup_uri of the form
+    /// `projects/<project>/instances/<instance>/backups/<backup>`.
+    #[prost(string, tag = "2")]
+    pub backup_id: ::prost::alloc::string::String,
+    /// Required. The source backup to be copied.
+    /// The source backup needs to be in READY state for it to be copied.
+    /// Once CopyBackup is in progress, the source backup cannot be deleted or
+    /// cleaned up on expiration until CopyBackup is finished.
+    /// Values are of the form:
+    /// `projects/<project>/instances/<instance>/backups/<backup>`.
+    #[prost(string, tag = "3")]
+    pub source_backup: ::prost::alloc::string::String,
+    /// Required. The expiration time of the backup in microsecond granularity.
+    /// The expiration time must be at least 6 hours and at most 366 days
+    /// from the `create_time` of the source backup. Once the `expire_time` has
+    /// passed, the backup is eligible to be automatically deleted by Cloud Spanner
+    /// to free the resources used by the backup.
+    #[prost(message, optional, tag = "4")]
+    pub expire_time: ::core::option::Option<::prost_types::Timestamp>,
+    /// Optional. The encryption configuration used to encrypt the backup. If this field is
+    /// not specified, the backup will use the same
+    /// encryption configuration as the source backup by default, namely
+    /// \[encryption_type][google.spanner.admin.database.v1.CopyBackupEncryptionConfig.encryption_type\] =
+    /// `USE_CONFIG_DEFAULT_OR_BACKUP_ENCRYPTION`.
+    #[prost(message, optional, tag = "5")]
+    pub encryption_config: ::core::option::Option<CopyBackupEncryptionConfig>,
+}
+/// Metadata type for the google.longrunning.Operation returned by
+/// \[CopyBackup][google.spanner.admin.database.v1.DatabaseAdmin.CopyBackup\].
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CopyBackupMetadata {
+    /// The name of the backup being created through the copy operation.
+    /// Values are of the form
+    /// `projects/<project>/instances/<instance>/backups/<backup>`.
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// The name of the source backup that is being copied.
+    /// Values are of the form
+    /// `projects/<project>/instances/<instance>/backups/<backup>`.
+    #[prost(string, tag = "2")]
+    pub source_backup: ::prost::alloc::string::String,
+    /// The progress of the
+    /// \[CopyBackup][google.spanner.admin.database.v1.DatabaseAdmin.CopyBackup\] operation.
+    #[prost(message, optional, tag = "3")]
+    pub progress: ::core::option::Option<OperationProgress>,
+    /// The time at which cancellation of CopyBackup operation was received.
     /// \[Operations.CancelOperation][google.longrunning.Operations.CancelOperation\]
     /// starts asynchronous cancellation on a long-running operation. The server
     /// makes a best effort to cancel the operation, but success is not guaranteed.
@@ -319,6 +418,8 @@ pub struct ListBackupOperationsRequest {
     ///      for \[CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata\] is
     ///      `type.googleapis.com/google.spanner.admin.database.v1.CreateBackupMetadata`.
     ///   * `metadata.<field_name>` - any field in metadata.value.
+    ///      `metadata.@type` must be specified first if filtering on metadata
+    ///      fields.
     ///   * `error` - Error associated with the long-running operation.
     ///   * `response.@type` - the type of response.
     ///   * `response.<field_name>` - any field in response.value.
@@ -330,8 +431,11 @@ pub struct ListBackupOperationsRequest {
     /// Here are a few examples:
     ///
     ///   * `done:true` - The operation is complete.
-    ///   * `metadata.database:prod` - The database the backup was taken from has
-    ///      a name containing the string "prod".
+    ///   * `(metadata.@type=type.googleapis.com/google.spanner.admin.database.v1.CreateBackupMetadata) AND` \
+    ///      `metadata.database:prod` - Returns operations where:
+    ///      * The operation's metadata type is \[CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata\].
+    ///      * The database the backup was taken from has a name containing the
+    ///      string "prod".
     ///   * `(metadata.@type=type.googleapis.com/google.spanner.admin.database.v1.CreateBackupMetadata) AND` \
     ///     `(metadata.name:howl) AND` \
     ///     `(metadata.progress.start_time < \"2018-03-28T14:50:00Z\") AND` \
@@ -339,6 +443,29 @@ pub struct ListBackupOperationsRequest {
     ///     * The operation's metadata type is \[CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata\].
     ///     * The backup name contains the string "howl".
     ///     * The operation started before 2018-03-28T14:50:00Z.
+    ///     * The operation resulted in an error.
+    ///   * `(metadata.@type=type.googleapis.com/google.spanner.admin.database.v1.CopyBackupMetadata) AND` \
+    ///     `(metadata.source_backup:test) AND` \
+    ///     `(metadata.progress.start_time < \"2022-01-18T14:50:00Z\") AND` \
+    ///     `(error:*)` - Returns operations where:
+    ///     * The operation's metadata type is \[CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata\].
+    ///     * The source backup of the copied backup name contains the string
+    ///     "test".
+    ///     * The operation started before 2022-01-18T14:50:00Z.
+    ///     * The operation resulted in an error.
+    ///   * `((metadata.@type=type.googleapis.com/google.spanner.admin.database.v1.CreateBackupMetadata) AND` \
+    ///     `(metadata.database:test_db)) OR` \
+    ///     `((metadata.@type=type.googleapis.com/google.spanner.admin.database.v1.CopyBackupMetadata)
+    ///     AND` \
+    ///     `(metadata.source_backup:test_bkp)) AND` \
+    ///     `(error:*)` - Returns operations where:
+    ///     * The operation's metadata matches either of criteria:
+    ///       * The operation's metadata type is \[CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata\] AND the
+    ///       database the backup was taken from has name containing string
+    ///       "test_db"
+    ///       * The operation's metadata type is \[CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata\] AND the
+    ///       backup the backup was copied from has name containing string
+    ///       "test_bkp"
     ///     * The operation resulted in an error.
     #[prost(string, tag = "2")]
     pub filter: ::prost::alloc::string::String,
@@ -359,11 +486,11 @@ pub struct ListBackupOperationsRequest {
 pub struct ListBackupOperationsResponse {
     /// The list of matching backup [long-running
     /// operations]\[google.longrunning.Operation\]. Each operation's name will be
-    /// prefixed by the backup's name and the operation's
-    /// \[metadata][google.longrunning.Operation.metadata\] will be of type
-    /// \[CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata\]. Operations returned include those that are
-    /// pending or have completed/failed/canceled within the last 7 days.
-    /// Operations returned are ordered by
+    /// prefixed by the backup's name. The operation's
+    /// \[metadata][google.longrunning.Operation.metadata\] field type
+    /// `metadata.type_url` describes the type of the metadata. Operations returned
+    /// include those that are pending or have completed/failed/canceled within the
+    /// last 7 days. Operations returned are ordered by
     /// `operation.metadata.value.progress.start_time` in descending order starting
     /// from the most recently started operation.
     #[prost(message, repeated, tag = "1")]
@@ -423,6 +550,40 @@ pub mod create_backup_encryption_config {
         /// For example, if the database is using `Customer_Managed_Encryption`, the
         /// backup will be using the same Cloud KMS key as the database.
         UseDatabaseEncryption = 1,
+        /// Use Google default encryption.
+        GoogleDefaultEncryption = 2,
+        /// Use customer managed encryption. If specified, `kms_key_name`
+        /// must contain a valid Cloud KMS key.
+        CustomerManagedEncryption = 3,
+    }
+}
+/// Encryption configuration for the copied backup.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CopyBackupEncryptionConfig {
+    /// Required. The encryption type of the backup.
+    #[prost(enumeration = "copy_backup_encryption_config::EncryptionType", tag = "1")]
+    pub encryption_type: i32,
+    /// Optional. The Cloud KMS key that will be used to protect the backup.
+    /// This field should be set only when
+    /// \[encryption_type][google.spanner.admin.database.v1.CopyBackupEncryptionConfig.encryption_type\] is
+    /// `CUSTOMER_MANAGED_ENCRYPTION`. Values are of the form
+    /// `projects/<project>/locations/<location>/keyRings/<key_ring>/cryptoKeys/<kms_key_name>`.
+    #[prost(string, tag = "2")]
+    pub kms_key_name: ::prost::alloc::string::String,
+}
+/// Nested message and enum types in `CopyBackupEncryptionConfig`.
+pub mod copy_backup_encryption_config {
+    /// Encryption types for the backup.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum EncryptionType {
+        /// Unspecified. Do not use.
+        Unspecified = 0,
+        /// This is the default option for \[CopyBackup][google.spanner.admin.database.v1.DatabaseAdmin.CopyBackup\]
+        /// when \[encryption_config][google.spanner.admin.database.v1.CopyBackupEncryptionConfig\] is not specified.
+        /// For example, if the source backup is using `Customer_Managed_Encryption`,
+        /// the backup will be using the same Cloud KMS key as the source backup.
+        UseConfigDefaultOrBackupEncryption = 1,
         /// Use Google default encryption.
         GoogleDefaultEncryption = 2,
         /// Use customer managed encryption. If specified, `kms_key_name`
@@ -510,6 +671,9 @@ pub struct Database {
     /// DatabaseAdmin.UpdateDatabaseDdl. If not explicitly set, this is empty.
     #[prost(string, tag = "9")]
     pub default_leader: ::prost::alloc::string::String,
+    /// Output only. The dialect of the Cloud Spanner Database.
+    #[prost(enumeration = "DatabaseDialect", tag = "10")]
+    pub database_dialect: i32,
 }
 /// Nested message and enum types in `Database`.
 pub mod database {
@@ -589,6 +753,9 @@ pub struct CreateDatabaseRequest {
     /// Google default encryption.
     #[prost(message, optional, tag = "4")]
     pub encryption_config: ::core::option::Option<EncryptionConfig>,
+    /// Optional. The dialect of the Cloud Spanner Database.
+    #[prost(enumeration = "DatabaseDialect", tag = "5")]
+    pub database_dialect: i32,
 }
 /// Metadata type for the operation returned by
 /// \[CreateDatabase][google.spanner.admin.database.v1.DatabaseAdmin.CreateDatabase\].
@@ -733,6 +900,8 @@ pub struct ListDatabaseOperationsRequest {
     ///      for \[RestoreDatabaseMetadata][google.spanner.admin.database.v1.RestoreDatabaseMetadata\] is
     ///      `type.googleapis.com/google.spanner.admin.database.v1.RestoreDatabaseMetadata`.
     ///   * `metadata.<field_name>` - any field in metadata.value.
+    ///      `metadata.@type` must be specified first, if filtering on metadata
+    ///      fields.
     ///   * `error` - Error associated with the long-running operation.
     ///   * `response.@type` - the type of response.
     ///   * `response.<field_name>` - any field in response.value.
@@ -943,10 +1112,11 @@ pub mod database_admin_client {
     use tonic::codegen::*;
     #[doc = " Cloud Spanner Database Admin API"]
     #[doc = ""]
-    #[doc = " The Cloud Spanner Database Admin API can be used to create, drop, and"]
-    #[doc = " list databases. It also enables updating the schema of pre-existing"]
-    #[doc = " databases. It can be also used to create, delete and list backups for a"]
-    #[doc = " database and to restore from an existing backup."]
+    #[doc = " The Cloud Spanner Database Admin API can be used to:"]
+    #[doc = "   * create, drop, and list databases"]
+    #[doc = "   * update the schema of pre-existing databases"]
+    #[doc = "   * create, delete and list backups for a database"]
+    #[doc = "   * restore a database from an existing backup"]
     #[derive(Debug, Clone)]
     pub struct DatabaseAdminClient<T> {
         inner: tonic::client::Grpc<T>,
@@ -1066,6 +1236,8 @@ pub mod database_admin_client {
         #[doc = " Drops (aka deletes) a Cloud Spanner database."]
         #[doc = " Completed backups for the database will be retained according to their"]
         #[doc = " `expire_time`."]
+        #[doc = " Note: Cloud Spanner might continue to accept requests for a few seconds"]
+        #[doc = " after the database has been deleted."]
         pub async fn drop_database(
             &mut self,
             request: impl tonic::IntoRequest<super::DropDatabaseRequest>,
@@ -1180,6 +1352,30 @@ pub mod database_admin_client {
             let codec = tonic::codec::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/CreateBackup");
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        #[doc = " Starts copying a Cloud Spanner Backup."]
+        #[doc = " The returned backup [long-running operation][google.longrunning.Operation]"]
+        #[doc = " will have a name of the format"]
+        #[doc = " `projects/<project>/instances/<instance>/backups/<backup>/operations/<operation_id>`"]
+        #[doc = " and can be used to track copying of the backup. The operation is associated"]
+        #[doc = " with the destination backup."]
+        #[doc = " The [metadata][google.longrunning.Operation.metadata] field type is"]
+        #[doc = " [CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata]."]
+        #[doc = " The [response][google.longrunning.Operation.response] field type is"]
+        #[doc = " [Backup][google.spanner.admin.database.v1.Backup], if successful. Cancelling the returned operation will stop the"]
+        #[doc = " copying and delete the backup."]
+        #[doc = " Concurrent CopyBackup requests can run on the same source backup."]
+        pub async fn copy_backup(
+            &mut self,
+            request: impl tonic::IntoRequest<super::CopyBackupRequest>,
+        ) -> Result<tonic::Response<super::super::super::super::super::longrunning::Operation>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/CopyBackup");
             self.inner.unary(request.into_request(), path, codec).await
         }
         #[doc = " Gets metadata on a pending or completed [Backup][google.spanner.admin.database.v1.Backup]."]

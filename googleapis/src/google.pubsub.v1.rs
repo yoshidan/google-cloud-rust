@@ -667,6 +667,19 @@ pub struct Subscription {
     /// the endpoint will not be made.
     #[prost(bool, tag = "15")]
     pub detached: bool,
+    /// If true, Pub/Sub provides the following guarantees for the delivery of
+    /// a message with a given value of `message_id` on this subscription:
+    ///
+    /// * The message sent to a subscriber is guaranteed not to be resent
+    /// before the message's acknowledgement deadline expires.
+    /// * An acknowledged message will not be resent to a subscriber.
+    ///
+    /// Note that subscribers may still receive multiple copies of a message
+    /// when `enable_exactly_once_delivery` is true if the message was published
+    /// multiple times by a publisher client. These copies are  considered distinct
+    /// by Pub/Sub and have distinct `message_id` values.
+    #[prost(bool, tag = "16")]
+    pub enable_exactly_once_delivery: bool,
     /// Output only. Indicates the minimum duration for which a message is retained
     /// after it is published to the subscription's topic. If this field is set,
     /// messages published to the subscription's topic in the last
@@ -1067,15 +1080,54 @@ pub struct StreamingPullResponse {
     /// Received Pub/Sub messages. This will not be empty.
     #[prost(message, repeated, tag = "1")]
     pub received_messages: ::prost::alloc::vec::Vec<ReceivedMessage>,
+    /// This field will only be set if `enable_exactly_once_delivery` is set to
+    /// `true`.
+    #[prost(message, optional, tag = "5")]
+    pub acknowledge_confirmation: ::core::option::Option<streaming_pull_response::AcknowledgeConfirmation>,
+    /// This field will only be set if `enable_exactly_once_delivery` is set to
+    /// `true`.
+    #[prost(message, optional, tag = "3")]
+    pub modify_ack_deadline_confirmation:
+        ::core::option::Option<streaming_pull_response::ModifyAckDeadlineConfirmation>,
     /// Properties associated with this subscription.
     #[prost(message, optional, tag = "4")]
     pub subscription_properties: ::core::option::Option<streaming_pull_response::SubscriptionProperties>,
 }
 /// Nested message and enum types in `StreamingPullResponse`.
 pub mod streaming_pull_response {
+    /// Acknowledgement IDs sent in one or more previous requests to acknowledge a
+    /// previously received message.
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct AcknowledgeConfirmation {
+        /// Successfully processed acknowledgement IDs.
+        #[prost(string, repeated, tag = "1")]
+        pub ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+        /// List of acknowledgement IDs that were malformed or whose acknowledgement
+        /// deadline has expired.
+        #[prost(string, repeated, tag = "2")]
+        pub invalid_ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+        /// List of acknowledgement IDs that were out of order.
+        #[prost(string, repeated, tag = "3")]
+        pub unordered_ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    }
+    /// Acknowledgement IDs sent in one or more previous requests to modify the
+    /// deadline for a specific message.
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct ModifyAckDeadlineConfirmation {
+        /// Successfully processed acknowledgement IDs.
+        #[prost(string, repeated, tag = "1")]
+        pub ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+        /// List of acknowledgement IDs that were malformed or whose acknowledgement
+        /// deadline has expired.
+        #[prost(string, repeated, tag = "2")]
+        pub invalid_ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    }
     /// Subscription properties sent as part of the response.
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct SubscriptionProperties {
+        /// True iff exactly once delivery is enabled for this subscription.
+        #[prost(bool, tag = "1")]
+        pub exactly_once_delivery_enabled: bool,
         /// True iff message ordering is enabled for this subscription.
         #[prost(bool, tag = "2")]
         pub message_ordering_enabled: bool,

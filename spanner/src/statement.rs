@@ -6,7 +6,7 @@ use prost_types::value::Kind::StringValue;
 use prost_types::{value, ListValue, Struct, Value};
 
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
-use google_cloud_googleapis::spanner::v1::{StructType, Type, TypeCode};
+use google_cloud_googleapis::spanner::v1::{StructType, Type, TypeAnnotationCode, TypeCode};
 
 use crate::value::{CommitTimestamp, SpannerNumeric};
 use std::fmt::Display;
@@ -64,6 +64,8 @@ where
         code: code.into(),
         array_element_type: None,
         struct_type: None,
+        //TODO support PG Numeric
+        type_annotation: TypeAnnotationCode::Unspecified.into(),
     }
 }
 
@@ -217,6 +219,7 @@ where
         Type {
             code: TypeCode::Struct.into(),
             array_element_type: None,
+            type_annotation: TypeAnnotationCode::Unspecified.into(),
             struct_type: Some(StructType {
                 fields: T::get_types()
                     .into_iter()
@@ -264,6 +267,7 @@ where
             code: TypeCode::Array.into(),
             array_element_type: Some(Box::new(T::get_type())),
             struct_type: None,
+            type_annotation: TypeAnnotationCode::Unspecified.into(),
         }
     }
 }

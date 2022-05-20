@@ -49,6 +49,9 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
       - uses: actions-rs/cargo@v1
         name: test
         with:
@@ -90,6 +93,9 @@ jobs:
           SPANNER_INSTANCE_ID: test-instance
           SPANNER_DATABASE_ID: local-database
           SPANNER_EMULATOR_HOST: 172.17.0.1:9010
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
       - uses: actions-rs/cargo@v1
         name: test
         with:
@@ -97,3 +103,28 @@ jobs:
           args: --release --all-features --manifest-path spanner/Cargo.toml
         env:
           SPANNER_EMULATOR_HOST: localhost:9010
+  storage:
+    name: storage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v0.6.0
+        with:
+          service_account_key: ${{ secrets.STORAGE_CREDENTIALS }}
+          export_default_credentials: true
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: actions-rs/cargo@v1
+        name: test
+        with:
+          command: test
+          args: --release --all-features --manifest-path storage/Cargo.toml

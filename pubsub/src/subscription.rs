@@ -16,6 +16,7 @@ use google_cloud_googleapis::pubsub::v1::{
 
 use crate::subscriber::{ReceivedMessage, Subscriber, SubscriberConfig};
 
+#[derive(Default)]
 pub struct SubscriptionConfig {
     pub push_config: Option<PushConfig>,
     pub ack_deadline_seconds: i32,
@@ -29,25 +30,7 @@ pub struct SubscriptionConfig {
     pub retry_policy: Option<RetryPolicy>,
     pub detached: bool,
     pub topic_message_retention_duration: Option<Duration>,
-}
-
-impl Default for SubscriptionConfig {
-    fn default() -> Self {
-        Self {
-            push_config: None,
-            ack_deadline_seconds: 0,
-            retain_acked_messages: false,
-            message_retention_duration: None,
-            labels: Default::default(),
-            enable_message_ordering: false,
-            expiration_policy: None,
-            filter: "".to_string(),
-            dead_letter_policy: None,
-            retry_policy: None,
-            detached: false,
-            topic_message_retention_duration: None,
-        }
-    }
+    pub enable_exactly_once_delivery: bool,
 }
 
 impl Into<SubscriptionConfig> for InternalSubscription {
@@ -69,6 +52,7 @@ impl Into<SubscriptionConfig> for InternalSubscription {
             topic_message_retention_duration: self
                 .topic_message_retention_duration
                 .map(|v| std::time::Duration::new(v.seconds as u64, v.nanos as u32)),
+            enable_exactly_once_delivery: self.enable_exactly_once_delivery,
         }
     }
 }
@@ -161,6 +145,7 @@ impl Subscription {
                     message_retention_duration: cfg.message_retention_duration.map(|v| v.into()),
                     retain_acked_messages: cfg.retain_acked_messages,
                     topic_message_retention_duration: cfg.topic_message_retention_duration.map(|v| v.into()),
+                    enable_exactly_once_delivery: cfg.enable_exactly_once_delivery,
                 },
                 cancel,
                 retry,

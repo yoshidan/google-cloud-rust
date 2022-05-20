@@ -15,7 +15,7 @@ pub(crate) struct Format {
 
 #[derive(Deserialize)]
 #[allow(dead_code)]
-pub(crate) struct CredentialSource {
+pub struct CredentialSource {
     file: String,
     url: String,
     headers: std::collections::HashMap<String, String>,
@@ -28,7 +28,7 @@ pub(crate) struct CredentialSource {
 
 #[derive(Deserialize)]
 #[allow(dead_code)]
-pub(crate) struct CredentialsFile {
+pub struct CredentialsFile {
     #[serde(rename(deserialize = "type"))]
     pub tp: String,
 
@@ -58,7 +58,7 @@ pub(crate) struct CredentialsFile {
 
 #[derive(Deserialize)]
 #[allow(dead_code)]
-struct Credentials {
+pub struct Credentials {
     client_id: String,
     client_secret: String,
     redirect_urls: Vec<String>,
@@ -67,7 +67,7 @@ struct Credentials {
 }
 
 impl CredentialsFile {
-    pub(crate) async fn new() -> Result<Self, Error> {
+    pub async fn new() -> Result<Self, Error> {
         let path = match std::env::var("GOOGLE_APPLICATION_CREDENTIALS") {
             Ok(s) => Ok(std::path::Path::new(s.as_str()).to_path_buf()),
             Err(_e) => {
