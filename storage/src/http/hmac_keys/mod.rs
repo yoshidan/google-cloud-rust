@@ -5,7 +5,7 @@ pub mod list;
 pub mod update;
 
 /// Hmac Key Metadata, which includes all information other than the secret.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct HmacKeyMetadata {
     /// Resource name ID of the key in the format <projectId>/<accessId>.

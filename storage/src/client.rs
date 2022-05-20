@@ -1,4 +1,4 @@
-use crate::http;
+use crate::http::storage_client;
 use crate::http::storage_client::StorageClient;
 use google_cloud_auth::credentials::CredentialsFile;
 use google_cloud_auth::{create_token_source_from_credentials, Config};
@@ -37,7 +37,7 @@ impl Client {
             cred,
             Config {
                 audience: None,
-                scopes: Some(&http::storage_client::SCOPES),
+                scopes: Some(&storage_client::SCOPES),
             },
         )
         .await?;
@@ -88,12 +88,15 @@ impl Client {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::sign::{SignedURLOptions, SignedURLMethod};
     ///
-    /// let client = Client::new().await?;
-    /// let url_for_download = client.signed_url("bucket", "file.txt", SignedURLOptions::default()).await?;
-    /// let url_for_upload = client.signed_url("bucket", "file.txt", SignedURLOptions {
-    ///     method: SignedURLMethod::PUT,
-    ///     ..Default::default()
-    /// }).await?;
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let client = Client::new().await.unwrap();
+    ///     let url_for_download = client.signed_url("bucket", "file.txt", SignedURLOptions::default()).await;
+    ///     let url_for_upload = client.signed_url("bucket", "file.txt", SignedURLOptions {
+    ///         method: SignedURLMethod::PUT,
+    ///         ..Default::default()
+    ///     }).await;
+    /// }
     /// ```
     pub async fn signed_url(
         &self,

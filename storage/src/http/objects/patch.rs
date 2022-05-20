@@ -6,7 +6,7 @@ use crate::http::{Escape, BASE_URL};
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for PatchObject.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct PatchObjectRequest {
     /// Required. Name of the bucket in which the object resides.

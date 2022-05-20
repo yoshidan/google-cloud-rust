@@ -242,7 +242,7 @@ fn signed_url_v4(
     opts: &SignedURLOptions,
     now: DateTime<Utc>,
 ) -> Result<String, SignedURLError> {
-    /// create base url
+    // create base url
     let host = opts.style.host(bucket).to_string();
     let mut builder = {
         let url = if opts.insecure {
@@ -253,7 +253,7 @@ fn signed_url_v4(
         url::Url::parse(&url)
     }?;
 
-    /// create signed headers
+    // create signed headers
     let signed_headers = {
         let mut header_names = extract_header_names(&opts.headers);
         header_names.push("host");
@@ -274,7 +274,7 @@ fn signed_url_v4(
         .replace(":", "");
     let credential_scope = format!("{}/auto/storage/goog4_request", now.format("%Y%m%d"));
 
-    /// append query parameters
+    // append query parameters
     {
         let mut query = builder.query_pairs_mut();
         query.append_pair("X-Goog-Algorithm", "GOOG4-RSA-SHA256");
@@ -291,7 +291,7 @@ fn signed_url_v4(
     let escaped_query = builder.query().unwrap().replace("+", "%20");
     tracing::trace!("escaped_query={}", escaped_query);
 
-    /// create header with value
+    // create header with value
     let header_with_value = {
         let mut header_with_value = vec![format!("host:{}", host)];
         header_with_value.extend_from_slice(&opts.headers);
@@ -307,7 +307,7 @@ fn signed_url_v4(
     let path = opts.style.path(bucket, name);
     builder.set_path(&path);
 
-    /// create raw buffer
+    // create raw buffer
     let buffer = {
         let mut buffer = format!(
             "{}\n{}\n{}\n{}\n\n{}\n",
@@ -319,8 +319,8 @@ fn signed_url_v4(
         )
         .into_bytes();
 
-        /// If the user provides a value for X-Goog-Content-SHA256, we must use
-        /// that value in the request string. If not, we use UNSIGNED-PAYLOAD.
+        // If the user provides a value for X-Goog-Content-SHA256, we must use
+        // that value in the request string. If not, we use UNSIGNED-PAYLOAD.
         let sha256_header = header_with_value
             .iter()
             .find(|h| {
@@ -339,7 +339,7 @@ fn signed_url_v4(
     };
     tracing::trace!("raw_buffer={:?}", String::from_utf8_lossy(&buffer));
 
-    /// create signed buffer
+    // create signed buffer
     let signed_buffer = {
         let hex_digest = hex::encode(Sha256::digest(buffer));
         let mut signed_buffer: Vec<u8> = vec![];
@@ -351,7 +351,7 @@ fn signed_url_v4(
     };
     tracing::trace!("signed_buffer={:?}", String::from_utf8_lossy(&signed_buffer));
 
-    /// create signature
+    // create signature
     let signature = match &opts.sign_by {
         SignBy::PrivateKey(private_key) => {
             let str = String::from_utf8_lossy(private_key);

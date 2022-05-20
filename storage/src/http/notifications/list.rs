@@ -4,7 +4,7 @@ use crate::http::{Escape, BASE_URL};
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for GetNotification.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ListNotificationsRequest {
     /// Required. The parent bucket of the notification.
