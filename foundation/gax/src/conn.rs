@@ -13,6 +13,7 @@ use tonic::{Code, Status};
 use tower::filter::{AsyncFilter, AsyncFilterLayer, AsyncPredicate};
 use tower::util::Either;
 use tower::{BoxError, ServiceBuilder};
+use google_cloud_auth::credentials::{Credentials, CredentialsFile};
 
 const TLS_CERTS: &[u8] = include_bytes!("roots.pem");
 
@@ -75,7 +76,10 @@ impl ConnectionManager {
         emulator_host: Option<String>,
     ) -> Result<Self, Error> {
         let conns = match emulator_host {
-            None => Self::create_connections(pool_size, domain_name, audience, scopes).await?,
+            None => {
+                CredentialsFile::new()
+                Self::create_connections(pool_size, domain_name, audience, scopes).await?
+            },
             Some(host) => Self::create_emulator_connections(&host).await?,
         };
         Ok(Self {

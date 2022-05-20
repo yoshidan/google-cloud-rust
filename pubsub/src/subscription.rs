@@ -384,7 +384,7 @@ mod tests {
         tracing_subscriber::fmt().try_init();
     }
 
-    async fn create_subscription() -> Result<Subscription, anyhow::Error> {
+    async fn create_subscription(enable_exactly_once_delivery: bool) -> Result<Subscription, anyhow::Error> {
         let cm = ConnectionManager::new(4, EMULATOR.map(|v| v.to_string())).await?;
         let client = SubscriberClient::new(cm);
 
@@ -393,9 +393,13 @@ mod tests {
         let topic_name = format!("projects/{}/topics/test-topic1", PROJECT_NAME);
         let cancel = CancellationToken::new();
         let subscription = Subscription::new(subscription_name, client);
+        let config = SubscriptionConfig {
+            enable_exactly_once_delivery,
+            ..Default::default()
+        };
         if !subscription.exists(Some(cancel.clone()), None).await? {
             subscription
-                .create(topic_name.as_str(), SubscriptionConfig::default(), Some(cancel), None)
+                .create(topic_name.as_str(), config, Some(cancel), None)
                 .await?;
         }
         return Ok(subscription);
@@ -416,10 +420,8 @@ mod tests {
         pubc.publish(req, Some(CancellationToken::new()), None).await;
     }
 
-    #[tokio::test]
-    #[serial]
-    async fn test_subscription() -> Result<(), anyhow::Error> {
-        let subscription = create_subscription().await.unwrap();
+    async fn test_subscription(enable_exactly_once_delivery: bool) -> Result<(), anyhow::Error> {
+        let subscription = create_subscription(enable_exactly_once_delivery).await.unwrap();
 
         let topic_name = format!("projects/{}/topics/test-topic1", PROJECT_NAME);
         let cancel = CancellationToken::new();
@@ -457,7 +459,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_pull() -> Result<(), anyhow::Error> {
-        let subscription = create_subscription().await.unwrap();
+        let subscription = create_subscription(false).await.unwrap();
         publish().await;
         publish().await;
         publish().await;
@@ -473,7 +475,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_pull_cancel() -> Result<(), anyhow::Error> {
-        let subscription = create_subscription().await.unwrap();
+        let subscription = create_subscription(false).await.unwrap();
         let cancel = CancellationToken::new();
         let cancel2 = cancel.clone();
         let j = tokio::spawn(async move {
@@ -492,10 +494,22 @@ mod tests {
         Ok(())
     }
 
+    #[tokio::test]
+    #[serial]
+    async fn test_subscription_at_least_once() -> Result<(), anyhow::Error> {
+        test_subscription(true).await
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_subscription_at_least_once() -> Result<(), anyhow::Error> {
+        test_subscription(false).await
+    }
+
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_multi_subscriber_single_subscription() -> Result<(), anyhow::Error> {
-        let subscription = create_subscription().await.unwrap();
+        let subscription = create_subscription(false).await.unwrap();
         let cancellation_token = CancellationToken::new();
         let cancel_receiver = cancellation_token.clone();
         let v = Arc::new(AtomicU32::new(0));
@@ -530,7 +544,7 @@ mod tests {
 
         let ctx = CancellationToken::new();
         for _ in 0..3 {
-            let subscription = create_subscription().await?;
+            let subscription = create_subscription(false).await?;
             let v = Arc::new(AtomicU32::new(0));
             let ctx = ctx.clone();
             let v2 = v.clone();

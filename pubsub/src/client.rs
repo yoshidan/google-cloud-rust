@@ -32,9 +32,7 @@ pub struct Client {
 }
 
 impl Client {
-    /// new creates a client to a database. A valid database name has the
-    /// form projects/PROJECT_ID/instances/INSTANCE_ID/databases/DATABASE_ID. It uses
-    /// a default configuration.
+    /// new creates a Pub/Sub client.
     pub async fn new(project_id: &str, config: Option<ClientConfig>) -> Result<Self, Error> {
         let pool_size = config.unwrap_or_default().pool_size;
         let emulator_host = match std::env::var("PUBSUB_EMULATOR_HOST") {
