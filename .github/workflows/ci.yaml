@@ -20,9 +20,10 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: check path
+        run: ls -ltr storage
       - uses: actions-rs/cargo@v1
         name: test
         with:
-          working-directory: storage
           command: test
           args: --release --all-features --manifest-path Cargo.toml
