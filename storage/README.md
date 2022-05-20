@@ -37,14 +37,14 @@ async fn main() -> Result<(), Error> {
         bucket: "bucket".to_string(),
         name: "file.png".to_string(),
         ..Default::default()
-    }, "hello world".as_bytes(), "application/octet-stream", None).await?;
+    }, "hello world".as_bytes(), "application/octet-stream", None).await;
 
     // Download the file
     let data = client.download_object(&GetObjectRequest {
         bucket: "bucket".to_string(),
         object: "file.png".to_string(),
         ..Default::default()
-   }, None).await?;
+   }, None).await;
 
     // Create signed url.
     let url_for_download = client.signed_url("bucket", "foo.txt", SignedURLOptions::default());
