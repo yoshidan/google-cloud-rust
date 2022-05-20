@@ -444,7 +444,6 @@ mod test {
         opts.google_access_id = file.client_email.unwrap();
         opts.expires = Duration::from_secs(3600);
         let url = signed_url("rust-bucket-test", "test.html", opts).unwrap();
-        tracing::info!("signed_url={}", url);
         assert!(url.starts_with("https://storage.googleapis.com/rust-bucket-test/test.html"));
     }
 }

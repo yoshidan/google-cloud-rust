@@ -182,7 +182,7 @@ mod test {
                 }),
                 public_access_prevention: Some(PublicAccessPrevention::Enforced),
             }),
-            billing: Some(Billing { requester_pays: true }),
+            billing: Some(Billing { requester_pays: false }),
             retention_policy: Some(RetentionPolicyCreationConfig {
                 retention_period: 10000,
             }),
