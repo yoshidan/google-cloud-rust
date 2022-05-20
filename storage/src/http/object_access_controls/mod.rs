@@ -14,7 +14,9 @@ pub struct ObjectAccessControl {
     pub entity: String,
     pub entity_id: Option<String>,
     pub etag: String,
-    pub generation: i64,
+    #[serde(deserialize_with = "crate::http::from_str_option")]
+    #[serde(default)]
+    pub generation: Option<i64>,
     pub id: Option<String>,
     pub kind: String,
     pub object: Option<String>,

@@ -10,9 +10,10 @@ pub mod objects;
 pub mod storage_client;
 
 use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
-use serde::{de, Deserialize};
+use serde::{de, Deserialize, Deserializer};
 use std::fmt::Display;
 use std::str::FromStr;
+use serde_json::Value;
 pub use tokio_util::sync::CancellationToken;
 
 //TODO emulator support
@@ -25,6 +26,8 @@ pub enum Error {
     Response(u16, String),
     #[error(transparent)]
     HttpClient(#[from] reqwest::Error),
+    #[error(transparent)]
+    ResponseJson(#[from] serde_json::Error),
     #[error(transparent)]
     AuthError(#[from] google_cloud_auth::error::Error),
     #[error("operation cancelled")]
@@ -42,6 +45,30 @@ impl Escape for String {
 }
 
 const ENCODE_SET: &AsciiSet = &NON_ALPHANUMERIC.remove(b'*').remove(b'-').remove(b'.').remove(b'_');
+
+
+fn default_option_i64() -> Option<i64> {
+    None
+}
+
+fn from_str_option<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
+    where
+        T: FromStr,
+        T::Err: Display,
+        D: Deserializer<'de>,
+{
+    let s: Result<Value, _> = Deserialize::deserialize(deserializer);
+    match s {
+        Ok(Value::String(s)) => T::from_str(&s)
+            .map_err(de::Error::custom)
+            .map(Some),
+        Ok(Value::Number(num)) => T::from_str(&num.to_string())
+            .map_err(de::Error::custom)
+            .map(Some),
+        Ok(_) => Err(de::Error::custom("Incorrect type")),
+        Err(_) => Ok(None),
+    }
+}
 
 pub fn from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
 where

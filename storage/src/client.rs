@@ -213,17 +213,18 @@ mod test {
             ..Default::default()
         };
 
+        let client = Client::new().await.unwrap();
         let bucket_name = format!("rust-test-{}", chrono::Utc::now().timestamp());
         let req = InsertBucketRequest {
             name: bucket_name.clone(),
             param: InsertBucketParam {
+                project: client.project_id().to_string(),
                 predefined_acl: Some(PredefinedBucketAcl::PublicRead),
                 ..Default::default()
             },
             bucket: config,
             ..Default::default()
         };
-        let client = Client::new().await.unwrap();
         let result = client.insert_bucket(&req, None).await.unwrap();
         client
             .delete_bucket(

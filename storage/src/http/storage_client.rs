@@ -1245,9 +1245,9 @@ impl StorageClient {
         let request = self.with_headers(builder).await?;
         let response = request.send().await?;
         if response.status().is_success() {
-            let text = response.text().await?;
-            tracing::trace!("response={}", text);
-            Ok(serde_json::from_str(&text).unwrap())
+            let full = response.bytes().await?;
+            tracing::trace!("response={:?}", &full);
+            Ok(serde_json::from_slice(&full)?)
         } else {
             Err(map_error(response).await)
         }
