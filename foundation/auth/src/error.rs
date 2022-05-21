@@ -9,6 +9,15 @@ pub enum Error {
     #[error("refresh token is required for user account credentials")]
     RefreshTokenIsRequired,
 
+    #[error("json error: {0}")]
+    JsonError(#[from] json::Error),
+
+    #[error("jwt error: {0}")]
+    JwtError(#[from] jwt::errors::Error),
+
+    #[error("http error")]
+    HttpError(#[from] reqwest::Error),
+
     #[error("GOOGLE_APPLICATION_CREDENTIALS or default credentials is required: {0}")]
     CredentialsIOError(#[from] std::io::Error),
 
@@ -26,7 +35,4 @@ pub enum Error {
 
     #[error("No Credentials File Found")]
     NoCredentialsFileFound,
-
-    #[error(transparent)]
-    Other(#[from] anyhow::Error),
 }

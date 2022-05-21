@@ -3,7 +3,6 @@ use crate::error::Error;
 use crate::misc::UnwrapOrEmpty;
 use crate::token::{Token, TOKEN_URL};
 use crate::token_source::{default_http_client, InternalToken, TokenSource};
-use anyhow::Context;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
@@ -21,7 +20,7 @@ impl Claims<'_> {
     fn token(&self, pk: &jwt::EncodingKey, pk_id: &str) -> Result<String, Error> {
         let mut header = jwt::Header::new(jwt::Algorithm::RS256);
         header.kid = Some(pk_id.to_string());
-        let v = jwt::encode(&header, self, pk).context("jwt encoding error")?;
+        let v = jwt::encode(&header, self, pk)?;
         Ok(v)
     }
 }
@@ -138,11 +137,9 @@ impl TokenSource for OAuth2ServiceAccountTokenSource {
             .post(self.token_url.as_str())
             .form(&form)
             .send()
-            .await
-            .context("request OAuth2ServiceAccountTokenSource")?
+            .await?
             .json::<InternalToken>()
-            .await
-            .context("response OAuth2ServiceAccountTokenSource")?;
+            .await?;
         return Ok(it.to_token(iat));
     }
 }

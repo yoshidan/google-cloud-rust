@@ -4,7 +4,6 @@ use crate::misc::{UnwrapOrEmpty, EMPTY};
 use crate::token::{Token, TOKEN_URL};
 use crate::token_source::TokenSource;
 use crate::token_source::{default_http_client, InternalToken};
-use anyhow::Context;
 use async_trait::async_trait;
 use reqwest::{Method, Request};
 
@@ -62,11 +61,9 @@ impl TokenSource for UserAccountTokenSource {
             .put(self.token_url.to_string())
             .json(&data)
             .send()
-            .await
-            .context("request UserAccountTokenSource")?
+            .await?
             .json::<InternalToken>()
-            .await
-            .context("response UserAccountTokenSource")?;
+            .await?;
 
         return Ok(it.to_token(chrono::Utc::now()));
     }

@@ -2,11 +2,8 @@ use crate::error::Error;
 use crate::token::Token;
 use crate::token_source::InternalToken;
 use crate::token_source::{default_http_client, TokenSource};
-use anyhow::Context;
 use async_trait::async_trait;
-use google_cloud_metadata::{
-    default_http_connector, METADATA_FLAVOR_KEY, METADATA_GOOGLE, METADATA_HOST_ENV, METADATA_IP,
-};
+use google_cloud_metadata::{METADATA_FLAVOR_KEY, METADATA_GOOGLE, METADATA_HOST_ENV, METADATA_IP};
 use urlencoding::encode;
 
 pub struct ComputeTokenSource {
@@ -40,11 +37,9 @@ impl TokenSource for ComputeTokenSource {
             .get(self.token_url.to_string())
             .header(METADATA_FLAVOR_KEY, METADATA_GOOGLE)
             .send()
-            .await
-            .context("request ComputeTokenSource")?
+            .await?
             .json::<InternalToken>()
-            .await
-            .context("response ComputeTokenSource")?;
+            .await?;
         return Ok(it.to_token(chrono::Utc::now()));
     }
 }

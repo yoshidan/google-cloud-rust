@@ -1,5 +1,4 @@
 use crate::error::Error;
-use anyhow::Context;
 use serde::Deserialize;
 use tokio::fs;
 
@@ -88,14 +87,13 @@ impl CredentialsFile {
         }?;
 
         let credentials_json = fs::read(path).await?;
-        let credentials = json::from_slice(credentials_json.as_slice()).context("deserialize error")?;
 
-        return Ok(credentials);
+        return Ok(json::from_slice(credentials_json.as_slice())?);
     }
 
     pub(crate) fn try_to_private_key(&self) -> Result<jwt::EncodingKey, Error> {
         match self.private_key.as_ref() {
-            Some(key) => Ok(jwt::EncodingKey::from_rsa_pem(key.as_bytes()).context("jwt error")?),
+            Some(key) => Ok(jwt::EncodingKey::from_rsa_pem(key.as_bytes())?),
             None => Err(Error::NoPrivateKeyFound),
         }
     }
