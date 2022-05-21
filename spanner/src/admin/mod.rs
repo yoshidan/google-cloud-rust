@@ -1,5 +1,5 @@
 use crate::{AUDIENCE, SPANNER};
-use google_cloud_gax::conn::{Channel, ConnectionManager, Error};
+use google_cloud_gax::conn::{Channel, ConnectionManager, Environment, Error};
 use google_cloud_gax::grpc::Code;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_longrunning::autogen::operations_client::OperationsClient;
@@ -24,11 +24,11 @@ pub fn default_retry_setting() -> RetrySetting {
 }
 
 pub async fn default_internal_client() -> Result<(Channel, OperationsClient), Error> {
-    let emulator_host = match std::env::var("SPANNER_EMULATOR_HOST") {
-        Ok(s) => Some(s),
-        Err(_) => None,
+    let environment = match std::env::var("SPANNER_EMULATOR_HOST") {
+        Ok(s) => Environment::Emulator(s),
+        Err(_) => Environment::GoogleCloud(google_cloud_auth::project().await?),
     };
-    let conn_pool = ConnectionManager::new(1, SPANNER, AUDIENCE, Some(&SCOPES), emulator_host).await?;
+    let conn_pool = ConnectionManager::new(1, SPANNER, AUDIENCE, Some(&SCOPES), &environment).await?;
     let conn = conn_pool.conn();
     let lro_client = OperationsClient::new(conn).await?;
     Ok((conn_pool.conn(), lro_client))
