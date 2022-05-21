@@ -217,7 +217,7 @@ mod tests {
     use std::thread;
     use std::time::Duration;
 
-    use crate::client::{Client};
+    use crate::client::Client;
     use google_cloud_gax::cancel::CancellationToken;
     use uuid::Uuid;
 

@@ -620,11 +620,11 @@ mod tests {
     use serial_test::serial;
 
     use google_cloud_gax::cancel::CancellationToken;
+    use google_cloud_gax::conn::Environment;
     use std::sync::atomic::{AtomicI64, Ordering};
     use std::sync::Arc;
     use std::time::Instant;
     use tokio::time::{sleep, Duration};
-    use google_cloud_gax::conn::Environment;
 
     pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 

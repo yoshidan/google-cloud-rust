@@ -5,7 +5,7 @@ pub mod token;
 pub mod token_source;
 
 use crate::credentials::CredentialsFile;
-use crate::misc::{EMPTY};
+use crate::misc::EMPTY;
 use crate::token_source::authorized_user_token_source::UserAccountTokenSource;
 use crate::token_source::compute_token_source::ComputeTokenSource;
 use crate::token_source::reuse_token_source::ReuseTokenSource;
