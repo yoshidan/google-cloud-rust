@@ -373,11 +373,12 @@ mod tests {
     use std::sync::atomic::Ordering::SeqCst;
     use std::sync::Arc;
 
+    use google_cloud_gax::conn::Environment;
     use std::time::Duration;
     use uuid::Uuid;
 
     const PROJECT_NAME: &str = "local-project";
-    const EMULATOR: Option<&str> = Some("localhost:8681");
+    const EMULATOR: &str = "localhost:8681";
 
     #[ctor::ctor]
     fn init() {
@@ -385,7 +386,7 @@ mod tests {
     }
 
     async fn create_subscription(enable_exactly_once_delivery: bool) -> Result<Subscription, anyhow::Error> {
-        let cm = ConnectionManager::new(4, EMULATOR.map(|v| v.to_string())).await?;
+        let cm = ConnectionManager::new(4, &Environment::Emulator(EMULATOR.to_string())).await?;
         let client = SubscriberClient::new(cm);
 
         let uuid = Uuid::new_v4().to_hyphenated().to_string();
@@ -407,7 +408,7 @@ mod tests {
 
     async fn publish() {
         let pubc = PublisherClient::new(
-            ConnectionManager::new(4, EMULATOR.map(|v| v.to_string()))
+            ConnectionManager::new(4, &Environment::Emulator(EMULATOR.to_string()))
                 .await
                 .unwrap(),
         );
@@ -496,7 +497,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_subscription_at_least_once() -> Result<(), anyhow::Error> {
+    async fn test_subscription_exactly_once() -> Result<(), anyhow::Error> {
         test_subscription(true).await
     }
 

@@ -1,4 +1,4 @@
-use google_cloud_gax::conn::Channel;
+use google_cloud_gax::conn::{Channel, Environment};
 use google_cloud_gax::conn::{ConnectionManager as GRPCConnectionManager, Error};
 
 pub const AUDIENCE: &str = "https://pubsub.googleapis.com/";
@@ -13,9 +13,9 @@ pub struct ConnectionManager {
 }
 
 impl ConnectionManager {
-    pub async fn new(pool_size: usize, emulator_host: Option<String>) -> Result<Self, Error> {
+    pub async fn new(pool_size: usize, environment: &Environment) -> Result<Self, Error> {
         Ok(ConnectionManager {
-            inner: GRPCConnectionManager::new(pool_size, PUBSUB, AUDIENCE, Some(&SCOPES), emulator_host).await?,
+            inner: GRPCConnectionManager::new(pool_size, PUBSUB, AUDIENCE, Some(&SCOPES), environment).await?,
         })
     }
 

@@ -21,8 +21,9 @@
 //! #[tokio::main]
 //! async fn main() -> Result<(), Status> {
 //!
-//!     // Create pubsub client.
-//!     let mut client = Client::new("local-project", None).await.unwrap();
+//!     //default pubsub client.
+//!     //If the environment variable PUBSUB_EMULATOR_HOST is specified, project_id will be local-project.
+//!     let mut client = Client::default().await.unwrap();
 //!
 //!     // Create topic.
 //!     let topic = client.topic("test-topic");
@@ -74,8 +75,9 @@
 //! #[tokio::main]
 //! async fn main() -> Result<(), Status> {
 //!
-//!     // Create pubsub client
-//!     let mut client = Client::new("local-project", None).await.unwrap();
+//!     //default pubsub client.
+//!     //If the environment variable PUBSUB_EMULATOR_HOST is specified, project_id will be local-project.
+//!     let mut client = Client::default().await.unwrap();
 //!
 //!     // Get the topic to subscribe to.
 //!     let topic = client.topic("test-topic");

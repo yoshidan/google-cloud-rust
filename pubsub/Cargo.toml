@@ -18,7 +18,9 @@ async-trait = "0.1"
 parking_lot = "0.11"
 async-channel = "1.6"
 async-stream = "0.3"
+thiserror = "1.0"
 
+google-cloud-auth = { version = "0.2.0", path = "../foundation/auth" }
 google-cloud-gax = { version = "0.5.0", path = "../foundation/gax" }
 google-cloud-googleapis = { version = "0.4.0", path = "../googleapis", features = ["pubsub"]}
 

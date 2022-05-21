@@ -5,19 +5,33 @@ use google_cloud_gax::cancel::CancellationToken;
 
 use crate::subscription::{Subscription, SubscriptionConfig};
 use crate::topic::{Topic, TopicConfig};
-use google_cloud_gax::conn::Error;
+use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::{DetachSubscriptionRequest, ListSubscriptionsRequest, ListTopicsRequest};
 
 pub struct ClientConfig {
-    pub pool_size: usize,
+    pub pool_size: Option<usize>,
+    pub project_id: Option<&'static str>,
 }
 
 impl Default for ClientConfig {
     fn default() -> Self {
-        Self { pool_size: 4 }
+        Self {
+            pool_size: Some(4),
+            project_id: None,
+        }
     }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    #[error(transparent)]
+    Auth(#[from] google_cloud_auth::error::Error),
+    #[error(transparent)]
+    GAX(#[from] google_cloud_gax::conn::Error),
+    #[error("invalid project_id")]
+    ProjectIdNotFound,
 }
 
 /// Client is a Google Pub/Sub client scoped to a single project.
@@ -32,20 +46,30 @@ pub struct Client {
 }
 
 impl Client {
+    /// default creates a default Pub/Sub client.
+    pub async fn default() -> Result<Self, Error> {
+        Self::new(Default::default()).await
+    }
+
     /// new creates a Pub/Sub client.
-    pub async fn new(project_id: &str, config: Option<ClientConfig>) -> Result<Self, Error> {
-        let pool_size = config.unwrap_or_default().pool_size;
-        let emulator_host = match std::env::var("PUBSUB_EMULATOR_HOST") {
-            Ok(s) => Some(s),
-            Err(_) => None,
+    pub async fn new(config: ClientConfig) -> Result<Self, Error> {
+        let pool_size = config.pool_size.unwrap_or_default();
+        let environment = match std::env::var("PUBSUB_EMULATOR_HOST") {
+            Ok(host) => Environment::Emulator(host),
+            Err(_) => Environment::GoogleCloud(google_cloud_auth::project().await?),
         };
-        let pubc = PublisherClient::new(ConnectionManager::new(pool_size, emulator_host.clone()).await?);
-        let subc = SubscriberClient::new(ConnectionManager::new(pool_size, emulator_host).await?);
-        return Ok(Self {
-            project_id: project_id.to_string(),
-            pubc,
-            subc,
-        });
+        let pubc = PublisherClient::new(ConnectionManager::new(pool_size, &environment).await?);
+        let subc = SubscriberClient::new(ConnectionManager::new(pool_size, &environment).await?);
+
+        let project_id = match config.project_id {
+            Some(project_id) => project_id.to_string(),
+            None => match environment {
+                Environment::GoogleCloud(project) => project.project_id().ok_or(Error::ProjectIdNotFound)?.to_string(),
+                Environment::Emulator(_) => "local-project".to_string(),
+                _ => return Err(Error::ProjectIdNotFound),
+            },
+        };
+        return Ok(Self { project_id, pubc, subc });
     }
 
     /// create_subscription creates a new subscription on a topic.
@@ -193,7 +217,7 @@ mod tests {
     use std::thread;
     use std::time::Duration;
 
-    use crate::client::Client;
+    use crate::client::{Client, ClientConfig};
     use google_cloud_gax::cancel::CancellationToken;
     use uuid::Uuid;
 
@@ -214,7 +238,7 @@ mod tests {
 
     async fn create_client() -> Client {
         std::env::set_var("PUBSUB_EMULATOR_HOST", "localhost:8681".to_string());
-        Client::new("local-project", None).await.unwrap()
+        Client::default().await.unwrap()
     }
 
     async fn do_publish_and_subscribe(ordering_key: &str) -> Result<(), anyhow::Error> {

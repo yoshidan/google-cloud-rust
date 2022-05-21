@@ -5,7 +5,7 @@ pub mod token;
 pub mod token_source;
 
 use crate::credentials::CredentialsFile;
-use crate::misc::EMPTY;
+use crate::misc::{EMPTY, UnwrapOrEmpty};
 use crate::token_source::authorized_user_token_source::UserAccountTokenSource;
 use crate::token_source::compute_token_source::ComputeTokenSource;
 use crate::token_source::reuse_token_source::ReuseTokenSource;
@@ -13,6 +13,7 @@ use crate::token_source::service_account_token_source::OAuth2ServiceAccountToken
 use crate::token_source::service_account_token_source::ServiceAccountTokenSource;
 use crate::token_source::TokenSource;
 use google_cloud_metadata::on_gce;
+use crate::Project::FromFile;
 
 const SERVICE_ACCOUNT_KEY: &str = "service_account";
 const USER_CREDENTIALS_KEY: &str = "authorized_user";
@@ -31,29 +32,68 @@ impl Config<'_> {
     }
 }
 
-pub async fn create_token_source_from_credentials(
-    credentials: &CredentialsFile,
-    config: Config<'_>,
-) -> Result<Box<dyn TokenSource>, error::Error> {
-    let ts = credentials_from_json_with_params(credentials, &config)?;
-    let token = ts.token().await?;
-    Ok(Box::new(ReuseTokenSource::new(ts, token)))
+pub struct ProjectInfo {
+    pub project_id: Option<String>,
 }
 
-pub async fn create_token_source(config: Config<'_>) -> Result<Box<dyn TokenSource>, error::Error> {
-    let maybe = credentials::CredentialsFile::new().await;
-    return match maybe {
-        Ok(c) => create_token_source_from_credentials(&c, config).await,
-        Err(e) => {
-            if on_gce().await {
-                let ts = ComputeTokenSource::new(&config.scopes_to_string(","))?;
-                let token = ts.token().await?;
-                Ok(Box::new(ReuseTokenSource::new(Box::new(ts), token)))
-            } else {
-                Err(e)
-            }
+pub enum Project {
+    FromFile(CredentialsFile),
+    FromMetadataServer(ProjectInfo)
+}
+
+impl Project {
+    pub fn project_id(&self) -> Option<&String> {
+        match self {
+            Self::FromFile(file) => file.project_id.as_ref(),
+            Self::FromMetadataServer(info) => info.project_id.as_ref()
         }
-    };
+    }
+}
+
+
+/// project() returns the project credentials or project info from metadata server.
+pub async fn project() -> Result<Project, error::Error> {
+    let credentials = credentials::CredentialsFile::new().await;
+    match credentials {
+        Ok(credentials) => Ok(Project::FromFile(credentials)),
+        Err(e) => if on_gce().await {
+            let project_id = google_cloud_metadata::project_id().await;
+            Ok(Project::FromMetadataServer(ProjectInfo{
+                project_id: if project_id.is_empty() {
+                   None
+                }else {
+                    Some(project_id)
+                }
+            }))
+        } else {
+            Err(e)
+        }
+    }
+}
+
+/// create_token_source_from_project creates the token source.
+pub async fn create_token_source_from_project(
+    project: &Project,
+    config: Config<'_>,
+) -> Result<Box<dyn TokenSource>, error::Error> {
+    match project {
+        Project::FromFile(file) => {
+            let ts = credentials_from_json_with_params(file, &config)?;
+            let token = ts.token().await?;
+            Ok(Box::new(ReuseTokenSource::new(ts, token)))
+        },
+        Project::FromMetadataServer(_) => {
+            let ts = ComputeTokenSource::new(&config.scopes_to_string(","))?;
+            let token = ts.token().await?;
+            Ok(Box::new(ReuseTokenSource::new(Box::new(ts), token)))
+        }
+    }
+}
+
+/// create_token_source creates the token source
+pub async fn create_token_source(config: Config<'_>) -> Result<Box<dyn TokenSource>, error::Error> {
+    let project= project().await?;
+    create_token_source_from_project(&project, config).await
 }
 
 fn credentials_from_json_with_params(
