@@ -15,6 +15,7 @@ use google_cloud_gax::grpc::{Code, Status};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+use google_cloud_gax::conn::Environment;
 
 #[derive(Clone)]
 pub struct PartitionedUpdateOption {
@@ -180,12 +181,12 @@ impl Client {
             )));
         }
 
-        let pool_size = config.channel_config.num_channels as usize;
-        let emulator_host = match std::env::var("SPANNER_EMULATOR_HOST") {
-            Ok(s) => Some(s),
-            Err(_) => None,
+        let environment = match std::env::var("SPANNER_EMULATOR_HOST") {
+            Ok(host) => Environment::Emulator(host),
+            Err(_) => Environment::GoogleCloud(google_cloud_auth::project().await?),
         };
-        let conn_pool = ConnectionManager::new(pool_size, emulator_host).await?;
+        let pool_size = config.channel_config.num_channels as usize;
+        let conn_pool = ConnectionManager::new(pool_size, &environment).await?;
         let session_manager = SessionManager::new(database, conn_pool, config.session_config).await?;
 
         Ok(Client {
