@@ -2,7 +2,7 @@ use crate::http::storage_client;
 use crate::http::storage_client::StorageClient;
 use google_cloud_auth::credentials::CredentialsFile;
 use google_cloud_auth::{
-    create_token_source, create_token_source_from_credentials, create_token_source_from_project, Config, Project,
+    create_token_source, create_token_source_from_project, Config, Project,
 };
 use std::ops::Deref;
 use std::sync::Arc;
@@ -49,8 +49,8 @@ impl Client {
         match project {
             Project::FromFile(cred) => Ok(Client {
                 private_key: cred.private_key.clone(),
-                service_account_email: cred.client_email.unwrap(),
-                project_id: inf.project_id.ok_or(Error::Other("no project_id was found"))?,
+                service_account_email: cred.client_email.ok_or(Error::Other("no client_email was found"))?,
+                project_id: cred.project_id.ok_or(Error::Other("no project_id was found"))?,
                 storage_client: StorageClient::new(Arc::from(ts)),
             }),
             Project::FromMetadataServer(info) => Ok(Client {

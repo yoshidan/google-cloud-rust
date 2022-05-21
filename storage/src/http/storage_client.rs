@@ -1472,10 +1472,7 @@ mod test {
     use google_cloud_auth::{create_token_source, Config};
     use serde_json::de::Read;
     use serial_test::serial;
-
     use crate::http::notifications::EventType;
-    use regex::internal::Input;
-
     use std::sync::Arc;
 
     const PROJECT: &str = "atl-dev1";
