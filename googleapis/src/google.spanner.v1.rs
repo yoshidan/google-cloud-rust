@@ -2,12 +2,12 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CommitResponse {
     /// The Cloud Spanner timestamp at which the transaction committed.
-    #[prost(message, optional, tag = "1")]
+    #[prost(message, optional, tag="1")]
     pub commit_timestamp: ::core::option::Option<::prost_types::Timestamp>,
     /// The statistics about this Commit. Not returned by default.
     /// For more information, see
     /// \[CommitRequest.return_commit_stats][google.spanner.v1.CommitRequest.return_commit_stats\].
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag="2")]
     pub commit_stats: ::core::option::Option<commit_response::CommitStats>,
 }
 /// Nested message and enum types in `CommitResponse`.
@@ -22,7 +22,7 @@ pub mod commit_response {
         /// \[limit\](<https://cloud.google.com/spanner/quotas#limits_for_creating_reading_updating_and_deleting_data>).
         /// If the number of mutations exceeds the limit, the server returns
         /// \[INVALID_ARGUMENT\](<https://cloud.google.com/spanner/docs/reference/rest/v1/Code#ENUM_VALUES.INVALID_ARGUMENT>).
-        #[prost(int64, tag = "1")]
+        #[prost(int64, tag="1")]
         pub mutation_count: i64,
     }
 }
@@ -117,10 +117,10 @@ pub mod commit_response {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct KeyRange {
     /// The start key must be provided. It can be either closed or open.
-    #[prost(oneof = "key_range::StartKeyType", tags = "1, 2")]
+    #[prost(oneof="key_range::StartKeyType", tags="1, 2")]
     pub start_key_type: ::core::option::Option<key_range::StartKeyType>,
     /// The end key must be provided. It can be either closed or open.
-    #[prost(oneof = "key_range::EndKeyType", tags = "3, 4")]
+    #[prost(oneof="key_range::EndKeyType", tags="3, 4")]
     pub end_key_type: ::core::option::Option<key_range::EndKeyType>,
 }
 /// Nested message and enum types in `KeyRange`.
@@ -130,11 +130,11 @@ pub mod key_range {
     pub enum StartKeyType {
         /// If the start is closed, then the range includes all rows whose
         /// first `len(start_closed)` key columns exactly match `start_closed`.
-        #[prost(message, tag = "1")]
+        #[prost(message, tag="1")]
         StartClosed(::prost_types::ListValue),
         /// If the start is open, then the range excludes rows whose first
         /// `len(start_open)` key columns exactly match `start_open`.
-        #[prost(message, tag = "2")]
+        #[prost(message, tag="2")]
         StartOpen(::prost_types::ListValue),
     }
     /// The end key must be provided. It can be either closed or open.
@@ -142,11 +142,11 @@ pub mod key_range {
     pub enum EndKeyType {
         /// If the end is closed, then the range includes all rows whose
         /// first `len(end_closed)` key columns exactly match `end_closed`.
-        #[prost(message, tag = "3")]
+        #[prost(message, tag="3")]
         EndClosed(::prost_types::ListValue),
         /// If the end is open, then the range excludes rows whose first
         /// `len(end_open)` key columns exactly match `end_open`.
-        #[prost(message, tag = "4")]
+        #[prost(message, tag="4")]
         EndOpen(::prost_types::ListValue),
     }
 }
@@ -163,16 +163,16 @@ pub struct KeySet {
     /// many elements as there are columns in the primary or index key
     /// with which this `KeySet` is used.  Individual key values are
     /// encoded as described \[here][google.spanner.v1.TypeCode\].
-    #[prost(message, repeated, tag = "1")]
+    #[prost(message, repeated, tag="1")]
     pub keys: ::prost::alloc::vec::Vec<::prost_types::ListValue>,
     /// A list of key ranges. See \[KeyRange][google.spanner.v1.KeyRange\] for more information about
     /// key range specifications.
-    #[prost(message, repeated, tag = "2")]
+    #[prost(message, repeated, tag="2")]
     pub ranges: ::prost::alloc::vec::Vec<KeyRange>,
     /// For convenience `all` can be set to `true` to indicate that this
     /// `KeySet` matches all keys in the table or index. Note that any keys
     /// specified in `keys` or `ranges` are only yielded once.
-    #[prost(bool, tag = "3")]
+    #[prost(bool, tag="3")]
     pub all: bool,
 }
 /// A modification to one or more Cloud Spanner rows.  Mutations can be
@@ -181,7 +181,7 @@ pub struct KeySet {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Mutation {
     /// Required. The operation to perform.
-    #[prost(oneof = "mutation::Operation", tags = "1, 2, 3, 4, 5")]
+    #[prost(oneof="mutation::Operation", tags="1, 2, 3, 4, 5")]
     pub operation: ::core::option::Option<mutation::Operation>,
 }
 /// Nested message and enum types in `Mutation`.
@@ -191,14 +191,14 @@ pub mod mutation {
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Write {
         /// Required. The table whose rows will be written.
-        #[prost(string, tag = "1")]
+        #[prost(string, tag="1")]
         pub table: ::prost::alloc::string::String,
         /// The names of the columns in \[table][google.spanner.v1.Mutation.Write.table\] to be written.
         ///
         /// The list of columns must contain enough columns to allow
         /// Cloud Spanner to derive values for all primary key columns in the
         /// row(s) to be modified.
-        #[prost(string, repeated, tag = "2")]
+        #[prost(string, repeated, tag="2")]
         pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
         /// The values to be written. `values` can contain more than one
         /// list of values. If it does, then multiple rows are written, one
@@ -208,14 +208,14 @@ pub mod mutation {
         /// `Mutation`s, each containing one `values` entry and repeating
         /// \[table][google.spanner.v1.Mutation.Write.table\] and \[columns][google.spanner.v1.Mutation.Write.columns\]. Individual values in each list are
         /// encoded as described \[here][google.spanner.v1.TypeCode\].
-        #[prost(message, repeated, tag = "3")]
+        #[prost(message, repeated, tag="3")]
         pub values: ::prost::alloc::vec::Vec<::prost_types::ListValue>,
     }
     /// Arguments to \[delete][google.spanner.v1.Mutation.delete\] operations.
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Delete {
         /// Required. The table whose rows will be deleted.
-        #[prost(string, tag = "1")]
+        #[prost(string, tag="1")]
         pub table: ::prost::alloc::string::String,
         /// Required. The primary keys of the rows within \[table][google.spanner.v1.Mutation.Delete.table\] to delete.  The
         /// primary keys must be specified in the order in which they appear in the
@@ -223,7 +223,7 @@ pub mod mutation {
         /// statement used to create the table).
         /// Delete is idempotent. The transaction will succeed even if some or all
         /// rows do not exist.
-        #[prost(message, optional, tag = "2")]
+        #[prost(message, optional, tag="2")]
         pub key_set: ::core::option::Option<super::KeySet>,
     }
     /// Required. The operation to perform.
@@ -231,11 +231,11 @@ pub mod mutation {
     pub enum Operation {
         /// Insert new rows in a table. If any of the rows already exist,
         /// the write or transaction fails with error `ALREADY_EXISTS`.
-        #[prost(message, tag = "1")]
+        #[prost(message, tag="1")]
         Insert(Write),
         /// Update existing rows in a table. If any of the rows does not
         /// already exist, the transaction fails with error `NOT_FOUND`.
-        #[prost(message, tag = "2")]
+        #[prost(message, tag="2")]
         Update(Write),
         /// Like \[insert][google.spanner.v1.Mutation.insert\], except that if the row already exists, then
         /// its column values are overwritten with the ones provided. Any
@@ -244,7 +244,7 @@ pub mod mutation {
         /// When using \[insert_or_update][google.spanner.v1.Mutation.insert_or_update\], just as when using \[insert][google.spanner.v1.Mutation.insert\], all `NOT
         /// NULL` columns in the table must be given a value. This holds true
         /// even when the row already exists and will therefore actually be updated.
-        #[prost(message, tag = "3")]
+        #[prost(message, tag="3")]
         InsertOrUpdate(Write),
         /// Like \[insert][google.spanner.v1.Mutation.insert\], except that if the row already exists, it is
         /// deleted, and the column values provided are inserted
@@ -255,11 +255,11 @@ pub mod mutation {
         /// `ON DELETE CASCADE` annotation, then replacing a parent row
         /// also deletes the child rows. Otherwise, you must delete the
         /// child rows before you replace the parent row.
-        #[prost(message, tag = "4")]
+        #[prost(message, tag="4")]
         Replace(Write),
         /// Delete rows from a table. Succeeds whether or not the named
         /// rows were present.
-        #[prost(message, tag = "5")]
+        #[prost(message, tag="5")]
         Delete(Delete),
     }
 }
@@ -267,23 +267,23 @@ pub mod mutation {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PlanNode {
     /// The `PlanNode`'s index in [node list]\[google.spanner.v1.QueryPlan.plan_nodes\].
-    #[prost(int32, tag = "1")]
+    #[prost(int32, tag="1")]
     pub index: i32,
     /// Used to determine the type of node. May be needed for visualizing
     /// different kinds of nodes differently. For example, If the node is a
     /// \[SCALAR][google.spanner.v1.PlanNode.Kind.SCALAR\] node, it will have a condensed representation
     /// which can be used to directly embed a description of the node in its
     /// parent.
-    #[prost(enumeration = "plan_node::Kind", tag = "2")]
+    #[prost(enumeration="plan_node::Kind", tag="2")]
     pub kind: i32,
     /// The display name for the node.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag="3")]
     pub display_name: ::prost::alloc::string::String,
     /// List of child node `index`es and their relationship to this parent.
-    #[prost(message, repeated, tag = "4")]
+    #[prost(message, repeated, tag="4")]
     pub child_links: ::prost::alloc::vec::Vec<plan_node::ChildLink>,
     /// Condensed representation for \[SCALAR][google.spanner.v1.PlanNode.Kind.SCALAR\] nodes.
-    #[prost(message, optional, tag = "5")]
+    #[prost(message, optional, tag="5")]
     pub short_representation: ::core::option::Option<plan_node::ShortRepresentation>,
     /// Attributes relevant to the node contained in a group of key-value pairs.
     /// For example, a Parameter Reference node could have the following
@@ -293,13 +293,13 @@ pub struct PlanNode {
     ///       "parameter_reference": "param1",
     ///       "parameter_type": "array"
     ///     }
-    #[prost(message, optional, tag = "6")]
+    #[prost(message, optional, tag="6")]
     pub metadata: ::core::option::Option<::prost_types::Struct>,
     /// The execution statistics associated with the node, contained in a group of
     /// key-value pairs. Only present if the plan was returned as a result of a
     /// profile query. For example, number of executions, number of rows/time per
     /// execution etc.
-    #[prost(message, optional, tag = "7")]
+    #[prost(message, optional, tag="7")]
     pub execution_stats: ::core::option::Option<::prost_types::Struct>,
 }
 /// Nested message and enum types in `PlanNode`.
@@ -309,13 +309,13 @@ pub mod plan_node {
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct ChildLink {
         /// The node to which the link points.
-        #[prost(int32, tag = "1")]
+        #[prost(int32, tag="1")]
         pub child_index: i32,
         /// The type of the link. For example, in Hash Joins this could be used to
         /// distinguish between the build child and the probe child, or in the case
         /// of the child being an output variable, to represent the tag associated
         /// with the output variable.
-        #[prost(string, tag = "2")]
+        #[prost(string, tag="2")]
         pub r#type: ::prost::alloc::string::String,
         /// Only present if the child node is \[SCALAR][google.spanner.v1.PlanNode.Kind.SCALAR\] and corresponds
         /// to an output variable of the parent node. The field carries the name of
@@ -325,7 +325,7 @@ pub mod plan_node {
         /// created for each column that is read by the operator. The corresponding
         /// `variable` fields will be set to the variable names assigned to the
         /// columns.
-        #[prost(string, tag = "3")]
+        #[prost(string, tag="3")]
         pub variable: ::prost::alloc::string::String,
     }
     /// Condensed representation of a node and its subtree. Only present for
@@ -333,14 +333,14 @@ pub mod plan_node {
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct ShortRepresentation {
         /// A string representation of the expression subtree rooted at this node.
-        #[prost(string, tag = "1")]
+        #[prost(string, tag="1")]
         pub description: ::prost::alloc::string::String,
         /// A mapping of (subquery variable name) -> (subquery node id) for cases
         /// where the `description` string of this node references a `SCALAR`
         /// subquery contained in the expression subtree rooted at this node. The
         /// referenced `SCALAR` subquery may not necessarily be a direct child of
         /// this node.
-        #[prost(map = "string, int32", tag = "2")]
+        #[prost(map="string, int32", tag="2")]
         pub subqueries: ::std::collections::HashMap<::prost::alloc::string::String, i32>,
     }
     /// The kind of \[PlanNode][google.spanner.v1.PlanNode\]. Distinguishes between the two different kinds of
@@ -367,7 +367,7 @@ pub struct QueryPlan {
     /// The nodes in the query plan. Plan nodes are returned in pre-order starting
     /// with the plan root. Each \[PlanNode][google.spanner.v1.PlanNode\]'s `id` corresponds to its index in
     /// `plan_nodes`.
-    #[prost(message, repeated, tag = "1")]
+    #[prost(message, repeated, tag="1")]
     pub plan_nodes: ::prost::alloc::vec::Vec<PlanNode>,
 }
 /// Transactions:
@@ -639,7 +639,7 @@ pub struct QueryPlan {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TransactionOptions {
     /// Required. The type of transaction.
-    #[prost(oneof = "transaction_options::Mode", tags = "1, 3, 2")]
+    #[prost(oneof="transaction_options::Mode", tags="1, 3, 2")]
     pub mode: ::core::option::Option<transaction_options::Mode>,
 }
 /// Nested message and enum types in `TransactionOptions`.
@@ -647,19 +647,21 @@ pub mod transaction_options {
     /// Message type to initiate a read-write transaction. Currently this
     /// transaction type has no options.
     #[derive(Clone, PartialEq, ::prost::Message)]
-    pub struct ReadWrite {}
+    pub struct ReadWrite {
+    }
     /// Message type to initiate a Partitioned DML transaction.
     #[derive(Clone, PartialEq, ::prost::Message)]
-    pub struct PartitionedDml {}
+    pub struct PartitionedDml {
+    }
     /// Message type to initiate a read-only transaction.
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct ReadOnly {
         /// If true, the Cloud Spanner-selected read timestamp is included in
         /// the \[Transaction][google.spanner.v1.Transaction\] message that describes the transaction.
-        #[prost(bool, tag = "6")]
+        #[prost(bool, tag="6")]
         pub return_read_timestamp: bool,
         /// How to choose the timestamp for the read-only transaction.
-        #[prost(oneof = "read_only::TimestampBound", tags = "1, 2, 3, 4, 5")]
+        #[prost(oneof="read_only::TimestampBound", tags="1, 2, 3, 4, 5")]
         pub timestamp_bound: ::core::option::Option<read_only::TimestampBound>,
     }
     /// Nested message and enum types in `ReadOnly`.
@@ -669,7 +671,7 @@ pub mod transaction_options {
         pub enum TimestampBound {
             /// Read at a timestamp where all previously committed transactions
             /// are visible.
-            #[prost(bool, tag = "1")]
+            #[prost(bool, tag="1")]
             Strong(bool),
             /// Executes all reads at a timestamp >= `min_read_timestamp`.
             ///
@@ -681,7 +683,7 @@ pub mod transaction_options {
             ///
             /// A timestamp in RFC3339 UTC \"Zulu\" format, accurate to nanoseconds.
             /// Example: `"2014-10-02T15:01:23.045123456Z"`.
-            #[prost(message, tag = "2")]
+            #[prost(message, tag="2")]
             MinReadTimestamp(::prost_types::Timestamp),
             /// Read data at a timestamp >= `NOW - max_staleness`
             /// seconds. Guarantees that all writes that have committed more
@@ -696,7 +698,7 @@ pub mod transaction_options {
             ///
             /// Note that this option can only be used in single-use
             /// transactions.
-            #[prost(message, tag = "3")]
+            #[prost(message, tag="3")]
             MaxStaleness(::prost_types::Duration),
             /// Executes all reads at the given timestamp. Unlike other modes,
             /// reads at a specific timestamp are repeatable; the same read at
@@ -710,7 +712,7 @@ pub mod transaction_options {
             ///
             /// A timestamp in RFC3339 UTC \"Zulu\" format, accurate to nanoseconds.
             /// Example: `"2014-10-02T15:01:23.045123456Z"`.
-            #[prost(message, tag = "4")]
+            #[prost(message, tag="4")]
             ReadTimestamp(::prost_types::Timestamp),
             /// Executes all reads at a timestamp that is `exact_staleness`
             /// old. The timestamp is chosen soon after the read is started.
@@ -723,7 +725,7 @@ pub mod transaction_options {
             ///
             /// Useful for reading at nearby replicas without the distributed
             /// timestamp negotiation overhead of `max_staleness`.
-            #[prost(message, tag = "5")]
+            #[prost(message, tag="5")]
             ExactStaleness(::prost_types::Duration),
         }
     }
@@ -735,21 +737,21 @@ pub mod transaction_options {
         /// Authorization to begin a read-write transaction requires
         /// `spanner.databases.beginOrRollbackReadWriteTransaction` permission
         /// on the `session` resource.
-        #[prost(message, tag = "1")]
+        #[prost(message, tag="1")]
         ReadWrite(ReadWrite),
         /// Partitioned DML transaction.
         ///
         /// Authorization to begin a Partitioned DML transaction requires
         /// `spanner.databases.beginPartitionedDmlTransaction` permission
         /// on the `session` resource.
-        #[prost(message, tag = "3")]
+        #[prost(message, tag="3")]
         PartitionedDml(PartitionedDml),
         /// Transaction will not write.
         ///
         /// Authorization to begin a read-only transaction requires
         /// `spanner.databases.beginReadOnlyTransaction` permission
         /// on the `session` resource.
-        #[prost(message, tag = "2")]
+        #[prost(message, tag="2")]
         ReadOnly(ReadOnly),
     }
 }
@@ -764,7 +766,7 @@ pub struct Transaction {
     ///
     /// Single-use read-only transactions do not have IDs, because
     /// single-use transactions do not support multiple requests.
-    #[prost(bytes = "vec", tag = "1")]
+    #[prost(bytes="vec", tag="1")]
     pub id: ::prost::alloc::vec::Vec<u8>,
     /// For snapshot read-only transactions, the read timestamp chosen
     /// for the transaction. Not returned by default: see
@@ -772,7 +774,7 @@ pub struct Transaction {
     ///
     /// A timestamp in RFC3339 UTC \"Zulu\" format, accurate to nanoseconds.
     /// Example: `"2014-10-02T15:01:23.045123456Z"`.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag="2")]
     pub read_timestamp: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// This message is used to select the transaction in which a
@@ -784,7 +786,7 @@ pub struct Transaction {
 pub struct TransactionSelector {
     /// If no fields are set, the default is a single use transaction
     /// with strong concurrency.
-    #[prost(oneof = "transaction_selector::Selector", tags = "1, 2, 3")]
+    #[prost(oneof="transaction_selector::Selector", tags="1, 2, 3")]
     pub selector: ::core::option::Option<transaction_selector::Selector>,
 }
 /// Nested message and enum types in `TransactionSelector`.
@@ -796,15 +798,15 @@ pub mod transaction_selector {
         /// Execute the read or SQL query in a temporary transaction.
         /// This is the most efficient way to execute a transaction that
         /// consists of a single SQL query.
-        #[prost(message, tag = "1")]
+        #[prost(message, tag="1")]
         SingleUse(super::TransactionOptions),
         /// Execute the read or SQL query in a previously-started transaction.
-        #[prost(bytes, tag = "2")]
+        #[prost(bytes, tag="2")]
         Id(::prost::alloc::vec::Vec<u8>),
         /// Begin a new transaction and execute this read or SQL query in
         /// it. The transaction ID of the new transaction is returned in
         /// \[ResultSetMetadata.transaction][google.spanner.v1.ResultSetMetadata.transaction\], which is a \[Transaction][google.spanner.v1.Transaction\].
-        #[prost(message, tag = "3")]
+        #[prost(message, tag="3")]
         Begin(super::TransactionOptions),
     }
 }
@@ -813,15 +815,15 @@ pub mod transaction_selector {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Type {
     /// Required. The \[TypeCode][google.spanner.v1.TypeCode\] for this type.
-    #[prost(enumeration = "TypeCode", tag = "1")]
+    #[prost(enumeration="TypeCode", tag="1")]
     pub code: i32,
     /// If \[code][google.spanner.v1.Type.code\] == \[ARRAY][google.spanner.v1.TypeCode.ARRAY\], then `array_element_type`
     /// is the type of the array elements.
-    #[prost(message, optional, boxed, tag = "2")]
+    #[prost(message, optional, boxed, tag="2")]
     pub array_element_type: ::core::option::Option<::prost::alloc::boxed::Box<Type>>,
     /// If \[code][google.spanner.v1.Type.code\] == \[STRUCT][google.spanner.v1.TypeCode.STRUCT\], then `struct_type`
     /// provides type information for the struct's fields.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag="3")]
     pub struct_type: ::core::option::Option<StructType>,
     /// The \[TypeAnnotationCode][google.spanner.v1.TypeAnnotationCode\] that disambiguates SQL type that Spanner will
     /// use to represent values of this type during query processing. This is
@@ -829,7 +831,7 @@ pub struct Type {
     /// to different SQL types depending on the SQL dialect. \[type_annotation][google.spanner.v1.Type.type_annotation\]
     /// typically is not needed to process the content of a value (it doesn't
     /// affect serialization) and clients can ignore it on the read path.
-    #[prost(enumeration = "TypeAnnotationCode", tag = "4")]
+    #[prost(enumeration="TypeAnnotationCode", tag="4")]
     pub type_annotation: i32,
 }
 /// `StructType` defines the fields of a \[STRUCT][google.spanner.v1.TypeCode.STRUCT\] type.
@@ -841,7 +843,7 @@ pub struct StructType {
     /// fields in the \[StructType][google.spanner.v1.StructType\]. In turn, the order of fields
     /// matches the order of columns in a read request, or the order of
     /// fields in the `SELECT` clause of a query.
-    #[prost(message, repeated, tag = "1")]
+    #[prost(message, repeated, tag="1")]
     pub fields: ::prost::alloc::vec::Vec<struct_type::Field>,
 }
 /// Nested message and enum types in `StructType`.
@@ -856,10 +858,10 @@ pub mod struct_type {
         /// columns might have an empty name (e.g., `"SELECT
         /// UPPER(ColName)"`). Note that a query result can contain
         /// multiple fields with the same name.
-        #[prost(string, tag = "1")]
+        #[prost(string, tag="1")]
         pub name: ::prost::alloc::string::String,
         /// The type of the field.
-        #[prost(message, optional, tag = "2")]
+        #[prost(message, optional, tag="2")]
         pub r#type: ::core::option::Option<super::Type>,
     }
 }
@@ -948,7 +950,7 @@ pub enum TypeAnnotationCode {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResultSet {
     /// Metadata about the result set, such as row type information.
-    #[prost(message, optional, tag = "1")]
+    #[prost(message, optional, tag="1")]
     pub metadata: ::core::option::Option<ResultSetMetadata>,
     /// Each element in `rows` is a row whose format is defined by
     /// \[metadata.row_type][google.spanner.v1.ResultSetMetadata.row_type\]. The ith element
@@ -956,7 +958,7 @@ pub struct ResultSet {
     /// \[metadata.row_type][google.spanner.v1.ResultSetMetadata.row_type\]. Elements are
     /// encoded based on type as described
     /// \[here][google.spanner.v1.TypeCode\].
-    #[prost(message, repeated, tag = "2")]
+    #[prost(message, repeated, tag="2")]
     pub rows: ::prost::alloc::vec::Vec<::prost_types::ListValue>,
     /// Query plan and execution statistics for the SQL statement that
     /// produced this result set. These can be requested by setting
@@ -966,7 +968,7 @@ pub struct ResultSet {
     /// \[ExecuteSqlRequest.QueryMode.PLAN][google.spanner.v1.ExecuteSqlRequest.QueryMode.PLAN\] \[ExecuteSqlRequest.query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode\].
     /// Other fields may or may not be populated, based on the
     /// \[ExecuteSqlRequest.query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode\].
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag="3")]
     pub stats: ::core::option::Option<ResultSetStats>,
 }
 /// Partial results from a streaming read or SQL query. Streaming reads and
@@ -976,7 +978,7 @@ pub struct ResultSet {
 pub struct PartialResultSet {
     /// Metadata about the result set, such as row type information.
     /// Only present in the first response.
-    #[prost(message, optional, tag = "1")]
+    #[prost(message, optional, tag="1")]
     pub metadata: ::core::option::Option<ResultSetMetadata>,
     /// A streamed result set consists of a stream of values, which might
     /// be split into many `PartialResultSet` messages to accommodate
@@ -1051,19 +1053,19 @@ pub struct PartialResultSet {
     /// This sequence of `PartialResultSet`s encodes two rows, one
     /// containing the field value `"Hello"`, and a second containing the
     /// field value `"World" = "W" + "orl" + "d"`.
-    #[prost(message, repeated, tag = "2")]
+    #[prost(message, repeated, tag="2")]
     pub values: ::prost::alloc::vec::Vec<::prost_types::Value>,
     /// If true, then the final value in \[values][google.spanner.v1.PartialResultSet.values\] is chunked, and must
     /// be combined with more values from subsequent `PartialResultSet`s
     /// to obtain a complete field value.
-    #[prost(bool, tag = "3")]
+    #[prost(bool, tag="3")]
     pub chunked_value: bool,
     /// Streaming calls might be interrupted for a variety of reasons, such
     /// as TCP connection loss. If this occurs, the stream of results can
     /// be resumed by re-sending the original request and including
     /// `resume_token`. Note that executing any other transaction in the
     /// same session invalidates the token.
-    #[prost(bytes = "vec", tag = "4")]
+    #[prost(bytes="vec", tag="4")]
     pub resume_token: ::prost::alloc::vec::Vec<u8>,
     /// Query plan and execution statistics for the statement that produced this
     /// streaming result set. These can be requested by setting
@@ -1071,7 +1073,7 @@ pub struct PartialResultSet {
     /// only once with the last response in the stream.
     /// This field will also be present in the last response for DML
     /// statements.
-    #[prost(message, optional, tag = "5")]
+    #[prost(message, optional, tag="5")]
     pub stats: ::core::option::Option<ResultSetStats>,
 }
 /// Metadata about a \[ResultSet][google.spanner.v1.ResultSet\] or \[PartialResultSet][google.spanner.v1.PartialResultSet\].
@@ -1085,18 +1087,18 @@ pub struct ResultSetMetadata {
     ///       { "name": "UserId", "type": { "code": "INT64" } },
     ///       { "name": "UserName", "type": { "code": "STRING" } },
     ///     ]
-    #[prost(message, optional, tag = "1")]
+    #[prost(message, optional, tag="1")]
     pub row_type: ::core::option::Option<StructType>,
     /// If the read or SQL query began a transaction as a side-effect, the
     /// information about the new transaction is yielded here.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag="2")]
     pub transaction: ::core::option::Option<Transaction>,
 }
 /// Additional statistics about a \[ResultSet][google.spanner.v1.ResultSet\] or \[PartialResultSet][google.spanner.v1.PartialResultSet\].
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResultSetStats {
     /// \[QueryPlan][google.spanner.v1.QueryPlan\] for the query associated with this result.
-    #[prost(message, optional, tag = "1")]
+    #[prost(message, optional, tag="1")]
     pub query_plan: ::core::option::Option<QueryPlan>,
     /// Aggregated statistics from the execution of the query. Only present when
     /// the query is profiled. For example, a query could return the statistics as
@@ -1107,10 +1109,10 @@ pub struct ResultSetStats {
     ///       "elapsed_time": "1.22 secs",
     ///       "cpu_time": "1.19 secs"
     ///     }
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag="2")]
     pub query_stats: ::core::option::Option<::prost_types::Struct>,
     /// The number of rows modified by the DML statement.
-    #[prost(oneof = "result_set_stats::RowCount", tags = "3, 4")]
+    #[prost(oneof="result_set_stats::RowCount", tags="3, 4")]
     pub row_count: ::core::option::Option<result_set_stats::RowCount>,
 }
 /// Nested message and enum types in `ResultSetStats`.
@@ -1119,11 +1121,11 @@ pub mod result_set_stats {
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum RowCount {
         /// Standard DML returns an exact count of rows that were modified.
-        #[prost(int64, tag = "3")]
+        #[prost(int64, tag="3")]
         RowCountExact(i64),
         /// Partitioned DML does not offer exactly-once semantics, so it
         /// returns a lower bound of the rows modified.
-        #[prost(int64, tag = "4")]
+        #[prost(int64, tag="4")]
         RowCountLowerBound(i64),
     }
 }
@@ -1131,41 +1133,41 @@ pub mod result_set_stats {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateSessionRequest {
     /// Required. The database in which the new session is created.
-    #[prost(string, tag = "1")]
+    #[prost(string, tag="1")]
     pub database: ::prost::alloc::string::String,
     /// Required. The session to create.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag="2")]
     pub session: ::core::option::Option<Session>,
 }
 /// The request for \[BatchCreateSessions][google.spanner.v1.Spanner.BatchCreateSessions\].
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BatchCreateSessionsRequest {
     /// Required. The database in which the new sessions are created.
-    #[prost(string, tag = "1")]
+    #[prost(string, tag="1")]
     pub database: ::prost::alloc::string::String,
     /// Parameters to be applied to each created session.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag="2")]
     pub session_template: ::core::option::Option<Session>,
     /// Required. The number of sessions to be created in this batch call.
     /// The API may return fewer than the requested number of sessions. If a
     /// specific number of sessions are desired, the client can make additional
     /// calls to BatchCreateSessions (adjusting
     /// \[session_count][google.spanner.v1.BatchCreateSessionsRequest.session_count\] as necessary).
-    #[prost(int32, tag = "3")]
+    #[prost(int32, tag="3")]
     pub session_count: i32,
 }
 /// The response for \[BatchCreateSessions][google.spanner.v1.Spanner.BatchCreateSessions\].
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BatchCreateSessionsResponse {
     /// The freshly created sessions.
-    #[prost(message, repeated, tag = "1")]
+    #[prost(message, repeated, tag="1")]
     pub session: ::prost::alloc::vec::Vec<Session>,
 }
 /// A session in the Cloud Spanner API.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Session {
     /// Output only. The name of the session. This is always system-assigned.
-    #[prost(string, tag = "1")]
+    #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
     /// The labels for the session.
     ///
@@ -1176,37 +1178,37 @@ pub struct Session {
     ///  * No more than 64 labels can be associated with a given session.
     ///
     /// See <https://goo.gl/xmQnxf> for more information on and examples of labels.
-    #[prost(map = "string, string", tag = "2")]
+    #[prost(map="string, string", tag="2")]
     pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     /// Output only. The timestamp when the session is created.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag="3")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
     /// Output only. The approximate timestamp when the session is last used. It is
     /// typically earlier than the actual last use time.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag="4")]
     pub approximate_last_use_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// The request for \[GetSession][google.spanner.v1.Spanner.GetSession\].
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetSessionRequest {
     /// Required. The name of the session to retrieve.
-    #[prost(string, tag = "1")]
+    #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
 }
 /// The request for \[ListSessions][google.spanner.v1.Spanner.ListSessions\].
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListSessionsRequest {
     /// Required. The database in which to list sessions.
-    #[prost(string, tag = "1")]
+    #[prost(string, tag="1")]
     pub database: ::prost::alloc::string::String,
     /// Number of sessions to be returned in the response. If 0 or less, defaults
     /// to the server's maximum allowed page size.
-    #[prost(int32, tag = "2")]
+    #[prost(int32, tag="2")]
     pub page_size: i32,
     /// If non-empty, `page_token` should contain a
     /// \[next_page_token][google.spanner.v1.ListSessionsResponse.next_page_token\] from a previous
     /// \[ListSessionsResponse][google.spanner.v1.ListSessionsResponse\].
-    #[prost(string, tag = "3")]
+    #[prost(string, tag="3")]
     pub page_token: ::prost::alloc::string::String,
     /// An expression for filtering the results of the request. Filter rules are
     /// case insensitive. The fields eligible for filtering are:
@@ -1218,33 +1220,33 @@ pub struct ListSessionsRequest {
     ///   * `labels.env:*` --> The session has the label "env".
     ///   * `labels.env:dev` --> The session has the label "env" and the value of
     ///                        the label contains the string "dev".
-    #[prost(string, tag = "4")]
+    #[prost(string, tag="4")]
     pub filter: ::prost::alloc::string::String,
 }
 /// The response for \[ListSessions][google.spanner.v1.Spanner.ListSessions\].
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListSessionsResponse {
     /// The list of requested sessions.
-    #[prost(message, repeated, tag = "1")]
+    #[prost(message, repeated, tag="1")]
     pub sessions: ::prost::alloc::vec::Vec<Session>,
     /// `next_page_token` can be sent in a subsequent
     /// \[ListSessions][google.spanner.v1.Spanner.ListSessions\] call to fetch more of the matching
     /// sessions.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag="2")]
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request for \[DeleteSession][google.spanner.v1.Spanner.DeleteSession\].
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteSessionRequest {
     /// Required. The name of the session to delete.
-    #[prost(string, tag = "1")]
+    #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
 }
 /// Common request options for various APIs.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestOptions {
     /// Priority for the request.
-    #[prost(enumeration = "request_options::Priority", tag = "1")]
+    #[prost(enumeration="request_options::Priority", tag="1")]
     pub priority: i32,
     /// A per-request tag which can be applied to queries or reads, used for
     /// statistics collection.
@@ -1256,7 +1258,7 @@ pub struct RequestOptions {
     /// (ASCII 32 - 126) and the length of a request_tag is limited to 50
     /// characters. Values that exceed this limit are truncated.
     /// Any leading underscore (_) characters will be removed from the string.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag="2")]
     pub request_tag: ::prost::alloc::string::String,
     /// A tag used for statistics collection about this transaction.
     /// Both request_tag and transaction_tag can be specified for a read or query
@@ -1269,7 +1271,7 @@ pub struct RequestOptions {
     /// (ASCII 32 - 126) and the length of a transaction_tag is limited to 50
     /// characters. Values that exceed this limit are truncated.
     /// Any leading underscore (_) characters will be removed from the string.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag="3")]
     pub transaction_tag: ::prost::alloc::string::String,
 }
 /// Nested message and enum types in `RequestOptions`.
@@ -1308,7 +1310,7 @@ pub mod request_options {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExecuteSqlRequest {
     /// Required. The session in which the SQL query should be performed.
-    #[prost(string, tag = "1")]
+    #[prost(string, tag="1")]
     pub session: ::prost::alloc::string::String,
     /// The transaction to use.
     ///
@@ -1320,10 +1322,10 @@ pub struct ExecuteSqlRequest {
     /// must either supply an existing transaction ID or begin a new transaction.
     ///
     /// Partitioned DML requires an existing Partitioned DML transaction ID.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag="2")]
     pub transaction: ::core::option::Option<TransactionSelector>,
     /// Required. The SQL string.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag="3")]
     pub sql: ::prost::alloc::string::String,
     /// Parameter names and values that bind to placeholders in the SQL string.
     ///
@@ -1338,7 +1340,7 @@ pub struct ExecuteSqlRequest {
     /// `"WHERE id > @msg_id AND id < @msg_id + 100"`
     ///
     /// It is an error to execute a SQL statement with unbound parameters.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag="4")]
     pub params: ::core::option::Option<::prost_types::Struct>,
     /// It is not always possible for Cloud Spanner to infer the right SQL type
     /// from a JSON value.  For example, values of type `BYTES` and values
@@ -1348,7 +1350,7 @@ pub struct ExecuteSqlRequest {
     /// SQL type for some or all of the SQL statement parameters. See the
     /// definition of \[Type][google.spanner.v1.Type\] for more information
     /// about SQL types.
-    #[prost(map = "string, message", tag = "5")]
+    #[prost(map="string, message", tag="5")]
     pub param_types: ::std::collections::HashMap<::prost::alloc::string::String, Type>,
     /// If this request is resuming a previously interrupted SQL statement
     /// execution, `resume_token` should be copied from the last
@@ -1356,18 +1358,18 @@ pub struct ExecuteSqlRequest {
     /// enables the new SQL statement execution to resume where the last one left
     /// off. The rest of the request parameters must exactly match the
     /// request that yielded this token.
-    #[prost(bytes = "vec", tag = "6")]
+    #[prost(bytes="vec", tag="6")]
     pub resume_token: ::prost::alloc::vec::Vec<u8>,
     /// Used to control the amount of debugging information returned in
     /// \[ResultSetStats][google.spanner.v1.ResultSetStats\]. If \[partition_token][google.spanner.v1.ExecuteSqlRequest.partition_token\] is set, \[query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode\] can only
     /// be set to \[QueryMode.NORMAL][google.spanner.v1.ExecuteSqlRequest.QueryMode.NORMAL\].
-    #[prost(enumeration = "execute_sql_request::QueryMode", tag = "7")]
+    #[prost(enumeration="execute_sql_request::QueryMode", tag="7")]
     pub query_mode: i32,
     /// If present, results will be restricted to the specified partition
     /// previously created using PartitionQuery().  There must be an exact
     /// match for the values of fields common to this message and the
     /// PartitionQueryRequest message used to create this partition_token.
-    #[prost(bytes = "vec", tag = "8")]
+    #[prost(bytes="vec", tag="8")]
     pub partition_token: ::prost::alloc::vec::Vec<u8>,
     /// A per-transaction sequence number used to identify this request. This field
     /// makes each request idempotent such that if the request is received multiple
@@ -1379,13 +1381,13 @@ pub struct ExecuteSqlRequest {
     /// handled requests will yield the same response as the first execution.
     ///
     /// Required for DML statements. Ignored for queries.
-    #[prost(int64, tag = "9")]
+    #[prost(int64, tag="9")]
     pub seqno: i64,
     /// Query optimizer configuration to use for the given query.
-    #[prost(message, optional, tag = "10")]
+    #[prost(message, optional, tag="10")]
     pub query_options: ::core::option::Option<execute_sql_request::QueryOptions>,
     /// Common options for this request.
-    #[prost(message, optional, tag = "11")]
+    #[prost(message, optional, tag="11")]
     pub request_options: ::core::option::Option<RequestOptions>,
 }
 /// Nested message and enum types in `ExecuteSqlRequest`.
@@ -1415,7 +1417,7 @@ pub mod execute_sql_request {
         /// for more information on managing the query optimizer.
         ///
         /// The `optimizer_version` statement hint has precedence over this setting.
-        #[prost(string, tag = "1")]
+        #[prost(string, tag="1")]
         pub optimizer_version: ::prost::alloc::string::String,
         /// An option to control the selection of optimizer statistics package.
         ///
@@ -1441,7 +1443,7 @@ pub mod execute_sql_request {
         /// Executing a SQL statement with an invalid optimizer statistics package
         /// or with a statistics package that allows garbage collection fails with
         /// an `INVALID_ARGUMENT` error.
-        #[prost(string, tag = "2")]
+        #[prost(string, tag="2")]
         pub optimizer_statistics_package: ::prost::alloc::string::String,
     }
     /// Mode in which the statement must be processed.
@@ -1462,14 +1464,14 @@ pub mod execute_sql_request {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExecuteBatchDmlRequest {
     /// Required. The session in which the DML statements should be performed.
-    #[prost(string, tag = "1")]
+    #[prost(string, tag="1")]
     pub session: ::prost::alloc::string::String,
     /// Required. The transaction to use. Must be a read-write transaction.
     ///
     /// To protect against replays, single-use transactions are not supported. The
     /// caller must either supply an existing transaction ID or begin a new
     /// transaction.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag="2")]
     pub transaction: ::core::option::Option<TransactionSelector>,
     /// Required. The list of statements to execute in this batch. Statements are executed
     /// serially, such that the effects of statement `i` are visible to statement
@@ -1477,7 +1479,7 @@ pub struct ExecuteBatchDmlRequest {
     /// first failed statement; the remaining statements are not executed.
     ///
     /// Callers must provide at least one statement.
-    #[prost(message, repeated, tag = "3")]
+    #[prost(message, repeated, tag="3")]
     pub statements: ::prost::alloc::vec::Vec<execute_batch_dml_request::Statement>,
     /// Required. A per-transaction sequence number used to identify this request. This field
     /// makes each request idempotent such that if the request is received multiple
@@ -1487,10 +1489,10 @@ pub struct ExecuteBatchDmlRequest {
     /// transaction. If a request arrives for the first time with an out-of-order
     /// sequence number, the transaction may be aborted. Replays of previously
     /// handled requests will yield the same response as the first execution.
-    #[prost(int64, tag = "4")]
+    #[prost(int64, tag="4")]
     pub seqno: i64,
     /// Common options for this request.
-    #[prost(message, optional, tag = "5")]
+    #[prost(message, optional, tag="5")]
     pub request_options: ::core::option::Option<RequestOptions>,
 }
 /// Nested message and enum types in `ExecuteBatchDmlRequest`.
@@ -1499,7 +1501,7 @@ pub mod execute_batch_dml_request {
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Statement {
         /// Required. The DML string.
-        #[prost(string, tag = "1")]
+        #[prost(string, tag="1")]
         pub sql: ::prost::alloc::string::String,
         /// Parameter names and values that bind to placeholders in the DML string.
         ///
@@ -1513,7 +1515,7 @@ pub mod execute_batch_dml_request {
         /// `"WHERE id > @msg_id AND id < @msg_id + 100"`
         ///
         /// It is an error to execute a SQL statement with unbound parameters.
-        #[prost(message, optional, tag = "2")]
+        #[prost(message, optional, tag="2")]
         pub params: ::core::option::Option<::prost_types::Struct>,
         /// It is not always possible for Cloud Spanner to infer the right SQL type
         /// from a JSON value.  For example, values of type `BYTES` and values
@@ -1523,7 +1525,7 @@ pub mod execute_batch_dml_request {
         /// SQL type for some or all of the SQL statement parameters. See the
         /// definition of \[Type][google.spanner.v1.Type\] for more information
         /// about SQL types.
-        #[prost(map = "string, message", tag = "3")]
+        #[prost(map="string, message", tag="3")]
         pub param_types: ::std::collections::HashMap<::prost::alloc::string::String, super::Type>,
     }
 }
@@ -1560,11 +1562,11 @@ pub struct ExecuteBatchDmlResponse {
     ///
     /// Only the first \[ResultSet][google.spanner.v1.ResultSet\] in the response contains valid
     /// \[ResultSetMetadata][google.spanner.v1.ResultSetMetadata\].
-    #[prost(message, repeated, tag = "1")]
+    #[prost(message, repeated, tag="1")]
     pub result_sets: ::prost::alloc::vec::Vec<ResultSet>,
     /// If all DML statements are executed successfully, the status is `OK`.
     /// Otherwise, the error status of the first failed statement.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag="2")]
     pub status: ::core::option::Option<super::super::rpc::Status>,
 }
 /// Options for a PartitionQueryRequest and
@@ -1577,7 +1579,7 @@ pub struct PartitionOptions {
     /// The desired data size for each partition generated.  The default for this
     /// option is currently 1 GiB.  This is only a hint. The actual size of each
     /// partition may be smaller or larger than this size request.
-    #[prost(int64, tag = "1")]
+    #[prost(int64, tag="1")]
     pub partition_size_bytes: i64,
     /// **Note:** This hint is currently ignored by PartitionQuery and
     /// PartitionRead requests.
@@ -1587,18 +1589,18 @@ pub struct PartitionOptions {
     /// is currently 10,000. The maximum value is currently 200,000.  This is only
     /// a hint.  The actual number of partitions returned may be smaller or larger
     /// than this maximum count request.
-    #[prost(int64, tag = "2")]
+    #[prost(int64, tag="2")]
     pub max_partitions: i64,
 }
 /// The request for \[PartitionQuery][google.spanner.v1.Spanner.PartitionQuery\]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PartitionQueryRequest {
     /// Required. The session used to create the partitions.
-    #[prost(string, tag = "1")]
+    #[prost(string, tag="1")]
     pub session: ::prost::alloc::string::String,
     /// Read only snapshot transactions are supported, read/write and single use
     /// transactions are not.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag="2")]
     pub transaction: ::core::option::Option<TransactionSelector>,
     /// Required. The query request to generate partitions for. The request will fail if
     /// the query is not root partitionable. The query plan of a root
@@ -1610,7 +1612,7 @@ pub struct PartitionQueryRequest {
     /// This must not contain DML commands, such as INSERT, UPDATE, or
     /// DELETE. Use \[ExecuteStreamingSql][google.spanner.v1.Spanner.ExecuteStreamingSql\] with a
     /// PartitionedDml transaction for large, partition-friendly DML operations.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag="3")]
     pub sql: ::prost::alloc::string::String,
     /// Parameter names and values that bind to placeholders in the SQL string.
     ///
@@ -1624,7 +1626,7 @@ pub struct PartitionQueryRequest {
     /// `"WHERE id > @msg_id AND id < @msg_id + 100"`
     ///
     /// It is an error to execute a SQL statement with unbound parameters.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag="4")]
     pub params: ::core::option::Option<::prost_types::Struct>,
     /// It is not always possible for Cloud Spanner to infer the right SQL type
     /// from a JSON value.  For example, values of type `BYTES` and values
@@ -1634,33 +1636,33 @@ pub struct PartitionQueryRequest {
     /// SQL type for some or all of the SQL query parameters. See the
     /// definition of \[Type][google.spanner.v1.Type\] for more information
     /// about SQL types.
-    #[prost(map = "string, message", tag = "5")]
+    #[prost(map="string, message", tag="5")]
     pub param_types: ::std::collections::HashMap<::prost::alloc::string::String, Type>,
     /// Additional options that affect how many partitions are created.
-    #[prost(message, optional, tag = "6")]
+    #[prost(message, optional, tag="6")]
     pub partition_options: ::core::option::Option<PartitionOptions>,
 }
 /// The request for \[PartitionRead][google.spanner.v1.Spanner.PartitionRead\]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PartitionReadRequest {
     /// Required. The session used to create the partitions.
-    #[prost(string, tag = "1")]
+    #[prost(string, tag="1")]
     pub session: ::prost::alloc::string::String,
     /// Read only snapshot transactions are supported, read/write and single use
     /// transactions are not.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag="2")]
     pub transaction: ::core::option::Option<TransactionSelector>,
     /// Required. The name of the table in the database to be read.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag="3")]
     pub table: ::prost::alloc::string::String,
     /// If non-empty, the name of an index on \[table][google.spanner.v1.PartitionReadRequest.table\]. This index is
     /// used instead of the table primary key when interpreting \[key_set][google.spanner.v1.PartitionReadRequest.key_set\]
     /// and sorting result rows. See \[key_set][google.spanner.v1.PartitionReadRequest.key_set\] for further information.
-    #[prost(string, tag = "4")]
+    #[prost(string, tag="4")]
     pub index: ::prost::alloc::string::String,
     /// The columns of \[table][google.spanner.v1.PartitionReadRequest.table\] to be returned for each row matching
     /// this request.
-    #[prost(string, repeated, tag = "5")]
+    #[prost(string, repeated, tag="5")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// Required. `key_set` identifies the rows to be yielded. `key_set` names the
     /// primary keys of the rows in \[table][google.spanner.v1.PartitionReadRequest.table\] to be yielded, unless \[index][google.spanner.v1.PartitionReadRequest.index\]
@@ -1669,10 +1671,10 @@ pub struct PartitionReadRequest {
     ///
     /// It is not an error for the `key_set` to name rows that do not
     /// exist in the database. Read yields nothing for nonexistent rows.
-    #[prost(message, optional, tag = "6")]
+    #[prost(message, optional, tag="6")]
     pub key_set: ::core::option::Option<KeySet>,
     /// Additional options that affect how many partitions are created.
-    #[prost(message, optional, tag = "9")]
+    #[prost(message, optional, tag="9")]
     pub partition_options: ::core::option::Option<PartitionOptions>,
 }
 /// Information returned for each partition returned in a
@@ -1682,7 +1684,7 @@ pub struct Partition {
     /// This token can be passed to Read, StreamingRead, ExecuteSql, or
     /// ExecuteStreamingSql requests to restrict the results to those identified by
     /// this partition token.
-    #[prost(bytes = "vec", tag = "1")]
+    #[prost(bytes="vec", tag="1")]
     pub partition_token: ::prost::alloc::vec::Vec<u8>,
 }
 /// The response for \[PartitionQuery][google.spanner.v1.Spanner.PartitionQuery\]
@@ -1690,10 +1692,10 @@ pub struct Partition {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PartitionResponse {
     /// Partitions created by this request.
-    #[prost(message, repeated, tag = "1")]
+    #[prost(message, repeated, tag="1")]
     pub partitions: ::prost::alloc::vec::Vec<Partition>,
     /// Transaction created by this request.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag="2")]
     pub transaction: ::core::option::Option<Transaction>,
 }
 /// The request for \[Read][google.spanner.v1.Spanner.Read\] and
@@ -1701,23 +1703,23 @@ pub struct PartitionResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ReadRequest {
     /// Required. The session in which the read should be performed.
-    #[prost(string, tag = "1")]
+    #[prost(string, tag="1")]
     pub session: ::prost::alloc::string::String,
     /// The transaction to use. If none is provided, the default is a
     /// temporary read-only transaction with strong concurrency.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag="2")]
     pub transaction: ::core::option::Option<TransactionSelector>,
     /// Required. The name of the table in the database to be read.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag="3")]
     pub table: ::prost::alloc::string::String,
     /// If non-empty, the name of an index on \[table][google.spanner.v1.ReadRequest.table\]. This index is
     /// used instead of the table primary key when interpreting \[key_set][google.spanner.v1.ReadRequest.key_set\]
     /// and sorting result rows. See \[key_set][google.spanner.v1.ReadRequest.key_set\] for further information.
-    #[prost(string, tag = "4")]
+    #[prost(string, tag="4")]
     pub index: ::prost::alloc::string::String,
     /// Required. The columns of \[table][google.spanner.v1.ReadRequest.table\] to be returned for each row matching
     /// this request.
-    #[prost(string, repeated, tag = "5")]
+    #[prost(string, repeated, tag="5")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// Required. `key_set` identifies the rows to be yielded. `key_set` names the
     /// primary keys of the rows in \[table][google.spanner.v1.ReadRequest.table\] to be yielded, unless \[index][google.spanner.v1.ReadRequest.index\]
@@ -1731,12 +1733,12 @@ pub struct ReadRequest {
     ///
     /// It is not an error for the `key_set` to name rows that do not
     /// exist in the database. Read yields nothing for nonexistent rows.
-    #[prost(message, optional, tag = "6")]
+    #[prost(message, optional, tag="6")]
     pub key_set: ::core::option::Option<KeySet>,
     /// If greater than zero, only the first `limit` rows are yielded. If `limit`
     /// is zero, the default is no limit. A limit cannot be specified if
     /// `partition_token` is set.
-    #[prost(int64, tag = "8")]
+    #[prost(int64, tag="8")]
     pub limit: i64,
     /// If this request is resuming a previously interrupted read,
     /// `resume_token` should be copied from the last
@@ -1744,56 +1746,56 @@ pub struct ReadRequest {
     /// enables the new read to resume where the last read left off. The
     /// rest of the request parameters must exactly match the request
     /// that yielded this token.
-    #[prost(bytes = "vec", tag = "9")]
+    #[prost(bytes="vec", tag="9")]
     pub resume_token: ::prost::alloc::vec::Vec<u8>,
     /// If present, results will be restricted to the specified partition
     /// previously created using PartitionRead().    There must be an exact
     /// match for the values of fields common to this message and the
     /// PartitionReadRequest message used to create this partition_token.
-    #[prost(bytes = "vec", tag = "10")]
+    #[prost(bytes="vec", tag="10")]
     pub partition_token: ::prost::alloc::vec::Vec<u8>,
     /// Common options for this request.
-    #[prost(message, optional, tag = "11")]
+    #[prost(message, optional, tag="11")]
     pub request_options: ::core::option::Option<RequestOptions>,
 }
 /// The request for \[BeginTransaction][google.spanner.v1.Spanner.BeginTransaction\].
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BeginTransactionRequest {
     /// Required. The session in which the transaction runs.
-    #[prost(string, tag = "1")]
+    #[prost(string, tag="1")]
     pub session: ::prost::alloc::string::String,
     /// Required. Options for the new transaction.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag="2")]
     pub options: ::core::option::Option<TransactionOptions>,
     /// Common options for this request.
     /// Priority is ignored for this request. Setting the priority in this
     /// request_options struct will not do anything. To set the priority for a
     /// transaction, set it on the reads and writes that are part of this
     /// transaction instead.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag="3")]
     pub request_options: ::core::option::Option<RequestOptions>,
 }
 /// The request for \[Commit][google.spanner.v1.Spanner.Commit\].
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CommitRequest {
     /// Required. The session in which the transaction to be committed is running.
-    #[prost(string, tag = "1")]
+    #[prost(string, tag="1")]
     pub session: ::prost::alloc::string::String,
     /// The mutations to be executed when this transaction commits. All
     /// mutations are applied atomically, in the order they appear in
     /// this list.
-    #[prost(message, repeated, tag = "4")]
+    #[prost(message, repeated, tag="4")]
     pub mutations: ::prost::alloc::vec::Vec<Mutation>,
     /// If `true`, then statistics related to the transaction will be included in
     /// the \[CommitResponse][google.spanner.v1.CommitResponse.commit_stats\]. Default value is
     /// `false`.
-    #[prost(bool, tag = "5")]
+    #[prost(bool, tag="5")]
     pub return_commit_stats: bool,
     /// Common options for this request.
-    #[prost(message, optional, tag = "6")]
+    #[prost(message, optional, tag="6")]
     pub request_options: ::core::option::Option<RequestOptions>,
     /// Required. The transaction in which to commit.
-    #[prost(oneof = "commit_request::Transaction", tags = "2, 3")]
+    #[prost(oneof="commit_request::Transaction", tags="2, 3")]
     pub transaction: ::core::option::Option<commit_request::Transaction>,
 }
 /// Nested message and enum types in `CommitRequest`.
@@ -1802,7 +1804,7 @@ pub mod commit_request {
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Transaction {
         /// Commit a previously-started transaction.
-        #[prost(bytes, tag = "2")]
+        #[prost(bytes, tag="2")]
         TransactionId(::prost::alloc::vec::Vec<u8>),
         /// Execute mutations in a temporary transaction. Note that unlike
         /// commit of a previously-started transaction, commit with a
@@ -1813,7 +1815,7 @@ pub mod commit_request {
         /// executed more than once. If this is undesirable, use
         /// \[BeginTransaction][google.spanner.v1.Spanner.BeginTransaction\] and
         /// \[Commit][google.spanner.v1.Spanner.Commit\] instead.
-        #[prost(message, tag = "3")]
+        #[prost(message, tag="3")]
         SingleUseTransaction(super::TransactionOptions),
     }
 }
@@ -1821,26 +1823,26 @@ pub mod commit_request {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RollbackRequest {
     /// Required. The session in which the transaction to roll back is running.
-    #[prost(string, tag = "1")]
+    #[prost(string, tag="1")]
     pub session: ::prost::alloc::string::String,
     /// Required. The transaction to roll back.
-    #[prost(bytes = "vec", tag = "2")]
+    #[prost(bytes="vec", tag="2")]
     pub transaction_id: ::prost::alloc::vec::Vec<u8>,
 }
-#[doc = r" Generated client implementations."]
+/// Generated client implementations.
 pub mod spanner_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
     use tonic::codegen::*;
-    #[doc = " Cloud Spanner API"]
-    #[doc = ""]
-    #[doc = " The Cloud Spanner API can be used to manage sessions and execute"]
-    #[doc = " transactions on data stored in Cloud Spanner databases."]
+    /// Cloud Spanner API
+    ///
+    /// The Cloud Spanner API can be used to manage sessions and execute
+    /// transactions on data stored in Cloud Spanner databases.
     #[derive(Debug, Clone)]
     pub struct SpannerClient<T> {
         inner: tonic::client::Grpc<T>,
     }
     impl SpannerClient<tonic::transport::Channel> {
-        #[doc = r" Attempt to create a new client by connecting to a given endpoint."]
+        /// Attempt to create a new client by connecting to a given endpoint.
         pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
         where
             D: std::convert::TryInto<tonic::transport::Endpoint>,
@@ -1853,326 +1855,462 @@ pub mod spanner_client {
     impl<T> SpannerClient<T>
     where
         T: tonic::client::GrpcService<tonic::body::BoxBody>,
-        T::ResponseBody: Body + Send + 'static,
         T::Error: Into<StdError>,
+        T::ResponseBody: Body<Data = Bytes> + Send + 'static,
         <T::ResponseBody as Body>::Error: Into<StdError> + Send,
     {
         pub fn new(inner: T) -> Self {
             let inner = tonic::client::Grpc::new(inner);
             Self { inner }
         }
-        pub fn with_interceptor<F>(inner: T, interceptor: F) -> SpannerClient<InterceptedService<T, F>>
+        pub fn with_interceptor<F>(
+            inner: T,
+            interceptor: F,
+        ) -> SpannerClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
+            T::ResponseBody: Default,
             T: tonic::codegen::Service<
                 http::Request<tonic::body::BoxBody>,
-                Response = http::Response<<T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody>,
+                Response = http::Response<
+                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                >,
             >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error: Into<StdError> + Send + Sync,
+            <T as tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+            >>::Error: Into<StdError> + Send + Sync,
         {
             SpannerClient::new(InterceptedService::new(inner, interceptor))
         }
-        #[doc = r" Compress requests with `gzip`."]
-        #[doc = r""]
-        #[doc = r" This requires the server to support it otherwise it might respond with an"]
-        #[doc = r" error."]
+        /// Compress requests with `gzip`.
+        ///
+        /// This requires the server to support it otherwise it might respond with an
+        /// error.
+        #[must_use]
         pub fn send_gzip(mut self) -> Self {
             self.inner = self.inner.send_gzip();
             self
         }
-        #[doc = r" Enable decompressing responses with `gzip`."]
+        /// Enable decompressing responses with `gzip`.
+        #[must_use]
         pub fn accept_gzip(mut self) -> Self {
             self.inner = self.inner.accept_gzip();
             self
         }
-        #[doc = " Creates a new session. A session can be used to perform"]
-        #[doc = " transactions that read and/or modify data in a Cloud Spanner database."]
-        #[doc = " Sessions are meant to be reused for many consecutive"]
-        #[doc = " transactions."]
-        #[doc = ""]
-        #[doc = " Sessions can only execute one transaction at a time. To execute"]
-        #[doc = " multiple concurrent read-write/write-only transactions, create"]
-        #[doc = " multiple sessions. Note that standalone reads and queries use a"]
-        #[doc = " transaction internally, and count toward the one transaction"]
-        #[doc = " limit."]
-        #[doc = ""]
-        #[doc = " Active sessions use additional server resources, so it is a good idea to"]
-        #[doc = " delete idle and unneeded sessions."]
-        #[doc = " Aside from explicit deletes, Cloud Spanner may delete sessions for which no"]
-        #[doc = " operations are sent for more than an hour. If a session is deleted,"]
-        #[doc = " requests to it return `NOT_FOUND`."]
-        #[doc = ""]
-        #[doc = " Idle sessions can be kept alive by sending a trivial SQL query"]
-        #[doc = " periodically, e.g., `\"SELECT 1\"`."]
+        /// Creates a new session. A session can be used to perform
+        /// transactions that read and/or modify data in a Cloud Spanner database.
+        /// Sessions are meant to be reused for many consecutive
+        /// transactions.
+        ///
+        /// Sessions can only execute one transaction at a time. To execute
+        /// multiple concurrent read-write/write-only transactions, create
+        /// multiple sessions. Note that standalone reads and queries use a
+        /// transaction internally, and count toward the one transaction
+        /// limit.
+        ///
+        /// Active sessions use additional server resources, so it is a good idea to
+        /// delete idle and unneeded sessions.
+        /// Aside from explicit deletes, Cloud Spanner may delete sessions for which no
+        /// operations are sent for more than an hour. If a session is deleted,
+        /// requests to it return `NOT_FOUND`.
+        ///
+        /// Idle sessions can be kept alive by sending a trivial SQL query
+        /// periodically, e.g., `"SELECT 1"`.
         pub async fn create_session(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateSessionRequest>,
         ) -> Result<tonic::Response<super::Session>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/CreateSession");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/CreateSession",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Creates multiple new sessions."]
-        #[doc = ""]
-        #[doc = " This API can be used to initialize a session cache on the clients."]
-        #[doc = " See https://goo.gl/TgSFN2 for best practices on session cache management."]
+        /// Creates multiple new sessions.
+        ///
+        /// This API can be used to initialize a session cache on the clients.
+        /// See https://goo.gl/TgSFN2 for best practices on session cache management.
         pub async fn batch_create_sessions(
             &mut self,
             request: impl tonic::IntoRequest<super::BatchCreateSessionsRequest>,
         ) -> Result<tonic::Response<super::BatchCreateSessionsResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/BatchCreateSessions");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/BatchCreateSessions",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Gets a session. Returns `NOT_FOUND` if the session does not exist."]
-        #[doc = " This is mainly useful for determining whether a session is still"]
-        #[doc = " alive."]
+        /// Gets a session. Returns `NOT_FOUND` if the session does not exist.
+        /// This is mainly useful for determining whether a session is still
+        /// alive.
         pub async fn get_session(
             &mut self,
             request: impl tonic::IntoRequest<super::GetSessionRequest>,
         ) -> Result<tonic::Response<super::Session>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/GetSession");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/GetSession",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Lists all sessions in a given database."]
+        /// Lists all sessions in a given database.
         pub async fn list_sessions(
             &mut self,
             request: impl tonic::IntoRequest<super::ListSessionsRequest>,
         ) -> Result<tonic::Response<super::ListSessionsResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/ListSessions");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/ListSessions",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Ends a session, releasing server resources associated with it. This will"]
-        #[doc = " asynchronously trigger cancellation of any operations that are running with"]
-        #[doc = " this session."]
+        /// Ends a session, releasing server resources associated with it. This will
+        /// asynchronously trigger cancellation of any operations that are running with
+        /// this session.
         pub async fn delete_session(
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteSessionRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/DeleteSession");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/DeleteSession",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Executes an SQL statement, returning all results in a single reply. This"]
-        #[doc = " method cannot be used to return a result set larger than 10 MiB;"]
-        #[doc = " if the query yields more data than that, the query fails with"]
-        #[doc = " a `FAILED_PRECONDITION` error."]
-        #[doc = ""]
-        #[doc = " Operations inside read-write transactions might return `ABORTED`. If"]
-        #[doc = " this occurs, the application should restart the transaction from"]
-        #[doc = " the beginning. See [Transaction][google.spanner.v1.Transaction] for more details."]
-        #[doc = ""]
-        #[doc = " Larger result sets can be fetched in streaming fashion by calling"]
-        #[doc = " [ExecuteStreamingSql][google.spanner.v1.Spanner.ExecuteStreamingSql] instead."]
+        /// Executes an SQL statement, returning all results in a single reply. This
+        /// method cannot be used to return a result set larger than 10 MiB;
+        /// if the query yields more data than that, the query fails with
+        /// a `FAILED_PRECONDITION` error.
+        ///
+        /// Operations inside read-write transactions might return `ABORTED`. If
+        /// this occurs, the application should restart the transaction from
+        /// the beginning. See [Transaction][google.spanner.v1.Transaction] for more details.
+        ///
+        /// Larger result sets can be fetched in streaming fashion by calling
+        /// [ExecuteStreamingSql][google.spanner.v1.Spanner.ExecuteStreamingSql] instead.
         pub async fn execute_sql(
             &mut self,
             request: impl tonic::IntoRequest<super::ExecuteSqlRequest>,
         ) -> Result<tonic::Response<super::ResultSet>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/ExecuteSql");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/ExecuteSql",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Like [ExecuteSql][google.spanner.v1.Spanner.ExecuteSql], except returns the result"]
-        #[doc = " set as a stream. Unlike [ExecuteSql][google.spanner.v1.Spanner.ExecuteSql], there"]
-        #[doc = " is no limit on the size of the returned result set. However, no"]
-        #[doc = " individual row in the result set can exceed 100 MiB, and no"]
-        #[doc = " column value can exceed 10 MiB."]
+        /// Like [ExecuteSql][google.spanner.v1.Spanner.ExecuteSql], except returns the result
+        /// set as a stream. Unlike [ExecuteSql][google.spanner.v1.Spanner.ExecuteSql], there
+        /// is no limit on the size of the returned result set. However, no
+        /// individual row in the result set can exceed 100 MiB, and no
+        /// column value can exceed 10 MiB.
         pub async fn execute_streaming_sql(
             &mut self,
             request: impl tonic::IntoRequest<super::ExecuteSqlRequest>,
-        ) -> Result<tonic::Response<tonic::codec::Streaming<super::PartialResultSet>>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+        ) -> Result<
+                tonic::Response<tonic::codec::Streaming<super::PartialResultSet>>,
+                tonic::Status,
+            > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/ExecuteStreamingSql");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/ExecuteStreamingSql",
+            );
             self.inner.server_streaming(request.into_request(), path, codec).await
         }
-        #[doc = " Executes a batch of SQL DML statements. This method allows many statements"]
-        #[doc = " to be run with lower latency than submitting them sequentially with"]
-        #[doc = " [ExecuteSql][google.spanner.v1.Spanner.ExecuteSql]."]
-        #[doc = ""]
-        #[doc = " Statements are executed in sequential order. A request can succeed even if"]
-        #[doc = " a statement fails. The [ExecuteBatchDmlResponse.status][google.spanner.v1.ExecuteBatchDmlResponse.status] field in the"]
-        #[doc = " response provides information about the statement that failed. Clients must"]
-        #[doc = " inspect this field to determine whether an error occurred."]
-        #[doc = ""]
-        #[doc = " Execution stops after the first failed statement; the remaining statements"]
-        #[doc = " are not executed."]
+        /// Executes a batch of SQL DML statements. This method allows many statements
+        /// to be run with lower latency than submitting them sequentially with
+        /// [ExecuteSql][google.spanner.v1.Spanner.ExecuteSql].
+        ///
+        /// Statements are executed in sequential order. A request can succeed even if
+        /// a statement fails. The [ExecuteBatchDmlResponse.status][google.spanner.v1.ExecuteBatchDmlResponse.status] field in the
+        /// response provides information about the statement that failed. Clients must
+        /// inspect this field to determine whether an error occurred.
+        ///
+        /// Execution stops after the first failed statement; the remaining statements
+        /// are not executed.
         pub async fn execute_batch_dml(
             &mut self,
             request: impl tonic::IntoRequest<super::ExecuteBatchDmlRequest>,
         ) -> Result<tonic::Response<super::ExecuteBatchDmlResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/ExecuteBatchDml");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/ExecuteBatchDml",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Reads rows from the database using key lookups and scans, as a"]
-        #[doc = " simple key/value style alternative to"]
-        #[doc = " [ExecuteSql][google.spanner.v1.Spanner.ExecuteSql].  This method cannot be used to"]
-        #[doc = " return a result set larger than 10 MiB; if the read matches more"]
-        #[doc = " data than that, the read fails with a `FAILED_PRECONDITION`"]
-        #[doc = " error."]
-        #[doc = ""]
-        #[doc = " Reads inside read-write transactions might return `ABORTED`. If"]
-        #[doc = " this occurs, the application should restart the transaction from"]
-        #[doc = " the beginning. See [Transaction][google.spanner.v1.Transaction] for more details."]
-        #[doc = ""]
-        #[doc = " Larger result sets can be yielded in streaming fashion by calling"]
-        #[doc = " [StreamingRead][google.spanner.v1.Spanner.StreamingRead] instead."]
+        /// Reads rows from the database using key lookups and scans, as a
+        /// simple key/value style alternative to
+        /// [ExecuteSql][google.spanner.v1.Spanner.ExecuteSql].  This method cannot be used to
+        /// return a result set larger than 10 MiB; if the read matches more
+        /// data than that, the read fails with a `FAILED_PRECONDITION`
+        /// error.
+        ///
+        /// Reads inside read-write transactions might return `ABORTED`. If
+        /// this occurs, the application should restart the transaction from
+        /// the beginning. See [Transaction][google.spanner.v1.Transaction] for more details.
+        ///
+        /// Larger result sets can be yielded in streaming fashion by calling
+        /// [StreamingRead][google.spanner.v1.Spanner.StreamingRead] instead.
         pub async fn read(
             &mut self,
             request: impl tonic::IntoRequest<super::ReadRequest>,
         ) -> Result<tonic::Response<super::ResultSet>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/Read");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/Read",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Like [Read][google.spanner.v1.Spanner.Read], except returns the result set as a"]
-        #[doc = " stream. Unlike [Read][google.spanner.v1.Spanner.Read], there is no limit on the"]
-        #[doc = " size of the returned result set. However, no individual row in"]
-        #[doc = " the result set can exceed 100 MiB, and no column value can exceed"]
-        #[doc = " 10 MiB."]
+        /// Like [Read][google.spanner.v1.Spanner.Read], except returns the result set as a
+        /// stream. Unlike [Read][google.spanner.v1.Spanner.Read], there is no limit on the
+        /// size of the returned result set. However, no individual row in
+        /// the result set can exceed 100 MiB, and no column value can exceed
+        /// 10 MiB.
         pub async fn streaming_read(
             &mut self,
             request: impl tonic::IntoRequest<super::ReadRequest>,
-        ) -> Result<tonic::Response<tonic::codec::Streaming<super::PartialResultSet>>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+        ) -> Result<
+                tonic::Response<tonic::codec::Streaming<super::PartialResultSet>>,
+                tonic::Status,
+            > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/StreamingRead");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/StreamingRead",
+            );
             self.inner.server_streaming(request.into_request(), path, codec).await
         }
-        #[doc = " Begins a new transaction. This step can often be skipped:"]
-        #[doc = " [Read][google.spanner.v1.Spanner.Read], [ExecuteSql][google.spanner.v1.Spanner.ExecuteSql] and"]
-        #[doc = " [Commit][google.spanner.v1.Spanner.Commit] can begin a new transaction as a"]
-        #[doc = " side-effect."]
+        /// Begins a new transaction. This step can often be skipped:
+        /// [Read][google.spanner.v1.Spanner.Read], [ExecuteSql][google.spanner.v1.Spanner.ExecuteSql] and
+        /// [Commit][google.spanner.v1.Spanner.Commit] can begin a new transaction as a
+        /// side-effect.
         pub async fn begin_transaction(
             &mut self,
             request: impl tonic::IntoRequest<super::BeginTransactionRequest>,
         ) -> Result<tonic::Response<super::Transaction>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/BeginTransaction");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/BeginTransaction",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Commits a transaction. The request includes the mutations to be"]
-        #[doc = " applied to rows in the database."]
-        #[doc = ""]
-        #[doc = " `Commit` might return an `ABORTED` error. This can occur at any time;"]
-        #[doc = " commonly, the cause is conflicts with concurrent"]
-        #[doc = " transactions. However, it can also happen for a variety of other"]
-        #[doc = " reasons. If `Commit` returns `ABORTED`, the caller should re-attempt"]
-        #[doc = " the transaction from the beginning, re-using the same session."]
-        #[doc = ""]
-        #[doc = " On very rare occasions, `Commit` might return `UNKNOWN`. This can happen,"]
-        #[doc = " for example, if the client job experiences a 1+ hour networking failure."]
-        #[doc = " At that point, Cloud Spanner has lost track of the transaction outcome and"]
-        #[doc = " we recommend that you perform another read from the database to see the"]
-        #[doc = " state of things as they are now."]
+        /// Commits a transaction. The request includes the mutations to be
+        /// applied to rows in the database.
+        ///
+        /// `Commit` might return an `ABORTED` error. This can occur at any time;
+        /// commonly, the cause is conflicts with concurrent
+        /// transactions. However, it can also happen for a variety of other
+        /// reasons. If `Commit` returns `ABORTED`, the caller should re-attempt
+        /// the transaction from the beginning, re-using the same session.
+        ///
+        /// On very rare occasions, `Commit` might return `UNKNOWN`. This can happen,
+        /// for example, if the client job experiences a 1+ hour networking failure.
+        /// At that point, Cloud Spanner has lost track of the transaction outcome and
+        /// we recommend that you perform another read from the database to see the
+        /// state of things as they are now.
         pub async fn commit(
             &mut self,
             request: impl tonic::IntoRequest<super::CommitRequest>,
         ) -> Result<tonic::Response<super::CommitResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/Commit");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/Commit",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Rolls back a transaction, releasing any locks it holds. It is a good"]
-        #[doc = " idea to call this for any transaction that includes one or more"]
-        #[doc = " [Read][google.spanner.v1.Spanner.Read] or [ExecuteSql][google.spanner.v1.Spanner.ExecuteSql] requests and"]
-        #[doc = " ultimately decides not to commit."]
-        #[doc = ""]
-        #[doc = " `Rollback` returns `OK` if it successfully aborts the transaction, the"]
-        #[doc = " transaction was already aborted, or the transaction is not"]
-        #[doc = " found. `Rollback` never returns `ABORTED`."]
+        /// Rolls back a transaction, releasing any locks it holds. It is a good
+        /// idea to call this for any transaction that includes one or more
+        /// [Read][google.spanner.v1.Spanner.Read] or [ExecuteSql][google.spanner.v1.Spanner.ExecuteSql] requests and
+        /// ultimately decides not to commit.
+        ///
+        /// `Rollback` returns `OK` if it successfully aborts the transaction, the
+        /// transaction was already aborted, or the transaction is not
+        /// found. `Rollback` never returns `ABORTED`.
         pub async fn rollback(
             &mut self,
             request: impl tonic::IntoRequest<super::RollbackRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/Rollback");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/Rollback",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Creates a set of partition tokens that can be used to execute a query"]
-        #[doc = " operation in parallel.  Each of the returned partition tokens can be used"]
-        #[doc = " by [ExecuteStreamingSql][google.spanner.v1.Spanner.ExecuteStreamingSql] to specify a subset"]
-        #[doc = " of the query result to read.  The same session and read-only transaction"]
-        #[doc = " must be used by the PartitionQueryRequest used to create the"]
-        #[doc = " partition tokens and the ExecuteSqlRequests that use the partition tokens."]
-        #[doc = ""]
-        #[doc = " Partition tokens become invalid when the session used to create them"]
-        #[doc = " is deleted, is idle for too long, begins a new transaction, or becomes too"]
-        #[doc = " old.  When any of these happen, it is not possible to resume the query, and"]
-        #[doc = " the whole operation must be restarted from the beginning."]
+        /// Creates a set of partition tokens that can be used to execute a query
+        /// operation in parallel.  Each of the returned partition tokens can be used
+        /// by [ExecuteStreamingSql][google.spanner.v1.Spanner.ExecuteStreamingSql] to specify a subset
+        /// of the query result to read.  The same session and read-only transaction
+        /// must be used by the PartitionQueryRequest used to create the
+        /// partition tokens and the ExecuteSqlRequests that use the partition tokens.
+        ///
+        /// Partition tokens become invalid when the session used to create them
+        /// is deleted, is idle for too long, begins a new transaction, or becomes too
+        /// old.  When any of these happen, it is not possible to resume the query, and
+        /// the whole operation must be restarted from the beginning.
         pub async fn partition_query(
             &mut self,
             request: impl tonic::IntoRequest<super::PartitionQueryRequest>,
         ) -> Result<tonic::Response<super::PartitionResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/PartitionQuery");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/PartitionQuery",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Creates a set of partition tokens that can be used to execute a read"]
-        #[doc = " operation in parallel.  Each of the returned partition tokens can be used"]
-        #[doc = " by [StreamingRead][google.spanner.v1.Spanner.StreamingRead] to specify a subset of the read"]
-        #[doc = " result to read.  The same session and read-only transaction must be used by"]
-        #[doc = " the PartitionReadRequest used to create the partition tokens and the"]
-        #[doc = " ReadRequests that use the partition tokens.  There are no ordering"]
-        #[doc = " guarantees on rows returned among the returned partition tokens, or even"]
-        #[doc = " within each individual StreamingRead call issued with a partition_token."]
-        #[doc = ""]
-        #[doc = " Partition tokens become invalid when the session used to create them"]
-        #[doc = " is deleted, is idle for too long, begins a new transaction, or becomes too"]
-        #[doc = " old.  When any of these happen, it is not possible to resume the read, and"]
-        #[doc = " the whole operation must be restarted from the beginning."]
+        /// Creates a set of partition tokens that can be used to execute a read
+        /// operation in parallel.  Each of the returned partition tokens can be used
+        /// by [StreamingRead][google.spanner.v1.Spanner.StreamingRead] to specify a subset of the read
+        /// result to read.  The same session and read-only transaction must be used by
+        /// the PartitionReadRequest used to create the partition tokens and the
+        /// ReadRequests that use the partition tokens.  There are no ordering
+        /// guarantees on rows returned among the returned partition tokens, or even
+        /// within each individual StreamingRead call issued with a partition_token.
+        ///
+        /// Partition tokens become invalid when the session used to create them
+        /// is deleted, is idle for too long, begins a new transaction, or becomes too
+        /// old.  When any of these happen, it is not possible to resume the read, and
+        /// the whole operation must be restarted from the beginning.
         pub async fn partition_read(
             &mut self,
             request: impl tonic::IntoRequest<super::PartitionReadRequest>,
         ) -> Result<tonic::Response<super::PartitionResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/PartitionRead");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/PartitionRead",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
     }

@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicI64, Ordering};
 
-use google_cloud_auth::credentials::{Credentials, CredentialsFile};
+
 use google_cloud_auth::token_source::TokenSource;
 use google_cloud_auth::{create_token_source, Config};
 use http::header::AUTHORIZATION;

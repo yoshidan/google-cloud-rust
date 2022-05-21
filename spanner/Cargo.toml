@@ -12,15 +12,14 @@ documentation = "https://docs.rs/google-cloud-spanner/0.7.0/google-cloud-spanner
 
 [dependencies]
 tracing = "0.1"
-prost = "0.9"
-prost-types = "0.9"
+prost = "0.10"
+prost-types = "0.10"
 tokio = "1.17"
 chrono = "0.4"
 thiserror = "1.0"
 async-trait = "0.1"
 parking_lot = "0.11"
 base64 = "0.13"
-anyhow = "1.0"
 
 google-cloud-longrunning= { version = "0.4.0", path = "../foundation/longrunning" }
 google-cloud-gax = { version = "0.5.0", path = "../foundation/gax" }

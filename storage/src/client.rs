@@ -128,7 +128,7 @@ impl Client {
 #[cfg(test)]
 mod test {
     use crate::client::Client;
-    use crate::http::bucket_access_controls::PredefinedBucketAcl;
+    
     use crate::http::buckets::delete::DeleteBucketRequest;
     use crate::http::buckets::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
     use crate::http::buckets::insert::{
@@ -139,8 +139,8 @@ mod test {
     use std::collections::HashMap;
 
     use crate::http::buckets::list::ListBucketsRequest;
-    use crate::http::object_access_controls::insert::ObjectAccessControlCreationConfig;
-    use crate::http::object_access_controls::ObjectACLRole;
+    
+    
 
     #[ctor::ctor]
     fn init() {

@@ -6,7 +6,7 @@ pub mod service_account_token_source;
 use crate::error::Error;
 use crate::token::Token;
 use async_trait::async_trait;
-use serde::{de, Deserialize};
+use serde::{Deserialize};
 use std::time::Duration;
 
 #[async_trait]

@@ -1,5 +1,5 @@
 use reqwest::header::{HeaderValue, USER_AGENT};
-use reqwest::Client;
+
 use std::string;
 use std::time::Duration;
 

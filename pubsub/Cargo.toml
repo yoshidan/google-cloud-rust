@@ -12,7 +12,7 @@ documentation = "https://docs.rs/google-cloud-pubsub/0.2.0/google-cloud-pubsub/"
 
 [dependencies]
 tracing = "0.1"
-prost-types = "0.9"
+prost-types = "0.10"
 tokio = "1.17"
 async-trait = "0.1"
 parking_lot = "0.11"

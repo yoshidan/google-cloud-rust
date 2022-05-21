@@ -33,20 +33,20 @@
 pub struct Expr {
     /// Textual representation of an expression in Common Expression Language
     /// syntax.
-    #[prost(string, tag = "1")]
+    #[prost(string, tag="1")]
     pub expression: ::prost::alloc::string::String,
     /// Optional. Title for the expression, i.e. a short string describing
     /// its purpose. This can be used e.g. in UIs which allow to enter the
     /// expression.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag="2")]
     pub title: ::prost::alloc::string::String,
     /// Optional. Description of the expression. This is a longer text which
     /// describes the expression, e.g. when hovered over it in a UI.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag="3")]
     pub description: ::prost::alloc::string::String,
     /// Optional. String indicating the location of the expression for error
     /// reporting, e.g. a file name and a position in the file.
-    #[prost(string, tag = "4")]
+    #[prost(string, tag="4")]
     pub location: ::prost::alloc::string::String,
 }
 /// Represents a whole or partial calendar date, such as a birthday. The time of
@@ -66,15 +66,15 @@ pub struct Expr {
 pub struct Date {
     /// Year of the date. Must be from 1 to 9999, or 0 to specify a date without
     /// a year.
-    #[prost(int32, tag = "1")]
+    #[prost(int32, tag="1")]
     pub year: i32,
     /// Month of a year. Must be from 1 to 12, or 0 to specify a year without a
     /// month and day.
-    #[prost(int32, tag = "2")]
+    #[prost(int32, tag="2")]
     pub month: i32,
     /// Day of a month. Must be from 1 to 31 and valid for the year and month, or 0
     /// to specify a year by itself or a year and month where the day isn't
     /// significant.
-    #[prost(int32, tag = "3")]
+    #[prost(int32, tag="3")]
     pub day: i32,
 }
