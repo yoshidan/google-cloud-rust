@@ -17,11 +17,12 @@ mod tests {
     use google_cloud_googleapis::spanner::v1::{execute_batch_dml_request, KeySet, Mutation};
     use prost_types::{value::Kind, ListValue, Value};
     use serial_test::serial;
+    use google_cloud_gax::conn::Environment;
 
     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
     async fn create_spanner_client() -> Client {
-        let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
+        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()))
             .await
             .unwrap();
         cm.conn()
