@@ -101,6 +101,9 @@ pub enum InitializationError {
     #[error(transparent)]
     FailedToCreateChannelPool(#[from] google_cloud_gax::conn::Error),
 
+    #[error(transparent)]
+    Auth(#[from] google_cloud_auth::error::Error),
+
     #[error("invalid config: {0}")]
     InvalidConfig(String),
 }
