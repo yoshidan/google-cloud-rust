@@ -1,7 +1,9 @@
 use crate::http::storage_client;
 use crate::http::storage_client::StorageClient;
 use google_cloud_auth::credentials::CredentialsFile;
-use google_cloud_auth::{create_token_source, create_token_source_from_credentials, Config};
+use google_cloud_auth::{
+    create_token_source, create_token_source_from_credentials, create_token_source_from_project, Config, Project,
+};
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -10,11 +12,11 @@ use crate::sign::{signed_url, SignBy, SignedURLError, SignedURLOptions};
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
-    AuthError(#[from] google_cloud_auth::error::Error),
+    Auth(#[from] google_cloud_auth::error::Error),
     #[error(transparent)]
-    MetadataError(#[from] google_cloud_metadata::Error),
+    Metadata(#[from] google_cloud_metadata::Error),
     #[error("error: {0}")]
-    StringError(&'static str),
+    Other(&'static str),
 }
 
 pub struct Client {
@@ -35,44 +37,29 @@ impl Deref for Client {
 impl Client {
     /// New client
     pub async fn new() -> Result<Self, Error> {
-        match CredentialsFile::new().await {
-            Ok(cred) => Self::from_credentials(cred).await,
-            Err(_) => Self::from_metadata_server().await,
-        }
-    }
-
-    async fn from_metadata_server() -> Result<Self, Error> {
-        if !google_cloud_metadata::on_gce().await {
-            return Err(Error::StringError("not on gce"));
-        }
-        let ts = create_token_source(Config {
-            audience: None,
-            scopes: Some(&storage_client::SCOPES),
-        })
-        .await?;
-        Ok(Client {
-            private_key: None,
-            service_account_email: google_cloud_metadata::email("default").await?,
-            project_id: google_cloud_metadata::project_id().await.to_string(),
-            storage_client: StorageClient::new(Arc::from(ts)),
-        })
-    }
-
-    async fn from_credentials(cred: CredentialsFile) -> Result<Self, Error> {
-        let ts = create_token_source_from_credentials(
-            &cred,
+        let project = google_cloud_auth::project().await?;
+        let ts = create_token_source_from_project(
+            &project,
             Config {
                 audience: None,
                 scopes: Some(&storage_client::SCOPES),
             },
         )
         .await?;
-        Ok(Client {
-            private_key: cred.private_key.clone(),
-            service_account_email: cred.client_email.unwrap(),
-            project_id: cred.project_id.unwrap(),
-            storage_client: StorageClient::new(Arc::from(ts)),
-        })
+        match project {
+            Project::FromFile(cred) => Ok(Client {
+                private_key: cred.private_key.clone(),
+                service_account_email: cred.client_email.unwrap(),
+                project_id: inf.project_id.ok_or(Error::Other("no project_id was found"))?,
+                storage_client: StorageClient::new(Arc::from(ts)),
+            }),
+            Project::FromMetadataServer(info) => Ok(Client {
+                private_key: None,
+                service_account_email: google_cloud_metadata::email("default").await?,
+                project_id: info.project_id.ok_or(Error::Other("no project_id was found"))?,
+                storage_client: StorageClient::new(Arc::from(ts)),
+            }),
+        }
     }
 
     /// Gets the project_id from Credentials
@@ -128,7 +115,7 @@ impl Client {
 #[cfg(test)]
 mod test {
     use crate::client::Client;
-    
+
     use crate::http::buckets::delete::DeleteBucketRequest;
     use crate::http::buckets::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
     use crate::http::buckets::insert::{
@@ -139,8 +126,6 @@ mod test {
     use std::collections::HashMap;
 
     use crate::http::buckets::list::ListBucketsRequest;
-    
-    
 
     #[ctor::ctor]
     fn init() {
