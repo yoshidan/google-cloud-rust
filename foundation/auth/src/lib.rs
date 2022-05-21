@@ -5,14 +5,14 @@ pub mod token;
 pub mod token_source;
 
 use crate::credentials::CredentialsFile;
-use crate::misc::{UnwrapOrEmpty, EMPTY};
+use crate::misc::{EMPTY};
 use crate::token_source::authorized_user_token_source::UserAccountTokenSource;
 use crate::token_source::compute_token_source::ComputeTokenSource;
 use crate::token_source::reuse_token_source::ReuseTokenSource;
 use crate::token_source::service_account_token_source::OAuth2ServiceAccountTokenSource;
 use crate::token_source::service_account_token_source::ServiceAccountTokenSource;
 use crate::token_source::TokenSource;
-use crate::Project::FromFile;
+
 use google_cloud_metadata::on_gce;
 
 const SERVICE_ACCOUNT_KEY: &str = "service_account";

@@ -1,8 +1,8 @@
 use std::sync::atomic::{AtomicI64, Ordering};
 
-use crate::conn::Environment::Emulator;
+
 use google_cloud_auth::token_source::TokenSource;
-use google_cloud_auth::{create_token_source, create_token_source_from_project, Config, Project};
+use google_cloud_auth::{create_token_source_from_project, Config, Project};
 use http::header::AUTHORIZATION;
 use http::{HeaderValue, Request};
 use std::future::Future;
