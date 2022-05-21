@@ -7,42 +7,19 @@ use crate::error::Error;
 use crate::token::Token;
 use async_trait::async_trait;
 use google_cloud_metadata::default_http_connector;
-use hyper::client::HttpConnector;
-use hyper::http::Response;
-use hyper_tls::HttpsConnector;
 use serde::{de, Deserialize};
+use std::time::Duration;
 
 #[async_trait]
 pub trait TokenSource: Send + Sync {
     async fn token(&self) -> Result<Token, Error>;
 }
 
-fn default_https_client() -> hyper::Client<HttpsConnector<HttpConnector>> {
-    hyper::Client::builder().build(HttpsConnector::new_with_connector(default_http_connector()))
-}
-
-#[async_trait]
-trait ResponseExtension {
-    async fn deserialize<T>(self) -> Result<T, Error>
-    where
-        T: de::DeserializeOwned;
-}
-
-#[async_trait]
-impl ResponseExtension for Response<hyper::body::Body> {
-    async fn deserialize<T>(self) -> Result<T, Error>
-    where
-        T: de::DeserializeOwned,
-    {
-        if !self.status().is_success() {
-            return Err(Error::DeserializeError(self.status().to_string()));
-        }
-        let (_, body) = self.into_parts();
-        let body = hyper::body::to_bytes(body).await.map_err(Error::HyperError)?;
-        let token = json::from_slice(&body).map_err(Error::JsonError)?;
-
-        Ok(token)
-    }
+fn default_http_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .timeout(Duration::from_secs(3))
+        .build()
+        .unwrap()
 }
 
 #[derive(Clone, Deserialize)]

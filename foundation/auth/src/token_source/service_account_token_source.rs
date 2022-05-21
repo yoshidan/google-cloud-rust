@@ -2,11 +2,9 @@ use crate::credentials;
 use crate::error::Error;
 use crate::misc::UnwrapOrEmpty;
 use crate::token::{Token, TOKEN_URL};
-use crate::token_source::TokenSource;
-use crate::token_source::{default_https_client, InternalToken, ResponseExtension};
+use crate::token_source::{default_http_client, InternalToken, TokenSource};
+use anyhow::Context;
 use async_trait::async_trait;
-use hyper::client::HttpConnector;
-use hyper::http::{Method, Request};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize)]
@@ -23,7 +21,7 @@ impl Claims<'_> {
     fn token(&self, pk: &jwt::EncodingKey, pk_id: &str) -> Result<String, Error> {
         let mut header = jwt::Header::new(jwt::Algorithm::RS256);
         header.kid = Some(pk_id.to_string());
-        let v = jwt::encode(&header, self, pk)?;
+        let v = jwt::encode(&header, self, pk).context("jwt encoding error")?;
         Ok(v)
     }
 }
@@ -92,7 +90,7 @@ pub struct OAuth2ServiceAccountTokenSource {
     pub scopes: String,
     pub token_url: String,
 
-    pub client: hyper::Client<hyper_tls::HttpsConnector<HttpConnector>>,
+    pub client: reqwest::Client,
 }
 
 impl OAuth2ServiceAccountTokenSource {
@@ -109,7 +107,7 @@ impl OAuth2ServiceAccountTokenSource {
                 None => TOKEN_URL.to_string(),
                 Some(s) => s.to_string(),
             },
-            client: default_https_client(),
+            client: default_http_client(),
         })
     }
 }
@@ -130,19 +128,21 @@ impl TokenSource for OAuth2ServiceAccountTokenSource {
         }
         .token(&self.pk, &self.pk_id)?;
 
-        let body = hyper::Body::from(format!(
-            "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion={}",
-            request_token.as_str()
-        ));
+        let form = [
+            ("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer"),
+            ("assertion", request_token.as_str()),
+        ];
 
-        let request = Request::builder()
-            .method(Method::POST)
-            .uri(self.token_url.as_str())
-            .header("Content-Type", "application/x-www-form-urlencoded")
-            .body(body)?;
-
-        let it: InternalToken = self.client.request(request).await?.deserialize().await?;
-
+        let it = self
+            .client
+            .post(self.token_url.as_str())
+            .form(&form)
+            .send()
+            .await
+            .context("request OAuth2ServiceAccountTokenSource")?
+            .json::<InternalToken>()
+            .await
+            .context("response OAuth2ServiceAccountTokenSource")?;
         return Ok(it.to_token(iat));
     }
 }

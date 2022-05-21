@@ -1,7 +1,7 @@
 use crate::http::storage_client;
 use crate::http::storage_client::StorageClient;
 use google_cloud_auth::credentials::CredentialsFile;
-use google_cloud_auth::{create_token_source_from_credentials, Config, create_token_source};
+use google_cloud_auth::{create_token_source, create_token_source_from_credentials, Config};
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -33,25 +33,23 @@ impl Deref for Client {
 }
 
 impl Client {
-
     /// New client
     pub async fn new() -> Result<Self, Error> {
         match CredentialsFile::new().await {
             Ok(cred) => Self::from_credentials(cred).await,
-            Err(_) => Self::from_metadata_server().await
+            Err(_) => Self::from_metadata_server().await,
         }
     }
 
     async fn from_metadata_server() -> Result<Self, Error> {
         if !google_cloud_metadata::on_gce().await {
-            return Err(Error::StringError("not on gce"))
+            return Err(Error::StringError("not on gce"));
         }
-        let ts = create_token_source(
-            Config {
-                audience: None,
-                scopes: Some(&storage_client::SCOPES),
-            },
-        ) .await?;
+        let ts = create_token_source(Config {
+            audience: None,
+            scopes: Some(&storage_client::SCOPES),
+        })
+        .await?;
         Ok(Client {
             private_key: None,
             service_account_email: google_cloud_metadata::email("default").await?,
@@ -76,7 +74,6 @@ impl Client {
             storage_client: StorageClient::new(Arc::from(ts)),
         })
     }
-
 
     /// Gets the project_id from Credentials
     pub fn project_id(&self) -> &str {

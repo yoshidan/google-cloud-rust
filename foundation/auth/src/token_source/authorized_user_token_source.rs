@@ -3,21 +3,19 @@ use crate::error::Error;
 use crate::misc::{UnwrapOrEmpty, EMPTY};
 use crate::token::{Token, TOKEN_URL};
 use crate::token_source::TokenSource;
-use crate::token_source::{default_https_client, InternalToken, ResponseExtension};
+use crate::token_source::{default_http_client, InternalToken};
+use anyhow::Context;
 use async_trait::async_trait;
-use hyper::client::HttpConnector;
-use hyper::http::{Method, Request};
-use hyper::{Body, Client};
+use reqwest::{Method, Request};
 
 pub struct UserAccountTokenSource {
     client_id: String,
     client_secret: String,
     token_url: String,
-    #[allow(dead_code)]
     redirect_url: String,
     refresh_token: String,
 
-    client: Client<hyper_tls::HttpsConnector<HttpConnector>>,
+    client: reqwest::Client,
 }
 
 impl UserAccountTokenSource {
@@ -35,36 +33,40 @@ impl UserAccountTokenSource {
             },
             redirect_url: EMPTY.to_string(),
             refresh_token: cred.refresh_token.unwrap_or_empty(),
-            client: default_https_client(),
+            client: default_http_client(),
         };
         Ok(ts)
     }
 }
 
+#[derive(serde::Serialize)]
+struct RequestBody<'a> {
+    pub client_id: &'a str,
+    pub client_secret: &'a str,
+    pub grant_type: &'a str,
+    pub refresh_token: &'a str,
+}
+
 #[async_trait]
 impl TokenSource for UserAccountTokenSource {
     async fn token(&self) -> Result<Token, Error> {
-        let data = json::json!({
-            "client_id": self.client_id,
-            "client_secret": self.client_secret,
-            "grant_type": "refresh_token".to_string(),
-            "refresh_token": self.refresh_token,
-        })
-        .to_string();
+        let data = RequestBody {
+            client_id: &self.client_id,
+            client_secret: &self.client_secret,
+            grant_type: "refresh_token",
+            refresh_token: &self.refresh_token,
+        };
 
-        let request = Request::builder()
-            .method(Method::POST)
-            .uri(self.token_url.to_string())
-            .header("content-type", "application/json")
-            .body(Body::from(data))?;
-
-        let it: InternalToken = self
+        let it = self
             .client
-            .request(request)
+            .put(self.token_url.to_string())
+            .json(&data)
+            .send()
             .await
-            .map_err(Error::HyperError)?
-            .deserialize()
-            .await?;
+            .context("request UserAccountTokenSource")?
+            .json::<InternalToken>()
+            .await
+            .context("response UserAccountTokenSource")?;
 
         return Ok(it.to_token(chrono::Utc::now()));
     }

@@ -1,5 +1,6 @@
 use std::sync::atomic::{AtomicI64, Ordering};
 
+use google_cloud_auth::credentials::{Credentials, CredentialsFile};
 use google_cloud_auth::token_source::TokenSource;
 use google_cloud_auth::{create_token_source, Config};
 use http::header::AUTHORIZATION;
@@ -13,7 +14,6 @@ use tonic::{Code, Status};
 use tower::filter::{AsyncFilter, AsyncFilterLayer, AsyncPredicate};
 use tower::util::Either;
 use tower::{BoxError, ServiceBuilder};
-use google_cloud_auth::credentials::{Credentials, CredentialsFile};
 
 const TLS_CERTS: &[u8] = include_bytes!("roots.pem");
 
@@ -76,10 +76,7 @@ impl ConnectionManager {
         emulator_host: Option<String>,
     ) -> Result<Self, Error> {
         let conns = match emulator_host {
-            None => {
-                CredentialsFile::new()
-                Self::create_connections(pool_size, domain_name, audience, scopes).await?
-            },
+            None => Self::create_connections(pool_size, domain_name, audience, scopes).await?,
             Some(host) => Self::create_emulator_connections(&host).await?,
         };
         Ok(Self {
