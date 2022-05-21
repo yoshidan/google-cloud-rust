@@ -1,9 +1,7 @@
 use crate::http::storage_client;
 use crate::http::storage_client::StorageClient;
 
-use google_cloud_auth::{
-    create_token_source_from_project, Config, Project,
-};
+use google_cloud_auth::{create_token_source_from_project, Config, Project};
 use std::ops::Deref;
 use std::sync::Arc;
 

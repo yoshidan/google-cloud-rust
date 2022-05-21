@@ -11,11 +11,11 @@ use crate::value::{Timestamp, TimestampBound};
 
 use crate::retry::TransactionRetrySetting;
 use google_cloud_gax::cancel::CancellationToken;
+use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::{Code, Status};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use google_cloud_gax::conn::Environment;
 
 #[derive(Clone)]
 pub struct PartitionedUpdateOption {

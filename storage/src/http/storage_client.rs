@@ -1465,6 +1465,7 @@ mod test {
     use crate::http::objects::rewrite::RewriteObjectRequest;
     use crate::http::objects::upload::UploadObjectRequest;
 
+    use crate::http::notifications::EventType;
     use crate::http::objects::SourceObjects;
     use crate::http::storage_client::{StorageClient, SCOPES};
     use bytes::Buf;
@@ -1472,7 +1473,6 @@ mod test {
     use google_cloud_auth::{create_token_source, Config};
     use serde_json::de::Read;
     use serial_test::serial;
-    use crate::http::notifications::EventType;
     use std::sync::Arc;
 
     const PROJECT: &str = "atl-dev1";

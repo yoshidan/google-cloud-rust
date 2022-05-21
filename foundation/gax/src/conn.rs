@@ -1,8 +1,8 @@
 use std::sync::atomic::{AtomicI64, Ordering};
 
-
+use crate::conn::Environment::Emulator;
 use google_cloud_auth::token_source::TokenSource;
-use google_cloud_auth::{create_token_source, Config, Project, create_token_source_from_project};
+use google_cloud_auth::{create_token_source, create_token_source_from_project, Config, Project};
 use http::header::AUTHORIZATION;
 use http::{HeaderValue, Request};
 use std::future::Future;
@@ -14,7 +14,6 @@ use tonic::{Code, Status};
 use tower::filter::{AsyncFilter, AsyncFilterLayer, AsyncPredicate};
 use tower::util::Either;
 use tower::{BoxError, ServiceBuilder};
-use crate::conn::Environment::Emulator;
 
 const TLS_CERTS: &[u8] = include_bytes!("roots.pem");
 
@@ -60,12 +59,12 @@ pub enum Error {
     TonicTransport(#[from] tonic::transport::Error),
 
     #[error("invalid emulator host: {0}")]
-    InvalidEmulatorHOST(String)
+    InvalidEmulatorHOST(String),
 }
 
 pub enum Environment {
     Emulator(String),
-    GoogleCloud(Project)
+    GoogleCloud(Project),
 }
 
 pub struct ConnectionManager {
@@ -81,13 +80,11 @@ impl ConnectionManager {
         scopes: Option<&'static [&'static str]>,
         environment: &Environment,
     ) -> Result<Self, Error> {
-        let conns = match environment{
+        let conns = match environment {
             Environment::GoogleCloud(project) => {
                 Self::create_connections(pool_size, domain_name, audience, scopes, &project).await?
-            },
-            Environment::Emulator(host) => {
-                Self::create_emulator_connections(&host).await?
-            },
+            }
+            Environment::Emulator(host) => Self::create_emulator_connections(&host).await?,
         };
         Ok(Self {
             index: AtomicI64::new(0),
@@ -100,17 +97,20 @@ impl ConnectionManager {
         domain_name: &'static str,
         audience: &'static str,
         scopes: Option<&'static [&'static str]>,
-        project: &Project
+        project: &Project,
     ) -> Result<Vec<Channel>, Error> {
         let tls_config = ClientTlsConfig::new()
             .ca_certificate(Certificate::from_pem(TLS_CERTS))
             .domain_name(domain_name);
         let mut conns = Vec::with_capacity(pool_size);
 
-        let ts = create_token_source_from_project(project, Config {
-            audience: Some(audience),
-            scopes,
-        })
+        let ts = create_token_source_from_project(
+            project,
+            Config {
+                audience: Some(audience),
+                scopes,
+            },
+        )
         .await
         .map(|e| Arc::from(e))?;
 
