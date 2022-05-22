@@ -267,7 +267,6 @@ impl Subscription {
     ) -> Result<Vec<ReceivedMessage>, Status> {
         let req = PullRequest {
             subscription: self.fqsn.clone(),
-            #[warn(deprecated)]
             return_immediately: false,
             max_messages,
         };
