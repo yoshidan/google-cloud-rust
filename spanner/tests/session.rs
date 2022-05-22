@@ -2,6 +2,7 @@ use serial_test::serial;
 
 mod common;
 use common::*;
+use google_cloud_gax::conn::Environment;
 use google_cloud_spanner::apiv1::conn_pool::ConnectionManager;
 
 use google_cloud_spanner::session::{SessionConfig, SessionError, SessionManager};
@@ -14,7 +15,7 @@ fn init() {
 #[tokio::test]
 #[serial]
 async fn test_init_pool() {
-    let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
+    let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()))
         .await
         .unwrap();
     let mut config = SessionConfig::default();
@@ -28,7 +29,7 @@ async fn test_init_pool() {
 #[tokio::test]
 #[serial]
 async fn test_grow_session() {
-    let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
+    let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()))
         .await
         .unwrap();
     let mut config = SessionConfig::default();
@@ -46,7 +47,7 @@ async fn test_grow_session() {
 #[tokio::test]
 #[serial]
 async fn test_grow_timeout() {
-    let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
+    let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()))
         .await
         .unwrap();
     let mut config = SessionConfig::default();
@@ -69,7 +70,7 @@ async fn test_grow_timeout() {
 #[tokio::test]
 #[serial]
 async fn test_grow_wait_and_get() {
-    let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
+    let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()))
         .await
         .unwrap();
     let mut config = SessionConfig::default();

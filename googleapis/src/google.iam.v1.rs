@@ -464,42 +464,42 @@ pub struct TestIamPermissionsResponse {
     #[prost(string, repeated, tag = "1")]
     pub permissions: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
-#[doc = r" Generated client implementations."]
+/// Generated client implementations.
 pub mod iam_policy_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
     use tonic::codegen::*;
-    #[doc = " API Overview"]
-    #[doc = ""]
-    #[doc = ""]
-    #[doc = " Manages Identity and Access Management (IAM) policies."]
-    #[doc = ""]
-    #[doc = " Any implementation of an API that offers access control features"]
-    #[doc = " implements the google.iam.v1.IAMPolicy interface."]
-    #[doc = ""]
-    #[doc = " ## Data model"]
-    #[doc = ""]
-    #[doc = " Access control is applied when a principal (user or service account), takes"]
-    #[doc = " some action on a resource exposed by a service. Resources, identified by"]
-    #[doc = " URI-like names, are the unit of access control specification. Service"]
-    #[doc = " implementations can choose the granularity of access control and the"]
-    #[doc = " supported permissions for their resources."]
-    #[doc = " For example one database service may allow access control to be"]
-    #[doc = " specified only at the Table level, whereas another might allow access control"]
-    #[doc = " to also be specified at the Column level."]
-    #[doc = ""]
-    #[doc = " ## Policy Structure"]
-    #[doc = ""]
-    #[doc = " See google.iam.v1.Policy"]
-    #[doc = ""]
-    #[doc = " This is intentionally not a CRUD style API because access control policies"]
-    #[doc = " are created and deleted implicitly with the resources to which they are"]
-    #[doc = " attached."]
+    /// API Overview
+    ///
+    ///
+    /// Manages Identity and Access Management (IAM) policies.
+    ///
+    /// Any implementation of an API that offers access control features
+    /// implements the google.iam.v1.IAMPolicy interface.
+    ///
+    /// ## Data model
+    ///
+    /// Access control is applied when a principal (user or service account), takes
+    /// some action on a resource exposed by a service. Resources, identified by
+    /// URI-like names, are the unit of access control specification. Service
+    /// implementations can choose the granularity of access control and the
+    /// supported permissions for their resources.
+    /// For example one database service may allow access control to be
+    /// specified only at the Table level, whereas another might allow access control
+    /// to also be specified at the Column level.
+    ///
+    /// ## Policy Structure
+    ///
+    /// See google.iam.v1.Policy
+    ///
+    /// This is intentionally not a CRUD style API because access control policies
+    /// are created and deleted implicitly with the resources to which they are
+    /// attached.
     #[derive(Debug, Clone)]
     pub struct IamPolicyClient<T> {
         inner: tonic::client::Grpc<T>,
     }
     impl IamPolicyClient<tonic::transport::Channel> {
-        #[doc = r" Attempt to create a new client by connecting to a given endpoint."]
+        /// Attempt to create a new client by connecting to a given endpoint.
         pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
         where
             D: std::convert::TryInto<tonic::transport::Endpoint>,
@@ -512,8 +512,8 @@ pub mod iam_policy_client {
     impl<T> IamPolicyClient<T>
     where
         T: tonic::client::GrpcService<tonic::body::BoxBody>,
-        T::ResponseBody: Body + Send + 'static,
         T::Error: Into<StdError>,
+        T::ResponseBody: Body<Data = Bytes> + Send + 'static,
         <T::ResponseBody as Body>::Error: Into<StdError> + Send,
     {
         pub fn new(inner: T) -> Self {
@@ -523,6 +523,7 @@ pub mod iam_policy_client {
         pub fn with_interceptor<F>(inner: T, interceptor: F) -> IamPolicyClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
+            T::ResponseBody: Default,
             T: tonic::codegen::Service<
                 http::Request<tonic::body::BoxBody>,
                 Response = http::Response<<T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody>,
@@ -531,23 +532,25 @@ pub mod iam_policy_client {
         {
             IamPolicyClient::new(InterceptedService::new(inner, interceptor))
         }
-        #[doc = r" Compress requests with `gzip`."]
-        #[doc = r""]
-        #[doc = r" This requires the server to support it otherwise it might respond with an"]
-        #[doc = r" error."]
+        /// Compress requests with `gzip`.
+        ///
+        /// This requires the server to support it otherwise it might respond with an
+        /// error.
+        #[must_use]
         pub fn send_gzip(mut self) -> Self {
             self.inner = self.inner.send_gzip();
             self
         }
-        #[doc = r" Enable decompressing responses with `gzip`."]
+        /// Enable decompressing responses with `gzip`.
+        #[must_use]
         pub fn accept_gzip(mut self) -> Self {
             self.inner = self.inner.accept_gzip();
             self
         }
-        #[doc = " Sets the access control policy on the specified resource. Replaces any"]
-        #[doc = " existing policy."]
-        #[doc = ""]
-        #[doc = " Can return `NOT_FOUND`, `INVALID_ARGUMENT`, and `PERMISSION_DENIED` errors."]
+        /// Sets the access control policy on the specified resource. Replaces any
+        /// existing policy.
+        ///
+        /// Can return `NOT_FOUND`, `INVALID_ARGUMENT`, and `PERMISSION_DENIED` errors.
         pub async fn set_iam_policy(
             &mut self,
             request: impl tonic::IntoRequest<super::SetIamPolicyRequest>,
@@ -559,9 +562,9 @@ pub mod iam_policy_client {
             let path = http::uri::PathAndQuery::from_static("/google.iam.v1.IAMPolicy/SetIamPolicy");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Gets the access control policy for a resource."]
-        #[doc = " Returns an empty policy if the resource exists and does not have a policy"]
-        #[doc = " set."]
+        /// Gets the access control policy for a resource.
+        /// Returns an empty policy if the resource exists and does not have a policy
+        /// set.
         pub async fn get_iam_policy(
             &mut self,
             request: impl tonic::IntoRequest<super::GetIamPolicyRequest>,
@@ -573,13 +576,13 @@ pub mod iam_policy_client {
             let path = http::uri::PathAndQuery::from_static("/google.iam.v1.IAMPolicy/GetIamPolicy");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Returns permissions that a caller has on the specified resource."]
-        #[doc = " If the resource does not exist, this will return an empty set of"]
-        #[doc = " permissions, not a `NOT_FOUND` error."]
-        #[doc = ""]
-        #[doc = " Note: This operation is designed to be used for building permission-aware"]
-        #[doc = " UIs and command-line tools, not for authorization checking. This operation"]
-        #[doc = " may \"fail open\" without warning."]
+        /// Returns permissions that a caller has on the specified resource.
+        /// If the resource does not exist, this will return an empty set of
+        /// permissions, not a `NOT_FOUND` error.
+        ///
+        /// Note: This operation is designed to be used for building permission-aware
+        /// UIs and command-line tools, not for authorization checking. This operation
+        /// may "fail open" without warning.
         pub async fn test_iam_permissions(
             &mut self,
             request: impl tonic::IntoRequest<super::TestIamPermissionsRequest>,

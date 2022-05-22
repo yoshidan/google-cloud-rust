@@ -258,7 +258,7 @@ impl Tasks {
     pub async fn done(&mut self) {
         if let Some(tasks) = self.inner.take() {
             for task in tasks {
-                task.await;
+                let _ = task.await;
             }
         }
     }

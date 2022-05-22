@@ -6,6 +6,7 @@ mod tests {
 
     use crate::apiv1::conn_pool::ConnectionManager;
     use crate::apiv1::spanner_client::Client;
+    use google_cloud_gax::conn::Environment;
     use google_cloud_gax::grpc::Code;
     use google_cloud_googleapis::spanner::v1::mutation::{Operation, Write};
     use google_cloud_googleapis::spanner::v1::{
@@ -21,7 +22,7 @@ mod tests {
     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
     async fn create_spanner_client() -> Client {
-        let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
+        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()))
             .await
             .unwrap();
         cm.conn()

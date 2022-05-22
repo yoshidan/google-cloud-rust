@@ -1,7 +1,7 @@
 use crate::http::storage_client;
 use crate::http::storage_client::StorageClient;
-use google_cloud_auth::credentials::CredentialsFile;
-use google_cloud_auth::{create_token_source_from_credentials, Config};
+
+use google_cloud_auth::{create_token_source_from_project, Config, Project};
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -10,9 +10,11 @@ use crate::sign::{signed_url, SignBy, SignedURLError, SignedURLOptions};
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
-    AuthError(#[from] google_cloud_auth::error::Error),
+    Auth(#[from] google_cloud_auth::error::Error),
     #[error(transparent)]
-    MetadataError(#[from] google_cloud_metadata::Error),
+    Metadata(#[from] google_cloud_metadata::Error),
+    #[error("error: {0}")]
+    Other(&'static str),
 }
 
 pub struct Client {
@@ -31,46 +33,31 @@ impl Deref for Client {
 }
 
 impl Client {
-    /// Creates the client from Credentials
-    pub async fn from_credentials(cred: &CredentialsFile) -> Result<Self, Error> {
-        let ts = create_token_source_from_credentials(
-            cred,
+    /// New client
+    pub async fn new() -> Result<Self, Error> {
+        let project = google_cloud_auth::project().await?;
+        let ts = create_token_source_from_project(
+            &project,
             Config {
                 audience: None,
                 scopes: Some(&storage_client::SCOPES),
             },
         )
         .await?;
-        Ok(Client {
-            private_key: cred.private_key.clone(),
-            service_account_email: match &cred.client_email {
-                Some(email) => email.clone(),
-                None => {
-                    if google_cloud_metadata::on_gce().await {
-                        google_cloud_metadata::email("default").await?
-                    } else {
-                        "".to_string()
-                    }
-                }
-            },
-            project_id: match &cred.project_id {
-                Some(project_id) => project_id.to_string(),
-                None => {
-                    if google_cloud_metadata::on_gce().await {
-                        google_cloud_metadata::project_id().await.to_string()
-                    } else {
-                        "".to_string()
-                    }
-                }
-            },
-            storage_client: StorageClient::new(Arc::from(ts)),
-        })
-    }
-
-    /// New client
-    pub async fn new() -> Result<Self, Error> {
-        let cred = CredentialsFile::new().await?;
-        Self::from_credentials(&cred).await
+        match project {
+            Project::FromFile(cred) => Ok(Client {
+                private_key: cred.private_key.clone(),
+                service_account_email: cred.client_email.ok_or(Error::Other("no client_email was found"))?,
+                project_id: cred.project_id.ok_or(Error::Other("no project_id was found"))?,
+                storage_client: StorageClient::new(Arc::from(ts)),
+            }),
+            Project::FromMetadataServer(info) => Ok(Client {
+                private_key: None,
+                service_account_email: google_cloud_metadata::email("default").await?,
+                project_id: info.project_id.ok_or(Error::Other("no project_id was found"))?,
+                storage_client: StorageClient::new(Arc::from(ts)),
+            }),
+        }
     }
 
     /// Gets the project_id from Credentials
@@ -126,7 +113,7 @@ impl Client {
 #[cfg(test)]
 mod test {
     use crate::client::Client;
-    use crate::http::bucket_access_controls::PredefinedBucketAcl;
+
     use crate::http::buckets::delete::DeleteBucketRequest;
     use crate::http::buckets::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
     use crate::http::buckets::insert::{
@@ -137,8 +124,6 @@ mod test {
     use std::collections::HashMap;
 
     use crate::http::buckets::list::ListBucketsRequest;
-    use crate::http::object_access_controls::insert::ObjectAccessControlCreationConfig;
-    use crate::http::object_access_controls::ObjectACLRole;
 
     #[ctor::ctor]
     fn init() {

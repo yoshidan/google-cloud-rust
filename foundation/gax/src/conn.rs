@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicI64, Ordering};
 
 use google_cloud_auth::token_source::TokenSource;
-use google_cloud_auth::{create_token_source, Config};
+use google_cloud_auth::{create_token_source_from_project, Config, Project};
 use http::header::AUTHORIZATION;
 use http::{HeaderValue, Request};
 use std::future::Future;
@@ -52,13 +52,18 @@ impl AsyncPredicate<Request<BoxBody>> for AsyncAuthInterceptor {
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
-    AuthInitialize(#[from] google_cloud_auth::error::Error),
+    Auth(#[from] google_cloud_auth::error::Error),
 
     #[error("tonic error : {0}")]
     TonicTransport(#[from] tonic::transport::Error),
 
-    #[error("invalid spanner host {0}")]
-    InvalidSpannerHOST(String),
+    #[error("invalid emulator host: {0}")]
+    InvalidEmulatorHOST(String),
+}
+
+pub enum Environment {
+    Emulator(String),
+    GoogleCloud(Project),
 }
 
 pub struct ConnectionManager {
@@ -72,11 +77,13 @@ impl ConnectionManager {
         domain_name: &'static str,
         audience: &'static str,
         scopes: Option<&'static [&'static str]>,
-        emulator_host: Option<String>,
+        environment: &Environment,
     ) -> Result<Self, Error> {
-        let conns = match emulator_host {
-            None => Self::create_connections(pool_size, domain_name, audience, scopes).await?,
-            Some(host) => Self::create_emulator_connections(&host).await?,
+        let conns = match environment {
+            Environment::GoogleCloud(project) => {
+                Self::create_connections(pool_size, domain_name, audience, scopes, &project).await?
+            }
+            Environment::Emulator(host) => Self::create_emulator_connections(&host).await?,
         };
         Ok(Self {
             index: AtomicI64::new(0),
@@ -89,16 +96,20 @@ impl ConnectionManager {
         domain_name: &'static str,
         audience: &'static str,
         scopes: Option<&'static [&'static str]>,
+        project: &Project,
     ) -> Result<Vec<Channel>, Error> {
         let tls_config = ClientTlsConfig::new()
             .ca_certificate(Certificate::from_pem(TLS_CERTS))
             .domain_name(domain_name);
         let mut conns = Vec::with_capacity(pool_size);
 
-        let ts = create_token_source(Config {
-            audience: Some(audience),
-            scopes,
-        })
+        let ts = create_token_source_from_project(
+            project,
+            Config {
+                audience: Some(audience),
+                scopes,
+            },
+        )
         .await
         .map(|e| Arc::from(e))?;
 
@@ -116,7 +127,7 @@ impl ConnectionManager {
     async fn create_emulator_connections(host: &str) -> Result<Vec<Channel>, Error> {
         let mut conns = Vec::with_capacity(1);
         let endpoint = TonicChannel::from_shared(format!("http://{}", host).into_bytes())
-            .map_err(|_| Error::InvalidSpannerHOST(host.to_string()))?;
+            .map_err(|_| Error::InvalidEmulatorHOST(host.to_string()))?;
         let con = Self::connect(endpoint).await?;
         conns.push(
             ServiceBuilder::new()

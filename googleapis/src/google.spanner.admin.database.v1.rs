@@ -1106,23 +1106,23 @@ pub enum RestoreSourceType {
     /// A backup was used as the source of the restore.
     Backup = 1,
 }
-#[doc = r" Generated client implementations."]
+/// Generated client implementations.
 pub mod database_admin_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
     use tonic::codegen::*;
-    #[doc = " Cloud Spanner Database Admin API"]
-    #[doc = ""]
-    #[doc = " The Cloud Spanner Database Admin API can be used to:"]
-    #[doc = "   * create, drop, and list databases"]
-    #[doc = "   * update the schema of pre-existing databases"]
-    #[doc = "   * create, delete and list backups for a database"]
-    #[doc = "   * restore a database from an existing backup"]
+    /// Cloud Spanner Database Admin API
+    ///
+    /// The Cloud Spanner Database Admin API can be used to:
+    ///   * create, drop, and list databases
+    ///   * update the schema of pre-existing databases
+    ///   * create, delete and list backups for a database
+    ///   * restore a database from an existing backup
     #[derive(Debug, Clone)]
     pub struct DatabaseAdminClient<T> {
         inner: tonic::client::Grpc<T>,
     }
     impl DatabaseAdminClient<tonic::transport::Channel> {
-        #[doc = r" Attempt to create a new client by connecting to a given endpoint."]
+        /// Attempt to create a new client by connecting to a given endpoint.
         pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
         where
             D: std::convert::TryInto<tonic::transport::Endpoint>,
@@ -1135,8 +1135,8 @@ pub mod database_admin_client {
     impl<T> DatabaseAdminClient<T>
     where
         T: tonic::client::GrpcService<tonic::body::BoxBody>,
-        T::ResponseBody: Body + Send + 'static,
         T::Error: Into<StdError>,
+        T::ResponseBody: Body<Data = Bytes> + Send + 'static,
         <T::ResponseBody as Body>::Error: Into<StdError> + Send,
     {
         pub fn new(inner: T) -> Self {
@@ -1146,6 +1146,7 @@ pub mod database_admin_client {
         pub fn with_interceptor<F>(inner: T, interceptor: F) -> DatabaseAdminClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
+            T::ResponseBody: Default,
             T: tonic::codegen::Service<
                 http::Request<tonic::body::BoxBody>,
                 Response = http::Response<<T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody>,
@@ -1154,20 +1155,22 @@ pub mod database_admin_client {
         {
             DatabaseAdminClient::new(InterceptedService::new(inner, interceptor))
         }
-        #[doc = r" Compress requests with `gzip`."]
-        #[doc = r""]
-        #[doc = r" This requires the server to support it otherwise it might respond with an"]
-        #[doc = r" error."]
+        /// Compress requests with `gzip`.
+        ///
+        /// This requires the server to support it otherwise it might respond with an
+        /// error.
+        #[must_use]
         pub fn send_gzip(mut self) -> Self {
             self.inner = self.inner.send_gzip();
             self
         }
-        #[doc = r" Enable decompressing responses with `gzip`."]
+        /// Enable decompressing responses with `gzip`.
+        #[must_use]
         pub fn accept_gzip(mut self) -> Self {
             self.inner = self.inner.accept_gzip();
             self
         }
-        #[doc = " Lists Cloud Spanner databases."]
+        /// Lists Cloud Spanner databases.
         pub async fn list_databases(
             &mut self,
             request: impl tonic::IntoRequest<super::ListDatabasesRequest>,
@@ -1180,14 +1183,14 @@ pub mod database_admin_client {
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/ListDatabases");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Creates a new Cloud Spanner database and starts to prepare it for serving."]
-        #[doc = " The returned [long-running operation][google.longrunning.Operation] will"]
-        #[doc = " have a name of the format `<database_name>/operations/<operation_id>` and"]
-        #[doc = " can be used to track preparation of the database. The"]
-        #[doc = " [metadata][google.longrunning.Operation.metadata] field type is"]
-        #[doc = " [CreateDatabaseMetadata][google.spanner.admin.database.v1.CreateDatabaseMetadata]. The"]
-        #[doc = " [response][google.longrunning.Operation.response] field type is"]
-        #[doc = " [Database][google.spanner.admin.database.v1.Database], if successful."]
+        /// Creates a new Cloud Spanner database and starts to prepare it for serving.
+        /// The returned [long-running operation][google.longrunning.Operation] will
+        /// have a name of the format `<database_name>/operations/<operation_id>` and
+        /// can be used to track preparation of the database. The
+        /// [metadata][google.longrunning.Operation.metadata] field type is
+        /// [CreateDatabaseMetadata][google.spanner.admin.database.v1.CreateDatabaseMetadata]. The
+        /// [response][google.longrunning.Operation.response] field type is
+        /// [Database][google.spanner.admin.database.v1.Database], if successful.
         pub async fn create_database(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateDatabaseRequest>,
@@ -1200,7 +1203,7 @@ pub mod database_admin_client {
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/CreateDatabase");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Gets the state of a Cloud Spanner database."]
+        /// Gets the state of a Cloud Spanner database.
         pub async fn get_database(
             &mut self,
             request: impl tonic::IntoRequest<super::GetDatabaseRequest>,
@@ -1213,13 +1216,13 @@ pub mod database_admin_client {
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/GetDatabase");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Updates the schema of a Cloud Spanner database by"]
-        #[doc = " creating/altering/dropping tables, columns, indexes, etc. The returned"]
-        #[doc = " [long-running operation][google.longrunning.Operation] will have a name of"]
-        #[doc = " the format `<database_name>/operations/<operation_id>` and can be used to"]
-        #[doc = " track execution of the schema change(s). The"]
-        #[doc = " [metadata][google.longrunning.Operation.metadata] field type is"]
-        #[doc = " [UpdateDatabaseDdlMetadata][google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata].  The operation has no response."]
+        /// Updates the schema of a Cloud Spanner database by
+        /// creating/altering/dropping tables, columns, indexes, etc. The returned
+        /// [long-running operation][google.longrunning.Operation] will have a name of
+        /// the format `<database_name>/operations/<operation_id>` and can be used to
+        /// track execution of the schema change(s). The
+        /// [metadata][google.longrunning.Operation.metadata] field type is
+        /// [UpdateDatabaseDdlMetadata][google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata].  The operation has no response.
         pub async fn update_database_ddl(
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateDatabaseDdlRequest>,
@@ -1233,11 +1236,11 @@ pub mod database_admin_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Drops (aka deletes) a Cloud Spanner database."]
-        #[doc = " Completed backups for the database will be retained according to their"]
-        #[doc = " `expire_time`."]
-        #[doc = " Note: Cloud Spanner might continue to accept requests for a few seconds"]
-        #[doc = " after the database has been deleted."]
+        /// Drops (aka deletes) a Cloud Spanner database.
+        /// Completed backups for the database will be retained according to their
+        /// `expire_time`.
+        /// Note: Cloud Spanner might continue to accept requests for a few seconds
+        /// after the database has been deleted.
         pub async fn drop_database(
             &mut self,
             request: impl tonic::IntoRequest<super::DropDatabaseRequest>,
@@ -1250,9 +1253,9 @@ pub mod database_admin_client {
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/DropDatabase");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Returns the schema of a Cloud Spanner database as a list of formatted"]
-        #[doc = " DDL statements. This method does not show pending schema updates, those may"]
-        #[doc = " be queried using the [Operations][google.longrunning.Operations] API."]
+        /// Returns the schema of a Cloud Spanner database as a list of formatted
+        /// DDL statements. This method does not show pending schema updates, those may
+        /// be queried using the [Operations][google.longrunning.Operations] API.
         pub async fn get_database_ddl(
             &mut self,
             request: impl tonic::IntoRequest<super::GetDatabaseDdlRequest>,
@@ -1265,13 +1268,13 @@ pub mod database_admin_client {
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/GetDatabaseDdl");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Sets the access control policy on a database or backup resource."]
-        #[doc = " Replaces any existing policy."]
-        #[doc = ""]
-        #[doc = " Authorization requires `spanner.databases.setIamPolicy`"]
-        #[doc = " permission on [resource][google.iam.v1.SetIamPolicyRequest.resource]."]
-        #[doc = " For backups, authorization requires `spanner.backups.setIamPolicy`"]
-        #[doc = " permission on [resource][google.iam.v1.SetIamPolicyRequest.resource]."]
+        /// Sets the access control policy on a database or backup resource.
+        /// Replaces any existing policy.
+        ///
+        /// Authorization requires `spanner.databases.setIamPolicy`
+        /// permission on [resource][google.iam.v1.SetIamPolicyRequest.resource].
+        /// For backups, authorization requires `spanner.backups.setIamPolicy`
+        /// permission on [resource][google.iam.v1.SetIamPolicyRequest.resource].
         pub async fn set_iam_policy(
             &mut self,
             request: impl tonic::IntoRequest<super::super::super::super::super::iam::v1::SetIamPolicyRequest>,
@@ -1284,14 +1287,14 @@ pub mod database_admin_client {
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/SetIamPolicy");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Gets the access control policy for a database or backup resource."]
-        #[doc = " Returns an empty policy if a database or backup exists but does not have a"]
-        #[doc = " policy set."]
-        #[doc = ""]
-        #[doc = " Authorization requires `spanner.databases.getIamPolicy` permission on"]
-        #[doc = " [resource][google.iam.v1.GetIamPolicyRequest.resource]."]
-        #[doc = " For backups, authorization requires `spanner.backups.getIamPolicy`"]
-        #[doc = " permission on [resource][google.iam.v1.GetIamPolicyRequest.resource]."]
+        /// Gets the access control policy for a database or backup resource.
+        /// Returns an empty policy if a database or backup exists but does not have a
+        /// policy set.
+        ///
+        /// Authorization requires `spanner.databases.getIamPolicy` permission on
+        /// [resource][google.iam.v1.GetIamPolicyRequest.resource].
+        /// For backups, authorization requires `spanner.backups.getIamPolicy`
+        /// permission on [resource][google.iam.v1.GetIamPolicyRequest.resource].
         pub async fn get_iam_policy(
             &mut self,
             request: impl tonic::IntoRequest<super::super::super::super::super::iam::v1::GetIamPolicyRequest>,
@@ -1304,16 +1307,16 @@ pub mod database_admin_client {
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/GetIamPolicy");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Returns permissions that the caller has on the specified database or backup"]
-        #[doc = " resource."]
-        #[doc = ""]
-        #[doc = " Attempting this RPC on a non-existent Cloud Spanner database will"]
-        #[doc = " result in a NOT_FOUND error if the user has"]
-        #[doc = " `spanner.databases.list` permission on the containing Cloud"]
-        #[doc = " Spanner instance. Otherwise returns an empty set of permissions."]
-        #[doc = " Calling this method on a backup that does not exist will"]
-        #[doc = " result in a NOT_FOUND error if the user has"]
-        #[doc = " `spanner.backups.list` permission on the containing instance."]
+        /// Returns permissions that the caller has on the specified database or backup
+        /// resource.
+        ///
+        /// Attempting this RPC on a non-existent Cloud Spanner database will
+        /// result in a NOT_FOUND error if the user has
+        /// `spanner.databases.list` permission on the containing Cloud
+        /// Spanner instance. Otherwise returns an empty set of permissions.
+        /// Calling this method on a backup that does not exist will
+        /// result in a NOT_FOUND error if the user has
+        /// `spanner.backups.list` permission on the containing instance.
         pub async fn test_iam_permissions(
             &mut self,
             request: impl tonic::IntoRequest<super::super::super::super::super::iam::v1::TestIamPermissionsRequest>,
@@ -1330,18 +1333,18 @@ pub mod database_admin_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Starts creating a new Cloud Spanner Backup."]
-        #[doc = " The returned backup [long-running operation][google.longrunning.Operation]"]
-        #[doc = " will have a name of the format"]
-        #[doc = " `projects/<project>/instances/<instance>/backups/<backup>/operations/<operation_id>`"]
-        #[doc = " and can be used to track creation of the backup. The"]
-        #[doc = " [metadata][google.longrunning.Operation.metadata] field type is"]
-        #[doc = " [CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata]. The"]
-        #[doc = " [response][google.longrunning.Operation.response] field type is"]
-        #[doc = " [Backup][google.spanner.admin.database.v1.Backup], if successful. Cancelling the returned operation will stop the"]
-        #[doc = " creation and delete the backup."]
-        #[doc = " There can be only one pending backup creation per database. Backup creation"]
-        #[doc = " of different databases can run concurrently."]
+        /// Starts creating a new Cloud Spanner Backup.
+        /// The returned backup [long-running operation][google.longrunning.Operation]
+        /// will have a name of the format
+        /// `projects/<project>/instances/<instance>/backups/<backup>/operations/<operation_id>`
+        /// and can be used to track creation of the backup. The
+        /// [metadata][google.longrunning.Operation.metadata] field type is
+        /// [CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata]. The
+        /// [response][google.longrunning.Operation.response] field type is
+        /// [Backup][google.spanner.admin.database.v1.Backup], if successful. Cancelling the returned operation will stop the
+        /// creation and delete the backup.
+        /// There can be only one pending backup creation per database. Backup creation
+        /// of different databases can run concurrently.
         pub async fn create_backup(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateBackupRequest>,
@@ -1354,18 +1357,18 @@ pub mod database_admin_client {
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/CreateBackup");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Starts copying a Cloud Spanner Backup."]
-        #[doc = " The returned backup [long-running operation][google.longrunning.Operation]"]
-        #[doc = " will have a name of the format"]
-        #[doc = " `projects/<project>/instances/<instance>/backups/<backup>/operations/<operation_id>`"]
-        #[doc = " and can be used to track copying of the backup. The operation is associated"]
-        #[doc = " with the destination backup."]
-        #[doc = " The [metadata][google.longrunning.Operation.metadata] field type is"]
-        #[doc = " [CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata]."]
-        #[doc = " The [response][google.longrunning.Operation.response] field type is"]
-        #[doc = " [Backup][google.spanner.admin.database.v1.Backup], if successful. Cancelling the returned operation will stop the"]
-        #[doc = " copying and delete the backup."]
-        #[doc = " Concurrent CopyBackup requests can run on the same source backup."]
+        /// Starts copying a Cloud Spanner Backup.
+        /// The returned backup [long-running operation][google.longrunning.Operation]
+        /// will have a name of the format
+        /// `projects/<project>/instances/<instance>/backups/<backup>/operations/<operation_id>`
+        /// and can be used to track copying of the backup. The operation is associated
+        /// with the destination backup.
+        /// The [metadata][google.longrunning.Operation.metadata] field type is
+        /// [CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata].
+        /// The [response][google.longrunning.Operation.response] field type is
+        /// [Backup][google.spanner.admin.database.v1.Backup], if successful. Cancelling the returned operation will stop the
+        /// copying and delete the backup.
+        /// Concurrent CopyBackup requests can run on the same source backup.
         pub async fn copy_backup(
             &mut self,
             request: impl tonic::IntoRequest<super::CopyBackupRequest>,
@@ -1378,7 +1381,7 @@ pub mod database_admin_client {
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/CopyBackup");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Gets metadata on a pending or completed [Backup][google.spanner.admin.database.v1.Backup]."]
+        /// Gets metadata on a pending or completed [Backup][google.spanner.admin.database.v1.Backup].
         pub async fn get_backup(
             &mut self,
             request: impl tonic::IntoRequest<super::GetBackupRequest>,
@@ -1391,7 +1394,7 @@ pub mod database_admin_client {
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/GetBackup");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Updates a pending or completed [Backup][google.spanner.admin.database.v1.Backup]."]
+        /// Updates a pending or completed [Backup][google.spanner.admin.database.v1.Backup].
         pub async fn update_backup(
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateBackupRequest>,
@@ -1404,7 +1407,7 @@ pub mod database_admin_client {
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/UpdateBackup");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Deletes a pending or completed [Backup][google.spanner.admin.database.v1.Backup]."]
+        /// Deletes a pending or completed [Backup][google.spanner.admin.database.v1.Backup].
         pub async fn delete_backup(
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteBackupRequest>,
@@ -1417,9 +1420,9 @@ pub mod database_admin_client {
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/DeleteBackup");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Lists completed and pending backups."]
-        #[doc = " Backups returned are ordered by `create_time` in descending order,"]
-        #[doc = " starting from the most recent `create_time`."]
+        /// Lists completed and pending backups.
+        /// Backups returned are ordered by `create_time` in descending order,
+        /// starting from the most recent `create_time`.
         pub async fn list_backups(
             &mut self,
             request: impl tonic::IntoRequest<super::ListBackupsRequest>,
@@ -1432,23 +1435,23 @@ pub mod database_admin_client {
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/ListBackups");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Create a new database by restoring from a completed backup. The new"]
-        #[doc = " database must be in the same project and in an instance with the same"]
-        #[doc = " instance configuration as the instance containing"]
-        #[doc = " the backup. The returned database [long-running"]
-        #[doc = " operation][google.longrunning.Operation] has a name of the format"]
-        #[doc = " `projects/<project>/instances/<instance>/databases/<database>/operations/<operation_id>`,"]
-        #[doc = " and can be used to track the progress of the operation, and to cancel it."]
-        #[doc = " The [metadata][google.longrunning.Operation.metadata] field type is"]
-        #[doc = " [RestoreDatabaseMetadata][google.spanner.admin.database.v1.RestoreDatabaseMetadata]."]
-        #[doc = " The [response][google.longrunning.Operation.response] type"]
-        #[doc = " is [Database][google.spanner.admin.database.v1.Database], if"]
-        #[doc = " successful. Cancelling the returned operation will stop the restore and"]
-        #[doc = " delete the database."]
-        #[doc = " There can be only one database being restored into an instance at a time."]
-        #[doc = " Once the restore operation completes, a new restore operation can be"]
-        #[doc = " initiated, without waiting for the optimize operation associated with the"]
-        #[doc = " first restore to complete."]
+        /// Create a new database by restoring from a completed backup. The new
+        /// database must be in the same project and in an instance with the same
+        /// instance configuration as the instance containing
+        /// the backup. The returned database [long-running
+        /// operation][google.longrunning.Operation] has a name of the format
+        /// `projects/<project>/instances/<instance>/databases/<database>/operations/<operation_id>`,
+        /// and can be used to track the progress of the operation, and to cancel it.
+        /// The [metadata][google.longrunning.Operation.metadata] field type is
+        /// [RestoreDatabaseMetadata][google.spanner.admin.database.v1.RestoreDatabaseMetadata].
+        /// The [response][google.longrunning.Operation.response] type
+        /// is [Database][google.spanner.admin.database.v1.Database], if
+        /// successful. Cancelling the returned operation will stop the restore and
+        /// delete the database.
+        /// There can be only one database being restored into an instance at a time.
+        /// Once the restore operation completes, a new restore operation can be
+        /// initiated, without waiting for the optimize operation associated with the
+        /// first restore to complete.
         pub async fn restore_database(
             &mut self,
             request: impl tonic::IntoRequest<super::RestoreDatabaseRequest>,
@@ -1461,14 +1464,14 @@ pub mod database_admin_client {
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.database.v1.DatabaseAdmin/RestoreDatabase");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Lists database [longrunning-operations][google.longrunning.Operation]."]
-        #[doc = " A database operation has a name of the form"]
-        #[doc = " `projects/<project>/instances/<instance>/databases/<database>/operations/<operation>`."]
-        #[doc = " The long-running operation"]
-        #[doc = " [metadata][google.longrunning.Operation.metadata] field type"]
-        #[doc = " `metadata.type_url` describes the type of the metadata. Operations returned"]
-        #[doc = " include those that have completed/failed/canceled within the last 7 days,"]
-        #[doc = " and pending operations."]
+        /// Lists database [longrunning-operations][google.longrunning.Operation].
+        /// A database operation has a name of the form
+        /// `projects/<project>/instances/<instance>/databases/<database>/operations/<operation>`.
+        /// The long-running operation
+        /// [metadata][google.longrunning.Operation.metadata] field type
+        /// `metadata.type_url` describes the type of the metadata. Operations returned
+        /// include those that have completed/failed/canceled within the last 7 days,
+        /// and pending operations.
         pub async fn list_database_operations(
             &mut self,
             request: impl tonic::IntoRequest<super::ListDatabaseOperationsRequest>,
@@ -1482,16 +1485,16 @@ pub mod database_admin_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Lists the backup [long-running operations][google.longrunning.Operation] in"]
-        #[doc = " the given instance. A backup operation has a name of the form"]
-        #[doc = " `projects/<project>/instances/<instance>/backups/<backup>/operations/<operation>`."]
-        #[doc = " The long-running operation"]
-        #[doc = " [metadata][google.longrunning.Operation.metadata] field type"]
-        #[doc = " `metadata.type_url` describes the type of the metadata. Operations returned"]
-        #[doc = " include those that have completed/failed/canceled within the last 7 days,"]
-        #[doc = " and pending operations. Operations returned are ordered by"]
-        #[doc = " `operation.metadata.value.progress.start_time` in descending order starting"]
-        #[doc = " from the most recently started operation."]
+        /// Lists the backup [long-running operations][google.longrunning.Operation] in
+        /// the given instance. A backup operation has a name of the form
+        /// `projects/<project>/instances/<instance>/backups/<backup>/operations/<operation>`.
+        /// The long-running operation
+        /// [metadata][google.longrunning.Operation.metadata] field type
+        /// `metadata.type_url` describes the type of the metadata. Operations returned
+        /// include those that have completed/failed/canceled within the last 7 days,
+        /// and pending operations. Operations returned are ordered by
+        /// `operation.metadata.value.progress.start_time` in descending order starting
+        /// from the most recently started operation.
         pub async fn list_backup_operations(
             &mut self,
             request: impl tonic::IntoRequest<super::ListBackupOperationsRequest>,

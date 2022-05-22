@@ -1,7 +1,5 @@
-use hyper::client::HttpConnector;
-use hyper::header::USER_AGENT;
-use hyper::http::{HeaderValue, Method, Request};
-use hyper::{Client, StatusCode};
+use reqwest::header::{HeaderValue, USER_AGENT};
+
 use std::string;
 use std::time::Duration;
 
@@ -18,24 +16,14 @@ static ON_GCE: OnceCell<bool> = OnceCell::const_new();
 
 static PROJECT_ID: OnceCell<String> = OnceCell::const_new();
 
-pub fn default_http_connector() -> HttpConnector {
-    let mut connector = HttpConnector::new();
-    connector.enforce_http(false);
-    connector.set_connect_timeout(Some(Duration::from_secs(2)));
-    connector.set_keepalive(Some(Duration::from_secs(30)));
-    connector
-}
-
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error(transparent)]
-    Hyper(#[from] hyper::Error),
-    #[error(transparent)]
-    Http(#[from] hyper::http::Error),
     #[error("invalid response code: {0}")]
-    InvalidResponse(StatusCode),
+    InvalidResponse(u16),
     #[error(transparent)]
     FromUTF8Error(#[from] string::FromUtf8Error),
+    #[error(transparent)]
+    HttpError(#[from] reqwest::Error),
 }
 
 pub async fn on_gce() -> bool {
@@ -51,21 +39,24 @@ async fn test_on_gce() -> Result<bool, Error> {
         return Ok(true);
     }
 
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(3))
+        .build()
+        .unwrap();
     let url = format!("http://{}", METADATA_IP);
-    let body = hyper::Body::empty();
-    let request = Request::builder().method(Method::GET).uri(&url).body(body)?;
 
-    let client = Client::builder().build(default_http_connector());
-    let response = client.request(request).await;
-
+    let response = client.get(&url).send().await;
     if response.is_ok() {
-        let on_gce = match response.unwrap().headers().get(METADATA_FLAVOR_KEY) {
-            None => false,
-            Some(s) => s == METADATA_GOOGLE,
-        };
+        let response = response.unwrap();
+        if response.status().is_success() {
+            let on_gce = match response.headers().get(METADATA_FLAVOR_KEY) {
+                None => false,
+                Some(s) => s == METADATA_GOOGLE,
+            };
 
-        if on_gce {
-            return Ok(true);
+            if on_gce {
+                return Ok(true);
+            }
         }
     }
 
@@ -103,32 +94,21 @@ async fn get_etag_with_trim(suffix: &str) -> Result<String, Error> {
 }
 
 async fn get_etag(suffix: &str) -> Result<String, Error> {
-    let host = match std::env::var(METADATA_HOST_ENV) {
-        Ok(host) => host,
-        Err(_e) => METADATA_IP.to_string(),
-    };
-
+    let host = std::env::var(METADATA_HOST_ENV).unwrap_or(METADATA_IP.to_string());
     let url = format!("http://{}//computeMetadata/v1/{}", host, suffix);
-    let body = hyper::Body::empty();
-    let mut request = Request::builder().method(Method::GET).uri(&url).body(body)?;
-    request
-        .headers_mut()
-        .insert(METADATA_FLAVOR_KEY, HeaderValue::from_str(METADATA_GOOGLE).unwrap());
-    request
-        .headers_mut()
-        .insert(USER_AGENT, HeaderValue::from_str("gcloud-rust/0.1").unwrap());
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(3))
+        .build()
+        .unwrap();
+    let response = client
+        .get(url)
+        .header(METADATA_FLAVOR_KEY, HeaderValue::from_str(METADATA_GOOGLE).unwrap())
+        .header(USER_AGENT, HeaderValue::from_str("gcloud-rust/0.1").unwrap())
+        .send()
+        .await?;
 
-    let client = Client::builder().build(default_http_connector());
-    let maybe_response = client.request(request).await;
-
-    match maybe_response {
-        Ok(response) => {
-            if response.status() == StatusCode::OK {
-                let bytes = hyper::body::to_bytes(response.into_body()).await?;
-                return String::from_utf8(bytes.to_vec()).map_err(|e| e.into());
-            }
-            return Err(Error::InvalidResponse(response.status()));
-        }
-        Err(e) => Err(e.into()),
+    if response.status().is_success() {
+        return Ok(response.text().await?);
     }
+    return Err(Error::InvalidResponse(response.status().as_u16()));
 }

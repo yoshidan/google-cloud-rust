@@ -1,5 +1,3 @@
-use std::env::VarError;
-
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("scopes is required if the audience is none")]
@@ -17,17 +15,14 @@ pub enum Error {
     #[error("jwt error: {0}")]
     JwtError(#[from] jwt::errors::Error),
 
-    #[error("hyper error: {0}")]
-    HyperError(#[from] hyper::Error),
-
     #[error("http error")]
-    HttpError(#[from] hyper::http::Error),
+    HttpError(#[from] reqwest::Error),
 
     #[error("GOOGLE_APPLICATION_CREDENTIALS or default credentials is required: {0}")]
     CredentialsIOError(#[from] std::io::Error),
 
     #[error("os env error: {0}")]
-    VarError(#[from] VarError),
+    VarError(#[from] std::env::VarError),
 
     #[error("user home directory not found")]
     NoHomeDirectoryFound,

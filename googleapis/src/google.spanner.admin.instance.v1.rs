@@ -334,37 +334,37 @@ pub struct UpdateInstanceMetadata {
     #[prost(message, optional, tag = "4")]
     pub end_time: ::core::option::Option<::prost_types::Timestamp>,
 }
-#[doc = r" Generated client implementations."]
+/// Generated client implementations.
 pub mod instance_admin_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
     use tonic::codegen::*;
-    #[doc = " Cloud Spanner Instance Admin API"]
-    #[doc = ""]
-    #[doc = " The Cloud Spanner Instance Admin API can be used to create, delete,"]
-    #[doc = " modify and list instances. Instances are dedicated Cloud Spanner serving"]
-    #[doc = " and storage resources to be used by Cloud Spanner databases."]
-    #[doc = ""]
-    #[doc = " Each instance has a \"configuration\", which dictates where the"]
-    #[doc = " serving resources for the Cloud Spanner instance are located (e.g.,"]
-    #[doc = " US-central, Europe). Configurations are created by Google based on"]
-    #[doc = " resource availability."]
-    #[doc = ""]
-    #[doc = " Cloud Spanner billing is based on the instances that exist and their"]
-    #[doc = " sizes. After an instance exists, there are no additional"]
-    #[doc = " per-database or per-operation charges for use of the instance"]
-    #[doc = " (though there may be additional network bandwidth charges)."]
-    #[doc = " Instances offer isolation: problems with databases in one instance"]
-    #[doc = " will not affect other instances. However, within an instance"]
-    #[doc = " databases can affect each other. For example, if one database in an"]
-    #[doc = " instance receives a lot of requests and consumes most of the"]
-    #[doc = " instance resources, fewer resources are available for other"]
-    #[doc = " databases in that instance, and their performance may suffer."]
+    /// Cloud Spanner Instance Admin API
+    ///
+    /// The Cloud Spanner Instance Admin API can be used to create, delete,
+    /// modify and list instances. Instances are dedicated Cloud Spanner serving
+    /// and storage resources to be used by Cloud Spanner databases.
+    ///
+    /// Each instance has a "configuration", which dictates where the
+    /// serving resources for the Cloud Spanner instance are located (e.g.,
+    /// US-central, Europe). Configurations are created by Google based on
+    /// resource availability.
+    ///
+    /// Cloud Spanner billing is based on the instances that exist and their
+    /// sizes. After an instance exists, there are no additional
+    /// per-database or per-operation charges for use of the instance
+    /// (though there may be additional network bandwidth charges).
+    /// Instances offer isolation: problems with databases in one instance
+    /// will not affect other instances. However, within an instance
+    /// databases can affect each other. For example, if one database in an
+    /// instance receives a lot of requests and consumes most of the
+    /// instance resources, fewer resources are available for other
+    /// databases in that instance, and their performance may suffer.
     #[derive(Debug, Clone)]
     pub struct InstanceAdminClient<T> {
         inner: tonic::client::Grpc<T>,
     }
     impl InstanceAdminClient<tonic::transport::Channel> {
-        #[doc = r" Attempt to create a new client by connecting to a given endpoint."]
+        /// Attempt to create a new client by connecting to a given endpoint.
         pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
         where
             D: std::convert::TryInto<tonic::transport::Endpoint>,
@@ -377,8 +377,8 @@ pub mod instance_admin_client {
     impl<T> InstanceAdminClient<T>
     where
         T: tonic::client::GrpcService<tonic::body::BoxBody>,
-        T::ResponseBody: Body + Send + 'static,
         T::Error: Into<StdError>,
+        T::ResponseBody: Body<Data = Bytes> + Send + 'static,
         <T::ResponseBody as Body>::Error: Into<StdError> + Send,
     {
         pub fn new(inner: T) -> Self {
@@ -388,6 +388,7 @@ pub mod instance_admin_client {
         pub fn with_interceptor<F>(inner: T, interceptor: F) -> InstanceAdminClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
+            T::ResponseBody: Default,
             T: tonic::codegen::Service<
                 http::Request<tonic::body::BoxBody>,
                 Response = http::Response<<T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody>,
@@ -396,20 +397,22 @@ pub mod instance_admin_client {
         {
             InstanceAdminClient::new(InterceptedService::new(inner, interceptor))
         }
-        #[doc = r" Compress requests with `gzip`."]
-        #[doc = r""]
-        #[doc = r" This requires the server to support it otherwise it might respond with an"]
-        #[doc = r" error."]
+        /// Compress requests with `gzip`.
+        ///
+        /// This requires the server to support it otherwise it might respond with an
+        /// error.
+        #[must_use]
         pub fn send_gzip(mut self) -> Self {
             self.inner = self.inner.send_gzip();
             self
         }
-        #[doc = r" Enable decompressing responses with `gzip`."]
+        /// Enable decompressing responses with `gzip`.
+        #[must_use]
         pub fn accept_gzip(mut self) -> Self {
             self.inner = self.inner.accept_gzip();
             self
         }
-        #[doc = " Lists the supported instance configurations for a given project."]
+        /// Lists the supported instance configurations for a given project.
         pub async fn list_instance_configs(
             &mut self,
             request: impl tonic::IntoRequest<super::ListInstanceConfigsRequest>,
@@ -423,7 +426,7 @@ pub mod instance_admin_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Gets information about a particular instance configuration."]
+        /// Gets information about a particular instance configuration.
         pub async fn get_instance_config(
             &mut self,
             request: impl tonic::IntoRequest<super::GetInstanceConfigRequest>,
@@ -437,7 +440,7 @@ pub mod instance_admin_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Lists all instances in the given project."]
+        /// Lists all instances in the given project.
         pub async fn list_instances(
             &mut self,
             request: impl tonic::IntoRequest<super::ListInstancesRequest>,
@@ -450,7 +453,7 @@ pub mod instance_admin_client {
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.instance.v1.InstanceAdmin/ListInstances");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Gets information about a particular instance."]
+        /// Gets information about a particular instance.
         pub async fn get_instance(
             &mut self,
             request: impl tonic::IntoRequest<super::GetInstanceRequest>,
@@ -463,40 +466,40 @@ pub mod instance_admin_client {
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.instance.v1.InstanceAdmin/GetInstance");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Creates an instance and begins preparing it to begin serving. The"]
-        #[doc = " returned [long-running operation][google.longrunning.Operation]"]
-        #[doc = " can be used to track the progress of preparing the new"]
-        #[doc = " instance. The instance name is assigned by the caller. If the"]
-        #[doc = " named instance already exists, `CreateInstance` returns"]
-        #[doc = " `ALREADY_EXISTS`."]
-        #[doc = ""]
-        #[doc = " Immediately upon completion of this request:"]
-        #[doc = ""]
-        #[doc = "   * The instance is readable via the API, with all requested attributes"]
-        #[doc = "     but no allocated resources. Its state is `CREATING`."]
-        #[doc = ""]
-        #[doc = " Until completion of the returned operation:"]
-        #[doc = ""]
-        #[doc = "   * Cancelling the operation renders the instance immediately unreadable"]
-        #[doc = "     via the API."]
-        #[doc = "   * The instance can be deleted."]
-        #[doc = "   * All other attempts to modify the instance are rejected."]
-        #[doc = ""]
-        #[doc = " Upon completion of the returned operation:"]
-        #[doc = ""]
-        #[doc = "   * Billing for all successfully-allocated resources begins (some types"]
-        #[doc = "     may have lower than the requested levels)."]
-        #[doc = "   * Databases can be created in the instance."]
-        #[doc = "   * The instance's allocated resource levels are readable via the API."]
-        #[doc = "   * The instance's state becomes `READY`."]
-        #[doc = ""]
-        #[doc = " The returned [long-running operation][google.longrunning.Operation] will"]
-        #[doc = " have a name of the format `<instance_name>/operations/<operation_id>` and"]
-        #[doc = " can be used to track creation of the instance.  The"]
-        #[doc = " [metadata][google.longrunning.Operation.metadata] field type is"]
-        #[doc = " [CreateInstanceMetadata][google.spanner.admin.instance.v1.CreateInstanceMetadata]."]
-        #[doc = " The [response][google.longrunning.Operation.response] field type is"]
-        #[doc = " [Instance][google.spanner.admin.instance.v1.Instance], if successful."]
+        /// Creates an instance and begins preparing it to begin serving. The
+        /// returned [long-running operation][google.longrunning.Operation]
+        /// can be used to track the progress of preparing the new
+        /// instance. The instance name is assigned by the caller. If the
+        /// named instance already exists, `CreateInstance` returns
+        /// `ALREADY_EXISTS`.
+        ///
+        /// Immediately upon completion of this request:
+        ///
+        ///   * The instance is readable via the API, with all requested attributes
+        ///     but no allocated resources. Its state is `CREATING`.
+        ///
+        /// Until completion of the returned operation:
+        ///
+        ///   * Cancelling the operation renders the instance immediately unreadable
+        ///     via the API.
+        ///   * The instance can be deleted.
+        ///   * All other attempts to modify the instance are rejected.
+        ///
+        /// Upon completion of the returned operation:
+        ///
+        ///   * Billing for all successfully-allocated resources begins (some types
+        ///     may have lower than the requested levels).
+        ///   * Databases can be created in the instance.
+        ///   * The instance's allocated resource levels are readable via the API.
+        ///   * The instance's state becomes `READY`.
+        ///
+        /// The returned [long-running operation][google.longrunning.Operation] will
+        /// have a name of the format `<instance_name>/operations/<operation_id>` and
+        /// can be used to track creation of the instance.  The
+        /// [metadata][google.longrunning.Operation.metadata] field type is
+        /// [CreateInstanceMetadata][google.spanner.admin.instance.v1.CreateInstanceMetadata].
+        /// The [response][google.longrunning.Operation.response] field type is
+        /// [Instance][google.spanner.admin.instance.v1.Instance], if successful.
         pub async fn create_instance(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateInstanceRequest>,
@@ -509,46 +512,46 @@ pub mod instance_admin_client {
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.instance.v1.InstanceAdmin/CreateInstance");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Updates an instance, and begins allocating or releasing resources"]
-        #[doc = " as requested. The returned [long-running"]
-        #[doc = " operation][google.longrunning.Operation] can be used to track the"]
-        #[doc = " progress of updating the instance. If the named instance does not"]
-        #[doc = " exist, returns `NOT_FOUND`."]
-        #[doc = ""]
-        #[doc = " Immediately upon completion of this request:"]
-        #[doc = ""]
-        #[doc = "   * For resource types for which a decrease in the instance's allocation"]
-        #[doc = "     has been requested, billing is based on the newly-requested level."]
-        #[doc = ""]
-        #[doc = " Until completion of the returned operation:"]
-        #[doc = ""]
-        #[doc = "   * Cancelling the operation sets its metadata's"]
-        #[doc = "     [cancel_time][google.spanner.admin.instance.v1.UpdateInstanceMetadata.cancel_time], and begins"]
-        #[doc = "     restoring resources to their pre-request values. The operation"]
-        #[doc = "     is guaranteed to succeed at undoing all resource changes,"]
-        #[doc = "     after which point it terminates with a `CANCELLED` status."]
-        #[doc = "   * All other attempts to modify the instance are rejected."]
-        #[doc = "   * Reading the instance via the API continues to give the pre-request"]
-        #[doc = "     resource levels."]
-        #[doc = ""]
-        #[doc = " Upon completion of the returned operation:"]
-        #[doc = ""]
-        #[doc = "   * Billing begins for all successfully-allocated resources (some types"]
-        #[doc = "     may have lower than the requested levels)."]
-        #[doc = "   * All newly-reserved resources are available for serving the instance's"]
-        #[doc = "     tables."]
-        #[doc = "   * The instance's new resource levels are readable via the API."]
-        #[doc = ""]
-        #[doc = " The returned [long-running operation][google.longrunning.Operation] will"]
-        #[doc = " have a name of the format `<instance_name>/operations/<operation_id>` and"]
-        #[doc = " can be used to track the instance modification.  The"]
-        #[doc = " [metadata][google.longrunning.Operation.metadata] field type is"]
-        #[doc = " [UpdateInstanceMetadata][google.spanner.admin.instance.v1.UpdateInstanceMetadata]."]
-        #[doc = " The [response][google.longrunning.Operation.response] field type is"]
-        #[doc = " [Instance][google.spanner.admin.instance.v1.Instance], if successful."]
-        #[doc = ""]
-        #[doc = " Authorization requires `spanner.instances.update` permission on"]
-        #[doc = " resource [name][google.spanner.admin.instance.v1.Instance.name]."]
+        /// Updates an instance, and begins allocating or releasing resources
+        /// as requested. The returned [long-running
+        /// operation][google.longrunning.Operation] can be used to track the
+        /// progress of updating the instance. If the named instance does not
+        /// exist, returns `NOT_FOUND`.
+        ///
+        /// Immediately upon completion of this request:
+        ///
+        ///   * For resource types for which a decrease in the instance's allocation
+        ///     has been requested, billing is based on the newly-requested level.
+        ///
+        /// Until completion of the returned operation:
+        ///
+        ///   * Cancelling the operation sets its metadata's
+        ///     [cancel_time][google.spanner.admin.instance.v1.UpdateInstanceMetadata.cancel_time], and begins
+        ///     restoring resources to their pre-request values. The operation
+        ///     is guaranteed to succeed at undoing all resource changes,
+        ///     after which point it terminates with a `CANCELLED` status.
+        ///   * All other attempts to modify the instance are rejected.
+        ///   * Reading the instance via the API continues to give the pre-request
+        ///     resource levels.
+        ///
+        /// Upon completion of the returned operation:
+        ///
+        ///   * Billing begins for all successfully-allocated resources (some types
+        ///     may have lower than the requested levels).
+        ///   * All newly-reserved resources are available for serving the instance's
+        ///     tables.
+        ///   * The instance's new resource levels are readable via the API.
+        ///
+        /// The returned [long-running operation][google.longrunning.Operation] will
+        /// have a name of the format `<instance_name>/operations/<operation_id>` and
+        /// can be used to track the instance modification.  The
+        /// [metadata][google.longrunning.Operation.metadata] field type is
+        /// [UpdateInstanceMetadata][google.spanner.admin.instance.v1.UpdateInstanceMetadata].
+        /// The [response][google.longrunning.Operation.response] field type is
+        /// [Instance][google.spanner.admin.instance.v1.Instance], if successful.
+        ///
+        /// Authorization requires `spanner.instances.update` permission on
+        /// resource [name][google.spanner.admin.instance.v1.Instance.name].
         pub async fn update_instance(
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateInstanceRequest>,
@@ -561,17 +564,17 @@ pub mod instance_admin_client {
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.instance.v1.InstanceAdmin/UpdateInstance");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Deletes an instance."]
-        #[doc = ""]
-        #[doc = " Immediately upon completion of the request:"]
-        #[doc = ""]
-        #[doc = "   * Billing ceases for all of the instance's reserved resources."]
-        #[doc = ""]
-        #[doc = " Soon afterward:"]
-        #[doc = ""]
-        #[doc = "   * The instance and *all of its databases* immediately and"]
-        #[doc = "     irrevocably disappear from the API. All data in the databases"]
-        #[doc = "     is permanently deleted."]
+        /// Deletes an instance.
+        ///
+        /// Immediately upon completion of the request:
+        ///
+        ///   * Billing ceases for all of the instance's reserved resources.
+        ///
+        /// Soon afterward:
+        ///
+        ///   * The instance and *all of its databases* immediately and
+        ///     irrevocably disappear from the API. All data in the databases
+        ///     is permanently deleted.
         pub async fn delete_instance(
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteInstanceRequest>,
@@ -584,11 +587,11 @@ pub mod instance_admin_client {
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.instance.v1.InstanceAdmin/DeleteInstance");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Sets the access control policy on an instance resource. Replaces any"]
-        #[doc = " existing policy."]
-        #[doc = ""]
-        #[doc = " Authorization requires `spanner.instances.setIamPolicy` on"]
-        #[doc = " [resource][google.iam.v1.SetIamPolicyRequest.resource]."]
+        /// Sets the access control policy on an instance resource. Replaces any
+        /// existing policy.
+        ///
+        /// Authorization requires `spanner.instances.setIamPolicy` on
+        /// [resource][google.iam.v1.SetIamPolicyRequest.resource].
         pub async fn set_iam_policy(
             &mut self,
             request: impl tonic::IntoRequest<super::super::super::super::super::iam::v1::SetIamPolicyRequest>,
@@ -601,11 +604,11 @@ pub mod instance_admin_client {
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.instance.v1.InstanceAdmin/SetIamPolicy");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Gets the access control policy for an instance resource. Returns an empty"]
-        #[doc = " policy if an instance exists but does not have a policy set."]
-        #[doc = ""]
-        #[doc = " Authorization requires `spanner.instances.getIamPolicy` on"]
-        #[doc = " [resource][google.iam.v1.GetIamPolicyRequest.resource]."]
+        /// Gets the access control policy for an instance resource. Returns an empty
+        /// policy if an instance exists but does not have a policy set.
+        ///
+        /// Authorization requires `spanner.instances.getIamPolicy` on
+        /// [resource][google.iam.v1.GetIamPolicyRequest.resource].
         pub async fn get_iam_policy(
             &mut self,
             request: impl tonic::IntoRequest<super::super::super::super::super::iam::v1::GetIamPolicyRequest>,
@@ -618,12 +621,12 @@ pub mod instance_admin_client {
                 http::uri::PathAndQuery::from_static("/google.spanner.admin.instance.v1.InstanceAdmin/GetIamPolicy");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        #[doc = " Returns permissions that the caller has on the specified instance resource."]
-        #[doc = ""]
-        #[doc = " Attempting this RPC on a non-existent Cloud Spanner instance resource will"]
-        #[doc = " result in a NOT_FOUND error if the user has `spanner.instances.list`"]
-        #[doc = " permission on the containing Google Cloud Project. Otherwise returns an"]
-        #[doc = " empty set of permissions."]
+        /// Returns permissions that the caller has on the specified instance resource.
+        ///
+        /// Attempting this RPC on a non-existent Cloud Spanner instance resource will
+        /// result in a NOT_FOUND error if the user has `spanner.instances.list`
+        /// permission on the containing Google Cloud Project. Otherwise returns an
+        /// empty set of permissions.
         pub async fn test_iam_permissions(
             &mut self,
             request: impl tonic::IntoRequest<super::super::super::super::super::iam::v1::TestIamPermissionsRequest>,

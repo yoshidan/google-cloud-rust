@@ -1,5 +1,6 @@
 use anyhow::Result;
 use chrono::{DateTime, NaiveDate, Utc};
+use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::Status;
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::SingleUseTransaction;
 use google_cloud_googleapis::spanner::v1::transaction_options::{Mode, ReadWrite};
@@ -78,7 +79,7 @@ pub fn user_columns() -> Vec<&'static str> {
 }
 
 pub async fn create_session() -> ManagedSession {
-    let cm = ConnectionManager::new(1, Some("localhost:9010".to_string()))
+    let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()))
         .await
         .unwrap();
     let mut config = SessionConfig::default();
