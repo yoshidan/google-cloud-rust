@@ -21,8 +21,8 @@
 //! #[tokio::main]
 //! async fn main() -> Result<(), Status> {
 //!
-//!     //default pubsub client.
-//!     //If the environment variable PUBSUB_EMULATOR_HOST is specified, project_id will be local-project.
+//!     //Create pubsub client.
+//!     //If the environment variable PUBSUB_EMULATOR_HOST is specified, project_id will be 'local-project'.
 //!     let mut client = Client::default().await.unwrap();
 //!
 //!     // Create topic.

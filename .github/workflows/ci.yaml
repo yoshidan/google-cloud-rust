@@ -59,6 +59,7 @@ jobs:
           args: --release --all-features --manifest-path pubsub/Cargo.toml
         env:
           PUBSUB_EMULATOR_HOST: localhost:8681
+          RUSTFLAGS: "-A dead_code -A unused"
   spanner:
     name: spanner
     runs-on: ubuntu-latest
@@ -103,6 +104,7 @@ jobs:
           args: --release --all-features --manifest-path spanner/Cargo.toml
         env:
           SPANNER_EMULATOR_HOST: localhost:9010
+          RUSTFLAGS: "-A dead_code -A unused"
   storage:
     name: storage
     runs-on: ubuntu-latest
@@ -128,3 +130,5 @@ jobs:
         with:
           command: test
           args: --release --all-features --manifest-path storage/Cargo.toml
+        env:
+          RUSTFLAGS: "-A dead_code -A unused"

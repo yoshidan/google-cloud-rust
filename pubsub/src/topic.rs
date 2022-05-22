@@ -155,7 +155,7 @@ mod tests {
 
     #[ctor::ctor]
     fn init() {
-        tracing_subscriber::fmt().init();
+        tracing_subscriber::fmt().try_init();
     }
 
     async fn create_topic() -> Result<Topic, anyhow::Error> {
