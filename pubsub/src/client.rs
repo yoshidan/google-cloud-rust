@@ -12,7 +12,7 @@ use google_cloud_googleapis::pubsub::v1::{DetachSubscriptionRequest, ListSubscri
 
 pub struct ClientConfig {
     pub pool_size: Option<usize>,
-    pub project_id: Option<&'static str>,
+    pub project_id: Option<String>,
 }
 
 impl Default for ClientConfig {
