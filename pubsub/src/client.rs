@@ -12,6 +12,10 @@ use google_cloud_googleapis::pubsub::v1::{DetachSubscriptionRequest, ListSubscri
 
 pub struct ClientConfig {
     pub pool_size: Option<usize>,
+    /// The default project is determined by credentials.
+    /// - If the GOOGLE_APPLICATION_CREDENTIALS is specified the project_id is from credentials.
+    /// - If the server is running on CGP the project_id is from metadata server
+    /// - If the PUBSUB_EMULATOR_HOST is specified the project_id is 'local-project'
     pub project_id: Option<String>,
 }
 
