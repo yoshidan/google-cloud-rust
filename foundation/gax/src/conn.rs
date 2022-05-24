@@ -18,7 +18,7 @@ const TLS_CERTS: &[u8] = include_bytes!("roots.pem");
 
 pub type Channel = Either<AsyncFilter<TonicChannel, AsyncAuthInterceptor>, TonicChannel>;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AsyncAuthInterceptor {
     token_source: Arc<dyn TokenSource>,
 }
@@ -66,6 +66,7 @@ pub enum Environment {
     GoogleCloud(Project),
 }
 
+#[derive(Debug)]
 pub struct ConnectionManager {
     index: AtomicI64,
     conns: Vec<Channel>,

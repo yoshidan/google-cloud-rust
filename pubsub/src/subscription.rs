@@ -98,6 +98,7 @@ impl Default for ReceiveConfig {
 }
 
 /// Subscription is a reference to a PubSub subscription.
+#[derive(Debug)]
 pub struct Subscription {
     fqsn: String,
     subc: SubscriberClient,

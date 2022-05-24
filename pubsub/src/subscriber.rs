@@ -76,6 +76,7 @@ impl Default for SubscriberConfig {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct Subscriber {
     pinger: Option<JoinHandle<()>>,
     inner: Option<JoinHandle<()>>,

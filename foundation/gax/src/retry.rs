@@ -55,7 +55,7 @@ where
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RetrySetting {
     pub from_millis: u64,
     pub max_delay: Option<Duration>,
