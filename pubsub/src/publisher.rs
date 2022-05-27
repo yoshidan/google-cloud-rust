@@ -75,7 +75,7 @@ impl Awaiter {
 /// Each item is added with a given key.
 /// Items added to the empty string key are handled in random order.
 /// Items added to any other key are handled sequentially.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Publisher {
     ordering_senders: Arc<Vec<async_channel::Sender<ReservedMessage>>>,
     sender: async_channel::Sender<ReservedMessage>,
@@ -144,6 +144,7 @@ impl Publisher {
     }
 }
 
+#[derive(Debug)]
 struct Tasks {
     inner: Option<Vec<JoinHandle<()>>>,
 }

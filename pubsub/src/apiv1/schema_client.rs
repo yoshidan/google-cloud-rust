@@ -12,7 +12,7 @@ use google_cloud_googleapis::pubsub::v1::{
 };
 use std::sync::Arc;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct SchemaClient {
     cm: Arc<ConnectionManager>,
 }

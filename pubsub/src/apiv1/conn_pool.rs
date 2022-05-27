@@ -8,6 +8,7 @@ const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/pubsub.data",
 ];
 
+#[derive(Debug)]
 pub struct ConnectionManager {
     inner: GRPCConnectionManager,
 }

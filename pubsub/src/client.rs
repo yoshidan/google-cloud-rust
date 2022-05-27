@@ -42,7 +42,7 @@ pub enum Error {
 ///
 /// Clients should be reused rather than being created as needed.
 /// A Client may be shared by multiple tasks.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Client {
     project_id: String,
     pubc: PublisherClient,

@@ -14,7 +14,7 @@ use google_cloud_googleapis::pubsub::v1::{
     Topic, UpdateTopicRequest,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct PublisherClient {
     cm: Arc<ConnectionManager>,
 }

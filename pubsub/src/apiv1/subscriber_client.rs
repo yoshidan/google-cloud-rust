@@ -29,7 +29,7 @@ pub(crate) fn create_empty_streaming_pull_request() -> StreamingPullRequest {
     };
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct SubscriberClient {
     cm: Arc<ConnectionManager>,
 }
