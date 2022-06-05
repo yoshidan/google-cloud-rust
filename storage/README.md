@@ -30,10 +30,6 @@ use std::io::Read;
 async fn main() -> Result<(), Error> {
 
     // Create client.
-    // The default project is determined by credentials. 
-    // - If the GOOGLE_APPLICATION_CREDENTIALS is specified the project_id is from credentials.
-    // - If the server is running on CGP the project_id is from metadata server
-    // - If the PUBSUB_EMULATOR_HOST is specified the project_id is 'local-project'
     let mut client = Client::new().await.unwrap();
 
     // Upload the file
