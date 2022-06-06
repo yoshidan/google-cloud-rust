@@ -124,6 +124,7 @@ mod test {
     use std::collections::HashMap;
 
     use crate::http::buckets::list::ListBucketsRequest;
+    use crate::sign::{SignedURLMethod, SignedURLOptions};
 
     #[ctor::ctor]
     fn init() {
@@ -231,5 +232,54 @@ mod test {
                 .unwrap()
                 .enabled
         );
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn sign() {
+        let client = Client::new().await.unwrap();
+        let bucket_name = "rust-object-test";
+        let data = "aiueo";
+        let content_type = "application/octet-stream";
+
+        // upload
+        let mut option = SignedURLOptions {
+            method: SignedURLMethod::PUT,
+            content_type: Some(content_type.to_string()),
+            ..SignedURLOptions::default()
+        };
+        let url = client
+            .signed_url(bucket_name, "signed_uploadtest", option)
+            .await
+            .unwrap();
+        println!("uploading={:?}", url);
+        let request = reqwest::Client::default()
+            .put(url)
+            .header("content-type", content_type)
+            .body(data.as_bytes());
+        let result = request.send().await.unwrap();
+        let status = result.status();
+        assert!(status.is_success(), "{:?}", result.text().await.unwrap());
+
+        //download
+        let mut option = SignedURLOptions {
+            content_type: Some(content_type.to_string()),
+            ..SignedURLOptions::default()
+        };
+        let url = client
+            .signed_url(bucket_name, "signed_uploadtest", option)
+            .await
+            .unwrap();
+        println!("downloading={:?}", url);
+        let result = reqwest::Client::default()
+            .get(url)
+            .header("content-type", content_type)
+            .send()
+            .await
+            .unwrap()
+            .text()
+            .await
+            .unwrap();
+        assert_eq!(result, data);
     }
 }

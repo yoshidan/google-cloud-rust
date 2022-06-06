@@ -126,7 +126,7 @@ pub struct SignedURLOptions {
     /// ContentType is the content type header the client must provide
     /// to use the generated signed URL.
     /// Optional.
-    pub content_type: String,
+    pub content_type: Option<String>,
 
     /// Headers is a list of extension headers the client must provide
     /// in order to use the generated signed URL. Each must be a string of the
@@ -145,7 +145,7 @@ pub struct SignedURLOptions {
     /// If provided, the client should provide the exact value on the request
     /// header in order to use the signed URL.
     /// Optional.
-    pub md5: String,
+    pub md5: Option<String>,
 
     /// Style provides options for the type of URL to use. Options are
     /// PathStyle (default), BucketBoundHostname, and VirtualHostedStyle. See
@@ -171,10 +171,10 @@ impl Default for SignedURLOptions {
             sign_by: SignBy::PrivateKey(vec![]),
             method: SignedURLMethod::GET,
             expires: std::time::Duration::from_secs(600),
-            content_type: "application/octet-stream".to_string(),
+            content_type: None,
             headers: vec![],
             query_parameters: Default::default(),
-            md5: "".to_string(),
+            md5: None,
             style: Box::new(PathStyle {}),
             insecure: false,
             scheme: SigningScheme::SigningSchemeV4,
@@ -196,7 +196,6 @@ pub enum SignedURLError {
     MetadataError(#[from] google_cloud_metadata::Error),
 }
 
-///
 pub(crate) fn signed_url(bucket: &str, object: &str, opts: SignedURLOptions) -> Result<String, SignedURLError> {
     let now = Utc::now();
     let _ = validate_options(&opts, &now)?;
@@ -257,10 +256,10 @@ fn signed_url_v4(
     let signed_headers = {
         let mut header_names = extract_header_names(&opts.headers);
         header_names.push("host");
-        if !opts.content_type.is_empty() {
+        if opts.content_type.is_some() {
             header_names.push("content-type");
         }
-        if !opts.md5.is_empty() {
+        if opts.md5.is_some() {
             header_names.push("content-md5");
         }
         header_names.sort();
@@ -295,11 +294,11 @@ fn signed_url_v4(
     let header_with_value = {
         let mut header_with_value = vec![format!("host:{}", host)];
         header_with_value.extend_from_slice(&opts.headers);
-        if !opts.content_type.is_empty() {
-            header_with_value.push(format!("content-type:{}", opts.content_type))
+        if let Some(content_type) = &opts.content_type {
+            header_with_value.push(format!("content-type:{}", content_type))
         }
-        if !opts.md5.is_empty() {
-            header_with_value.push(format!("content-md5:{}", opts.md5))
+        if let Some(md5) = &opts.md5 {
+            header_with_value.push(format!("content-md5:{}", md5))
         }
         header_with_value.sort();
         header_with_value
@@ -314,7 +313,7 @@ fn signed_url_v4(
             opts.method.as_str(),
             builder.path().replace("+", "%20"),
             escaped_query,
-            header_with_value.join(" "),
+            header_with_value.join("\n"),
             signed_headers
         )
         .into_bytes();
@@ -398,8 +397,8 @@ fn validate_options(opts: &SignedURLOptions, _now: &DateTime<Utc>) -> Result<(),
     if opts.expires.is_zero() {
         return Err(InvalidOption("missing required expires option"));
     }
-    if !opts.md5.is_empty() {
-        match base64::decode(&opts.md5) {
+    if let Some(md5) = &opts.md5 {
+        match base64::decode(md5) {
             Ok(v) => {
                 if v.len() != 16 {
                     return Err(InvalidOption("storage: invalid MD5 checksum length"));
@@ -434,7 +433,7 @@ mod test {
     #[serial]
     async fn signed_url_internal() {
         let file = CredentialsFile::new().await.unwrap();
-        let _param = {
+        let param = {
             let mut param = HashMap::new();
             param.insert("tes t+".to_string(), vec!["++ +".to_string()]);
             param
@@ -443,7 +442,10 @@ mod test {
         opts.sign_by = SignBy::PrivateKey(file.private_key.unwrap().into());
         opts.google_access_id = file.client_email.unwrap();
         opts.expires = Duration::from_secs(3600);
-        let url = signed_url("rust-bucket-test", "test.html", opts).unwrap();
-        assert!(url.starts_with("https://storage.googleapis.com/rust-bucket-test/test.html"));
+        opts.query_parameters = param;
+        let url = signed_url("rust-object-test", "test1", opts).unwrap();
+        println!("downloading={:?}", url);
+        let result = reqwest::Client::default().get(url).send().await.unwrap();
+        assert!(result.status().is_success());
     }
 }
