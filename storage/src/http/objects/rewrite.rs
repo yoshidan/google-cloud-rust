@@ -6,12 +6,20 @@ use reqwest::{Client, RequestBuilder};
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct RewriteObjectRequest {
+    /// Name of the bucket in which to store the new object. Overrides the provided
+    /// object metadata's bucket value, if any.
     #[serde(skip_serializing)]
     pub destination_bucket: String,
+    /// Name of the new object. Required when the object metadata is not otherwise provided.
+    /// Overrides the object metadata's name value, if any. For information about how to
+    /// URL encode object names to be path safe, see Encoding URI path parts.
     #[serde(skip_serializing)]
     pub destination_object: String,
+    /// Name of the bucket in which to find the source object.
     #[serde(skip_serializing)]
     pub source_bucket: String,
+    ///Name of the source object. For information about how to URL encode object names
+    /// to be path safe, see Encoding URI path parts.
     #[serde(skip_serializing)]
     pub source_object: String,
     /// If set, only deletes the bucket if its metageneration matches this value.
@@ -24,16 +32,49 @@ pub struct RewriteObjectRequest {
     /// If set, only deletes the bucket if its metageneration does not match this
     /// value.
     pub if_source_metageneration_not_match: Option<i64>,
+    /// Resource name of the Cloud KMS key that will be used to encrypt the object. The Cloud KMS key must be located in same location as the object.
+    /// If the parameter is not specified, the request uses the destination bucket's default encryption key,
+    /// if any, or the Google-managed encryption key.
     pub destination_kms_key_name: Option<String>,
+    /// Apply a predefined set of access controls to the destination object.
+    /// Acceptable values are:
+    /// authenticatedRead: Object owner gets OWNER access, and allAuthenticatedUsers get READER access.
+    /// bucketOwnerFullControl: Object owner gets OWNER access, and project team owners get OWNER access.
+    /// bucketOwnerRead: Object owner gets OWNER access, and project team owners get READER access.
+    /// private: Object owner gets OWNER access.
+    /// projectPrivate: Object owner gets OWNER access, and project team members get access according to their roles.
+    /// publicRead: Object owner gets OWNER access, and allUsers get READER access.
+    /// If iamConfiguration.uniformBucketLevelAccess.enabled is set to true,
+    /// requests that include this parameter fail with a 400 Bad Request response.
     pub destination_predefined_object_acl: Option<PredefinedObjectAcl>,
+    /// The maximum number of bytes that will be rewritten per rewrite request.
+    /// Most callers shouldn't need to specify this parameter - it is primarily in place to
+    /// support testing. If specified the value must be an integral multiple of 1 MiB (1048576).
+    /// Also, this only applies to requests where the source and destination span
+    /// locations and/or storage classes. Finally,
+    /// this value must not change across rewrite calls else you'll get an error
+    /// that the rewriteToken is invalid.
     pub max_bytes_rewritten_per_call: Option<i64>,
+    /// Set of properties to return. Defaults to noAcl,
+    /// unless the object resource specifies the acl property, when it defaults to full.
+    /// Acceptable values are:
+    /// full: Include all properties.
+    /// noAcl: Omit the owner, acl property.
     pub projection: Option<Projection>,
+    /// If present, selects a specific revision of the source object (as opposed to the latest version, the default).
     pub source_generation: Option<i64>,
+    /// Include this field (from the previous rewrite response) on each rewrite request
+    /// after the first one, until the rewrite response 'done' flag is true.
+    /// Calls that provide a rewriteToken can omit all other request fields,
+    /// but if included those fields must match the values provided in the first rewrite request.
     pub rewrite_token: Option<String>,
+    /// Destination object metadata.
     #[serde(skip_serializing)]
     pub destination_metadata: Option<Object>,
+    /// Source encryption setting
     #[serde(skip_serializing)]
     pub source_encryption: Option<Encryption>,
+    /// Destination encryption setting
     #[serde(skip_serializing)]
     pub destination_encryption: Option<Encryption>,
 }
