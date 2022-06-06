@@ -2,6 +2,13 @@
 name = "google-cloud-storage"
 version = "0.1.0"
 edition = "2021"
+authors = ["yoshidan <naohiro.y@gmail.com>"]
+repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/storage"
+keywords = ["gcp","gcs","storage","googleapis","google-cloud-rust"]
+license = "MIT"
+readme = "README.md"
+description = "Google Cloud Platform storage client library."
+documentation = "https://docs.rs/google-cloud-storage/0.1.0/google-cloud-storage/"
 
 [dependencies]
 google-cloud-auth = { version = "0.2.0", path = "../foundation/auth" }
