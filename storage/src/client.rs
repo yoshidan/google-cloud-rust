@@ -243,7 +243,7 @@ mod test {
         let content_type = "application/octet-stream";
 
         // upload
-        let mut option = SignedURLOptions {
+        let option = SignedURLOptions {
             method: SignedURLMethod::PUT,
             content_type: Some(content_type.to_string()),
             ..SignedURLOptions::default()
@@ -262,7 +262,7 @@ mod test {
         assert!(status.is_success(), "{:?}", result.text().await.unwrap());
 
         //download
-        let mut option = SignedURLOptions {
+        let option = SignedURLOptions {
             content_type: Some(content_type.to_string()),
             ..SignedURLOptions::default()
         };
