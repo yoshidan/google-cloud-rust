@@ -40,7 +40,7 @@ impl OperationsClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Operation>, Status> {
-        let setting = retry.unwrap_or(default_retry_setting());
+        let setting = retry.unwrap_or_else(default_retry_setting);
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={}", name), req.clone());
@@ -59,7 +59,7 @@ impl OperationsClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let setting = retry.unwrap_or(default_retry_setting());
+        let setting = retry.unwrap_or_else(default_retry_setting);
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={}", name), req.clone());
@@ -84,7 +84,7 @@ impl OperationsClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let setting = retry.unwrap_or(default_retry_setting());
+        let setting = retry.unwrap_or_else(default_retry_setting);
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={}", name), req.clone());
@@ -108,7 +108,7 @@ impl OperationsClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Operation>, Status> {
-        let setting = retry.unwrap_or(default_retry_setting());
+        let setting = retry.unwrap_or_else(default_retry_setting);
         let action = || async {
             let request = create_request("".to_string(), req.clone());
             self.inner.clone().wait_operation(request).await.map_err(|e| e)

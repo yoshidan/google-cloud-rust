@@ -263,8 +263,8 @@ impl ReadWriteTransaction {
             // commits are also not rolled back.
             Err(err) => {
                 let status = match err.try_as() {
-                    Ok(status) => status,
-                    _ => {
+                    Some(status) => status,
+                    None => {
                         self.rollback(opt.call_options.cancel, opt.call_options.retry).await;
                         return Err((err, self.take_session()));
                     }

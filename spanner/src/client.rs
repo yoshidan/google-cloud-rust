@@ -118,10 +118,10 @@ pub enum TxError {
 }
 
 impl TryAs<Status> for TxError {
-    fn try_as(&self) -> Result<&Status, ()> {
+    fn try_as(&self) -> Option<&Status> {
         match self {
-            TxError::GRPC(s) => Ok(s),
-            _ => Err(()),
+            TxError::GRPC(s) => Some(s),
+            _ => None,
         }
     }
 }
@@ -142,10 +142,10 @@ pub enum RunInTxError {
 }
 
 impl TryAs<Status> for RunInTxError {
-    fn try_as(&self) -> Result<&Status, ()> {
+    fn try_as(&self) -> Option<&Status> {
         match self {
-            RunInTxError::GRPC(e) => Ok(e),
-            _ => Err(()),
+            RunInTxError::GRPC(e) => Some(e),
+            _ => None,
         }
     }
 }
