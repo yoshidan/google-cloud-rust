@@ -258,7 +258,7 @@ mod tests {
         let config = SubscriptionConfig {
             enable_message_ordering: !ordering_key.is_empty(),
             ..Default::default()
-        }();
+        };
         let subscription = client
             .create_subscription(subscription_id.as_str(), topic_id.as_str(), config, ctx.clone(), None)
             .await
