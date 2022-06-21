@@ -29,6 +29,7 @@ fn default_http_client() -> reqwest::Client {
         .unwrap()
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Deserialize)]
 struct InternalToken {
     pub access_token: String,

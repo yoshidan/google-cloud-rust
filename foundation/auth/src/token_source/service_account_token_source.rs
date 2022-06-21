@@ -28,6 +28,7 @@ impl Claims<'_> {
 // Does not use any OAuth2 flow but instead creates a JWT and sends that as the access token.
 // The audience is typically a URL that specifies the scope of the credentials.
 // see golang.org/x/oauth2/gen/jwt.go
+#[allow(dead_code)]
 pub struct ServiceAccountTokenSource {
     email: String,
     pk: jwt::EncodingKey,
@@ -73,6 +74,7 @@ impl TokenSource for ServiceAccountTokenSource {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Deserialize)]
 struct OAuth2Token {
     pub access_token: String,

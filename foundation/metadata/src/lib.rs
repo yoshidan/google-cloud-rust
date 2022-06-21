@@ -94,7 +94,7 @@ async fn get_etag_with_trim(suffix: &str) -> Result<String, Error> {
 }
 
 async fn get_etag(suffix: &str) -> Result<String, Error> {
-    let host = std::env::var(METADATA_HOST_ENV).unwrap_or(METADATA_GOOGLE_HOST.to_string());
+    let host = std::env::var(METADATA_HOST_ENV).unwrap_or_else(|_| METADATA_GOOGLE_HOST.to_string());
     let url = format!("http://{}/computeMetadata/v1/{}", host, suffix);
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(3))
