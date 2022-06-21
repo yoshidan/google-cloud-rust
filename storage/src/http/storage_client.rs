@@ -1979,7 +1979,7 @@ mod test {
                     name: "test1".to_string(),
                     ..Default::default()
                 },
-                &[01],
+                &[1],
                 "text/plain",
                 None,
             )
