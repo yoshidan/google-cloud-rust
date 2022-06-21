@@ -428,7 +428,7 @@ mod tests {
                 .receive(
                     |message, _ctx| async move {
                         println!("{}", message.message.message_id);
-                        message.ack();
+                        let _ = message.ack();
                     },
                     cancel_receiver,
                     None,
@@ -439,7 +439,7 @@ mod tests {
         });
         tokio::time::sleep(Duration::from_secs(3)).await;
         receiver_ctx.cancel();
-        handle.await;
+        let _ = handle.await;
         Ok(())
     }
 
@@ -477,7 +477,7 @@ mod tests {
                 assert_eq!(e.code(), Code::Cancelled);
             }
         }
-        j.await;
+        let _ = j.await;
         Ok(())
     }
 
@@ -516,10 +516,10 @@ mod tests {
                 )
                 .await;
         });
-        publish().await;
+        let _ = publish().await;
         tokio::time::sleep(Duration::from_secs(3)).await;
         cancellation_token.cancel();
-        handle.await;
+        let _ = handle.await;
         assert_eq!(v.load(SeqCst), 1);
         Ok(())
     }
