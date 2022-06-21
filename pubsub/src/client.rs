@@ -276,7 +276,7 @@ mod tests {
         let cancel_receiver = cancellation_token.clone();
         let (s, mut r) = tokio::sync::mpsc::channel(100);
         let handle = tokio::spawn(async move {
-            subscription
+            let _ = subscription
                 .receive(
                     move |v, _ctx| {
                         let s2 = s.clone();
@@ -295,7 +295,7 @@ mod tests {
                     cancel_receiver,
                     Some(config),
                 )
-                .await
+                .await;
         });
 
         //publish
