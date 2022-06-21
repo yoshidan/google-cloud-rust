@@ -210,12 +210,7 @@ fn v4_sanitize_headers(hdrs: &[String]) -> Vec<String> {
         let space_removed = SPACE_REGEX.replace_all(split[1].trim(), " ");
         let value = TAB_REGEX.replace_all(space_removed.as_ref(), "\t");
         if !value.is_empty() {
-            match sanitized.get_mut(&key) {
-                Some(v)  => v.push(value.to_string()),
-                None => {
-                    let _ = sanitized.insert(key, vec![value.to_string()]);
-                },
-            }
+            sanitized.entry(key).or_default().push(value.to_string());
         }
     }
     let mut sanitized_headers = Vec::with_capacity(sanitized.len());
