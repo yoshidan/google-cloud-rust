@@ -212,7 +212,9 @@ fn v4_sanitize_headers(hdrs: &[String]) -> Vec<String> {
         if !value.is_empty() {
             match sanitized.get_mut(&key) {
                 Some(v)  => v.push(value.to_string()),
-                None => sanitized.insert(key, vec![value.to_string()]),
+                None => {
+                    let _ = sanitized.insert(key, vec![value.to_string()]);
+                },
             }
         }
     }
