@@ -289,7 +289,7 @@ mod tests {
                                 v.message.message_id,
                                 data
                             );
-                            s2.send(data).await
+                            let _ = s2.send(data).await;
                         }
                     },
                     cancel_receiver,
