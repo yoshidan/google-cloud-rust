@@ -229,9 +229,7 @@ impl Subscription {
             paths.push("retain_acked_messages".to_string());
         }
         if updating.message_retention_duration.is_some() {
-            let v = updating
-                .message_retention_duration
-                .map(prost_types::Duration::from);
+            let v = updating.message_retention_duration.map(prost_types::Duration::from);
             config.message_retention_duration = v;
             paths.push("message_retention_duration".to_string());
         }

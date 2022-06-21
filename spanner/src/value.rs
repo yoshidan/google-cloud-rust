@@ -61,7 +61,7 @@ pub struct CommitTimestamp {
 
 impl CommitTimestamp {
     pub fn new() -> Self {
-       Self::default()
+        Self::default()
     }
 }
 

@@ -329,10 +329,7 @@ impl Client {
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
-                spanner_client
-                    .read(request)
-                    .await
-                    .map_err(|e| (e, spanner_client))
+                spanner_client.read(request).await.map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
         )
@@ -421,10 +418,7 @@ impl Client {
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
-                spanner_client
-                    .commit(request)
-                    .await
-                    .map_err(|e| (e, spanner_client))
+                spanner_client.commit(request).await.map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
         )
@@ -452,10 +446,7 @@ impl Client {
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
-                spanner_client
-                    .rollback(request)
-                    .await
-                    .map_err(|e| (e, spanner_client))
+                spanner_client.rollback(request).await.map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
         )

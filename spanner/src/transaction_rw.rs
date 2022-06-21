@@ -248,10 +248,7 @@ impl ReadWriteTransaction {
 
         return match result {
             Ok(s) => match self.commit(opt).await {
-                Ok(c) => Ok((
-                    c.commit_timestamp.map(|ts| ts.into()),
-                    s,
-                )),
+                Ok(c) => Ok((c.commit_timestamp.map(|ts| ts.into()), s)),
                 // Retry the transaction using the same session on ABORT error.
                 // Cloud Spanner will create the new transaction with the previous
                 // one's wound-wait priority.

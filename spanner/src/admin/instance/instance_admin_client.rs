@@ -327,11 +327,7 @@ impl InstanceAdminClient {
         let retry = Some(retry.unwrap_or(default_retry_setting()));
         let action = || async {
             let request = create_request(format!("resource={}", resource), req.clone());
-            self.inner
-                .clone()
-                .test_iam_permissions(request)
-                .await
-                .map_err(|e| e)
+            self.inner.clone().test_iam_permissions(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }

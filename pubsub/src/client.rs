@@ -193,11 +193,7 @@ impl Client {
     ///
     /// Avoid creating many Topic instances if you use them to publish.
     pub fn topic(&self, id: &str) -> Topic {
-        Topic::new(
-            self.fully_qualified_topic_name(id),
-            self.pubc.clone(),
-            self.subc.clone(),
-        )
+        Topic::new(self.fully_qualified_topic_name(id), self.pubc.clone(), self.subc.clone())
     }
 
     pub fn fully_qualified_topic_name(&self, id: &str) -> String {

@@ -246,9 +246,7 @@ impl SubscriberClient {
             let target = v.metadata_mut();
             target.append(
                 "x-goog-request-params",
-                format!("subscription={}", req.subscription)
-                    .parse()
-                    .unwrap(),
+                format!("subscription={}", req.subscription).parse().unwrap(),
             );
             client.streaming_pull(v).await.map_err(|e| e)
         };

@@ -122,11 +122,7 @@ impl DatabaseAdminClient {
         let database = &req.database;
         let action = || async {
             let request = create_request(format!("database={}", database), req.clone());
-            self.inner
-                .clone()
-                .update_database_ddl(request)
-                .await
-                .map_err(|e| e)
+            self.inner.clone().update_database_ddl(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action)
             .await
@@ -234,11 +230,7 @@ impl DatabaseAdminClient {
         let resource = &req.resource;
         let action = || async {
             let request = create_request(format!("resource={}", resource), req.clone());
-            self.inner
-                .clone()
-                .test_iam_permissions(request)
-                .await
-                .map_err(|e| e)
+            self.inner.clone().test_iam_permissions(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }
