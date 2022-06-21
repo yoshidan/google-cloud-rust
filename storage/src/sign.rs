@@ -1,16 +1,11 @@
-use std::collections::hash_map::Entry;
 use crate::sign::SignedURLError::InvalidOption;
 use chrono::{DateTime, SecondsFormat, Utc};
-
 use once_cell::sync::Lazy;
 use regex::Regex;
 use ring::{rand, signature};
-
 use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey};
-
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-
 use std::time::Duration;
 use url;
 use url::ParseError;
@@ -215,7 +210,7 @@ fn v4_sanitize_headers(hdrs: &[String]) -> Vec<String> {
     }
     let mut sanitized_headers = Vec::with_capacity(sanitized.len());
     for (key, value) in sanitized {
-        sanitized_headers.push(format!("{}:{}", key, value.join(",").to_string()));
+        sanitized_headers.push(format!("{}:{}", key, value.join(",")));
     }
     sanitized_headers
 }
@@ -227,7 +222,7 @@ fn signed_url_v4(
     now: DateTime<Utc>,
 ) -> Result<String, SignedURLError> {
     // create base url
-    let host = opts.style.host(bucket).to_string();
+    let host = opts.style.host(bucket);
     let mut builder = {
         let url = if opts.insecure {
             format!("http://{}", &host)
@@ -247,13 +242,12 @@ fn signed_url_v4(
         if opts.md5.is_some() {
             header_names.push("content-md5");
         }
-        header_names.sort();
+        header_names.sort_unstable();
         header_names.join(";")
     };
 
     let timestamp = now
         .to_rfc3339_opts(SecondsFormat::Secs, true)
-        .to_string()
         .replace("-", "")
         .replace(":", "");
     let credential_scope = format!("{}/auto/storage/goog4_request", now.format("%Y%m%d"));
@@ -307,15 +301,14 @@ fn signed_url_v4(
         // that value in the request string. If not, we use UNSIGNED-PAYLOAD.
         let sha256_header = header_with_value
             .iter()
-            .find(|h| {
-                let ret = h.to_lowercase().starts_with("x-goog-content-sha256") && h.contains(":");
+            .any(|h| {
+                let ret = h.to_lowercase().starts_with("x-goog-content-sha256") && h.contains(':');
                 if ret {
-                    let v: Vec<&str> = h.splitn(2, ":").collect();
+                    let v: Vec<&str> = h.splitn(2, ':').collect();
                     buffer.extend_from_slice(v[1].as_bytes());
                 }
                 ret
-            })
-            .is_some();
+            });
         if !sha256_header {
             buffer.extend_from_slice("UNSIGNED-PAYLOAD".as_bytes());
         }
@@ -369,7 +362,7 @@ fn extract_header_names(kvs: &[String]) -> Vec<&str> {
     return kvs
         .iter()
         .map(|header| {
-            let name_value: Vec<&str> = header.split(":").collect();
+            let name_value: Vec<&str> = header.split(':').collect();
             name_value[0]
         })
         .collect();
