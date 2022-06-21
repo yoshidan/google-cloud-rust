@@ -110,7 +110,7 @@ impl ResultSet {
                 return Some(Row::new(Arc::clone(&self.index), Arc::clone(&self.fields), values));
             }
         }
-        return None;
+        None
     }
 
     /// Merge tries to combine two protobuf Values if possible.
@@ -235,16 +235,16 @@ impl<'a> RowIterator<'a> {
             Ok(s) => s,
             Err(e) => {
                 if !self.reader.can_retry() {
-                    return Err(e.into());
+                    return Err(e);
                 }
                 tracing::debug!("streaming error: {}. resume reading by resume_token", e);
-                let result = self.reader.read(&mut self.session, option).await?;
+                let result = self.reader.read(self.session, option).await?;
                 self.streaming = result.into_inner();
                 self.streaming.message().await?
             }
         };
 
-        return match maybe_result_set {
+        match maybe_result_set {
             Some(result_set) => {
                 if result_set.values.is_empty() {
                     return Ok(false);
@@ -257,7 +257,7 @@ impl<'a> RowIterator<'a> {
                     .add(result_set.metadata, result_set.values, result_set.chunked_value)
             }
             None => Ok(false),
-        };
+        }
     }
 }
 

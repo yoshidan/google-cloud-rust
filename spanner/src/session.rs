@@ -193,7 +193,7 @@ impl SessionPool {
             self.waiters.lock().push_back(sender);
         }
         let _ = self.allocation_request_sender.send(true);
-        return receiver;
+        receiver
     }
 
     fn num_opened(&self) -> usize {
@@ -224,7 +224,7 @@ impl SessionPool {
 
     fn recycle(&self, session: SessionHandle) {
         if session.valid {
-            tracing::trace!("recycled name={}", session.session.name.to_string());
+            tracing::trace!("recycled name={}", session.session.name);
             match { self.waiters.lock().pop_front() } {
                 Some(c) => {
                     if let Err(session) = c.send(session) {

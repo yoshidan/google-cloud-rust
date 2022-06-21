@@ -38,19 +38,19 @@ pub struct Timestamp {
 
 impl From<Timestamp> for prost_types::Timestamp {
     fn from(t: Timestamp) -> Self {
-        return prost_types::Timestamp {
+        prost_types::Timestamp {
             seconds: t.seconds,
             nanos: t.nanos,
-        };
+        }
     }
 }
 
 impl From<prost_types::Timestamp> for Timestamp {
     fn from(t: prost_types::Timestamp) -> Self {
-        return Timestamp {
+        Timestamp {
             seconds: t.seconds,
             nanos: t.nanos,
-        };
+        }
     }
 }
 
@@ -61,6 +61,12 @@ pub struct CommitTimestamp {
 
 impl CommitTimestamp {
     pub fn new() -> Self {
+       Self::default()
+    }
+}
+
+impl Default for CommitTimestamp {
+    fn default() -> Self {
         CommitTimestamp {
             timestamp: Utc.timestamp(0, 0),
         }

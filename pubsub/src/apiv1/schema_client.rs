@@ -38,7 +38,7 @@ impl SchemaClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("parent={}", parent), req.clone());
-            client.create_schema(request).await.map_err(|e| e.into())
+            client.create_schema(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }
@@ -54,7 +54,7 @@ impl SchemaClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={}", name), req.clone());
-            client.get_schema(request).await.map_err(|e| e.into())
+            client.get_schema(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }
@@ -76,7 +76,7 @@ impl SchemaClient {
                 client
                     .list_schemas(request)
                     .await
-                    .map_err(|e| e.into())
+                    .map_err(|e| e)
                     .map(|d| d.into_inner())
             };
             let response = invoke(cancel.clone(), retry.clone(), action).await?;
@@ -99,7 +99,7 @@ impl SchemaClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={}", name), req.clone());
-            client.delete_schema(request).await.map_err(|e| e.into())
+            client.delete_schema(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }
@@ -115,7 +115,7 @@ impl SchemaClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("parent={}", parent), req.clone());
-            client.validate_schema(request).await.map_err(|e| e.into())
+            client.validate_schema(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }
@@ -131,7 +131,7 @@ impl SchemaClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("parent={}", parent), req.clone());
-            client.validate_message(request).await.map_err(|e| e.into())
+            client.validate_message(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }

@@ -33,7 +33,7 @@ where
         {
             return false;
         }
-        return self.inner.should_retry(error);
+        self.inner.should_retry(error)
     }
 }
 

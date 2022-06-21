@@ -51,7 +51,7 @@ where
                 return true;
             }
         }
-        return false;
+        false
     }
 }
 
@@ -70,7 +70,7 @@ impl Retry<Status, CodeCondition> for RetrySetting {
         if let Some(max_delay) = self.max_delay {
             st = st.max_delay(max_delay);
         }
-        return st.take(self.take);
+        st.take(self.take)
     }
 
     fn condition(&self) -> CodeCondition {

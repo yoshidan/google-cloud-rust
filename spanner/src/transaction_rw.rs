@@ -249,10 +249,7 @@ impl ReadWriteTransaction {
         return match result {
             Ok(s) => match self.commit(opt).await {
                 Ok(c) => Ok((
-                    match c.commit_timestamp {
-                        Some(ts) => Some(ts.into()),
-                        None => None,
-                    },
+                    c.commit_timestamp.map(|ts| ts.into()),
                     s,
                 )),
                 // Retry the transaction using the same session on ABORT error.

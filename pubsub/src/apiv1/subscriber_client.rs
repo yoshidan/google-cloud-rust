@@ -17,7 +17,7 @@ use google_cloud_googleapis::pubsub::v1::{
 use crate::apiv1::conn_pool::ConnectionManager;
 
 pub(crate) fn create_empty_streaming_pull_request() -> StreamingPullRequest {
-    return StreamingPullRequest {
+    StreamingPullRequest {
         subscription: "".to_string(),
         ack_ids: vec![],
         modify_deadline_seconds: vec![],
@@ -26,7 +26,7 @@ pub(crate) fn create_empty_streaming_pull_request() -> StreamingPullRequest {
         client_id: "".to_string(),
         max_outstanding_messages: 0,
         max_outstanding_bytes: 0,
-    };
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -65,7 +65,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={}", name), req.clone());
-            client.create_subscription(request).await.map_err(|e| e.into())
+            client.create_subscription(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }
@@ -85,7 +85,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription.name={}", name), req.clone());
-            client.update_subscription(request).await.map_err(|e| e.into())
+            client.update_subscription(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }
@@ -101,7 +101,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription={}", subscription), req.clone());
-            client.get_subscription(request).await.map_err(|e| e.into())
+            client.get_subscription(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }
@@ -123,7 +123,7 @@ impl SubscriberClient {
                 client
                     .list_subscriptions(request)
                     .await
-                    .map_err(|e| e.into())
+                    .map_err(|e| e)
                     .map(|d| d.into_inner())
             };
             let response: ListSubscriptionsResponse = invoke(cancel.clone(), retry.clone(), action).await?;
@@ -150,7 +150,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription={}", subscription), req.clone());
-            client.delete_subscription(request).await.map_err(|e| e.into())
+            client.delete_subscription(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }
@@ -170,7 +170,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription={}", subscription), req.clone());
-            client.modify_ack_deadline(request).await.map_err(|e| e.into())
+            client.modify_ack_deadline(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }
@@ -192,7 +192,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription={}", subscription), req.clone());
-            client.acknowledge(request).await.map_err(|e| e.into())
+            client.acknowledge(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }
@@ -210,7 +210,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription={}", subscription), req.clone());
-            client.pull(request).await.map_err(|e| e.into())
+            client.pull(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }
@@ -246,11 +246,11 @@ impl SubscriberClient {
             let target = v.metadata_mut();
             target.append(
                 "x-goog-request-params",
-                format!("subscription={}", req.subscription.to_string())
+                format!("subscription={}", req.subscription)
                     .parse()
                     .unwrap(),
             );
-            client.streaming_pull(v).await.map_err(|e| e.into())
+            client.streaming_pull(v).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }
@@ -271,7 +271,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription={}", subscription), req.clone());
-            client.modify_push_config(request).await.map_err(|e| e.into())
+            client.modify_push_config(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }
@@ -291,7 +291,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("snapshot={}", snapshot), req.clone());
-            client.get_snapshot(request).await.map_err(|e| e.into())
+            client.get_snapshot(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }
@@ -316,7 +316,7 @@ impl SubscriberClient {
                 client
                     .list_snapshots(request)
                     .await
-                    .map_err(|e| e.into())
+                    .map_err(|e| e)
                     .map(|d| d.into_inner())
             };
             let response: ListSnapshotsResponse = invoke(cancel.clone(), retry.clone(), action).await?;
@@ -354,7 +354,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={}", name), req.clone());
-            client.create_snapshot(request).await.map_err(|e| e.into())
+            client.create_snapshot(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }
@@ -377,8 +377,8 @@ impl SubscriberClient {
         };
         let action = || async {
             let mut client = self.client();
-            let request = create_request(format!("snapshot.name={}", name.to_string()), req.clone());
-            client.update_snapshot(request).await.map_err(|e| e.into())
+            let request = create_request(format!("snapshot.name={}", name), req.clone());
+            client.update_snapshot(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }
@@ -402,7 +402,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("snapshot={}", name), req.clone());
-            client.delete_snapshot(request).await.map_err(|e| e.into())
+            client.delete_snapshot(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }

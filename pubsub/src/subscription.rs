@@ -231,7 +231,7 @@ impl Subscription {
         if updating.message_retention_duration.is_some() {
             let v = updating
                 .message_retention_duration
-                .map(|v| prost_types::Duration::from(v));
+                .map(prost_types::Duration::from);
             config.message_retention_duration = v;
             paths.push("message_retention_duration".to_string());
         }
@@ -249,7 +249,7 @@ impl Subscription {
         }
 
         let update_req = UpdateSubscriptionRequest {
-            subscription: Some(config.into()),
+            subscription: Some(config),
             update_mask: Some(FieldMask { paths }),
         };
         self.subc.update_subscription(update_req, cancel, retry).await.map(|v| {
@@ -404,7 +404,7 @@ mod tests {
                 .create(topic_name.as_str(), config, Some(cancel), None)
                 .await?;
         }
-        return Ok(subscription);
+        Ok(subscription)
     }
 
     async fn publish() {

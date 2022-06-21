@@ -165,7 +165,7 @@ mod tests {
         let subc = SubscriberClient::new(cm2);
 
         let uuid = Uuid::new_v4().to_hyphenated().to_string();
-        let topic_name = format!("projects/local-project/topics/t{}", uuid).to_string();
+        let topic_name = format!("projects/local-project/topics/t{}", uuid);
         let ctx = CancellationToken::new();
 
         // Create topic.
@@ -173,7 +173,7 @@ mod tests {
         if !topic.exists(Some(ctx.clone()), None).await? {
             topic.create(None, Some(ctx.clone()), None).await?;
         }
-        return Ok(topic);
+        Ok(topic)
     }
 
     async fn publish(ctx: CancellationToken, publisher: Publisher) -> Vec<JoinHandle<Result<String, Status>>> {

@@ -10,7 +10,7 @@ use google_cloud_spanner::key::Key;
 
 use google_cloud_spanner::value::Timestamp;
 use serial_test::serial;
-use tracing_subscriber;
+
 
 const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 

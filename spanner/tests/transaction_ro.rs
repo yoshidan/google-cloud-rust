@@ -220,7 +220,7 @@ async fn test_query(count: usize, prefix: &str) {
         let user_ids = row.column_by_name::<Vec<String>>("UserIds").unwrap();
         user_ids.iter().for_each(|u| assert_eq!(u, user_id));
         let nums = row.column_by_name::<Vec<i64>>("NumArray").unwrap();
-        let mut start = 0 as i64;
+        let mut start = 0_i64;
         assert_eq!(20, nums.len());
         nums.iter().for_each(|u| {
             start += 1;

@@ -23,7 +23,7 @@ fn write(table: &str, columns: &[&str], values: &[&dyn ToKind]) -> Write {
 fn write_map(table: &str, columns_ans_values: &[(&str, &dyn ToKind)]) -> Write {
     let mut columns = Vec::with_capacity(columns_ans_values.len());
     let mut values = Vec::with_capacity(columns_ans_values.len());
-    columns_ans_values.into_iter().for_each(|x| {
+    columns_ans_values.iter().for_each(|x| {
         columns.push(x.0.to_string());
         values.push(Value {
             kind: Some(x.1.to_kind()),

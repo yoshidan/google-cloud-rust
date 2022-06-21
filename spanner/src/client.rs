@@ -353,10 +353,7 @@ impl Client {
                     mode: Some(transaction_options::Mode::ReadWrite(transaction_options::ReadWrite {})),
                 });
                 match commit(session, ms.clone(), tx, options.clone()).await {
-                    Ok(s) => Ok(match s.commit_timestamp {
-                        Some(s) => Some(s.into()),
-                        None => None,
-                    }),
+                    Ok(s) => Ok(s.commit_timestamp.map(|s| s.into())),
                     Err(e) => Err((TxError::GRPC(e), session)),
                 }
             },

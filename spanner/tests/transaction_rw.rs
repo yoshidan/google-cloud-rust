@@ -73,7 +73,7 @@ async fn test_mutation_and_statement() {
             assert!(s.0.is_some());
             let ts = s.0.unwrap();
             let naive = Utc.timestamp(ts.seconds, ts.nanos as u32);
-            println!("commit time stamp is {}", naive.to_string());
+            println!("commit time stamp is {}", naive);
             naive
         }
         Err(e) => panic!("error {:?}", e.0),

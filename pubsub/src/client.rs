@@ -66,14 +66,14 @@ impl Client {
         let subc = SubscriberClient::new(ConnectionManager::new(pool_size, &environment).await?);
 
         let project_id = match config.project_id {
-            Some(project_id) => project_id.to_string(),
+            Some(project_id) => project_id,
             None => match environment {
                 Environment::GoogleCloud(project) => project.project_id().ok_or(Error::ProjectIdNotFound)?.to_string(),
                 Environment::Emulator(_) => "local-project".to_string(),
                 _ => return Err(Error::ProjectIdNotFound),
             },
         };
-        return Ok(Self { project_id, pubc, subc });
+        Ok(Self { project_id, pubc, subc })
     }
 
     /// create_subscription creates a new subscription on a topic.
@@ -123,7 +123,7 @@ impl Client {
         };
         self.subc.list_subscriptions(req, cancel, retry).await.map(|v| {
             v.into_iter()
-                .map(|x| Subscription::new(x.name.to_string(), self.subc.clone()))
+                .map(|x| Subscription::new(x.name, self.subc.clone()))
                 .collect()
         })
     }
@@ -194,7 +194,7 @@ impl Client {
     /// Avoid creating many Topic instances if you use them to publish.
     pub fn topic(&self, id: &str) -> Topic {
         Topic::new(
-            self.fully_qualified_topic_name(id).to_string(),
+            self.fully_qualified_topic_name(id),
             self.pubc.clone(),
             self.subc.clone(),
         )
@@ -237,7 +237,7 @@ mod tests {
         let mut msg = PubsubMessage::default();
         msg.data = data.to_vec();
         msg.ordering_key = ordering_key.to_string();
-        return msg;
+        msg
     }
 
     async fn create_client() -> Client {

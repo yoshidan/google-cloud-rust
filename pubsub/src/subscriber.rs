@@ -113,7 +113,7 @@ impl Subscriber {
             tracing::trace!("stop pinger : {}", subscription_clone);
         });
 
-        let cancel_receiver = ctx.clone();
+        let cancel_receiver = ctx;
         let inner = tokio::spawn(async move {
             tracing::trace!("start subscriber: {}", subscription);
             let retryable_codes = match &config.retry_setting {
@@ -142,14 +142,12 @@ impl Subscriber {
                         if e.code() == Code::Cancelled {
                             tracing::trace!("stop subscriber : {}", subscription);
                             break;
+                        } else if retryable_codes.contains(&e.code()) {
+                            tracing::warn!("failed to start streaming: will reconnect {:?} : {}", e, subscription);
+                            continue;
                         } else {
-                            if retryable_codes.contains(&e.code()) {
-                                tracing::warn!("failed to start streaming: will reconnect {:?} : {}", e, subscription);
-                                continue;
-                            } else {
-                                tracing::error!("failed to start streaming: will stop {:?} : {}", e, subscription);
-                                break;
-                            }
+                            tracing::error!("failed to start streaming: will stop {:?} : {}", e, subscription);
+                            break;
                         }
                     }
                 };
@@ -177,10 +175,10 @@ impl Subscriber {
             // streaming request is closed when the ping_sender closed.
             tracing::trace!("stop subscriber in streaming: {}", subscription);
         });
-        return Self {
+        Self {
             pinger: Some(pinger),
             inner: Some(inner),
-        };
+        }
     }
 
     async fn recv(

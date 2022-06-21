@@ -110,5 +110,5 @@ async fn get_etag(suffix: &str) -> Result<String, Error> {
     if response.status().is_success() {
         return Ok(response.text().await?);
     }
-    return Err(Error::InvalidResponse(response.status().as_u16()));
+    Err(Error::InvalidResponse(response.status().as_u16()))
 }

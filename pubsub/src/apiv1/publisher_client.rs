@@ -60,7 +60,7 @@ impl PublisherClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={}", name), req.clone());
-            client.update_topic(request).await.map_err(|e| e.into())
+            client.update_topic(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }
@@ -92,7 +92,7 @@ impl PublisherClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={}", name), req.clone());
-            client.publish(request).await.map_err(|e| e.into())
+            client.publish(request).await.map_err(|e| e)
         };
         invoke(cancel, Some(setting), action).await
     }
@@ -108,7 +108,7 @@ impl PublisherClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("topic={}", topic), req.clone());
-            client.get_topic(request).await.map_err(|e| e.into())
+            client.get_topic(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }
@@ -130,7 +130,7 @@ impl PublisherClient {
                 client
                     .list_topics(request)
                     .await
-                    .map_err(|e| Status::from(e))
+                    .map_err(|e| e)
                     .map(|d| d.into_inner())
             };
             let response = invoke(cancel.clone(), retry.clone(), action).await?;
@@ -159,7 +159,7 @@ impl PublisherClient {
                 client
                     .list_topic_subscriptions(request)
                     .await
-                    .map_err(|e| Status::from(e))
+                    .map_err(|e| e)
                     .map(|d| d.into_inner())
             };
             let response = invoke(cancel.clone(), retry.clone(), action).await?;
@@ -192,7 +192,7 @@ impl PublisherClient {
                 client
                     .list_topic_snapshots(request)
                     .await
-                    .map_err(|e| Status::from(e))
+                    .map_err(|e| e)
                     .map(|d| d.into_inner())
             };
             let response = invoke(cancel.clone(), retry.clone(), action).await?;
@@ -219,7 +219,7 @@ impl PublisherClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("topic={}", topic), req.clone());
-            client.delete_topic(request).await.map_err(|e| e.into())
+            client.delete_topic(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }
@@ -238,7 +238,7 @@ impl PublisherClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription={}", subscription), req.clone());
-            client.detach_subscription(request).await.map_err(|e| e.into())
+            client.detach_subscription(request).await.map_err(|e| e)
         };
         invoke(cancel, retry, action).await
     }

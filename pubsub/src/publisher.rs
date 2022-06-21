@@ -106,7 +106,7 @@ impl Publisher {
         Self {
             sender,
             ordering_senders: Arc::new(ordering_senders),
-            tasks: Arc::new(Mutex::new(Tasks::new(fqtn.to_string(), pubc, receivers, config))),
+            tasks: Arc::new(Mutex::new(Tasks::new(fqtn, pubc, receivers, config))),
         }
     }
 
@@ -249,7 +249,7 @@ impl Tasks {
             }
             Err(status) => {
                 for p in callback.into_iter() {
-                    p.send(Err(Status::new(status.code().clone(), &(*status.message()).to_string())));
+                    p.send(Err(Status::new(status.code(), &(*status.message()).to_string())));
                 }
             }
         };
