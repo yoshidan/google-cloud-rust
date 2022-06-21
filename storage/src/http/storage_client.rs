@@ -52,7 +52,7 @@ use crate::http::{
     bucket_access_controls, buckets, default_object_access_controls, hmac_keys, notifications, object_access_controls,
     objects, CancellationToken, Error,
 };
-use futures_util::{Stream, StreamExt, TryStream};
+use futures_util::{Stream, TryStream};
 use google_cloud_auth::token_source::TokenSource;
 
 use reqwest::{Body, Client, RequestBuilder, Response};

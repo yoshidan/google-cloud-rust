@@ -106,7 +106,7 @@ impl Client {
         if !self.service_account_email.is_empty() && opts.google_access_id.is_empty() {
             opts.google_access_id = self.service_account_email.to_string();
         }
-        return signed_url(bucket, object, opts);
+        signed_url(bucket, object, opts)
     }
 }
 

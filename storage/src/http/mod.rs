@@ -46,10 +46,6 @@ impl Escape for String {
 
 const ENCODE_SET: &AsciiSet = &NON_ALPHANUMERIC.remove(b'*').remove(b'-').remove(b'.').remove(b'_');
 
-fn default_option_i64() -> Option<i64> {
-    None
-}
-
 fn from_str_option<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
 where
     T: FromStr,

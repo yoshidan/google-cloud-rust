@@ -18,6 +18,7 @@ pub struct ListChannelsResponse {
     pub items: Vec<Channel>,
 }
 
+#[allow(dead_code)]
 pub(crate) fn build(client: &Client, req: &ListChannelsRequest) -> RequestBuilder {
     let url = format!("{}/b/{}/channels", BASE_URL, req.bucket.escape());
     client.get(url)

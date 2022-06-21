@@ -393,10 +393,8 @@ fn validate_options(opts: &SignedURLOptions, _now: &DateTime<Utc>) -> Result<(),
             Err(_e) => return Err(InvalidOption("storage: invalid MD5 checksum")),
         }
     }
-    if opts.scheme == SigningScheme::SigningSchemeV4 {
-        if opts.expires > Duration::from_secs(604801) {
-            return Err(InvalidOption("storage: expires must be within seven days from now"));
-        }
+    if opts.scheme == SigningScheme::SigningSchemeV4 && opts.expires > Duration::from_secs(604801) {
+        return Err(InvalidOption("storage: expires must be within seven days from now"));
     }
     Ok(())
 }
