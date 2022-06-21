@@ -95,21 +95,7 @@ pub struct SignedURLOptions {
     /// Provide the contents of the PEM file as a byte slice.
     /// Exactly one of PrivateKey or SignBytes must be non-nil.
     ///
-    /// SignBytes is a function for implementing custom signing. For example, if
-    /// your application is running on Google App Engine, you can use
-    /// appengine's internal signing function:
-    ///     ctx := appengine.NewContext(request)
-    ///     acc, _ := appengine.ServiceAccount(ctx)
-    ///     url, err := SignedURL("bucket", "object", &SignedURLOptions{
-    ///     	GoogleAccessID: acc,
-    ///     	SignBytes: func(b []byte) ([]byte, error) {
-    ///     		_, signedBytes, err := appengine.SignBytes(ctx, b)
-    ///     		return signedBytes, err
-    ///     	},
-    ///     	// etc.
-    ///     })
-    ///
-    /// Exactly one of PrivateKey or SignBytes must be non-nil.
+    /// SignBytes is a function for implementing custom signing.
     pub sign_by: SignBy,
 
     /// Method is the HTTP method to be used with the signed URL.
