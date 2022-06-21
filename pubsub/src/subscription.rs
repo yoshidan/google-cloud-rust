@@ -339,7 +339,7 @@ impl Subscription {
             subscriber.done().await;
         }
         for mr in message_receivers {
-            mr.await;
+            let _ = mr.await;
         }
         Ok(())
     }

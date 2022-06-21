@@ -106,7 +106,7 @@ impl Subscriber {
                         break;
                     }
                     _ = sleep(config.ping_interval) => {
-                        ping_sender.send(true).await;
+                        let _ = ping_sender.send(true).await;
                     }
                 }
             }
@@ -196,18 +196,18 @@ impl Subscriber {
                     return Ok(());
                 }
                 maybe = stream.message() => {
-                    let message = match maybe{
-                       Err(e) => return Err(e),
-                       Ok(message) => message
-                    };
+                    let message = maybe?;
                     let message = match message {
                         Some(m) => m,
                         None => return Ok(())
                     };
                     for m in message.received_messages {
                         if let Some(mes) = m.message {
-                            tracing::debug!("message received: {}", mes.message_id);
-                            queue.send(ReceivedMessage::new(subscription.to_string(), client.clone(), mes, m.ack_id)).await;
+                            let id = mes.message_id.clone();
+                            tracing::debug!("message received: {id}");
+                            if queue.send(ReceivedMessage::new(subscription.to_string(), client.clone(), mes, m.ack_id)).await.is_err() {
+                                tracing::error!("failed to receive message {id}");
+                            }
                         }
                     }
                 }
@@ -217,10 +217,10 @@ impl Subscriber {
 
     pub async fn done(&mut self) {
         if let Some(v) = self.pinger.take() {
-            v.await;
+            let _ = v.await;
         }
         if let Some(v) = self.inner.take() {
-            v.await;
+            let _ = v.await;
         }
     }
 }
