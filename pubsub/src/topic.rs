@@ -155,7 +155,7 @@ mod tests {
 
     #[ctor::ctor]
     fn init() {
-        tracing_subscriber::fmt().try_init();
+        let _ = tracing_subscriber::fmt().try_init();
     }
 
     async fn create_topic() -> Result<Topic, anyhow::Error> {
@@ -233,7 +233,7 @@ mod tests {
     async fn test_publish_cancel() -> Result<(), anyhow::Error> {
         let ctx = CancellationToken::new();
         let topic = create_topic().await?;
-        let mut config = PublisherConfig {
+        let config = PublisherConfig {
             flush_interval: Duration::from_secs(10),
             bundle_size: 11,
             ..Default::default()

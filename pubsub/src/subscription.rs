@@ -562,7 +562,7 @@ mod tests {
 
         ctx.cancel();
         for (task, v) in subscriptions {
-            task.await;
+            let _ = task.await;
             assert_eq!(v.load(SeqCst), 1);
         }
         Ok(())
