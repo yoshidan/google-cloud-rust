@@ -128,7 +128,7 @@ mod test {
 
     #[ctor::ctor]
     fn init() {
-        tracing_subscriber::fmt::try_init();
+        let _ = tracing_subscriber::fmt::try_init();
     }
 
     #[tokio::test]

@@ -402,7 +402,7 @@ mod test {
 
     #[ctor::ctor]
     fn init() {
-        tracing_subscriber::fmt::try_init();
+        let _ = tracing_subscriber::fmt::try_init();
     }
 
     #[tokio::test]
@@ -414,11 +414,13 @@ mod test {
             param.insert("tes t+".to_string(), vec!["++ +".to_string()]);
             param
         };
-        let mut opts = SignedURLOptions::default();
-        opts.sign_by = SignBy::PrivateKey(file.private_key.unwrap().into());
-        opts.google_access_id = file.client_email.unwrap();
-        opts.expires = Duration::from_secs(3600);
-        opts.query_parameters = param;
+        let opts = SignedURLOptions {
+            sign_by: SignBy::PrivateKey(file.private_key.unwrap().into()),
+            google_access_id: file.client_email.unwrap(),
+            expires: Duration::from_secs(3600),
+            query_parameters: param,
+            ..Default::default()
+        };
         let url = signed_url("rust-object-test", "test1", opts).unwrap();
         println!("downloading={:?}", url);
         let result = reqwest::Client::default().get(url).send().await.unwrap();
