@@ -398,8 +398,8 @@ mod tests {
                 .await
                 .unwrap(),
         );
-        let msg = PubsubMessage{
-            data:  "test_message".into(),
+        let msg = PubsubMessage {
+            data: "test_message".into(),
             ..Default::default()
         };
         let req = PublishRequest {

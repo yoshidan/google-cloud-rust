@@ -21,15 +21,16 @@ where
         if let Some(status) = error.try_as() {
             let code = status.code();
             if code == Code::Internal
-                &&!status.message().contains("stream terminated by RST_STREAM")
-                    && !status.message().contains("HTTP/2 error code: INTERNAL_ERROR")
-                    && !status.message().contains("Connection closed with unknown cause")
-                    && !status
+                && !status.message().contains("stream terminated by RST_STREAM")
+                && !status.message().contains("HTTP/2 error code: INTERNAL_ERROR")
+                && !status.message().contains("Connection closed with unknown cause")
+                && !status
                     .message()
-                    .contains("Received unexpected EOS on DATA frame from server") {
+                    .contains("Received unexpected EOS on DATA frame from server")
+            {
                 return false;
             }
-            return self.inner.should_retry(error)
+            return self.inner.should_retry(error);
         }
         false
     }

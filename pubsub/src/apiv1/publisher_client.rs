@@ -75,20 +75,18 @@ impl PublisherClient {
     ) -> Result<Response<PublishResponse>, Status> {
         let setting = match retry {
             Some(retry) => retry,
-            None => {
-                RetrySetting {
-                    codes : vec![
-                        Code::Unavailable,
-                        Code::Unknown,
-                        Code::Aborted,
-                        Code::Cancelled,
-                        Code::DeadlineExceeded,
-                        Code::ResourceExhausted,
-                        Code::Internal,
-                    ],
-                    ..Default::default()
-                }
-            }
+            None => RetrySetting {
+                codes: vec![
+                    Code::Unavailable,
+                    Code::Unknown,
+                    Code::Aborted,
+                    Code::Cancelled,
+                    Code::DeadlineExceeded,
+                    Code::ResourceExhausted,
+                    Code::Internal,
+                ],
+                ..Default::default()
+            },
         };
         let name = &req.topic;
         let action = || async {

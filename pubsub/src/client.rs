@@ -268,8 +268,8 @@ mod tests {
         //subscribe
         let config = ReceiveConfig {
             worker_count: 2,
-            subscriber_config: SubscriberConfig{
-                ping_interval:  Duration::from_secs(1),
+            subscriber_config: SubscriberConfig {
+                ping_interval: Duration::from_secs(1),
                 ..Default::default()
             },
         };

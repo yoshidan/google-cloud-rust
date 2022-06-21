@@ -44,8 +44,8 @@ where
     fn should_retry(&mut self, error: &E) -> bool {
         if let Some(status) = error.try_as() {
             for code in &self.codes {
-                if * code == status.code() {
-                return true;
+                if *code == status.code() {
+                    return true;
                 }
             }
         }

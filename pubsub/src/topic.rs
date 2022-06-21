@@ -183,7 +183,7 @@ mod tests {
                 let publisher = publisher.clone();
                 let ctx = ctx.clone();
                 tokio::spawn(async move {
-                    let msg = PubsubMessage{
+                    let msg = PubsubMessage {
                         data: "abc".into(),
                         ..Default::default()
                     };

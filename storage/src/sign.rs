@@ -299,16 +299,14 @@ fn signed_url_v4(
 
         // If the user provides a value for X-Goog-Content-SHA256, we must use
         // that value in the request string. If not, we use UNSIGNED-PAYLOAD.
-        let sha256_header = header_with_value
-            .iter()
-            .any(|h| {
-                let ret = h.to_lowercase().starts_with("x-goog-content-sha256") && h.contains(':');
-                if ret {
-                    let v: Vec<&str> = h.splitn(2, ':').collect();
-                    buffer.extend_from_slice(v[1].as_bytes());
-                }
-                ret
-            });
+        let sha256_header = header_with_value.iter().any(|h| {
+            let ret = h.to_lowercase().starts_with("x-goog-content-sha256") && h.contains(':');
+            if ret {
+                let v: Vec<&str> = h.splitn(2, ':').collect();
+                buffer.extend_from_slice(v[1].as_bytes());
+            }
+            ret
+        });
         if !sha256_header {
             buffer.extend_from_slice("UNSIGNED-PAYLOAD".as_bytes());
         }

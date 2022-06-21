@@ -1957,7 +1957,8 @@ mod test {
             )
             .await
             .unwrap()
-            .items.unwrap_or_default();
+            .items
+            .unwrap_or_default();
         for o in objects {
             client
                 .delete_object(
