@@ -44,6 +44,7 @@ pub struct WatchAllObjectsRequest {
     pub channel: Option<WatchableChannel>,
 }
 
+#[allow(dead_code)]
 pub(crate) fn build(client: &Client, req: &WatchAllObjectsRequest) -> RequestBuilder {
     let url = format!("{}/b/{}/o/watch", BASE_URL, req.bucket.escape());
     client.post(url).query(&req).json(&req.channel)

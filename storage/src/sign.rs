@@ -69,9 +69,11 @@ impl URLStyle for PathStyle {
     }
 }
 
+type SignBytes = Box<dyn Fn(&[u8]) -> Result<Vec<u8>, SignedURLError>>;
+
 pub enum SignBy {
     PrivateKey(Vec<u8>),
-    SignBytes(Box<dyn Fn(&[u8]) -> Result<Vec<u8>, SignedURLError>>),
+    SignBytes(SignBytes),
 }
 
 /// SignedURLOptions allows you to restrict the access to the signed URL.
@@ -186,20 +188,20 @@ pub(crate) fn signed_url(bucket: &str, object: &str, opts: SignedURLOptions) -> 
     let now = Utc::now();
     let _ = validate_options(&opts, &now)?;
 
-    return match &opts.scheme {
+    match &opts.scheme {
         SigningScheme::SigningSchemeV4 => {
             let mut opts = opts;
             opts.headers = v4_sanitize_headers(&opts.headers);
             signed_url_v4(bucket, object, &opts, now)
         }
-    };
+    }
 }
 
 fn v4_sanitize_headers(hdrs: &[String]) -> Vec<String> {
     let mut sanitized = HashMap::<String, Vec<String>>::new();
     for hdr in hdrs {
         let trimmed = hdr.trim().to_string();
-        let split: Vec<&str> = trimmed.split(":").into_iter().collect();
+        let split: Vec<&str> = trimmed.split(':').into_iter().collect();
         if split.len() < 2 {
             continue;
         }
@@ -207,10 +209,10 @@ fn v4_sanitize_headers(hdrs: &[String]) -> Vec<String> {
         let space_removed = SPACE_REGEX.replace_all(split[1].trim(), " ");
         let value = TAB_REGEX.replace_all(space_removed.as_ref(), "\t");
         if !value.is_empty() {
-            if sanitized.contains_key(&key) {
-                sanitized.get_mut(&key).unwrap().push(value.to_string());
+            if let std::collections::hash_map::Entry::Vacant(e) = sanitized.entry(key) {
+                e.insert(vec![value.to_string()]);
             } else {
-                sanitized.insert(key, vec![value.to_string()]);
+                sanitized.get_mut(&key).unwrap().push(value.to_string());
             }
         }
     }
