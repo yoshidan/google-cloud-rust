@@ -19,6 +19,7 @@ pub(crate) struct PublisherClient {
     cm: Arc<ConnectionManager>,
 }
 
+#[allow(dead_code)]
 impl PublisherClient {
     /// create new publisher client
     pub fn new(cm: ConnectionManager) -> PublisherClient {
@@ -75,17 +76,18 @@ impl PublisherClient {
         let setting = match retry {
             Some(retry) => retry,
             None => {
-                let mut default = RetrySetting::default();
-                default.codes = vec![
-                    Code::Unavailable,
-                    Code::Unknown,
-                    Code::Aborted,
-                    Code::Cancelled,
-                    Code::DeadlineExceeded,
-                    Code::ResourceExhausted,
-                    Code::Internal,
-                ];
-                default
+                RetrySetting {
+                    codes : vec![
+                        Code::Unavailable,
+                        Code::Unknown,
+                        Code::Aborted,
+                        Code::Cancelled,
+                        Code::DeadlineExceeded,
+                        Code::ResourceExhausted,
+                        Code::Internal,
+                    ],
+                    ..Default::default()
+                }
             }
         };
         let name = &req.topic;

@@ -33,30 +33,31 @@ pub struct SubscriptionConfig {
     pub enable_exactly_once_delivery: bool,
 }
 
-impl Into<SubscriptionConfig> for InternalSubscription {
-    fn into(self) -> SubscriptionConfig {
-        SubscriptionConfig {
-            push_config: self.push_config,
-            ack_deadline_seconds: self.ack_deadline_seconds,
-            retain_acked_messages: self.retain_acked_messages,
-            message_retention_duration: self
+impl From<InternalSubscription> for SubscriptionConfig {
+    fn from(f: InternalSubscription) -> Self {
+        Self {
+            push_config: f.push_config,
+            ack_deadline_seconds: f.ack_deadline_seconds,
+            retain_acked_messages: f.retain_acked_messages,
+            message_retention_duration: f
                 .message_retention_duration
                 .map(|v| std::time::Duration::new(v.seconds as u64, v.nanos as u32)),
-            labels: self.labels,
-            enable_message_ordering: self.enable_message_ordering,
-            expiration_policy: self.expiration_policy,
-            filter: self.filter,
-            dead_letter_policy: self.dead_letter_policy,
-            retry_policy: self.retry_policy,
-            detached: self.detached,
-            topic_message_retention_duration: self
+            labels: f.labels,
+            enable_message_ordering: f.enable_message_ordering,
+            expiration_policy: f.expiration_policy,
+            filter: f.filter,
+            dead_letter_policy: f.dead_letter_policy,
+            retry_policy: f.retry_policy,
+            detached: f.detached,
+            topic_message_retention_duration: f
                 .topic_message_retention_duration
                 .map(|v| std::time::Duration::new(v.seconds as u64, v.nanos as u32)),
-            enable_exactly_once_delivery: self.enable_exactly_once_delivery,
+            enable_exactly_once_delivery: f.enable_exactly_once_delivery,
         }
     }
 }
 
+#[derive(Default)]
 pub struct SubscriptionConfigToUpdate {
     pub push_config: Option<PushConfig>,
     pub ack_deadline_seconds: Option<i32>,
@@ -66,21 +67,6 @@ pub struct SubscriptionConfigToUpdate {
     pub expiration_policy: Option<ExpirationPolicy>,
     pub dead_letter_policy: Option<DeadLetterPolicy>,
     pub retry_policy: Option<RetryPolicy>,
-}
-
-impl Default for SubscriptionConfigToUpdate {
-    fn default() -> Self {
-        Self {
-            push_config: None,
-            ack_deadline_seconds: None,
-            retain_acked_messages: None,
-            message_retention_duration: None,
-            labels: None,
-            expiration_policy: None,
-            dead_letter_policy: None,
-            retry_policy: None,
-        }
-    }
 }
 
 pub struct ReceiveConfig {
@@ -264,6 +250,7 @@ impl Subscription {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Vec<ReceivedMessage>, Status> {
+        #[allow(deprecated)]
         let req = PullRequest {
             subscription: self.fqsn.clone(),
             return_immediately: false,

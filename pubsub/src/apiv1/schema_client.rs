@@ -17,6 +17,7 @@ pub(crate) struct SchemaClient {
     cm: Arc<ConnectionManager>,
 }
 
+#[allow(dead_code)]
 impl SchemaClient {
     /// create new publisher client
     pub fn new(cm: ConnectionManager) -> SchemaClient {

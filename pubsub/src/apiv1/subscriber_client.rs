@@ -34,6 +34,7 @@ pub(crate) struct SubscriberClient {
     cm: Arc<ConnectionManager>,
 }
 
+#[allow(dead_code)]
 impl SubscriberClient {
     /// create new Subscriber client
     pub fn new(cm: ConnectionManager) -> SubscriberClient {

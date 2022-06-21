@@ -70,7 +70,6 @@ impl Client {
             None => match environment {
                 Environment::GoogleCloud(project) => project.project_id().ok_or(Error::ProjectIdNotFound)?.to_string(),
                 Environment::Emulator(_) => "local-project".to_string(),
-                _ => return Err(Error::ProjectIdNotFound),
             },
         };
         Ok(Self { project_id, pubc, subc })
