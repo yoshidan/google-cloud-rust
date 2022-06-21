@@ -225,14 +225,15 @@ mod tests {
 
     #[ctor::ctor]
     fn init() {
-        tracing_subscriber::fmt().try_init();
+        let _ = tracing_subscriber::fmt().try_init();
     }
 
     fn create_message(data: &[u8], ordering_key: &str) -> PubsubMessage {
-        let mut msg = PubsubMessage::default();
-        msg.data = data.to_vec();
-        msg.ordering_key = ordering_key.to_string();
-        msg
+        PubsubMessage {
+            data: data.to_vec(),
+            ordering_key: ordering_key.to_string(),
+            ..Default::default()
+        }
     }
 
     async fn create_client() -> Client {
@@ -254,8 +255,10 @@ mod tests {
             .await
             .unwrap();
         let publisher = topic.new_publisher(None);
-        let mut config = SubscriptionConfig::default();
-        config.enable_message_ordering = !ordering_key.is_empty();
+        let config = SubscriptionConfig {
+            enable_message_ordering: !ordering_key.is_empty(),
+            ..Default::default()
+        }();
         let subscription = client
             .create_subscription(subscription_id.as_str(), topic_id.as_str(), config, ctx.clone(), None)
             .await
@@ -263,12 +266,14 @@ mod tests {
 
         let cancellation_token = CancellationToken::new();
         //subscribe
-        let mut config = ReceiveConfig {
+        let config = ReceiveConfig {
             worker_count: 2,
-            subscriber_config: SubscriberConfig::default(),
+            subscriber_config: SubscriberConfig{
+                ping_interval:  Duration::from_secs(1),
+                ..Default::default()
+            },
         };
         let cancel_receiver = cancellation_token.clone();
-        config.subscriber_config.ping_interval = Duration::from_secs(1);
         let (s, mut r) = tokio::sync::mpsc::channel(100);
         let handle = tokio::spawn(async move {
             subscription
@@ -284,13 +289,13 @@ mod tests {
                                 v.message.message_id,
                                 data
                             );
-                            s2.send(data).await;
+                            s2.send(data).await
                         }
                     },
                     cancel_receiver,
                     Some(config),
                 )
-                .await;
+                .await
         });
 
         //publish

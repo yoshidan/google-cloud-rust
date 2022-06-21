@@ -183,8 +183,10 @@ mod tests {
                 let publisher = publisher.clone();
                 let ctx = ctx.clone();
                 tokio::spawn(async move {
-                    let mut msg = PubsubMessage::default();
-                    msg.data = "abc".into();
+                    let msg = PubsubMessage{
+                        data: "abc".into(),
+                        ..Default::default()
+                    };
                     let awaiter = publisher.publish(msg).await;
                     awaiter.get(Some(ctx)).await
                 })
@@ -231,9 +233,11 @@ mod tests {
     async fn test_publish_cancel() -> Result<(), anyhow::Error> {
         let ctx = CancellationToken::new();
         let topic = create_topic().await?;
-        let mut config = PublisherConfig::default();
-        config.flush_interval = Duration::from_secs(10);
-        config.bundle_size = 11;
+        let mut config = PublisherConfig {
+            flush_interval: Duration::from_secs(10),
+            bundle_size: 11,
+            ..Default::default()
+        };
         let publisher = topic.new_publisher(Some(config));
 
         // Publish message.

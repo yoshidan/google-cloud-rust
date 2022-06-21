@@ -368,7 +368,7 @@ mod tests {
 
     #[ctor::ctor]
     fn init() {
-        tracing_subscriber::fmt().try_init();
+        let _ = tracing_subscriber::fmt().try_init();
     }
 
     async fn create_subscription(enable_exactly_once_delivery: bool) -> Result<Subscription, anyhow::Error> {
@@ -398,13 +398,15 @@ mod tests {
                 .await
                 .unwrap(),
         );
-        let mut msg = PubsubMessage::default();
-        msg.data = "test_message".into();
+        let msg = PubsubMessage{
+            data:  "test_message".into(),
+            ..Default::default()
+        };
         let req = PublishRequest {
             topic: format!("projects/{}/topics/test-topic1", PROJECT_NAME),
             messages: vec![msg],
         };
-        pubc.publish(req, Some(CancellationToken::new()), None).await;
+        let _ = pubc.publish(req, Some(CancellationToken::new()), None).await;
     }
 
     async fn test_subscription(enable_exactly_once_delivery: bool) -> Result<(), anyhow::Error> {
@@ -415,8 +417,10 @@ mod tests {
         let config = subscription.config(Some(cancel.clone()), None).await?;
         assert_eq!(config.0, topic_name);
 
-        let mut updating = SubscriptionConfigToUpdate::default();
-        updating.ack_deadline_seconds = Some(100);
+        let updating = SubscriptionConfigToUpdate {
+            ack_deadline_seconds: Some(100),
+            ..Default::default()
+        };
         let new_config = subscription.update(updating, Some(cancel.clone()), None).await?;
         assert_eq!(new_config.0, topic_name);
         assert_eq!(new_config.1.ack_deadline_seconds, 100);
@@ -508,7 +512,7 @@ mod tests {
                         let v2 = v2.clone();
                         async move {
                             v2.fetch_add(1, SeqCst);
-                            message.ack();
+                            let _ = message.ack();
                         }
                     },
                     cancel_receiver,
@@ -542,7 +546,7 @@ mod tests {
                             let v2 = v2.clone();
                             async move {
                                 v2.fetch_add(1, SeqCst);
-                                message.ack();
+                                let _ = message.ack();
                             }
                         },
                         ctx,
