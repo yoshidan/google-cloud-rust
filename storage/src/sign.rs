@@ -1,3 +1,4 @@
+use std::collections::hash_map::Entry;
 use crate::sign::SignedURLError::InvalidOption;
 use chrono::{DateTime, SecondsFormat, Utc};
 
@@ -209,10 +210,9 @@ fn v4_sanitize_headers(hdrs: &[String]) -> Vec<String> {
         let space_removed = SPACE_REGEX.replace_all(split[1].trim(), " ");
         let value = TAB_REGEX.replace_all(space_removed.as_ref(), "\t");
         if !value.is_empty() {
-            if let std::collections::hash_map::Entry::Vacant(e) = sanitized.entry(key) {
-                e.insert(vec![value.to_string()]);
-            } else {
-                sanitized.get_mut(&key).unwrap().push(value.to_string());
+            match sanitized.get_mut(&key) {
+                Some(v)  => v.push(value.to_string()),
+                None => sanitized.insert(key, vec![value.to_string()]),
             }
         }
     }
