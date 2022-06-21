@@ -17,19 +17,10 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct PartitionedUpdateOption {
     pub begin_options: CallOptions,
     pub query_options: Option<QueryOptions>,
-}
-
-impl Default for PartitionedUpdateOption {
-    fn default() -> Self {
-        PartitionedUpdateOption {
-            begin_options: CallOptions::default(),
-            query_options: None,
-        }
-    }
 }
 
 #[derive(Clone)]
@@ -47,19 +38,10 @@ impl Default for ReadOnlyTransactionOption {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct ReadWriteTransactionOption {
     pub begin_options: CallOptions,
     pub commit_options: CommitOptions,
-}
-
-impl Default for ReadWriteTransactionOption {
-    fn default() -> Self {
-        ReadWriteTransactionOption {
-            begin_options: CallOptions::default(),
-            commit_options: CommitOptions::default(),
-        }
-    }
 }
 
 pub struct ChannelConfig {

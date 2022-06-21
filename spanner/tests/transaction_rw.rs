@@ -110,7 +110,7 @@ async fn test_partitioned_dml() {
 
     let session = create_session().await;
     let mut tx = read_only_transaction(session).await;
-    let reader = tx.read("User", &["NullableString"], Key::key(&user_id)).await.unwrap();
+    let reader = tx.read("User", &["NullableString"], Key::new(&user_id)).await.unwrap();
     let row = all_rows(reader).await.unwrap().pop().unwrap();
     let value = row.column_by_name::<String>("NullableString").unwrap();
     assert_eq!(value, "aaa");
@@ -144,7 +144,7 @@ async fn test_rollback() {
     let _ = tx.finish(result, None).await;
     let session = create_session().await;
     let mut tx = read_only_transaction(session).await;
-    let reader = tx.read("User", &user_columns(), Key::key(&past_user)).await.unwrap();
+    let reader = tx.read("User", &user_columns(), Key::new(&past_user)).await.unwrap();
     let row = all_rows(reader).await.unwrap().pop().unwrap();
     let ts = cr.commit_timestamp.as_ref().unwrap();
     let ts = Utc.timestamp(ts.seconds, ts.nanos as u32);

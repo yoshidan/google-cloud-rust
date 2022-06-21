@@ -169,18 +169,18 @@ impl ResultSet {
         chunked_value: bool,
     ) -> Result<bool, Status> {
         // get metadata only once.
-        if self.fields.is_empty() && metadata.is_some() {
-            let metadata = metadata.unwrap();
-            self.fields = match metadata.row_type {
-                Some(row_type) => Arc::new(row_type.fields),
-                None => return Err(Status::new(Code::Internal, "no field metadata found {}")),
-            };
-            // create index for Row::column_by_name("column_name")
-            let mut index = HashMap::new();
-            for (i, f) in self.fields.iter().enumerate() {
-                index.insert(f.name.clone(), i);
+        if self.fields.is_empty() {
+            if let Some(metadata) = metadata {
+                self.fields = metadata.row_type
+                    .map(|e| Arc::new(e.fields))
+                    .ok_or_else(|| Status::new(Code::Internal, "no field metadata found"))?;
+                // create index for Row::column_by_name("column_name")
+                let mut index = HashMap::new();
+                for (i, f) in self.fields.iter().enumerate() {
+                    index.insert(f.name.clone(), i);
+                }
+                self.index = Arc::new(index);
             }
-            self.index = Arc::new(index);
         }
 
         if self.chunked_value {

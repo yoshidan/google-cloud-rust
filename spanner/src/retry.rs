@@ -59,9 +59,10 @@ where
 
 impl TransactionRetrySetting {
     pub fn new(codes: Vec<Code>) -> Self {
-        let mut inner = RetrySetting::default();
-        inner.codes = codes;
-        Self { inner }
+        Self { inner: RetrySetting {
+            codes,
+            ..Default::default()
+        } }
     }
 }
 

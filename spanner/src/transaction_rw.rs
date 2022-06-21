@@ -18,19 +18,10 @@ use google_cloud_googleapis::spanner::v1::{
     ResultSetStats, RollbackRequest, TransactionOptions, TransactionSelector,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct CommitOptions {
     pub return_commit_stats: bool,
     pub call_options: CallOptions,
-}
-
-impl Default for CommitOptions {
-    fn default() -> Self {
-        CommitOptions {
-            return_commit_stats: false,
-            call_options: CallOptions::default(),
-        }
-    }
 }
 
 /// ReadWriteTransaction provides a locking read-write transaction.

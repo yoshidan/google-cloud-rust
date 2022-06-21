@@ -273,7 +273,7 @@ pub async fn assert_partitioned_read(
     cts: &DateTime<Utc>,
 ) {
     let partitions = match tx
-        .partition_read("User", &user_columns(), vec![Key::key(&user_id)])
+        .partition_read("User", &user_columns(), vec![Key::new(&user_id)])
         .await
     {
         Ok(tx) => tx,

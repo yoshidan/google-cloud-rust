@@ -43,7 +43,7 @@ impl DatabaseAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Vec<Database>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let parent = &req.parent;
         let mut all_databases = vec![];
         //eager loading
@@ -77,7 +77,7 @@ impl DatabaseAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Operation<Database>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let parent = &req.parent;
         let action = || async {
             let request = create_request(format!("parent={}", parent), req.clone());
@@ -95,7 +95,7 @@ impl DatabaseAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Database>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={}", name), req.clone());
@@ -118,7 +118,7 @@ impl DatabaseAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Operation<()>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let database = &req.database;
         let action = || async {
             let request = create_request(format!("database={}", database), req.clone());
@@ -138,7 +138,7 @@ impl DatabaseAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let database = &req.database;
         let action = || async {
             let request = create_request(format!("database={}", database), req.clone());
@@ -156,7 +156,7 @@ impl DatabaseAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<GetDatabaseDdlResponse>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let database = &req.database;
         let action = || async {
             let request = create_request(format!("database={}", database), req.clone());
@@ -178,7 +178,7 @@ impl DatabaseAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Policy>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let resource = &req.resource;
         let action = || async {
             let request = create_request(format!("resource={}", resource), req.clone());
@@ -201,7 +201,7 @@ impl DatabaseAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Policy>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let resource = &req.resource;
         let action = || async {
             let request = create_request(format!("resource={}", resource), req.clone());
@@ -226,7 +226,7 @@ impl DatabaseAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<TestIamPermissionsResponse>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let resource = &req.resource;
         let action = || async {
             let request = create_request(format!("resource={}", resource), req.clone());
@@ -253,7 +253,7 @@ impl DatabaseAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Operation<Backup>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let parent = &req.parent;
         let action = || async {
             let request = create_request(format!("parent={}", parent), req.clone());
@@ -271,7 +271,7 @@ impl DatabaseAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Backup>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={}", name), req.clone());
@@ -287,7 +287,7 @@ impl DatabaseAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Backup>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let name = &req.backup.as_ref().unwrap().name;
         let action = || async {
             let request = create_request(format!("backup.name={}", name), req.clone());
@@ -303,7 +303,7 @@ impl DatabaseAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={}", name), req.clone());
@@ -321,7 +321,7 @@ impl DatabaseAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Vec<Backup>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let parent = &req.parent;
         let mut all_backups = vec![];
         //eager loading
@@ -367,7 +367,7 @@ impl DatabaseAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Operation<Database>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let parent = &req.parent;
         let action = || async {
             let request = create_request(format!("parent={}", parent), req.clone());
@@ -394,7 +394,7 @@ impl DatabaseAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Vec<InternalOperation>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let parent = &req.parent;
         let mut all_operations = vec![];
         //eager loading
@@ -431,7 +431,7 @@ impl DatabaseAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Vec<InternalOperation>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let parent = &req.parent;
         let mut all_operations = vec![];
         //eager loading

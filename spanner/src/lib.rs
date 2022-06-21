@@ -123,7 +123,7 @@
 //!     let commit_timestamp = client.apply(vec![mutation]).await?;
 //!
 //!     let mut tx = client.single().await?;
-//!     let row = tx.read_row( "Guild", &["GuildId", "OwnerUserID", "UpdatedAt"], Key::key(&"guildId1")).await?;
+//!     let row = tx.read_row( "Guild", &["GuildId", "OwnerUserID", "UpdatedAt"], Key::new(&"guildId1")).await?;
 //!     Ok(())
 //! }
 //! ```
@@ -137,7 +137,7 @@
 //! ```
 //! use google_cloud_spanner::key::Key;
 //!
-//! let key1 = Key::key(&"key");
+//! let key1 = Key::new(&"key");
 //! ```
 //!
 //! ### <a name="KeyRanges"></a>KeyRanges
@@ -147,10 +147,10 @@
 //! ```
 //! use google_cloud_spanner::key::{Key,KeyRange,RangeKind};
 //!
-//! let range1 = KeyRange::new(Key::key(&1), Key::key(&100), RangeKind::ClosedClosed);
-//! let range2 = KeyRange::new(Key::key(&1), Key::key(&100), RangeKind::ClosedOpen);
-//! let range3 = KeyRange::new(Key::key(&1), Key::key(&100), RangeKind::OpenOpen);
-//! let range4 = KeyRange::new(Key::key(&1), Key::key(&100), RangeKind::OpenClosed);
+//! let range1 = KeyRange::new(Key::new(&1), Key::new(&100), RangeKind::ClosedClosed);
+//! let range2 = KeyRange::new(Key::new(&1), Key::new(&100), RangeKind::ClosedOpen);
+//! let range3 = KeyRange::new(Key::new(&1), Key::new(&100), RangeKind::OpenOpen);
+//! let range4 = KeyRange::new(Key::new(&1), Key::new(&100), RangeKind::OpenClosed);
 //! ```
 //!
 //! ### <a name="KeySets"></a>KeySets
@@ -196,7 +196,7 @@
 //!     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 //!     let client = Client::new(DATABASE).await?;
 //!     let mut tx = client.single().await?;
-//!     let row = tx.read_row("Guild", &["GuildID", "OwnerUserID"], Key::key(&"guild1")).await?;
+//!     let row = tx.read_row("Guild", &["GuildID", "OwnerUserID"], Key::new(&"guild1")).await?;
 //!     Ok(())
 //! }
 //! ```
@@ -215,8 +215,8 @@
 //!
 //!     let mut tx = client.single().await?;
 //!     let iter1 = tx.read("Guild",&["GuildID", "OwnerUserID"], vec![
-//!         Key::key(&"pk1"),
-//!         Key::key(&"pk2")
+//!         Key::new(&"pk1"),
+//!         Key::new(&"pk2")
 //!     ]).await?;
 //!     Ok(())
 //! }
@@ -236,8 +236,8 @@
 //!
 //!     let mut tx = client.single().await?;
 //!     let mut iter = tx.read("Guild", &["GuildID", "OwnerUserID"], vec![
-//!         Key::key(&"pk1"),
-//!         Key::key(&"pk2")
+//!         Key::new(&"pk1"),
+//!         Key::new(&"pk2")
 //!     ]).await?;
 //!
 //!     while let Some(row) = iter.next().await? {
@@ -346,8 +346,8 @@
 //! }
 //!
 //! let mut reader2 = tx.read("User", &["UserId"], vec![
-//!     Key::key(&"user-1"),
-//!     Key::key(&"user-2")
+//!     Key::new(&"user-1"),
+//!     Key::new(&"user-2")
 //! ]).await?;
 //!
 //! // iterate reader2 ...
@@ -490,7 +490,7 @@
 //!             // The transaction function will be called again if the error code
 //!             // of this error is Aborted. The backend may automatically abort
 //!             // any read/write transaction if it detects a deadlock or other problems.
-//!             let key = Key::key(&"user1");
+//!             let key = Key::new(&"user1");
 //!             let mut reader = tx.read("UserItem", &["UserId", "ItemId", "Quantity"], key).await?;
 //!             let mut ms = vec![];
 //!             while let Some(row) = reader.next().await? {

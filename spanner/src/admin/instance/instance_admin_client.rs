@@ -40,7 +40,7 @@ impl InstanceAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Vec<InstanceConfig>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let parent = &req.parent;
         let mut all = vec![];
         //eager loading
@@ -70,7 +70,7 @@ impl InstanceAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<InstanceConfig, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={}", name), req.clone());
@@ -91,7 +91,7 @@ impl InstanceAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Vec<Instance>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let parent = &req.parent;
         let mut all = vec![];
         //eager loading
@@ -121,7 +121,7 @@ impl InstanceAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Instance>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={}", name), req.clone());
@@ -175,7 +175,7 @@ impl InstanceAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Operation<Instance>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let parent = &req.parent;
         let action = || async {
             let request = create_request(format!("parent={}", parent), req.clone());
@@ -236,7 +236,7 @@ impl InstanceAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Operation<Instance>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let instance_name = &req.instance.as_ref().unwrap().name;
         let action = || async {
             let request = create_request(format!("instance.name={}", instance_name), req.clone());
@@ -264,7 +264,7 @@ impl InstanceAdminClient {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={}", name), req.clone());
@@ -284,7 +284,7 @@ impl InstanceAdminClient {
         retry: Option<RetrySetting>,
     ) -> Result<Response<Policy>, Status> {
         let resource = &req.resource;
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let action = || async {
             let request = create_request(format!("resource={}", resource), req.clone());
             self.inner.clone().set_iam_policy(request).await.map_err(|e| e)
@@ -303,7 +303,7 @@ impl InstanceAdminClient {
         retry: Option<RetrySetting>,
     ) -> Result<Response<Policy>, Status> {
         let resource = &req.resource;
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let action = || async {
             let request = create_request(format!("resource={}", resource), req.clone());
             self.inner.clone().get_iam_policy(request).await.map_err(|e| e)
@@ -324,7 +324,7 @@ impl InstanceAdminClient {
         retry: Option<RetrySetting>,
     ) -> Result<Response<TestIamPermissionsResponse>, Status> {
         let resource = &req.resource;
-        let retry = Some(retry.unwrap_or(default_retry_setting()));
+        let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let action = || async {
             let request = create_request(format!("resource={}", resource), req.clone());
             self.inner.clone().test_iam_permissions(request).await.map_err(|e| e)

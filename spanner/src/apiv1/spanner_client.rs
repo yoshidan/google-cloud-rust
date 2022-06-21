@@ -76,7 +76,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Session>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let database = &req.database;
         return invoke_fn(
             cancel,
@@ -103,7 +103,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<BatchCreateSessionsResponse>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let database = &req.database;
         return invoke_fn(
             cancel,
@@ -129,7 +129,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Session>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let name = &req.name;
         return invoke_fn(
             cancel,
@@ -153,7 +153,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<ListSessionsResponse>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let database = &req.database;
         return invoke_fn(
             cancel,
@@ -179,7 +179,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let name = &req.name;
         return invoke_fn(
             cancel,
@@ -213,7 +213,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<ResultSet>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         return invoke_fn(
             cancel,
@@ -241,7 +241,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         return invoke_fn(
             cancel,
@@ -275,7 +275,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<ExecuteBatchDmlResponse>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         return invoke_fn(
             cancel,
@@ -322,7 +322,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<ResultSet>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         return invoke_fn(
             cancel,
@@ -347,7 +347,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         return invoke_fn(
             cancel,
@@ -374,7 +374,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Transaction>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         return invoke_fn(
             cancel,
@@ -411,7 +411,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<CommitResponse>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         return invoke_fn(
             cancel,
@@ -439,7 +439,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         return invoke_fn(
             cancel,
@@ -470,7 +470,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<PartitionResponse>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         return invoke_fn(
             cancel,
@@ -506,7 +506,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<PartitionResponse>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         return invoke_fn(
             cancel,

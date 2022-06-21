@@ -20,7 +20,7 @@ fn init() {
 }
 
 async fn assert_read(tx: &mut ReadOnlyTransaction, user_id: &str, now: &DateTime<Utc>, cts: &DateTime<Utc>) {
-    let reader = match tx.read("User", &user_columns(), Key::key(&user_id)).await {
+    let reader = match tx.read("User", &user_columns(), Key::new(&user_id)).await {
         Ok(tx) => tx,
         Err(status) => panic!("read error {:?}", status),
     };
@@ -282,7 +282,7 @@ async fn test_read_row() {
     let _ = replace_test_data(&mut session, mutations).await.unwrap();
 
     let mut tx = read_only_transaction(session).await;
-    let row = tx.read_row("User", &["UserId"], Key::key(&user_id)).await.unwrap();
+    let row = tx.read_row("User", &["UserId"], Key::new(&user_id)).await.unwrap();
     assert!(row.is_some())
 }
 
@@ -301,7 +301,7 @@ async fn test_read_multi_row() {
 
     let mut tx = read_only_transaction(session).await;
     let row = tx
-        .read("User", &["UserId"], vec![Key::key(&user_id), Key::key(&user_id2)])
+        .read("User", &["UserId"], vec![Key::new(&user_id), Key::new(&user_id2)])
         .await
         .unwrap();
     assert_eq!(2, all_rows(row).await.len());

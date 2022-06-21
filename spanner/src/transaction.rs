@@ -18,22 +18,12 @@ use crate::row::Row;
 use crate::session::ManagedSession;
 use crate::statement::Statement;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct CallOptions {
     /// Priority is the RPC priority to use for the read operation.
     pub priority: Option<Priority>,
     pub retry: Option<RetrySetting>,
     pub cancel: Option<CancellationToken>,
-}
-
-impl Default for CallOptions {
-    fn default() -> Self {
-        CallOptions {
-            priority: None,
-            retry: None,
-            cancel: None,
-        }
-    }
 }
 
 #[derive(Clone)]
