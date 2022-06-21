@@ -207,7 +207,6 @@ mod test {
                 ..Default::default()
             },
             bucket: config,
-            ..Default::default()
         };
         let result = client.insert_bucket(&req, None).await.unwrap();
         client

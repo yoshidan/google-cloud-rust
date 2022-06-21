@@ -1471,7 +1471,6 @@ mod test {
     use bytes::Buf;
     use futures_util::StreamExt;
     use google_cloud_auth::{create_token_source, Config};
-    use serde_json::de::Read;
     use serial_test::serial;
     use std::sync::Arc;
 
@@ -1998,7 +1997,7 @@ mod test {
             )
             .await
             .unwrap();
-        assert_eq!(downloaded, vec![01]);
+        assert_eq!(downloaded, vec![1]);
 
         let _rewrited = client
             .rewrite_object(
