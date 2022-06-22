@@ -209,6 +209,13 @@ pub fn assert_user_row(row: &Row, source_user_id: &str, now: &DateTime<Utc>, com
     );
 }
 
+pub async fn read_only_transaction(session: ManagedSession) -> ReadOnlyTransaction {
+    match ReadOnlyTransaction::begin(session, TimestampBound::strong_read(), CallOptions::default()).await {
+        Ok(tx) => tx,
+        Err(status) => panic!("begin error {:?}", status),
+    }
+}
+
 pub async fn all_rows(mut itr: RowIterator<'_>) -> Vec<Row> {
     let mut rows = vec![];
     loop {
