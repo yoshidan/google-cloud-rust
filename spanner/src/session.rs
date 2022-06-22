@@ -712,10 +712,12 @@ mod tests {
             .await
             .unwrap();
         let session_alive_trust_duration = Duration::from_millis(10);
-        let mut config = SessionConfig::default();
-        config.min_opened = 5;
-        config.session_alive_trust_duration = session_alive_trust_duration;
-        config.max_opened = 5;
+        let config = SessionConfig {
+            min_opened: 5,
+            session_alive_trust_duration,
+            max_opened: 5,
+            ..Default::default()
+        };
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
         sleep(Duration::from_secs(1)).await;
 
@@ -734,10 +736,12 @@ mod tests {
             .await
             .unwrap();
         let session_alive_trust_duration = Duration::from_secs(10);
-        let mut config = SessionConfig::default();
-        config.min_opened = 5;
-        config.session_alive_trust_duration = session_alive_trust_duration;
-        config.max_opened = 5;
+        let config = SessionConfig {
+            min_opened: 5,
+            session_alive_trust_duration,
+            max_opened: 5,
+            ..Default::default()
+        };
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
         sleep(Duration::from_secs(1)).await;
 

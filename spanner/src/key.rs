@@ -315,7 +315,7 @@ mod tests {
     fn test_key_new() {
         let mut key = Key::new(&true);
         match key.values.values.pop().unwrap().kind.unwrap() {
-            Kind::BoolValue(s) => assert_eq!(s, true),
+            Kind::BoolValue(s) => assert!(s),
             _ => panic!("invalid kind"),
         }
     }
