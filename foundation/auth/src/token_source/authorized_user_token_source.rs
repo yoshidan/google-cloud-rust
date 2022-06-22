@@ -7,6 +7,7 @@ use crate::token_source::{default_http_client, InternalToken};
 use async_trait::async_trait;
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct UserAccountTokenSource {
     client_id: String,
     client_secret: String,

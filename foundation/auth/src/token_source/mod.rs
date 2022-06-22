@@ -7,19 +7,12 @@ use crate::error::Error;
 use crate::token::Token;
 use async_trait::async_trait;
 use serde::Deserialize;
-use std::fmt::{Debug, Formatter};
+use std::fmt::Debug;
 use std::time::Duration;
 
 #[async_trait]
-pub trait TokenSource: Send + Sync {
+pub trait TokenSource: Send + Sync + Debug {
     async fn token(&self) -> Result<Token, Error>;
-}
-
-impl Debug for dyn TokenSource {
-    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        let token_source_string = format!("{:?}", self);
-        write!(f, "{}", token_source_string.as_str())
-    }
 }
 
 fn default_http_client() -> reqwest::Client {

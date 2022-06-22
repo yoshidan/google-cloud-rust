@@ -7,6 +7,7 @@ use google_cloud_metadata::{METADATA_FLAVOR_KEY, METADATA_GOOGLE, METADATA_HOST_
 use urlencoding::encode;
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct ComputeTokenSource {
     token_url: String,
     client: reqwest::Client,
