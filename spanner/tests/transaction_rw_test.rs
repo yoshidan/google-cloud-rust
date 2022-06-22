@@ -152,7 +152,7 @@ async fn test_rollback() {
 }
 
 async fn assert_data(
-    user_id: &String,
+    user_id: &str,
     now: &DateTime<Utc>,
     user_commit_timestamp: &DateTime<Utc>,
     commit_timestamp: &DateTime<Utc>,

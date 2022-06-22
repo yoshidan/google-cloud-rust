@@ -172,7 +172,7 @@ pub fn assert_user_row(row: &Row, source_user_id: &str, now: &DateTime<Utc>, com
     let nullable_float64 = row.column_by_name::<Option<f64>>("NullableFloat64").unwrap();
     assert_eq!(nullable_float64, None);
     let not_null_bool = row.column_by_name::<bool>("NotNullBool").unwrap();
-    assert_eq!(not_null_bool, true);
+    assert!(not_null_bool);
     let nullable_bool = row.column_by_name::<Option<bool>>("NullableBool").unwrap();
     assert_eq!(nullable_bool, None);
     let mut not_null_byte_array = row.column_by_name::<Vec<u8>>("NotNullByteArray").unwrap();
