@@ -76,7 +76,7 @@ mod tests {
         let ts = UserAccountTokenSource::new(&credentials)?;
         let token = ts.token().await?;
         assert_eq!("Bearer", token.token_type);
-        assert_eq!(true, token.expiry.unwrap().timestamp() > 0);
+        assert!(token.expiry.unwrap().timestamp() > 0);
         Ok(())
     }
 
@@ -85,7 +85,7 @@ mod tests {
     async fn test_compute_token_source() -> Result<(), Error> {
         let scope = "https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/spanner.data";
         let ts = ComputeTokenSource::new(scope);
-        assert_eq!(true, ts.is_ok());
+        assert!(ts.is_ok());
         Ok(())
     }
 
@@ -95,7 +95,7 @@ mod tests {
         let audience = "https://spanner.googleapis.com/";
         let ts = ServiceAccountTokenSource::new(&credentials, audience)?;
         let token = ts.token().await?;
-        assert_eq!(true, token.expiry.unwrap().timestamp() > 0);
+        assert!(token.expiry.unwrap().timestamp() > 0);
         let old_token_value = token.access_token.clone();
         let rts = ReuseTokenSource::new(Box::new(ts), token);
         let new_token = rts.token().await?;
@@ -110,7 +110,7 @@ mod tests {
         let ts = ServiceAccountTokenSource::new(&credentials, audience)?;
         let token = ts.token().await?;
         assert_eq!("Bearer", token.token_type);
-        assert_eq!(true, token.expiry.unwrap().timestamp() > 0);
+        assert!(token.expiry.unwrap().timestamp() > 0);
         Ok(())
     }
 
@@ -121,7 +121,7 @@ mod tests {
         let ts = OAuth2ServiceAccountTokenSource::new(&credentials, scope)?;
         let token = ts.token().await?;
         assert_eq!("Bearer", token.token_type);
-        assert_eq!(true, token.expiry.unwrap().timestamp() > 0);
+        assert!(token.expiry.unwrap().timestamp() > 0);
         Ok(())
     }
 }
