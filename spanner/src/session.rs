@@ -689,10 +689,12 @@ mod tests {
             .await
             .unwrap();
         let idle_timeout = Duration::from_millis(1);
-        let mut config = SessionConfig::default();
-        config.min_opened = 5;
-        config.idle_timeout = idle_timeout;
-        config.max_opened = 5;
+        let config = SessionConfig {
+            min_opened: 5,
+            idle_timeout,
+            max_opened: 5,
+            ..Default::default()
+        };
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
         sleep(Duration::from_secs(1)).await;
         let cancel = CancellationToken::new();
