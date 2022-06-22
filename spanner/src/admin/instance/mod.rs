@@ -78,10 +78,7 @@ mod tests {
         let request = DeleteInstanceRequest {
             name: instance.name.to_string(),
         };
-        match client.delete_instance(request, None, None).await {
-            Ok(_res) => assert!(true),
-            Err(err) => panic!("err: {:?}", err),
-        };
+        let _ = client.delete_instance(request, None, None).await.unwrap();
     }
 
     #[tokio::test]

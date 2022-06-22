@@ -67,10 +67,7 @@ mod tests {
         let request = DropDatabaseRequest {
             database: database.name.to_string(),
         };
-        match client.drop_database(request, None, None).await {
-            Ok(_res) => assert!(true),
-            Err(err) => panic!("err: {:?}", err),
-        };
+        let _ = client.drop_database(request, None, None).await.unwrap();
     }
 
     #[tokio::test]
@@ -127,9 +124,6 @@ mod tests {
             Ok(mut res) => res.wait(None, None).await,
             Err(err) => panic!("err: {:?}", err),
         };
-        match update_result {
-            Ok(_) => assert!(true),
-            Err(err) => panic!("err: {:?}", err),
-        }
+        let _ = update_result.unwrap();
     }
 }

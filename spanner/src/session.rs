@@ -666,10 +666,12 @@ mod tests {
             .await
             .unwrap();
         let idle_timeout = Duration::from_secs(100);
-        let mut config = SessionConfig::default();
-        config.min_opened = 5;
-        config.idle_timeout = idle_timeout;
-        config.max_opened = 5;
+        let config = SessionConfig {
+            min_opened: 5,
+            idle_timeout,
+            max_opened: 5,
+            .. Default::default()
+        };
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
         sleep(Duration::from_secs(1)).await;
 
@@ -753,13 +755,15 @@ mod tests {
         let conn_pool = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()))
             .await
             .unwrap();
-        let mut config = SessionConfig::default();
-        config.idle_timeout = Duration::from_millis(10);
-        config.session_alive_trust_duration = Duration::from_millis(10);
-        config.refresh_interval = Duration::from_millis(250);
-        config.min_opened = 10;
-        config.max_idle = 20;
-        config.max_opened = 45;
+        let config = SessionConfig {
+            idle_timeout: Duration::from_millis(10),
+            session_alive_trust_duration: Duration::from_millis(10),
+            refresh_interval: Duration::from_millis(250),
+            min_opened: 10,
+            max_idle: 20,
+            max_opened: 45,
+            ..Default::default()
+        };
         let sm = SessionManager::new(DATABASE, conn_pool, config).await.unwrap();
         {
             let mut sessions = Vec::new();
@@ -791,50 +795,58 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_rush_invalidate() {
-        let mut config = SessionConfig::default();
-        config.session_get_timeout = Duration::from_secs(20);
-        config.min_opened = 10;
-        config.max_idle = 20;
-        config.max_opened = 45;
+        let config = SessionConfig {
+            session_get_timeout: Duration::from_secs(20),
+            min_opened: 10,
+            max_idle: 20,
+            max_opened: 45,
+            ..Default::default()
+        };
         assert_rush(true, config).await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_rush_invalidate_with_cleanup() {
-        let mut config = SessionConfig::default();
-        config.idle_timeout = Duration::from_millis(10);
-        config.session_alive_trust_duration = Duration::from_millis(10);
-        config.refresh_interval = Duration::from_millis(250);
-        config.session_get_timeout = Duration::from_secs(20);
-        config.min_opened = 10;
-        config.max_idle = 20;
-        config.max_opened = 45;
+        let config = SessionConfig {
+            idle_timeout: Duration::from_millis(10),
+            session_alive_trust_duration: Duration::from_millis(10),
+            refresh_interval: Duration::from_millis(250),
+            session_get_timeout: Duration::from_secs(20),
+            min_opened: 10,
+            max_idle: 20,
+            max_opened: 45,
+            ..Default::default()
+        };
         assert_rush(true, config).await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_rush() {
-        let mut config = SessionConfig::default();
-        config.session_get_timeout = Duration::from_secs(20);
-        config.min_opened = 10;
-        config.max_idle = 20;
-        config.max_opened = 45;
+        let config = SessionConfig {
+            session_get_timeout: Duration::from_secs(20),
+            min_opened: 10,
+            max_idle: 20,
+            max_opened: 45,
+            ..Default::default()
+        };
         assert_rush(false, config).await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_rush_with_cleanup() {
-        let mut config = SessionConfig::default();
-        config.idle_timeout = Duration::from_millis(10);
-        config.session_alive_trust_duration = Duration::from_millis(10);
-        config.refresh_interval = Duration::from_millis(250);
-        config.session_get_timeout = Duration::from_secs(20);
-        config.min_opened = 10;
-        config.max_idle = 20;
-        config.max_opened = 45;
+        let config = SessionConfig {
+            idle_timeout: Duration::from_millis(10),
+            session_alive_trust_duration: Duration::from_millis(10),
+            refresh_interval: Duration::from_millis(250),
+            session_get_timeout: Duration::from_secs(20),
+            min_opened: 10,
+            max_idle: 20,
+            max_opened: 45,
+            ..Default::default()
+        };
         assert_rush(false, config).await;
     }
 

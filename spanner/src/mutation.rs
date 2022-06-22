@@ -379,7 +379,7 @@ mod tests {
         match mutation.operation.unwrap() {
             v1::mutation::Operation::Delete(w) => {
                 assert_eq!("Guild", w.table);
-                assert_eq!(true, w.key_set.unwrap().all);
+                assert!(w.key_set.unwrap().all);
             }
             _ => panic!("invalid operation"),
         }
