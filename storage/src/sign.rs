@@ -248,8 +248,8 @@ fn signed_url_v4(
 
     let timestamp = now
         .to_rfc3339_opts(SecondsFormat::Secs, true)
-        .replace("-", "")
-        .replace(":", "");
+        .replace('-', "")
+        .replace(':', "");
     let credential_scope = format!("{}/auto/storage/goog4_request", now.format("%Y%m%d"));
 
     // append query parameters
@@ -266,7 +266,7 @@ fn signed_url_v4(
             }
         }
     }
-    let escaped_query = builder.query().unwrap().replace("+", "%20");
+    let escaped_query = builder.query().unwrap().replace('+', "%20");
     tracing::trace!("escaped_query={}", escaped_query);
 
     // create header with value
