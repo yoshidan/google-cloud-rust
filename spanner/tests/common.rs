@@ -93,74 +93,7 @@ pub async fn create_session() -> ManagedSession {
         .unwrap()
 }
 
-pub async fn replace_test_data(
-    session: &mut SessionHandle,
-    mutations: Vec<Mutation>,
-) -> Result<CommitResponse, Status> {
-    session
-        .spanner_client
-        .commit(
-            CommitRequest {
-                session: session.session.name.to_string(),
-                mutations,
-                return_commit_stats: false,
-                request_options: None,
-                transaction: Some(SingleUseTransaction(TransactionOptions {
-                    mode: Some(Mode::ReadWrite(ReadWrite {})),
-                })),
-            },
-            None,
-            None,
-        )
-        .await
-        .map(|x| x.into_inner())
-}
-
-pub fn create_user_mutation(user_id: &str, now: &DateTime<Utc>) -> Mutation {
-    insert_or_update(
-        "User",
-        &user_columns(),
-        &[
-            &user_id,
-            &1,
-            &None::<i64>,
-            &1.0,
-            &None::<f64>,
-            &true,
-            &None::<bool>,
-            &vec![1_u8],
-            &None::<Vec<u8>>,
-            &SpannerNumeric::new("100.24"),
-            &Some(SpannerNumeric::new("1000.42342")),
-            now,
-            &Some(*now),
-            &now.naive_utc().date(),
-            &None::<DateTime<Utc>>,
-            &vec![10_i64, 20_i64, 30_i64],
-            &None::<Vec<i64>>,
-            &Some(user_id),
-            &CommitTimestamp::new(),
-        ],
-    )
-}
-
-pub fn create_user_item_mutation(user_id: &str, item_id: i64) -> Mutation {
-    insert_or_update(
-        "UserItem",
-        &["UserId", "ItemId", "Quantity", "UpdatedAt"],
-        &[&user_id, &item_id, &100, &CommitTimestamp::new()],
-    )
-}
-
-pub fn create_user_character_mutation(user_id: &str, character_id: i64) -> Mutation {
-    insert_or_update(
-        "UserCharacter",
-        &["UserId", "CharacterId", "Level", "UpdatedAt"],
-        &[&user_id, &character_id, &1, &CommitTimestamp::new()],
-    )
-}
-
-pub fn assert_user_row(row: &Row, source_user_id: &str, now: &DateTime<Utc>, commit_timestamp: &DateTime<Utc>) {
+fn assert_user_row(row: &Row, source_user_id: &str, now: &DateTime<Utc>, commit_timestamp: &DateTime<Utc>) {
     let user_id = row.column_by_name::<String>("UserId").unwrap();
     assert_eq!(user_id, source_user_id);
     let not_null_int64 = row.column_by_name::<i64>("NotNullINT64").unwrap();
@@ -207,13 +140,6 @@ pub fn assert_user_row(row: &Row, source_user_id: &str, now: &DateTime<Utc>, com
         commit_timestamp.to_string(),
         "commit timestamp"
     );
-}
-
-pub async fn read_only_transaction(session: ManagedSession) -> ReadOnlyTransaction {
-    match ReadOnlyTransaction::begin(session, TimestampBound::strong_read(), CallOptions::default()).await {
-        Ok(tx) => tx,
-        Err(status) => panic!("begin error {:?}", status),
-    }
 }
 
 pub async fn all_rows(mut itr: RowIterator<'_>) -> Vec<Row> {

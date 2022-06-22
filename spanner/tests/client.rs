@@ -15,7 +15,7 @@ const DATABASE: &str = "projects/local-project/instances/test-instance/databases
 
 #[ctor::ctor]
 fn init() {
-    tracing_subscriber::fmt().try_init();
+    let _ = tracing_subscriber::fmt().try_init();
 }
 
 #[derive(thiserror::Error, Debug)]
