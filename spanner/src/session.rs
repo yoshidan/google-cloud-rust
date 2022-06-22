@@ -670,7 +670,7 @@ mod tests {
             min_opened: 5,
             idle_timeout,
             max_opened: 5,
-            .. Default::default()
+            ..Default::default()
         };
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
         sleep(Duration::from_secs(1)).await;

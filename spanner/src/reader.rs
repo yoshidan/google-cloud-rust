@@ -171,7 +171,8 @@ impl ResultSet {
         // get metadata only once.
         if self.fields.is_empty() {
             if let Some(metadata) = metadata {
-                self.fields = metadata.row_type
+                self.fields = metadata
+                    .row_type
                     .map(|e| Arc::new(e.fields))
                     .ok_or_else(|| Status::new(Code::Internal, "no field metadata found"))?;
                 // create index for Row::column_by_name("column_name")
