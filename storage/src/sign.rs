@@ -290,7 +290,7 @@ fn signed_url_v4(
         let mut buffer = format!(
             "{}\n{}\n{}\n{}\n\n{}\n",
             opts.method.as_str(),
-            builder.path().replace("+", "%20"),
+            builder.path().replace('+', "%20"),
             escaped_query,
             header_with_value.join("\n"),
             signed_headers
