@@ -160,7 +160,7 @@ pub fn create_user_character_mutation(user_id: &str, character_id: i64) -> Mutat
     )
 }
 
-pub(crate) fn assert_user_row(row: &Row, source_user_id: &str, now: &DateTime<Utc>, commit_timestamp: &DateTime<Utc>) {
+pub fn assert_user_row(row: &Row, source_user_id: &str, now: &DateTime<Utc>, commit_timestamp: &DateTime<Utc>) {
     let user_id = row.column_by_name::<String>("UserId").unwrap();
     assert_eq!(user_id, source_user_id);
     let not_null_int64 = row.column_by_name::<i64>("NotNullINT64").unwrap();
