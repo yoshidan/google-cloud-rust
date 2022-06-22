@@ -266,6 +266,7 @@ pub async fn execute_partitioned_query(tx: &mut BatchReadOnlyTransaction, stmt: 
     rows
 }
 
+#[allow(dead_code)]
 pub async fn assert_partitioned_read(
     tx: &mut BatchReadOnlyTransaction,
     user_id: &str,
