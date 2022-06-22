@@ -16,7 +16,7 @@ use std::collections::HashMap;
 
 #[ctor::ctor]
 fn init() {
-    tracing_subscriber::fmt().try_init();
+    let _ = tracing_subscriber::fmt().try_init();
 }
 
 async fn assert_read(tx: &mut ReadOnlyTransaction, user_id: &str, now: &DateTime<Utc>, cts: &DateTime<Utc>) {
