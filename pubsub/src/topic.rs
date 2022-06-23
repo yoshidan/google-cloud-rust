@@ -268,4 +268,28 @@ mod tests {
 
         Ok(())
     }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_publish_immediately() -> Result<(), anyhow::Error> {
+        let ctx = CancellationToken::new();
+        let topic = create_topic().await?;
+        let publisher = topic.new_publisher(None);
+
+        // Publish message.
+        let msgs = ["msg1", "msg2"]
+            .map(|v| PubsubMessage {
+                data: v.as_bytes().to_vec(),
+                ..Default::default()
+            })
+            .to_vec();
+        let ack_ids = publisher.publish_immediately(msgs, Some(ctx.clone()), None).await?;
+
+        assert_eq!(2, ack_ids.len());
+
+        let mut publisher = publisher;
+        publisher.shutdown().await;
+        topic.delete(Some(ctx.clone()), None).await?;
+        Ok(())
+    }
 }

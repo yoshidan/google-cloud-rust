@@ -80,6 +80,8 @@ pub struct Publisher {
     ordering_senders: Arc<Vec<async_channel::Sender<ReservedMessage>>>,
     sender: async_channel::Sender<ReservedMessage>,
     tasks: Arc<Mutex<Tasks>>,
+    fqtn: String,
+    pubc: PublisherClient,
 }
 
 impl Publisher {
@@ -106,8 +108,30 @@ impl Publisher {
         Self {
             sender,
             ordering_senders: Arc::new(ordering_senders),
-            tasks: Arc::new(Mutex::new(Tasks::new(fqtn, pubc, receivers, config))),
+            tasks: Arc::new(Mutex::new(Tasks::new(fqtn.clone(), pubc.clone(), receivers, config))),
+            fqtn,
+            pubc,
         }
+    }
+
+    /// publish publishes msg to the topic synchronously
+    pub async fn publish_immediately(
+        &self,
+        messages: Vec<PubsubMessage>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Vec<String>, Status> {
+        self.pubc
+            .publish(
+                PublishRequest {
+                    topic: self.fqtn.clone(),
+                    messages,
+                },
+                cancel,
+                retry,
+            )
+            .await
+            .map(|v| v.into_inner().message_ids)
     }
 
     /// publish publishes msg to the topic asynchronously. Messages are batched and
