@@ -389,7 +389,7 @@ impl SessionManager {
             task.abort();
         }
         let deleting_sessions = {
-            let mut lock  = self.session_pool.inner.lock();
+            let mut lock = self.session_pool.inner.lock();
             let mut deleting_sessions = Vec::with_capacity(lock.sessions.len());
             while let Some(session) = lock.sessions.pop_front() {
                 deleting_sessions.push(session);
