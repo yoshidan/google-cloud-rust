@@ -237,7 +237,7 @@ mod tests {
     }
 
     async fn create_client() -> Client {
-        std::env::set_var("PUBSUB_EMULATOR_HOST", "localhost:8681".to_string());
+        std::env::set_var("PUBSUB_EMULATOR_HOST", "localhost:8681");
         Client::default().await.unwrap()
     }
 

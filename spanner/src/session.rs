@@ -129,6 +129,10 @@ impl Sessions {
         }
     }
 
+    fn remove(&mut self) -> Option<SessionHandle> {
+        self.sessions.pop_front()
+    }
+
     fn release(&mut self, session: SessionHandle) {
         self.inuse -= 1;
         if session.valid {
@@ -388,11 +392,16 @@ impl SessionManager {
         for task in &self.tasks {
             task.abort();
         }
-        let mut sessions = self.session_pool.inner.lock();
-        while let Some(mut session) = sessions.take() {
+        let deleting_sessions = {
+            let mut sessions = self.session_pool.inner.lock();
+            let mut deleting_sessions = Vec::with_capacity(sessions.sessions.len());
+            while let Some(session) = sessions.remove() {
+                deleting_sessions.push(session);
+            }
+            deleting_sessions
+        };
+        for mut session in deleting_sessions {
             delete_session(&mut session).await;
-            session.valid = false;
-            sessions.release(session);
         }
     }
 }

@@ -1,10 +1,10 @@
 use async_channel::Receiver;
-use parking_lot::Mutex;
 use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Duration;
 
 use tokio::select;
+use tokio::sync::Mutex;
 
 use google_cloud_gax::cancel::CancellationToken;
 use tokio::sync::oneshot;
@@ -140,7 +140,7 @@ impl Publisher {
         for s in self.ordering_senders.iter() {
             s.close();
         }
-        self.tasks.lock().done().await;
+        self.tasks.lock().await.done().await;
     }
 }
 
