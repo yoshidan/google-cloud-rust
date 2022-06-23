@@ -18,19 +18,10 @@ use google_cloud_googleapis::spanner::v1::{
     ResultSetStats, RollbackRequest, TransactionOptions, TransactionSelector,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct CommitOptions {
     pub return_commit_stats: bool,
     pub call_options: CallOptions,
-}
-
-impl Default for CommitOptions {
-    fn default() -> Self {
-        CommitOptions {
-            return_commit_stats: false,
-            call_options: CallOptions::default(),
-        }
-    }
 }
 
 /// ReadWriteTransaction provides a locking read-write transaction.
@@ -248,13 +239,7 @@ impl ReadWriteTransaction {
 
         return match result {
             Ok(s) => match self.commit(opt).await {
-                Ok(c) => Ok((
-                    match c.commit_timestamp {
-                        Some(ts) => Some(ts.into()),
-                        None => None,
-                    },
-                    s,
-                )),
+                Ok(c) => Ok((c.commit_timestamp.map(|ts| ts.into()), s)),
                 // Retry the transaction using the same session on ABORT error.
                 // Cloud Spanner will create the new transaction with the previous
                 // one's wound-wait priority.
@@ -269,8 +254,8 @@ impl ReadWriteTransaction {
             // commits are also not rolled back.
             Err(err) => {
                 let status = match err.try_as() {
-                    Ok(status) => status,
-                    _ => {
+                    Some(status) => status,
+                    None => {
                         self.rollback(opt.call_options.cancel, opt.call_options.retry).await;
                         return Err((err, self.take_session()));
                     }

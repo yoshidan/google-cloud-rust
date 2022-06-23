@@ -16,9 +16,9 @@ async fn test_email() {
     if let Err(e) = result {
         match e {
             Error::HttpError(e) => println!("http error {:?}", e),
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     } else {
-        assert!(false)
+        unreachable!()
     }
 }

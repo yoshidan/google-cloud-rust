@@ -62,7 +62,7 @@ impl<T: prost::Message + Default> Operation<T> {
             }
             operation::Result::Error(status) => {
                 let tonic_code = tonic::Code::from(status.code);
-                Err(tonic::Status::new(tonic_code, status.message.to_string()).into())
+                Err(tonic::Status::new(tonic_code, status.message))
             }
         }
     }
@@ -92,7 +92,7 @@ impl<T: prost::Message + Default> Operation<T> {
                 if me.done() {
                     Ok(poll_result)
                 } else {
-                    Err((tonic::Status::new(tonic::Code::DeadlineExceeded, "wait timeout").into(), me))
+                    Err((tonic::Status::new(tonic::Code::DeadlineExceeded, "wait timeout"), me))
                 }
             },
             self,

@@ -106,7 +106,7 @@ impl Client {
         if !self.service_account_email.is_empty() && opts.google_access_id.is_empty() {
             opts.google_access_id = self.service_account_email.to_string();
         }
-        return signed_url(bucket, object, opts);
+        signed_url(bucket, object, opts)
     }
 }
 
@@ -128,7 +128,7 @@ mod test {
 
     #[ctor::ctor]
     fn init() {
-        tracing_subscriber::fmt::try_init();
+        let _ = tracing_subscriber::fmt::try_init();
     }
 
     #[tokio::test]
@@ -207,7 +207,6 @@ mod test {
                 ..Default::default()
             },
             bucket: config,
-            ..Default::default()
         };
         let result = client.insert_bucket(&req, None).await.unwrap();
         client

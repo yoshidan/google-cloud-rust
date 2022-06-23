@@ -110,7 +110,7 @@ impl ResultSet {
                 return Some(Row::new(Arc::clone(&self.index), Arc::clone(&self.fields), values));
             }
         }
-        return None;
+        None
     }
 
     /// Merge tries to combine two protobuf Values if possible.
@@ -169,18 +169,19 @@ impl ResultSet {
         chunked_value: bool,
     ) -> Result<bool, Status> {
         // get metadata only once.
-        if self.fields.is_empty() && metadata.is_some() {
-            let metadata = metadata.unwrap();
-            self.fields = match metadata.row_type {
-                Some(row_type) => Arc::new(row_type.fields),
-                None => return Err(Status::new(Code::Internal, "no field metadata found {}")),
-            };
-            // create index for Row::column_by_name("column_name")
-            let mut index = HashMap::new();
-            for (i, f) in self.fields.iter().enumerate() {
-                index.insert(f.name.clone(), i);
+        if self.fields.is_empty() {
+            if let Some(metadata) = metadata {
+                self.fields = metadata
+                    .row_type
+                    .map(|e| Arc::new(e.fields))
+                    .ok_or_else(|| Status::new(Code::Internal, "no field metadata found"))?;
+                // create index for Row::column_by_name("column_name")
+                let mut index = HashMap::new();
+                for (i, f) in self.fields.iter().enumerate() {
+                    index.insert(f.name.clone(), i);
+                }
+                self.index = Arc::new(index);
             }
-            self.index = Arc::new(index);
         }
 
         if self.chunked_value {
@@ -235,16 +236,16 @@ impl<'a> RowIterator<'a> {
             Ok(s) => s,
             Err(e) => {
                 if !self.reader.can_retry() {
-                    return Err(e.into());
+                    return Err(e);
                 }
                 tracing::debug!("streaming error: {}. resume reading by resume_token", e);
-                let result = self.reader.read(&mut self.session, option).await?;
+                let result = self.reader.read(self.session, option).await?;
                 self.streaming = result.into_inner();
                 self.streaming.message().await?
             }
         };
 
-        return match maybe_result_set {
+        match maybe_result_set {
             Some(result_set) => {
                 if result_set.values.is_empty() {
                     return Ok(false);
@@ -257,7 +258,7 @@ impl<'a> RowIterator<'a> {
                     .add(result_set.metadata, result_set.values, result_set.chunked_value)
             }
             None => Ok(false),
-        };
+        }
     }
 }
 
@@ -433,7 +434,7 @@ mod tests {
         let kind = result.unwrap().kind.unwrap();
         match kind {
             Kind::StringValue(v) => assert_eq!(v, "value1".to_string()),
-            _ => assert!(false, "must be string value"),
+            _ => unreachable!("must be string value"),
         }
     }
 
@@ -449,26 +450,26 @@ mod tests {
                 assert_eq!(v.values.len(), 5);
                 match v.values[0].kind.as_ref().unwrap() {
                     Kind::StringValue(v) => assert_eq!(*v, "value1-1".to_string()),
-                    _ => assert!(false, "must be string value"),
+                    _ => unreachable!("must be string value"),
                 };
                 match v.values[1].kind.as_ref().unwrap() {
                     Kind::StringValue(v) => assert_eq!(*v, "value1-2".to_string()),
-                    _ => assert!(false, "must be string value"),
+                    _ => unreachable!("must be string value"),
                 };
                 match v.values[2].kind.as_ref().unwrap() {
                     Kind::StringValue(v) => assert_eq!(*v, "value1-3".to_string()),
-                    _ => assert!(false, "must be string value"),
+                    _ => unreachable!("must be string value"),
                 };
                 match v.values[3].kind.as_ref().unwrap() {
                     Kind::StringValue(v) => assert_eq!(*v, "value2-1".to_string()),
-                    _ => assert!(false, "must be string value"),
+                    _ => unreachable!("must be string value"),
                 }
                 match v.values[4].kind.as_ref().unwrap() {
                     Kind::StringValue(v) => assert_eq!(*v, "valu".to_string()),
-                    _ => assert!(false, "must be string value"),
+                    _ => unreachable!("must be string value"),
                 }
             }
-            _ => assert!(false, "must be string value"),
+            _ => unreachable!("must be string value"),
         }
     }
 
@@ -485,7 +486,7 @@ mod tests {
         assert!(rs.add(metadata, values, false).unwrap());
         assert_eq!(rs.rows.len(), 3);
         assert_one_column(&rs);
-        assert_eq!(rs.chunked_value, false);
+        assert!(!rs.chunked_value);
 
         assert_some_one_column(rs.next(), "value1".to_string());
         assert_some_one_column(rs.next(), "value2".to_string());
@@ -506,7 +507,7 @@ mod tests {
         assert!(rs.add(metadata, values, false).unwrap());
         assert_eq!(rs.rows.len(), 3);
         assert_multi_column(&rs);
-        assert_eq!(rs.chunked_value, false);
+        assert!(!rs.chunked_value);
 
         assert_some_multi_column(rs.next(), "value1".to_string(), "value2".to_string());
         assert!(rs.next().is_none());
@@ -525,7 +526,7 @@ mod tests {
         assert!(rs.add(metadata, values, false).unwrap());
         assert_eq!(rs.rows.len(), 4);
         assert_multi_column(&rs);
-        assert_eq!(rs.chunked_value, false);
+        assert!(!rs.chunked_value);
 
         assert_some_multi_column(rs.next(), "value1".to_string(), "value2".to_string());
         assert_some_multi_column(rs.next(), "value3".to_string(), "value4".to_string());
@@ -545,7 +546,7 @@ mod tests {
         assert!(rs.add(metadata.clone(), values, true).unwrap());
         assert_eq!(rs.rows.len(), 3);
         assert_one_column(&rs);
-        assert_eq!(rs.chunked_value, true);
+        assert!(rs.chunked_value);
 
         assert_some_one_column(rs.next(), "value1".to_string());
         assert_some_one_column(rs.next(), "value2".to_string());
@@ -553,7 +554,7 @@ mod tests {
 
         // add next stream data
         assert!(rs.add(metadata, vec![value("ue3")], false).unwrap());
-        assert_eq!(rs.chunked_value, false);
+        assert!(!rs.chunked_value);
         assert_eq!(rs.rows.len(), 1);
         assert_some_one_column(rs.next(), "value3".to_string());
         assert!(rs.next().is_none());
@@ -572,20 +573,20 @@ mod tests {
         assert!(rs.add(metadata.clone(), values, true).unwrap());
         assert_eq!(rs.rows.len(), 3);
         assert_multi_column(&rs);
-        assert_eq!(rs.chunked_value, true);
+        assert!(rs.chunked_value);
 
         assert_some_multi_column(rs.next(), "value1".to_string(), "value2".to_string());
         assert!(rs.next().is_none());
 
         // add next stream data
         assert!(rs.add(metadata.clone(), vec![value("ue3")], false).unwrap());
-        assert_eq!(rs.chunked_value, false);
+        assert!(!rs.chunked_value);
         assert_eq!(rs.rows.len(), 1);
         assert!(rs.next().is_none());
 
         // add next stream data
         assert!(rs.add(metadata, vec![value("value4")], false).unwrap());
-        assert_eq!(rs.chunked_value, false);
+        assert!(!rs.chunked_value);
         assert_eq!(rs.rows.len(), 2);
         assert_some_multi_column(rs.next(), "value3".to_string(), "value4".to_string());
     }
@@ -603,10 +604,10 @@ mod tests {
         assert!(rs.add(metadata.clone(), values, false).unwrap());
         assert_eq!(rs.rows.len(), 1);
         assert_multi_column(&rs);
-        assert_eq!(rs.chunked_value, false);
+        assert!(!rs.chunked_value);
         assert!(rs.next().is_none());
         assert!(rs.add(metadata, vec![value(vec!["value2-1"])], false).unwrap());
-        assert_eq!(rs.chunked_value, false);
+        assert!(!rs.chunked_value);
         assert_eq!(rs.rows.len(), 2);
         assert_some_multi_column(
             rs.next(),
@@ -629,18 +630,18 @@ mod tests {
         assert!(rs.add(metadata.clone(), values, true).unwrap());
         assert_eq!(rs.rows.len(), 2);
         assert_multi_column(&rs);
-        assert_eq!(rs.chunked_value, true);
+        assert!(rs.chunked_value);
         assert!(rs.next().is_none());
 
         // add next stream data
         assert!(rs.add(metadata.clone(), vec![value(vec!["1", "valu"])], true).unwrap());
-        assert_eq!(rs.chunked_value, true);
+        assert!(rs.chunked_value);
         assert_eq!(rs.rows.len(), 2);
         assert!(rs.next().is_none());
 
         // add next stream data
         assert!(rs.add(metadata, vec![value(vec!["e2-2"])], false).unwrap());
-        assert_eq!(rs.chunked_value, false);
+        assert!(!rs.chunked_value);
         assert_eq!(rs.rows.len(), 2);
         assert_some_multi_column(
             rs.next(),
@@ -663,14 +664,14 @@ mod tests {
         assert!(rs.add(metadata.clone(), values, true).unwrap());
         assert_eq!(rs.rows.len(), 2);
         assert_multi_column(&rs);
-        assert_eq!(rs.chunked_value, true);
+        assert!(rs.chunked_value);
         assert!(rs.next().is_none());
 
         // add next stream data
         assert!(rs
             .add(metadata.clone(), vec![value("lueA"), value(vec!["valu"])], true)
             .unwrap());
-        assert_eq!(rs.chunked_value, true);
+        assert!(rs.chunked_value);
         assert_eq!(rs.rows.len(), 3);
         assert_some_multi_column(
             rs.next(),
@@ -683,19 +684,19 @@ mod tests {
         assert!(rs
             .add(metadata.clone(), vec![value(vec!["e2-1", "value2-2"])], false)
             .unwrap());
-        assert_eq!(rs.chunked_value, false);
+        assert!(!rs.chunked_value);
         assert_eq!(rs.rows.len(), 1);
         assert!(rs.next().is_none());
 
         // add next stream data
         assert!(rs.add(metadata.clone(), vec![value("value")], true).unwrap());
-        assert_eq!(rs.chunked_value, true);
+        assert!(rs.chunked_value);
         assert_eq!(rs.rows.len(), 2);
         assert!(rs.next().is_none());
 
         // add next stream data
         assert!(rs.add(metadata, vec![value("B")], false).unwrap());
-        assert_eq!(rs.chunked_value, false);
+        assert!(!rs.chunked_value);
         assert_eq!(rs.rows.len(), 2);
         assert_some_multi_column(
             rs.next(),

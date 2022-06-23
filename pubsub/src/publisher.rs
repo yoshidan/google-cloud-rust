@@ -1,10 +1,10 @@
 use async_channel::Receiver;
-use parking_lot::Mutex;
 use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Duration;
 
 use tokio::select;
+use tokio::sync::Mutex;
 
 use google_cloud_gax::cancel::CancellationToken;
 use tokio::sync::oneshot;
@@ -106,7 +106,7 @@ impl Publisher {
         Self {
             sender,
             ordering_senders: Arc::new(ordering_senders),
-            tasks: Arc::new(Mutex::new(Tasks::new(fqtn.to_string(), pubc, receivers, config))),
+            tasks: Arc::new(Mutex::new(Tasks::new(fqtn, pubc, receivers, config))),
         }
     }
 
@@ -124,11 +124,11 @@ impl Publisher {
 
         let (producer, consumer) = oneshot::channel();
         if message.ordering_key.is_empty() {
-            self.sender.send(ReservedMessage { producer, message }).await;
+            let _ = self.sender.send(ReservedMessage { producer, message }).await;
         } else {
             let key = message.ordering_key.as_str().to_usize();
             let index = key % self.ordering_senders.len();
-            self.ordering_senders[index]
+            let _ = self.ordering_senders[index]
                 .send(ReservedMessage { producer, message })
                 .await;
         }
@@ -140,7 +140,7 @@ impl Publisher {
         for s in self.ordering_senders.iter() {
             s.close();
         }
-        self.tasks.lock().done().await;
+        self.tasks.lock().await.done().await;
     }
 }
 
@@ -244,12 +244,19 @@ impl Tasks {
         match result {
             Ok(message_ids) => {
                 for (i, p) in callback.into_iter().enumerate() {
-                    p.send(Ok(message_ids[i].to_string()));
+                    let message_id = &message_ids[i];
+                    if p.send(Ok(message_id.to_string())).is_err() {
+                        tracing::error!("failed to notify : id={message_id}");
+                    }
                 }
             }
             Err(status) => {
                 for p in callback.into_iter() {
-                    p.send(Err(Status::new(status.code().clone(), &(*status.message()).to_string())));
+                    let code = status.code();
+                    let status = Status::new(code, &(*status.message()).to_string());
+                    if p.send(Err(status)).is_err() {
+                        tracing::error!("failed to notify : status={}", code);
+                    }
                 }
             }
         };

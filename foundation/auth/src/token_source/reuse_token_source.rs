@@ -3,6 +3,7 @@ use crate::token::Token;
 use crate::token_source::TokenSource;
 use async_trait::async_trait;
 
+#[derive(Debug)]
 pub struct ReuseTokenSource {
     target: Box<dyn TokenSource>,
     current_token: std::sync::RwLock<Token>,

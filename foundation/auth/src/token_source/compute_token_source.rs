@@ -6,6 +6,8 @@ use async_trait::async_trait;
 use google_cloud_metadata::{METADATA_FLAVOR_KEY, METADATA_GOOGLE, METADATA_HOST_ENV, METADATA_IP};
 use urlencoding::encode;
 
+#[allow(dead_code)]
+#[derive(Debug)]
 pub struct ComputeTokenSource {
     token_url: String,
     client: reqwest::Client,

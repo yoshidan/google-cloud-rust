@@ -128,21 +128,21 @@ pub enum RangeKind {
 ///    use google_cloud_spanner::statement::ToKind;
 ///    KeyRange::new(
 ///     Key::composite(&[&"Bob", &"2000-01-01"]),
-///     Key::key(&"Bob"),
+///     Key::new(&"Bob"),
 ///     RangeKind::ClosedClosed
 ///    );
 ///  ```
 ///
 ///  The next example retrieves all events for "Bob":
 ///
-///     Key::key("Bob").to_prefix()
+///     Key::new("Bob").to_prefix()
 ///
 ///  To retrieve events before the year 2000:
 ///  ```
 ///    use google_cloud_spanner::key::{Key, KeyRange, RangeKind};
 ///    use google_cloud_spanner::statement::ToKind;
 ///    let range = KeyRange::new(
-///     Key::key(&"Bob"),
+///     Key::new(&"Bob"),
 ///     Key::composite(&[&"Bob", &"2000-01-01"]),
 ///     RangeKind::ClosedOpen
 ///    );
@@ -162,8 +162,8 @@ pub enum RangeKind {
 ///  ```
 ///    use google_cloud_spanner::key::{Key, KeyRange, RangeKind};
 ///    let range = KeyRange::new(
-///         Key::key(&100),
-///         Key::key(&1),
+///         Key::new(&100),
+///         Key::new(&1),
 ///    RangeKind::ClosedClosed,
 ///    );
 ///  ```
@@ -251,10 +251,10 @@ impl Key {
     /// ```
     ///    use google_cloud_spanner::key::Key;
     ///    use google_cloud_spanner::statement::ToKind;
-    ///    let key1 = Key::key(&"a");
-    ///    let key2 = Key::key(&1);
+    ///    let key1 = Key::new(&"a");
+    ///    let key2 = Key::new(&1);
     /// ```
-    pub fn key(value: &dyn ToKind) -> Key {
+    pub fn new(value: &dyn ToKind) -> Key {
         Key::composite(&[value])
     }
 
@@ -313,9 +313,9 @@ mod tests {
 
     #[test]
     fn test_key_new() {
-        let mut key = Key::key(&true);
+        let mut key = Key::new(&true);
         match key.values.values.pop().unwrap().kind.unwrap() {
-            Kind::BoolValue(s) => assert_eq!(s, true),
+            Kind::BoolValue(s) => assert!(s),
             _ => panic!("invalid kind"),
         }
     }
@@ -331,7 +331,7 @@ mod tests {
 
     #[test]
     fn test_key_one() {
-        let mut key = Key::key(&1);
+        let mut key = Key::new(&1);
         match key.values.values.pop().unwrap().kind.unwrap() {
             Kind::StringValue(s) => assert_eq!(s, "1"),
             _ => panic!("invalid kind"),
@@ -340,8 +340,8 @@ mod tests {
 
     #[test]
     fn test_key_range() {
-        let start = Key::key(&1);
-        let end = Key::key(&100);
+        let start = Key::new(&1);
+        let end = Key::new(&100);
         let range = KeyRange::new(start, end, RangeKind::ClosedClosed);
         let raw_range: v1::KeyRange = range.into();
         match raw_range.start_key_type.unwrap() {

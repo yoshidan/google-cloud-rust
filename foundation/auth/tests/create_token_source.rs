@@ -14,7 +14,7 @@ async fn test_create_token_source() -> Result<(), error::Error> {
     let ts = create_token_source(config).await?;
     let token = ts.token().await?;
     assert_eq!("Bearer", token.token_type);
-    assert_eq!(true, token.expiry.unwrap().timestamp() > 0);
+    assert!(token.expiry.unwrap().timestamp() > 0);
     Ok(())
 }
 
@@ -31,6 +31,6 @@ async fn test_create_token_source_without_aud() -> Result<(), error::Error> {
     let ts = create_token_source(config).await?;
     let token = ts.token().await?;
     assert_eq!("Bearer", token.token_type);
-    assert_eq!(true, token.expiry.unwrap().timestamp() > 0);
+    assert!(token.expiry.unwrap().timestamp() > 0);
     Ok(())
 }

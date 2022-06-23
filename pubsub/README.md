@@ -29,7 +29,10 @@ google-cloud-pubsub = <version>
  async fn main() -> Result<(), Status> {
 
      // Create pubsub client.
-     // If the environment variable PUBSUB_EMULATOR_HOST is specified, project_id will be 'local-project'.
+     // The default project is determined by credentials.
+     // - If the GOOGLE_APPLICATION_CREDENTIALS is specified the project_id is from credentials.
+     // - If the server is running on GCP the project_id is from metadata server
+     // - If the PUBSUB_EMULATOR_HOST is specified the project_id is 'local-project'
      let mut client = Client::default().await.unwrap();
 
      // Create topic.
@@ -82,8 +85,12 @@ google-cloud-pubsub = <version>
  #[tokio::main]
  async fn main() -> Result<(), Status> {
 
-     // Create pubsub client
-     let mut client = Client::new("local-project", None).await.unwrap();
+     // Create pubsub client.
+     // The default project is determined by credentials.
+     // - If the GOOGLE_APPLICATION_CREDENTIALS is specified the project_id is from credentials.
+     // - If the server is running on GCP the project_id is from metadata server
+     // - If the PUBSUB_EMULATOR_HOST is specified the project_id is 'local-project'
+     let mut client = Client::default().await.unwrap();
 
      // Get the topic to subscribe to.
      let topic = client.topic("test-topic");

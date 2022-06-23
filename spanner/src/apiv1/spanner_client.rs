@@ -76,7 +76,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Session>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let database = &req.database;
         return invoke_fn(
             cancel,
@@ -86,7 +86,7 @@ impl Client {
                 spanner_client
                     .create_session(request)
                     .await
-                    .map_err(|e| (e.into(), spanner_client))
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
         )
@@ -103,7 +103,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<BatchCreateSessionsResponse>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let database = &req.database;
         return invoke_fn(
             cancel,
@@ -113,7 +113,7 @@ impl Client {
                 spanner_client
                     .batch_create_sessions(request)
                     .await
-                    .map_err(|e| (e.into(), spanner_client))
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
         )
@@ -129,7 +129,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Session>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let name = &req.name;
         return invoke_fn(
             cancel,
@@ -139,7 +139,7 @@ impl Client {
                 spanner_client
                     .get_session(request)
                     .await
-                    .map_err(|e| (e.into(), spanner_client))
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
         )
@@ -153,7 +153,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<ListSessionsResponse>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let database = &req.database;
         return invoke_fn(
             cancel,
@@ -163,7 +163,7 @@ impl Client {
                 spanner_client
                     .list_sessions(request)
                     .await
-                    .map_err(|e| (e.into(), spanner_client))
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
         )
@@ -179,7 +179,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let name = &req.name;
         return invoke_fn(
             cancel,
@@ -189,7 +189,7 @@ impl Client {
                 spanner_client
                     .delete_session(request)
                     .await
-                    .map_err(|e| (e.into(), spanner_client))
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
         )
@@ -213,7 +213,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<ResultSet>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         return invoke_fn(
             cancel,
@@ -223,7 +223,7 @@ impl Client {
                 spanner_client
                     .execute_sql(request)
                     .await
-                    .map_err(|e| (e.into(), spanner_client))
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
         )
@@ -241,7 +241,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         return invoke_fn(
             cancel,
@@ -251,7 +251,7 @@ impl Client {
                 spanner_client
                     .execute_streaming_sql(request)
                     .await
-                    .map_err(|e| (e.into(), spanner_client))
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
         )
@@ -275,7 +275,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<ExecuteBatchDmlResponse>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         return invoke_fn(
             cancel,
@@ -322,17 +322,14 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<ResultSet>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         return invoke_fn(
             cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
-                spanner_client
-                    .read(request)
-                    .await
-                    .map_err(|e| (e.into(), spanner_client))
+                spanner_client.read(request).await.map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
         )
@@ -350,7 +347,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         return invoke_fn(
             cancel,
@@ -360,7 +357,7 @@ impl Client {
                 spanner_client
                     .streaming_read(request)
                     .await
-                    .map_err(|e| (e.into(), spanner_client))
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
         )
@@ -377,7 +374,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Transaction>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         return invoke_fn(
             cancel,
@@ -387,7 +384,7 @@ impl Client {
                 spanner_client
                     .begin_transaction(request)
                     .await
-                    .map_err(|e| (e.into(), spanner_client))
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
         )
@@ -414,17 +411,14 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<CommitResponse>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         return invoke_fn(
             cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
-                spanner_client
-                    .commit(request)
-                    .await
-                    .map_err(|e| (e.into(), spanner_client))
+                spanner_client.commit(request).await.map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
         )
@@ -445,17 +439,14 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         return invoke_fn(
             cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={}", session), req.clone());
-                spanner_client
-                    .rollback(request)
-                    .await
-                    .map_err(|e| (e.into(), spanner_client))
+                spanner_client.rollback(request).await.map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
         )
@@ -479,7 +470,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<PartitionResponse>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         return invoke_fn(
             cancel,
@@ -489,7 +480,7 @@ impl Client {
                 spanner_client
                     .partition_query(request)
                     .await
-                    .map_err(|e| (e.into(), spanner_client))
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
         )
@@ -515,7 +506,7 @@ impl Client {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<PartitionResponse>, Status> {
-        let setting = retry.unwrap_or(default_setting());
+        let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         return invoke_fn(
             cancel,
@@ -525,7 +516,7 @@ impl Client {
                 spanner_client
                     .partition_read(request)
                     .await
-                    .map_err(|e| (e.into(), spanner_client))
+                    .map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
         )

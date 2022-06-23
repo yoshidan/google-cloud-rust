@@ -13,12 +13,12 @@ use tokio_retry::Action;
 use tokio_retry::RetryIf;
 
 pub trait TryAs<T> {
-    fn try_as(&self) -> Result<&T, ()>;
+    fn try_as(&self) -> Option<&T>;
 }
 
 impl TryAs<Status> for Status {
-    fn try_as(&self) -> Result<&Status, ()> {
-        Ok(self)
+    fn try_as(&self) -> Option<&Status> {
+        Some(self)
     }
 }
 
@@ -42,16 +42,14 @@ where
     E: TryAs<Status>,
 {
     fn should_retry(&mut self, error: &E) -> bool {
-        let status = match error.try_as() {
-            Ok(s) => s,
-            Err(_e) => return false,
-        };
-        for code in &self.codes {
-            if *code == status.code() {
-                return true;
+        if let Some(status) = error.try_as() {
+            for code in &self.codes {
+                if *code == status.code() {
+                    return true;
+                }
             }
         }
-        return false;
+        false
     }
 }
 
@@ -70,7 +68,7 @@ impl Retry<Status, CodeCondition> for RetrySetting {
         if let Some(max_delay) = self.max_delay {
             st = st.max_delay(max_delay);
         }
-        return st.take(self.take);
+        st.take(self.take)
     }
 
     fn condition(&self) -> CodeCondition {

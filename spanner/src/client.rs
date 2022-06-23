@@ -17,19 +17,10 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct PartitionedUpdateOption {
     pub begin_options: CallOptions,
     pub query_options: Option<QueryOptions>,
-}
-
-impl Default for PartitionedUpdateOption {
-    fn default() -> Self {
-        PartitionedUpdateOption {
-            begin_options: CallOptions::default(),
-            query_options: None,
-        }
-    }
 }
 
 #[derive(Clone)]
@@ -47,19 +38,10 @@ impl Default for ReadOnlyTransactionOption {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct ReadWriteTransactionOption {
     pub begin_options: CallOptions,
     pub commit_options: CommitOptions,
-}
-
-impl Default for ReadWriteTransactionOption {
-    fn default() -> Self {
-        ReadWriteTransactionOption {
-            begin_options: CallOptions::default(),
-            commit_options: CommitOptions::default(),
-        }
-    }
 }
 
 pub struct ChannelConfig {
@@ -118,10 +100,10 @@ pub enum TxError {
 }
 
 impl TryAs<Status> for TxError {
-    fn try_as(&self) -> Result<&Status, ()> {
+    fn try_as(&self) -> Option<&Status> {
         match self {
-            TxError::GRPC(s) => Ok(s),
-            _ => Err(()),
+            TxError::GRPC(s) => Some(s),
+            _ => None,
         }
     }
 }
@@ -142,10 +124,10 @@ pub enum RunInTxError {
 }
 
 impl TryAs<Status> for RunInTxError {
-    fn try_as(&self) -> Result<&Status, ()> {
+    fn try_as(&self) -> Option<&Status> {
         match self {
-            RunInTxError::GRPC(e) => Ok(e),
-            _ => Err(()),
+            RunInTxError::GRPC(e) => Some(e),
+            _ => None,
         }
     }
 }
@@ -353,10 +335,7 @@ impl Client {
                     mode: Some(transaction_options::Mode::ReadWrite(transaction_options::ReadWrite {})),
                 });
                 match commit(session, ms.clone(), tx, options.clone()).await {
-                    Ok(s) => Ok(match s.commit_timestamp {
-                        Some(s) => Some(s.into()),
-                        None => None,
-                    }),
+                    Ok(s) => Ok(s.commit_timestamp.map(|s| s.into())),
                     Err(e) => Err((TxError::GRPC(e), session)),
                 }
             },

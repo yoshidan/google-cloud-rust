@@ -106,14 +106,14 @@ impl Subscriber {
                         break;
                     }
                     _ = sleep(config.ping_interval) => {
-                        ping_sender.send(true).await;
+                        let _ = ping_sender.send(true).await;
                     }
                 }
             }
             tracing::trace!("stop pinger : {}", subscription_clone);
         });
 
-        let cancel_receiver = ctx.clone();
+        let cancel_receiver = ctx;
         let inner = tokio::spawn(async move {
             tracing::trace!("start subscriber: {}", subscription);
             let retryable_codes = match &config.retry_setting {
@@ -142,14 +142,12 @@ impl Subscriber {
                         if e.code() == Code::Cancelled {
                             tracing::trace!("stop subscriber : {}", subscription);
                             break;
+                        } else if retryable_codes.contains(&e.code()) {
+                            tracing::warn!("failed to start streaming: will reconnect {:?} : {}", e, subscription);
+                            continue;
                         } else {
-                            if retryable_codes.contains(&e.code()) {
-                                tracing::warn!("failed to start streaming: will reconnect {:?} : {}", e, subscription);
-                                continue;
-                            } else {
-                                tracing::error!("failed to start streaming: will stop {:?} : {}", e, subscription);
-                                break;
-                            }
+                            tracing::error!("failed to start streaming: will stop {:?} : {}", e, subscription);
+                            break;
                         }
                     }
                 };
@@ -177,10 +175,10 @@ impl Subscriber {
             // streaming request is closed when the ping_sender closed.
             tracing::trace!("stop subscriber in streaming: {}", subscription);
         });
-        return Self {
+        Self {
             pinger: Some(pinger),
             inner: Some(inner),
-        };
+        }
     }
 
     async fn recv(
@@ -198,18 +196,18 @@ impl Subscriber {
                     return Ok(());
                 }
                 maybe = stream.message() => {
-                    let message = match maybe{
-                       Err(e) => return Err(e),
-                       Ok(message) => message
-                    };
+                    let message = maybe?;
                     let message = match message {
                         Some(m) => m,
                         None => return Ok(())
                     };
                     for m in message.received_messages {
                         if let Some(mes) = m.message {
-                            tracing::debug!("message received: {}", mes.message_id);
-                            queue.send(ReceivedMessage::new(subscription.to_string(), client.clone(), mes, m.ack_id)).await;
+                            let id = mes.message_id.clone();
+                            tracing::debug!("message received: {id}");
+                            if queue.send(ReceivedMessage::new(subscription.to_string(), client.clone(), mes, m.ack_id)).await.is_err() {
+                                tracing::error!("failed to receive message {id}");
+                            }
                         }
                     }
                 }
@@ -219,10 +217,10 @@ impl Subscriber {
 
     pub async fn done(&mut self) {
         if let Some(v) = self.pinger.take() {
-            v.await;
+            let _ = v.await;
         }
         if let Some(v) = self.inner.take() {
-            v.await;
+            let _ = v.await;
         }
     }
 }

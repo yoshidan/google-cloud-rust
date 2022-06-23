@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-pubsub"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/pubsub"
@@ -8,7 +8,7 @@ keywords = ["gcp","pubsub","googleapis","google-cloud-rust"]
 license = "MIT"
 readme = "README.md"
 description = "Google Cloud Platform pubsub client library."
-documentation = "https://docs.rs/google-cloud-pubsub/0.2.0/google-cloud-pubsub/"
+documentation = "https://docs.rs/google-cloud-pubsub/latest/google_cloud_pubsub/"
 
 [dependencies]
 tracing = "0.1"
@@ -20,8 +20,8 @@ async-channel = "1.6"
 async-stream = "0.3"
 thiserror = "1.0"
 
-google-cloud-auth = { version = "0.2.0", path = "../foundation/auth" }
-google-cloud-gax = { version = "0.5.0", path = "../foundation/gax" }
+google-cloud-auth = { version = "0.3.0", path = "../foundation/auth" }
+google-cloud-gax = { version = "0.6.0", path = "../foundation/gax" }
 google-cloud-googleapis = { version = "0.4.0", path = "../googleapis", features = ["pubsub"]}
 
 [dev-dependencies]

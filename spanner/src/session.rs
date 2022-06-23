@@ -193,7 +193,7 @@ impl SessionPool {
             self.waiters.lock().push_back(sender);
         }
         let _ = self.allocation_request_sender.send(true);
-        return receiver;
+        receiver
     }
 
     fn num_opened(&self) -> usize {
@@ -224,7 +224,7 @@ impl SessionPool {
 
     fn recycle(&self, session: SessionHandle) {
         if session.valid {
-            tracing::trace!("recycled name={}", session.session.name.to_string());
+            tracing::trace!("recycled name={}", session.session.name);
             match { self.waiters.lock().pop_front() } {
                 Some(c) => {
                     if let Err(session) = c.send(session) {
@@ -388,11 +388,16 @@ impl SessionManager {
         for task in &self.tasks {
             task.abort();
         }
-        let mut sessions = self.session_pool.inner.lock();
-        while let Some(mut session) = sessions.take() {
+        let deleting_sessions = {
+            let mut lock = self.session_pool.inner.lock();
+            let mut deleting_sessions = Vec::with_capacity(lock.sessions.len());
+            while let Some(session) = lock.sessions.pop_front() {
+                deleting_sessions.push(session);
+            }
+            deleting_sessions
+        };
+        for mut session in deleting_sessions {
             delete_session(&mut session).await;
-            session.valid = false;
-            sessions.release(session);
         }
     }
 }
@@ -666,10 +671,12 @@ mod tests {
             .await
             .unwrap();
         let idle_timeout = Duration::from_secs(100);
-        let mut config = SessionConfig::default();
-        config.min_opened = 5;
-        config.idle_timeout = idle_timeout;
-        config.max_opened = 5;
+        let config = SessionConfig {
+            min_opened: 5,
+            idle_timeout,
+            max_opened: 5,
+            ..Default::default()
+        };
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
         sleep(Duration::from_secs(1)).await;
 
@@ -687,10 +694,12 @@ mod tests {
             .await
             .unwrap();
         let idle_timeout = Duration::from_millis(1);
-        let mut config = SessionConfig::default();
-        config.min_opened = 5;
-        config.idle_timeout = idle_timeout;
-        config.max_opened = 5;
+        let config = SessionConfig {
+            min_opened: 5,
+            idle_timeout,
+            max_opened: 5,
+            ..Default::default()
+        };
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
         sleep(Duration::from_secs(1)).await;
         let cancel = CancellationToken::new();
@@ -710,10 +719,12 @@ mod tests {
             .await
             .unwrap();
         let session_alive_trust_duration = Duration::from_millis(10);
-        let mut config = SessionConfig::default();
-        config.min_opened = 5;
-        config.session_alive_trust_duration = session_alive_trust_duration;
-        config.max_opened = 5;
+        let config = SessionConfig {
+            min_opened: 5,
+            session_alive_trust_duration,
+            max_opened: 5,
+            ..Default::default()
+        };
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
         sleep(Duration::from_secs(1)).await;
 
@@ -732,10 +743,12 @@ mod tests {
             .await
             .unwrap();
         let session_alive_trust_duration = Duration::from_secs(10);
-        let mut config = SessionConfig::default();
-        config.min_opened = 5;
-        config.session_alive_trust_duration = session_alive_trust_duration;
-        config.max_opened = 5;
+        let config = SessionConfig {
+            min_opened: 5,
+            session_alive_trust_duration,
+            max_opened: 5,
+            ..Default::default()
+        };
         let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
         sleep(Duration::from_secs(1)).await;
 
@@ -753,13 +766,15 @@ mod tests {
         let conn_pool = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()))
             .await
             .unwrap();
-        let mut config = SessionConfig::default();
-        config.idle_timeout = Duration::from_millis(10);
-        config.session_alive_trust_duration = Duration::from_millis(10);
-        config.refresh_interval = Duration::from_millis(250);
-        config.min_opened = 10;
-        config.max_idle = 20;
-        config.max_opened = 45;
+        let config = SessionConfig {
+            idle_timeout: Duration::from_millis(10),
+            session_alive_trust_duration: Duration::from_millis(10),
+            refresh_interval: Duration::from_millis(250),
+            min_opened: 10,
+            max_idle: 20,
+            max_opened: 45,
+            ..Default::default()
+        };
         let sm = SessionManager::new(DATABASE, conn_pool, config).await.unwrap();
         {
             let mut sessions = Vec::new();
@@ -791,50 +806,58 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_rush_invalidate() {
-        let mut config = SessionConfig::default();
-        config.session_get_timeout = Duration::from_secs(20);
-        config.min_opened = 10;
-        config.max_idle = 20;
-        config.max_opened = 45;
+        let config = SessionConfig {
+            session_get_timeout: Duration::from_secs(20),
+            min_opened: 10,
+            max_idle: 20,
+            max_opened: 45,
+            ..Default::default()
+        };
         assert_rush(true, config).await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_rush_invalidate_with_cleanup() {
-        let mut config = SessionConfig::default();
-        config.idle_timeout = Duration::from_millis(10);
-        config.session_alive_trust_duration = Duration::from_millis(10);
-        config.refresh_interval = Duration::from_millis(250);
-        config.session_get_timeout = Duration::from_secs(20);
-        config.min_opened = 10;
-        config.max_idle = 20;
-        config.max_opened = 45;
+        let config = SessionConfig {
+            idle_timeout: Duration::from_millis(10),
+            session_alive_trust_duration: Duration::from_millis(10),
+            refresh_interval: Duration::from_millis(250),
+            session_get_timeout: Duration::from_secs(20),
+            min_opened: 10,
+            max_idle: 20,
+            max_opened: 45,
+            ..Default::default()
+        };
         assert_rush(true, config).await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_rush() {
-        let mut config = SessionConfig::default();
-        config.session_get_timeout = Duration::from_secs(20);
-        config.min_opened = 10;
-        config.max_idle = 20;
-        config.max_opened = 45;
+        let config = SessionConfig {
+            session_get_timeout: Duration::from_secs(20),
+            min_opened: 10,
+            max_idle: 20,
+            max_opened: 45,
+            ..Default::default()
+        };
         assert_rush(false, config).await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_rush_with_cleanup() {
-        let mut config = SessionConfig::default();
-        config.idle_timeout = Duration::from_millis(10);
-        config.session_alive_trust_duration = Duration::from_millis(10);
-        config.refresh_interval = Duration::from_millis(250);
-        config.session_get_timeout = Duration::from_secs(20);
-        config.min_opened = 10;
-        config.max_idle = 20;
-        config.max_opened = 45;
+        let config = SessionConfig {
+            idle_timeout: Duration::from_millis(10),
+            session_alive_trust_duration: Duration::from_millis(10),
+            refresh_interval: Duration::from_millis(250),
+            session_get_timeout: Duration::from_secs(20),
+            min_opened: 10,
+            max_idle: 20,
+            max_opened: 45,
+            ..Default::default()
+        };
         assert_rush(false, config).await;
     }
 

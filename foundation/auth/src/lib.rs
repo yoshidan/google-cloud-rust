@@ -37,7 +37,7 @@ pub struct ProjectInfo {
 }
 
 pub enum Project {
-    FromFile(CredentialsFile),
+    FromFile(Box<CredentialsFile>),
     FromMetadataServer(ProjectInfo),
 }
 
@@ -54,7 +54,7 @@ impl Project {
 pub async fn project() -> Result<Project, error::Error> {
     let credentials = credentials::CredentialsFile::new().await;
     match credentials {
-        Ok(credentials) => Ok(Project::FromFile(credentials)),
+        Ok(credentials) => Ok(Project::FromFile(Box::new(credentials))),
         Err(e) => {
             if on_gce().await {
                 let project_id = google_cloud_metadata::project_id().await;
@@ -117,7 +117,7 @@ fn credentials_from_json_with_params(
                 }
             }
         }
-        USER_CREDENTIALS_KEY => Ok(Box::new(UserAccountTokenSource::new(&credentials)?)),
+        USER_CREDENTIALS_KEY => Ok(Box::new(UserAccountTokenSource::new(credentials)?)),
         //TODO support GDC https://console.developers.google.com,
         //TODO support external account
         _ => Err(error::Error::UnsupportedAccountType(credentials.tp.to_string())),

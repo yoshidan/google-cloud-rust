@@ -66,14 +66,13 @@ impl Client {
         let subc = SubscriberClient::new(ConnectionManager::new(pool_size, &environment).await?);
 
         let project_id = match config.project_id {
-            Some(project_id) => project_id.to_string(),
+            Some(project_id) => project_id,
             None => match environment {
                 Environment::GoogleCloud(project) => project.project_id().ok_or(Error::ProjectIdNotFound)?.to_string(),
                 Environment::Emulator(_) => "local-project".to_string(),
-                _ => return Err(Error::ProjectIdNotFound),
             },
         };
-        return Ok(Self { project_id, pubc, subc });
+        Ok(Self { project_id, pubc, subc })
     }
 
     /// create_subscription creates a new subscription on a topic.
@@ -123,7 +122,7 @@ impl Client {
         };
         self.subc.list_subscriptions(req, cancel, retry).await.map(|v| {
             v.into_iter()
-                .map(|x| Subscription::new(x.name.to_string(), self.subc.clone()))
+                .map(|x| Subscription::new(x.name, self.subc.clone()))
                 .collect()
         })
     }
@@ -193,11 +192,7 @@ impl Client {
     ///
     /// Avoid creating many Topic instances if you use them to publish.
     pub fn topic(&self, id: &str) -> Topic {
-        Topic::new(
-            self.fully_qualified_topic_name(id).to_string(),
-            self.pubc.clone(),
-            self.subc.clone(),
-        )
+        Topic::new(self.fully_qualified_topic_name(id), self.pubc.clone(), self.subc.clone())
     }
 
     pub fn fully_qualified_topic_name(&self, id: &str) -> String {
@@ -230,18 +225,19 @@ mod tests {
 
     #[ctor::ctor]
     fn init() {
-        tracing_subscriber::fmt().try_init();
+        let _ = tracing_subscriber::fmt().try_init();
     }
 
     fn create_message(data: &[u8], ordering_key: &str) -> PubsubMessage {
-        let mut msg = PubsubMessage::default();
-        msg.data = data.to_vec();
-        msg.ordering_key = ordering_key.to_string();
-        return msg;
+        PubsubMessage {
+            data: data.to_vec(),
+            ordering_key: ordering_key.to_string(),
+            ..Default::default()
+        }
     }
 
     async fn create_client() -> Client {
-        std::env::set_var("PUBSUB_EMULATOR_HOST", "localhost:8681".to_string());
+        std::env::set_var("PUBSUB_EMULATOR_HOST", "localhost:8681");
         Client::default().await.unwrap()
     }
 
@@ -259,8 +255,10 @@ mod tests {
             .await
             .unwrap();
         let publisher = topic.new_publisher(None);
-        let mut config = SubscriptionConfig::default();
-        config.enable_message_ordering = !ordering_key.is_empty();
+        let config = SubscriptionConfig {
+            enable_message_ordering: !ordering_key.is_empty(),
+            ..Default::default()
+        };
         let subscription = client
             .create_subscription(subscription_id.as_str(), topic_id.as_str(), config, ctx.clone(), None)
             .await
@@ -268,15 +266,17 @@ mod tests {
 
         let cancellation_token = CancellationToken::new();
         //subscribe
-        let mut config = ReceiveConfig {
+        let config = ReceiveConfig {
             worker_count: 2,
-            subscriber_config: SubscriberConfig::default(),
+            subscriber_config: SubscriberConfig {
+                ping_interval: Duration::from_secs(1),
+                ..Default::default()
+            },
         };
         let cancel_receiver = cancellation_token.clone();
-        config.subscriber_config.ping_interval = Duration::from_secs(1);
         let (s, mut r) = tokio::sync::mpsc::channel(100);
         let handle = tokio::spawn(async move {
-            subscription
+            let _ = subscription
                 .receive(
                     move |v, _ctx| {
                         let s2 = s.clone();
@@ -289,7 +289,7 @@ mod tests {
                                 v.message.message_id,
                                 data
                             );
-                            s2.send(data).await;
+                            let _ = s2.send(data).await;
                         }
                     },
                     cancel_receiver,

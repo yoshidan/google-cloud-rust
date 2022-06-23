@@ -163,7 +163,7 @@ impl TryFromValue for DateTime<Utc> {
         match as_ref(item, field)? {
             Kind::StringValue(s) => {
                 let fixed =
-                    DateTime::parse_from_rfc3339(&s).map_err(|e| Error::DateParseError(field.name.to_string(), e))?;
+                    DateTime::parse_from_rfc3339(s).map_err(|e| Error::DateParseError(field.name.to_string(), e))?;
                 Ok(DateTime::<Utc>::from(fixed))
             }
             v => kind_to_error(v, field),
@@ -183,7 +183,7 @@ impl TryFromValue for NaiveDate {
     fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
             Kind::StringValue(s) => {
-                NaiveDate::parse_from_str(&s, "%Y-%m-%d").map_err(|e| Error::DateParseError(field.name.to_string(), e))
+                NaiveDate::parse_from_str(s, "%Y-%m-%d").map_err(|e| Error::DateParseError(field.name.to_string(), e))
             }
             v => kind_to_error(v, field),
         }
@@ -302,7 +302,7 @@ fn kind_to_error<'a, T>(v: &'a value::Kind, field: &'a Field) -> Result<T, Error
         Kind::StructValue(_s) => "StructValue".to_string(),
         _ => "unknown".to_string(),
     };
-    return Err(Error::KindMismatch(field.name.to_string(), actual));
+    Err(Error::KindMismatch(field.name.to_string(), actual))
 }
 
 #[cfg(test)]

@@ -54,6 +54,7 @@ impl TryFromStruct for UserItem {
     }
 }
 
+#[allow(dead_code)]
 pub fn user_columns() -> Vec<&'static str> {
     vec![
         "UserId",
@@ -78,6 +79,7 @@ pub fn user_columns() -> Vec<&'static str> {
     ]
 }
 
+#[allow(dead_code)]
 pub async fn create_session() -> ManagedSession {
     let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()))
         .await
@@ -93,6 +95,7 @@ pub async fn create_session() -> ManagedSession {
         .unwrap()
 }
 
+#[allow(dead_code)]
 pub async fn replace_test_data(
     session: &mut SessionHandle,
     mutations: Vec<Mutation>,
@@ -116,6 +119,7 @@ pub async fn replace_test_data(
         .map(|x| x.into_inner())
 }
 
+#[allow(dead_code)]
 pub fn create_user_mutation(user_id: &str, now: &DateTime<Utc>) -> Mutation {
     insert_or_update(
         "User",
@@ -144,6 +148,7 @@ pub fn create_user_mutation(user_id: &str, now: &DateTime<Utc>) -> Mutation {
     )
 }
 
+#[allow(dead_code)]
 pub fn create_user_item_mutation(user_id: &str, item_id: i64) -> Mutation {
     insert_or_update(
         "UserItem",
@@ -152,6 +157,7 @@ pub fn create_user_item_mutation(user_id: &str, item_id: i64) -> Mutation {
     )
 }
 
+#[allow(dead_code)]
 pub fn create_user_character_mutation(user_id: &str, character_id: i64) -> Mutation {
     insert_or_update(
         "UserCharacter",
@@ -160,6 +166,7 @@ pub fn create_user_character_mutation(user_id: &str, character_id: i64) -> Mutat
     )
 }
 
+#[allow(dead_code)]
 pub fn assert_user_row(row: &Row, source_user_id: &str, now: &DateTime<Utc>, commit_timestamp: &DateTime<Utc>) {
     let user_id = row.column_by_name::<String>("UserId").unwrap();
     assert_eq!(user_id, source_user_id);
@@ -172,7 +179,7 @@ pub fn assert_user_row(row: &Row, source_user_id: &str, now: &DateTime<Utc>, com
     let nullable_float64 = row.column_by_name::<Option<f64>>("NullableFloat64").unwrap();
     assert_eq!(nullable_float64, None);
     let not_null_bool = row.column_by_name::<bool>("NotNullBool").unwrap();
-    assert_eq!(not_null_bool, true);
+    assert!(not_null_bool);
     let nullable_bool = row.column_by_name::<Option<bool>>("NullableBool").unwrap();
     assert_eq!(nullable_bool, None);
     let mut not_null_byte_array = row.column_by_name::<Vec<u8>>("NotNullByteArray").unwrap();
@@ -209,6 +216,7 @@ pub fn assert_user_row(row: &Row, source_user_id: &str, now: &DateTime<Utc>, com
     );
 }
 
+#[allow(dead_code)]
 pub async fn read_only_transaction(session: ManagedSession) -> ReadOnlyTransaction {
     match ReadOnlyTransaction::begin(session, TimestampBound::strong_read(), CallOptions::default()).await {
         Ok(tx) => tx,
@@ -216,6 +224,7 @@ pub async fn read_only_transaction(session: ManagedSession) -> ReadOnlyTransacti
     }
 }
 
+#[allow(dead_code)]
 pub async fn all_rows(mut itr: RowIterator<'_>) -> Vec<Row> {
     let mut rows = vec![];
     loop {
@@ -233,6 +242,7 @@ pub async fn all_rows(mut itr: RowIterator<'_>) -> Vec<Row> {
     rows
 }
 
+#[allow(dead_code)]
 pub async fn assert_partitioned_query(
     tx: &mut BatchReadOnlyTransaction,
     user_id: &str,
@@ -246,6 +256,7 @@ pub async fn assert_partitioned_query(
     assert_user_row(row.first().unwrap(), user_id, now, cts);
 }
 
+#[allow(dead_code)]
 pub async fn execute_partitioned_query(tx: &mut BatchReadOnlyTransaction, stmt: Statement) -> Vec<Row> {
     let partitions = match tx.partition_query(stmt).await {
         Ok(tx) => tx,
@@ -266,6 +277,7 @@ pub async fn execute_partitioned_query(tx: &mut BatchReadOnlyTransaction, stmt: 
     rows
 }
 
+#[allow(dead_code)]
 pub async fn assert_partitioned_read(
     tx: &mut BatchReadOnlyTransaction,
     user_id: &str,
@@ -273,7 +285,7 @@ pub async fn assert_partitioned_read(
     cts: &DateTime<Utc>,
 ) {
     let partitions = match tx
-        .partition_read("User", &user_columns(), vec![Key::key(&user_id)])
+        .partition_read("User", &user_columns(), vec![Key::new(&user_id)])
         .await
     {
         Ok(tx) => tx,

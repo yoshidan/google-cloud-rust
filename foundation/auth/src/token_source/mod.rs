@@ -7,19 +7,12 @@ use crate::error::Error;
 use crate::token::Token;
 use async_trait::async_trait;
 use serde::Deserialize;
-use std::fmt::{Debug, Formatter};
+use std::fmt::Debug;
 use std::time::Duration;
 
 #[async_trait]
-pub trait TokenSource: Send + Sync {
+pub trait TokenSource: Send + Sync + Debug {
     async fn token(&self) -> Result<Token, Error>;
-}
-
-impl Debug for dyn TokenSource {
-    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        let token_source_string = format!("{:?}", self);
-        write!(f, "{}", token_source_string.as_str())
-    }
 }
 
 fn default_http_client() -> reqwest::Client {
@@ -29,6 +22,7 @@ fn default_http_client() -> reqwest::Client {
         .unwrap()
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Deserialize)]
 struct InternalToken {
     pub access_token: String,
@@ -75,7 +69,7 @@ mod tests {
         let ts = UserAccountTokenSource::new(&credentials)?;
         let token = ts.token().await?;
         assert_eq!("Bearer", token.token_type);
-        assert_eq!(true, token.expiry.unwrap().timestamp() > 0);
+        assert!(token.expiry.unwrap().timestamp() > 0);
         Ok(())
     }
 
@@ -84,7 +78,7 @@ mod tests {
     async fn test_compute_token_source() -> Result<(), Error> {
         let scope = "https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/spanner.data";
         let ts = ComputeTokenSource::new(scope);
-        assert_eq!(true, ts.is_ok());
+        assert!(ts.is_ok());
         Ok(())
     }
 
@@ -94,7 +88,7 @@ mod tests {
         let audience = "https://spanner.googleapis.com/";
         let ts = ServiceAccountTokenSource::new(&credentials, audience)?;
         let token = ts.token().await?;
-        assert_eq!(true, token.expiry.unwrap().timestamp() > 0);
+        assert!(token.expiry.unwrap().timestamp() > 0);
         let old_token_value = token.access_token.clone();
         let rts = ReuseTokenSource::new(Box::new(ts), token);
         let new_token = rts.token().await?;
@@ -109,7 +103,7 @@ mod tests {
         let ts = ServiceAccountTokenSource::new(&credentials, audience)?;
         let token = ts.token().await?;
         assert_eq!("Bearer", token.token_type);
-        assert_eq!(true, token.expiry.unwrap().timestamp() > 0);
+        assert!(token.expiry.unwrap().timestamp() > 0);
         Ok(())
     }
 
@@ -120,7 +114,7 @@ mod tests {
         let ts = OAuth2ServiceAccountTokenSource::new(&credentials, scope)?;
         let token = ts.token().await?;
         assert_eq!("Bearer", token.token_type);
-        assert_eq!(true, token.expiry.unwrap().timestamp() > 0);
+        assert!(token.expiry.unwrap().timestamp() > 0);
         Ok(())
     }
 }

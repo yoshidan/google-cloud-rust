@@ -30,7 +30,7 @@ mod tests {
             Err(err) => panic!("err: {:?}", err),
         };
         match creation_result {
-            Ok(res) => return res.unwrap(),
+            Ok(res) => res.unwrap(),
             Err(err) => panic!("err: {:?}", err),
         }
     }
@@ -47,7 +47,7 @@ mod tests {
     async fn test_get_database() {
         std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
         let client = DatabaseAdminClient::default().await.unwrap();
-        let name = format!("projects/local-project/instances/test-instance/databases/local-database");
+        let name = "projects/local-project/instances/test-instance/databases/local-database".to_string();
         let request = GetDatabaseRequest { name: name.clone() };
 
         match client.get_database(request, None, None).await {
@@ -67,10 +67,7 @@ mod tests {
         let request = DropDatabaseRequest {
             database: database.name.to_string(),
         };
-        match client.drop_database(request, None, None).await {
-            Ok(_res) => assert!(true),
-            Err(err) => panic!("err: {:?}", err),
-        };
+        let _ = client.drop_database(request, None, None).await.unwrap();
     }
 
     #[tokio::test]
@@ -87,7 +84,7 @@ mod tests {
         match client.list_databases(request, None, None).await {
             Ok(res) => {
                 println!("size = {}", res.len());
-                assert!(res.len() > 0);
+                assert!(!res.is_empty());
             }
             Err(err) => panic!("err: {:?}", err),
         };
@@ -127,9 +124,6 @@ mod tests {
             Ok(mut res) => res.wait(None, None).await,
             Err(err) => panic!("err: {:?}", err),
         };
-        match update_result {
-            Ok(_) => assert!(true),
-            Err(err) => panic!("err: {:?}", err),
-        }
+        let _ = update_result.unwrap();
     }
 }

@@ -11,5 +11,5 @@ pub fn default_retry_setting() -> RetrySetting {
     setting.codes.push(Code::DeadlineExceeded);
     setting.codes.push(Code::Internal);
     setting.codes.push(Code::ResourceExhausted);
-    return setting;
+    setting
 }

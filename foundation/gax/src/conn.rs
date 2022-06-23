@@ -82,9 +82,9 @@ impl ConnectionManager {
     ) -> Result<Self, Error> {
         let conns = match environment {
             Environment::GoogleCloud(project) => {
-                Self::create_connections(pool_size, domain_name, audience, scopes, &project).await?
+                Self::create_connections(pool_size, domain_name, audience, scopes, project).await?
             }
-            Environment::Emulator(host) => Self::create_emulator_connections(&host).await?,
+            Environment::Emulator(host) => Self::create_emulator_connections(host).await?,
         };
         Ok(Self {
             index: AtomicI64::new(0),
@@ -112,7 +112,7 @@ impl ConnectionManager {
             },
         )
         .await
-        .map(|e| Arc::from(e))?;
+        .map(Arc::from)?;
 
         for _i_ in 0..pool_size {
             let endpoint = TonicChannel::from_static(audience).tls_config(tls_config.clone())?;

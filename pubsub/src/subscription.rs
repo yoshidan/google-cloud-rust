@@ -33,30 +33,31 @@ pub struct SubscriptionConfig {
     pub enable_exactly_once_delivery: bool,
 }
 
-impl Into<SubscriptionConfig> for InternalSubscription {
-    fn into(self) -> SubscriptionConfig {
-        SubscriptionConfig {
-            push_config: self.push_config,
-            ack_deadline_seconds: self.ack_deadline_seconds,
-            retain_acked_messages: self.retain_acked_messages,
-            message_retention_duration: self
+impl From<InternalSubscription> for SubscriptionConfig {
+    fn from(f: InternalSubscription) -> Self {
+        Self {
+            push_config: f.push_config,
+            ack_deadline_seconds: f.ack_deadline_seconds,
+            retain_acked_messages: f.retain_acked_messages,
+            message_retention_duration: f
                 .message_retention_duration
                 .map(|v| std::time::Duration::new(v.seconds as u64, v.nanos as u32)),
-            labels: self.labels,
-            enable_message_ordering: self.enable_message_ordering,
-            expiration_policy: self.expiration_policy,
-            filter: self.filter,
-            dead_letter_policy: self.dead_letter_policy,
-            retry_policy: self.retry_policy,
-            detached: self.detached,
-            topic_message_retention_duration: self
+            labels: f.labels,
+            enable_message_ordering: f.enable_message_ordering,
+            expiration_policy: f.expiration_policy,
+            filter: f.filter,
+            dead_letter_policy: f.dead_letter_policy,
+            retry_policy: f.retry_policy,
+            detached: f.detached,
+            topic_message_retention_duration: f
                 .topic_message_retention_duration
                 .map(|v| std::time::Duration::new(v.seconds as u64, v.nanos as u32)),
-            enable_exactly_once_delivery: self.enable_exactly_once_delivery,
+            enable_exactly_once_delivery: f.enable_exactly_once_delivery,
         }
     }
 }
 
+#[derive(Default)]
 pub struct SubscriptionConfigToUpdate {
     pub push_config: Option<PushConfig>,
     pub ack_deadline_seconds: Option<i32>,
@@ -66,21 +67,6 @@ pub struct SubscriptionConfigToUpdate {
     pub expiration_policy: Option<ExpirationPolicy>,
     pub dead_letter_policy: Option<DeadLetterPolicy>,
     pub retry_policy: Option<RetryPolicy>,
-}
-
-impl Default for SubscriptionConfigToUpdate {
-    fn default() -> Self {
-        Self {
-            push_config: None,
-            ack_deadline_seconds: None,
-            retain_acked_messages: None,
-            message_retention_duration: None,
-            labels: None,
-            expiration_policy: None,
-            dead_letter_policy: None,
-            retry_policy: None,
-        }
-    }
 }
 
 pub struct ReceiveConfig {
@@ -229,9 +215,7 @@ impl Subscription {
             paths.push("retain_acked_messages".to_string());
         }
         if updating.message_retention_duration.is_some() {
-            let v = updating
-                .message_retention_duration
-                .map(|v| prost_types::Duration::from(v));
+            let v = updating.message_retention_duration.map(prost_types::Duration::from);
             config.message_retention_duration = v;
             paths.push("message_retention_duration".to_string());
         }
@@ -249,7 +233,7 @@ impl Subscription {
         }
 
         let update_req = UpdateSubscriptionRequest {
-            subscription: Some(config.into()),
+            subscription: Some(config),
             update_mask: Some(FieldMask { paths }),
         };
         self.subc.update_subscription(update_req, cancel, retry).await.map(|v| {
@@ -266,6 +250,7 @@ impl Subscription {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Vec<ReceivedMessage>, Status> {
+        #[allow(deprecated)]
         let req = PullRequest {
             subscription: self.fqsn.clone(),
             return_immediately: false,
@@ -354,7 +339,7 @@ impl Subscription {
             subscriber.done().await;
         }
         for mr in message_receivers {
-            mr.await;
+            let _ = mr.await;
         }
         Ok(())
     }
@@ -383,7 +368,7 @@ mod tests {
 
     #[ctor::ctor]
     fn init() {
-        tracing_subscriber::fmt().try_init();
+        let _ = tracing_subscriber::fmt().try_init();
     }
 
     async fn create_subscription(enable_exactly_once_delivery: bool) -> Result<Subscription, anyhow::Error> {
@@ -404,7 +389,7 @@ mod tests {
                 .create(topic_name.as_str(), config, Some(cancel), None)
                 .await?;
         }
-        return Ok(subscription);
+        Ok(subscription)
     }
 
     async fn publish() {
@@ -413,13 +398,15 @@ mod tests {
                 .await
                 .unwrap(),
         );
-        let mut msg = PubsubMessage::default();
-        msg.data = "test_message".into();
+        let msg = PubsubMessage {
+            data: "test_message".into(),
+            ..Default::default()
+        };
         let req = PublishRequest {
             topic: format!("projects/{}/topics/test-topic1", PROJECT_NAME),
             messages: vec![msg],
         };
-        pubc.publish(req, Some(CancellationToken::new()), None).await;
+        let _ = pubc.publish(req, Some(CancellationToken::new()), None).await;
     }
 
     async fn test_subscription(enable_exactly_once_delivery: bool) -> Result<(), anyhow::Error> {
@@ -430,8 +417,10 @@ mod tests {
         let config = subscription.config(Some(cancel.clone()), None).await?;
         assert_eq!(config.0, topic_name);
 
-        let mut updating = SubscriptionConfigToUpdate::default();
-        updating.ack_deadline_seconds = Some(100);
+        let updating = SubscriptionConfigToUpdate {
+            ack_deadline_seconds: Some(100),
+            ..Default::default()
+        };
         let new_config = subscription.update(updating, Some(cancel.clone()), None).await?;
         assert_eq!(new_config.0, topic_name);
         assert_eq!(new_config.1.ack_deadline_seconds, 100);
@@ -443,7 +432,7 @@ mod tests {
                 .receive(
                     |message, _ctx| async move {
                         println!("{}", message.message.message_id);
-                        message.ack();
+                        let _ = message.ack();
                     },
                     cancel_receiver,
                     None,
@@ -454,7 +443,7 @@ mod tests {
         });
         tokio::time::sleep(Duration::from_secs(3)).await;
         receiver_ctx.cancel();
-        handle.await;
+        let _ = handle.await;
         Ok(())
     }
 
@@ -492,7 +481,7 @@ mod tests {
                 assert_eq!(e.code(), Code::Cancelled);
             }
         }
-        j.await;
+        let _ = j.await;
         Ok(())
     }
 
@@ -523,7 +512,7 @@ mod tests {
                         let v2 = v2.clone();
                         async move {
                             v2.fetch_add(1, SeqCst);
-                            message.ack();
+                            let _ = message.ack();
                         }
                     },
                     cancel_receiver,
@@ -531,10 +520,10 @@ mod tests {
                 )
                 .await;
         });
-        publish().await;
+        let _ = publish().await;
         tokio::time::sleep(Duration::from_secs(3)).await;
         cancellation_token.cancel();
-        handle.await;
+        let _ = handle.await;
         assert_eq!(v.load(SeqCst), 1);
         Ok(())
     }
@@ -557,7 +546,7 @@ mod tests {
                             let v2 = v2.clone();
                             async move {
                                 v2.fetch_add(1, SeqCst);
-                                message.ack();
+                                let _ = message.ack();
                             }
                         },
                         ctx,
@@ -573,7 +562,7 @@ mod tests {
 
         ctx.cancel();
         for (task, v) in subscriptions {
-            task.await;
+            let _ = task.await;
             assert_eq!(v.load(SeqCst), 1);
         }
         Ok(())

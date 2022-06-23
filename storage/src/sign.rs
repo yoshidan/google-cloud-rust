@@ -1,15 +1,11 @@
 use crate::sign::SignedURLError::InvalidOption;
 use chrono::{DateTime, SecondsFormat, Utc};
-
 use once_cell::sync::Lazy;
 use regex::Regex;
 use ring::{rand, signature};
-
 use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey};
-
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-
 use std::time::Duration;
 use url;
 use url::ParseError;
@@ -69,9 +65,11 @@ impl URLStyle for PathStyle {
     }
 }
 
+type SignBytes = Box<dyn Fn(&[u8]) -> Result<Vec<u8>, SignedURLError>>;
+
 pub enum SignBy {
     PrivateKey(Vec<u8>),
-    SignBytes(Box<dyn Fn(&[u8]) -> Result<Vec<u8>, SignedURLError>>),
+    SignBytes(SignBytes),
 }
 
 /// SignedURLOptions allows you to restrict the access to the signed URL.
@@ -95,21 +93,7 @@ pub struct SignedURLOptions {
     /// Provide the contents of the PEM file as a byte slice.
     /// Exactly one of PrivateKey or SignBytes must be non-nil.
     ///
-    /// SignBytes is a function for implementing custom signing. For example, if
-    /// your application is running on Google App Engine, you can use
-    /// appengine's internal signing function:
-    ///     ctx := appengine.NewContext(request)
-    ///     acc, _ := appengine.ServiceAccount(ctx)
-    ///     url, err := SignedURL("bucket", "object", &SignedURLOptions{
-    ///     	GoogleAccessID: acc,
-    ///     	SignBytes: func(b []byte) ([]byte, error) {
-    ///     		_, signedBytes, err := appengine.SignBytes(ctx, b)
-    ///     		return signedBytes, err
-    ///     	},
-    ///     	// etc.
-    ///     })
-    ///
-    /// Exactly one of PrivateKey or SignBytes must be non-nil.
+    /// SignBytes is a function for implementing custom signing.
     pub sign_by: SignBy,
 
     /// Method is the HTTP method to be used with the signed URL.
@@ -200,20 +184,20 @@ pub(crate) fn signed_url(bucket: &str, object: &str, opts: SignedURLOptions) -> 
     let now = Utc::now();
     let _ = validate_options(&opts, &now)?;
 
-    return match &opts.scheme {
+    match &opts.scheme {
         SigningScheme::SigningSchemeV4 => {
             let mut opts = opts;
             opts.headers = v4_sanitize_headers(&opts.headers);
             signed_url_v4(bucket, object, &opts, now)
         }
-    };
+    }
 }
 
 fn v4_sanitize_headers(hdrs: &[String]) -> Vec<String> {
     let mut sanitized = HashMap::<String, Vec<String>>::new();
     for hdr in hdrs {
         let trimmed = hdr.trim().to_string();
-        let split: Vec<&str> = trimmed.split(":").into_iter().collect();
+        let split: Vec<&str> = trimmed.split(':').into_iter().collect();
         if split.len() < 2 {
             continue;
         }
@@ -221,16 +205,12 @@ fn v4_sanitize_headers(hdrs: &[String]) -> Vec<String> {
         let space_removed = SPACE_REGEX.replace_all(split[1].trim(), " ");
         let value = TAB_REGEX.replace_all(space_removed.as_ref(), "\t");
         if !value.is_empty() {
-            if sanitized.contains_key(&key) {
-                sanitized.get_mut(&key).unwrap().push(value.to_string());
-            } else {
-                sanitized.insert(key, vec![value.to_string()]);
-            }
+            sanitized.entry(key).or_default().push(value.to_string());
         }
     }
     let mut sanitized_headers = Vec::with_capacity(sanitized.len());
     for (key, value) in sanitized {
-        sanitized_headers.push(format!("{}:{}", key, value.join(",").to_string()));
+        sanitized_headers.push(format!("{}:{}", key, value.join(",")));
     }
     sanitized_headers
 }
@@ -242,7 +222,7 @@ fn signed_url_v4(
     now: DateTime<Utc>,
 ) -> Result<String, SignedURLError> {
     // create base url
-    let host = opts.style.host(bucket).to_string();
+    let host = opts.style.host(bucket);
     let mut builder = {
         let url = if opts.insecure {
             format!("http://{}", &host)
@@ -262,15 +242,14 @@ fn signed_url_v4(
         if opts.md5.is_some() {
             header_names.push("content-md5");
         }
-        header_names.sort();
+        header_names.sort_unstable();
         header_names.join(";")
     };
 
     let timestamp = now
         .to_rfc3339_opts(SecondsFormat::Secs, true)
-        .to_string()
-        .replace("-", "")
-        .replace(":", "");
+        .replace('-', "")
+        .replace(':', "");
     let credential_scope = format!("{}/auto/storage/goog4_request", now.format("%Y%m%d"));
 
     // append query parameters
@@ -287,7 +266,7 @@ fn signed_url_v4(
             }
         }
     }
-    let escaped_query = builder.query().unwrap().replace("+", "%20");
+    let escaped_query = builder.query().unwrap().replace('+', "%20");
     tracing::trace!("escaped_query={}", escaped_query);
 
     // create header with value
@@ -311,7 +290,7 @@ fn signed_url_v4(
         let mut buffer = format!(
             "{}\n{}\n{}\n{}\n\n{}\n",
             opts.method.as_str(),
-            builder.path().replace("+", "%20"),
+            builder.path().replace('+', "%20"),
             escaped_query,
             header_with_value.join("\n"),
             signed_headers
@@ -320,17 +299,14 @@ fn signed_url_v4(
 
         // If the user provides a value for X-Goog-Content-SHA256, we must use
         // that value in the request string. If not, we use UNSIGNED-PAYLOAD.
-        let sha256_header = header_with_value
-            .iter()
-            .find(|h| {
-                let ret = h.to_lowercase().starts_with("x-goog-content-sha256") && h.contains(":");
-                if ret {
-                    let v: Vec<&str> = h.splitn(2, ":").collect();
-                    buffer.extend_from_slice(v[1].as_bytes());
-                }
-                ret
-            })
-            .is_some();
+        let sha256_header = header_with_value.iter().any(|h| {
+            let ret = h.to_lowercase().starts_with("x-goog-content-sha256") && h.contains(':');
+            if ret {
+                let v: Vec<&str> = h.splitn(2, ':').collect();
+                buffer.extend_from_slice(v[1].as_bytes());
+            }
+            ret
+        });
         if !sha256_header {
             buffer.extend_from_slice("UNSIGNED-PAYLOAD".as_bytes());
         }
@@ -384,7 +360,7 @@ fn extract_header_names(kvs: &[String]) -> Vec<&str> {
     return kvs
         .iter()
         .map(|header| {
-            let name_value: Vec<&str> = header.split(":").collect();
+            let name_value: Vec<&str> = header.split(':').collect();
             name_value[0]
         })
         .collect();
@@ -407,10 +383,8 @@ fn validate_options(opts: &SignedURLOptions, _now: &DateTime<Utc>) -> Result<(),
             Err(_e) => return Err(InvalidOption("storage: invalid MD5 checksum")),
         }
     }
-    if opts.scheme == SigningScheme::SigningSchemeV4 {
-        if opts.expires > Duration::from_secs(604801) {
-            return Err(InvalidOption("storage: expires must be within seven days from now"));
-        }
+    if opts.scheme == SigningScheme::SigningSchemeV4 && opts.expires > Duration::from_secs(604801) {
+        return Err(InvalidOption("storage: expires must be within seven days from now"));
     }
     Ok(())
 }
@@ -426,7 +400,7 @@ mod test {
 
     #[ctor::ctor]
     fn init() {
-        tracing_subscriber::fmt::try_init();
+        let _ = tracing_subscriber::fmt::try_init();
     }
 
     #[tokio::test]
@@ -438,11 +412,13 @@ mod test {
             param.insert("tes t+".to_string(), vec!["++ +".to_string()]);
             param
         };
-        let mut opts = SignedURLOptions::default();
-        opts.sign_by = SignBy::PrivateKey(file.private_key.unwrap().into());
-        opts.google_access_id = file.client_email.unwrap();
-        opts.expires = Duration::from_secs(3600);
-        opts.query_parameters = param;
+        let opts = SignedURLOptions {
+            sign_by: SignBy::PrivateKey(file.private_key.unwrap().into()),
+            google_access_id: file.client_email.unwrap(),
+            expires: Duration::from_secs(3600),
+            query_parameters: param,
+            ..Default::default()
+        };
         let url = signed_url("rust-object-test", "test1", opts).unwrap();
         println!("downloading={:?}", url);
         let result = reqwest::Client::default().get(url).send().await.unwrap();

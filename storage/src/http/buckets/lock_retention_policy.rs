@@ -14,6 +14,7 @@ pub struct LockRetentionPolicyRequest {
     pub if_metageneration_match: i64,
 }
 
+#[allow(dead_code)]
 pub(crate) fn build(client: &Client, req: &LockRetentionPolicyRequest) -> RequestBuilder {
     let url = format!("{}/b/{}/lockRetentionPolicy", BASE_URL, req.bucket.escape());
     client.post(url).query(&req)

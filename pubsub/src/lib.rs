@@ -24,7 +24,7 @@
 //!     // Create pubsub client.
 //!     // The default project is determined by credentials.
 //!     // - If the GOOGLE_APPLICATION_CREDENTIALS is specified the project_id is from credentials.
-//!     // - If the server is running on CGP the project_id is from metadata server
+//!     // - If the server is running on GCP the project_id is from metadata server
 //!     // - If the PUBSUB_EMULATOR_HOST is specified the project_id is 'local-project'
 //!     let mut client = Client::default().await.unwrap();
 //!
@@ -78,8 +78,11 @@
 //! #[tokio::main]
 //! async fn main() -> Result<(), Status> {
 //!
-//!     //default pubsub client.
-//!     //If the environment variable PUBSUB_EMULATOR_HOST is specified, project_id will be local-project.
+//!     // Create pubsub client.
+//!     // The default project is determined by credentials.
+//!     // - If the GOOGLE_APPLICATION_CREDENTIALS is specified the project_id is from credentials.
+//!     // - If the server is running on GCP the project_id is from metadata server
+//!     // - If the PUBSUB_EMULATOR_HOST is specified the project_id is 'local-project'
 //!     let mut client = Client::default().await.unwrap();
 //!
 //!     // Get the topic to subscribe to.

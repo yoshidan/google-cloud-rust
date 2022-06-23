@@ -10,13 +10,12 @@ use google_cloud_spanner::key::Key;
 
 use google_cloud_spanner::value::Timestamp;
 use serial_test::serial;
-use tracing_subscriber;
 
 const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
 #[ctor::ctor]
 fn init() {
-    tracing_subscriber::fmt().try_init();
+    let _ = tracing_subscriber::fmt().try_init();
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -62,11 +61,11 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
     let ts = Utc.timestamp(value.seconds, value.nanos as u32);
 
     let mut ro = client.read_only_transaction().await?;
-    let record = ro.read("User", &user_columns(), Key::key(&"user_client_1x")).await?;
+    let record = ro.read("User", &user_columns(), Key::new(&"user_client_1x")).await?;
     let row = all_rows(record).await.pop().unwrap();
     assert_user_row(&row, "user_client_1x", &now, &ts);
 
-    let record = ro.read("User", &user_columns(), Key::key(&"user_client_2x")).await?;
+    let record = ro.read("User", &user_columns(), Key::new(&"user_client_2x")).await?;
     let row = all_rows(record).await.pop().unwrap();
     assert_user_row(&row, "user_client_2x", &now, &ts);
 
@@ -92,7 +91,7 @@ async fn test_apply() -> Result<(), anyhow::Error> {
 
     let mut ro = client.read_only_transaction().await?;
     for x in users {
-        let record = ro.read("User", &user_columns(), Key::key(&x)).await?;
+        let record = ro.read("User", &user_columns(), Key::new(&x)).await?;
         let row = all_rows(record).await.pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
     }
@@ -112,7 +111,7 @@ async fn test_apply_at_least_once() -> Result<(), anyhow::Error> {
 
     let mut ro = client.read_only_transaction().await?;
     for x in users {
-        let record = ro.read("User", &user_columns(), Key::key(&x)).await?;
+        let record = ro.read("User", &user_columns(), Key::new(&x)).await?;
         let row = all_rows(record).await.pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
     }
@@ -135,7 +134,7 @@ async fn test_partitioned_update() -> Result<(), anyhow::Error> {
 
     let mut single = client.single().await.unwrap();
     let rows = single
-        .read("User", &["NullableString"], Key::key(&user_id))
+        .read("User", &["NullableString"], Key::new(&user_id))
         .await
         .unwrap();
     let row = all_rows(rows).await.pop().unwrap();

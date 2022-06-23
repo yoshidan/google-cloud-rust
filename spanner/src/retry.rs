@@ -18,22 +18,21 @@ where
     E: TryAs<Status> + From<SessionError> + From<Status>,
 {
     fn should_retry(&mut self, error: &E) -> bool {
-        let status = match error.try_as() {
-            Ok(s) => s,
-            Err(_e) => return false,
-        };
-        let code = status.code();
-        if code == Code::Internal
-            && !status.message().contains("stream terminated by RST_STREAM")
-            && !status.message().contains("HTTP/2 error code: INTERNAL_ERROR")
-            && !status.message().contains("Connection closed with unknown cause")
-            && !status
-                .message()
-                .contains("Received unexpected EOS on DATA frame from server")
-        {
-            return false;
+        if let Some(status) = error.try_as() {
+            let code = status.code();
+            if code == Code::Internal
+                && !status.message().contains("stream terminated by RST_STREAM")
+                && !status.message().contains("HTTP/2 error code: INTERNAL_ERROR")
+                && !status.message().contains("Connection closed with unknown cause")
+                && !status
+                    .message()
+                    .contains("Received unexpected EOS on DATA frame from server")
+            {
+                return false;
+            }
+            return self.inner.should_retry(error);
         }
-        return self.inner.should_retry(error);
+        false
     }
 }
 
@@ -60,9 +59,12 @@ where
 
 impl TransactionRetrySetting {
     pub fn new(codes: Vec<Code>) -> Self {
-        let mut inner = RetrySetting::default();
-        inner.codes = codes;
-        Self { inner }
+        Self {
+            inner: RetrySetting {
+                codes,
+                ..Default::default()
+            },
+        }
     }
 }
 

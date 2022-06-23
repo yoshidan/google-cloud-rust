@@ -16,7 +16,7 @@ use google_cloud_spanner::transaction_rw::ReadWriteTransaction;
 
 #[ctor::ctor]
 fn init() {
-    tracing_subscriber::fmt().try_init();
+    let _ = tracing_subscriber::fmt().try_init();
 }
 
 pub async fn all_rows(mut itr: RowIterator<'_>) -> Result<Vec<Row>, Status> {
@@ -73,7 +73,7 @@ async fn test_mutation_and_statement() {
             assert!(s.0.is_some());
             let ts = s.0.unwrap();
             let naive = Utc.timestamp(ts.seconds, ts.nanos as u32);
-            println!("commit time stamp is {}", naive.to_string());
+            println!("commit time stamp is {}", naive);
             naive
         }
         Err(e) => panic!("error {:?}", e.0),
@@ -110,7 +110,7 @@ async fn test_partitioned_dml() {
 
     let session = create_session().await;
     let mut tx = read_only_transaction(session).await;
-    let reader = tx.read("User", &["NullableString"], Key::key(&user_id)).await.unwrap();
+    let reader = tx.read("User", &["NullableString"], Key::new(&user_id)).await.unwrap();
     let row = all_rows(reader).await.unwrap().pop().unwrap();
     let value = row.column_by_name::<String>("NullableString").unwrap();
     assert_eq!(value, "aaa");
@@ -144,7 +144,7 @@ async fn test_rollback() {
     let _ = tx.finish(result, None).await;
     let session = create_session().await;
     let mut tx = read_only_transaction(session).await;
-    let reader = tx.read("User", &user_columns(), Key::key(&past_user)).await.unwrap();
+    let reader = tx.read("User", &user_columns(), Key::new(&past_user)).await.unwrap();
     let row = all_rows(reader).await.unwrap().pop().unwrap();
     let ts = cr.commit_timestamp.as_ref().unwrap();
     let ts = Utc.timestamp(ts.seconds, ts.nanos as u32);
@@ -152,7 +152,7 @@ async fn test_rollback() {
 }
 
 async fn assert_data(
-    user_id: &String,
+    user_id: &str,
     now: &DateTime<Utc>,
     user_commit_timestamp: &DateTime<Utc>,
     commit_timestamp: &DateTime<Utc>,
@@ -171,7 +171,7 @@ async fn assert_data(
         FROM User p WHERE UserId = @UserId;
     ",
         );
-        stmt.add_param("UserId", user_id);
+        stmt.add_param("UserId", &user_id);
         let result = tx.query(stmt).await?;
         all_rows(result).await
     }

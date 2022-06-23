@@ -52,7 +52,7 @@ use crate::http::{
     bucket_access_controls, buckets, default_object_access_controls, hmac_keys, notifications, object_access_controls,
     objects, CancellationToken, Error,
 };
-use futures_util::{Stream, StreamExt, TryStream};
+use futures_util::{Stream, TryStream};
 use google_cloud_auth::token_source::TokenSource;
 
 use reqwest::{Body, Client, RequestBuilder, Response};
@@ -1471,7 +1471,6 @@ mod test {
     use bytes::Buf;
     use futures_util::StreamExt;
     use google_cloud_auth::{create_token_source, Config};
-    use serde_json::de::Read;
     use serial_test::serial;
     use std::sync::Arc;
 
@@ -1489,7 +1488,7 @@ mod test {
         })
         .await
         .unwrap();
-        return StorageClient::new(Arc::from(ts));
+        StorageClient::new(Arc::from(ts))
     }
 
     #[tokio::test]
@@ -1828,7 +1827,7 @@ mod test {
             .await
             .unwrap();
 
-        for n in notifications.items.unwrap_or(vec![]) {
+        for n in notifications.items.unwrap_or_default() {
             let _ = client
                 .delete_notification(
                     &DeleteNotificationRequest {
@@ -1846,7 +1845,7 @@ mod test {
                 &InsertNotificationRequest {
                     bucket: bucket_name.to_string(),
                     notification: NotificationCreationConfig {
-                        topic: format!("projects/{}/topics/{}", PROJECT, bucket_name.to_string()),
+                        topic: format!("projects/{}/topics/{}", PROJECT, bucket_name),
                         event_types: Some(vec![EventType::ObjectMetadataUpdate, EventType::ObjectDelete]),
                         object_name_prefix: Some("notification-test".to_string()),
                         ..Default::default()
@@ -1912,7 +1911,7 @@ mod test {
             .await
             .unwrap();
 
-        for n in keys.items.unwrap_or(vec![]) {
+        for n in keys.items.unwrap_or_default() {
             let result = client
                 .update_hmac_key(
                     &UpdateHmacKeyRequest {
@@ -1959,7 +1958,7 @@ mod test {
             .await
             .unwrap()
             .items
-            .unwrap_or(vec![]);
+            .unwrap_or_default();
         for o in objects {
             client
                 .delete_object(
@@ -1981,7 +1980,7 @@ mod test {
                     name: "test1".to_string(),
                     ..Default::default()
                 },
-                &vec![01],
+                &[1],
                 "text/plain",
                 None,
             )
@@ -1999,7 +1998,7 @@ mod test {
             )
             .await
             .unwrap();
-        assert_eq!(downloaded, vec![01]);
+        assert_eq!(downloaded, vec![1]);
 
         let _rewrited = client
             .rewrite_object(
@@ -2046,7 +2045,7 @@ mod test {
         // let stream= reqwest::Client::new().get("https://avatars.githubusercontent.com/u/958174?s=96&v=4").send().await.unwrap().bytes_stream();
         let source = vec!["hello", " ", "world"];
         let size = source.iter().map(|x| x.len()).sum();
-        let chunks: Vec<Result<_, ::std::io::Error>> = source.clone().into_iter().map(|x| Ok(x)).collect();
+        let chunks: Vec<Result<_, ::std::io::Error>> = source.clone().into_iter().map(Ok).collect();
         let stream = futures_util::stream::iter(chunks);
         let uploaded = client
             .upload_streamed_object(
