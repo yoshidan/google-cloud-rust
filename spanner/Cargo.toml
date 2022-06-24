@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-spanner"
-version = "0.8.0"
+version = "0.8.1"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/spanner"
@@ -33,3 +33,7 @@ tracing-subscriber = "0.3"
 serial_test = "0.5.1"
 anyhow = "1.0.48"
 ctor = "0.1"
+
+[features]
+default = []
+trace = []
