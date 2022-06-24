@@ -34,7 +34,7 @@ jobs:
         name: clippy check
         with:
           command: clippy
-          args: --all-features -- -D warnings
+          args: -- -D warnings
   pubsub:
     name: pubsub
     runs-on: ubuntu-latest
