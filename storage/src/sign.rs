@@ -136,7 +136,7 @@ pub struct SignedURLOptions {
     /// https://cloud.google.com/storage/docs/request-endpoints for details.
     /// Only supported for V4 signing.
     /// Optional.
-    pub style: Box<dyn URLStyle>,
+    pub style: Box<dyn URLStyle + Send + Sync>,
 
     /// Insecure determines whether the signed URL should use HTTPS (default) or
     /// HTTP.
