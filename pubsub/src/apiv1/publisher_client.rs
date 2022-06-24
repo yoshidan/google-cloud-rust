@@ -26,12 +26,35 @@ impl PublisherClient {
         PublisherClient { cm: Arc::new(cm) }
     }
 
+    #[inline]
     fn client(&self) -> InternalPublisherClient<Channel> {
         InternalPublisherClient::new(self.cm.conn())
     }
 
     /// create_topic creates the given topic with the given name. See the [resource name rules]
+    #[cfg(not(feature = "trace"))]
     pub async fn create_topic(
+        &self,
+        req: Topic,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Response<Topic>, Status> {
+        self._create_topic(req, cancel, retry).await
+    }
+
+    #[cfg(feature = "trace")]
+    #[tracing::instrument(skip_all)]
+    pub async fn create_topic(
+        &self,
+        req: Topic,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Response<Topic>, Status> {
+        self._create_topic(req, cancel, retry).await
+    }
+
+    #[inline(always)]
+    async fn _create_topic(
         &self,
         req: Topic,
         cancel: Option<CancellationToken>,
@@ -48,7 +71,29 @@ impl PublisherClient {
 
     /// update_topic updates an existing topic. Note that certain properties of a
     /// topic are not modifiable.
+    #[cfg(not(feature = "trace"))]
     pub async fn update_topic(
+        &self,
+        req: UpdateTopicRequest,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Response<Topic>, Status> {
+        self._update_topic(req, cancel, retry).await
+    }
+
+    #[cfg(feature = "trace")]
+    #[tracing::instrument(skip_all)]
+    pub async fn update_topic(
+        &self,
+        req: UpdateTopicRequest,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Response<Topic>, Status> {
+        self._update_topic(req, cancel, retry).await
+    }
+
+    #[inline(always)]
+    async fn _update_topic(
         &self,
         req: UpdateTopicRequest,
         cancel: Option<CancellationToken>,
@@ -67,7 +112,29 @@ impl PublisherClient {
     }
 
     /// publish adds one or more messages to the topic. Returns NOT_FOUND if the topic does not exist.
+    #[cfg(not(feature = "trace"))]
     pub async fn publish(
+        &self,
+        req: PublishRequest,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Response<PublishResponse>, Status> {
+        self._publish(req, cancel, retry).await
+    }
+
+    #[cfg(feature = "trace")]
+    #[tracing::instrument(skip_all)]
+    pub async fn publish(
+        &self,
+        req: PublishRequest,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Response<PublishResponse>, Status> {
+        self._publish(req, cancel, retry).await
+    }
+
+    #[inline(always)]
+    async fn _publish(
         &self,
         req: PublishRequest,
         cancel: Option<CancellationToken>,
@@ -98,7 +165,29 @@ impl PublisherClient {
     }
 
     /// get_topic gets the configuration of a topic.
+    #[cfg(not(feature = "trace"))]
     pub async fn get_topic(
+        &self,
+        req: GetTopicRequest,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Response<Topic>, Status> {
+        self._get_topic(req, cancel, retry).await
+    }
+
+    #[cfg(feature = "trace")]
+    #[tracing::instrument(skip_all)]
+    pub async fn get_topic(
+        &self,
+        req: GetTopicRequest,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Response<Topic>, Status> {
+        self._get_topic(req, cancel, retry).await
+    }
+
+    #[inline(always)]
+    async fn _get_topic(
         &self,
         req: GetTopicRequest,
         cancel: Option<CancellationToken>,
@@ -114,7 +203,29 @@ impl PublisherClient {
     }
 
     /// list_topics lists matching topics.
+    #[cfg(not(feature = "trace"))]
     pub async fn list_topics(
+        &self,
+        req: ListTopicsRequest,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Vec<Topic>, Status> {
+        self._list_topics(req, cancel, retry).await
+    }
+
+    #[cfg(feature = "trace")]
+    #[tracing::instrument(skip_all)]
+    pub async fn list_topics(
+        &self,
+        req: ListTopicsRequest,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Vec<Topic>, Status> {
+        self._list_topics(req, cancel, retry).await
+    }
+
+    #[inline(always)]
+    pub async fn _list_topics(
         &self,
         mut req: ListTopicsRequest,
         cancel: Option<CancellationToken>,
@@ -139,7 +250,29 @@ impl PublisherClient {
     }
 
     /// list_topics lists matching topics.
+    #[cfg(not(feature = "trace"))]
     pub async fn list_topic_subscriptions(
+        &self,
+        req: ListTopicSubscriptionsRequest,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Vec<String>, Status> {
+        self._list_topic_subscriptions(req, cancel, retry).await
+    }
+
+    #[cfg(feature = "trace")]
+    #[tracing::instrument(skip_all)]
+    pub async fn list_topic_subscriptions(
+        &self,
+        req: ListTopicSubscriptionsRequest,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Vec<String>, Status> {
+        self._list_topic_subscriptions(req, cancel, retry).await
+    }
+
+    #[inline(always)]
+    async fn _list_topic_subscriptions(
         &self,
         mut req: ListTopicSubscriptionsRequest,
         cancel: Option<CancellationToken>,
@@ -172,7 +305,29 @@ impl PublisherClient {
     /// which allow you to manage message acknowledgments in bulk. That is, you can
     /// set the acknowledgment state of messages in an existing subscription to the
     /// state captured by a snapshot.
+    #[cfg(not(feature = "trace"))]
     pub async fn list_topic_snapshots(
+        &self,
+        req: ListTopicSnapshotsRequest,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Vec<String>, Status> {
+        self._list_topic_snapshots(req, cancel, retry).await
+    }
+
+    #[cfg(feature = "trace")]
+    #[tracing::instrument(skip_all)]
+    pub async fn list_topic_snapshots(
+        &self,
+        req: ListTopicSnapshotsRequest,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Vec<String>, Status> {
+        self._list_topic_snapshots(req, cancel, retry).await
+    }
+
+    #[inline(always)]
+    async fn _list_topic_snapshots(
         &self,
         mut req: ListTopicSnapshotsRequest,
         cancel: Option<CancellationToken>,
@@ -205,7 +360,29 @@ impl PublisherClient {
     /// the same name; this is an entirely new topic with none of the old
     /// configuration or subscriptions. Existing subscriptions to this topic are
     /// not deleted, but their topic field is set to _deleted-topic_.
+    #[cfg(not(feature = "trace"))]
     pub async fn delete_topic(
+        &self,
+        req: DeleteTopicRequest,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Response<()>, Status> {
+        self._delete_topic(req, cancel, retry).await
+    }
+
+    #[cfg(feature = "trace")]
+    #[tracing::instrument(skip_all)]
+    pub async fn delete_topic(
+        &self,
+        req: DeleteTopicRequest,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Response<()>, Status> {
+        self._delete_topic(req, cancel, retry).await
+    }
+
+    #[inline(always)]
+    async fn _delete_topic(
         &self,
         req: DeleteTopicRequest,
         cancel: Option<CancellationToken>,
@@ -224,7 +401,29 @@ impl PublisherClient {
     /// subscription are dropped. Subsequent Pull and StreamingPull requests
     /// will return FAILED_PRECONDITION. If the subscription is a push
     /// subscription, pushes to the endpoint will stop.
+    #[cfg(not(feature = "trace"))]
     pub async fn detach_subscription(
+        &self,
+        req: DetachSubscriptionRequest,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Response<DetachSubscriptionResponse>, Status> {
+        self._detach_subscription(req, cancel, retry).await
+    }
+
+    #[cfg(feature = "trace")]
+    #[tracing::instrument(skip_all)]
+    pub async fn detach_subscription(
+        &self,
+        req: DetachSubscriptionRequest,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Response<DetachSubscriptionResponse>, Status> {
+        self._detach_subscription(req, cancel, retry).await
+    }
+
+    #[inline(always)]
+    async fn _detach_subscription(
         &self,
         req: DetachSubscriptionRequest,
         cancel: Option<CancellationToken>,
