@@ -36,6 +36,7 @@
 //!     let mut iter = tx.query(stmt).await?;
 //!     while let Some(row) = iter.next().await? {
 //!         let guild_id = row.column_by_name::<String>("GuildId");
+//!         // do something
 //!     }
 //!     Ok(())
 //! }
@@ -241,7 +242,8 @@
 //!     ]).await?;
 //!
 //!     while let Some(row) = iter.next().await? {
-//!         // use row
+//!         let guild_id = row.column_by_name::<String>("GuildID");
+//!         //do something
 //!     };
 //!     Ok(())
 //! }

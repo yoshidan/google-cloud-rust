@@ -120,6 +120,29 @@ impl Transaction {
     }
 
     /// read returns a RowIterator for reading multiple rows from the database.
+    /// ```
+    /// use google_cloud_spanner::key::Key;
+    /// use google_cloud_spanner::client::Client;
+    /// use google_cloud_spanner::reader::AsyncIterator;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), anyhow::Error> {
+    ///     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
+    ///     let client = Client::new(DATABASE).await?;
+    ///
+    ///     let mut tx = client.single().await?;
+    ///     let mut iter = tx.read("Guild", &["GuildID", "OwnerUserID"], vec![
+    ///         Key::new(&"pk1"),
+    ///         Key::new(&"pk2")
+    ///     ]).await?;
+    ///
+    ///     while let Some(row) = iter.next().await? {
+    ///         let guild_id = row.column_by_name::<String>("GuildID");
+    ///         //do something
+    ///     };
+    ///     Ok(())
+    /// }
+    /// ```
     pub async fn read(
         &mut self,
         table: &str,
@@ -157,6 +180,19 @@ impl Transaction {
     }
 
     /// read returns a RowIterator for reading multiple rows from the database.
+    /// ```
+    /// use google_cloud_spanner::key::Key;
+    /// use google_cloud_spanner::client::Client;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), anyhow::Error> {
+    ///     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
+    ///     let client = Client::new(DATABASE).await?;
+    ///     let mut tx = client.single().await?;
+    ///     let row = tx.read_row("Guild", &["GuildID", "OwnerUserID"], Key::new(&"guild1")).await?;
+    ///     Ok(())
+    /// }
+    /// ```
     pub async fn read_row(&mut self, table: &str, columns: &[&str], key: Key) -> Result<Option<Row>, Status> {
         return self
             .read_row_with_option(table, columns, key, ReadOptions::default())
