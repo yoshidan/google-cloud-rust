@@ -65,7 +65,7 @@ impl URLStyle for PathStyle {
     }
 }
 
-type SignBytes = Box<dyn Fn(&[u8]) -> Result<Vec<u8>, SignedURLError>>;
+type SignBytes = Box<dyn Fn(&[u8]) -> Result<Vec<u8>, SignedURLError> + Send + Sync>;
 
 pub enum SignBy {
     PrivateKey(Vec<u8>),
