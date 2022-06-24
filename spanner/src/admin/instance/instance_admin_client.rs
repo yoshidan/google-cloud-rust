@@ -108,7 +108,7 @@ impl InstanceAdminClient {
     }
 
     #[inline(always)]
-    pub async fn _get_instance_config(
+    async fn _get_instance_config(
         &self,
         req: GetInstanceConfigRequest,
         cancel: Option<CancellationToken>,
@@ -151,7 +151,7 @@ impl InstanceAdminClient {
     }
 
     #[inline(always)]
-    pub async fn _list_instances(
+    async fn _list_instances(
         &self,
         mut req: ListInstancesRequest,
         cancel: Option<CancellationToken>,
@@ -203,7 +203,7 @@ impl InstanceAdminClient {
     }
 
     #[inline(always)]
-    pub async fn _get_instance(
+    async fn _get_instance(
         &self,
         req: GetInstanceRequest,
         cancel: Option<CancellationToken>,

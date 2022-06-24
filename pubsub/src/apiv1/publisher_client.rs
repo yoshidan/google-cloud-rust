@@ -225,7 +225,7 @@ impl PublisherClient {
     }
 
     #[inline(always)]
-    pub async fn _list_topics(
+    async fn _list_topics(
         &self,
         mut req: ListTopicsRequest,
         cancel: Option<CancellationToken>,

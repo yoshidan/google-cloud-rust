@@ -85,12 +85,29 @@ impl Client {
     ///     }).await;
     /// }
     /// ```
+    #[cfg(not(feature = "trace"))]
     pub async fn signed_url(
         &self,
         bucket: &str,
         object: &str,
         opts: SignedURLOptions,
     ) -> Result<String, SignedURLError> {
+        self._signed_url(bucket, object, opts).await
+    }
+
+    #[cfg(feature = "trace")]
+    #[tracing::instrument(skip_all)]
+    pub async fn signed_url(
+        &self,
+        bucket: &str,
+        object: &str,
+        opts: SignedURLOptions,
+    ) -> Result<String, SignedURLError> {
+        self._signed_url(bucket, object, opts).await
+    }
+
+    #[inline(always)]
+    async fn _signed_url(&self, bucket: &str, object: &str, opts: SignedURLOptions) -> Result<String, SignedURLError> {
         let signable = match &opts.sign_by {
             SignBy::PrivateKey(v) => !v.is_empty(),
             _ => true,

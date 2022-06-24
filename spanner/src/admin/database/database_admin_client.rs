@@ -200,7 +200,7 @@ impl DatabaseAdminClient {
     }
 
     #[inline(always)]
-    pub async fn _update_database_ddl(
+    async fn _update_database_ddl(
         &self,
         req: UpdateDatabaseDdlRequest,
         cancel: Option<CancellationToken>,
@@ -282,7 +282,7 @@ impl DatabaseAdminClient {
     }
 
     #[inline(always)]
-    pub async fn _get_database_ddl(
+    async fn _get_database_ddl(
         &self,
         req: GetDatabaseDdlRequest,
         cancel: Option<CancellationToken>,
@@ -507,7 +507,7 @@ impl DatabaseAdminClient {
     }
 
     #[inline(always)]
-    pub async fn _get_backup(
+    async fn _get_backup(
         &self,
         req: GetBackupRequest,
         cancel: Option<CancellationToken>,
