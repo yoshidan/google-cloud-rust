@@ -35,7 +35,8 @@
 //!     let mut tx = client.single().await?;
 //!     let mut iter = tx.query(stmt).await?;
 //!     while let Some(row) = iter.next().await? {
-//!         let guild_id = row.//::<String>("GuildId");
+//!         let guild_id = row.column_by_name::<String>("GuildId");
+//!         // do something
 //!     }
 //!     Ok(())
 //! }
