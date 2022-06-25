@@ -36,6 +36,11 @@ impl Client {
     /// New client
     pub async fn new() -> Result<Self, Error> {
         let project = google_cloud_auth::project().await?;
+        Self::from(&project).await
+    }
+
+    /// New client from project
+    pub async fn from(project: &google_cloud_auth::Project) -> Result<Self, Error> {
         let ts = create_token_source_from_project(
             &project,
             Config {
