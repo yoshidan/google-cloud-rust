@@ -42,7 +42,7 @@ impl Client {
     /// New client from project
     pub async fn from(project: &google_cloud_auth::Project) -> Result<Self, Error> {
         let ts = create_token_source_from_project(
-            &project,
+            project,
             Config {
                 audience: None,
                 scopes: Some(&storage_client::SCOPES),
@@ -52,14 +52,26 @@ impl Client {
         match project {
             Project::FromFile(cred) => Ok(Client {
                 private_key: cred.private_key.clone(),
-                service_account_email: cred.client_email.ok_or(Error::Other("no client_email was found"))?,
-                project_id: cred.project_id.ok_or(Error::Other("no project_id was found"))?,
+                service_account_email: cred
+                    .client_email
+                    .as_ref()
+                    .ok_or(Error::Other("no client_email was found"))?
+                    .to_string(),
+                project_id: cred
+                    .project_id
+                    .as_ref()
+                    .ok_or(Error::Other("no project_id was found"))?
+                    .to_string(),
                 storage_client: StorageClient::new(Arc::from(ts)),
             }),
             Project::FromMetadataServer(info) => Ok(Client {
                 private_key: None,
                 service_account_email: google_cloud_metadata::email("default").await?,
-                project_id: info.project_id.ok_or(Error::Other("no project_id was found"))?,
+                project_id: info
+                    .project_id
+                    .as_ref()
+                    .ok_or(Error::Other("no project_id was found"))?
+                    .to_string(),
                 storage_client: StorageClient::new(Arc::from(ts)),
             }),
         }
