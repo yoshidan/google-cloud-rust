@@ -318,15 +318,10 @@ impl Subscription {
             let cancel_clone = cancel.clone();
             let name = self.fqsn.clone();
             message_receivers.push(tokio::spawn(async move {
-                loop {
-                    match receiver.recv().await {
-                        Ok(message) => f_clone(message, cancel_clone.clone()).await,
-                        Err(_) => {
-                            // queue is closed by subscriber when the cancellation token is cancelled
-                            break;
-                        }
-                    }
+                while let Ok(message) = receiver.recv() {
+                    f_clone(message, cancel_clone.clone()).await;
                 }
+                // queue is closed by subscriber when the cancellation token is cancelled
                 tracing::trace!("stop message receiver : {}", name);
             }));
         }
