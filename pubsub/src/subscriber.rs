@@ -5,8 +5,8 @@ use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::{Code, Status, Streaming};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::{
-    AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage, StreamingPullResponse,
-    ReceivedMessage as InternalReceivedMessage
+    AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage, ReceivedMessage as InternalReceivedMessage,
+    StreamingPullResponse,
 };
 use tokio::select;
 use tokio::task::JoinHandle;
@@ -270,9 +270,9 @@ mod tests {
     use crate::apiv1::conn_pool::ConnectionManager;
     use crate::apiv1::publisher_client::PublisherClient;
     use crate::apiv1::subscriber_client::SubscriberClient;
+    use crate::subscriber::handle_message;
     use google_cloud_gax::conn::Environment;
     use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage, PullRequest};
-    use crate::subscriber::handle_message;
     use serial_test::serial;
 
     #[ctor::ctor]
@@ -302,7 +302,8 @@ mod tests {
             None,
             None,
         )
-        .await.unwrap();
+        .await
+        .unwrap();
 
         let subscription = "projects/local-project/subscriptions/test-subscription1";
         let response = subc
@@ -323,6 +324,6 @@ mod tests {
         let (queue, _) = async_channel::unbounded();
         queue.close();
         let nack_size = handle_message(&queue, &subc, subscription, messages).await;
-        assert_eq!(1, nack_size) ;
+        assert_eq!(1, nack_size);
     }
 }
