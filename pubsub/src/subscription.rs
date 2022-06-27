@@ -320,13 +320,12 @@ impl Subscription {
             let name = self.fqsn.clone();
             message_receivers.push(tokio::spawn(async move {
                 loop {
-                    select! {
-                        _ = cancel_clone.cancelled() => break,
-                        msg = receiver.recv() => match msg {
-                            Ok(message) => f_clone(message, cancel_clone.clone()).await,
-                            Err(_) => break
+                    match receiver.recv().await {
+                        Ok(message) => f_clone(message, cancel_clone.clone()).await,
+                        Err(_) => {
+                            // queue is closed by subscriber when the cancellation token is cancelled
+                            break;
                         }
-
                     }
                 }
                 tracing::trace!("stop message receiver : {}", name);
@@ -338,6 +337,8 @@ impl Subscription {
         for mut subscriber in subscribers {
             subscriber.done().await;
         }
+
+        // wait for all the receivers process received messages
         for mr in message_receivers {
             let _ = mr.await;
         }

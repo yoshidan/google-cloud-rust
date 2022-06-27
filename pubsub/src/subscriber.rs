@@ -42,15 +42,12 @@ impl ReceivedMessage {
     }
 
     pub async fn nack(&self) -> Result<(), Status> {
-        let req = ModifyAckDeadlineRequest {
-            subscription: self.subscription.to_string(),
-            ack_deadline_seconds: 0,
-            ack_ids: vec![self.ack_id.to_string()],
-        };
-        self.subscriber_client
-            .modify_ack_deadline(req, None, None)
-            .await
-            .map(|e| e.into_inner())
+        nack(
+            &self.subscriber_client,
+            self.subscription.to_string(),
+            vec![self.ack_id.to_string()],
+        )
+        .await
     }
 }
 
@@ -201,15 +198,7 @@ impl Subscriber {
                         Some(m) => m,
                         None => return Ok(())
                     };
-                    for m in message.received_messages {
-                        if let Some(mes) = m.message {
-                            let id = mes.message_id.clone();
-                            tracing::debug!("message received: {id}");
-                            if queue.send(ReceivedMessage::new(subscription.to_string(), client.clone(), mes, m.ack_id)).await.is_err() {
-                                tracing::error!("failed to receive message {id}");
-                            }
-                        }
-                    }
+                    handle_message(&queue, client, subscription.to_string(,) message).await;
                 }
             }
         }
@@ -223,4 +212,52 @@ impl Subscriber {
             let _ = v.await;
         }
     }
+}
+
+async fn handle_message(
+    queue: &async_channel::Sender<ReceivedMessage>,
+    client: &SubscriberClient,
+    subscription: &String,
+    messages: StreamingPullResponse,
+) {
+    let mut nack_targets = vec![];
+    for received_message in messages.received_messages {
+        if let Some(message) = received_message.message {
+            let id = message.message_id.clone();
+            tracing::debug!("message received: {id}");
+            if queue
+                .send(ReceivedMessage::new(
+                    subscription.to_string(),
+                    client.clone(),
+                    message,
+                    received_message.ack_id.clone(),
+                ))
+                .await
+                .is_err()
+            {
+                tracing::error!("failed to receive message {id}");
+                nack_targets.push(received_message.ack_id);
+            }
+        }
+    }
+    if !nack_targets.is_empty() {
+        // Nack immediately although the queue is closed only when the cancellation token is closed.
+        if let Err(err) = nack(client, subscription.to_string(), nack_targets).await {
+            tracing::error!(
+                "failed to nack immediately {err}. The messages will be redelivered after the ack deadline."
+            );
+        }
+    }
+}
+
+async fn nack(subscriber_client: &SubscriberClient, subscription: String, ack_ids: Vec<String>) -> Result<(), Status> {
+    let req = ModifyAckDeadlineRequest {
+        subscription,
+        ack_deadline_seconds: 0,
+        ack_ids,
+    };
+    subscriber_client
+        .modify_ack_deadline(req, None, None)
+        .await
+        .map(|e| e.into_inner())
 }
