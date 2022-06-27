@@ -6,7 +6,6 @@ use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::RetrySetting;
 use prost_types::FieldMask;
 use std::time::Duration;
-use tokio::select;
 
 use crate::apiv1::subscriber_client::SubscriberClient;
 use google_cloud_googleapis::pubsub::v1::{
@@ -319,16 +318,10 @@ impl Subscription {
             let cancel_clone = cancel.clone();
             let name = self.fqsn.clone();
             message_receivers.push(tokio::spawn(async move {
-                loop {
-                    select! {
-                        _ = cancel_clone.cancelled() => break,
-                        msg = receiver.recv() => match msg {
-                            Ok(message) => f_clone(message, cancel_clone.clone()).await,
-                            Err(_) => break
-                        }
-
-                    }
+                while let Ok(message) = receiver.recv().await {
+                    f_clone(message, cancel_clone.clone()).await;
                 }
+                // queue is closed by subscriber when the cancellation token is cancelled
                 tracing::trace!("stop message receiver : {}", name);
             }));
         }
@@ -338,6 +331,8 @@ impl Subscription {
         for mut subscriber in subscribers {
             subscriber.done().await;
         }
+
+        // wait for all the receivers process received messages
         for mr in message_receivers {
             let _ = mr.await;
         }

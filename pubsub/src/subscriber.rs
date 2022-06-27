@@ -5,7 +5,8 @@ use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::{Code, Status, Streaming};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::{
-    AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage, StreamingPullResponse,
+    AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage, ReceivedMessage as InternalReceivedMessage,
+    StreamingPullResponse,
 };
 use tokio::select;
 use tokio::task::JoinHandle;
@@ -42,15 +43,12 @@ impl ReceivedMessage {
     }
 
     pub async fn nack(&self) -> Result<(), Status> {
-        let req = ModifyAckDeadlineRequest {
-            subscription: self.subscription.to_string(),
-            ack_deadline_seconds: 0,
-            ack_ids: vec![self.ack_id.to_string()],
-        };
-        self.subscriber_client
-            .modify_ack_deadline(req, None, None)
-            .await
-            .map(|e| e.into_inner())
+        nack(
+            &self.subscriber_client,
+            self.subscription.to_string(),
+            vec![self.ack_id.to_string()],
+        )
+        .await
     }
 }
 
@@ -201,15 +199,7 @@ impl Subscriber {
                         Some(m) => m,
                         None => return Ok(())
                     };
-                    for m in message.received_messages {
-                        if let Some(mes) = m.message {
-                            let id = mes.message_id.clone();
-                            tracing::debug!("message received: {id}");
-                            if queue.send(ReceivedMessage::new(subscription.to_string(), client.clone(), mes, m.ack_id)).await.is_err() {
-                                tracing::error!("failed to receive message {id}");
-                            }
-                        }
-                    }
+                    let _ = handle_message(&queue, &client, subscription, message.received_messages).await;
                 }
             }
         }
@@ -222,5 +212,118 @@ impl Subscriber {
         if let Some(v) = self.inner.take() {
             let _ = v.await;
         }
+    }
+}
+
+async fn handle_message(
+    queue: &async_channel::Sender<ReceivedMessage>,
+    client: &SubscriberClient,
+    subscription: &str,
+    messages: Vec<InternalReceivedMessage>,
+) -> usize {
+    let mut nack_targets = vec![];
+    for received_message in messages {
+        if let Some(message) = received_message.message {
+            let id = message.message_id.clone();
+            tracing::debug!("message received: msg_id={id}");
+            if queue
+                .send(ReceivedMessage::new(
+                    subscription.to_string(),
+                    client.clone(),
+                    message,
+                    received_message.ack_id.clone(),
+                ))
+                .await
+                .is_err()
+            {
+                tracing::error!("failed to send receiver queue -> so nack immediately : msg_id={id}");
+                nack_targets.push(received_message.ack_id);
+            }
+        }
+    }
+    let size = nack_targets.len();
+    if size > 0 {
+        // Nack immediately although the queue is closed only when the cancellation token is closed.
+        if let Err(err) = nack(client, subscription.to_string(), nack_targets).await {
+            tracing::error!(
+                "failed to nack immediately {err}. The messages will be redelivered after the ack deadline."
+            );
+        }
+    }
+    size
+}
+
+async fn nack(subscriber_client: &SubscriberClient, subscription: String, ack_ids: Vec<String>) -> Result<(), Status> {
+    let req = ModifyAckDeadlineRequest {
+        subscription,
+        ack_deadline_seconds: 0,
+        ack_ids,
+    };
+    subscriber_client
+        .modify_ack_deadline(req, None, None)
+        .await
+        .map(|e| e.into_inner())
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::apiv1::conn_pool::ConnectionManager;
+    use crate::apiv1::publisher_client::PublisherClient;
+    use crate::apiv1::subscriber_client::SubscriberClient;
+    use crate::subscriber::handle_message;
+    use google_cloud_gax::conn::Environment;
+    use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage, PullRequest};
+    use serial_test::serial;
+
+    #[ctor::ctor]
+    fn init() {
+        let _ = tracing_subscriber::fmt().try_init();
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_handle_message_immediately_nack() {
+        let cm = || async {
+            ConnectionManager::new(4, &Environment::Emulator("localhost:8681".to_string()))
+                .await
+                .unwrap()
+        };
+        let subc = SubscriberClient::new(cm().await);
+        let pubc = PublisherClient::new(cm().await);
+
+        pubc.publish(
+            PublishRequest {
+                topic: "projects/local-project/topics/test-topic1".to_string(),
+                messages: vec![PubsubMessage {
+                    data: "hoge".as_bytes().to_vec(),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+
+        let subscription = "projects/local-project/subscriptions/test-subscription1";
+        let response = subc
+            .pull(
+                PullRequest {
+                    subscription: subscription.to_string(),
+                    max_messages: 1,
+                    ..Default::default()
+                },
+                None,
+                None,
+            )
+            .await
+            .unwrap()
+            .into_inner();
+
+        let messages = response.received_messages;
+        let (queue, _) = async_channel::unbounded();
+        queue.close();
+        let nack_size = handle_message(&queue, &subc, subscription, messages).await;
+        assert_eq!(1, nack_size);
     }
 }
