@@ -6,7 +6,6 @@ use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::RetrySetting;
 use prost_types::FieldMask;
 use std::time::Duration;
-use tokio::select;
 
 use crate::apiv1::subscriber_client::SubscriberClient;
 use google_cloud_googleapis::pubsub::v1::{
