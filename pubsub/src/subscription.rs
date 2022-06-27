@@ -318,7 +318,7 @@ impl Subscription {
             let cancel_clone = cancel.clone();
             let name = self.fqsn.clone();
             message_receivers.push(tokio::spawn(async move {
-                while let Ok(message) = receiver.recv() {
+                while let Ok(message) = receiver.recv().await {
                     f_clone(message, cancel_clone.clone()).await;
                 }
                 // queue is closed by subscriber when the cancellation token is cancelled
