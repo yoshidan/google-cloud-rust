@@ -73,7 +73,6 @@ impl InstanceAdminClient {
                     .clone()
                     .list_instance_configs(request)
                     .await
-                    
                     .map(|d| d.into_inner())
             };
             let response = invoke(cancel.clone(), retry.clone(), action).await?;
@@ -122,7 +121,6 @@ impl InstanceAdminClient {
                 .clone()
                 .get_instance_config(request)
                 .await
-                
                 .map(|d| d.into_inner())
         };
         invoke(cancel, retry, action).await
@@ -164,12 +162,7 @@ impl InstanceAdminClient {
         loop {
             let action = || async {
                 let request = create_request(format!("parent={}", parent), req.clone());
-                self.inner
-                    .clone()
-                    .list_instances(request)
-                    .await
-                    
-                    .map(|d| d.into_inner())
+                self.inner.clone().list_instances(request).await.map(|d| d.into_inner())
             };
             let response = invoke(cancel.clone(), retry.clone(), action).await?;
             all.extend(response.instances.into_iter());

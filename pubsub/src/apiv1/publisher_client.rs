@@ -285,11 +285,7 @@ impl PublisherClient {
             let action = || async {
                 let mut client = self.client();
                 let request = create_request(format!("topic={}", topic), req.clone());
-                client
-                    .list_topic_subscriptions(request)
-                    .await
-                    
-                    .map(|d| d.into_inner())
+                client.list_topic_subscriptions(request).await.map(|d| d.into_inner())
             };
             let response = invoke(cancel.clone(), retry.clone(), action).await?;
             all.extend(response.subscriptions.into_iter());
@@ -340,11 +336,7 @@ impl PublisherClient {
             let action = || async {
                 let mut client = self.client();
                 let request = create_request(format!("topic={}", topic), req.clone());
-                client
-                    .list_topic_snapshots(request)
-                    .await
-                    
-                    .map(|d| d.into_inner())
+                client.list_topic_snapshots(request).await.map(|d| d.into_inner())
             };
             let response = invoke(cancel.clone(), retry.clone(), action).await?;
             all.extend(response.snapshots.into_iter());

@@ -210,11 +210,7 @@ impl SubscriberClient {
             let action = || async {
                 let mut client = self.client();
                 let request = create_request(format!("project={}", project), req.clone());
-                client
-                    .list_subscriptions(request)
-                    .await
-                    
-                    .map(|d| d.into_inner())
+                client.list_subscriptions(request).await.map(|d| d.into_inner())
             };
             let response: ListSubscriptionsResponse = invoke(cancel.clone(), retry.clone(), action).await?;
             all.extend(response.subscriptions.into_iter());
@@ -579,11 +575,7 @@ impl SubscriberClient {
             let action = || async {
                 let mut client = self.client();
                 let request = create_request(format!("project={}", project), req.clone());
-                client
-                    .list_snapshots(request)
-                    .await
-                    
-                    .map(|d| d.into_inner())
+                client.list_snapshots(request).await.map(|d| d.into_inner())
             };
             let response: ListSnapshotsResponse = invoke(cancel.clone(), retry.clone(), action).await?;
             all.extend(response.snapshots.into_iter());

@@ -72,12 +72,7 @@ impl DatabaseAdminClient {
         loop {
             let action = || async {
                 let request = create_request(format!("parent={}", parent), req.clone());
-                self.inner
-                    .clone()
-                    .list_databases(request)
-                    .await
-                    
-                    .map(|d| d.into_inner())
+                self.inner.clone().list_databases(request).await.map(|d| d.into_inner())
             };
             let response = invoke(cancel.clone(), retry.clone(), action).await?;
             all_databases.extend(response.databases.into_iter());
@@ -636,12 +631,7 @@ impl DatabaseAdminClient {
         loop {
             let action = || async {
                 let request = create_request(format!("parent={}", parent), req.clone());
-                self.inner
-                    .clone()
-                    .list_backups(request)
-                    .await
-                    
-                    .map(|d| d.into_inner())
+                self.inner.clone().list_backups(request).await.map(|d| d.into_inner())
             };
             let response = invoke(cancel.clone(), retry.clone(), action).await?;
             all_backups.extend(response.backups.into_iter());
@@ -757,7 +747,6 @@ impl DatabaseAdminClient {
                     .clone()
                     .list_backup_operations(request)
                     .await
-                    
                     .map(|d| d.into_inner())
             };
             let response = invoke(cancel.clone(), retry.clone(), action).await?;
@@ -816,7 +805,6 @@ impl DatabaseAdminClient {
                     .clone()
                     .list_database_operations(request)
                     .await
-                    
                     .map(|d| d.into_inner())
             };
             let response = invoke(cancel.clone(), retry.clone(), action).await?;

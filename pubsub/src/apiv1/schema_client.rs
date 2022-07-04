@@ -74,11 +74,7 @@ impl SchemaClient {
             let action = || async {
                 let mut client = self.client();
                 let request = create_request(format!("project={}", project), req.clone());
-                client
-                    .list_schemas(request)
-                    .await
-                    
-                    .map(|d| d.into_inner())
+                client.list_schemas(request).await.map(|d| d.into_inner())
             };
             let response = invoke(cancel.clone(), retry.clone(), action).await?;
             all.extend(response.schemas.into_iter());
