@@ -1,7 +1,7 @@
 use crate::http::object_access_controls::{PredefinedObjectAcl, Projection};
 
 use crate::http::objects::Encryption;
-use crate::http::{Escape, UPLOAD_BASE_URL};
+use crate::http::Escape;
 use reqwest::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use reqwest::{Client, RequestBuilder};
 
@@ -58,13 +58,14 @@ pub struct UploadObjectRequest {
 }
 
 pub(crate) fn build<T: Into<reqwest::Body>>(
+    base_url: &str,
     client: &Client,
     req: &UploadObjectRequest,
     content_length: Option<usize>,
     content_type: &str,
     body: T,
 ) -> RequestBuilder {
-    let url = format!("{}/b/{}/o", UPLOAD_BASE_URL, req.bucket.escape());
+    let url = format!("{}/b/{}/o", base_url, req.bucket.escape());
     let mut builder = client
         .post(url)
         .query(&req)

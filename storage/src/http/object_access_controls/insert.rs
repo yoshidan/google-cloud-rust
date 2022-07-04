@@ -1,5 +1,4 @@
 use crate::http::object_access_controls::ObjectACLRole;
-use crate::http::BASE_URL;
 use reqwest::{Client, RequestBuilder};
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
@@ -23,7 +22,7 @@ pub struct ObjectAccessControlCreationConfig {
     pub role: ObjectACLRole,
 }
 
-pub(crate) fn build(client: &Client, req: &InsertObjectAccessControlRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/o/{}/acl", BASE_URL, req.bucket, req.object);
+pub(crate) fn build(base_url: &str, client: &Client, req: &InsertObjectAccessControlRequest) -> RequestBuilder {
+    let url = format!("{}/b/{}/o/{}/acl", base_url, req.bucket, req.object);
     client.post(url).json(&req.acl)
 }

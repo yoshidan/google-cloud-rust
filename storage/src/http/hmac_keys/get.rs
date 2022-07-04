@@ -1,4 +1,4 @@
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request object to delete a given HMAC key.
@@ -11,10 +11,10 @@ pub struct GetHmacKeyRequest {
     pub project_id: String,
 }
 
-pub(crate) fn build(client: &Client, req: &GetHmacKeyRequest) -> RequestBuilder {
+pub(crate) fn build(base_url: &str, client: &Client, req: &GetHmacKeyRequest) -> RequestBuilder {
     let url = format!(
         "{}/projects/{}/hmacKeys/{}",
-        BASE_URL,
+        base_url,
         req.project_id.escape(),
         req.access_id.escape()
     );

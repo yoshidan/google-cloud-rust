@@ -1,7 +1,7 @@
 use crate::http::channels::WatchableChannel;
 
 use crate::http::object_access_controls::Projection;
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for WatchAllObjects.
@@ -45,7 +45,7 @@ pub struct WatchAllObjectsRequest {
 }
 
 #[allow(dead_code)]
-pub(crate) fn build(client: &Client, req: &WatchAllObjectsRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/o/watch", BASE_URL, req.bucket.escape());
+pub(crate) fn build(base_url: &str, client: &Client, req: &WatchAllObjectsRequest) -> RequestBuilder {
+    let url = format!("{}/b/{}/o/watch", base_url, req.bucket.escape());
     client.post(url).query(&req).json(&req.channel)
 }

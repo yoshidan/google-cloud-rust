@@ -1,4 +1,3 @@
-use crate::http::BASE_URL;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for GetObjectAccessControl.
@@ -25,7 +24,7 @@ pub struct DeleteObjectAccessControlRequest {
     pub generation: Option<i64>,
 }
 
-pub(crate) fn build(client: &Client, req: &DeleteObjectAccessControlRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/o/{}/acl/{}", BASE_URL, req.bucket, req.object, req.entity);
+pub(crate) fn build(base_url: &str, client: &Client, req: &DeleteObjectAccessControlRequest) -> RequestBuilder {
+    let url = format!("{}/b/{}/o/{}/acl/{}", base_url, req.bucket, req.object, req.entity);
     client.delete(url).query(&req)
 }

@@ -1,5 +1,4 @@
 use crate::http::channels::WatchableChannel;
-use crate::http::BASE_URL;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for StopChannel.
@@ -11,7 +10,7 @@ pub struct StopChannelRequest {
 }
 
 #[allow(dead_code)]
-pub(crate) fn build(client: &Client, req: &StopChannelRequest) -> RequestBuilder {
-    let url = format!("{}/channels/stop", BASE_URL);
+pub(crate) fn build(base_url: &str, client: &Client, req: &StopChannelRequest) -> RequestBuilder {
+    let url = format!("{}/channels/stop", base_url);
     client.post(url).json(&req.channel)
 }

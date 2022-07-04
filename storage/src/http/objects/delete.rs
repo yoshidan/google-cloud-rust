@@ -1,4 +1,4 @@
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for GetObject.
@@ -31,7 +31,7 @@ pub struct DeleteObjectRequest {
     pub if_metageneration_not_match: Option<i64>,
 }
 
-pub(crate) fn build(client: &Client, req: &DeleteObjectRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/o/{}", BASE_URL, req.bucket.escape(), req.object.escape());
+pub(crate) fn build(base_url: &str, client: &Client, req: &DeleteObjectRequest) -> RequestBuilder {
+    let url = format!("{}/b/{}/o/{}", base_url, req.bucket.escape(), req.object.escape());
     client.delete(url).query(&req)
 }

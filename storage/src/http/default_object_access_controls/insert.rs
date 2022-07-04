@@ -1,5 +1,5 @@
 use crate::http::object_access_controls::insert::ObjectAccessControlCreationConfig;
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for InsertDefaultObjectAccessControl.
@@ -12,7 +12,7 @@ pub struct InsertDefaultObjectAccessControlRequest {
     pub object_access_control: ObjectAccessControlCreationConfig,
 }
 
-pub(crate) fn build(client: &Client, req: &InsertDefaultObjectAccessControlRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/defaultObjectAcl", BASE_URL, req.bucket.escape());
+pub(crate) fn build(base_url: &str, client: &Client, req: &InsertDefaultObjectAccessControlRequest) -> RequestBuilder {
+    let url = format!("{}/b/{}/defaultObjectAcl", base_url, req.bucket.escape());
     client.post(url).json(&req.object_access_control)
 }

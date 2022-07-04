@@ -1,4 +1,4 @@
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 
 use reqwest::{Client, RequestBuilder};
 
@@ -31,7 +31,7 @@ pub struct GetIamPolicyRequest {
     pub options_requested_policy_version: Option<i32>,
 }
 
-pub(crate) fn build(client: &Client, req: &GetIamPolicyRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/iam", BASE_URL, req.resource.escape());
+pub(crate) fn build(base_url: &str, client: &Client, req: &GetIamPolicyRequest) -> RequestBuilder {
+    let url = format!("{}/b/{}/iam", base_url, req.resource.escape());
     client.get(url).query(&req)
 }

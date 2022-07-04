@@ -2,7 +2,6 @@ use crate::http::bucket_access_controls::{BucketAccessControl, PredefinedBucketA
 use crate::http::buckets::{Billing, Cors, Encryption, IamConfiguration, Lifecycle, Logging, Versioning, Website};
 use crate::http::object_access_controls::insert::ObjectAccessControlCreationConfig;
 use crate::http::object_access_controls::{PredefinedObjectAcl, Projection};
-use crate::http::BASE_URL;
 
 use reqwest::{Client, RequestBuilder};
 use std::collections::HashMap;
@@ -92,7 +91,7 @@ pub struct InsertBucketRequest {
     pub bucket: BucketCreationConfig,
 }
 
-pub(crate) fn build(client: &Client, req: &InsertBucketRequest) -> RequestBuilder {
-    let url = format!("{}/b", BASE_URL);
+pub(crate) fn build(base_url: &str, client: &Client, req: &InsertBucketRequest) -> RequestBuilder {
+    let url = format!("{}/b", base_url);
     client.post(url).query(&req.param).json(&req)
 }

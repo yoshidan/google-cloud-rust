@@ -1,5 +1,5 @@
 use crate::http::channels::Channel;
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for ListChannels.
@@ -19,7 +19,7 @@ pub struct ListChannelsResponse {
 }
 
 #[allow(dead_code)]
-pub(crate) fn build(client: &Client, req: &ListChannelsRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/channels", BASE_URL, req.bucket.escape());
+pub(crate) fn build(base_url: &str, client: &Client, req: &ListChannelsRequest) -> RequestBuilder {
+    let url = format!("{}/b/{}/channels", base_url, req.bucket.escape());
     client.get(url)
 }

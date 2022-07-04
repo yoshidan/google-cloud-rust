@@ -1,5 +1,5 @@
-use crate::http::storage_client;
 use crate::http::storage_client::StorageClient;
+use crate::http::{storage_client, BASE_URL};
 
 use google_cloud_auth::{create_token_source_from_project, Config, Project};
 use std::ops::Deref;
@@ -34,13 +34,14 @@ impl Deref for Client {
 
 impl Client {
     /// New client
-    pub async fn new() -> Result<Self, Error> {
+    pub async fn default() -> Result<Self, Error> {
         let project = google_cloud_auth::project().await?;
-        Self::from(&project).await
+        Self::new(&project, None).await
     }
 
     /// New client from project
-    pub async fn from(project: &google_cloud_auth::Project) -> Result<Self, Error> {
+    pub async fn new(project: &google_cloud_auth::Project, endpoint: Option<&str>) -> Result<Self, Error> {
+        let endpoint = endpoint.unwrap_or(BASE_URL);
         let ts = create_token_source_from_project(
             project,
             Config {
@@ -62,7 +63,7 @@ impl Client {
                     .as_ref()
                     .ok_or(Error::Other("no project_id was found"))?
                     .to_string(),
-                storage_client: StorageClient::new(Arc::from(ts)),
+                storage_client: StorageClient::new(Arc::from(ts), endpoint),
             }),
             Project::FromMetadataServer(info) => Ok(Client {
                 private_key: None,
@@ -72,7 +73,7 @@ impl Client {
                     .as_ref()
                     .ok_or(Error::Other("no project_id was found"))?
                     .to_string(),
-                storage_client: StorageClient::new(Arc::from(ts)),
+                storage_client: StorageClient::new(Arc::from(ts), endpoint),
             }),
         }
     }
@@ -94,7 +95,7 @@ impl Client {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let url_for_download = client.signed_url("bucket", "file.txt", SignedURLOptions::default()).await;
     ///     let url_for_upload = client.signed_url("bucket", "file.txt", SignedURLOptions {
     ///         method: SignedURLMethod::PUT,
@@ -169,7 +170,7 @@ mod test {
     #[serial]
     async fn buckets() {
         let prefix = Some("rust-bucket-test".to_string());
-        let client = Client::new().await.unwrap();
+        let client = Client::default().await.unwrap();
         let result = client
             .list_buckets(
                 &ListBucketsRequest {
@@ -232,7 +233,7 @@ mod test {
             ..Default::default()
         };
 
-        let client = Client::new().await.unwrap();
+        let client = Client::default().await.unwrap();
         let bucket_name = format!("rust-test-{}", chrono::Utc::now().timestamp());
         let req = InsertBucketRequest {
             name: bucket_name.clone(),
@@ -270,7 +271,7 @@ mod test {
     #[tokio::test]
     #[serial]
     async fn sign() {
-        let client = Client::new().await.unwrap();
+        let client = Client::default().await.unwrap();
         let bucket_name = "rust-object-test";
         let data = "aiueo";
         let content_type = "application/octet-stream";

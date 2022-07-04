@@ -1,4 +1,4 @@
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for DeleteNotification.
@@ -10,10 +10,10 @@ pub struct DeleteNotificationRequest {
     /// Required. ID of the notification to delete.
     pub notification: String,
 }
-pub(crate) fn build(client: &Client, req: &DeleteNotificationRequest) -> RequestBuilder {
+pub(crate) fn build(base_url: &str, client: &Client, req: &DeleteNotificationRequest) -> RequestBuilder {
     let url = format!(
         "{}/b/{}/notificationConfigs/{}",
-        BASE_URL,
+        base_url,
         req.bucket.escape(),
         req.notification.escape()
     );

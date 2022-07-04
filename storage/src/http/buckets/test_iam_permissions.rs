@@ -1,4 +1,4 @@
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 
 use reqwest::{Client, RequestBuilder};
 
@@ -25,8 +25,8 @@ pub struct TestIamPermissionsResponse {
     pub permissions: Vec<String>,
 }
 
-pub(crate) fn build(client: &Client, req: &TestIamPermissionsRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/iam/testPermissions", BASE_URL, req.resource.escape());
+pub(crate) fn build(base_url: &str, client: &Client, req: &TestIamPermissionsRequest) -> RequestBuilder {
+    let url = format!("{}/b/{}/iam/testPermissions", base_url, req.resource.escape());
     let query: Vec<_> = req.permissions.iter().map(|x| ("permissions", x)).collect();
     client.get(url).query(&query)
 }

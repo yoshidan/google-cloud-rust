@@ -1,6 +1,6 @@
 use crate::http::buckets::Policy;
 
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 
 use reqwest::{Client, RequestBuilder};
 
@@ -18,7 +18,7 @@ pub struct SetIamPolicyRequest {
     pub policy: Policy,
 }
 
-pub(crate) fn build(client: &Client, req: &SetIamPolicyRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/iam", BASE_URL, req.resource.escape());
+pub(crate) fn build(base_url: &str, client: &Client, req: &SetIamPolicyRequest) -> RequestBuilder {
+    let url = format!("{}/b/{}/iam", base_url, req.resource.escape());
     client.put(url).json(&req.policy)
 }

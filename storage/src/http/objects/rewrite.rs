@@ -1,6 +1,6 @@
 use crate::http::object_access_controls::{PredefinedObjectAcl, Projection};
 use crate::http::objects::{Encryption, Object};
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -102,10 +102,10 @@ pub struct RewriteObjectResponse {
     pub resource: Option<Object>,
 }
 
-pub(crate) fn build(client: &Client, req: &RewriteObjectRequest) -> RequestBuilder {
+pub(crate) fn build(base_url: &str, client: &Client, req: &RewriteObjectRequest) -> RequestBuilder {
     let url = format!(
         "{}/b/{}/o/{}/rewriteTo/b/{}/o/{}",
-        BASE_URL,
+        base_url,
         req.source_bucket.escape(),
         req.source_object.escape(),
         req.destination_bucket.escape(),

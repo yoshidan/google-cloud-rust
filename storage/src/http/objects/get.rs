@@ -1,6 +1,6 @@
 use crate::http::object_access_controls::Projection;
 use crate::http::objects::Encryption;
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for GetObject.
@@ -38,8 +38,8 @@ pub struct GetObjectRequest {
     pub encryption: Option<Encryption>,
 }
 
-pub(crate) fn build(client: &Client, req: &GetObjectRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/o/{}", BASE_URL, req.bucket.escape(), req.object.escape());
+pub(crate) fn build(base_url: &str, client: &Client, req: &GetObjectRequest) -> RequestBuilder {
+    let url = format!("{}/b/{}/o/{}", base_url, req.bucket.escape(), req.object.escape());
     let builder = client.get(url).query(&req);
     if let Some(e) = &req.encryption {
         e.with_headers(builder)
