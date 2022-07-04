@@ -267,7 +267,7 @@ async fn nack(subscriber_client: &SubscriberClient, subscription: String, ack_id
 
 #[cfg(test)]
 mod tests {
-    use crate::apiv1::conn_pool::ConnectionManager;
+    use crate::apiv1::conn_pool::{ConnectionManager, PUBSUB};
     use crate::apiv1::publisher_client::PublisherClient;
     use crate::apiv1::subscriber_client::SubscriberClient;
     use crate::subscriber::handle_message;
@@ -284,7 +284,7 @@ mod tests {
     #[serial]
     async fn test_handle_message_immediately_nack() {
         let cm = || async {
-            ConnectionManager::new(4, &Environment::Emulator("localhost:8681".to_string()))
+            ConnectionManager::new(4, &Environment::Emulator("localhost:8681".to_string()), "")
                 .await
                 .unwrap()
         };
