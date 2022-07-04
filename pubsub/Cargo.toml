@@ -21,7 +21,7 @@ async-stream = "0.3"
 thiserror = "1.0"
 
 google-cloud-auth = { version = "0.3.0", path = "../foundation/auth" }
-google-cloud-gax = { version = "0.6.0", path = "../foundation/gax" }
+google-cloud-gax = { version = "0.7.0", path = "../foundation/gax" }
 google-cloud-googleapis = { version = "0.4.0", path = "../googleapis", features = ["pubsub"]}
 
 [dev-dependencies]
