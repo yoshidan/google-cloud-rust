@@ -2335,6 +2335,7 @@ mod test {
     use google_cloud_auth::{create_token_source, Config};
     use serial_test::serial;
     use std::sync::Arc;
+    use crate::http::BASE_URL;
 
     const PROJECT: &str = "atl-dev1";
 
@@ -2350,7 +2351,7 @@ mod test {
         })
         .await
         .unwrap();
-        StorageClient::new(Arc::from(ts), &BASE_URL)
+        StorageClient::new(Arc::from(ts), BASE_URL)
     }
 
     #[tokio::test]
