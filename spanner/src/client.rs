@@ -44,6 +44,7 @@ pub struct ReadWriteTransactionOption {
     pub commit_options: CommitOptions,
 }
 
+#[derive(Clone, Debug)]
 pub struct ChannelConfig {
     /// num_channels is the number of gRPC channels.
     pub num_channels: usize,
@@ -56,6 +57,7 @@ impl Default for ChannelConfig {
 }
 
 /// ClientConfig has configurations for the client.
+#[derive(Debug)]
 pub struct ClientConfig {
     /// SessionPoolConfig is the configuration for session pool.
     pub session_config: SessionConfig,

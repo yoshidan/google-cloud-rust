@@ -252,7 +252,7 @@ impl Clone for SessionPool {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SessionConfig {
     /// max_opened is the maximum number of opened sessions allowed by the session
     /// pool. If the client tries to open a session and there are already

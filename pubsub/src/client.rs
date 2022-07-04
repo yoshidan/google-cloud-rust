@@ -10,6 +10,7 @@ use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::{DetachSubscriptionRequest, ListSubscriptionsRequest, ListTopicsRequest};
 
+#[derive(Debug)]
 pub struct ClientConfig {
     pub pool_size: Option<usize>,
     /// The default project is determined by credentials.
@@ -27,7 +28,7 @@ impl Default for ClientConfig {
         Self {
             pool_size: Some(4),
             project_id: None,
-            endpoint: PUBSUB.to_string()
+            endpoint: PUBSUB.to_string(),
         }
     }
 }
@@ -66,8 +67,10 @@ impl Client {
             Ok(host) => Environment::Emulator(host),
             Err(_) => Environment::GoogleCloud(google_cloud_auth::project().await?),
         };
-        let pubc = PublisherClient::new(ConnectionManager::new(pool_size, &environment, config.endpoint.as_str()).await?);
-        let subc = SubscriberClient::new(ConnectionManager::new(pool_size, &environment, config.endpoint.as_str()).await?);
+        let pubc =
+            PublisherClient::new(ConnectionManager::new(pool_size, &environment, config.endpoint.as_str()).await?);
+        let subc =
+            SubscriberClient::new(ConnectionManager::new(pool_size, &environment, config.endpoint.as_str()).await?);
 
         let project_id = match config.project_id {
             Some(project_id) => project_id,
