@@ -174,7 +174,7 @@ impl Client {
             Err(_) => Environment::GoogleCloud(google_cloud_auth::project().await?),
         };
         let pool_size = config.channel_config.num_channels as usize;
-        let conn_pool = ConnectionManager::new(pool_size, &environment, config.endpoint).await?;
+        let conn_pool = ConnectionManager::new(pool_size, &environment, config.endpoint.as_str()).await?;
         let session_manager = SessionManager::new(database, conn_pool, config.session_config).await?;
 
         Ok(Client {
