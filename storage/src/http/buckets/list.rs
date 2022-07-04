@@ -1,6 +1,5 @@
 use crate::http::buckets::Bucket;
 use crate::http::object_access_controls::Projection;
-use crate::http::BASE_URL;
 
 use reqwest::{Client, RequestBuilder};
 
@@ -33,7 +32,7 @@ pub struct ListBucketsResponse {
     pub next_page_token: Option<String>,
 }
 
-pub(crate) fn build(client: &Client, req: &ListBucketsRequest) -> RequestBuilder {
-    let url = format!("{}/b", BASE_URL);
+pub(crate) fn build(base_url: &str, client: &Client, req: &ListBucketsRequest) -> RequestBuilder {
+    let url = format!("{}/b", base_url);
     client.get(url).query(&req)
 }

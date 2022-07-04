@@ -1,4 +1,4 @@
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for GetNotification.
@@ -11,10 +11,10 @@ pub struct GetNotificationRequest {
     pub notification: String,
 }
 
-pub(crate) fn build(client: &Client, req: &GetNotificationRequest) -> RequestBuilder {
+pub(crate) fn build(base_url: &str, client: &Client, req: &GetNotificationRequest) -> RequestBuilder {
     let url = format!(
         "{}/b/{}/notificationConfigs/{}",
-        BASE_URL,
+        base_url,
         req.bucket.escape(),
         req.notification.escape()
     );

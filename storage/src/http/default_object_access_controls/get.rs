@@ -1,4 +1,4 @@
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for GetDefaultObjectAccessControl.
@@ -17,10 +17,10 @@ pub struct GetDefaultObjectAccessControlRequest {
     pub entity: String,
 }
 
-pub(crate) fn build(client: &Client, req: &GetDefaultObjectAccessControlRequest) -> RequestBuilder {
+pub(crate) fn build(base_url: &str, client: &Client, req: &GetDefaultObjectAccessControlRequest) -> RequestBuilder {
     let url = format!(
         "{}/b/{}/defaultObjectAcl/{}",
-        BASE_URL,
+        base_url,
         req.bucket.escape(),
         req.entity.escape()
     );

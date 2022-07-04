@@ -1,6 +1,6 @@
 use crate::http::notifications::Notification;
 
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for GetNotification.
@@ -19,7 +19,7 @@ pub struct ListNotificationsResponse {
     pub items: Option<Vec<Notification>>,
 }
 
-pub(crate) fn build(client: &Client, req: &ListNotificationsRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/notificationConfigs", BASE_URL, req.bucket.escape());
+pub(crate) fn build(base_url: &str, client: &Client, req: &ListNotificationsRequest) -> RequestBuilder {
+    let url = format!("{}/b/{}/notificationConfigs", base_url, req.bucket.escape());
     client.get(url)
 }

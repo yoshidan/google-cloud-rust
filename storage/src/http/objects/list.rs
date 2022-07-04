@@ -1,6 +1,6 @@
 use crate::http::object_access_controls::Projection;
 use crate::http::objects::Object;
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for GetNotification.
@@ -68,7 +68,7 @@ pub struct ListObjectsResponse {
     pub next_page_token: Option<String>,
 }
 
-pub(crate) fn build(client: &Client, req: &ListObjectsRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/o", BASE_URL, req.bucket.escape());
+pub(crate) fn build(base_url: &str, client: &Client, req: &ListObjectsRequest) -> RequestBuilder {
+    let url = format!("{}/b/{}/o", base_url, req.bucket.escape());
     client.get(url).query(&req)
 }

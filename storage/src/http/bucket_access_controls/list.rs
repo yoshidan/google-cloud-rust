@@ -1,5 +1,5 @@
 use crate::http::bucket_access_controls::BucketAccessControl;
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
@@ -17,7 +17,7 @@ pub struct ListBucketAccessControlsResponse {
     pub items: Vec<BucketAccessControl>,
 }
 
-pub fn build(client: &Client, req: &ListBucketAccessControlsRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/acl", BASE_URL, req.bucket.escape());
+pub fn build(base_url: &str, client: &Client, req: &ListBucketAccessControlsRequest) -> RequestBuilder {
+    let url = format!("{}/b/{}/acl", base_url, req.bucket.escape());
     client.get(url)
 }

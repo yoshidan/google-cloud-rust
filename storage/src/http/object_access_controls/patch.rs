@@ -1,5 +1,4 @@
 use crate::http::object_access_controls::ObjectAccessControl;
-use crate::http::BASE_URL;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for PatchObjectAccessControl.
@@ -30,7 +29,7 @@ pub struct PatchObjectAccessControlRequest {
     pub acl: ObjectAccessControl,
 }
 
-pub(crate) fn build(client: &Client, req: &PatchObjectAccessControlRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/o/{}/acl/{}", BASE_URL, req.bucket, req.object, req.entity);
+pub(crate) fn build(base_url: &str, client: &Client, req: &PatchObjectAccessControlRequest) -> RequestBuilder {
+    let url = format!("{}/b/{}/o/{}/acl/{}", base_url, req.bucket, req.object, req.entity);
     client.patch(url).query(&req).json(&req.acl)
 }

@@ -1,4 +1,4 @@
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 
 use reqwest::{Client, RequestBuilder};
 
@@ -15,7 +15,7 @@ pub struct LockRetentionPolicyRequest {
 }
 
 #[allow(dead_code)]
-pub(crate) fn build(client: &Client, req: &LockRetentionPolicyRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/lockRetentionPolicy", BASE_URL, req.bucket.escape());
+pub(crate) fn build(base_url: &str, client: &Client, req: &LockRetentionPolicyRequest) -> RequestBuilder {
+    let url = format!("{}/b/{}/lockRetentionPolicy", base_url, req.bucket.escape());
     client.post(url).query(&req)
 }

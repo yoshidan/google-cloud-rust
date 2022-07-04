@@ -1,4 +1,3 @@
-use crate::http::BASE_URL;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for GetObjectAccessControl.
@@ -23,7 +22,7 @@ pub struct ListObjectAccessControlsRequest {
     pub generation: Option<i64>,
 }
 
-pub(crate) fn build(client: &Client, req: &ListObjectAccessControlsRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/o/{}/acl", BASE_URL, req.bucket, req.object);
+pub(crate) fn build(base_url: &str, client: &Client, req: &ListObjectAccessControlsRequest) -> RequestBuilder {
+    let url = format!("{}/b/{}/o/{}/acl", base_url, req.bucket, req.object);
     client.get(url).query(&req)
 }

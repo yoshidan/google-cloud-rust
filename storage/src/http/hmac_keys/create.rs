@@ -1,5 +1,5 @@
 use crate::http::hmac_keys::HmacKeyMetadata;
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 use reqwest::header::CONTENT_LENGTH;
 use reqwest::{Client, RequestBuilder};
 
@@ -22,8 +22,8 @@ pub struct CreateHmacKeyResponse {
     pub secret: String,
 }
 
-pub(crate) fn build(client: &Client, req: &CreateHmacKeyRequest) -> RequestBuilder {
-    let url = format!("{}/projects/{}/hmacKeys", BASE_URL, req.project_id.escape());
+pub(crate) fn build(base_url: &str, client: &Client, req: &CreateHmacKeyRequest) -> RequestBuilder {
+    let url = format!("{}/projects/{}/hmacKeys", base_url, req.project_id.escape());
     client
         .post(url)
         .query(&req)

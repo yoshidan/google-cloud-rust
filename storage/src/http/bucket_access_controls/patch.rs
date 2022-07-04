@@ -1,5 +1,5 @@
 use crate::http::bucket_access_controls::BucketAccessControl;
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
@@ -12,7 +12,7 @@ pub struct PatchBucketAccessControlRequest {
     pub acl: BucketAccessControl,
 }
 
-pub fn build(client: &Client, req: &PatchBucketAccessControlRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/acl/{}", BASE_URL, req.bucket.escape(), req.entity.escape());
+pub fn build(base_url: &str, client: &Client, req: &PatchBucketAccessControlRequest) -> RequestBuilder {
+    let url = format!("{}/b/{}/acl/{}", base_url, req.bucket.escape(), req.entity.escape());
     client.patch(url).json(&req.acl)
 }

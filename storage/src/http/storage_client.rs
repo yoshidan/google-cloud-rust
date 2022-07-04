@@ -69,11 +69,17 @@ pub const SCOPES: [&str; 2] = [
 #[derive(Clone)]
 pub struct StorageClient {
     ts: Arc<dyn TokenSource>,
+    v1_endpoint: String,
+    v1_upload_endpoint: String,
 }
 
 impl StorageClient {
-    pub(crate) fn new(ts: Arc<dyn TokenSource>) -> Self {
-        Self { ts }
+    pub(crate) fn new(ts: Arc<dyn TokenSource>, endpoint: &str) -> Self {
+        Self {
+            ts,
+            v1_endpoint: format!("{}/storage/v1", endpoint),
+            v1_upload_endpoint: format!("{}/upload/storage/v1", endpoint),
+        }
     }
 
     /// Deletes the bucket.
@@ -85,7 +91,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.delete_bucket(&DeleteBucketRequest {
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
@@ -114,7 +120,7 @@ impl StorageClient {
     #[inline(always)]
     async fn _delete_bucket(&self, req: &DeleteBucketRequest, cancel: Option<CancellationToken>) -> Result<(), Error> {
         let action = async {
-            let builder = buckets::delete::build(&Client::new(), req);
+            let builder = buckets::delete::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send_get_empty(builder).await
         };
         invoke(cancel, action).await
@@ -129,7 +135,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.insert_bucket(&InsertBucketRequest {
     ///         name: "bucket".to_string(),
     ///         param: InsertBucketParam {
@@ -166,7 +172,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Bucket, Error> {
         let action = async {
-            let builder = buckets::insert::build(&Client::new(), req);
+            let builder = buckets::insert::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -181,7 +187,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.get_bucket(&GetBucketRequest {
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
@@ -202,7 +208,7 @@ impl StorageClient {
     #[inline(always)]
     async fn _get_bucket(&self, req: &GetBucketRequest, cancel: Option<CancellationToken>) -> Result<Bucket, Error> {
         let action = async {
-            let builder = buckets::get::build(&Client::new(), req);
+            let builder = buckets::get::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -217,7 +223,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.patch_bucket(&PatchBucketRequest {
     ///         bucket: "bucket".to_string(),
     ///         metadata: Some(BucketPatchConfig {
@@ -253,7 +259,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Bucket, Error> {
         let action = async {
-            let builder = buckets::patch::build(&Client::new(), req);
+            let builder = buckets::patch::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -268,7 +274,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.list_buckets(&ListBucketsRequest{
     ///         project: client.project_id().to_string(),
     ///         ..Default::default()
@@ -301,7 +307,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ListBucketsResponse, Error> {
         let action = async {
-            let builder = buckets::list::build(&Client::new(), req);
+            let builder = buckets::list::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -317,7 +323,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.set_iam_policy(&SetIamPolicyRequest{
     ///         resource: "bucket".to_string(),
     ///         policy: Policy {
@@ -358,7 +364,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Policy, Error> {
         let action = async {
-            let builder = buckets::set_iam_policy::build(&Client::new(), req);
+            let builder = buckets::set_iam_policy::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -374,7 +380,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.get_iam_policy(&GetIamPolicyRequest{
     ///         resource: "bucket".to_string(),
     ///         ..Default::default()
@@ -407,7 +413,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Policy, Error> {
         let action = async {
-            let builder = buckets::get_iam_policy::build(&Client::new(), req);
+            let builder = buckets::get_iam_policy::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -422,7 +428,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.test_iam_permissions(&TestIamPermissionsRequest{
     ///         resource: "bucket".to_string(),
     ///         permissions: vec!["storage.buckets.get".to_string()],
@@ -455,7 +461,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<TestIamPermissionsResponse, Error> {
         let action = async {
-            let builder = buckets::test_iam_permissions::build(&Client::new(), req);
+            let builder = buckets::test_iam_permissions::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -471,7 +477,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.list_default_object_access_controls(&ListDefaultObjectAccessControlsRequest{
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
@@ -504,7 +510,8 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ListDefaultObjectAccessControlsResponse, Error> {
         let action = async {
-            let builder = default_object_access_controls::list::build(&Client::new(), req);
+            let builder =
+                default_object_access_controls::list::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -519,7 +526,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.get_default_object_access_control(&GetDefaultObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
@@ -552,7 +559,8 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
         let action = async {
-            let builder = default_object_access_controls::get::build(&Client::new(), req);
+            let builder =
+                default_object_access_controls::get::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -569,7 +577,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.insert_default_object_access_control(&InsertDefaultObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         object_access_control: ObjectAccessControlCreationConfig {
@@ -605,7 +613,8 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
         let action = async {
-            let builder = default_object_access_controls::insert::build(&Client::new(), req);
+            let builder =
+                default_object_access_controls::insert::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -623,7 +632,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.patch_default_object_access_control(&PatchDefaultObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
@@ -660,7 +669,8 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
         let action = async {
-            let builder = default_object_access_controls::patch::build(&Client::new(), req);
+            let builder =
+                default_object_access_controls::patch::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -675,7 +685,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.delete_default_object_access_control(&DeleteDefaultObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
@@ -708,7 +718,8 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
-            let builder = default_object_access_controls::delete::build(&Client::new(), req);
+            let builder =
+                default_object_access_controls::delete::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send_get_empty(builder).await
         };
         invoke(cancel, action).await
@@ -723,7 +734,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.list_bucket_access_controls(&ListBucketAccessControlsRequest{
     ///         bucket: "bucket".to_string(),
     ///     }, None).await;
@@ -755,7 +766,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ListBucketAccessControlsResponse, Error> {
         let action = async {
-            let builder = bucket_access_controls::list::build(&Client::new(), req);
+            let builder = bucket_access_controls::list::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -770,7 +781,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.get_bucket_access_control(&GetBucketAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
@@ -803,7 +814,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<BucketAccessControl, Error> {
         let action = async {
-            let builder = bucket_access_controls::get::build(&Client::new(), req);
+            let builder = bucket_access_controls::get::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -819,7 +830,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.insert_bucket_access_control(&InsertBucketAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         acl: BucketAccessControlCreationConfig {
@@ -855,7 +866,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<BucketAccessControl, Error> {
         let action = async {
-            let builder = bucket_access_controls::insert::build(&Client::new(), req);
+            let builder = bucket_access_controls::insert::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -872,7 +883,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.patch_bucket_access_control(&PatchBucketAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
@@ -909,7 +920,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<BucketAccessControl, Error> {
         let action = async {
-            let builder = bucket_access_controls::patch::build(&Client::new(), req);
+            let builder = bucket_access_controls::patch::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -923,7 +934,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.delete_bucket_access_control(&DeleteBucketAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
@@ -956,7 +967,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
-            let builder = bucket_access_controls::delete::build(&Client::new(), req);
+            let builder = bucket_access_controls::delete::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send_get_empty(builder).await
         };
         invoke(cancel, action).await
@@ -971,7 +982,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.list_object_access_controls(&ListObjectAccessControlsRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "filename".to_string(),
@@ -1005,7 +1016,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ListBucketAccessControlsResponse, Error> {
         let action = async {
-            let builder = object_access_controls::list::build(&Client::new(), req);
+            let builder = object_access_controls::list::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1020,7 +1031,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.get_object_access_control(&GetObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "filename".to_string(),
@@ -1055,7 +1066,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
         let action = async {
-            let builder = object_access_controls::get::build(&Client::new(), req);
+            let builder = object_access_controls::get::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1071,7 +1082,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.insert_object_access_control(&InsertObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "filename".to_string(),
@@ -1109,7 +1120,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
         let action = async {
-            let builder = object_access_controls::insert::build(&Client::new(), req);
+            let builder = object_access_controls::insert::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1125,7 +1136,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.patch_object_access_control(&PatchObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "filename".to_string(),
@@ -1164,7 +1175,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
         let action = async {
-            let builder = object_access_controls::patch::build(&Client::new(), req);
+            let builder = object_access_controls::patch::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1180,7 +1191,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.delete_object_access_control(&DeleteObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "filename".to_string(),
@@ -1215,7 +1226,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
-            let builder = object_access_controls::delete::build(&Client::new(), req);
+            let builder = object_access_controls::delete::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send_get_empty(builder).await
         };
         invoke(cancel, action).await
@@ -1230,7 +1241,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.list_notifications(&ListNotificationsRequest{
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
@@ -1263,7 +1274,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ListNotificationsResponse, Error> {
         let action = async {
-            let builder = notifications::list::build(&Client::new(), req);
+            let builder = notifications::list::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1278,7 +1289,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.get_notification(&GetNotificationRequest{
     ///         bucket: "bucket".to_string(),
     ///         notification: "notification".to_string()
@@ -1311,7 +1322,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Notification, Error> {
         let action = async {
-            let builder = notifications::get::build(&Client::new(), req);
+            let builder = notifications::get::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1327,7 +1338,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.insert_notification(&InsertNotificationRequest {
     ///         bucket: "bucket".to_string(),
     ///         notification: NotificationCreationConfig {
@@ -1364,7 +1375,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Notification, Error> {
         let action = async {
-            let builder = notifications::insert::build(&Client::new(), req);
+            let builder = notifications::insert::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1379,7 +1390,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.delete_notification(&DeleteNotificationRequest {
     ///         bucket: "bucket".to_string(),
     ///         notification: "notification".to_string()
@@ -1412,7 +1423,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
-            let builder = notifications::delete::build(&Client::new(), req);
+            let builder = notifications::delete::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send_get_empty(builder).await
         };
         invoke(cancel, action).await
@@ -1427,7 +1438,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.list_hmac_keys(&ListHmacKeysRequest {
     ///         project_id: client.project_id().to_string(),
     ///         ..Default::default()
@@ -1460,7 +1471,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ListHmacKeysResponse, Error> {
         let action = async {
-            let builder = hmac_keys::list::build(&Client::new(), req);
+            let builder = hmac_keys::list::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1475,7 +1486,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.get_hmac_key(&GetHmacKeyRequest {
     ///         access_id: "access_id".to_string(),
     ///         project_id: client.project_id().to_string(),
@@ -1508,7 +1519,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<HmacKeyMetadata, Error> {
         let action = async {
-            let builder = hmac_keys::get::build(&Client::new(), req);
+            let builder = hmac_keys::get::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1523,7 +1534,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.create_hmac_key(&CreateHmacKeyRequest {
     ///         service_account_email: "service_account_email".to_string(),
     ///         project_id: client.project_id().to_string(),
@@ -1556,7 +1567,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<CreateHmacKeyResponse, Error> {
         let action = async {
-            let builder = hmac_keys::create::build(&Client::new(), req);
+            let builder = hmac_keys::create::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1572,7 +1583,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.update_hmac_key(&UpdateHmacKeyRequest{
     ///         access_id: "access_id".to_string(),
     ///         project_id: client.project_id().to_string(),
@@ -1609,7 +1620,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<HmacKeyMetadata, Error> {
         let action = async {
-            let builder = hmac_keys::update::build(&Client::new(), req);
+            let builder = hmac_keys::update::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1624,7 +1635,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.delete_hmac_key(&DeleteHmacKeyRequest{
     ///         access_id: "access_id".to_string(),
     ///         project_id: client.project_id().to_string(),
@@ -1657,7 +1668,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
-            let builder = hmac_keys::delete::build(&Client::new(), req);
+            let builder = hmac_keys::delete::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send_get_empty(builder).await
         };
         invoke(cancel, action).await
@@ -1672,7 +1683,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.list_objects(&ListObjectsRequest{
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
@@ -1705,7 +1716,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ListObjectsResponse, Error> {
         let action = async {
-            let builder = objects::list::build(&Client::new(), req);
+            let builder = objects::list::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1720,7 +1731,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.get_object(&GetObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
@@ -1742,7 +1753,7 @@ impl StorageClient {
     #[inline(always)]
     async fn _get_object(&self, req: &GetObjectRequest, cancel: Option<CancellationToken>) -> Result<Object, Error> {
         let action = async {
-            let builder = objects::get::build(&Client::new(), req);
+            let builder = objects::get::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1758,7 +1769,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.download_object(&GetObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
@@ -1792,7 +1803,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Vec<u8>, Error> {
         let action = async {
-            let builder = objects::download::build(&Client::new(), req);
+            let builder = objects::download::build(self.v1_endpoint.as_str(), &Client::default(), req);
             let request = self.with_headers(builder).await?;
             let response = request.send().await?;
             if response.status().is_success() {
@@ -1813,7 +1824,7 @@ impl StorageClient {
     /// use google_cloud_storage::http::objects::get::GetObjectRequest;
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.download_streamed_object(&GetObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
@@ -1851,7 +1862,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<impl Stream<Item = reqwest::Result<bytes::Bytes>>, Error> {
         let action = async {
-            let builder = objects::download::build(&Client::new(), req);
+            let builder = objects::download::build(self.v1_endpoint.as_str(), &Client::default(), req);
             let request = self.with_headers(builder).await?;
             let response = request.send().await?;
             if response.status().is_success() {
@@ -1873,7 +1884,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.upload_object(&UploadObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         name: "filename".to_string(),
@@ -1913,7 +1924,14 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
         let action = async {
-            let builder = objects::upload::build(&Client::new(), req, Some(data.len()), content_type, Vec::from(data));
+            let builder = objects::upload::build(
+                self.v1_upload_endpoint.as_str(),
+                &Client::default(),
+                req,
+                Some(data.len()),
+                content_type,
+                Vec::from(data),
+            );
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1928,7 +1946,7 @@ impl StorageClient {
     /// use google_cloud_storage::http::objects::upload::UploadObjectRequest;
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let source = vec!["hello", " ", "world"];
     ///     let size = source.iter().map(|x| x.len()).sum();
     ///     let chunks: Vec<Result<_, ::std::io::Error>> = source.clone().into_iter().map(|x| Ok(x)).collect();
@@ -1992,8 +2010,14 @@ impl StorageClient {
         bytes::Bytes: From<S::Ok>,
     {
         let action = async {
-            let builder =
-                objects::upload::build(&Client::new(), req, content_length, content_type, Body::wrap_stream(data));
+            let builder = objects::upload::build(
+                self.v1_upload_endpoint.as_str(),
+                &Client::default(),
+                req,
+                content_length,
+                content_type,
+                Body::wrap_stream(data),
+            );
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -2008,7 +2032,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.patch_object(&PatchObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
@@ -2042,7 +2066,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
         let action = async {
-            let builder = objects::patch::build(&Client::new(), req);
+            let builder = objects::patch::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -2057,7 +2081,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.delete_object(&DeleteObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
@@ -2087,7 +2111,7 @@ impl StorageClient {
     #[inline(always)]
     async fn _delete_object(&self, req: &DeleteObjectRequest, cancel: Option<CancellationToken>) -> Result<(), Error> {
         let action = async {
-            let builder = objects::delete::build(&Client::new(), req);
+            let builder = objects::delete::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send_get_empty(builder).await
         };
         invoke(cancel, action).await
@@ -2102,7 +2126,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.rewrite_object(&RewriteObjectRequest{
     ///         source_bucket: "bucket1".to_string(),
     ///         source_object: "object".to_string(),
@@ -2138,7 +2162,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<RewriteObjectResponse, Error> {
         let action = async {
-            let builder = objects::rewrite::build(&Client::new(), req);
+            let builder = objects::rewrite::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -2155,7 +2179,7 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::new().await.unwrap();
+    ///     let client = Client::default().await.unwrap();
     ///     let result = client.compose_object(&ComposeObjectRequest{
     ///         bucket: "bucket1".to_string(),
     ///         destination_object: "object1".to_string(),
@@ -2196,7 +2220,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
         let action = async {
-            let builder = objects::compose::build(&Client::new(), req);
+            let builder = objects::compose::build(self.v1_endpoint.as_str(), &Client::default(), req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -2306,6 +2330,7 @@ mod test {
     use crate::http::notifications::EventType;
     use crate::http::objects::SourceObjects;
     use crate::http::storage_client::{StorageClient, SCOPES};
+    use crate::http::BASE_URL;
     use bytes::Buf;
     use futures_util::StreamExt;
     use google_cloud_auth::{create_token_source, Config};
@@ -2326,7 +2351,7 @@ mod test {
         })
         .await
         .unwrap();
-        StorageClient::new(Arc::from(ts))
+        StorageClient::new(Arc::from(ts), BASE_URL)
     }
 
     #[tokio::test]
@@ -2880,7 +2905,7 @@ mod test {
         let file_name = format!("stream_{}", chrono::Utc::now().timestamp());
         let client = client().await;
 
-        // let stream= reqwest::Client::new().get("https://avatars.githubusercontent.com/u/958174?s=96&v=4").send().await.unwrap().bytes_stream();
+        // let stream= reqwest::Client::default().get("https://avatars.githubusercontent.com/u/958174?s=96&v=4").send().await.unwrap().bytes_stream();
         let source = vec!["hello", " ", "world"];
         let size = source.iter().map(|x| x.len()).sum();
         let chunks: Vec<Result<_, ::std::io::Error>> = source.clone().into_iter().map(Ok).collect();

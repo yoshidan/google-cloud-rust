@@ -1,5 +1,5 @@
 use crate::http::hmac_keys::HmacKeyMetadata;
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request object to update an HMAC key state.
@@ -14,10 +14,10 @@ pub struct UpdateHmacKeyRequest {
     pub metadata: HmacKeyMetadata,
 }
 
-pub(crate) fn build(client: &Client, req: &UpdateHmacKeyRequest) -> RequestBuilder {
+pub(crate) fn build(base_url: &str, client: &Client, req: &UpdateHmacKeyRequest) -> RequestBuilder {
     let url = format!(
         "{}/projects/{}/hmacKeys/{}",
-        BASE_URL,
+        base_url,
         req.project_id.escape(),
         req.access_id.escape()
     );

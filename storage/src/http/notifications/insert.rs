@@ -1,5 +1,5 @@
 use crate::http::notifications::{EventType, PayloadFormat};
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 use std::collections::HashMap;
 
@@ -31,7 +31,7 @@ pub struct InsertNotificationRequest {
     pub notification: NotificationCreationConfig,
 }
 
-pub(crate) fn build(client: &Client, req: &InsertNotificationRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/notificationConfigs", BASE_URL, req.bucket.escape());
+pub(crate) fn build(base_url: &str, client: &Client, req: &InsertNotificationRequest) -> RequestBuilder {
+    let url = format!("{}/b/{}/notificationConfigs", base_url, req.bucket.escape());
     client.post(url).json(&req.notification)
 }

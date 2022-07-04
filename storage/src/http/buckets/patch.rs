@@ -3,7 +3,7 @@ use crate::http::buckets::insert::RetentionPolicyCreationConfig;
 use crate::http::buckets::{Billing, Cors, Encryption, IamConfiguration, Lifecycle, Logging, Versioning, Website};
 use crate::http::object_access_controls::insert::ObjectAccessControlCreationConfig;
 use crate::http::object_access_controls::{PredefinedObjectAcl, Projection};
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 
 use reqwest::{Client, RequestBuilder};
 use std::collections::HashMap;
@@ -86,8 +86,8 @@ pub struct PatchBucketRequest {
     pub metadata: Option<BucketPatchConfig>,
 }
 
-pub(crate) fn build(client: &Client, req: &PatchBucketRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}", BASE_URL, req.bucket.escape());
+pub(crate) fn build(base_url: &str, client: &Client, req: &PatchBucketRequest) -> RequestBuilder {
+    let url = format!("{}/b/{}", base_url, req.bucket.escape());
     let builder = client.patch(url).query(&req);
     if let Some(body) = &req.metadata {
         builder.json(body)

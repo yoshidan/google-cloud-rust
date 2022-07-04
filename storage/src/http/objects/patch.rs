@@ -2,7 +2,7 @@ use crate::http::bucket_access_controls::PredefinedBucketAcl;
 
 use crate::http::object_access_controls::Projection;
 use crate::http::objects::{Encryption, Object};
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for PatchObject.
@@ -45,8 +45,8 @@ pub struct PatchObjectRequest {
     pub encryption: Option<Encryption>,
 }
 
-pub(crate) fn build(client: &Client, req: &PatchObjectRequest) -> RequestBuilder {
-    let url = format!("{}/b/{}/o/{}", BASE_URL, req.bucket.escape(), req.object.escape());
+pub(crate) fn build(base_url: &str, client: &Client, req: &PatchObjectRequest) -> RequestBuilder {
+    let url = format!("{}/b/{}/o/{}", base_url, req.bucket.escape(), req.object.escape());
     let builder = client.patch(url).query(&req).json(&req.metadata);
     if let Some(e) = &req.encryption {
         e.with_headers(builder)

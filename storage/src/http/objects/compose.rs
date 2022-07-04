@@ -1,6 +1,6 @@
 use crate::http::object_access_controls::PredefinedObjectAcl;
 use crate::http::objects::{Encryption, Object, SourceObjects};
-use crate::http::{Escape, BASE_URL};
+use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for ComposeObject.
@@ -44,10 +44,10 @@ pub struct ComposingTargets {
     pub source_objects: Vec<SourceObjects>,
 }
 
-pub(crate) fn build(client: &Client, req: &ComposeObjectRequest) -> RequestBuilder {
+pub(crate) fn build(base_url: &str, client: &Client, req: &ComposeObjectRequest) -> RequestBuilder {
     let url = format!(
         "{}/b/{}/o/{}/compose",
-        BASE_URL,
+        base_url,
         req.bucket.escape(),
         req.destination_object.escape()
     );

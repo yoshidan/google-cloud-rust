@@ -30,7 +30,7 @@ use std::io::Read;
 async fn main() -> Result<(), Error> {
 
     // Create client.
-    let mut client = Client::new().await.unwrap();
+    let mut client = Client::default().await.unwrap();
 
     // Upload the file
     let uploaded = client.upload_object(&UploadObjectRequest {
