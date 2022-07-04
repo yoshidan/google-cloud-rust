@@ -81,7 +81,7 @@ pub fn user_columns() -> Vec<&'static str> {
 
 #[allow(dead_code)]
 pub async fn create_session() -> ManagedSession {
-    let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()))
+    let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()), "")
         .await
         .unwrap();
     let mut config = SessionConfig::default();
