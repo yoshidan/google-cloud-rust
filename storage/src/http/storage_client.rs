@@ -2011,7 +2011,7 @@ impl StorageClient {
     {
         let action = async {
             let builder = objects::upload::build(
-                self.v1_endpoint.as_str(),
+                self.v1_upload_endpoint.as_str(),
                 &Client::default(),
                 req,
                 content_length,
