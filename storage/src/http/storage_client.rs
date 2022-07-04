@@ -2330,12 +2330,12 @@ mod test {
     use crate::http::notifications::EventType;
     use crate::http::objects::SourceObjects;
     use crate::http::storage_client::{StorageClient, SCOPES};
+    use crate::http::BASE_URL;
     use bytes::Buf;
     use futures_util::StreamExt;
     use google_cloud_auth::{create_token_source, Config};
     use serial_test::serial;
     use std::sync::Arc;
-    use crate::http::BASE_URL;
 
     const PROJECT: &str = "atl-dev1";
 
