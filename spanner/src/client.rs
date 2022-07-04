@@ -1,7 +1,7 @@
 use google_cloud_gax::retry::{invoke_fn, TryAs};
 use google_cloud_googleapis::spanner::v1::{commit_request, transaction_options, Mutation, TransactionOptions};
 
-use crate::apiv1::conn_pool::ConnectionManager;
+use crate::apiv1::conn_pool::{ConnectionManager, SPANNER};
 use crate::session::{ManagedSession, SessionConfig, SessionError, SessionManager};
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions};
@@ -61,6 +61,8 @@ pub struct ClientConfig {
     pub session_config: SessionConfig,
     /// ChannelConfig is the configuration for gRPC connection.
     pub channel_config: ChannelConfig,
+    /// Overriding service endpoint
+    pub endpoint: String,
 }
 
 impl Default for ClientConfig {
@@ -68,6 +70,7 @@ impl Default for ClientConfig {
         let mut config = ClientConfig {
             channel_config: Default::default(),
             session_config: Default::default(),
+            endpoint: SPANNER.to_string(),
         };
         config.session_config.min_opened = config.channel_config.num_channels * 4;
         config.session_config.max_opened = config.channel_config.num_channels * 100;
@@ -171,7 +174,7 @@ impl Client {
             Err(_) => Environment::GoogleCloud(google_cloud_auth::project().await?),
         };
         let pool_size = config.channel_config.num_channels as usize;
-        let conn_pool = ConnectionManager::new(pool_size, &environment).await?;
+        let conn_pool = ConnectionManager::new(pool_size, &environment, config.endpoint).await?;
         let session_manager = SessionManager::new(database, conn_pool, config.session_config).await?;
 
         Ok(Client {
