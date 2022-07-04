@@ -515,7 +515,7 @@ mod tests {
                 )
                 .await;
         });
-        let _ = publish().await;
+        publish().await;
         tokio::time::sleep(Duration::from_secs(3)).await;
         cancellation_token.cancel();
         let _ = handle.await;

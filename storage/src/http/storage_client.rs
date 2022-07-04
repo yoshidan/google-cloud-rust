@@ -2476,7 +2476,7 @@ mod test {
         let bucket_name = "rust-default-object-acl-test";
         let client = client().await;
 
-        let _ = client
+        client
             .delete_default_object_access_control(
                 &DeleteDefaultObjectAccessControlRequest {
                     bucket: bucket_name.to_string(),
@@ -2572,7 +2572,7 @@ mod test {
             .unwrap();
         assert_eq!(5, acls.items.len());
 
-        let _ = client
+        client
             .delete_bucket_access_control(
                 &DeleteBucketAccessControlRequest {
                     bucket: bucket_name.to_string(),
@@ -2635,7 +2635,7 @@ mod test {
             .unwrap();
         assert_eq!(2, acls.items.len());
 
-        let _ = client
+        client
             .delete_object_access_control(
                 &DeleteObjectAccessControlRequest {
                     bucket: bucket_name.to_string(),
@@ -2666,7 +2666,7 @@ mod test {
             .unwrap();
 
         for n in notifications.items.unwrap_or_default() {
-            let _ = client
+            client
                 .delete_notification(
                     &DeleteNotificationRequest {
                         bucket: bucket_name.to_string(),
@@ -2766,7 +2766,7 @@ mod test {
                 .unwrap();
             assert_eq!(result.state, "INACTIVE");
 
-            let _ = client
+            client
                 .delete_hmac_key(
                     &DeleteHmacKeyRequest {
                         access_id: n.access_id.to_string(),
