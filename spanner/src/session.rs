@@ -634,7 +634,7 @@ mod tests {
     pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
     async fn assert_rush(use_invalidate: bool, config: SessionConfig) {
-        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()))
+        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()), "")
             .await
             .unwrap();
         let max = config.max_opened;
@@ -667,7 +667,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_shrink_sessions_not_expired() {
-        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()))
+        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()), "")
             .await
             .unwrap();
         let idle_timeout = Duration::from_secs(100);
@@ -690,7 +690,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_shrink_sessions_all_expired() {
-        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()))
+        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()), "")
             .await
             .unwrap();
         let idle_timeout = Duration::from_millis(1);
@@ -715,7 +715,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_health_check_checked() {
-        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()))
+        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()), "")
             .await
             .unwrap();
         let session_alive_trust_duration = Duration::from_millis(10);
@@ -739,7 +739,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_health_check_not_checked() {
-        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()))
+        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()), "")
             .await
             .unwrap();
         let session_alive_trust_duration = Duration::from_secs(10);
@@ -763,7 +763,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_schedule_refresh() {
-        let conn_pool = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()))
+        let conn_pool = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()), "")
             .await
             .unwrap();
         let config = SessionConfig {
@@ -864,7 +864,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_close() {
-        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()))
+        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()), "")
             .await
             .unwrap();
         let config = SessionConfig::default();
