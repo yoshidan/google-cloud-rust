@@ -367,7 +367,7 @@ mod tests {
     }
 
     async fn create_subscription(enable_exactly_once_delivery: bool) -> Result<Subscription, anyhow::Error> {
-        let cm = ConnectionManager::new(4, &Environment::Emulator(EMULATOR.to_string())).await?;
+        let cm = ConnectionManager::new(4, &Environment::Emulator(EMULATOR.to_string()), "").await?;
         let client = SubscriberClient::new(cm);
 
         let uuid = Uuid::new_v4().to_hyphenated().to_string();
@@ -389,7 +389,7 @@ mod tests {
 
     async fn publish() {
         let pubc = PublisherClient::new(
-            ConnectionManager::new(4, &Environment::Emulator(EMULATOR.to_string()))
+            ConnectionManager::new(4, &Environment::Emulator(EMULATOR.to_string()), "")
                 .await
                 .unwrap(),
         );
