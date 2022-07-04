@@ -159,9 +159,9 @@ mod tests {
     }
 
     async fn create_topic() -> Result<Topic, anyhow::Error> {
-        let cm1 = ConnectionManager::new(4, &Environment::Emulator("localhost:8681".to_string())).await?;
+        let cm1 = ConnectionManager::new(4, &Environment::Emulator("localhost:8681".to_string()), "").await?;
         let pubc = PublisherClient::new(cm1);
-        let cm2 = ConnectionManager::new(4, &Environment::Emulator("localhost:8681".to_string())).await?;
+        let cm2 = ConnectionManager::new(4, &Environment::Emulator("localhost:8681".to_string()), "").await?;
         let subc = SubscriberClient::new(cm2);
 
         let uuid = Uuid::new_v4().to_hyphenated().to_string();

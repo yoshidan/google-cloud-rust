@@ -284,7 +284,7 @@ mod tests {
     #[serial]
     async fn test_handle_message_immediately_nack() {
         let cm = || async {
-            ConnectionManager::new(4, &Environment::Emulator("localhost:8681".to_string()))
+            ConnectionManager::new(4, &Environment::Emulator("localhost:8681".to_string()), "")
                 .await
                 .unwrap()
         };

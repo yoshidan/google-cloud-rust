@@ -1,4 +1,4 @@
-use crate::apiv1::conn_pool::ConnectionManager;
+use crate::apiv1::conn_pool::{ConnectionManager, PUBSUB};
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
 use google_cloud_gax::cancel::CancellationToken;
@@ -10,6 +10,7 @@ use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::{DetachSubscriptionRequest, ListSubscriptionsRequest, ListTopicsRequest};
 
+#[derive(Debug)]
 pub struct ClientConfig {
     pub pool_size: Option<usize>,
     /// The default project is determined by credentials.
@@ -17,6 +18,9 @@ pub struct ClientConfig {
     /// - If the server is running on CGP the project_id is from metadata server
     /// - If the PUBSUB_EMULATOR_HOST is specified the project_id is 'local-project'
     pub project_id: Option<String>,
+
+    /// Overriding service endpoint
+    pub endpoint: String,
 }
 
 impl Default for ClientConfig {
@@ -24,6 +28,7 @@ impl Default for ClientConfig {
         Self {
             pool_size: Some(4),
             project_id: None,
+            endpoint: PUBSUB.to_string(),
         }
     }
 }
@@ -62,8 +67,10 @@ impl Client {
             Ok(host) => Environment::Emulator(host),
             Err(_) => Environment::GoogleCloud(google_cloud_auth::project().await?),
         };
-        let pubc = PublisherClient::new(ConnectionManager::new(pool_size, &environment).await?);
-        let subc = SubscriberClient::new(ConnectionManager::new(pool_size, &environment).await?);
+        let pubc =
+            PublisherClient::new(ConnectionManager::new(pool_size, &environment, config.endpoint.as_str()).await?);
+        let subc =
+            SubscriberClient::new(ConnectionManager::new(pool_size, &environment, config.endpoint.as_str()).await?);
 
         let project_id = match config.project_id {
             Some(project_id) => project_id,

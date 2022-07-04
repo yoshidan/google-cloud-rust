@@ -22,7 +22,7 @@ mod tests {
     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
     async fn create_spanner_client() -> Client {
-        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()))
+        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()), "")
             .await
             .unwrap();
         cm.conn()

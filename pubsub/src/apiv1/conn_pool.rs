@@ -14,9 +14,9 @@ pub struct ConnectionManager {
 }
 
 impl ConnectionManager {
-    pub async fn new(pool_size: usize, environment: &Environment) -> Result<Self, Error> {
+    pub async fn new(pool_size: usize, environment: &Environment, domain: &str) -> Result<Self, Error> {
         Ok(ConnectionManager {
-            inner: GRPCConnectionManager::new(pool_size, PUBSUB, AUDIENCE, Some(&SCOPES), environment).await?,
+            inner: GRPCConnectionManager::new(pool_size, domain, AUDIENCE, Some(&SCOPES), environment).await?,
         })
     }
 

@@ -182,7 +182,7 @@ pub enum SignedURLError {
 
 pub(crate) fn signed_url(bucket: &str, object: &str, opts: SignedURLOptions) -> Result<String, SignedURLError> {
     let now = Utc::now();
-    let _ = validate_options(&opts, &now)?;
+    validate_options(&opts, &now)?;
 
     match &opts.scheme {
         SigningScheme::SigningSchemeV4 => {

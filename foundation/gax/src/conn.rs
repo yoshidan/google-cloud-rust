@@ -75,7 +75,7 @@ pub struct ConnectionManager {
 impl ConnectionManager {
     pub async fn new(
         pool_size: usize,
-        domain_name: &'static str,
+        domain_name: impl Into<String>,
         audience: &'static str,
         scopes: Option<&'static [&'static str]>,
         environment: &Environment,
@@ -94,7 +94,7 @@ impl ConnectionManager {
 
     async fn create_connections(
         pool_size: usize,
-        domain_name: &'static str,
+        domain_name: impl Into<String>,
         audience: &'static str,
         scopes: Option<&'static [&'static str]>,
         project: &Project,
