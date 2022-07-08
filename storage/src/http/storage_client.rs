@@ -2861,22 +2861,23 @@ mod test {
             .await
             .unwrap();
 
-        let download = |range: Range| {
+        let download = |range: Range|  {
+            let client = client.clone();
+            let bucket_name = uploaded.bucket.clone();
+            let object_name = uploaded.name.clone();
             async move {
-                client
-                    .download_object(
-                        &GetObjectRequest {
-                            bucket: uploaded.bucket.to_string(),
-                            object: uploaded.name.to_string(),
-                            ..Default::default()
-                        },
-                        &range,
-                        None,
-                    )
+                client.download_object(
+                    &GetObjectRequest {
+                        bucket: bucket_name,
+                        object: object_name,
+                        ..Default::default()
+                    },
+                    &range,
+                    None,
+                )
                     .await
                     .unwrap()
             }
-            .await
         };
 
         let downloaded = download(Range::default()).await;
@@ -2886,7 +2887,7 @@ mod test {
         let downloaded = download(Range(Some(1), Some(2))).await;
         assert_eq!(downloaded, vec![2, 3]);
         let downloaded = download(Range(None, Some(2))).await;
-        assert_eq!(downloaded, vec![1, 2, 3]);
+        assert_eq!(downloaded, vec![5, 6]);
 
         let _rewrited = client
             .rewrite_object(
@@ -2951,24 +2952,40 @@ mod test {
             .await
             .unwrap();
 
-        let mut downloaded = client
-            .download_streamed_object(
-                &GetObjectRequest {
-                    bucket: uploaded.bucket.to_string(),
-                    object: uploaded.name.to_string(),
-                    ..Default::default()
-                },
-                &Range::default(),
-                None,
-            )
-            .await
-            .unwrap();
+        let download = |range: Range| {
+            let client = client.clone();
+            let bucket_name = uploaded.bucket.clone();
+            let object_name = uploaded.name.clone();
+            async move {
+                let mut downloaded = client
+                    .download_streamed_object(
+                        &GetObjectRequest {
+                            bucket: bucket_name,
+                            object: object_name,
+                            ..Default::default()
+                        },
+                        &range,
+                        None,
+                    )
+                    .await
+                    .unwrap();
+                let mut data = Vec::with_capacity(10);
+                while let Some(v) = downloaded.next().await {
+                    let d: bytes::Bytes = v.unwrap();
+                    data.extend_from_slice(d.chunk());
+                }
+                data
+            }
+        };
+        let downloaded = download(Range::default()).await;
+        assert_eq!("hello world", String::from_utf8_lossy(downloaded.as_slice()));
+        let downloaded = download(Range(Some(1), None)).await;
+        assert_eq!("ello world", String::from_utf8_lossy(downloaded.as_slice()));
+        let downloaded = download(Range(Some(1), Some(2))).await;
+        assert_eq!("el", String::from_utf8_lossy(downloaded.as_slice()));
+        let downloaded = download(Range(None, Some(2))).await;
+        assert_eq!("ld", String::from_utf8_lossy(downloaded.as_slice()));
 
-        let mut data = Vec::with_capacity(10);
-        while let Some(v) = downloaded.next().await {
-            let d: bytes::Bytes = v.unwrap();
-            data.extend_from_slice(d.chunk());
-        }
-        assert_eq!("hello world", String::from_utf8_lossy(data.as_slice()));
+
     }
 }

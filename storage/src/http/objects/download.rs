@@ -4,23 +4,22 @@ use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 #[derive(Default)]
-pub struct Range(Option<u64>, Option<u64>);
+pub struct Range(pub Option<u64>, pub Option<u64>);
 
 impl Range {
     /// Range: bytes=0-1999 (first 2000 bytes)
     /// Range: bytes=-2000 (last 2000 bytes)
     /// Range: bytes=2000- (from byte 2000 to end of file)
     fn with_header(&self, builder: RequestBuilder) -> RequestBuilder {
-        if let Some(start) = self.0 {
-            if let Some(end) = self.1 {
-                builder.header("Range", format!("bytes={}-{}", start, end))
+        if let Some(from) = self.0 {
+            if let Some(to) = self.1 {
+                builder.header("Range", format!("bytes={}-{}", from, to))
             } else {
-                builder.header("Range", format!("bytes={}-", start))
+                builder.header("Range", format!("bytes={}-", from))
             }
+        } else if let Some(reverse_from) = self.1 {
+            builder.header("Range", format!("bytes=-{}", reverse_from))
         } else {
-            if let Some(end) = self.1 {
-                builder.header("Range", format!("bytes=-{}", end))
-            }
             builder
         }
     }
