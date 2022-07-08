@@ -14,6 +14,7 @@
 //! use google_cloud_storage::http::Error;
 //! use google_cloud_storage::sign::SignedURLOptions;
 //! use google_cloud_storage::sign::SignedURLMethod;
+//! use google_cloud_storage::http::objects::download::Range;
 //! use google_cloud_storage::http::objects::get::GetObjectRequest;
 //! use google_cloud_storage::http::objects::upload::UploadObjectRequest;
 //! use tokio::task::JoinHandle;
@@ -39,7 +40,7 @@
 //!         bucket: "bucket".to_string(),
 //!         object: "file.png".to_string(),
 //!         ..Default::default()
-//!    }, None).await;
+//!    }, &Range::default(), None).await;
 //!
 //!     // Create signed url.
 //!     let url_for_download = client.signed_url("bucket", "foo.txt", SignedURLOptions::default());

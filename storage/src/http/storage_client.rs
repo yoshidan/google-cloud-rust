@@ -2861,20 +2861,21 @@ mod test {
             .await
             .unwrap();
 
-        let download = |range: Range|  {
+        let download = |range: Range| {
             let client = client.clone();
             let bucket_name = uploaded.bucket.clone();
             let object_name = uploaded.name.clone();
             async move {
-                client.download_object(
-                    &GetObjectRequest {
-                        bucket: bucket_name,
-                        object: object_name,
-                        ..Default::default()
-                    },
-                    &range,
-                    None,
-                )
+                client
+                    .download_object(
+                        &GetObjectRequest {
+                            bucket: bucket_name,
+                            object: object_name,
+                            ..Default::default()
+                        },
+                        &range,
+                        None,
+                    )
                     .await
                     .unwrap()
             }
@@ -2985,7 +2986,5 @@ mod test {
         assert_eq!("el", String::from_utf8_lossy(downloaded.as_slice()));
         let downloaded = download(Range(None, Some(2))).await;
         assert_eq!("ld", String::from_utf8_lossy(downloaded.as_slice()));
-
-
     }
 }
