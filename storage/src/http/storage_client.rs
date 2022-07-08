@@ -59,6 +59,7 @@ use reqwest::{Body, Client, RequestBuilder, Response};
 
 use std::future::Future;
 
+use crate::http::objects::download::Range;
 use std::sync::Arc;
 
 pub const SCOPES: [&str; 2] = [
@@ -1766,6 +1767,7 @@ impl StorageClient {
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::get::GetObjectRequest;
+    /// use google_cloud_storage::http::objects::download::Range;
     ///
     /// #[tokio::main]
     /// async fn main() {
@@ -1774,16 +1776,17 @@ impl StorageClient {
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }, &Range::default(), None).await;
     /// }
     /// ```
     #[cfg(not(feature = "trace"))]
     pub async fn download_object(
         &self,
         req: &GetObjectRequest,
+        range: &Range,
         cancel: Option<CancellationToken>,
     ) -> Result<Vec<u8>, Error> {
-        self._download_object(req, cancel).await
+        self._download_object(req, range, cancel).await
     }
 
     #[cfg(feature = "trace")]
@@ -1791,19 +1794,21 @@ impl StorageClient {
     pub async fn download_object(
         &self,
         req: &GetObjectRequest,
+        range: &Range,
         cancel: Option<CancellationToken>,
     ) -> Result<Vec<u8>, Error> {
-        self._download_object(req, cancel).await
+        self._download_object(req, range, cancel).await
     }
 
     #[inline(always)]
     async fn _download_object(
         &self,
         req: &GetObjectRequest,
+        range: &Range,
         cancel: Option<CancellationToken>,
     ) -> Result<Vec<u8>, Error> {
         let action = async {
-            let builder = objects::download::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = objects::download::build(self.v1_endpoint.as_str(), &Client::default(), req, range);
             let request = self.with_headers(builder).await?;
             let response = request.send().await?;
             if response.status().is_success() {
@@ -1822,6 +1827,8 @@ impl StorageClient {
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::get::GetObjectRequest;
+    /// use google_cloud_storage::http::objects::download::Range;
+    ///
     /// #[tokio::main]
     /// async fn main() {
     ///     let client = Client::default().await.unwrap();
@@ -1829,7 +1836,7 @@ impl StorageClient {
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }, &Range::default(), None).await;
     ///
     ///     //  while let Some(v) = downloaded.next().await? {
     ///     //      let d: bytes::Bytes = v.unwrap();
@@ -1840,9 +1847,10 @@ impl StorageClient {
     pub async fn download_streamed_object(
         &self,
         req: &GetObjectRequest,
+        range: &Range,
         cancel: Option<CancellationToken>,
     ) -> Result<impl Stream<Item = reqwest::Result<bytes::Bytes>>, Error> {
-        self._download_streamed_object(req, cancel).await
+        self._download_streamed_object(req, range, cancel).await
     }
 
     #[cfg(feature = "trace")]
@@ -1850,19 +1858,21 @@ impl StorageClient {
     pub async fn download_streamed_object(
         &self,
         req: &GetObjectRequest,
+        range: &Range,
         cancel: Option<CancellationToken>,
     ) -> Result<impl Stream<Item = reqwest::Result<bytes::Bytes>>, Error> {
-        self._download_streamed_object(req, cancel).await
+        self._download_streamed_object(req, range, cancel).await
     }
 
     #[inline(always)]
     async fn _download_streamed_object(
         &self,
         req: &GetObjectRequest,
+        range: &Range,
         cancel: Option<CancellationToken>,
     ) -> Result<impl Stream<Item = reqwest::Result<bytes::Bytes>>, Error> {
         let action = async {
-            let builder = objects::download::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = objects::download::build(self.v1_endpoint.as_str(), &Client::default(), req, range);
             let request = self.with_headers(builder).await?;
             let response = request.send().await?;
             if response.status().is_success() {
@@ -2328,6 +2338,7 @@ mod test {
     use crate::http::objects::upload::UploadObjectRequest;
 
     use crate::http::notifications::EventType;
+    use crate::http::objects::download::Range;
     use crate::http::objects::SourceObjects;
     use crate::http::storage_client::{StorageClient, SCOPES};
     use crate::http::BASE_URL;
@@ -2843,25 +2854,39 @@ mod test {
                     name: "test1".to_string(),
                     ..Default::default()
                 },
-                &[1],
+                &[1, 2, 3, 4, 5, 6],
                 "text/plain",
                 None,
             )
             .await
             .unwrap();
 
-        let downloaded = client
-            .download_object(
-                &GetObjectRequest {
-                    bucket: uploaded.bucket.to_string(),
-                    object: uploaded.name.to_string(),
-                    ..Default::default()
-                },
-                None,
-            )
+        let download = |range: Range| {
+            async move {
+                client
+                    .download_object(
+                        &GetObjectRequest {
+                            bucket: uploaded.bucket.to_string(),
+                            object: uploaded.name.to_string(),
+                            ..Default::default()
+                        },
+                        &range,
+                        None,
+                    )
+                    .await
+                    .unwrap()
+            }
             .await
-            .unwrap();
-        assert_eq!(downloaded, vec![1]);
+        };
+
+        let downloaded = download(Range::default()).await;
+        assert_eq!(downloaded, vec![1, 2, 3, 4, 5, 6]);
+        let downloaded = download(Range(Some(1), None)).await;
+        assert_eq!(downloaded, vec![2, 3, 4, 5, 6]);
+        let downloaded = download(Range(Some(1), Some(2))).await;
+        assert_eq!(downloaded, vec![2, 3]);
+        let downloaded = download(Range(None, Some(2))).await;
+        assert_eq!(downloaded, vec![1, 2, 3]);
 
         let _rewrited = client
             .rewrite_object(
@@ -2933,6 +2958,7 @@ mod test {
                     object: uploaded.name.to_string(),
                     ..Default::default()
                 },
+                &Range::default(),
                 None,
             )
             .await
