@@ -21,7 +21,18 @@ impl ServiceAccountClient {
         }
     }
 
-    pub(crate) async fn sign_blob(&self, name: &str, data: &[u8]) -> Result<Vec<u8>, Error> {
+    #[cfg(feature = "trace")]
+    #[tracing::instrument(skip_all)]
+    pub async fn sign_blob(&self, name: &str, data: &[u8]) -> Result<Vec<u8>, Error> {
+        self._sign_blob(name, data)
+    }
+
+    #[cfg(not(feature = "trace"))]
+    pub async fn sign_blob(&self, name: &str, data: &[u8]) -> Result<Vec<u8>, Error> {
+        self._sign_blob(name, data)
+    }
+
+    async fn _sign_blob(&self, name: &str, data: &[u8]) -> Result<Vec<u8>, Error> {
         let url = format!("{}/{}:signBlob", self.v1_endpoint, name);
         let payload = ("payload", base64::encode(data));
         let request = Client::default().post(url).json(&payload);
