@@ -6,7 +6,6 @@ use crate::http::service_account_client::ServiceAccountClient;
 use google_cloud_auth::{create_token_source_from_project, Config, Project};
 use ring::{rand, signature};
 use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey};
-use sha2::Digest;
 use std::ops::Deref;
 
 use std::sync::Arc;
@@ -159,8 +158,10 @@ impl Client {
         }
         if let SignBy::PrivateKey(pk) = &opts.sign_by {
             if pk.is_empty() {
-                if google_cloud_metadata::on_gce().await {
-                    opts.sign_by = SignBy::SignBytes;
+                if let Some(pk) = &self.private_key {
+                    opts.sign_by = SignBy::PrivateKey(pk.clone().into_bytes())
+                } else if google_cloud_metadata::on_gce().await {
+                    opts.sign_by = SignBy::SignBytes
                 } else {
                     return Err(SignedURLError::InvalidOption("credentials is required to sign url"));
                 }
