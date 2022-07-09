@@ -39,8 +39,8 @@ impl Deref for Client {
 }
 
 pub struct ClientConfig {
-    storage_endpoint: String,
-    service_account_endpoint: String,
+    pub storage_endpoint: String,
+    pub service_account_endpoint: String,
 }
 
 impl Default for ClientConfig {
