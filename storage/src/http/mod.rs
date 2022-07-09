@@ -7,6 +7,7 @@ pub mod hmac_keys;
 pub mod notifications;
 pub mod object_access_controls;
 pub mod objects;
+pub mod service_account_client;
 pub mod storage_client;
 
 use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
@@ -15,9 +16,6 @@ use serde_json::Value;
 use std::fmt::Display;
 use std::str::FromStr;
 pub use tokio_util::sync::CancellationToken;
-
-//TODO emulator support
-pub(crate) const BASE_URL: &str = "https://storage.googleapis.com";
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -31,6 +29,8 @@ pub enum Error {
     AuthError(#[from] google_cloud_auth::error::Error),
     #[error("operation cancelled")]
     Cancelled,
+    #[error(transparent)]
+    Base64DecodeError(#[from] base64::DecodeError),
 }
 
 pub(crate) trait Escape {

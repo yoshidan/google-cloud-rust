@@ -1,11 +1,17 @@
+use crate::http::storage_client;
 use crate::http::storage_client::StorageClient;
-use crate::http::{storage_client, BASE_URL};
 
+use crate::http::service_account_client::ServiceAccountClient;
+use futures_util::future::BoxFuture;
 use google_cloud_auth::{create_token_source_from_project, Config, Project};
+use ring::{rand, signature};
+use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey};
+use sha2::{Digest, Sha256};
 use std::ops::Deref;
+use std::pin::Pin;
 use std::sync::Arc;
 
-use crate::sign::{signed_url, SignBy, SignedURLError, SignedURLOptions};
+use crate::sign::{create_signed_buffer, SignBy, SignedURLError, SignedURLOptions};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -22,6 +28,7 @@ pub struct Client {
     service_account_email: String,
     project_id: String,
     storage_client: StorageClient,
+    service_account_client: ServiceAccountClient,
 }
 
 impl Deref for Client {
@@ -32,16 +39,29 @@ impl Deref for Client {
     }
 }
 
+pub struct ClientConfig {
+    storage_endpoint: String,
+    service_account_endpoint: String,
+}
+
+impl Default for ClientConfig {
+    fn default() -> Self {
+        Self {
+            storage_endpoint: "https://storage.googleapis.com".to_string(),
+            service_account_endpoint: "https://iamcredentials.googleapis.com".to_string(),
+        }
+    }
+}
+
 impl Client {
     /// New client
     pub async fn default() -> Result<Self, Error> {
         let project = google_cloud_auth::project().await?;
-        Self::new(&project, None).await
+        Self::new(&project, ClientConfig::default()).await
     }
 
     /// New client from project
-    pub async fn new(project: &google_cloud_auth::Project, endpoint: Option<&str>) -> Result<Self, Error> {
-        let endpoint = endpoint.unwrap_or(BASE_URL);
+    pub async fn new(project: &google_cloud_auth::Project, config: ClientConfig) -> Result<Self, Error> {
         let ts = create_token_source_from_project(
             project,
             Config {
@@ -50,6 +70,11 @@ impl Client {
             },
         )
         .await?;
+
+        let ts = Arc::from(ts);
+        let service_account_client =
+            ServiceAccountClient::new(Arc::clone(&ts), config.service_account_endpoint.as_str());
+
         match project {
             Project::FromFile(cred) => Ok(Client {
                 private_key: cred.private_key.clone(),
@@ -63,7 +88,8 @@ impl Client {
                     .as_ref()
                     .ok_or(Error::Other("no project_id was found"))?
                     .to_string(),
-                storage_client: StorageClient::new(Arc::from(ts), endpoint),
+                storage_client: StorageClient::new(ts, config.storage_endpoint.as_str()),
+                service_account_client,
             }),
             Project::FromMetadataServer(info) => Ok(Client {
                 private_key: None,
@@ -73,7 +99,8 @@ impl Client {
                     .as_ref()
                     .ok_or(Error::Other("no project_id was found"))?
                     .to_string(),
-                storage_client: StorageClient::new(Arc::from(ts), endpoint),
+                storage_client: StorageClient::new(ts, config.storage_endpoint.as_str()),
+                service_account_client,
             }),
         }
     }
@@ -126,22 +153,57 @@ impl Client {
 
     #[inline(always)]
     async fn _signed_url(&self, bucket: &str, object: &str, opts: SignedURLOptions) -> Result<String, SignedURLError> {
-        let signable = match &opts.sign_by {
-            SignBy::PrivateKey(v) => !v.is_empty(),
-            _ => true,
-        };
-        if !opts.google_access_id.is_empty() && signable {
-            return signed_url(bucket, object, opts);
-        }
-
         let mut opts = opts;
-        if let Some(private_key) = &self.private_key {
-            opts.sign_by = SignBy::PrivateKey(private_key.as_bytes().to_vec());
-        }
         if !self.service_account_email.is_empty() && opts.google_access_id.is_empty() {
             opts.google_access_id = self.service_account_email.to_string();
         }
-        signed_url(bucket, object, opts)
+        if let SignBy::PrivateKey(pk) = &opts.sign_by {
+            if pk.is_empty() {
+                if google_cloud_metadata::on_gce().await {
+                    opts.sign_by = SignBy::SignBytes;
+                } else {
+                    return Err(SignedURLError::InvalidOption("credentials is required to sign url"));
+                }
+            }
+        }
+
+        let (signed_buffer, mut builder) = create_signed_buffer(bucket, object, &opts)?;
+        tracing::trace!("signed_buffer={:?}", String::from_utf8_lossy(&signed_buffer));
+
+        // create signature
+        let signature = match &opts.sign_by {
+            SignBy::PrivateKey(private_key) => {
+                let str = String::from_utf8_lossy(private_key);
+                let pkcs = rsa::RsaPrivateKey::from_pkcs8_pem(str.as_ref())
+                    .map_err(|e| SignedURLError::CertError(e.to_string()))?;
+                let der = pkcs
+                    .to_pkcs8_der()
+                    .map_err(|e| SignedURLError::CertError(e.to_string()))?;
+                let key_pair = ring::signature::RsaKeyPair::from_pkcs8(der.as_ref())
+                    .map_err(|e| SignedURLError::CertError(e.to_string()))?;
+                let mut signed = vec![0; key_pair.public_modulus_len()];
+                key_pair
+                    .sign(
+                        &signature::RSA_PKCS1_SHA256,
+                        &rand::SystemRandom::new(),
+                        signed_buffer.as_slice(),
+                        &mut signed,
+                    )
+                    .map_err(|e| SignedURLError::CertError(e.to_string()))?;
+                signed
+            }
+            SignBy::SignBytes => {
+                let path = format!("projects/-/serviceAccounts/{}", &opts.google_access_id);
+                self.service_account_client
+                    .sign_blob(&path, signed_buffer.as_slice())
+                    .await
+                    .map_err(SignedURLError::SignBlob)?
+            }
+        };
+        builder
+            .query_pairs_mut()
+            .append_pair("X-Goog-Signature", &hex::encode(signature));
+        Ok(builder.to_string())
     }
 }
 
