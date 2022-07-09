@@ -1,14 +1,13 @@
 use crate::http;
-use crate::http::service_account_client::ServiceAccountClient;
+
 use crate::sign::SignedURLError::InvalidOption;
 use chrono::{DateTime, SecondsFormat, Utc};
-use futures_util::future::BoxFuture;
+
 use once_cell::sync::Lazy;
 use regex::Regex;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
+
 use std::time::Duration;
 use url;
 use url::{ParseError, Url};
@@ -176,7 +175,7 @@ pub(crate) fn create_signed_buffer(
     opts: &SignedURLOptions,
 ) -> Result<(Vec<u8>, Url), SignedURLError> {
     let now = Utc::now();
-    validate_options(&opts, &now)?;
+    validate_options(opts, &now)?;
 
     let headers = v4_sanitize_headers(&opts.headers);
     // create base url
@@ -367,7 +366,7 @@ mod test {
             query_parameters: param,
             ..Default::default()
         };
-        let (signed_buffer, mut builder) = create_signed_buffer("rust-object-test", "test1", &opts).unwrap();
+        let (signed_buffer, _builder) = create_signed_buffer("rust-object-test", "test1", &opts).unwrap();
         assert_eq!(signed_buffer.len(), 134)
     }
 }

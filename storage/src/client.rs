@@ -2,13 +2,13 @@ use crate::http::storage_client;
 use crate::http::storage_client::StorageClient;
 
 use crate::http::service_account_client::ServiceAccountClient;
-use futures_util::future::BoxFuture;
+
 use google_cloud_auth::{create_token_source_from_project, Config, Project};
 use ring::{rand, signature};
 use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey};
-use sha2::{Digest, Sha256};
+use sha2::Digest;
 use std::ops::Deref;
-use std::pin::Pin;
+
 use std::sync::Arc;
 
 use crate::sign::{create_signed_buffer, SignBy, SignedURLError, SignedURLOptions};
