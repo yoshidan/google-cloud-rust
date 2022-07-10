@@ -1,4 +1,4 @@
-use async_channel::Receiver;
+use async_channel::{Receiver, TryRecvError};
 use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Duration;
@@ -9,7 +9,6 @@ use tokio::sync::Mutex;
 use google_cloud_gax::cancel::CancellationToken;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
-use tokio::time::timeout;
 
 use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
@@ -206,38 +205,44 @@ impl Tasks {
         bundle_size: usize,
     ) -> JoinHandle<()> {
         tokio::spawn(async move {
+            let mut interval_timer = tokio::time::interval(flush_interval);
             let mut bundle = VecDeque::<ReservedMessage>::new();
             while !receiver.is_closed() {
-                let result = match timeout(flush_interval, &mut receiver.recv()).await {
-                    Ok(result) => result,
-                    //timed out
-                    Err(_e) => {
-                        if !bundle.is_empty() {
-                            tracing::trace!("elapsed: flush buffer : {}", topic);
-                            Self::flush(&mut client, topic.as_str(), bundle, retry.clone()).await;
-                            bundle = VecDeque::new();
+                interval_timer.tick().await;
+
+                loop {
+                    match receiver.try_recv() {
+                        Ok(message) => {
+                            bundle.push_back(message);
+                            if bundle.len() >= bundle_size {
+                                tracing::trace!("maximum buffer {} : {}", bundle.len(), topic);
+                                Self::flush(&mut client, topic.as_str(), &mut bundle, retry.clone()).await;
+                                debug_assert!(bundle.is_empty());
+                                break;
+                            }
                         }
-                        continue;
+                        Err(e) => match e {
+                            TryRecvError::Empty => {
+                                if !bundle.is_empty() {
+                                    tracing::trace!("elapsed: flush buffer : {}", topic);
+                                    Self::flush(&mut client, topic.as_str(), &mut bundle, retry.clone()).await;
+                                    debug_assert!(bundle.is_empty());
+                                }
+                                break;
+                            }
+                            TryRecvError::Closed => {
+                                break;
+                            }
+                        },
                     }
-                };
-                match result {
-                    Ok(message) => {
-                        bundle.push_back(message);
-                        if bundle.len() >= bundle_size {
-                            tracing::trace!("maximum buffer {} : {}", bundle.len(), topic);
-                            Self::flush(&mut client, topic.as_str(), bundle, retry.clone()).await;
-                            bundle = VecDeque::new();
-                        }
-                    }
-                    //closed
-                    Err(_e) => break,
-                };
+                }
             }
 
             tracing::trace!("stop publisher : {}", topic);
             if !bundle.is_empty() {
                 tracing::trace!("flush rest buffer : {}", topic);
-                Self::flush(&mut client, topic.as_str(), bundle, retry.clone()).await;
+                Self::flush(&mut client, topic.as_str(), &mut bundle, retry.clone()).await;
+                debug_assert!(bundle.is_empty());
             }
         })
     }
@@ -246,15 +251,17 @@ impl Tasks {
     async fn flush(
         client: &mut PublisherClient,
         topic: &str,
-        bundle: VecDeque<ReservedMessage>,
+        bundle: &mut VecDeque<ReservedMessage>,
         retry_setting: Option<RetrySetting>,
     ) {
         let mut data = Vec::<PubsubMessage>::with_capacity(bundle.len());
         let mut callback = Vec::<oneshot::Sender<Result<String, Status>>>::with_capacity(bundle.len());
-        bundle.into_iter().for_each(|r| {
+
+        while let Some(r) = bundle.pop_front() {
             data.push(r.message);
             callback.push(r.producer);
-        });
+        }
+
         let req = PublishRequest {
             topic: topic.to_string(),
             messages: data,
