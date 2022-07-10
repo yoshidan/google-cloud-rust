@@ -71,7 +71,7 @@ mod test {
     async fn client() -> ServiceAccountClient {
         let ts = create_token_source(Config {
             audience: None,
-            scopes: Some(&vec!["https://www.googleapis.com/auth/cloud-platform"]),
+            scopes: Some(&["https://www.googleapis.com/auth/cloud-platform"]),
         })
         .await
         .unwrap();
