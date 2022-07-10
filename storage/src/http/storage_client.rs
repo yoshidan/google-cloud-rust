@@ -2341,7 +2341,6 @@ mod test {
     use crate::http::objects::download::Range;
     use crate::http::objects::SourceObjects;
     use crate::http::storage_client::{StorageClient, SCOPES};
-    use crate::http::BASE_URL;
     use bytes::Buf;
     use futures_util::StreamExt;
     use google_cloud_auth::{create_token_source, Config};
@@ -2362,7 +2361,7 @@ mod test {
         })
         .await
         .unwrap();
-        StorageClient::new(Arc::from(ts), BASE_URL)
+        StorageClient::new(Arc::from(ts), "https://storage.googleapis.com")
     }
 
     #[tokio::test]

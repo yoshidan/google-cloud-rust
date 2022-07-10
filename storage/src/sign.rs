@@ -1,14 +1,16 @@
+use crate::http;
+
 use crate::sign::SignedURLError::InvalidOption;
 use chrono::{DateTime, SecondsFormat, Utc};
+
 use once_cell::sync::Lazy;
 use regex::Regex;
-use ring::{rand, signature};
-use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+
 use std::time::Duration;
 use url;
-use url::ParseError;
+use url::{ParseError, Url};
 
 static SPACE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r" +").unwrap());
 static TAB_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"[\t]+").unwrap());
@@ -31,15 +33,6 @@ impl SignedURLMethod {
             SignedURLMethod::PUT => "PUT",
         }
     }
-}
-
-#[derive(PartialEq)]
-pub enum SigningScheme {
-    /// V2 is deprecated. https://cloud.google.com/storage/docs/access-control/signed-urls?types#types
-    /// SigningSchemeV2
-
-    /// SigningSchemeV4 uses the V4 scheme to sign URLs.
-    SigningSchemeV4,
 }
 
 pub trait URLStyle {
@@ -65,11 +58,9 @@ impl URLStyle for PathStyle {
     }
 }
 
-type SignBytes = Box<dyn Fn(&[u8]) -> Result<Vec<u8>, SignedURLError> + Send + Sync>;
-
 pub enum SignBy {
     PrivateKey(Vec<u8>),
-    SignBytes(SignBytes),
+    SignBytes,
 }
 
 /// SignedURLOptions allows you to restrict the access to the signed URL.
@@ -143,9 +134,6 @@ pub struct SignedURLOptions {
     /// Only supported for V4 signing.
     /// Optional.
     pub insecure: bool,
-
-    /// Scheme determines the version of URL signing to use. Default is SigningSchemeV4.
-    pub scheme: SigningScheme,
 }
 
 impl Default for SignedURLOptions {
@@ -161,7 +149,6 @@ impl Default for SignedURLOptions {
             md5: None,
             style: Box::new(PathStyle {}),
             insecure: false,
-            scheme: SigningScheme::SigningSchemeV4,
         }
     }
 }
@@ -178,49 +165,19 @@ pub enum SignedURLError {
     CredentialError(#[from] google_cloud_auth::error::Error),
     #[error(transparent)]
     MetadataError(#[from] google_cloud_metadata::Error),
+    #[error(transparent)]
+    SignBlob(#[from] http::Error),
 }
 
-pub(crate) fn signed_url(bucket: &str, object: &str, opts: SignedURLOptions) -> Result<String, SignedURLError> {
-    let now = Utc::now();
-    validate_options(&opts, &now)?;
-
-    match &opts.scheme {
-        SigningScheme::SigningSchemeV4 => {
-            let mut opts = opts;
-            opts.headers = v4_sanitize_headers(&opts.headers);
-            signed_url_v4(bucket, object, &opts, now)
-        }
-    }
-}
-
-fn v4_sanitize_headers(hdrs: &[String]) -> Vec<String> {
-    let mut sanitized = HashMap::<String, Vec<String>>::new();
-    for hdr in hdrs {
-        let trimmed = hdr.trim().to_string();
-        let split: Vec<&str> = trimmed.split(':').into_iter().collect();
-        if split.len() < 2 {
-            continue;
-        }
-        let key = split[0].trim().to_lowercase();
-        let space_removed = SPACE_REGEX.replace_all(split[1].trim(), " ");
-        let value = TAB_REGEX.replace_all(space_removed.as_ref(), "\t");
-        if !value.is_empty() {
-            sanitized.entry(key).or_default().push(value.to_string());
-        }
-    }
-    let mut sanitized_headers = Vec::with_capacity(sanitized.len());
-    for (key, value) in sanitized {
-        sanitized_headers.push(format!("{}:{}", key, value.join(",")));
-    }
-    sanitized_headers
-}
-
-fn signed_url_v4(
+pub(crate) fn create_signed_buffer(
     bucket: &str,
     name: &str,
     opts: &SignedURLOptions,
-    now: DateTime<Utc>,
-) -> Result<String, SignedURLError> {
+) -> Result<(Vec<u8>, Url), SignedURLError> {
+    let now = Utc::now();
+    validate_options(opts, &now)?;
+
+    let headers = v4_sanitize_headers(&opts.headers);
     // create base url
     let host = opts.style.host(bucket);
     let mut builder = {
@@ -234,7 +191,7 @@ fn signed_url_v4(
 
     // create signed headers
     let signed_headers = {
-        let mut header_names = extract_header_names(&opts.headers);
+        let mut header_names = extract_header_names(&headers);
         header_names.push("host");
         if opts.content_type.is_some() {
             header_names.push("content-type");
@@ -272,7 +229,7 @@ fn signed_url_v4(
     // create header with value
     let header_with_value = {
         let mut header_with_value = vec![format!("host:{}", host)];
-        header_with_value.extend_from_slice(&opts.headers);
+        header_with_value.extend_from_slice(&headers);
         if let Some(content_type) = &opts.content_type {
             header_with_value.push(format!("content-type:{}", content_type))
         }
@@ -315,45 +272,35 @@ fn signed_url_v4(
     tracing::trace!("raw_buffer={:?}", String::from_utf8_lossy(&buffer));
 
     // create signed buffer
-    let signed_buffer = {
-        let hex_digest = hex::encode(Sha256::digest(buffer));
-        let mut signed_buffer: Vec<u8> = vec![];
-        signed_buffer.extend_from_slice("GOOG4-RSA-SHA256\n".as_bytes());
-        signed_buffer.extend_from_slice(format!("{}\n", timestamp).as_bytes());
-        signed_buffer.extend_from_slice(format!("{}\n", credential_scope).as_bytes());
-        signed_buffer.extend_from_slice(hex_digest.as_bytes());
-        signed_buffer
-    };
-    tracing::trace!("signed_buffer={:?}", String::from_utf8_lossy(&signed_buffer));
+    let hex_digest = hex::encode(Sha256::digest(buffer));
+    let mut signed_buffer: Vec<u8> = vec![];
+    signed_buffer.extend_from_slice("GOOG4-RSA-SHA256\n".as_bytes());
+    signed_buffer.extend_from_slice(format!("{}\n", timestamp).as_bytes());
+    signed_buffer.extend_from_slice(format!("{}\n", credential_scope).as_bytes());
+    signed_buffer.extend_from_slice(hex_digest.as_bytes());
+    Ok((signed_buffer, builder))
+}
 
-    // create signature
-    let signature = match &opts.sign_by {
-        SignBy::PrivateKey(private_key) => {
-            let str = String::from_utf8_lossy(private_key);
-            let pkcs = rsa::RsaPrivateKey::from_pkcs8_pem(str.as_ref())
-                .map_err(|e| SignedURLError::CertError(e.to_string()))?;
-            let der = pkcs
-                .to_pkcs8_der()
-                .map_err(|e| SignedURLError::CertError(e.to_string()))?;
-            let key_pair = ring::signature::RsaKeyPair::from_pkcs8(der.as_ref())
-                .map_err(|e| SignedURLError::CertError(e.to_string()))?;
-            let mut signed = vec![0; key_pair.public_modulus_len()];
-            key_pair
-                .sign(
-                    &signature::RSA_PKCS1_SHA256,
-                    &rand::SystemRandom::new(),
-                    signed_buffer.as_slice(),
-                    &mut signed,
-                )
-                .map_err(|e| SignedURLError::CertError(e.to_string()))?;
-            signed
+fn v4_sanitize_headers(hdrs: &[String]) -> Vec<String> {
+    let mut sanitized = HashMap::<String, Vec<String>>::new();
+    for hdr in hdrs {
+        let trimmed = hdr.trim().to_string();
+        let split: Vec<&str> = trimmed.split(':').into_iter().collect();
+        if split.len() < 2 {
+            continue;
         }
-        SignBy::SignBytes(f) => f(signed_buffer.as_slice())?,
-    };
-    builder
-        .query_pairs_mut()
-        .append_pair("X-Goog-Signature", &hex::encode(signature));
-    Ok(builder.to_string())
+        let key = split[0].trim().to_lowercase();
+        let space_removed = SPACE_REGEX.replace_all(split[1].trim(), " ");
+        let value = TAB_REGEX.replace_all(space_removed.as_ref(), "\t");
+        if !value.is_empty() {
+            sanitized.entry(key).or_default().push(value.to_string());
+        }
+    }
+    let mut sanitized_headers = Vec::with_capacity(sanitized.len());
+    for (key, value) in sanitized {
+        sanitized_headers.push(format!("{}:{}", key, value.join(",")));
+    }
+    sanitized_headers
 }
 
 fn extract_header_names(kvs: &[String]) -> Vec<&str> {
@@ -383,7 +330,7 @@ fn validate_options(opts: &SignedURLOptions, _now: &DateTime<Utc>) -> Result<(),
             Err(_e) => return Err(InvalidOption("storage: invalid MD5 checksum")),
         }
     }
-    if opts.scheme == SigningScheme::SigningSchemeV4 && opts.expires > Duration::from_secs(604801) {
+    if opts.expires > Duration::from_secs(604801) {
         return Err(InvalidOption("storage: expires must be within seven days from now"));
     }
     Ok(())
@@ -391,7 +338,7 @@ fn validate_options(opts: &SignedURLOptions, _now: &DateTime<Utc>) -> Result<(),
 
 #[cfg(test)]
 mod test {
-    use crate::sign::{signed_url, SignBy, SignedURLOptions};
+    use crate::sign::{create_signed_buffer, SignBy, SignedURLOptions};
 
     use google_cloud_auth::credentials::CredentialsFile;
     use serial_test::serial;
@@ -405,7 +352,7 @@ mod test {
 
     #[tokio::test]
     #[serial]
-    async fn signed_url_internal() {
+    async fn create_signed_buffer_test() {
         let file = CredentialsFile::new().await.unwrap();
         let param = {
             let mut param = HashMap::new();
@@ -419,9 +366,7 @@ mod test {
             query_parameters: param,
             ..Default::default()
         };
-        let url = signed_url("rust-object-test", "test1", opts).unwrap();
-        println!("downloading={:?}", url);
-        let result = reqwest::Client::default().get(url).send().await.unwrap();
-        assert!(result.status().is_success());
+        let (signed_buffer, _builder) = create_signed_buffer("rust-object-test", "test1", &opts).unwrap();
+        assert_eq!(signed_buffer.len(), 134)
     }
 }
