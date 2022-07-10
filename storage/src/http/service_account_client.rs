@@ -55,3 +55,35 @@ impl ServiceAccountClient {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use google_cloud_auth::{create_token_source, Config};
+    use serial_test::serial;
+    use std::sync::Arc;
+    use crate::http::service_account_client::ServiceAccountClient;
+
+    #[ctor::ctor]
+    fn init() {
+        let _ = tracing_subscriber::fmt::try_init();
+    }
+
+    async fn client() -> ServiceAccountClient {
+        let ts = create_token_source(Config {
+            audience: None,
+            scopes: Some(&vec!["https://www.googleapis.com/auth/cloud-platform"]),
+        })
+            .await
+            .unwrap();
+        ServiceAccountClient::new(Arc::from(ts), "https://iamcredentials.googleapis.com")
+    }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn sign_blob_test() {
+        let client = client().await;
+        let body = vec![71, 79, 79, 71, 52, 45, 82, 83, 65, 45, 83, 72, 65, 50, 53, 54, 10, 50, 48, 50, 50, 48, 55, 48, 57, 84, 50, 51, 52, 56, 48, 56, 90, 10, 50, 48, 50, 50, 48, 55, 48, 57, 47, 97, 117, 116, 111, 47, 115, 116, 111, 114, 97, 103, 101, 47, 103, 111, 111, 103, 52, 95, 114, 101, 113, 117, 101, 115, 116, 10, 98, 101, 97, 48, 48, 49, 100, 98, 48, 50, 97, 56, 98, 55, 101, 101, 54, 50, 102, 50, 54, 53, 99, 101, 50, 52, 54, 53, 51, 49, 97, 98, 50, 54, 101, 102, 49, 97, 48, 97, 99, 100, 102, 102, 55, 99, 54, 55, 49, 100, 101, 56, 49, 100, 56, 56, 98, 50, 56, 101, 55, 48, 98, 101];
+        let data = client.sign_blob("projects/-/serviceAccounts/rust-storage-test@atl-dev1.iam.gserviceaccount.com", &body).await.unwrap();
+        assert_eq!(256, data.len());
+    }
+}
