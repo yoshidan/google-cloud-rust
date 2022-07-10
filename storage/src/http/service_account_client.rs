@@ -34,11 +34,11 @@ impl ServiceAccountClient {
 
     async fn _sign_blob(&self, name: &str, data: &[u8]) -> Result<Vec<u8>, Error> {
         let url = format!("{}/{}:signBlob", self.v1_endpoint, name);
-        let payload = ("payload", base64::encode(data));
+        let json_request = format!(r#"{{"payload": "{}"}}"#, base64::encode(data));
         let token = self.ts.token().await?;
         let request = Client::default()
             .post(url)
-            .json(&payload)
+            .body(json_request)
             .header("X-Goog-Api-Client", "rust")
             .header(reqwest::header::USER_AGENT, "google-cloud-storage")
             .header(reqwest::header::AUTHORIZATION, token.value());
