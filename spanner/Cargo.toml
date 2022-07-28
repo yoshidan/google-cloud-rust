@@ -22,9 +22,9 @@ parking_lot = "0.11"
 base64 = "0.13"
 anyhow = "1.0"
 
-google-cloud-auth= {  version = "0.4.0", path = "../foundation/auth" }
-google-cloud-longrunning= { version = "0.7.0", path = "../foundation/longrunning" }
-google-cloud-gax = { version = "0.8.0", path = "../foundation/gax" }
+google-cloud-auth= {  version = "0.4.0", path = "../foundation/auth", default-features = false}
+google-cloud-longrunning= { version = "0.7.0", path = "../foundation/longrunning", default-features = false}
+google-cloud-gax = { version = "0.8.0", path = "../foundation/gax", default-features = false}
 google-cloud-googleapis = { version = "0.4.0", path = "../googleapis", features = ["spanner"]}
 
 [dev-dependencies]
@@ -35,5 +35,7 @@ anyhow = "1.0.48"
 ctor = "0.1"
 
 [features]
-default = []
+default = ["default-tls"]
+default-tls = ["google-cloud-auth/default-tls","google-cloud-gax/default-tls", "google-cloud-longrunning/default-tls"]
+rustls-tls = ["google-cloud-auth/rustls-tls","google-cloud-gax/rustls-tls", "google-cloud-longrunning/rustls-tls"]
 trace = []

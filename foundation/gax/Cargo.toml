@@ -18,6 +18,12 @@ thiserror = "1.0"
 tower = { version = "0.4", features = ["filter"] }
 http = "0.2"
 prost-types = "0.10"
-google-cloud-auth= { version = "0.4.0", path = "../auth" }
+google-cloud-auth= { version = "0.4.0", path = "../auth", default-features = false }
 tokio-util = "0.7"
 tokio-retry = "0.3"
+
+
+[features]
+default = ["default-tls"]
+default-tls = ["google-cloud-auth/default-tls"]
+rustls-tls = ["google-cloud-auth/rustls-tls"]
