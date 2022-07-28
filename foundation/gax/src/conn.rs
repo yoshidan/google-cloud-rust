@@ -97,8 +97,7 @@ impl ConnectionManager {
         scopes: Option<&'static [&'static str]>,
         project: &Project,
     ) -> Result<Vec<Channel>, Error> {
-        let tls_config = ClientTlsConfig::new()
-            .domain_name(domain_name);
+        let tls_config = ClientTlsConfig::new().domain_name(domain_name);
         let mut conns = Vec::with_capacity(pool_size);
 
         let ts = create_token_source_from_project(
