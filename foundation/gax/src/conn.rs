@@ -8,7 +8,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use tonic::body::BoxBody;
-use tonic::transport::{Certificate, Channel as TonicChannel, ClientTlsConfig, Endpoint};
+use tonic::transport::{Channel as TonicChannel, ClientTlsConfig, Endpoint};
 use tonic::{Code, Status};
 use tower::filter::{AsyncFilter, AsyncFilterLayer, AsyncPredicate};
 use tower::util::Either;
