@@ -14,8 +14,6 @@ use tower::filter::{AsyncFilter, AsyncFilterLayer, AsyncPredicate};
 use tower::util::Either;
 use tower::{BoxError, ServiceBuilder};
 
-const TLS_CERTS: &[u8] = include_bytes!("roots.pem");
-
 pub type Channel = Either<AsyncFilter<TonicChannel, AsyncAuthInterceptor>, TonicChannel>;
 
 #[derive(Clone, Debug)]
@@ -100,7 +98,6 @@ impl ConnectionManager {
         project: &Project,
     ) -> Result<Vec<Channel>, Error> {
         let tls_config = ClientTlsConfig::new()
-            .ca_certificate(Certificate::from_pem(TLS_CERTS))
             .domain_name(domain_name);
         let mut conns = Vec::with_capacity(pool_size);
 
