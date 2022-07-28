@@ -8,13 +8,11 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use tonic::body::BoxBody;
-use tonic::transport::{Certificate, Channel as TonicChannel, ClientTlsConfig, Endpoint};
+use tonic::transport::{Channel as TonicChannel, ClientTlsConfig, Endpoint};
 use tonic::{Code, Status};
 use tower::filter::{AsyncFilter, AsyncFilterLayer, AsyncPredicate};
 use tower::util::Either;
 use tower::{BoxError, ServiceBuilder};
-
-const TLS_CERTS: &[u8] = include_bytes!("roots.pem");
 
 pub type Channel = Either<AsyncFilter<TonicChannel, AsyncAuthInterceptor>, TonicChannel>;
 
@@ -99,9 +97,7 @@ impl ConnectionManager {
         scopes: Option<&'static [&'static str]>,
         project: &Project,
     ) -> Result<Vec<Channel>, Error> {
-        let tls_config = ClientTlsConfig::new()
-            .ca_certificate(Certificate::from_pem(TLS_CERTS))
-            .domain_name(domain_name);
+        let tls_config = ClientTlsConfig::new().domain_name(domain_name);
         let mut conns = Vec::with_capacity(pool_size);
 
         let ts = create_token_source_from_project(

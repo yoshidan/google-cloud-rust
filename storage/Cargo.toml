@@ -11,8 +11,8 @@ description = "Google Cloud Platform storage client library."
 documentation = "https://docs.rs/google-cloud-storage/latest/google_cloud_storage/"
 
 [dependencies]
-google-cloud-auth = { version = "0.3.0", path = "../foundation/auth", default-features = false }
-google-cloud-metadata = { version = "0.2.1", path = "../foundation/metadata", default-features = false }
+google-cloud-auth = { version = "0.4.0", path = "../foundation/auth", default-features = false }
+google-cloud-metadata = { version = "0.3.0", path = "../foundation/metadata", default-features = false }
 rsa = "0.6"
 thiserror = "1.0"
 chrono = { version="0.4", features=["serde"]}
@@ -27,7 +27,7 @@ once_cell = "1.10"
 hex = "0.4.3"
 url = "2.2.2"
 tracing = "0.1"
-reqwest = { version = "0.11", features = ["json", "stream"], default-features = false}
+reqwest = { version = "0.11", features = ["json", "stream"], default-features = false }
 serde = "1.0"
 serde_json = "1.0"
 tokio-util = "0.7"
