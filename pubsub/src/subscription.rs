@@ -8,7 +8,10 @@ use prost_types::FieldMask;
 use std::time::Duration;
 
 use crate::apiv1::subscriber_client::SubscriberClient;
-use google_cloud_googleapis::pubsub::v1::{BigQueryConfig, DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest, PullRequest, PushConfig, RetryPolicy, Subscription as InternalSubscription, UpdateSubscriptionRequest};
+use google_cloud_googleapis::pubsub::v1::{
+    BigQueryConfig, DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest, PullRequest,
+    PushConfig, RetryPolicy, Subscription as InternalSubscription, UpdateSubscriptionRequest,
+};
 
 use crate::subscriber::{ReceivedMessage, Subscriber, SubscriberConfig};
 
@@ -28,7 +31,7 @@ pub struct SubscriptionConfig {
     pub topic_message_retention_duration: Option<Duration>,
     pub enable_exactly_once_delivery: bool,
     pub bigquery_config: Option<BigQueryConfig>,
-    pub state: i32
+    pub state: i32,
 }
 
 impl From<InternalSubscription> for SubscriptionConfig {
@@ -135,7 +138,7 @@ impl Subscription {
                     retain_acked_messages: cfg.retain_acked_messages,
                     topic_message_retention_duration: cfg.topic_message_retention_duration.map(|v| v.into()),
                     enable_exactly_once_delivery: cfg.enable_exactly_once_delivery,
-                    state: cfg.state
+                    state: cfg.state,
                 },
                 cancel,
                 retry,

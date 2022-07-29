@@ -30,6 +30,8 @@ mod tests {
                 state: 0,
                 labels: Default::default(),
                 endpoint_uris: vec![],
+                create_time: None,
+                update_time: None,
             }),
         };
 
