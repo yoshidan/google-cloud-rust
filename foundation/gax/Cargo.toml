@@ -12,7 +12,7 @@ description = "Google Cloud Platform gRPC retry library."
 [dependencies]
 tracing = "0.1"
 rand = "0.8"
-tokio = { version = "1.17" }
+tokio = { version = "1.19" }
 tonic = { version = "0.7", features = ["prost", "tls-webpki-roots"] }
 thiserror = "1.0"
 tower = { version = "0.4", features = ["filter"] }

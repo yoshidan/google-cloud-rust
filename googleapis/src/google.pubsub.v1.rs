@@ -577,10 +577,17 @@ pub struct Subscription {
     #[prost(string, tag = "2")]
     pub topic: ::prost::alloc::string::String,
     /// If push delivery is used with this subscription, this field is
-    /// used to configure it. An empty `pushConfig` signifies that the subscriber
-    /// will pull and ack messages using API methods.
+    /// used to configure it. Either `pushConfig` or `bigQueryConfig` can be set,
+    /// but not both. If both are empty, then the subscriber will pull and ack
+    /// messages using API methods.
     #[prost(message, optional, tag = "4")]
     pub push_config: ::core::option::Option<PushConfig>,
+    /// If delivery to BigQuery is used with this subscription, this field is
+    /// used to configure it. Either `pushConfig` or `bigQueryConfig` can be set,
+    /// but not both. If both are empty, then the subscriber will pull and ack
+    /// messages using API methods.
+    #[prost(message, optional, tag = "18")]
+    pub bigquery_config: ::core::option::Option<BigQueryConfig>,
     /// The approximate amount of time (on a best-effort basis) Pub/Sub waits for
     /// the subscriber to acknowledge receipt before resending the message. In the
     /// interval after the message is delivered and before it is acknowledged, it
@@ -691,6 +698,26 @@ pub struct Subscription {
     /// in responses from the server; it is ignored if it is set in any requests.
     #[prost(message, optional, tag = "17")]
     pub topic_message_retention_duration: ::core::option::Option<::prost_types::Duration>,
+    /// Output only. An output-only field indicating whether or not the subscription can receive
+    /// messages.
+    #[prost(enumeration = "subscription::State", tag = "19")]
+    pub state: i32,
+}
+/// Nested message and enum types in `Subscription`.
+pub mod subscription {
+    /// Possible states for a subscription.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum State {
+        /// Default value. This value is unused.
+        Unspecified = 0,
+        /// The subscription can actively receive messages
+        Active = 1,
+        /// The subscription cannot receive messages because of an error with the
+        /// resource to which it pushes messages. See the more detailed error state
+        /// in the corresponding configuration.
+        ResourceError = 2,
+    }
 }
 /// A policy that specifies how Cloud Pub/Sub retries message delivery.
 ///
@@ -833,6 +860,54 @@ pub mod push_config {
         /// `Authorization` header in the HTTP request for every pushed message.
         #[prost(message, tag = "3")]
         OidcToken(OidcToken),
+    }
+}
+/// Configuration for a BigQuery subscription.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BigQueryConfig {
+    /// The name of the table to which to write data, of the form
+    /// {projectId}:{datasetId}.{tableId}
+    #[prost(string, tag = "1")]
+    pub table: ::prost::alloc::string::String,
+    /// When true, use the topic's schema as the columns to write to in BigQuery,
+    /// if it exists.
+    #[prost(bool, tag = "2")]
+    pub use_topic_schema: bool,
+    /// When true, write the subscription name, message_id, publish_time,
+    /// attributes, and ordering_key to additional columns in the table. The
+    /// subscription name, message_id, and publish_time fields are put in their own
+    /// columns while all other message properties (other than data) are written to
+    /// a JSON object in the attributes column.
+    #[prost(bool, tag = "3")]
+    pub write_metadata: bool,
+    /// When true and use_topic_schema is true, any fields that are a part of the
+    /// topic schema that are not part of the BigQuery table schema are dropped
+    /// when writing to BigQuery. Otherwise, the schemas must be kept in sync and
+    /// any messages with extra fields are not written and remain in the
+    /// subscription's backlog.
+    #[prost(bool, tag = "4")]
+    pub drop_unknown_fields: bool,
+    /// Output only. An output-only field that indicates whether or not the subscription can
+    /// receive messages.
+    #[prost(enumeration = "big_query_config::State", tag = "5")]
+    pub state: i32,
+}
+/// Nested message and enum types in `BigQueryConfig`.
+pub mod big_query_config {
+    /// Possible states for a BigQuery subscription.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum State {
+        /// Default value. This value is unused.
+        Unspecified = 0,
+        /// The subscription can actively send messages to BigQuery
+        Active = 1,
+        /// Cannot write to the BigQuery table because of permission denied errors.
+        PermissionDenied = 2,
+        /// Cannot write to the BigQuery table because it does not exist.
+        NotFound = 3,
+        /// Cannot write to the BigQuery table due to a schema mismatch.
+        SchemaMismatch = 4,
     }
 }
 /// A message and its corresponding acknowledgment ID.

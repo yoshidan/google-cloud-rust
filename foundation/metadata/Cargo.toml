@@ -10,12 +10,12 @@ readme = "README.md"
 description = "Google Cloud Platform rust client."
 
 [dependencies]
-tokio = { version = "1.17", features = ["sync","net", "parking_lot"] }
+tokio = { version = "1.19", features = ["sync","net", "parking_lot"] }
 reqwest = { version = "0.11" , default-features = false }
 thiserror = "1.0"
 
 [dev-dependencies]
-tokio = { version = "1.17", features = ["test-util", "rt-multi-thread", "macros"]}
+tokio = { version = "1.19", features = ["test-util", "rt-multi-thread", "macros"]}
 
 [features]
 default = ["default-tls"]

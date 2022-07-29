@@ -54,7 +54,7 @@ pub mod replica_info {
 pub struct InstanceConfig {
     /// A unique identifier for the instance configuration.  Values
     /// are of the form
-    /// `projects/<project>/instanceConfigs/\[a-z][-a-z0-9\]*`
+    /// `projects/<project>/instanceConfigs/\[a-z][-a-z0-9\]*`.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// The name of this instance configuration as it appears in UIs.
@@ -64,7 +64,7 @@ pub struct InstanceConfig {
     /// replication properties.
     #[prost(message, repeated, tag = "3")]
     pub replicas: ::prost::alloc::vec::Vec<ReplicaInfo>,
-    /// Allowed values of the “default_leader” schema option for databases in
+    /// Allowed values of the "default_leader" schema option for databases in
     /// instances that use this instance configuration.
     #[prost(string, repeated, tag = "4")]
     pub leader_options: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
@@ -88,17 +88,23 @@ pub struct Instance {
     /// Must be unique per project and between 4 and 30 characters in length.
     #[prost(string, tag = "3")]
     pub display_name: ::prost::alloc::string::String,
-    /// Required. The number of nodes allocated to this instance. This may be zero
-    /// in API responses for instances that are not yet in state `READY`.
+    /// The number of nodes allocated to this instance. At most one of either
+    /// node_count or processing_units should be present in the message. This
+    /// may be zero in API responses for instances that are not yet in state
+    /// `READY`.
     ///
     /// See [the
-    /// documentation](<https://cloud.google.com/spanner/docs/instances#node_count>)
-    /// for more information about nodes.
+    /// documentation](<https://cloud.google.com/spanner/docs/compute-capacity>)
+    /// for more information about nodes and processing units.
     #[prost(int32, tag = "5")]
     pub node_count: i32,
     /// The number of processing units allocated to this instance. At most one of
     /// processing_units or node_count should be present in the message. This may
     /// be zero in API responses for instances that are not yet in state `READY`.
+    ///
+    /// See [the
+    /// documentation](<https://cloud.google.com/spanner/docs/compute-capacity>)
+    /// for more information about nodes and processing units.
     #[prost(int32, tag = "9")]
     pub processing_units: i32,
     /// Output only. The current instance state. For
@@ -116,9 +122,9 @@ pub struct Instance {
     /// firewall, load balancing, etc.).
     ///
     ///  * Label keys must be between 1 and 63 characters long and must conform to
-    ///    the following regular expression: `\[a-z]([-a-z0-9]*[a-z0-9\])?`.
+    ///    the following regular expression: `\[a-z][a-z0-9_-\]{0,62}`.
     ///  * Label values must be between 0 and 63 characters long and must conform
-    ///    to the regular expression `(\[a-z]([-a-z0-9]*[a-z0-9\])?)?`.
+    ///    to the regular expression `\[a-z0-9_-\]{0,63}`.
     ///  * No more than 64 labels can be associated with a given resource.
     ///
     /// See <https://goo.gl/xmQnxf> for more information on and examples of labels.
@@ -134,6 +140,12 @@ pub struct Instance {
     /// Deprecated. This field is not populated.
     #[prost(string, repeated, tag = "8")]
     pub endpoint_uris: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// Output only. The time at which the instance was created.
+    #[prost(message, optional, tag = "11")]
+    pub create_time: ::core::option::Option<::prost_types::Timestamp>,
+    /// Output only. The time at which the instance was most recently updated.
+    #[prost(message, optional, tag = "12")]
+    pub update_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// Nested message and enum types in `Instance`.
 pub mod instance {
@@ -551,7 +563,7 @@ pub mod instance_admin_client {
         /// [Instance][google.spanner.admin.instance.v1.Instance], if successful.
         ///
         /// Authorization requires `spanner.instances.update` permission on
-        /// resource [name][google.spanner.admin.instance.v1.Instance.name].
+        /// the resource [name][google.spanner.admin.instance.v1.Instance.name].
         pub async fn update_instance(
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateInstanceRequest>,
