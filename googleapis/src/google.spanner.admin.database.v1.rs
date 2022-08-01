@@ -1097,6 +1097,47 @@ pub struct OptimizeRestoredDatabaseMetadata {
     #[prost(message, optional, tag = "2")]
     pub progress: ::core::option::Option<OperationProgress>,
 }
+/// A Cloud Spanner database role.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DatabaseRole {
+    /// Required. The name of the database role. Values are of the form
+    /// `projects/<project>/instances/<instance>/databases/<database>/databaseRoles/
+    /// {role}`, where `<role>` is as specified in the `CREATE ROLE`
+    /// DDL statement. This name can be passed to Get/Set IAMPolicy methods to
+    /// identify the database role.
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+}
+/// The request for \[ListDatabaseRoles][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabaseRoles\].
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListDatabaseRolesRequest {
+    /// Required. The database whose roles should be listed.
+    /// Values are of the form
+    /// `projects/<project>/instances/<instance>/databases/<database>/databaseRoles`.
+    #[prost(string, tag = "1")]
+    pub parent: ::prost::alloc::string::String,
+    /// Number of database roles to be returned in the response. If 0 or less,
+    /// defaults to the server's maximum allowed page size.
+    #[prost(int32, tag = "2")]
+    pub page_size: i32,
+    /// If non-empty, `page_token` should contain a
+    /// \[next_page_token][google.spanner.admin.database.v1.ListDatabaseRolesResponse.next_page_token\] from a
+    /// previous \[ListDatabaseRolesResponse][google.spanner.admin.database.v1.ListDatabaseRolesResponse\].
+    #[prost(string, tag = "3")]
+    pub page_token: ::prost::alloc::string::String,
+}
+/// The response for \[ListDatabaseRoles][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabaseRoles\].
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListDatabaseRolesResponse {
+    /// Database roles that matched the request.
+    #[prost(message, repeated, tag = "1")]
+    pub database_roles: ::prost::alloc::vec::Vec<DatabaseRole>,
+    /// `next_page_token` can be sent in a subsequent
+    /// \[ListDatabaseRoles][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabaseRoles\]
+    /// call to fetch more of the matching roles.
+    #[prost(string, tag = "2")]
+    pub next_page_token: ::prost::alloc::string::String,
+}
 /// Indicates the type of the restore source.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -1505,6 +1546,20 @@ pub mod database_admin_client {
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/ListBackupOperations",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// Lists Cloud Spanner database roles.
+        pub async fn list_database_roles(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListDatabaseRolesRequest>,
+        ) -> Result<tonic::Response<super::ListDatabaseRolesResponse>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.admin.database.v1.DatabaseAdmin/ListDatabaseRoles",
             );
             self.inner.unary(request.into_request(), path, codec).await
         }

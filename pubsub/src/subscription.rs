@@ -9,8 +9,8 @@ use std::time::Duration;
 
 use crate::apiv1::subscriber_client::SubscriberClient;
 use google_cloud_googleapis::pubsub::v1::{
-    DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest, PullRequest, PushConfig,
-    RetryPolicy, Subscription as InternalSubscription, UpdateSubscriptionRequest,
+    BigQueryConfig, DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest, PullRequest,
+    PushConfig, RetryPolicy, Subscription as InternalSubscription, UpdateSubscriptionRequest,
 };
 
 use crate::subscriber::{ReceivedMessage, Subscriber, SubscriberConfig};
@@ -30,12 +30,15 @@ pub struct SubscriptionConfig {
     pub detached: bool,
     pub topic_message_retention_duration: Option<Duration>,
     pub enable_exactly_once_delivery: bool,
+    pub bigquery_config: Option<BigQueryConfig>,
+    pub state: i32,
 }
 
 impl From<InternalSubscription> for SubscriptionConfig {
     fn from(f: InternalSubscription) -> Self {
         Self {
             push_config: f.push_config,
+            bigquery_config: f.bigquery_config,
             ack_deadline_seconds: f.ack_deadline_seconds,
             retain_acked_messages: f.retain_acked_messages,
             message_retention_duration: f
@@ -52,6 +55,7 @@ impl From<InternalSubscription> for SubscriptionConfig {
                 .topic_message_retention_duration
                 .map(|v| std::time::Duration::new(v.seconds as u64, v.nanos as u32)),
             enable_exactly_once_delivery: f.enable_exactly_once_delivery,
+            state: f.state,
         }
     }
 }
@@ -59,6 +63,7 @@ impl From<InternalSubscription> for SubscriptionConfig {
 #[derive(Default)]
 pub struct SubscriptionConfigToUpdate {
     pub push_config: Option<PushConfig>,
+    pub bigquery_config: Option<BigQueryConfig>,
     pub ack_deadline_seconds: Option<i32>,
     pub retain_acked_messages: Option<bool>,
     pub message_retention_duration: Option<Duration>,
@@ -120,6 +125,7 @@ impl Subscription {
                     name: self.fully_qualified_name().to_string(),
                     topic: fqtn.to_string(),
                     push_config: cfg.push_config,
+                    bigquery_config: cfg.bigquery_config,
                     ack_deadline_seconds: cfg.ack_deadline_seconds,
                     labels: cfg.labels,
                     enable_message_ordering: cfg.enable_message_ordering,
@@ -132,6 +138,7 @@ impl Subscription {
                     retain_acked_messages: cfg.retain_acked_messages,
                     topic_message_retention_duration: cfg.topic_message_retention_duration.map(|v| v.into()),
                     enable_exactly_once_delivery: cfg.enable_exactly_once_delivery,
+                    state: cfg.state,
                 },
                 cancel,
                 retry,
@@ -204,6 +211,10 @@ impl Subscription {
         if updating.push_config.is_some() {
             config.push_config = updating.push_config;
             paths.push("push_config".to_string());
+        }
+        if updating.bigquery_config.is_some() {
+            config.bigquery_config = updating.bigquery_config;
+            paths.push("bigquery_config".to_string());
         }
         if let Some(v) = updating.ack_deadline_seconds {
             config.ack_deadline_seconds = v;
