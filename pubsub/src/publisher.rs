@@ -204,7 +204,7 @@ impl Publisher {
                 let _ = self.ordering_senders[index].send(Reserved::Multi(e.1)).await;
             }
         }
-        return awaiters;
+        awaiters
     }
 
     pub async fn shutdown(&mut self) {
