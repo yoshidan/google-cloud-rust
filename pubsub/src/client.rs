@@ -248,7 +248,7 @@ mod tests {
         Client::default().await.unwrap()
     }
 
-    async fn do_publish_and_subscribe(ordering_key: &str) -> Result<(), anyhow::Error> {
+    async fn do_publish_and_subscribe(ordering_key: &str, bulk: bool) -> Result<(), anyhow::Error> {
         let client = create_client().await;
 
         let order = !ordering_key.is_empty();
@@ -306,11 +306,17 @@ mod tests {
         });
 
         //publish
-        let mut awaiters = Vec::with_capacity(100);
-        for v in 0..100 {
-            let message = create_message(format!("abc_{}", v).as_bytes(), ordering_key);
-            awaiters.push(publisher.publish(message).await);
-        }
+        let awaiters = if bulk {
+            let messages = (0..100).map(|v| create_message(format!("abc_{}", v).as_bytes(), ordering_key)).collect();
+            publisher.publish_bulk(messages).await
+        }else {
+            let mut awaiters = Vec::with_capacity(100);
+            for v in 0..100 {
+                let message = create_message(format!("abc_{}", v).as_bytes(), ordering_key);
+                awaiters.push(publisher.publish(message).await);
+            }
+            awaiters
+        };
         let ctx = CancellationToken::new();
         for v in awaiters {
             tracing::info!("sent message_id = {}", v.get(Some(ctx.clone())).await.unwrap());
@@ -340,13 +346,25 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_publish_subscribe_ordered() -> Result<(), anyhow::Error> {
-        do_publish_and_subscribe("ordering").await
+        do_publish_and_subscribe("ordering", false).await
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_publish_subscribe_ordered_bulk() -> Result<(), anyhow::Error> {
+        do_publish_and_subscribe("ordering", true).await
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_publish_subscribe_random() -> Result<(), anyhow::Error> {
-        do_publish_and_subscribe("").await
+        do_publish_and_subscribe("", false).await
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_publish_subscribe_random_bulk() -> Result<(), anyhow::Error> {
+        do_publish_and_subscribe("", true).await
     }
 
     #[tokio::test(flavor = "multi_thread")]

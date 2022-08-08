@@ -1,5 +1,5 @@
 use async_channel::Receiver;
-use std::collections::VecDeque;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -21,6 +21,11 @@ use crate::util::ToUsize;
 pub(crate) struct ReservedMessage {
     pub producer: oneshot::Sender<Result<String, Status>>,
     pub message: PubsubMessage,
+}
+
+pub(crate) enum Reserved {
+    Single(ReservedMessage),
+    Multi(Vec<ReservedMessage>),
 }
 
 #[derive(Clone)]
@@ -77,8 +82,8 @@ impl Awaiter {
 /// Items added to any other key are handled sequentially.
 #[derive(Clone, Debug)]
 pub struct Publisher {
-    ordering_senders: Arc<Vec<async_channel::Sender<ReservedMessage>>>,
-    sender: async_channel::Sender<ReservedMessage>,
+    ordering_senders: Arc<Vec<async_channel::Sender<Reserved>>>,
+    sender: async_channel::Sender<Reserved>,
     tasks: Arc<Mutex<Tasks>>,
     fqtn: String,
     pubc: PublisherClient,
@@ -87,7 +92,7 @@ pub struct Publisher {
 impl Publisher {
     pub(crate) fn new(fqtn: String, pubc: PublisherClient, config: Option<PublisherConfig>) -> Self {
         let config = config.unwrap_or_default();
-        let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
+        let (sender, receiver) = async_channel::unbounded::<Reserved>();
         let mut receivers = Vec::with_capacity(1 + config.workers);
         let mut ordering_senders = Vec::with_capacity(config.workers);
 
@@ -100,7 +105,7 @@ impl Publisher {
         // for ordering key message
         for _ in 0..config.workers {
             tracing::trace!("start ordering publisher : {}", fqtn.clone());
-            let (sender, receiver) = async_channel::unbounded::<ReservedMessage>();
+            let (sender, receiver) = async_channel::unbounded::<Reserved>();
             receivers.push(receiver);
             ordering_senders.push(sender);
         }
@@ -148,15 +153,58 @@ impl Publisher {
 
         let (producer, consumer) = oneshot::channel();
         if message.ordering_key.is_empty() {
-            let _ = self.sender.send(ReservedMessage { producer, message }).await;
+            let _ = self
+                .sender
+                .send(Reserved::Single(ReservedMessage { producer, message }))
+                .await;
         } else {
             let key = message.ordering_key.as_str().to_usize();
             let index = key % self.ordering_senders.len();
             let _ = self.ordering_senders[index]
-                .send(ReservedMessage { producer, message })
+                .send(Reserved::Single(ReservedMessage { producer, message }))
                 .await;
         }
         Awaiter::new(consumer)
+    }
+
+    /// publish_bulk publishes msg to the topic asynchronously. Messages are batched and
+    /// sent according to the topic's PublisherConfig. Publish never blocks.
+    ///
+    /// publish_bulk returns a non-nil Awaiter which will be ready when the
+    /// message has been sent (or has failed to be sent) to the server.
+    pub async fn publish_bulk(&self, messages: Vec<PubsubMessage>) -> Vec<Awaiter> {
+        if self.sender.is_closed() {
+            return messages
+                .into_iter()
+                .map(|_| {
+                    let (tx, rx) = oneshot::channel();
+                    drop(tx);
+                    Awaiter::new(rx)
+                })
+                .collect();
+        }
+
+        let mut awaiters = Vec::with_capacity(messages.len());
+        let mut split_by_key = HashMap::<String, Vec<ReservedMessage>>::with_capacity(messages.len());
+        for message in messages {
+            let (producer, consumer) = oneshot::channel();
+            awaiters.push(Awaiter::new(consumer));
+            split_by_key
+                .entry(message.ordering_key.clone())
+                .or_default()
+                .push(ReservedMessage { producer, message });
+        }
+
+        for e in split_by_key {
+            if e.0.is_empty() {
+                let _ = self.sender.send(Reserved::Multi(e.1)).await;
+            } else {
+                let key = e.0.as_str().to_usize();
+                let index = key % self.ordering_senders.len();
+                let _ = self.ordering_senders[index].send(Reserved::Multi(e.1)).await;
+            }
+        }
+        return awaiters;
     }
 
     pub async fn shutdown(&mut self) {
@@ -177,7 +225,7 @@ impl Tasks {
     pub fn new(
         topic: String,
         pubc: PublisherClient,
-        receivers: Vec<async_channel::Receiver<ReservedMessage>>,
+        receivers: Vec<async_channel::Receiver<Reserved>>,
         config: PublisherConfig,
     ) -> Self {
         let tasks = receivers
@@ -198,7 +246,7 @@ impl Tasks {
     }
 
     fn run_task(
-        receiver: Receiver<ReservedMessage>,
+        receiver: Receiver<Reserved>,
         mut client: PublisherClient,
         topic: String,
         retry: Option<RetrySetting>,
@@ -206,7 +254,7 @@ impl Tasks {
         bundle_size: usize,
     ) -> JoinHandle<()> {
         tokio::spawn(async move {
-            let mut bundle = VecDeque::<ReservedMessage>::new();
+            let mut bundle = Vec::<ReservedMessage>::with_capacity(bundle_size);
             while !receiver.is_closed() {
                 let result = match timeout(flush_interval, &mut receiver.recv()).await {
                     Ok(result) => result,
@@ -215,18 +263,21 @@ impl Tasks {
                         if !bundle.is_empty() {
                             tracing::trace!("elapsed: flush buffer : {}", topic);
                             Self::flush(&mut client, topic.as_str(), bundle, retry.clone()).await;
-                            bundle = VecDeque::new();
+                            bundle = Vec::new();
                         }
                         continue;
                     }
                 };
                 match result {
-                    Ok(message) => {
-                        bundle.push_back(message);
+                    Ok(reserved) => {
+                        match reserved {
+                            Reserved::Single(message) => bundle.push(message),
+                            Reserved::Multi(messages) => bundle.extend(messages),
+                        }
                         if bundle.len() >= bundle_size {
                             tracing::trace!("maximum buffer {} : {}", bundle.len(), topic);
                             Self::flush(&mut client, topic.as_str(), bundle, retry.clone()).await;
-                            bundle = VecDeque::new();
+                            bundle = Vec::new();
                         }
                     }
                     //closed
@@ -246,7 +297,7 @@ impl Tasks {
     async fn flush(
         client: &mut PublisherClient,
         topic: &str,
-        bundle: VecDeque<ReservedMessage>,
+        bundle: Vec<ReservedMessage>,
         retry_setting: Option<RetrySetting>,
     ) {
         let mut data = Vec::<PubsubMessage>::with_capacity(bundle.len());
