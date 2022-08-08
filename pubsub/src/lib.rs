@@ -46,7 +46,9 @@
 //!             // Set ordering_key if needed (https://cloud.google.com/pubsub/docs/ordering)
 //!             // msg.ordering_key = "order".into();
 //!
+//!             // Send a message. There are also `publish_bulk` and `publish_immediately` methods.
 //!             let mut awaiter = publisher.publish(msg).await;
+//!
 //!             // The get method blocks until a server-generated ID or an error is returned for the published message.
 //!             awaiter.get(None).await
 //!         })
