@@ -307,9 +307,11 @@ mod tests {
 
         //publish
         let awaiters = if bulk {
-            let messages = (0..100).map(|v| create_message(format!("abc_{}", v).as_bytes(), ordering_key)).collect();
+            let messages = (0..100)
+                .map(|v| create_message(format!("abc_{}", v).as_bytes(), ordering_key))
+                .collect();
             publisher.publish_bulk(messages).await
-        }else {
+        } else {
             let mut awaiters = Vec::with_capacity(100);
             for v in 0..100 {
                 let message = create_message(format!("abc_{}", v).as_bytes(), ordering_key);
