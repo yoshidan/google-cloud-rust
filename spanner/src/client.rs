@@ -252,8 +252,7 @@ impl Client {
     ///     Key::new(&"user-2")
     /// ]).await?;
     pub async fn read_only_transaction(&self) -> Result<ReadOnlyTransaction, TxError> {
-        self
-            .read_only_transaction_with_option(ReadOnlyTransactionOption::default())
+        self.read_only_transaction_with_option(ReadOnlyTransactionOption::default())
             .await
     }
 
@@ -273,8 +272,7 @@ impl Client {
     /// useful in batch processing pipelines where one wants to divide the work of
     /// reading from the database across multiple machines.
     pub async fn batch_read_only_transaction(&self) -> Result<BatchReadOnlyTransaction, TxError> {
-        self
-            .batch_read_only_transaction_with_option(ReadOnlyTransactionOption::default())
+        self.batch_read_only_transaction_with_option(ReadOnlyTransactionOption::default())
             .await
     }
 
@@ -300,8 +298,7 @@ impl Client {
     /// PartitionedUpdate returns an estimated count of the number of rows affected.
     /// The actual number of affected rows may be greater than the estimate.
     pub async fn partitioned_update(&self, stmt: Statement) -> Result<i64, TxError> {
-        self
-            .partitioned_update_with_option(stmt, PartitionedUpdateOption::default())
+        self.partitioned_update_with_option(stmt, PartitionedUpdateOption::default())
             .await
     }
 
@@ -495,8 +492,7 @@ impl Client {
             Option<CancellationToken>,
         ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'tx>>,
     {
-        self
-            .read_write_transaction_with_option(f, ReadWriteTransactionOption::default())
+        self.read_write_transaction_with_option(f, ReadWriteTransactionOption::default())
             .await
     }
 

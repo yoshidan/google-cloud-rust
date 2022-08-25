@@ -194,8 +194,7 @@ impl Transaction {
     /// }
     /// ```
     pub async fn read_row(&mut self, table: &str, columns: &[&str], key: Key) -> Result<Option<Row>, Status> {
-        self
-            .read_row_with_option(table, columns, key, ReadOptions::default())
+        self.read_row_with_option(table, columns, key, ReadOptions::default())
             .await
     }
 

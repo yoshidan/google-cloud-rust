@@ -149,8 +149,7 @@ impl BatchReadOnlyTransaction {
         columns: &[&str],
         keys: impl Into<KeySet> + Clone,
     ) -> Result<Vec<Partition<TableReader>>, Status> {
-        self
-            .partition_read_with_option(table, columns, keys, None, ReadOptions::default())
+        self.partition_read_with_option(table, columns, keys, None, ReadOptions::default())
             .await
     }
 
@@ -211,8 +210,7 @@ impl BatchReadOnlyTransaction {
 
     /// partition_query returns a list of Partitions that can be used to execute a query against the database.
     pub async fn partition_query(&mut self, stmt: Statement) -> Result<Vec<Partition<StatementReader>>, Status> {
-        self
-            .partition_query_with_option(stmt, None, QueryOptions::default())
+        self.partition_query_with_option(stmt, None, QueryOptions::default())
             .await
     }
 

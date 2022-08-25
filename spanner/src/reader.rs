@@ -123,12 +123,10 @@ impl ResultSet {
                         kind: Some(Kind::StringValue(last + &first)),
                     })
                 }
-                _ => {
-                    Err(Status::new(
-                        Code::Internal,
-                        "chunks kind mismatch: current_first must be StringKind",
-                    ))
-                }
+                _ => Err(Status::new(
+                    Code::Internal,
+                    "chunks kind mismatch: current_first must be StringKind",
+                )),
             },
             Kind::ListValue(mut last) => match current_first.kind.unwrap() {
                 Kind::ListValue(mut first) => {
@@ -146,19 +144,15 @@ impl ResultSet {
                         kind: Some(Kind::ListValue(last)),
                     })
                 }
-                _ => {
-                    Err(Status::new(
-                        Code::Internal,
-                        "chunks kind mismatch: current_first must be ListValue",
-                    ))
-                }
-            },
-            _ => {
-                Err(Status::new(
+                _ => Err(Status::new(
                     Code::Internal,
-                    "previous_last kind mismatch: only StringValue and ListValue can be chunked",
-                ))
-            }
+                    "chunks kind mismatch: current_first must be ListValue",
+                )),
+            },
+            _ => Err(Status::new(
+                Code::Internal,
+                "previous_last kind mismatch: only StringValue and ListValue can be chunked",
+            )),
         }
     }
 
