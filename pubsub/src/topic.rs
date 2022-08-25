@@ -221,15 +221,12 @@ mod tests {
 
         // Can't publish messages
         let results = if bulk {
-
             let m1 = PubsubMessage::default();
             let m2 = PubsubMessage {
                 ordering_key: "test".to_string(),
                 ..Default::default()
             };
-            publisher
-                .publish_bulk(vec![m1, m2])
-                .await
+            publisher.publish_bulk(vec![m1, m2]).await
         } else {
             vec![publisher.publish(PubsubMessage::default()).await]
         };
