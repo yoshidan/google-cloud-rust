@@ -205,7 +205,7 @@ pub mod iam_configuration {
 }
 /// Lifecycle properties of a bucket.
 /// For more information, see <https://cloud.google.com/storage/docs/lifecycle.>
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Lifecycle {
     /// A lifecycle management rule, which is made of an action to take and the
@@ -216,7 +216,7 @@ pub struct Lifecycle {
 pub mod lifecycle {
     /// A lifecycle Rule, combining an action to take on an object and a
     /// condition which will trigger that action.
-    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+    #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
     #[serde(rename_all = "camelCase")]
     pub struct Rule {
         /// The action to take.
@@ -338,7 +338,7 @@ pub struct Autoclass {
 ///
 /// For a description of IAM and its features, see the
 /// [IAM documentation](<https://cloud.google.com/iam/docs/>).
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Policy {
     /// Specifies the format of the policy.

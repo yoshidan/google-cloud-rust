@@ -22,7 +22,7 @@ pub struct NotificationCreationConfig {
 }
 
 /// Request message for InsertNotification.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InsertNotificationRequest {
     /// Required. The parent bucket of the notification.

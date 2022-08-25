@@ -17,7 +17,7 @@ pub struct ListDefaultObjectAccessControlsRequest {
 }
 
 /// Request message for ListDefaultObjectAccessControls.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListDefaultObjectAccessControlsResponse {
     pub kind: String,

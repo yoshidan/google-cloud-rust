@@ -35,7 +35,7 @@ pub struct ComposeObjectRequest {
     pub encryption: Option<Encryption>,
 }
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ComposingTargets {
     /// Properties of the resulting object.

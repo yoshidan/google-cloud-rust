@@ -89,7 +89,7 @@ pub struct GetPolicyOptions {
 ///
 /// For a description of IAM and its features, see the
 /// [IAM documentation](<https://cloud.google.com/iam/docs/>).
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct Policy {
     /// Specifies the format of the policy.
     ///
@@ -325,7 +325,7 @@ pub mod audit_log_config {
     }
 }
 /// The difference delta between two policies.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct PolicyDelta {
     /// The delta for Bindings between two policies.
     #[prost(message, repeated, tag = "1")]

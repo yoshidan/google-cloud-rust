@@ -12,7 +12,7 @@ pub struct ListNotificationsRequest {
 }
 
 /// The result of a call to Notifications.ListNotifications
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListNotificationsResponse {
     /// The list of items.

@@ -592,7 +592,7 @@ pub mod copy_backup_encryption_config {
     }
 }
 /// Information about the database restore.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct RestoreInfo {
     /// The type of the restore source.
     #[prost(enumeration = "RestoreSourceType", tag = "1")]
@@ -1029,7 +1029,7 @@ pub mod restore_database_encryption_config {
 }
 /// Metadata type for the long-running operation returned by
 /// \[RestoreDatabase][google.spanner.admin.database.v1.DatabaseAdmin.RestoreDatabase\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct RestoreDatabaseMetadata {
     /// Name of the database being created and restored to.
     #[prost(string, tag = "1")]

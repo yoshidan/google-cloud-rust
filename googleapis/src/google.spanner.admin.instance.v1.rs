@@ -183,7 +183,7 @@ pub struct ListInstanceConfigsRequest {
     pub page_token: ::prost::alloc::string::String,
 }
 /// The response for \[ListInstanceConfigs][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigs\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListInstanceConfigsResponse {
     /// The list of requested instance configurations.
     #[prost(message, repeated, tag = "1")]

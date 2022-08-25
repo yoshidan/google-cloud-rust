@@ -55,7 +55,7 @@ pub struct ListObjectsRequest {
 }
 
 /// The result of a call to Objects.ListObjects
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListObjectsResponse {
     /// The list of prefixes of objects matching-but-not-listed up to and including
