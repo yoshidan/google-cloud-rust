@@ -6,7 +6,7 @@ use crate::http::object_access_controls::{PredefinedObjectAcl, Projection};
 use reqwest::{Client, RequestBuilder};
 use std::collections::HashMap;
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct BucketCreationConfig {
     /// Access controls on the bucket, containing one or more bucketAccessControls Resources.
@@ -81,7 +81,7 @@ pub struct InsertBucketParam {
     pub projection: Option<Projection>,
 }
 /// Request message for InsertBucket.
-#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InsertBucketRequest {
     pub name: String,

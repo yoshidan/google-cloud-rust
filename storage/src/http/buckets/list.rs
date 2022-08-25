@@ -22,7 +22,7 @@ pub struct ListBucketsRequest {
 }
 
 /// The result of a call to Buckets.ListBuckets
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListBucketsResponse {
     /// The list of items.

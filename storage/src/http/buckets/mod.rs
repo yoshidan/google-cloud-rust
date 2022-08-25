@@ -14,7 +14,7 @@ pub mod set_iam_policy;
 pub mod test_iam_permissions;
 
 /// A bucket.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Bucket {
     /// Access controls on the bucket.
