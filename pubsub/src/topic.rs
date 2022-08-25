@@ -145,7 +145,7 @@ mod tests {
     use crate::topic::Topic;
     use google_cloud_gax::cancel::CancellationToken;
     use google_cloud_gax::conn::Environment;
-    use google_cloud_gax::grpc::Status;
+    use google_cloud_gax::grpc::{Code, Status};
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
     use serial_test::serial;
     use std::time::Duration;
@@ -231,7 +231,9 @@ mod tests {
             vec![publisher.publish(PubsubMessage::default()).await]
         };
         for result in results {
-            assert!(result.get(None).await.is_err());
+            let err = result.get(None).await.unwrap_err();
+            assert_eq!(Code::Cancelled, err.code());
+            assert_eq!("closed", err.message());
         }
 
         topic.delete(None, None).await?;
