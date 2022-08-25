@@ -145,12 +145,6 @@ impl Publisher {
     /// publish returns a non-nil Awaiter which will be ready when the
     /// message has been sent (or has failed to be sent) to the server.
     pub async fn publish(&self, message: PubsubMessage) -> Awaiter {
-        if self.sender.is_closed() {
-            let (tx, rx) = tokio::sync::oneshot::channel();
-            drop(tx);
-            return Awaiter::new(rx);
-        }
-
         let (producer, consumer) = oneshot::channel();
         if message.ordering_key.is_empty() {
             let _ = self
@@ -173,17 +167,6 @@ impl Publisher {
     /// publish_bulk returns a non-nil Awaiter which will be ready when the
     /// message has been sent (or has failed to be sent) to the server.
     pub async fn publish_bulk(&self, messages: Vec<PubsubMessage>) -> Vec<Awaiter> {
-        if self.sender.is_closed() {
-            return messages
-                .into_iter()
-                .map(|_| {
-                    let (tx, rx) = oneshot::channel();
-                    drop(tx);
-                    Awaiter::new(rx)
-                })
-                .collect();
-        }
-
         let mut awaiters = Vec::with_capacity(messages.len());
         let mut split_by_key = HashMap::<String, Vec<ReservedMessage>>::with_capacity(messages.len());
         for message in messages {

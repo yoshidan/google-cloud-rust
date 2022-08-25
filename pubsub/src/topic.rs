@@ -194,6 +194,52 @@ mod tests {
             .collect()
     }
 
+    async fn publish_after_shutdown(bulk: bool) -> Result<(), anyhow::Error> {
+        let ctx = CancellationToken::new();
+        let topic = create_topic().await?;
+        let config = PublisherConfig {
+            flush_interval: Duration::from_secs(10),
+            bundle_size: 11,
+            ..Default::default()
+        };
+        let publisher = topic.new_publisher(Some(config));
+
+        // Publish message.
+        let tasks = publish(ctx.clone(), publisher.clone()).await;
+
+        // Shutdown after 1 sec
+        sleep(Duration::from_secs(1)).await;
+        let mut publisher = publisher;
+        publisher.shutdown().await;
+
+        // Confirm flush bundle.
+        for task in tasks {
+            let message_id = task.await?;
+            assert!(message_id.is_ok());
+            assert!(!message_id.unwrap().is_empty());
+        }
+
+        // Can't publish messages
+        let result = if bulk {
+            publisher
+                .publish_bulk(vec![PubsubMessage::default()])
+                .await
+                .pop()
+                .unwrap()
+        } else {
+            publisher.publish(PubsubMessage::default()).await
+        }
+        .get(None)
+        .await;
+
+        assert!(result.is_err());
+
+        topic.delete(None, None).await?;
+        assert!(!topic.exists(None, None).await?);
+
+        Ok(())
+    }
+
     #[tokio::test]
     #[serial]
     async fn test_publish() -> Result<(), anyhow::Error> {
@@ -230,43 +276,14 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_publish_cancel() -> Result<(), anyhow::Error> {
-        let ctx = CancellationToken::new();
-        let topic = create_topic().await?;
-        let config = PublisherConfig {
-            flush_interval: Duration::from_secs(10),
-            bundle_size: 11,
-            ..Default::default()
-        };
-        let publisher = topic.new_publisher(Some(config));
+    async fn test_publish_after_shutdown() -> Result<(), anyhow::Error> {
+        publish_after_shutdown(false).await
+    }
 
-        // Publish message.
-        let tasks = publish(ctx.clone(), publisher.clone()).await;
-
-        // Shutdown after 1 sec
-        sleep(Duration::from_secs(1)).await;
-        let mut publisher = publisher;
-        publisher.shutdown().await;
-
-        // Confirm flush bundle.
-        for task in tasks {
-            let message_id = task.await?;
-            assert!(message_id.is_ok());
-            assert!(!message_id.unwrap().is_empty());
-        }
-
-        // Can't publish messages
-        let result = publisher
-            .publish(PubsubMessage::default())
-            .await
-            .get(Some(ctx.clone()))
-            .await;
-        assert!(result.is_err());
-
-        topic.delete(Some(ctx.clone()), None).await?;
-        assert!(!topic.exists(Some(ctx), None).await?);
-
-        Ok(())
+    #[tokio::test]
+    #[serial]
+    async fn test_publish_bulk_after_shutdown() -> Result<(), anyhow::Error> {
+        publish_after_shutdown(true).await
     }
 
     #[tokio::test]
