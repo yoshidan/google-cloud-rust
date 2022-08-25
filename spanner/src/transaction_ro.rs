@@ -82,7 +82,7 @@ impl ReadOnlyTransaction {
             .spanner_client
             .begin_transaction(request, options.cancel, options.retry)
             .await;
-        return match session.invalidate_if_needed(result).await {
+        match session.invalidate_if_needed(result).await {
             Ok(response) => {
                 let tx = response.into_inner();
                 let rts = tx.read_timestamp.unwrap();
@@ -98,7 +98,7 @@ impl ReadOnlyTransaction {
                 })
             }
             Err(e) => Err(e),
-        };
+        }
     }
 }
 
@@ -149,9 +149,9 @@ impl BatchReadOnlyTransaction {
         columns: &[&str],
         keys: impl Into<KeySet> + Clone,
     ) -> Result<Vec<Partition<TableReader>>, Status> {
-        return self
+        self
             .partition_read_with_option(table, columns, keys, None, ReadOptions::default())
-            .await;
+            .await
     }
 
     /// partition_read returns a list of Partitions that can be used to read rows from
@@ -206,14 +206,14 @@ impl BatchReadOnlyTransaction {
                 .collect()),
             Err(e) => Err(e),
         };
-        return self.as_mut_session().invalidate_if_needed(result).await;
+        self.as_mut_session().invalidate_if_needed(result).await
     }
 
     /// partition_query returns a list of Partitions that can be used to execute a query against the database.
     pub async fn partition_query(&mut self, stmt: Statement) -> Result<Vec<Partition<StatementReader>>, Status> {
-        return self
+        self
             .partition_query_with_option(stmt, None, QueryOptions::default())
-            .await;
+            .await
     }
 
     /// partition_query returns a list of Partitions that can be used to execute a query against the database.
@@ -265,7 +265,7 @@ impl BatchReadOnlyTransaction {
                 .collect()),
             Err(e) => Err(e),
         };
-        return self.as_mut_session().invalidate_if_needed(result).await;
+        self.as_mut_session().invalidate_if_needed(result).await
     }
 
     /// execute runs a single Partition obtained from partition_read or partition_query.
@@ -275,6 +275,6 @@ impl BatchReadOnlyTransaction {
         option: Option<CallOptions>,
     ) -> Result<RowIterator<'_>, Status> {
         let session = self.as_mut_session();
-        return RowIterator::new(session, Box::new(partition.reader), option).await;
+        RowIterator::new(session, Box::new(partition.reader), option).await
     }
 }

@@ -6,7 +6,7 @@ pub mod insert;
 pub mod list;
 
 /// A subscription to receive Google PubSub notifications.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 pub struct Notification {
     /// The Cloud PubSub topic to which this subscription publishes. Formatted as:
     /// '//pubsub.googleapis.com/projects/{project-identifier}/topics/{my-topic}'
@@ -29,7 +29,7 @@ pub struct Notification {
     pub id: String,
 }
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum EventType {
     /// Sent when a new object (or a new generation of an existing object) is successfully created in the bucket. This includes copying or rewriting an existing object. A failed upload does not trigger this event.
@@ -42,7 +42,7 @@ pub enum EventType {
     ObjectArchive,
 }
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum PayloadFormat {
     /// The payload will be a UTF-8 string containing the resource representation of the object’s metadata.

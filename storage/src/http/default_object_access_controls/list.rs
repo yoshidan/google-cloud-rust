@@ -3,7 +3,7 @@ use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for ListDefaultObjectAccessControls.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ListDefaultObjectAccessControlsRequest {
     /// Required. Name of a bucket.

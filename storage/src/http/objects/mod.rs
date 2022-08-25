@@ -159,7 +159,7 @@ pub struct Object {
 }
 
 /// Describes the customer-specified mechanism used to store the data at rest.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomerEncryption {
     /// The encryption algorithm.
@@ -169,7 +169,7 @@ pub struct CustomerEncryption {
 }
 
 /// The owner of a specific resource.
-#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Owner {
     /// The entity, in the form `user-`*userId*.
@@ -180,7 +180,7 @@ pub struct Owner {
 }
 
 /// Description of a source object for a composition request.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct SourceObjects {
     /// The source object's name. All source objects must reside in the same
@@ -192,7 +192,7 @@ pub struct SourceObjects {
     pub object_preconditions: Option<ObjectPreconditions>,
 }
 /// Preconditions for a source object of a composition request.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ObjectPreconditions {
     /// Only perform the composition if the generation of the source object
@@ -202,7 +202,7 @@ pub struct ObjectPreconditions {
 }
 
 /// Parameters that can be passed to any object request.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Encryption {
     /// Encryption algorithm used with Customer-Supplied Encryption Keys feature.

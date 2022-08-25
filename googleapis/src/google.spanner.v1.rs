@@ -1,5 +1,5 @@
 /// The response for \[Commit][google.spanner.v1.Spanner.Commit\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct CommitResponse {
     /// The Cloud Spanner timestamp at which the transaction committed.
     #[prost(message, optional, tag = "1")]
@@ -13,7 +13,7 @@ pub struct CommitResponse {
 /// Nested message and enum types in `CommitResponse`.
 pub mod commit_response {
     /// Additional statistics about a commit.
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
     pub struct CommitStats {
         /// The total number of mutations for the transaction. Knowing the
         /// `mutation_count` value can help you maximize the number of mutations
@@ -306,7 +306,7 @@ pub struct PlanNode {
 pub mod plan_node {
     /// Metadata associated with a parent-child relationship appearing in a
     /// \[PlanNode][google.spanner.v1.PlanNode\].
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
     pub struct ChildLink {
         /// The node to which the link points.
         #[prost(int32, tag = "1")]
@@ -330,7 +330,7 @@ pub mod plan_node {
     }
     /// Condensed representation of a node and its subtree. Only present for
     /// `SCALAR` \[PlanNode(s)][google.spanner.v1.PlanNode\].
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
     pub struct ShortRepresentation {
         /// A string representation of the expression subtree rooted at this node.
         #[prost(string, tag = "1")]
@@ -698,10 +698,10 @@ pub struct TransactionOptions {
 pub mod transaction_options {
     /// Message type to initiate a read-write transaction. Currently this
     /// transaction type has no options.
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
     pub struct ReadWrite {}
     /// Message type to initiate a Partitioned DML transaction.
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
     pub struct PartitionedDml {}
     /// Message type to initiate a read-only transaction.
     #[derive(Clone, PartialEq, ::prost::Message)]
@@ -806,7 +806,7 @@ pub mod transaction_options {
     }
 }
 /// A transaction.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct Transaction {
     /// `id` may be used to identify the transaction in subsequent
     /// \[Read][google.spanner.v1.Spanner.Read\],
@@ -1168,7 +1168,7 @@ pub struct ResultSetStats {
 /// Nested message and enum types in `ResultSetStats`.
 pub mod result_set_stats {
     /// The number of rows modified by the DML statement.
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, ::prost::Oneof)]
     pub enum RowCount {
         /// Standard DML returns an exact count of rows that were modified.
         #[prost(int64, tag = "3")]
@@ -1180,7 +1180,7 @@ pub mod result_set_stats {
     }
 }
 /// The request for \[CreateSession][google.spanner.v1.Spanner.CreateSession\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct CreateSessionRequest {
     /// Required. The database in which the new session is created.
     #[prost(string, tag = "1")]
@@ -1190,7 +1190,7 @@ pub struct CreateSessionRequest {
     pub session: ::core::option::Option<Session>,
 }
 /// The request for \[BatchCreateSessions][google.spanner.v1.Spanner.BatchCreateSessions\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct BatchCreateSessionsRequest {
     /// Required. The database in which the new sessions are created.
     #[prost(string, tag = "1")]
@@ -1207,14 +1207,14 @@ pub struct BatchCreateSessionsRequest {
     pub session_count: i32,
 }
 /// The response for \[BatchCreateSessions][google.spanner.v1.Spanner.BatchCreateSessions\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct BatchCreateSessionsResponse {
     /// The freshly created sessions.
     #[prost(message, repeated, tag = "1")]
     pub session: ::prost::alloc::vec::Vec<Session>,
 }
 /// A session in the Cloud Spanner API.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct Session {
     /// Output only. The name of the session. This is always system-assigned.
     #[prost(string, tag = "1")]
@@ -1242,14 +1242,14 @@ pub struct Session {
     pub creator_role: ::prost::alloc::string::String,
 }
 /// The request for \[GetSession][google.spanner.v1.Spanner.GetSession\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct GetSessionRequest {
     /// Required. The name of the session to retrieve.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// The request for \[ListSessions][google.spanner.v1.Spanner.ListSessions\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListSessionsRequest {
     /// Required. The database in which to list sessions.
     #[prost(string, tag = "1")]
@@ -1277,7 +1277,7 @@ pub struct ListSessionsRequest {
     pub filter: ::prost::alloc::string::String,
 }
 /// The response for \[ListSessions][google.spanner.v1.Spanner.ListSessions\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListSessionsResponse {
     /// The list of requested sessions.
     #[prost(message, repeated, tag = "1")]
@@ -1289,14 +1289,14 @@ pub struct ListSessionsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request for \[DeleteSession][google.spanner.v1.Spanner.DeleteSession\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct DeleteSessionRequest {
     /// Required. The name of the session to delete.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// Common request options for various APIs.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct RequestOptions {
     /// Priority for the request.
     #[prost(enumeration = "request_options::Priority", tag = "1")]
@@ -1446,7 +1446,7 @@ pub struct ExecuteSqlRequest {
 /// Nested message and enum types in `ExecuteSqlRequest`.
 pub mod execute_sql_request {
     /// Query optimizer configuration.
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
     pub struct QueryOptions {
         /// An option to control the selection of optimizer version.
         ///
@@ -1624,7 +1624,7 @@ pub struct ExecuteBatchDmlResponse {
 }
 /// Options for a PartitionQueryRequest and
 /// PartitionReadRequest.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct PartitionOptions {
     /// **Note:** This hint is currently ignored by PartitionQuery and
     /// PartitionRead requests.
@@ -1732,7 +1732,7 @@ pub struct PartitionReadRequest {
 }
 /// Information returned for each partition returned in a
 /// PartitionResponse.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct Partition {
     /// This token can be passed to Read, StreamingRead, ExecuteSql, or
     /// ExecuteStreamingSql requests to restrict the results to those identified by
@@ -1742,7 +1742,7 @@ pub struct Partition {
 }
 /// The response for \[PartitionQuery][google.spanner.v1.Spanner.PartitionQuery\]
 /// or \[PartitionRead][google.spanner.v1.Spanner.PartitionRead\]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct PartitionResponse {
     /// Partitions created by this request.
     #[prost(message, repeated, tag = "1")]
@@ -1873,7 +1873,7 @@ pub mod commit_request {
     }
 }
 /// The request for \[Rollback][google.spanner.v1.Spanner.Rollback\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct RollbackRequest {
     /// Required. The session in which the transaction to roll back is running.
     #[prost(string, tag = "1")]

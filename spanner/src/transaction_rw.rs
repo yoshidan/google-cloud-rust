@@ -103,24 +103,24 @@ pub struct BeginError {
 
 impl ReadWriteTransaction {
     pub async fn begin(session: ManagedSession, options: CallOptions) -> Result<ReadWriteTransaction, BeginError> {
-        return ReadWriteTransaction::begin_internal(
+        ReadWriteTransaction::begin_internal(
             session,
             transaction_options::Mode::ReadWrite(transaction_options::ReadWrite {}),
             options,
         )
-        .await;
+        .await
     }
 
     pub async fn begin_partitioned_dml(
         session: ManagedSession,
         options: CallOptions,
     ) -> Result<ReadWriteTransaction, BeginError> {
-        return ReadWriteTransaction::begin_internal(
+        ReadWriteTransaction::begin_internal(
             session,
             transaction_options::Mode::PartitionedDml(transaction_options::PartitionedDml {}),
             options,
         )
-        .await;
+        .await
     }
 
     async fn begin_internal(
@@ -162,7 +162,7 @@ impl ReadWriteTransaction {
     }
 
     pub async fn update(&mut self, stmt: Statement) -> Result<i64, Status> {
-        return self.update_with_option(stmt, QueryOptions::default()).await;
+        self.update_with_option(stmt, QueryOptions::default()).await
     }
 
     pub async fn update_with_option(&mut self, stmt: Statement, options: QueryOptions) -> Result<i64, Status> {
@@ -190,7 +190,7 @@ impl ReadWriteTransaction {
     }
 
     pub async fn batch_update(&mut self, stmt: Vec<Statement>) -> Result<Vec<i64>, Status> {
-        return self.batch_update_with_option(stmt, QueryOptions::default()).await;
+        self.batch_update_with_option(stmt, QueryOptions::default()).await
     }
 
     pub async fn batch_update_with_option(
@@ -275,7 +275,7 @@ impl ReadWriteTransaction {
         let tx_id = self.tx_id.clone();
         let mutations = self.wb.to_vec();
         let session = self.as_mut_session();
-        return commit(session, mutations, TransactionId(tx_id), options).await;
+        commit(session, mutations, TransactionId(tx_id), options).await
     }
 
     pub async fn rollback(&mut self, cancel: Option<CancellationToken>, retry: Option<RetrySetting>) {

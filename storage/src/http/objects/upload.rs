@@ -5,7 +5,7 @@ use crate::http::Escape;
 use reqwest::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use reqwest::{Client, RequestBuilder};
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct UploadObjectRequest {
     /// Name of the bucket in which to store the new object.

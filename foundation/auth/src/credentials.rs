@@ -86,7 +86,7 @@ impl CredentialsFile {
 
         let credentials_json = fs::read(path).await?;
 
-        return Ok(json::from_slice(credentials_json.as_slice())?);
+        Ok(json::from_slice(credentials_json.as_slice())?)
     }
 
     pub(crate) fn try_to_private_key(&self) -> Result<jwt::EncodingKey, Error> {

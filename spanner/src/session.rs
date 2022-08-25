@@ -44,7 +44,7 @@ impl SessionHandle {
     }
 
     pub async fn invalidate_if_needed<T>(&mut self, arg: Result<T, Status>) -> Result<T, Status> {
-        return match arg {
+        match arg {
             Ok(s) => Ok(s),
             Err(e) => {
                 if e.code() == Code::NotFound && e.message().contains("Session not found:") {
@@ -52,7 +52,7 @@ impl SessionHandle {
                 }
                 Err(e)
             }
-        };
+        }
     }
 
     async fn invalidate(&mut self) {
@@ -367,7 +367,7 @@ impl SessionManager {
         }
 
         // Wait for the session creation.
-        return match timeout(self.session_get_timeout, self.session_pool.request()).await {
+        match timeout(self.session_get_timeout, self.session_pool.request()).await {
             Ok(Ok(mut session)) => {
                 session.last_used_at = Instant::now();
                 Ok(ManagedSession {
@@ -376,7 +376,7 @@ impl SessionManager {
                 })
             }
             _ => Err(SessionError::SessionGetTimeout),
-        };
+        }
     }
 
     pub(crate) async fn close(&self) {

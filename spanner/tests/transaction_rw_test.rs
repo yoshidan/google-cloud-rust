@@ -64,7 +64,7 @@ async fn test_mutation_and_statement() {
         let mut stmt2 = Statement::new("INSERT INTO UserItem (UserId,ItemId,Quantity,UpdatedAt) VALUES(@UserId,10,1000,PENDING_COMMIT_TIMESTAMP())");
         stmt2.add_param("UserId", &past_user);
         tx.update( stmt1).await?;
-        return tx.update( stmt2).await;
+        tx.update( stmt2).await
     }.await;
 
     let result = tx.finish(result, None).await;

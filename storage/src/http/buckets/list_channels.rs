@@ -3,7 +3,7 @@ use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for ListChannels.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListChannelsRequest {
     /// Required. Name of a bucket.
@@ -11,7 +11,7 @@ pub struct ListChannelsRequest {
 }
 
 /// The result of a call to Channels.ListChannels
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListChannelsResponse {
     /// The list of notification channels for a bucket.

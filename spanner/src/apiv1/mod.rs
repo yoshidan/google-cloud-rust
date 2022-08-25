@@ -48,11 +48,11 @@ mod tests {
             }),
             request_options: None,
         };
-        return client
+        client
             .begin_transaction(request, None, None)
             .await
             .unwrap()
-            .into_inner();
+            .into_inner()
     }
 
     async fn begin_read_write_transaction(client: &mut Client, session: &Session) -> Transaction {
@@ -63,11 +63,11 @@ mod tests {
             }),
             request_options: None,
         };
-        return client
+        client
             .begin_transaction(request, None, None)
             .await
             .unwrap()
-            .into_inner();
+            .into_inner()
     }
 
     #[tokio::test]

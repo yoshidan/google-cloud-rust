@@ -26,7 +26,7 @@ pub enum PredefinedBucketAcl {
 }
 
 /// An access-control entry.
-#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct BucketAccessControl {
     /// The access permission for the entity.

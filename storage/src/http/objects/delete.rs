@@ -2,7 +2,7 @@ use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for GetObject.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DeleteObjectRequest {
     /// Required. Name of the bucket in which the object resides.

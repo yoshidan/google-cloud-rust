@@ -1,7 +1,7 @@
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for GetObjectAccessControl.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DeleteObjectAccessControlRequest {
     /// Required. Name of a bucket.

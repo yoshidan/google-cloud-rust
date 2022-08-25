@@ -20,14 +20,14 @@ impl ComputeTokenSource {
             Err(_e) => METADATA_IP.to_string(),
         };
 
-        return Ok(ComputeTokenSource {
+        Ok(ComputeTokenSource {
             token_url: format!(
                 "http://{}/computeMetadata/v1/instance/service-accounts/default/token?{}",
                 host,
                 encode(format!("scopes={}", scope).as_str())
             ),
             client: default_http_client(),
-        });
+        })
     }
 }
 

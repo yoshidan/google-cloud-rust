@@ -1,5 +1,5 @@
 /// Encapsulates settings provided to GetIamPolicy.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct GetPolicyOptions {
     /// Optional. The maximum policy version that will be used to format the
     /// policy.
@@ -148,7 +148,7 @@ pub struct Policy {
     pub etag: ::prost::alloc::vec::Vec<u8>,
 }
 /// Associates `members`, or principals, with a `role`.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct Binding {
     /// Role that is assigned to the list of `members`, or principals.
     /// For example, `roles/viewer`, `roles/editor`, or `roles/owner`.
@@ -266,7 +266,7 @@ pub struct Binding {
 /// For sampleservice, this policy enables DATA_READ, DATA_WRITE and ADMIN_READ
 /// logging. It also exempts jose@example.com from DATA_READ logging, and
 /// aliya@example.com from DATA_WRITE logging.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct AuditConfig {
     /// Specifies a service that will be enabled for audit logging.
     /// For example, `storage.googleapis.com`, `cloudsql.googleapis.com`.
@@ -296,7 +296,7 @@ pub struct AuditConfig {
 ///
 /// This enables 'DATA_READ' and 'DATA_WRITE' logging, while exempting
 /// jose@example.com from DATA_READ logging.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct AuditLogConfig {
     /// The log type that this config enables.
     #[prost(enumeration = "audit_log_config::LogType", tag = "1")]
@@ -336,7 +336,7 @@ pub struct PolicyDelta {
 }
 /// One delta entry for Binding. Each individual change (only one member in each
 /// entry) to a binding will be a separate entry.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct BindingDelta {
     /// The action that was performed on a Binding.
     /// Required
@@ -372,7 +372,7 @@ pub mod binding_delta {
 }
 /// One delta entry for AuditConfig. Each individual change (only one
 /// exempted_member in each entry) to a AuditConfig will be a separate entry.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct AuditConfigDelta {
     /// The action that was performed on an audit configuration in a policy.
     /// Required
@@ -431,7 +431,7 @@ pub struct SetIamPolicyRequest {
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
 /// Request message for `GetIamPolicy` method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct GetIamPolicyRequest {
     /// REQUIRED: The resource for which the policy is being requested.
     /// See the operation documentation for the appropriate value for this field.
@@ -443,7 +443,7 @@ pub struct GetIamPolicyRequest {
     pub options: ::core::option::Option<GetPolicyOptions>,
 }
 /// Request message for `TestIamPermissions` method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct TestIamPermissionsRequest {
     /// REQUIRED: The resource for which the policy detail is being requested.
     /// See the operation documentation for the appropriate value for this field.
@@ -457,7 +457,7 @@ pub struct TestIamPermissionsRequest {
     pub permissions: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// Response message for `TestIamPermissions` method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct TestIamPermissionsResponse {
     /// A subset of `TestPermissionsRequest.permissions` that the caller is
     /// allowed.

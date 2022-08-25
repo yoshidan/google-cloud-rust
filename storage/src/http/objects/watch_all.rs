@@ -5,7 +5,7 @@ use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for WatchAllObjects.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct WatchAllObjectsRequest {
     /// Name of the bucket in which to look for objects.

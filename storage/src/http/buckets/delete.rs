@@ -3,7 +3,7 @@ use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for DeleteBucket.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DeleteBucketParam {
     /// If set, only deletes the bucket if its metageneration matches this value.
@@ -14,7 +14,7 @@ pub struct DeleteBucketParam {
 }
 
 /// Request message for DeleteBucket.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DeleteBucketRequest {
     /// Required. Name of a bucket.

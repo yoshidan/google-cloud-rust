@@ -2,7 +2,7 @@ use crate::http::channels::WatchableChannel;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for StopChannel.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct StopChannelRequest {
     /// The channel to be stopped.

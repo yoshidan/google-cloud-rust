@@ -2,7 +2,7 @@ use crate::http::bucket_access_controls::BucketACLRole;
 use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct BucketAccessControlCreationConfig {
     /// The entity holding the permission. Can be user-emailAddress, group-groupId, group-emailAddress, allUsers, or allAuthenticatedUsers.
@@ -10,7 +10,7 @@ pub struct BucketAccessControlCreationConfig {
     pub role: BucketACLRole,
 }
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InsertBucketAccessControlRequest {
     /// Name of a bucket.

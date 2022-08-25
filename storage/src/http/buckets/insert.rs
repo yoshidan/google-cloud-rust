@@ -65,14 +65,14 @@ pub struct BucketCreationConfig {
     pub rpo: Option<String>,
 }
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RetentionPolicyCreationConfig {
     pub retention_period: u64,
 }
 
 /// Request message for InsertBucket.
-#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InsertBucketParam {
     pub project: String,

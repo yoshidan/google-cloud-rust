@@ -1,5 +1,5 @@
 /// A schema resource.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct Schema {
     /// Required. Name of the schema.
     /// Format is `projects/{project}/schemas/{schema}`.
@@ -29,7 +29,7 @@ pub mod schema {
     }
 }
 /// Request for the CreateSchema method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct CreateSchemaRequest {
     /// Required. The name of the project in which to create the schema.
     /// Format is `projects/{project-id}`.
@@ -51,7 +51,7 @@ pub struct CreateSchemaRequest {
     pub schema_id: ::prost::alloc::string::String,
 }
 /// Request for the GetSchema method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct GetSchemaRequest {
     /// Required. The name of the schema to get.
     /// Format is `projects/{project}/schemas/{schema}`.
@@ -64,7 +64,7 @@ pub struct GetSchemaRequest {
     pub view: i32,
 }
 /// Request for the `ListSchemas` method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListSchemasRequest {
     /// Required. The name of the project in which to list schemas.
     /// Format is `projects/{project-id}`.
@@ -85,7 +85,7 @@ pub struct ListSchemasRequest {
     pub page_token: ::prost::alloc::string::String,
 }
 /// Response for the `ListSchemas` method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListSchemasResponse {
     /// The resulting schemas.
     #[prost(message, repeated, tag = "1")]
@@ -96,7 +96,7 @@ pub struct ListSchemasResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// Request for the `DeleteSchema` method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct DeleteSchemaRequest {
     /// Required. Name of the schema to delete.
     /// Format is `projects/{project}/schemas/{schema}`.
@@ -104,7 +104,7 @@ pub struct DeleteSchemaRequest {
     pub name: ::prost::alloc::string::String,
 }
 /// Request for the `ValidateSchema` method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ValidateSchemaRequest {
     /// Required. The name of the project in which to validate schemas.
     /// Format is `projects/{project-id}`.
@@ -116,7 +116,7 @@ pub struct ValidateSchemaRequest {
 }
 /// Response for the `ValidateSchema` method.
 /// Empty for now.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ValidateSchemaResponse {}
 /// Request for the `ValidateMessage` method.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -136,7 +136,7 @@ pub struct ValidateMessageRequest {
 }
 /// Nested message and enum types in `ValidateMessageRequest`.
 pub mod validate_message_request {
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, ::prost::Oneof)]
     pub enum SchemaSpec {
         /// Name of the schema against which to validate.
         ///
@@ -150,7 +150,7 @@ pub mod validate_message_request {
 }
 /// Response for the `ValidateMessage` method.
 /// Empty for now.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ValidateMessageResponse {}
 /// View of Schema object fields to be returned by GetSchema and ListSchemas.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
@@ -309,7 +309,7 @@ pub mod schema_service_client {
     }
 }
 /// A policy constraining the storage of messages published to the topic.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct MessageStoragePolicy {
     /// A list of IDs of GCP regions where messages that are published to the topic
     /// may be persisted in storage. Messages published by publishers running in
@@ -320,7 +320,7 @@ pub struct MessageStoragePolicy {
     pub allowed_persistence_regions: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// Settings for validating messages published against a schema.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct SchemaSettings {
     /// Required. The name of the schema that messages published should be
     /// validated against. Format is `projects/{project}/schemas/{schema}`. The
@@ -384,7 +384,7 @@ pub struct Topic {
 /// more information. See [quotas and limits]
 /// (<https://cloud.google.com/pubsub/quotas>) for more information about message
 /// limits.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct PubsubMessage {
     /// The message data field. If this field is empty, the message must contain
     /// at least one attribute.
@@ -416,7 +416,7 @@ pub struct PubsubMessage {
     pub ordering_key: ::prost::alloc::string::String,
 }
 /// Request for the GetTopic method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct GetTopicRequest {
     /// Required. The name of the topic to get.
     /// Format is `projects/{project}/topics/{topic}`.
@@ -438,7 +438,7 @@ pub struct UpdateTopicRequest {
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
 /// Request for the Publish method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct PublishRequest {
     /// Required. The messages in the request will be published on this topic.
     /// Format is `projects/{project}/topics/{topic}`.
@@ -449,7 +449,7 @@ pub struct PublishRequest {
     pub messages: ::prost::alloc::vec::Vec<PubsubMessage>,
 }
 /// Response for the `Publish` method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct PublishResponse {
     /// The server-assigned ID of each published message, in the same order as
     /// the messages in the request. IDs are guaranteed to be unique within
@@ -458,7 +458,7 @@ pub struct PublishResponse {
     pub message_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// Request for the `ListTopics` method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListTopicsRequest {
     /// Required. The name of the project in which to list topics.
     /// Format is `projects/{project-id}`.
@@ -485,7 +485,7 @@ pub struct ListTopicsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// Request for the `ListTopicSubscriptions` method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListTopicSubscriptionsRequest {
     /// Required. The name of the topic that subscriptions are attached to.
     /// Format is `projects/{project}/topics/{topic}`.
@@ -501,7 +501,7 @@ pub struct ListTopicSubscriptionsRequest {
     pub page_token: ::prost::alloc::string::String,
 }
 /// Response for the `ListTopicSubscriptions` method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListTopicSubscriptionsResponse {
     /// The names of subscriptions attached to the topic specified in the request.
     #[prost(string, repeated, tag = "1")]
@@ -513,7 +513,7 @@ pub struct ListTopicSubscriptionsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// Request for the `ListTopicSnapshots` method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListTopicSnapshotsRequest {
     /// Required. The name of the topic that snapshots are attached to.
     /// Format is `projects/{project}/topics/{topic}`.
@@ -529,7 +529,7 @@ pub struct ListTopicSnapshotsRequest {
     pub page_token: ::prost::alloc::string::String,
 }
 /// Response for the `ListTopicSnapshots` method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListTopicSnapshotsResponse {
     /// The names of the snapshots that match the request.
     #[prost(string, repeated, tag = "1")]
@@ -541,7 +541,7 @@ pub struct ListTopicSnapshotsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// Request for the `DeleteTopic` method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct DeleteTopicRequest {
     /// Required. Name of the topic to delete.
     /// Format is `projects/{project}/topics/{topic}`.
@@ -549,7 +549,7 @@ pub struct DeleteTopicRequest {
     pub topic: ::prost::alloc::string::String,
 }
 /// Request for the DetachSubscription method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct DetachSubscriptionRequest {
     /// Required. The subscription to detach.
     /// Format is `projects/{project}/subscriptions/{subscription}`.
@@ -558,7 +558,7 @@ pub struct DetachSubscriptionRequest {
 }
 /// Response for the DetachSubscription method.
 /// Reserved for future use.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct DetachSubscriptionResponse {}
 /// A subscription resource.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -746,7 +746,7 @@ pub struct RetryPolicy {
 ///
 /// If validation on any of the fields fails at subscription creation/updation,
 /// the create/update subscription request will fail.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct DeadLetterPolicy {
     /// The name of the topic to which dead letter messages should be published.
     /// Format is `projects/{project}/topics/{topic}`.The Cloud Pub/Sub service
@@ -831,7 +831,7 @@ pub mod push_config {
     /// Contains information needed for generating an
     /// [OpenID Connect
     /// token](<https://developers.google.com/identity/protocols/OpenIDConnect>).
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
     pub struct OidcToken {
         /// [Service account
         /// email](<https://cloud.google.com/iam/docs/service-accounts>)
@@ -854,7 +854,7 @@ pub mod push_config {
     /// default to allow requests only from the Cloud Pub/Sub system, for example.
     /// This field is optional and should be set only by users interested in
     /// authenticated push.
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, ::prost::Oneof)]
     pub enum AuthenticationMethod {
         /// If specified, Pub/Sub will generate and attach an OIDC JWT token as an
         /// `Authorization` header in the HTTP request for every pushed message.
@@ -863,7 +863,7 @@ pub mod push_config {
     }
 }
 /// Configuration for a BigQuery subscription.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct BigQueryConfig {
     /// The name of the table to which to write data, of the form
     /// {projectId}:{datasetId}.{tableId}
@@ -911,7 +911,7 @@ pub mod big_query_config {
     }
 }
 /// A message and its corresponding acknowledgment ID.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ReceivedMessage {
     /// This ID can be used to acknowledge the received message.
     #[prost(string, tag = "1")]
@@ -939,7 +939,7 @@ pub struct ReceivedMessage {
     pub delivery_attempt: i32,
 }
 /// Request for the GetSubscription method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct GetSubscriptionRequest {
     /// Required. The name of the subscription to get.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -958,7 +958,7 @@ pub struct UpdateSubscriptionRequest {
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
 /// Request for the `ListSubscriptions` method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListSubscriptionsRequest {
     /// Required. The name of the project in which to list subscriptions.
     /// Format is `projects/{project-id}`.
@@ -986,7 +986,7 @@ pub struct ListSubscriptionsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// Request for the DeleteSubscription method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct DeleteSubscriptionRequest {
     /// Required. The subscription to delete.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -1010,7 +1010,7 @@ pub struct ModifyPushConfigRequest {
     pub push_config: ::core::option::Option<PushConfig>,
 }
 /// Request for the `Pull` method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct PullRequest {
     /// Required. The subscription from which messages should be pulled.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -1043,7 +1043,7 @@ pub struct PullResponse {
     pub received_messages: ::prost::alloc::vec::Vec<ReceivedMessage>,
 }
 /// Request for the ModifyAckDeadline method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ModifyAckDeadlineRequest {
     /// Required. The name of the subscription.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -1064,7 +1064,7 @@ pub struct ModifyAckDeadlineRequest {
     pub ack_deadline_seconds: i32,
 }
 /// Request for the Acknowledge method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct AcknowledgeRequest {
     /// Required. The subscription whose message is being acknowledged.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -1079,7 +1079,7 @@ pub struct AcknowledgeRequest {
 /// Request for the `StreamingPull` streaming RPC method. This request is used to
 /// establish the initial stream as well as to stream acknowledgements and ack
 /// deadline modifications from the client to the server.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct StreamingPullRequest {
     /// Required. The subscription for which to initialize the new stream. This
     /// must be provided in the first request on the stream, and must not be set in
@@ -1175,7 +1175,7 @@ pub struct StreamingPullResponse {
 pub mod streaming_pull_response {
     /// Acknowledgement IDs sent in one or more previous requests to acknowledge a
     /// previously received message.
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
     pub struct AcknowledgeConfirmation {
         /// Successfully processed acknowledgement IDs.
         #[prost(string, repeated, tag = "1")]
@@ -1190,7 +1190,7 @@ pub mod streaming_pull_response {
     }
     /// Acknowledgement IDs sent in one or more previous requests to modify the
     /// deadline for a specific message.
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
     pub struct ModifyAckDeadlineConfirmation {
         /// Successfully processed acknowledgement IDs.
         #[prost(string, repeated, tag = "1")]
@@ -1201,7 +1201,7 @@ pub mod streaming_pull_response {
         pub invalid_ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     }
     /// Subscription properties sent as part of the response.
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
     pub struct SubscriptionProperties {
         /// True iff exactly once delivery is enabled for this subscription.
         #[prost(bool, tag = "1")]
@@ -1212,7 +1212,7 @@ pub mod streaming_pull_response {
     }
 }
 /// Request for the `CreateSnapshot` method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct CreateSnapshotRequest {
     /// Required. User-provided name for this snapshot. If the name is not provided
     /// in the request, the server will assign a random name for this snapshot on
@@ -1254,7 +1254,7 @@ pub struct UpdateSnapshotRequest {
 /// operations, which allow you to manage message acknowledgments in bulk. That
 /// is, you can set the acknowledgment state of messages in an existing
 /// subscription to the state captured by a snapshot.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct Snapshot {
     /// The name of the snapshot.
     #[prost(string, tag = "1")]
@@ -1280,7 +1280,7 @@ pub struct Snapshot {
     pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 /// Request for the GetSnapshot method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct GetSnapshotRequest {
     /// Required. The name of the snapshot to get.
     /// Format is `projects/{project}/snapshots/{snap}`.
@@ -1288,7 +1288,7 @@ pub struct GetSnapshotRequest {
     pub snapshot: ::prost::alloc::string::String,
 }
 /// Request for the `ListSnapshots` method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListSnapshotsRequest {
     /// Required. The name of the project in which to list snapshots.
     /// Format is `projects/{project-id}`.
@@ -1304,7 +1304,7 @@ pub struct ListSnapshotsRequest {
     pub page_token: ::prost::alloc::string::String,
 }
 /// Response for the `ListSnapshots` method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListSnapshotsResponse {
     /// The resulting snapshots.
     #[prost(message, repeated, tag = "1")]
@@ -1315,7 +1315,7 @@ pub struct ListSnapshotsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// Request for the `DeleteSnapshot` method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct DeleteSnapshotRequest {
     /// Required. The name of the snapshot to delete.
     /// Format is `projects/{project}/snapshots/{snap}`.
@@ -1323,7 +1323,7 @@ pub struct DeleteSnapshotRequest {
     pub snapshot: ::prost::alloc::string::String,
 }
 /// Request for the `Seek` method.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct SeekRequest {
     /// Required. The subscription to affect.
     #[prost(string, tag = "1")]
@@ -1333,7 +1333,7 @@ pub struct SeekRequest {
 }
 /// Nested message and enum types in `SeekRequest`.
 pub mod seek_request {
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, ::prost::Oneof)]
     pub enum Target {
         /// The time to seek to.
         /// Messages retained in the subscription that were published before this
@@ -1356,7 +1356,7 @@ pub mod seek_request {
     }
 }
 /// Response for the `Seek` method (this response is empty).
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct SeekResponse {}
 /// Generated client implementations.
 pub mod publisher_client {

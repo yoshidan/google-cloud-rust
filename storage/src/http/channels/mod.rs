@@ -3,7 +3,7 @@ use std::collections::HashMap;
 pub mod stop;
 
 /// An notification channel used to watch for resource changes.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct WatchableChannel {
     /// A UUID or similar unique string that identifies this channel.
@@ -28,7 +28,7 @@ pub struct WatchableChannel {
     pub payload: bool,
 }
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Channel {
     /// User-specified name for a channel. Needed to unsubscribe.
