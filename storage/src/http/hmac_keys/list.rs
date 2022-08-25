@@ -2,7 +2,7 @@ use crate::http::hmac_keys::HmacKeyMetadata;
 use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ListHmacKeysRequest {
     /// Required. The project id to list HMAC keys for.
@@ -18,7 +18,7 @@ pub struct ListHmacKeysRequest {
 }
 
 /// Hmac key list response with next page information.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListHmacKeysResponse {
     /// The continuation token, used to page through large result sets. Provide

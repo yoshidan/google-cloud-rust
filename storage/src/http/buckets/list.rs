@@ -4,7 +4,7 @@ use crate::http::object_access_controls::Projection;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for DeleteBucket.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ListBucketsRequest {
     /// Required. A valid API project identifier.
@@ -22,7 +22,7 @@ pub struct ListBucketsRequest {
 }
 
 /// The result of a call to Buckets.ListBuckets
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListBucketsResponse {
     /// The list of items.

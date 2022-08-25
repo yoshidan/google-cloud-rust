@@ -14,7 +14,7 @@ pub mod set_iam_policy;
 pub mod test_iam_permissions;
 
 /// A bucket.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Bucket {
     /// Access controls on the bucket.
@@ -129,7 +129,7 @@ pub struct Bucket {
     pub iam_configuration: Option<IamConfiguration>,
 }
 /// Billing properties of a bucket.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Billing {
     /// When set to true, Requester Pays is enabled for this bucket.
@@ -139,7 +139,7 @@ pub struct Billing {
 /// For more on GCS and CORS, see
 /// <https://cloud.google.com/storage/docs/cross-origin.>
 /// For more on CORS in general, see <https://tools.ietf.org/html/rfc6454.>
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Cors {
     /// The list of Origins eligible to receive CORS response headers. See
@@ -160,7 +160,7 @@ pub struct Cors {
     pub max_age_seconds: i32,
 }
 /// Encryption properties of a bucket.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Encryption {
     /// A Cloud KMS key that will be used to encrypt objects inserted into this
@@ -168,7 +168,7 @@ pub struct Encryption {
     pub default_kms_key_name: String,
 }
 /// Bucket restriction options currently enforced on the bucket.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct IamConfiguration {
     pub uniform_bucket_level_access: Option<iam_configuration::UniformBucketLevelAccess>,
@@ -177,7 +177,7 @@ pub struct IamConfiguration {
 }
 /// Nested message and enum types in `IamConfiguration`.
 pub mod iam_configuration {
-    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+    #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
     #[serde(rename_all = "camelCase")]
     pub struct UniformBucketLevelAccess {
         /// If set, access checks only use bucket-level IAM policies or above.
@@ -205,7 +205,7 @@ pub mod iam_configuration {
 }
 /// Lifecycle properties of a bucket.
 /// For more information, see <https://cloud.google.com/storage/docs/lifecycle.>
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Lifecycle {
     /// A lifecycle management rule, which is made of an action to take and the
@@ -216,7 +216,7 @@ pub struct Lifecycle {
 pub mod lifecycle {
     /// A lifecycle Rule, combining an action to take on an object and a
     /// condition which will trigger that action.
-    #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+    #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
     #[serde(rename_all = "camelCase")]
     pub struct Rule {
         /// The action to take.
@@ -226,7 +226,7 @@ pub mod lifecycle {
     }
     /// Nested message and enum types in `Rule`.
     pub mod rule {
-        #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
         pub enum ActionType {
             /// Deletes a Bucket.
             Delete,
@@ -234,14 +234,14 @@ pub mod lifecycle {
             SetStorageClass,
         }
         /// An action to take on an object.
-        #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+        #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
         #[serde(rename_all = "camelCase")]
         pub struct Action {
             pub r#type: ActionType,
             pub storage_class: Option<String>,
         }
         /// A condition of an object which triggers some action.
-        #[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize, Debug)]
+        #[derive(Clone, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize, Debug)]
         #[serde(rename_all = "camelCase")]
         pub struct Condition {
             pub age: i32,
@@ -257,7 +257,7 @@ pub mod lifecycle {
     }
 }
 /// Logging-related properties of a bucket.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Logging {
     /// The destination bucket where the current bucket's logs should be placed.
@@ -266,7 +266,7 @@ pub struct Logging {
     pub log_object_prefix: String,
 }
 /// Retention policy properties of a bucket.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RetentionPolicy {
     /// Server-determined value that indicates the time from which policy was
@@ -285,7 +285,7 @@ pub struct RetentionPolicy {
 /// Properties of a bucket related to versioning.
 /// For more on GCS versioning, see
 /// <https://cloud.google.com/storage/docs/object-versioning.>
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Versioning {
     /// While set to true, versioning is fully enabled for this bucket.
@@ -294,7 +294,7 @@ pub struct Versioning {
 /// Properties of a bucket related to accessing the contents as a static
 /// website. For more on hosting a static website via GCS, see
 /// <https://cloud.google.com/storage/docs/hosting-static-website.>
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Website {
     /// If the requested object path is missing, the service will ensure the path
@@ -310,7 +310,7 @@ pub struct Website {
     pub not_found_page: String,
 }
 /// Configuration for a bucket's Autoclass feature.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Autoclass {
     /// Enables Autoclass.
@@ -338,7 +338,7 @@ pub struct Autoclass {
 ///
 /// For a description of IAM and its features, see the
 /// [IAM documentation](<https://cloud.google.com/iam/docs/>).
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Policy {
     /// Specifies the format of the policy.
@@ -380,7 +380,7 @@ pub struct Policy {
     pub etag: String,
 }
 /// Associates `members`, or principals, with a `role`.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Binding {
     /// Role that is assigned to the list of `members`, or principals.
@@ -446,7 +446,7 @@ pub struct Binding {
     pub condition: Option<Condition>,
 }
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Condition {
     /// Textual representation of an expression in Common Expression Language

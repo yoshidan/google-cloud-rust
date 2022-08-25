@@ -27,10 +27,10 @@ pub enum Error {
 }
 
 pub async fn on_gce() -> bool {
-    return match ON_GCE.get_or_try_init(test_on_gce).await {
+    match ON_GCE.get_or_try_init(test_on_gce).await {
         Ok(s) => *s,
         Err(_err) => false,
-    };
+    }
 }
 
 async fn test_on_gce() -> Result<bool, Error> {
@@ -75,13 +75,13 @@ async fn test_on_gce() -> Result<bool, Error> {
 }
 
 pub async fn project_id() -> String {
-    return match PROJECT_ID
+    match PROJECT_ID
         .get_or_try_init(|| get_etag_with_trim("project/project-id"))
         .await
     {
         Ok(s) => s.to_string(),
         Err(_err) => "".to_string(),
-    };
+    }
 }
 
 pub async fn email(service_account: &str) -> Result<String, Error> {

@@ -100,7 +100,7 @@ impl Client {
     ) -> Result<Response<Session>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let database = &req.database;
-        return invoke_fn(
+        invoke_fn(
             cancel,
             Some(setting),
             |spanner_client| async {
@@ -112,7 +112,7 @@ impl Client {
             },
             &mut self.inner,
         )
-        .await;
+        .await
     }
 
     /// batch_create_sessions creates multiple new sessions.
@@ -149,7 +149,7 @@ impl Client {
     ) -> Result<Response<BatchCreateSessionsResponse>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let database = &req.database;
-        return invoke_fn(
+        invoke_fn(
             cancel,
             Some(setting),
             |spanner_client| async {
@@ -161,7 +161,7 @@ impl Client {
             },
             &mut self.inner,
         )
-        .await;
+        .await
     }
 
     /// get_session gets a session. Returns NOT_FOUND if the session does not exist.
@@ -196,7 +196,7 @@ impl Client {
     ) -> Result<Response<Session>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let name = &req.name;
-        return invoke_fn(
+        invoke_fn(
             cancel,
             Some(setting),
             |spanner_client| async {
@@ -208,7 +208,7 @@ impl Client {
             },
             &mut self.inner,
         )
-        .await;
+        .await
     }
 
     /// list_sessions lists all sessions in a given database.
@@ -242,7 +242,7 @@ impl Client {
     ) -> Result<Response<ListSessionsResponse>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let database = &req.database;
-        return invoke_fn(
+        invoke_fn(
             cancel,
             Some(setting),
             |spanner_client| async {
@@ -254,7 +254,7 @@ impl Client {
             },
             &mut self.inner,
         )
-        .await;
+        .await
     }
 
     /// delete_session ends a session, releasing server resources associated with it. This will
@@ -290,7 +290,7 @@ impl Client {
     ) -> Result<Response<()>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let name = &req.name;
-        return invoke_fn(
+        invoke_fn(
             cancel,
             Some(setting),
             |spanner_client| async {
@@ -302,7 +302,7 @@ impl Client {
             },
             &mut self.inner,
         )
-        .await;
+        .await
     }
 
     /// execute_sql executes an SQL statement, returning all results in a single reply. This
@@ -346,7 +346,7 @@ impl Client {
     ) -> Result<Response<ResultSet>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
-        return invoke_fn(
+        invoke_fn(
             cancel,
             Some(setting),
             |spanner_client| async {
@@ -358,7 +358,7 @@ impl Client {
             },
             &mut self.inner,
         )
-        .await;
+        .await
     }
 
     /// execute_streaming_sql like ExecuteSql, except returns the result
@@ -396,7 +396,7 @@ impl Client {
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
-        return invoke_fn(
+        invoke_fn(
             cancel,
             Some(setting),
             |spanner_client| async {
@@ -408,7 +408,7 @@ impl Client {
             },
             &mut self.inner,
         )
-        .await;
+        .await
     }
 
     /// execute_batch_dml executes a batch of SQL DML statements. This method allows many statements
@@ -452,7 +452,7 @@ impl Client {
     ) -> Result<Response<ExecuteBatchDmlResponse>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
-        return invoke_fn(
+        invoke_fn(
             cancel,
             Some(setting),
             |spanner_client| async {
@@ -475,7 +475,7 @@ impl Client {
             },
             &mut self.inner,
         )
-        .await;
+        .await
     }
 
     /// read reads rows from the database using key lookups and scans, as a
@@ -521,7 +521,7 @@ impl Client {
     ) -> Result<Response<ResultSet>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
-        return invoke_fn(
+        invoke_fn(
             cancel,
             Some(setting),
             |spanner_client| async {
@@ -530,7 +530,7 @@ impl Client {
             },
             &mut self.inner,
         )
-        .await;
+        .await
     }
 
     /// streaming_read like read, except returns the result set as a
@@ -568,7 +568,7 @@ impl Client {
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
-        return invoke_fn(
+        invoke_fn(
             cancel,
             Some(setting),
             |spanner_client| async {
@@ -580,7 +580,7 @@ impl Client {
             },
             &mut self.inner,
         )
-        .await;
+        .await
     }
 
     /// BeginTransaction begins a new transaction. This step can often be skipped:
@@ -617,7 +617,7 @@ impl Client {
     ) -> Result<Response<Transaction>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
-        return invoke_fn(
+        invoke_fn(
             cancel,
             Some(setting),
             |spanner_client| async {
@@ -629,7 +629,7 @@ impl Client {
             },
             &mut self.inner,
         )
-        .await;
+        .await
     }
 
     /// Commit commits a transaction. The request includes the mutations to be
@@ -676,7 +676,7 @@ impl Client {
     ) -> Result<Response<CommitResponse>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
-        return invoke_fn(
+        invoke_fn(
             cancel,
             Some(setting),
             |spanner_client| async {
@@ -685,7 +685,7 @@ impl Client {
             },
             &mut self.inner,
         )
-        .await;
+        .await
     }
 
     /// Rollback rolls back a transaction, releasing any locks it holds. It is a good
@@ -726,7 +726,7 @@ impl Client {
     ) -> Result<Response<()>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
-        return invoke_fn(
+        invoke_fn(
             cancel,
             Some(setting),
             |spanner_client| async {
@@ -735,7 +735,7 @@ impl Client {
             },
             &mut self.inner,
         )
-        .await;
+        .await
     }
 
     /// PartitionQuery creates a set of partition tokens that can be used to execute a query
@@ -779,7 +779,7 @@ impl Client {
     ) -> Result<Response<PartitionResponse>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
-        return invoke_fn(
+        invoke_fn(
             cancel,
             Some(setting),
             |spanner_client| async {
@@ -791,7 +791,7 @@ impl Client {
             },
             &mut self.inner,
         )
-        .await;
+        .await
     }
 
     /// PartitionRead creates a set of partition tokens that can be used to execute a read
@@ -837,7 +837,7 @@ impl Client {
     ) -> Result<Response<PartitionResponse>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
-        return invoke_fn(
+        invoke_fn(
             cancel,
             Some(setting),
             |spanner_client| async {
@@ -849,6 +849,6 @@ impl Client {
             },
             &mut self.inner,
         )
-        .await;
+        .await
     }
 }

@@ -3,7 +3,7 @@ use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for `TestIamPermissions` method.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct TestIamPermissionsRequest {
     /// REQUIRED: The resource for which the policy detail is being requested.
@@ -17,7 +17,7 @@ pub struct TestIamPermissionsRequest {
 }
 
 /// Response message for `TestIamPermissions` method.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct TestIamPermissionsResponse {
     /// A subset of `TestPermissionsRequest.permissions` that the caller is

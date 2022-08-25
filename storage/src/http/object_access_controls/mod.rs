@@ -5,7 +5,7 @@ pub mod list;
 pub mod patch;
 
 /// An access-control entry.
-#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ObjectAccessControl {
     pub bucket: Option<String>,
@@ -62,7 +62,7 @@ pub enum PredefinedObjectAcl {
 }
 
 /// Represents the Viewers, Editors, or Owners of a given project.
-#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectTeam {
     /// The project number.

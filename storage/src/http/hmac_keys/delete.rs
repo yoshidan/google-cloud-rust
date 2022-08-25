@@ -2,7 +2,7 @@ use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request object to delete a given HMAC key.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct DeleteHmacKeyRequest {
     /// Required. The identifying key for the HMAC to delete.

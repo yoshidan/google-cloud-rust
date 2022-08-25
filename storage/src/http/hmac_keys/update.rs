@@ -3,7 +3,7 @@ use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request object to update an HMAC key state.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateHmacKeyRequest {
     /// Required. The id of the HMAC key.

@@ -155,7 +155,7 @@ impl Client {
     /// new creates a client to a database. A valid database name has
     /// the form projects/PROJECT_ID/instances/INSTANCE_ID/databases/DATABASE_ID.
     pub async fn new(database: impl Into<String>) -> Result<Self, InitializationError> {
-        return Client::new_with_config(database, Default::default()).await;
+        Client::new_with_config(database, Default::default()).await
     }
 
     /// new creates a client to a database. A valid database name has
@@ -211,7 +211,7 @@ impl Client {
     /// }
     /// ```
     pub async fn single(&self) -> Result<ReadOnlyTransaction, TxError> {
-        return self.single_with_timestamp_bound(TimestampBound::strong_read()).await;
+        self.single_with_timestamp_bound(TimestampBound::strong_read()).await
     }
 
     /// single provides a read-only snapshot transaction optimized for the case
@@ -252,9 +252,8 @@ impl Client {
     ///     Key::new(&"user-2")
     /// ]).await?;
     pub async fn read_only_transaction(&self) -> Result<ReadOnlyTransaction, TxError> {
-        return self
-            .read_only_transaction_with_option(ReadOnlyTransactionOption::default())
-            .await;
+        self.read_only_transaction_with_option(ReadOnlyTransactionOption::default())
+            .await
     }
 
     /// read_only_transaction returns a ReadOnlyTransaction that can be used for
@@ -273,9 +272,8 @@ impl Client {
     /// useful in batch processing pipelines where one wants to divide the work of
     /// reading from the database across multiple machines.
     pub async fn batch_read_only_transaction(&self) -> Result<BatchReadOnlyTransaction, TxError> {
-        return self
-            .batch_read_only_transaction_with_option(ReadOnlyTransactionOption::default())
-            .await;
+        self.batch_read_only_transaction_with_option(ReadOnlyTransactionOption::default())
+            .await
     }
 
     /// batch_read_only_transaction returns a BatchReadOnlyTransaction that can be used
@@ -300,9 +298,8 @@ impl Client {
     /// PartitionedUpdate returns an estimated count of the number of rows affected.
     /// The actual number of affected rows may be greater than the estimate.
     pub async fn partitioned_update(&self, stmt: Statement) -> Result<i64, TxError> {
-        return self
-            .partitioned_update_with_option(stmt, PartitionedUpdateOption::default())
-            .await;
+        self.partitioned_update_with_option(stmt, PartitionedUpdateOption::default())
+            .await
     }
 
     /// partitioned_update executes a DML statement in parallel across the database,
@@ -322,7 +319,7 @@ impl Client {
         let session = Some(self.get_session().await?);
 
         // reuse session
-        return invoke_fn(
+        invoke_fn(
             options.begin_options.cancel.clone(),
             Some(ro),
             |session| async {
@@ -343,7 +340,7 @@ impl Client {
             },
             session,
         )
-        .await;
+        .await
     }
 
     /// apply_at_least_once may attempt to apply mutations more than once; if
@@ -356,7 +353,7 @@ impl Client {
     /// method may be appropriate for latency sensitive and/or high throughput blind
     /// writing.
     pub async fn apply_at_least_once(&self, ms: Vec<Mutation>) -> Result<Option<Timestamp>, TxError> {
-        return self.apply_at_least_once_with_option(ms, CommitOptions::default()).await;
+        self.apply_at_least_once_with_option(ms, CommitOptions::default()).await
     }
 
     /// apply_at_least_once may attempt to apply mutations more than once; if
@@ -376,7 +373,7 @@ impl Client {
         let ro = TransactionRetrySetting::default();
         let mut session = self.get_session().await?;
 
-        return invoke_fn(
+        invoke_fn(
             options.call_options.cancel.clone(),
             Some(ro),
             |session| async {
@@ -390,7 +387,7 @@ impl Client {
             },
             &mut session,
         )
-        .await;
+        .await
     }
 
     /// Apply applies a list of mutations atomically to the database.
@@ -413,7 +410,7 @@ impl Client {
     /// }
     /// ```
     pub async fn apply(&self, ms: Vec<Mutation>) -> Result<Option<Timestamp>, TxError> {
-        return self.apply_with_option(ms, ReadWriteTransactionOption::default()).await;
+        self.apply_with_option(ms, ReadWriteTransactionOption::default()).await
     }
 
     /// Apply applies a list of mutations atomically to the database.
@@ -495,9 +492,8 @@ impl Client {
             Option<CancellationToken>,
         ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'tx>>,
     {
-        return self
-            .read_write_transaction_with_option(f, ReadWriteTransactionOption::default())
-            .await;
+        self.read_write_transaction_with_option(f, ReadWriteTransactionOption::default())
+            .await
     }
 
     /// ReadWriteTransaction executes a read-write transaction, with retries as
@@ -536,7 +532,7 @@ impl Client {
         let session = Some(self.get_session().await?);
         let cancel = bo.cancel.clone();
         // must reuse session
-        return invoke_fn(
+        invoke_fn(
             cancel.clone(),
             Some(ro),
             |session| async {
@@ -547,7 +543,7 @@ impl Client {
             },
             session,
         )
-        .await;
+        .await
     }
 
     /// Get open session count.
@@ -570,7 +566,7 @@ impl Client {
 
         // reuse session
         let cancel = bo.cancel.clone();
-        return invoke_fn(
+        invoke_fn(
             cancel.clone(),
             Some(ro),
             |session| async {
@@ -581,7 +577,7 @@ impl Client {
             },
             session,
         )
-        .await;
+        .await
     }
 
     async fn create_read_write_transaction<E>(
@@ -592,13 +588,13 @@ impl Client {
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
     {
-        return ReadWriteTransaction::begin(session.unwrap(), bo)
+        ReadWriteTransaction::begin(session.unwrap(), bo)
             .await
-            .map_err(|e| (E::from(e.status), Some(e.session)));
+            .map_err(|e| (E::from(e.status), Some(e.session)))
     }
 
     async fn get_session(&self) -> Result<ManagedSession, SessionError> {
-        return self.sessions.get().await;
+        self.sessions.get().await
     }
 
     fn split_read_write_transaction_option(options: ReadWriteTransactionOption) -> (CallOptions, CommitOptions) {

@@ -87,7 +87,7 @@ impl Transaction {
     ///
     /// query returns only row data, without a query plan or execution statistics.
     pub async fn query(&mut self, statement: Statement) -> Result<RowIterator<'_>, Status> {
-        return self.query_with_option(statement, QueryOptions::default()).await;
+        self.query_with_option(statement, QueryOptions::default()).await
     }
 
     /// query executes a query against the database. It returns a RowIterator for
@@ -194,9 +194,8 @@ impl Transaction {
     /// }
     /// ```
     pub async fn read_row(&mut self, table: &str, columns: &[&str], key: Key) -> Result<Option<Row>, Status> {
-        return self
-            .read_row_with_option(table, columns, key, ReadOptions::default())
-            .await;
+        self.read_row_with_option(table, columns, key, ReadOptions::default())
+            .await
     }
 
     /// read returns a RowIterator for reading multiple rows from the database.
@@ -212,7 +211,7 @@ impl Transaction {
             .read_with_option(table, columns, KeySet::from(key), options)
             .await?;
         reader.set_call_options(call_options);
-        return reader.next().await;
+        reader.next().await
     }
 
     pub(crate) fn get_session_name(&self) -> String {

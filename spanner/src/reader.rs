@@ -115,7 +115,7 @@ impl ResultSet {
 
     /// Merge tries to combine two protobuf Values if possible.
     fn merge(previous_last: Value, current_first: Value) -> Result<Value, Status> {
-        return match previous_last.kind.unwrap() {
+        match previous_last.kind.unwrap() {
             Kind::StringValue(last) => match current_first.kind.unwrap() {
                 Kind::StringValue(first) => {
                     tracing::trace!("previous_last={}, current_first={}", &last, first);
@@ -123,12 +123,10 @@ impl ResultSet {
                         kind: Some(Kind::StringValue(last + &first)),
                     })
                 }
-                _ => {
-                    return Err(Status::new(
-                        Code::Internal,
-                        "chunks kind mismatch: current_first must be StringKind",
-                    ))
-                }
+                _ => Err(Status::new(
+                    Code::Internal,
+                    "chunks kind mismatch: current_first must be StringKind",
+                )),
             },
             Kind::ListValue(mut last) => match current_first.kind.unwrap() {
                 Kind::ListValue(mut first) => {
@@ -146,20 +144,16 @@ impl ResultSet {
                         kind: Some(Kind::ListValue(last)),
                     })
                 }
-                _ => {
-                    return Err(Status::new(
-                        Code::Internal,
-                        "chunks kind mismatch: current_first must be ListValue",
-                    ))
-                }
-            },
-            _ => {
-                return Err(Status::new(
+                _ => Err(Status::new(
                     Code::Internal,
-                    "previous_last kind mismatch: only StringValue and ListValue can be chunked",
-                ))
-            }
-        };
+                    "chunks kind mismatch: current_first must be ListValue",
+                )),
+            },
+            _ => Err(Status::new(
+                Code::Internal,
+                "previous_last kind mismatch: only StringValue and ListValue can be chunked",
+            )),
+        }
     }
 
     fn add(

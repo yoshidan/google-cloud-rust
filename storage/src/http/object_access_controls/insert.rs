@@ -1,7 +1,7 @@
 use crate::http::object_access_controls::ObjectACLRole;
 use reqwest::{Client, RequestBuilder};
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InsertObjectAccessControlRequest {
     /// Required. Name of a bucket.
@@ -15,7 +15,7 @@ pub struct InsertObjectAccessControlRequest {
     pub acl: ObjectAccessControlCreationConfig,
 }
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ObjectAccessControlCreationConfig {
     pub entity: String,

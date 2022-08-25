@@ -3,7 +3,7 @@ use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 use std::collections::HashMap;
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default, Debug)]
 pub struct NotificationCreationConfig {
     /// The Cloud PubSub topic to which this subscription publishes. Formatted as:
     /// '//pubsub.googleapis.com/projects/{project-identifier}/topics/{my-topic}'
@@ -22,7 +22,7 @@ pub struct NotificationCreationConfig {
 }
 
 /// Request message for InsertNotification.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InsertNotificationRequest {
     /// Required. The parent bucket of the notification.

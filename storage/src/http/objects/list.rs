@@ -4,7 +4,7 @@ use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
 /// Request message for GetNotification.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ListObjectsRequest {
     /// Name of the bucket in which to look for objects.
@@ -55,7 +55,7 @@ pub struct ListObjectsRequest {
 }
 
 /// The result of a call to Objects.ListObjects
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListObjectsResponse {
     /// The list of prefixes of objects matching-but-not-listed up to and including

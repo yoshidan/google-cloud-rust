@@ -8,7 +8,7 @@ use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 use std::collections::HashMap;
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Default, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct BucketPatchConfig {
     /// Access controls on the bucket, containing one or more bucketAccessControls Resources.
@@ -64,7 +64,7 @@ pub struct BucketPatchConfig {
 }
 
 /// Request for PatchBucket method.
-#[derive(Clone, PartialEq, Default, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PatchBucketRequest {
     /// Required. Name of a bucket.

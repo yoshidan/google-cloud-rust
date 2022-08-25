@@ -1,4 +1,4 @@
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ReplicaInfo {
     /// The location of the serving resources, e.g. "us-central1".
     #[prost(string, tag = "1")]
@@ -50,7 +50,7 @@ pub mod replica_info {
 }
 /// A possible configuration for a Cloud Spanner instance. Configurations
 /// define the geographic placement of nodes and their replication.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct InstanceConfig {
     /// A unique identifier for the instance configuration.  Values
     /// are of the form
@@ -70,7 +70,7 @@ pub struct InstanceConfig {
     pub leader_options: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// An isolated set of Cloud Spanner resources on which databases can be hosted.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct Instance {
     /// Required. A unique identifier for the instance, which cannot be changed
     /// after the instance is created. Values are of the form
@@ -165,7 +165,7 @@ pub mod instance {
     }
 }
 /// The request for \[ListInstanceConfigs][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigs\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListInstanceConfigsRequest {
     /// Required. The name of the project for which a list of supported instance
     /// configurations is requested. Values are of the form
@@ -183,7 +183,7 @@ pub struct ListInstanceConfigsRequest {
     pub page_token: ::prost::alloc::string::String,
 }
 /// The response for \[ListInstanceConfigs][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigs\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListInstanceConfigsResponse {
     /// The list of requested instance configurations.
     #[prost(message, repeated, tag = "1")]
@@ -196,7 +196,7 @@ pub struct ListInstanceConfigsResponse {
 }
 /// The request for
 /// \[GetInstanceConfigRequest][google.spanner.admin.instance.v1.InstanceAdmin.GetInstanceConfig\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct GetInstanceConfigRequest {
     /// Required. The name of the requested instance configuration. Values are of
     /// the form `projects/<project>/instanceConfigs/<config>`.
@@ -217,7 +217,7 @@ pub struct GetInstanceRequest {
     pub field_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
 /// The request for \[CreateInstance][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstance\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct CreateInstanceRequest {
     /// Required. The name of the project in which to create the instance. Values
     /// are of the form `projects/<project>`.
@@ -234,7 +234,7 @@ pub struct CreateInstanceRequest {
     pub instance: ::core::option::Option<Instance>,
 }
 /// The request for \[ListInstances][google.spanner.admin.instance.v1.InstanceAdmin.ListInstances\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListInstancesRequest {
     /// Required. The name of the project for which a list of instances is
     /// requested. Values are of the form `projects/<project>`.
@@ -272,7 +272,7 @@ pub struct ListInstancesRequest {
     pub filter: ::prost::alloc::string::String,
 }
 /// The response for \[ListInstances][google.spanner.admin.instance.v1.InstanceAdmin.ListInstances\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListInstancesResponse {
     /// The list of requested instances.
     #[prost(message, repeated, tag = "1")]
@@ -298,7 +298,7 @@ pub struct UpdateInstanceRequest {
     pub field_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
 /// The request for \[DeleteInstance][google.spanner.admin.instance.v1.InstanceAdmin.DeleteInstance\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct DeleteInstanceRequest {
     /// Required. The name of the instance to be deleted. Values are of the form
     /// `projects/<project>/instances/<instance>`
@@ -307,7 +307,7 @@ pub struct DeleteInstanceRequest {
 }
 /// Metadata type for the operation returned by
 /// \[CreateInstance][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstance\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct CreateInstanceMetadata {
     /// The instance being created.
     #[prost(message, optional, tag = "1")]
@@ -328,7 +328,7 @@ pub struct CreateInstanceMetadata {
 }
 /// Metadata type for the operation returned by
 /// \[UpdateInstance][google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstance\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct UpdateInstanceMetadata {
     /// The desired end state of the update.
     #[prost(message, optional, tag = "1")]

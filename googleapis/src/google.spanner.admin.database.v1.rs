@@ -1,6 +1,6 @@
 /// Encapsulates progress related information for a Cloud Spanner long
 /// running operation.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct OperationProgress {
     /// Percent completion of the operation.
     /// Values are between 0 and 100 inclusive.
@@ -15,7 +15,7 @@ pub struct OperationProgress {
     pub end_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// Encryption configuration for a Cloud Spanner database.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct EncryptionConfig {
     /// The Cloud KMS key to be used for encrypting and decrypting
     /// the database. Values are of the form
@@ -195,7 +195,7 @@ pub struct CreateBackupRequest {
 }
 /// Metadata type for the operation returned by
 /// \[CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct CreateBackupMetadata {
     /// The name of the backup being created.
     #[prost(string, tag = "1")]
@@ -223,7 +223,7 @@ pub struct CreateBackupMetadata {
     pub cancel_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// The request for \[CopyBackup][google.spanner.admin.database.v1.DatabaseAdmin.CopyBackup\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct CopyBackupRequest {
     /// Required. The name of the destination instance that will contain the backup copy.
     /// Values are of the form: `projects/<project>/instances/<instance>`.
@@ -259,7 +259,7 @@ pub struct CopyBackupRequest {
 }
 /// Metadata type for the google.longrunning.Operation returned by
 /// \[CopyBackup][google.spanner.admin.database.v1.DatabaseAdmin.CopyBackup\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct CopyBackupMetadata {
     /// The name of the backup being created through the copy operation.
     /// Values are of the form
@@ -308,7 +308,7 @@ pub struct UpdateBackupRequest {
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
 /// The request for \[GetBackup][google.spanner.admin.database.v1.DatabaseAdmin.GetBackup\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct GetBackupRequest {
     /// Required. Name of the backup.
     /// Values are of the form
@@ -317,7 +317,7 @@ pub struct GetBackupRequest {
     pub name: ::prost::alloc::string::String,
 }
 /// The request for \[DeleteBackup][google.spanner.admin.database.v1.DatabaseAdmin.DeleteBackup\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct DeleteBackupRequest {
     /// Required. Name of the backup to delete.
     /// Values are of the form
@@ -326,7 +326,7 @@ pub struct DeleteBackupRequest {
     pub name: ::prost::alloc::string::String,
 }
 /// The request for \[ListBackups][google.spanner.admin.database.v1.DatabaseAdmin.ListBackups\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListBackupsRequest {
     /// Required. The instance to list backups from.  Values are of the
     /// form `projects/<project>/instances/<instance>`.
@@ -395,7 +395,7 @@ pub struct ListBackupsResponse {
 }
 /// The request for
 /// \[ListBackupOperations][google.spanner.admin.database.v1.DatabaseAdmin.ListBackupOperations\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListBackupOperationsRequest {
     /// Required. The instance of the backup operations. Values are of
     /// the form `projects/<project>/instances/<instance>`.
@@ -502,7 +502,7 @@ pub struct ListBackupOperationsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// Information about a backup.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct BackupInfo {
     /// Name of the backup.
     #[prost(string, tag = "1")]
@@ -523,7 +523,7 @@ pub struct BackupInfo {
     pub source_database: ::prost::alloc::string::String,
 }
 /// Encryption configuration for the backup to create.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct CreateBackupEncryptionConfig {
     /// Required. The encryption type of the backup.
     #[prost(enumeration = "create_backup_encryption_config::EncryptionType", tag = "1")]
@@ -558,7 +558,7 @@ pub mod create_backup_encryption_config {
     }
 }
 /// Encryption configuration for the copied backup.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct CopyBackupEncryptionConfig {
     /// Required. The encryption type of the backup.
     #[prost(enumeration = "copy_backup_encryption_config::EncryptionType", tag = "1")]
@@ -592,7 +592,7 @@ pub mod copy_backup_encryption_config {
     }
 }
 /// Information about the database restore.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct RestoreInfo {
     /// The type of the restore source.
     #[prost(enumeration = "RestoreSourceType", tag = "1")]
@@ -604,7 +604,7 @@ pub struct RestoreInfo {
 /// Nested message and enum types in `RestoreInfo`.
 pub mod restore_info {
     /// Information about the source used to restore the database.
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, ::prost::Oneof)]
     pub enum SourceInfo {
         /// Information about the backup used to restore the database. The backup
         /// may no longer exist.
@@ -700,7 +700,7 @@ pub mod database {
     }
 }
 /// The request for \[ListDatabases][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabases\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListDatabasesRequest {
     /// Required. The instance whose databases should be listed.
     /// Values are of the form `projects/<project>/instances/<instance>`.
@@ -729,7 +729,7 @@ pub struct ListDatabasesResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request for \[CreateDatabase][google.spanner.admin.database.v1.DatabaseAdmin.CreateDatabase\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct CreateDatabaseRequest {
     /// Required. The name of the instance that will serve the new database.
     /// Values are of the form `projects/<project>/instances/<instance>`.
@@ -759,14 +759,14 @@ pub struct CreateDatabaseRequest {
 }
 /// Metadata type for the operation returned by
 /// \[CreateDatabase][google.spanner.admin.database.v1.DatabaseAdmin.CreateDatabase\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct CreateDatabaseMetadata {
     /// The database being created.
     #[prost(string, tag = "1")]
     pub database: ::prost::alloc::string::String,
 }
 /// The request for \[GetDatabase][google.spanner.admin.database.v1.DatabaseAdmin.GetDatabase\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct GetDatabaseRequest {
     /// Required. The name of the requested database. Values are of the form
     /// `projects/<project>/instances/<instance>/databases/<database>`.
@@ -789,7 +789,7 @@ pub struct GetDatabaseRequest {
 /// progress. See the
 /// \[operation_id][google.spanner.admin.database.v1.UpdateDatabaseDdlRequest.operation_id\] field for more
 /// details.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct UpdateDatabaseDdlRequest {
     /// Required. The database to update.
     #[prost(string, tag = "1")]
@@ -821,7 +821,7 @@ pub struct UpdateDatabaseDdlRequest {
 }
 /// Metadata type for the operation returned by
 /// \[UpdateDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabaseDdl\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct UpdateDatabaseDdlMetadata {
     /// The database being modified.
     #[prost(string, tag = "1")]
@@ -852,14 +852,14 @@ pub struct UpdateDatabaseDdlMetadata {
     pub progress: ::prost::alloc::vec::Vec<OperationProgress>,
 }
 /// The request for \[DropDatabase][google.spanner.admin.database.v1.DatabaseAdmin.DropDatabase\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct DropDatabaseRequest {
     /// Required. The database to be dropped.
     #[prost(string, tag = "1")]
     pub database: ::prost::alloc::string::String,
 }
 /// The request for \[GetDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.GetDatabaseDdl\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct GetDatabaseDdlRequest {
     /// Required. The database whose schema we wish to get.
     /// Values are of the form
@@ -868,7 +868,7 @@ pub struct GetDatabaseDdlRequest {
     pub database: ::prost::alloc::string::String,
 }
 /// The response for \[GetDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.GetDatabaseDdl\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct GetDatabaseDdlResponse {
     /// A list of formatted DDL statements defining the schema of the database
     /// specified in the request.
@@ -877,7 +877,7 @@ pub struct GetDatabaseDdlResponse {
 }
 /// The request for
 /// \[ListDatabaseOperations][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabaseOperations\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListDatabaseOperationsRequest {
     /// Required. The instance of the database operations.
     /// Values are of the form `projects/<project>/instances/<instance>`.
@@ -957,7 +957,7 @@ pub struct ListDatabaseOperationsResponse {
 }
 /// The request for
 /// \[RestoreDatabase][google.spanner.admin.database.v1.DatabaseAdmin.RestoreDatabase\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct RestoreDatabaseRequest {
     /// Required. The name of the instance in which to create the
     /// restored database. This instance must be in the same project and
@@ -987,7 +987,7 @@ pub struct RestoreDatabaseRequest {
 /// Nested message and enum types in `RestoreDatabaseRequest`.
 pub mod restore_database_request {
     /// Required. The source from which to restore.
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, ::prost::Oneof)]
     pub enum Source {
         /// Name of the backup from which to restore.  Values are of the form
         /// `projects/<project>/instances/<instance>/backups/<backup>`.
@@ -996,7 +996,7 @@ pub mod restore_database_request {
     }
 }
 /// Encryption configuration for the restored database.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct RestoreDatabaseEncryptionConfig {
     /// Required. The encryption type of the restored database.
     #[prost(enumeration = "restore_database_encryption_config::EncryptionType", tag = "1")]
@@ -1029,7 +1029,7 @@ pub mod restore_database_encryption_config {
 }
 /// Metadata type for the long-running operation returned by
 /// \[RestoreDatabase][google.spanner.admin.database.v1.DatabaseAdmin.RestoreDatabase\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct RestoreDatabaseMetadata {
     /// Name of the database being created and restored to.
     #[prost(string, tag = "1")]
@@ -1077,7 +1077,7 @@ pub struct RestoreDatabaseMetadata {
 pub mod restore_database_metadata {
     /// Information about the source used to restore the database, as specified by
     /// `source` in \[RestoreDatabaseRequest][google.spanner.admin.database.v1.RestoreDatabaseRequest\].
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, ::prost::Oneof)]
     pub enum SourceInfo {
         /// Information about the backup used to restore the database.
         #[prost(message, tag = "3")]
@@ -1088,7 +1088,7 @@ pub mod restore_database_metadata {
 /// of optimizations performed on a newly restored database. This long-running
 /// operation is automatically created by the system after the successful
 /// completion of a database restore, and cannot be cancelled.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct OptimizeRestoredDatabaseMetadata {
     /// Name of the restored database being optimized.
     #[prost(string, tag = "1")]
@@ -1098,7 +1098,7 @@ pub struct OptimizeRestoredDatabaseMetadata {
     pub progress: ::core::option::Option<OperationProgress>,
 }
 /// A Cloud Spanner database role.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct DatabaseRole {
     /// Required. The name of the database role. Values are of the form
     /// `projects/<project>/instances/<instance>/databases/<database>/databaseRoles/
@@ -1109,7 +1109,7 @@ pub struct DatabaseRole {
     pub name: ::prost::alloc::string::String,
 }
 /// The request for \[ListDatabaseRoles][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabaseRoles\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListDatabaseRolesRequest {
     /// Required. The database whose roles should be listed.
     /// Values are of the form
@@ -1127,7 +1127,7 @@ pub struct ListDatabaseRolesRequest {
     pub page_token: ::prost::alloc::string::String,
 }
 /// The response for \[ListDatabaseRoles][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabaseRoles\].
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct ListDatabaseRolesResponse {
     /// Database roles that matched the request.
     #[prost(message, repeated, tag = "1")]

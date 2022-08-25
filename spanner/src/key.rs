@@ -58,7 +58,7 @@ pub struct KeySet {
     pub(crate) inner: InternalKeySet,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum RangeKind {
     /// ClosedOpen is closed on the left and open on the right: the Start
     /// key is included, the End key is excluded.

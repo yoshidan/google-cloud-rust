@@ -29,7 +29,7 @@
 /// The exact variables and functions that may be referenced within an expression
 /// are determined by the service that evaluates it. See the service
 /// documentation for additional information.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct Expr {
     /// Textual representation of an expression in Common Expression Language
     /// syntax.
@@ -62,7 +62,7 @@ pub struct Expr {
 ///
 /// Related types are \[google.type.TimeOfDay][google.type.TimeOfDay\] and
 /// `google.protobuf.Timestamp`.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, ::prost::Message)]
 pub struct Date {
     /// Year of the date. Must be from 1 to 9999, or 0 to specify a date without
     /// a year.

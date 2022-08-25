@@ -3,7 +3,7 @@ use crate::http::objects::{Encryption, Object};
 use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct RewriteObjectRequest {
     /// Name of the bucket in which to store the new object. Overrides the provided
@@ -80,7 +80,7 @@ pub struct RewriteObjectRequest {
 }
 
 /// A rewrite response.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RewriteObjectResponse {
     /// The total bytes written so far, which can be used to provide a waiting user

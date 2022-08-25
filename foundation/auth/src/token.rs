@@ -12,7 +12,7 @@ pub struct Token {
 
 impl Token {
     pub fn value(&self) -> String {
-        return format!("Bearer {}", self.access_token);
+        format!("Bearer {}", self.access_token)
     }
 
     pub fn valid(&self) -> bool {

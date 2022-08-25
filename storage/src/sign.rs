@@ -54,7 +54,7 @@ impl URLStyle for PathStyle {
         if object.is_empty() {
             return bucket.to_string();
         }
-        return format!("{}/{}", bucket, object);
+        format!("{}/{}", bucket, object)
     }
 }
 
