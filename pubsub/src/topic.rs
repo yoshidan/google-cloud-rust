@@ -220,19 +220,22 @@ mod tests {
         }
 
         // Can't publish messages
-        let result = if bulk {
-            publisher
-                .publish_bulk(vec![PubsubMessage::default()])
-                .await
-                .pop()
-                .unwrap()
-        } else {
-            publisher.publish(PubsubMessage::default()).await
-        }
-        .get(None)
-        .await;
+        let results = if bulk {
 
-        assert!(result.is_err());
+            let m1 = PubsubMessage::default();
+            let m2 = PubsubMessage {
+                ordering_key: "test".to_string(),
+                ..Default::default()
+            };
+            publisher
+                .publish_bulk(vec![m1, m2])
+                .await
+        } else {
+            vec![publisher.publish(PubsubMessage::default()).await]
+        };
+        for result in results {
+            assert!(result.get(None).await.is_err());
+        }
 
         topic.delete(None, None).await?;
         assert!(!topic.exists(None, None).await?);
