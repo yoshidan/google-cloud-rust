@@ -145,7 +145,7 @@ mod tests {
     use crate::topic::Topic;
     use google_cloud_gax::cancel::CancellationToken;
     use google_cloud_gax::conn::Environment;
-    use google_cloud_gax::grpc::Status;
+    use google_cloud_gax::grpc::{Code, Status};
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
     use serial_test::serial;
     use std::time::Duration;
@@ -194,6 +194,54 @@ mod tests {
             .collect()
     }
 
+    async fn publish_after_shutdown(bulk: bool) -> Result<(), anyhow::Error> {
+        let ctx = CancellationToken::new();
+        let topic = create_topic().await?;
+        let config = PublisherConfig {
+            flush_interval: Duration::from_secs(10),
+            bundle_size: 11,
+            ..Default::default()
+        };
+        let publisher = topic.new_publisher(Some(config));
+
+        // Publish message.
+        let tasks = publish(ctx.clone(), publisher.clone()).await;
+
+        // Shutdown after 1 sec
+        sleep(Duration::from_secs(1)).await;
+        let mut publisher = publisher;
+        publisher.shutdown().await;
+
+        // Confirm flush bundle.
+        for task in tasks {
+            let message_id = task.await?;
+            assert!(message_id.is_ok());
+            assert!(!message_id.unwrap().is_empty());
+        }
+
+        // Can't publish messages
+        let results = if bulk {
+            let m1 = PubsubMessage::default();
+            let m2 = PubsubMessage {
+                ordering_key: "test".to_string(),
+                ..Default::default()
+            };
+            publisher.publish_bulk(vec![m1, m2]).await
+        } else {
+            vec![publisher.publish(PubsubMessage::default()).await]
+        };
+        for result in results {
+            let err = result.get(None).await.unwrap_err();
+            assert_eq!(Code::Cancelled, err.code());
+            assert_eq!("closed", err.message());
+        }
+
+        topic.delete(None, None).await?;
+        assert!(!topic.exists(None, None).await?);
+
+        Ok(())
+    }
+
     #[tokio::test]
     #[serial]
     async fn test_publish() -> Result<(), anyhow::Error> {
@@ -230,43 +278,14 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_publish_cancel() -> Result<(), anyhow::Error> {
-        let ctx = CancellationToken::new();
-        let topic = create_topic().await?;
-        let config = PublisherConfig {
-            flush_interval: Duration::from_secs(10),
-            bundle_size: 11,
-            ..Default::default()
-        };
-        let publisher = topic.new_publisher(Some(config));
+    async fn test_publish_after_shutdown() -> Result<(), anyhow::Error> {
+        publish_after_shutdown(false).await
+    }
 
-        // Publish message.
-        let tasks = publish(ctx.clone(), publisher.clone()).await;
-
-        // Shutdown after 1 sec
-        sleep(Duration::from_secs(1)).await;
-        let mut publisher = publisher;
-        publisher.shutdown().await;
-
-        // Confirm flush bundle.
-        for task in tasks {
-            let message_id = task.await?;
-            assert!(message_id.is_ok());
-            assert!(!message_id.unwrap().is_empty());
-        }
-
-        // Can't publish messages
-        let result = publisher
-            .publish(PubsubMessage::default())
-            .await
-            .get(Some(ctx.clone()))
-            .await;
-        assert!(result.is_err());
-
-        topic.delete(Some(ctx.clone()), None).await?;
-        assert!(!topic.exists(Some(ctx), None).await?);
-
-        Ok(())
+    #[tokio::test]
+    #[serial]
+    async fn test_publish_bulk_after_shutdown() -> Result<(), anyhow::Error> {
+        publish_after_shutdown(true).await
     }
 
     #[tokio::test]

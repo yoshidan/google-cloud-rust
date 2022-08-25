@@ -6,7 +6,7 @@ use chrono::{DateTime, TimeZone, Utc};
 use google_cloud_googleapis::spanner::v1::transaction_options::read_only::TimestampBound as InternalTimestampBound;
 use google_cloud_googleapis::spanner::v1::transaction_options::ReadOnly;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct SpannerNumeric {
     /// https://cloud.google.com/spanner/docs/storing-numeric-data#precision_of_numeric_types
     /// -99999999999999999999999999999.999999999～99999999999999999999999999999.999999999
