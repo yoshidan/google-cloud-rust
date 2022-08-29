@@ -38,11 +38,18 @@ async fn main() -> Result<(), Status> {
     // Create topic.
     let topic = client.topic("test-topic");
     match topic.exists(None, None).await {
-        Ok(true) => {
-            println!("Topic already exists!");
+        Ok(_b) => {
+            println!("Topic already exists.");
         }
-        Err(e) => {
-            topic.create(None, None, None).await?;
+        Err(err) => {
+            match topic.create(None, None, None).await{
+                Ok(_b) => {
+                    println!("Topic created successfully.");
+                }
+                Err(_e) => {
+                    println!("Error creating topic: {:?}", _e);
+                }
+            }
         }
     }
 
@@ -111,11 +118,18 @@ async fn main() -> Result<(), Status> {
     let subscription = client.subscription("test-subscription");
     
     match subscription.exists(None, None).await{ 
-        Ok(true) => {
+        Ok(_b) => {
             println("Subscription already exists!");
         },
         Err(err) => {
-            subscription.create(topic.fully_qualified_name(), config, None, None).await?;
+            match subscription.create(topic.fully_qualified_name(), config, None, None).await {
+                Ok(_b) => {
+                    println!("Subscription created successfully.");
+                }
+                Err(_e) => {
+                    println!("Error creating Subscription: {:?}", _e);
+                }
+            }
         }
     }
     // Token for cancel.
