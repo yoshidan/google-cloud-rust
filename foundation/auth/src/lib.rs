@@ -139,14 +139,11 @@ fn create_token_source_proxy_on_gce(ts: ComputeTokenSource, token: Token) -> Box
 
 #[cfg(test)]
 mod test {
-    
+
     use crate::token::Token;
-    use crate::{
-        create_token_source_proxy_on_gce, ComputeTokenSource, TokenSource, ENV_TOKEN_AUTO_REFRESH,
-    };
-    
-    use chrono::{Utc};
-    
+    use crate::{create_token_source_proxy_on_gce, ComputeTokenSource, TokenSource, ENV_TOKEN_AUTO_REFRESH};
+
+    use chrono::Utc;
 
     #[tokio::test]
     async fn test_create_token_source_proxy_on_gce() {
