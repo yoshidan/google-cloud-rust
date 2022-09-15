@@ -28,6 +28,7 @@ tokio = { version = "1.20", features = ["test-util", "rt-multi-thread", "macros"
 base64 = "0.13"
 tracing-subscriber = {version="0.3", features=["env-filter","std"]}
 ctor = "0.1"
+serial_test = "0.5.1"
 
 [features]
 default = ["default-tls"]

@@ -142,9 +142,12 @@ mod test {
 
     use crate::token::Token;
     use crate::{create_token_source_proxy_on_gce, ComputeTokenSource, ENABLE_TOKEN_SOURCE_AUTO_REFRESH_ENV};
+    use serial_test::serial;
 
     #[tokio::test]
+    #[serial]
     async fn test_create_token_source_proxy_on_gce() {
+        std::env::remove_var(ENABLE_TOKEN_SOURCE_AUTO_REFRESH_ENV);
         let ts = create_token_source_proxy_on_gce(
             ComputeTokenSource::new("test").unwrap(),
             Token {
@@ -157,6 +160,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_create_token_source_proxy_on_gce_auth_refresh() {
         std::env::set_var(ENABLE_TOKEN_SOURCE_AUTO_REFRESH_ENV, "true");
         let ts = create_token_source_proxy_on_gce(
