@@ -141,7 +141,7 @@ fn create_token_source_proxy_on_gce(ts: ComputeTokenSource, token: Token) -> Box
 mod test {
 
     use crate::token::Token;
-    use crate::{create_token_source_proxy_on_gce, ComputeTokenSource, TokenSource, ENV_TOKEN_AUTO_REFRESH};
+    use crate::{create_token_source_proxy_on_gce, ComputeTokenSource, ENABLE_TOKEN_SOURCE_AUTO_REFRESH_ENV};
 
     use chrono::Utc;
 
