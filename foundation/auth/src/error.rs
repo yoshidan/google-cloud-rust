@@ -1,6 +1,3 @@
-
-
-
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("scopes is required if the audience is none")]

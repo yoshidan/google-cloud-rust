@@ -35,6 +35,11 @@ jobs:
         with:
           command: clippy
           args: -- -D warnings
+      - uses: actions-rs/cargo@v1
+        name: auth-test
+        with:
+          command: test
+          args: --release --all-features --manifest-path foundation/auth/Cargo.toml
   pubsub:
     name: pubsub
     runs-on: ubuntu-latest

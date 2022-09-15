@@ -14,11 +14,14 @@ use crate::token_source::service_account_token_source::ServiceAccountTokenSource
 use crate::token_source::TokenSource;
 use std::time::Duration;
 
+use crate::token::Token;
 use crate::token_source::auto_refresh_token_source::AutoRefreshTokenSource;
 use google_cloud_metadata::on_gce;
 
 const SERVICE_ACCOUNT_KEY: &str = "service_account";
 const USER_CREDENTIALS_KEY: &str = "authorized_user";
+
+const ENV_TOKEN_AUTO_REFRESH: &str = "ENABLE_TOKEN_SOURCE_AUTO_REFRESH";
 
 pub struct Config<'a> {
     pub audience: Option<&'a str>,
@@ -84,15 +87,7 @@ pub async fn create_token_source_from_project(
         Project::FromMetadataServer(_) => {
             let ts = ComputeTokenSource::new(&config.scopes_to_string(","))?;
             let token = ts.token().await?;
-            if let Ok(_v) = std::env::var("ENABLE_AUTO_REFRESH_TOKEN_SOURCE") {
-                Ok(Box::new(AutoRefreshTokenSource::new(
-                    Box::new(ts),
-                    token,
-                    Duration::from_secs(60 * 30),
-                )))
-            } else {
-                Ok(Box::new(ReuseTokenSource::new(Box::new(ts), token)))
-            }
+            Ok(create_token_source_proxy_on_gce(ts, token))
         }
     }
 }
@@ -131,5 +126,53 @@ fn credentials_from_json_with_params(
         //TODO support GDC https://console.developers.google.com,
         //TODO support external account
         _ => Err(error::Error::UnsupportedAccountType(credentials.tp.to_string())),
+    }
+}
+
+fn create_token_source_proxy_on_gce(ts: ComputeTokenSource, token: Token) -> Box<dyn TokenSource> {
+    if let Ok(_v) = std::env::var(ENV_TOKEN_AUTO_REFRESH) {
+        Box::new(AutoRefreshTokenSource::new(Box::new(ts), token, Duration::from_secs(60 * 30)))
+    } else {
+        Box::new(ReuseTokenSource::new(Box::new(ts), token))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::error::Error;
+    use crate::token::Token;
+    use crate::{
+        create_token_source_proxy_on_gce, ComputeTokenSource, ReuseTokenSource, TokenSource, ENV_TOKEN_AUTO_REFRESH,
+    };
+    use async_trait::async_trait;
+    use chrono::{DateTime, Utc};
+    use std::fmt::Debug;
+
+    #[tokio::test]
+    async fn test_create_token_source_proxy_on_gce() {
+        let ts = create_token_source_proxy_on_gce(
+            ComputeTokenSource::new("test").unwrap(),
+            Token {
+                access_token: "test".to_string(),
+                token_type: "test".to_string(),
+                expiry: Some(Utc::now()),
+            },
+        );
+        //ComputeTokenSource is disabled on CI
+        assert!(ts.token().await.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_create_token_source_proxy_on_gce_auth_refresh() {
+        std::env::set_var(ENV_TOKEN_AUTO_REFRESH, "true");
+        let ts = create_token_source_proxy_on_gce(
+            ComputeTokenSource::new("test").unwrap(),
+            Token {
+                access_token: "test".to_string(),
+                token_type: "test".to_string(),
+                expiry: Some(Utc::now()),
+            },
+        );
+        assert_eq!(ts.token().await.unwrap().access_token, "test")
     }
 }
