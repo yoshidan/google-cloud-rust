@@ -24,11 +24,7 @@ impl TokenSource for ReuseTokenSource {
         {
             let r_lock = self.current_token.read().unwrap();
             if r_lock.valid() {
-                return Ok(Token {
-                    access_token: r_lock.access_token.to_string(),
-                    token_type: r_lock.token_type.to_string(),
-                    expiry: r_lock.expiry,
-                });
+                return Ok(r_lock.clone());
             }
         }
         let token = self.target.token().await?;
