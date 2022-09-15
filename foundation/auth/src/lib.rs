@@ -150,10 +150,10 @@ mod test {
             Token {
                 access_token: "test".to_string(),
                 token_type: "test".to_string(),
-                expiry: None
+                expiry: None,
             },
         );
-        assert!(format!("{:?}", ts ).starts_with("ReuseTokenSource"));
+        assert!(format!("{:?}", ts).starts_with("ReuseTokenSource"));
     }
 
     #[tokio::test]
@@ -164,9 +164,9 @@ mod test {
             Token {
                 access_token: "test".to_string(),
                 token_type: "test".to_string(),
-                expiry: None
+                expiry: None,
             },
         );
-        assert!(format!("{:?}", ts ).starts_with("AutoRefreshTokenSource"));
+        assert!(format!("{:?}", ts).starts_with("AutoRefreshTokenSource"));
     }
 }
