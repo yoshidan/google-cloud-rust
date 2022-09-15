@@ -47,15 +47,11 @@ impl InternalToken {
 mod tests {
     use crate::credentials::CredentialsFile;
     use crate::error::Error;
-    use crate::token_source::authorized_user_token_source::UserAccountTokenSource;
-    use crate::token_source::compute_token_source::ComputeTokenSource;
-    use crate::token_source::reuse_token_source::ReuseTokenSource;
+
     use crate::token_source::service_account_token_source::{
         OAuth2ServiceAccountTokenSource, ServiceAccountTokenSource,
     };
     use crate::token_source::TokenSource;
-    use std::fs::File;
-    use std::io::Write;
 
     #[tokio::test]
     async fn test_jwt_token_source() -> Result<(), Error> {
