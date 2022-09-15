@@ -21,7 +21,7 @@ use google_cloud_metadata::on_gce;
 const SERVICE_ACCOUNT_KEY: &str = "service_account";
 const USER_CREDENTIALS_KEY: &str = "authorized_user";
 
-const ENV_TOKEN_AUTO_REFRESH: &str = "ENABLE_TOKEN_SOURCE_AUTO_REFRESH";
+const ENABLE_TOKEN_SOURCE_AUTO_REFRESH_ENV: &str = "ENABLE_TOKEN_SOURCE_AUTO_REFRESH";
 
 pub struct Config<'a> {
     pub audience: Option<&'a str>,
@@ -130,7 +130,7 @@ fn credentials_from_json_with_params(
 }
 
 fn create_token_source_proxy_on_gce(ts: ComputeTokenSource, token: Token) -> Box<dyn TokenSource> {
-    if let Ok(_v) = std::env::var(ENV_TOKEN_AUTO_REFRESH) {
+    if let Ok(_v) = std::env::var(ENABLE_TOKEN_SOURCE_AUTO_REFRESH_ENV) {
         Box::new(AutoRefreshTokenSource::new(Box::new(ts), token, Duration::from_secs(60 * 30)))
     } else {
         Box::new(ReuseTokenSource::new(Box::new(ts), token))
@@ -164,7 +164,7 @@ mod test {
 
     #[tokio::test]
     async fn test_create_token_source_proxy_on_gce_auth_refresh() {
-        std::env::set_var(ENV_TOKEN_AUTO_REFRESH, "true");
+        std::env::set_var(ENABLE_TOKEN_SOURCE_AUTO_REFRESH_ENV, "true");
         let ts = create_token_source_proxy_on_gce(
             ComputeTokenSource::new("test").unwrap(),
             Token {
