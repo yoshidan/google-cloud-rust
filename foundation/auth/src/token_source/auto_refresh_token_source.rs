@@ -9,7 +9,7 @@ use tokio::task::JoinHandle;
 
 #[derive(Debug)]
 pub struct AutoRefreshTokenSource {
-    task: JoinHandle<()>,
+    _task: JoinHandle<()>,
     current_token: Arc<RwLock<Token>>,
 }
 
@@ -32,7 +32,7 @@ impl AutoRefreshTokenSource {
                 };
             }
         });
-        AutoRefreshTokenSource { task, current_token }
+        AutoRefreshTokenSource { _task: task, current_token }
     }
 }
 
