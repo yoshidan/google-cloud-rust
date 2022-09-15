@@ -143,7 +143,7 @@ mod test {
     use crate::token::Token;
     use crate::{create_token_source_proxy_on_gce, ComputeTokenSource, ENABLE_TOKEN_SOURCE_AUTO_REFRESH_ENV};
 
-    use chrono::Utc;
+    use chrono::{Duration, Utc};
 
     #[tokio::test]
     async fn test_create_token_source_proxy_on_gce() {
@@ -152,7 +152,7 @@ mod test {
             Token {
                 access_token: "test".to_string(),
                 token_type: "test".to_string(),
-                expiry: Some(Utc::now()),
+                expiry: Some(Utc::now() + Duration::seconds(-1)),
             },
         );
         //ComputeTokenSource is disabled on CI
@@ -167,7 +167,7 @@ mod test {
             Token {
                 access_token: "test".to_string(),
                 token_type: "test".to_string(),
-                expiry: Some(Utc::now()),
+                expiry: Some(Utc::now() + Duration::seconds(-1)),
             },
         );
         assert_eq!(ts.token().await.unwrap().access_token, "test")
