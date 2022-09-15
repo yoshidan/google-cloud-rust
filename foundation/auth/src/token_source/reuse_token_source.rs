@@ -7,6 +7,7 @@ use async_trait::async_trait;
 pub struct ReuseTokenSource {
     target: Box<dyn TokenSource>,
     current_token: std::sync::RwLock<Token>,
+    guard: tokio::sync::Mutex<()>,
 }
 
 impl ReuseTokenSource {
@@ -14,6 +15,7 @@ impl ReuseTokenSource {
         ReuseTokenSource {
             target,
             current_token: std::sync::RwLock::new(token),
+            guard: tokio::sync::Mutex::new(()),
         }
     }
 }
@@ -21,14 +23,31 @@ impl ReuseTokenSource {
 #[async_trait]
 impl TokenSource for ReuseTokenSource {
     async fn token(&self) -> Result<Token, Error> {
-        {
-            let r_lock = self.current_token.read().unwrap();
-            if r_lock.valid() {
-                return Ok(r_lock.clone());
-            }
+        if let Ok(token) = self.r_lock_token() {
+            return Ok(token);
         }
+
+        // Only single task can refresh token
+        let _locking = self.guard.lock().await;
+
+        if let Ok(token) = self.r_lock_token() {
+            return Ok(token);
+        }
+
         let token = self.target.token().await?;
-        *self.current_token.write().unwrap() = token.clone();
-        return Ok(token);
+        tracing::debug!("token refresh success : expiry={:?}", token.expiry);
+        *self.current_token.write()? = token.clone();
+        Ok(token)
+    }
+}
+
+impl ReuseTokenSource {
+    fn r_lock_token(&self) -> Result<Token, Error> {
+        let token = self.current_token.read()?;
+        if token.valid() {
+            Ok(token.clone())
+        } else {
+            Err(Error::InvalidToken)
+        }
     }
 }

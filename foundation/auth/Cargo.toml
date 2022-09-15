@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-auth"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/foundation/auth"
@@ -10,6 +10,7 @@ readme = "README.md"
 description = "Google Cloud Platform server application authentication library."
 
 [dependencies]
+tracing = "0.1"
 reqwest = { version="0.11", features = ["json"], default-features = false }
 chrono = "0.4"
 serde = { version = "1.0", features = ["derive"] }

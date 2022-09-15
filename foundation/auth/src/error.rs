@@ -1,3 +1,5 @@
+use crate::token::Token;
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("scopes is required if the audience is none")]
@@ -35,4 +37,10 @@ pub enum Error {
 
     #[error("No Credentials File Found")]
     NoCredentialsFileFound,
+
+    #[transparent]
+    RWLockError(#[from] std::sync::PoisonError<Token>),
+
+    #[error("invalid authentication token")]
+    InvalidToken,
 }

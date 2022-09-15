@@ -12,7 +12,9 @@ use crate::token_source::reuse_token_source::ReuseTokenSource;
 use crate::token_source::service_account_token_source::OAuth2ServiceAccountTokenSource;
 use crate::token_source::service_account_token_source::ServiceAccountTokenSource;
 use crate::token_source::TokenSource;
+use std::time::Duration;
 
+use crate::token_source::auto_refresh_token_source::AutoRefreshTokenSource;
 use google_cloud_metadata::on_gce;
 
 const SERVICE_ACCOUNT_KEY: &str = "service_account";
@@ -82,7 +84,15 @@ pub async fn create_token_source_from_project(
         Project::FromMetadataServer(_) => {
             let ts = ComputeTokenSource::new(&config.scopes_to_string(","))?;
             let token = ts.token().await?;
-            Ok(Box::new(ReuseTokenSource::new(Box::new(ts), token)))
+            if let Ok(v) = std::env::var("ENABLE_AUTO_REFRESH_TOKEN_SOURCE") {
+                Ok(Box::new(AutoRefreshTokenSource::new(
+                    Box::new(ts),
+                    token,
+                    Duration::from_secs(60 * 30),
+                )))
+            } else {
+                Ok(Box::new(ReuseTokenSource::new(Box::new(ts), token)))
+            }
         }
     }
 }
