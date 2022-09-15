@@ -53,7 +53,7 @@ mod test {
     use std::fmt::Debug;
 
     use std::sync::Arc;
-    use std::thread::sleep;
+    
     use std::time::Duration;
 
     use tracing_subscriber::filter::LevelFilter;

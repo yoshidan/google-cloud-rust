@@ -22,9 +22,9 @@ parking_lot = "0.12"
 base64 = "0.13"
 anyhow = "1.0"
 
-google-cloud-auth= {  version = "0.4.1", path = "../foundation/auth", default-features = false}
-google-cloud-longrunning= { version = "0.7.1", path = "../foundation/longrunning", default-features = false}
-google-cloud-gax = { version = "0.8.1", path = "../foundation/gax", default-features = false}
+google-cloud-auth= {  version = "0.4.2", path = "../foundation/auth", default-features = false}
+google-cloud-longrunning= { version = "0.7.2", path = "../foundation/longrunning", default-features = false}
+google-cloud-gax = { version = "0.8.2", path = "../foundation/gax", default-features = false}
 google-cloud-googleapis = { version = "0.5.1", path = "../googleapis", features = ["spanner"]}
 
 [dev-dependencies]

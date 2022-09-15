@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-pubsub"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/pubsub"
@@ -20,8 +20,8 @@ async-channel = "1.6"
 async-stream = "0.3"
 thiserror = "1.0"
 
-google-cloud-auth = { version = "0.4.1", path = "../foundation/auth", default-features = false }
-google-cloud-gax = { version = "0.8.1", path = "../foundation/gax", default-features = false }
+google-cloud-auth = { version = "0.4.2", path = "../foundation/auth", default-features = false }
+google-cloud-gax = { version = "0.8.2", path = "../foundation/gax", default-features = false }
 google-cloud-googleapis = { version = "0.5.1", path = "../googleapis", features = ["pubsub"]}
 
 [dev-dependencies]
