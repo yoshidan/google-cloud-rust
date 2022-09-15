@@ -1,4 +1,5 @@
 use crate::token::Token;
+use std::sync::{PoisonError, RwLockReadGuard, RwLockWriteGuard};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -37,9 +38,6 @@ pub enum Error {
 
     #[error("No Credentials File Found")]
     NoCredentialsFileFound,
-
-    #[transparent]
-    RWLockError(#[from] std::sync::PoisonError<Token>),
 
     #[error("invalid authentication token")]
     InvalidToken,

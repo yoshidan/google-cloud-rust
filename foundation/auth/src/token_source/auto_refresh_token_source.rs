@@ -25,11 +25,11 @@ impl AutoRefreshTokenSource {
                 interval.tick().await;
                 match target.token().await {
                     Ok(token) => {
-                        tracing::debug!("token refresh success : expiry={:?}", token.expiry)
-                            * current_token_for_task.write().unwrap() = token;
+                        tracing::debug!("token refresh success : expiry={:?}", token.expiry);
+                        *current_token_for_task.write().unwrap() = token;
                     }
                     Err(err) => {
-                        tracing::error!("failed to refresh token : {:?}", err)
+                        tracing::error!("failed to refresh token : {:?}", err);
                     }
                 };
             }
@@ -41,6 +41,6 @@ impl AutoRefreshTokenSource {
 #[async_trait]
 impl TokenSource for AutoRefreshTokenSource {
     async fn token(&self) -> Result<Token, Error> {
-        return Ok(self.current_token.read()?.clone());
+        return Ok(self.current_token.read().unwrap().clone());
     }
 }
