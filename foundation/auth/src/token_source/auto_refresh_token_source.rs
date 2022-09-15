@@ -32,7 +32,10 @@ impl AutoRefreshTokenSource {
                 };
             }
         });
-        AutoRefreshTokenSource { _task: task, current_token }
+        AutoRefreshTokenSource {
+            _task: task,
+            current_token,
+        }
     }
 }
 
