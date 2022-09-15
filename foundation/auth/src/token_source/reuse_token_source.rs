@@ -59,10 +59,10 @@ mod test {
     use crate::{ReuseTokenSource, TokenSource};
     use async_trait::async_trait;
     use chrono::{DateTime, Utc};
-    use std::fmt::{Debug, Formatter};
-    use std::ops::Add;
+    use std::fmt::{Debug};
+    
     use std::sync::Arc;
-    use std::time::Duration;
+    
     use tracing_subscriber::filter::LevelFilter;
 
     #[derive(Debug)]
@@ -75,14 +75,14 @@ mod test {
             Ok(Token {
                 access_token: "empty".to_string(),
                 token_type: "empty".to_string(),
-                expiry: Some(self.expiry.clone()),
+                expiry: Some(self.expiry),
             })
         }
     }
 
     #[ctor::ctor]
     fn init() {
-        let mut filter =
+        let filter =
             tracing_subscriber::filter::EnvFilter::from_default_env().add_directive(LevelFilter::DEBUG.into());
         let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
     }
@@ -112,7 +112,7 @@ mod test {
 
     #[tokio::test]
     async fn test_all_invalid() {
-        let mut ts = Box::new(EmptyTokenSource { expiry: Utc::now() });
+        let ts = Box::new(EmptyTokenSource { expiry: Utc::now() });
         let token = ts.token().await.unwrap();
         let results = run_task(ts, token).await;
         for v in results {
@@ -123,12 +123,12 @@ mod test {
     async fn run_task(ts: Box<EmptyTokenSource>, first_token: Token) -> Vec<bool> {
         let ts = Arc::new(ReuseTokenSource::new(ts, first_token));
         let mut tasks = Vec::with_capacity(100);
-        for n in 1..100 {
+        for _n in 1..100 {
             let ts_clone = ts.clone();
             let task = tokio::spawn(async move {
                 match ts_clone.token().await {
                     Ok(new_token) => new_token.valid(),
-                    Err(e) => false,
+                    Err(_e) => false,
                 }
             });
             tasks.push(task)

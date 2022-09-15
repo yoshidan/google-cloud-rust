@@ -3,11 +3,11 @@ use crate::token::Token;
 use crate::token_source::TokenSource;
 use async_trait::async_trait;
 use std::sync::{Arc, RwLock};
-use std::thread::sleep;
-use std::time;
+
+
 use std::time::Duration;
 use tokio::task::JoinHandle;
-use tokio::time::timeout;
+
 
 #[derive(Debug)]
 pub struct AutoRefreshTokenSource {

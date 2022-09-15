@@ -84,7 +84,7 @@ pub async fn create_token_source_from_project(
         Project::FromMetadataServer(_) => {
             let ts = ComputeTokenSource::new(&config.scopes_to_string(","))?;
             let token = ts.token().await?;
-            if let Ok(v) = std::env::var("ENABLE_AUTO_REFRESH_TOKEN_SOURCE") {
+            if let Ok(_v) = std::env::var("ENABLE_AUTO_REFRESH_TOKEN_SOURCE") {
                 Ok(Box::new(AutoRefreshTokenSource::new(
                     Box::new(ts),
                     token,
