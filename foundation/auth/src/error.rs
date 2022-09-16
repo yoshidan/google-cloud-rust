@@ -35,4 +35,7 @@ pub enum Error {
 
     #[error("No Credentials File Found")]
     NoCredentialsFileFound,
+
+    #[error("invalid authentication token")]
+    InvalidToken,
 }
