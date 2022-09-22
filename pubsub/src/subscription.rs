@@ -352,6 +352,7 @@ impl Subscription {
 
     /// Ack acknowledges the messages associated with the ack_ids in the AcknowledgeRequest.
     /// The Pub/Sub system can remove the relevant messages from the subscription.
+    /// This method is for batch acking.
     ///
     /// ```
     /// use google_cloud_pubsub::client::Client;
@@ -369,12 +370,11 @@ impl Subscription {
     ///     let subscription_for_receive = subscription.clone();
     ///     let ctx_for_receive = ctx.clone();
     ///     let ctx_for_ack_manager = ctx.clone();
-    ///     let sender_for_receive = sender.clone();
     ///
     ///     // receive
     ///     let handle = tokio::spawn(async move {
     ///         let _ = subscription_for_receive.receive(move |message, _ctx| {
-    ///             let sender = sender_for_receive.clone();
+    ///             let sender = sender.clone();
     ///             async move {
     ///                 let _ = sender.send(message.ack_id().to_string());
     ///             }
@@ -390,7 +390,7 @@ impl Subscription {
     ///                     if let Some(ack_id) = ack_id {
     ///                         ack_ids.push(ack_id);
     ///                         if ack_ids.len() > 10 {
-    ///                             subscription.ack(ack_ids).await.unwrap();
+    ///                             let _ = subscription.ack(ack_ids).await;
     ///                             ack_ids = Vec::new();
     ///                         }
     ///                     }
@@ -398,7 +398,7 @@ impl Subscription {
     ///                 Err(_e) => {
     ///                     // timeout
     ///                     if !ack_ids.is_empty() {
-    ///                         subscription.ack(ack_ids).await.unwrap();
+    ///                         let _ = subscription.ack(ack_ids).await;
     ///                         ack_ids = Vec::new();
     ///                     }
     ///                 }
@@ -652,12 +652,11 @@ mod tests {
         let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
         let subscription_for_receive = subscription.clone();
         let ctx_for_receive = ctx.clone();
-        let sender_for_receive = sender.clone();
         let handle = tokio::spawn(async move {
             let _ = subscription_for_receive
                 .receive(
                     move |message, _ctx| {
-                        let sender = sender_for_receive.clone();
+                        let sender = sender.clone();
                         async move {
                             let _ = sender.send(message.ack_id().to_string());
                         }
