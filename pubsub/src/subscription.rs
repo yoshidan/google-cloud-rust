@@ -350,6 +350,8 @@ impl Subscription {
         Ok(())
     }
 
+    /// Ack acknowledges the messages associated with the ack_ids in the AcknowledgeRequest.
+    /// The Pub/Sub system can remove the relevant messages from the subscription.
     ///
     /// ```
     /// use google_cloud_pubsub::client::Client;
@@ -401,14 +403,17 @@ impl Subscription {
     ///                     }
     ///                 }
     ///             }
-    ///             // flush
-    ///             if !ack_ids.is_empty() {
-    ///                 subscription.ack(ack_ids).await
-    ///             }else {
-    ///                 Ok(())
-    ///             }
+    ///         }
+    ///         // flush
+    ///         if !ack_ids.is_empty() {
+    ///             subscription.ack(ack_ids).await
+    ///         }else {
+    ///             Ok(())
     ///         }
     ///     });
+    ///
+    ///     ctx.cancel();
+    ///     Ok(())
     ///  }
     /// ```
     pub async fn ack(&self, ack_ids: Vec<String>) -> Result<(), Status> {
