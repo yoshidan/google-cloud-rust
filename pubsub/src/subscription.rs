@@ -387,7 +387,7 @@ impl Subscription {
     ///         loop {
     ///             tokio::select! {
     ///                 _ = ctx_for_ack_manager.cancelled() => {
-    ///                     return subscription.ack(ack_ids).await;,
+    ///                     return subscription.ack(ack_ids).await;
     ///                 },
     ///                 r = tokio::time::timeout(Duration::from_secs(10), receiver.recv()) => match r {
     ///                     Ok(ack_id) => {
