@@ -31,15 +31,17 @@ impl ReceivedMessage {
         }
     }
 
+    pub fn ack_id(&self) -> &str {
+        self.ack_id.as_str()
+    }
+
     pub async fn ack(&self) -> Result<(), Status> {
-        let req = AcknowledgeRequest {
-            subscription: self.subscription.to_string(),
-            ack_ids: vec![self.ack_id.to_string()],
-        };
-        self.subscriber_client
-            .acknowledge(req, None, None)
-            .await
-            .map(|e| e.into_inner())
+        ack(
+            &self.subscriber_client,
+            self.subscription.to_string(),
+            vec![self.ack_id.to_string()],
+        )
+        .await
     }
 
     pub async fn nack(&self) -> Result<(), Status> {
@@ -261,6 +263,18 @@ async fn nack(subscriber_client: &SubscriberClient, subscription: String, ack_id
     };
     subscriber_client
         .modify_ack_deadline(req, None, None)
+        .await
+        .map(|e| e.into_inner())
+}
+
+pub(crate) async fn ack(
+    subscriber_client: &SubscriberClient,
+    subscription: String,
+    ack_ids: Vec<String>,
+) -> Result<(), Status> {
+    let req = AcknowledgeRequest { subscription, ack_ids };
+    subscriber_client
+        .acknowledge(req, None, None)
         .await
         .map(|e| e.into_inner())
 }
