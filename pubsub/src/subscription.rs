@@ -384,31 +384,28 @@ impl Subscription {
     ///     // batch ack manager
     ///     let ack_manager = tokio::spawn( async move {
     ///         let mut ack_ids = Vec::new();
-    ///         while !ctx_for_ack_manager.is_cancelled() {
-    ///             match tokio::time::timeout(Duration::from_secs(10), receiver.recv()).await {
-    ///                 Ok(ack_id) => {
-    ///                     if let Some(ack_id) = ack_id {
-    ///                         ack_ids.push(ack_id);
-    ///                         if ack_ids.len() > 10 {
-    ///                             let _ = subscription.ack(ack_ids).await;
-    ///                             ack_ids = Vec::new();
-    ///                         }
-    ///                     }
+    ///         loop {
+    ///             tokio::select! {
+    ///                 _ = ctx_for_ack_manager.cancelled() => {
+    ///                     return subscription.ack(ack_ids).await;,
     ///                 },
-    ///                 Err(_e) => {
-    ///                     // timeout
-    ///                     if !ack_ids.is_empty() {
+    ///                 r = tokio::time::timeout(Duration::from_secs(10), receiver.recv()) => match r {
+    ///                     Ok(ack_id) => {
+    ///                         if let Some(ack_id) = ack_id {
+    ///                             ack_ids.push(ack_id);
+    ///                             if ack_ids.len() > 10 {
+    ///                                 let _ = subscription.ack(ack_ids).await;
+    ///                                 ack_ids = Vec::new();
+    ///                             }
+    ///                         }
+    ///                     },
+    ///                     Err(_e) => {
+    ///                         // timeout
     ///                         let _ = subscription.ack(ack_ids).await;
     ///                         ack_ids = Vec::new();
     ///                     }
     ///                 }
     ///             }
-    ///         }
-    ///         // flush
-    ///         if !ack_ids.is_empty() {
-    ///             subscription.ack(ack_ids).await
-    ///         }else {
-    ///             Ok(())
     ///         }
     ///     });
     ///
@@ -683,19 +680,13 @@ mod tests {
                     }
                     Err(_e) => {
                         // timeout
-                        if !ack_ids.is_empty() {
-                            subscription.ack(ack_ids).await.unwrap();
-                            ack_ids = Vec::new();
-                        }
+                        subscription.ack(ack_ids).await.unwrap();
+                        ack_ids = Vec::new();
                     }
                 }
             }
             // flush
-            if !ack_ids.is_empty() {
-                subscription.ack(ack_ids).await
-            } else {
-                Ok(())
-            }
+            subscription.ack(ack_ids).await
         });
 
         publish().await;

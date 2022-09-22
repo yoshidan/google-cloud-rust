@@ -256,6 +256,9 @@ async fn handle_message(
 }
 
 async fn nack(subscriber_client: &SubscriberClient, subscription: String, ack_ids: Vec<String>) -> Result<(), Status> {
+    if ack_ids.is_empty() {
+        return Ok(());
+    }
     let req = ModifyAckDeadlineRequest {
         subscription,
         ack_deadline_seconds: 0,
@@ -272,6 +275,9 @@ pub(crate) async fn ack(
     subscription: String,
     ack_ids: Vec<String>,
 ) -> Result<(), Status> {
+    if ack_ids.is_empty() {
+        return Ok(());
+    }
     let req = AcknowledgeRequest { subscription, ack_ids };
     subscriber_client
         .acknowledge(req, None, None)
