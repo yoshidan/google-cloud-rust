@@ -13,7 +13,7 @@ use google_cloud_googleapis::pubsub::v1::{
     PushConfig, RetryPolicy, Subscription as InternalSubscription, UpdateSubscriptionRequest,
 };
 
-use crate::subscriber::{ReceivedMessage, Subscriber, SubscriberConfig};
+use crate::subscriber::{ack, ReceivedMessage, Subscriber, SubscriberConfig};
 
 #[derive(Default)]
 pub struct SubscriptionConfig {
@@ -88,7 +88,7 @@ impl Default for ReceiveConfig {
 }
 
 /// Subscription is a reference to a PubSub subscription.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Subscription {
     fqsn: String,
     subc: SubscriberClient,
@@ -349,6 +349,73 @@ impl Subscription {
         }
         Ok(())
     }
+
+    /// Ack acknowledges the messages associated with the ack_ids in the AcknowledgeRequest.
+    /// The Pub/Sub system can remove the relevant messages from the subscription.
+    /// This method is for batch acking.
+    ///
+    /// ```
+    /// use google_cloud_pubsub::client::Client;
+    /// use google_cloud_gax::cancel::CancellationToken;
+    /// use google_cloud_pubsub::subscription::Subscription;
+    /// use google_cloud_gax::grpc::Status;
+    /// use std::time::Duration;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Status> {
+    ///     let mut client = Client::default().await.unwrap();
+    ///     let subscription = client.subscription("test-subscription");
+    ///     let ctx = CancellationToken::new();
+    ///     let (sender, mut receiver)  = tokio::sync::mpsc::unbounded_channel();
+    ///     let subscription_for_receive = subscription.clone();
+    ///     let ctx_for_receive = ctx.clone();
+    ///     let ctx_for_ack_manager = ctx.clone();
+    ///
+    ///     // receive
+    ///     let handle = tokio::spawn(async move {
+    ///         let _ = subscription_for_receive.receive(move |message, _ctx| {
+    ///             let sender = sender.clone();
+    ///             async move {
+    ///                 let _ = sender.send(message.ack_id().to_string());
+    ///             }
+    ///         }, ctx_for_receive.clone(), None).await;
+    ///     });
+    ///
+    ///     // batch ack manager
+    ///     let ack_manager = tokio::spawn( async move {
+    ///         let mut ack_ids = Vec::new();
+    ///         loop {
+    ///             tokio::select! {
+    ///                 _ = ctx_for_ack_manager.cancelled() => {
+    ///                     return subscription.ack(ack_ids).await;
+    ///                 },
+    ///                 r = tokio::time::timeout(Duration::from_secs(10), receiver.recv()) => match r {
+    ///                     Ok(ack_id) => {
+    ///                         if let Some(ack_id) = ack_id {
+    ///                             ack_ids.push(ack_id);
+    ///                             if ack_ids.len() > 10 {
+    ///                                 let _ = subscription.ack(ack_ids).await;
+    ///                                 ack_ids = Vec::new();
+    ///                             }
+    ///                         }
+    ///                     },
+    ///                     Err(_e) => {
+    ///                         // timeout
+    ///                         let _ = subscription.ack(ack_ids).await;
+    ///                         ack_ids = Vec::new();
+    ///                     }
+    ///                 }
+    ///             }
+    ///         }
+    ///     });
+    ///
+    ///     ctx.cancel();
+    ///     Ok(())
+    ///  }
+    /// ```
+    pub async fn ack(&self, ack_ids: Vec<String>) -> Result<(), Status> {
+        ack(&self.subc, self.fqsn.to_string(), ack_ids).await
+    }
 }
 
 #[cfg(test)]
@@ -574,17 +641,60 @@ mod tests {
         Ok(())
     }
 
-    /*
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn long_polling() -> Result<(), anyhow::Error> {
-        let subscription = create_subscription().await.unwrap();
-        let cancel = CancellationToken::new();
-        subscription.receive(|message, _| async move{
-            tracing::info!("received {}", message.message.message_id);
-            message.ack().await;
-        }, cancel, None).await;
+    async fn test_batch_acking() -> Result<(), anyhow::Error> {
+        let ctx = CancellationToken::new();
+        let subscription = create_subscription(false).await?;
+        let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
+        let subscription_for_receive = subscription.clone();
+        let ctx_for_receive = ctx.clone();
+        let handle = tokio::spawn(async move {
+            let _ = subscription_for_receive
+                .receive(
+                    move |message, _ctx| {
+                        let sender = sender.clone();
+                        async move {
+                            let _ = sender.send(message.ack_id().to_string());
+                        }
+                    },
+                    ctx_for_receive.clone(),
+                    None,
+                )
+                .await;
+        });
+
+        let ctx_for_ack_manager = ctx.clone();
+        let ack_manager = tokio::spawn(async move {
+            let mut ack_ids = Vec::new();
+            while !ctx_for_ack_manager.is_cancelled() {
+                match tokio::time::timeout(Duration::from_secs(10), receiver.recv()).await {
+                    Ok(ack_id) => {
+                        if let Some(ack_id) = ack_id {
+                            ack_ids.push(ack_id);
+                            if ack_ids.len() > 10 {
+                                subscription.ack(ack_ids).await.unwrap();
+                                ack_ids = Vec::new();
+                            }
+                        }
+                    }
+                    Err(_e) => {
+                        // timeout
+                        subscription.ack(ack_ids).await.unwrap();
+                        ack_ids = Vec::new();
+                    }
+                }
+            }
+            // flush
+            subscription.ack(ack_ids).await
+        });
+
+        publish().await;
+        tokio::time::sleep(Duration::from_secs(5)).await;
+
+        ctx.cancel();
+        let _ = handle.await;
+        assert!(ack_manager.await.is_ok());
         Ok(())
     }
-     */
 }
