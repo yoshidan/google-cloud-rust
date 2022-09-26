@@ -80,7 +80,7 @@ impl CredentialsFile {
     async fn json_from_env() -> Result<Vec<u8>, ()> {
         let credentials = std::env::var("GOOGLE_APPLICATION_CREDENTIALS_JSON")
             .map_err(|_| ())
-            .map(|s| Vec::<u8>::from(s))?;
+            .map(Vec::<u8>::from)?;
 
         if let Ok(decoded) = base64::decode(credentials.clone()) {
             Ok(decoded)
