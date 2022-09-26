@@ -66,6 +66,30 @@ pub struct Credentials {
 
 impl CredentialsFile {
     pub async fn new() -> Result<Self, Error> {
+        let credentials_json = {
+            if let Ok(credentials) = Self::json_from_env().await {
+                credentials
+            } else {
+                Self::json_from_file().await?
+            }
+        };
+
+        Ok(json::from_slice(credentials_json.as_slice())?)
+    }
+
+    async fn json_from_env() -> Result<Vec<u8>, ()> {
+        let credentials = std::env::var("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+            .map_err(|_| ())
+            .map(|s| Vec::<u8>::from(s))?;
+
+        if let Ok(decoded) = base64::decode(credentials.clone()) {
+            Ok(decoded)
+        } else {
+            Ok(credentials)
+        }
+    }
+
+    async fn json_from_file() -> Result<Vec<u8>, Error> {
         let path = match std::env::var("GOOGLE_APPLICATION_CREDENTIALS") {
             Ok(s) => Ok(std::path::Path::new(s.as_str()).to_path_buf()),
             Err(_e) => {
@@ -86,7 +110,7 @@ impl CredentialsFile {
 
         let credentials_json = fs::read(path).await?;
 
-        Ok(json::from_slice(credentials_json.as_slice())?)
+        Ok(credentials_json)
     }
 
     pub(crate) fn try_to_private_key(&self) -> Result<jwt::EncodingKey, Error> {
