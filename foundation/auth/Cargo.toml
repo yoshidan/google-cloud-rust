@@ -22,10 +22,10 @@ home = "0.5"
 urlencoding = "2.1"
 tokio = { version = "1.20", features = ["fs"]}
 google-cloud-metadata = { version = "0.3.1", path = "../metadata", default-features = false }
+base64 = "0.13"
 
 [dev-dependencies]
 tokio = { version = "1.20", features = ["test-util", "rt-multi-thread", "macros"]}
-base64 = "0.13"
 tracing-subscriber = {version="0.3", features=["env-filter","std"]}
 ctor = "0.1"
 serial_test = "0.5.1"
