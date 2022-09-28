@@ -103,6 +103,8 @@ google-cloud-pubsub = <version>
      config.enable_message_ordering = true;
 
      // Create subscription
+     // If subscription name does not contain a "/", then the project is taken from client above. Otherwise, the
+     // name will be treated as a fully qualified resource name
      let subscription = client.subscription("test-subscription");
      if !subscription.exists(None, None).await? {
          subscription.create(topic.fully_qualified_name(), config, None, None).await?;
