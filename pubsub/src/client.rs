@@ -203,7 +203,7 @@ impl Client {
     }
 
     pub fn fully_qualified_topic_name(&self, id: &str) -> String {
-        if id.contains("/") {
+        if id.contains('/') {
             id.to_string()
         } else {
             format!("projects/{}/topics/{}", self.project_id, id)
@@ -211,7 +211,7 @@ impl Client {
     }
 
     pub fn fully_qualified_subscription_name(&self, id: &str) -> String {
-        if id.contains("/") {
+        if id.contains('/') {
             id.to_string()
         } else {
             format!("projects/{}/subscriptions/{}", self.project_id, id)
