@@ -100,12 +100,12 @@ impl TimestampBound {
     }
     pub fn exact_staleness(d: Duration) -> Self {
         TimestampBound {
-            inner: InternalTimestampBound::ExactStaleness(d.into()),
+            inner: InternalTimestampBound::ExactStaleness(d.try_into().unwrap()),
         }
     }
     pub fn max_staleness(d: Duration) -> Self {
         TimestampBound {
-            inner: InternalTimestampBound::MaxStaleness(d.into()),
+            inner: InternalTimestampBound::MaxStaleness(d.try_into().unwrap()),
         }
     }
     pub fn min_read_timestamp(t: Timestamp) -> Self {

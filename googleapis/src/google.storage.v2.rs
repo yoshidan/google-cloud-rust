@@ -1936,13 +1936,13 @@ pub mod storage_client {
         /// error.
         #[must_use]
         pub fn send_gzip(mut self) -> Self {
-            self.inner = self.inner.send_gzip();
+            self.inner = self.inner.send_compressed(CompressionEncoding::Gzip);
             self
         }
         /// Enable decompressing responses with `gzip`.
         #[must_use]
         pub fn accept_gzip(mut self) -> Self {
-            self.inner = self.inner.accept_gzip();
+            self.inner = self.inner.accept_compressed(CompressionEncoding::Gzip);
             self
         }
         /// Permanently deletes an empty bucket.

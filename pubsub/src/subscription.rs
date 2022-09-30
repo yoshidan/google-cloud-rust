@@ -4,7 +4,7 @@ use std::future::Future;
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::RetrySetting;
-use prost_types::FieldMask;
+use prost_types::{DurationError, FieldMask};
 use std::time::Duration;
 
 use crate::apiv1::subscriber_client::SubscriberClient;
@@ -134,9 +134,17 @@ impl Subscription {
                     dead_letter_policy: cfg.dead_letter_policy,
                     retry_policy: cfg.retry_policy,
                     detached: cfg.detached,
-                    message_retention_duration: cfg.message_retention_duration.map(|v| v.into()),
+                    message_retention_duration: cfg
+                        .message_retention_duration
+                        .map(Duration::try_into)
+                        .transpose()
+                        .map_err(|err: DurationError| Status::internal(err.to_string()))?,
                     retain_acked_messages: cfg.retain_acked_messages,
-                    topic_message_retention_duration: cfg.topic_message_retention_duration.map(|v| v.into()),
+                    topic_message_retention_duration: cfg
+                        .topic_message_retention_duration
+                        .map(Duration::try_into)
+                        .transpose()
+                        .map_err(|err: DurationError| Status::internal(err.to_string()))?,
                     enable_exactly_once_delivery: cfg.enable_exactly_once_delivery,
                     state: cfg.state,
                 },
@@ -225,8 +233,11 @@ impl Subscription {
             paths.push("retain_acked_messages".to_string());
         }
         if updating.message_retention_duration.is_some() {
-            let v = updating.message_retention_duration.map(prost_types::Duration::from);
-            config.message_retention_duration = v;
+            config.message_retention_duration = updating
+                .message_retention_duration
+                .map(prost_types::Duration::try_from)
+                .transpose()
+                .map_err(|err| Status::internal(err.to_string()))?;
             paths.push("message_retention_duration".to_string());
         }
         if updating.expiration_policy.is_some() {

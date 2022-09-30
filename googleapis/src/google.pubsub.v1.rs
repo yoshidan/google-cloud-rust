@@ -225,13 +225,13 @@ pub mod schema_service_client {
         /// error.
         #[must_use]
         pub fn send_gzip(mut self) -> Self {
-            self.inner = self.inner.send_gzip();
+            self.inner = self.inner.send_compressed(CompressionEncoding::Gzip);
             self
         }
         /// Enable decompressing responses with `gzip`.
         #[must_use]
         pub fn accept_gzip(mut self) -> Self {
-            self.inner = self.inner.accept_gzip();
+            self.inner = self.inner.accept_compressed(CompressionEncoding::Gzip);
             self
         }
         /// Creates a schema.
@@ -1408,13 +1408,13 @@ pub mod publisher_client {
         /// error.
         #[must_use]
         pub fn send_gzip(mut self) -> Self {
-            self.inner = self.inner.send_gzip();
+            self.inner = self.inner.send_compressed(CompressionEncoding::Gzip);
             self
         }
         /// Enable decompressing responses with `gzip`.
         #[must_use]
         pub fn accept_gzip(mut self) -> Self {
-            self.inner = self.inner.accept_gzip();
+            self.inner = self.inner.accept_compressed(CompressionEncoding::Gzip);
             self
         }
         /// Creates the given topic with the given name. See the [resource name rules]
@@ -1592,13 +1592,13 @@ pub mod subscriber_client {
         /// error.
         #[must_use]
         pub fn send_gzip(mut self) -> Self {
-            self.inner = self.inner.send_gzip();
+            self.inner = self.inner.send_compressed(CompressionEncoding::Gzip);
             self
         }
         /// Enable decompressing responses with `gzip`.
         #[must_use]
         pub fn accept_gzip(mut self) -> Self {
-            self.inner = self.inner.accept_gzip();
+            self.inner = self.inner.accept_compressed(CompressionEncoding::Gzip);
             self
         }
         /// Creates a subscription to a given topic. See the [resource name rules]
