@@ -203,11 +203,19 @@ impl Client {
     }
 
     pub fn fully_qualified_topic_name(&self, id: &str) -> String {
-        format!("projects/{}/topics/{}", self.project_id, id)
+        if id.contains("/") {
+            id.to_string()
+        } else {
+            format!("projects/{}/topics/{}", self.project_id, id)
+        }
     }
 
     pub fn fully_qualified_subscription_name(&self, id: &str) -> String {
-        format!("projects/{}/subscriptions/{}", self.project_id, id)
+        if id.contains("/") {
+            id.to_string()
+        } else {
+            format!("projects/{}/subscriptions/{}", self.project_id, id)
+        }
     }
 
     fn fully_qualified_project_name(&self) -> String {
