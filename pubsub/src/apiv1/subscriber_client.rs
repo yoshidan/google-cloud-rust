@@ -10,8 +10,9 @@ use google_cloud_googleapis::pubsub::v1::subscriber_client::SubscriberClient as 
 use google_cloud_googleapis::pubsub::v1::{
     AcknowledgeRequest, CreateSnapshotRequest, DeleteSnapshotRequest, DeleteSubscriptionRequest, GetSnapshotRequest,
     GetSubscriptionRequest, ListSnapshotsRequest, ListSnapshotsResponse, ListSubscriptionsRequest,
-    ListSubscriptionsResponse, ModifyAckDeadlineRequest, ModifyPushConfigRequest, PullRequest, PullResponse, Snapshot,
-    StreamingPullRequest, StreamingPullResponse, Subscription, UpdateSnapshotRequest, UpdateSubscriptionRequest,
+    ListSubscriptionsResponse, ModifyAckDeadlineRequest, ModifyPushConfigRequest, PullRequest, PullResponse,
+    SeekRequest, SeekResponse, Snapshot, StreamingPullRequest, StreamingPullResponse, Subscription,
+    UpdateSnapshotRequest, UpdateSubscriptionRequest,
 };
 
 use crate::apiv1::conn_pool::ConnectionManager;
@@ -727,6 +728,23 @@ impl SubscriberClient {
             let mut client = self.client();
             let request = create_request(format!("snapshot={}", name), req.clone());
             client.delete_snapshot(request).await
+        };
+        invoke(cancel, retry, action).await
+    }
+
+    // seek [seeks](https://cloud.google.com/pubsub/docs/replay-overview) a subscription to
+    // a point back in time (with a TimeStamp) or to a saved snapshot.
+    pub async fn seek(
+        &self,
+        req: SeekRequest,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Response<SeekResponse>, Status> {
+        let action = || async {
+            let mut client = self.client();
+            let subscription = req.subscription.clone();
+            let request = create_request(format!("subscription={}", subscription), req.clone());
+            client.seek(request).await
         };
         invoke(cancel, retry, action).await
     }

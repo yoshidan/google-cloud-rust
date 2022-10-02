@@ -4,13 +4,14 @@ use std::future::Future;
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::RetrySetting;
+use google_cloud_googleapis::pubsub::v1::seek_request::Target;
 use prost_types::{DurationError, FieldMask};
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use crate::apiv1::subscriber_client::SubscriberClient;
 use google_cloud_googleapis::pubsub::v1::{
     BigQueryConfig, DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest, PullRequest,
-    PushConfig, RetryPolicy, Subscription as InternalSubscription, UpdateSubscriptionRequest,
+    PushConfig, RetryPolicy, SeekRequest, Snapshot, Subscription as InternalSubscription, UpdateSubscriptionRequest,
 };
 
 use crate::subscriber::{ack, ReceivedMessage, Subscriber, SubscriberConfig};
@@ -33,7 +34,6 @@ pub struct SubscriptionConfig {
     pub bigquery_config: Option<BigQueryConfig>,
     pub state: i32,
 }
-
 impl From<InternalSubscription> for SubscriptionConfig {
     fn from(f: InternalSubscription) -> Self {
         Self {
@@ -83,6 +83,21 @@ impl Default for ReceiveConfig {
         Self {
             worker_count: 10,
             subscriber_config: SubscriberConfig::default(),
+        }
+    }
+}
+
+pub enum SeekTo {
+    Timestamp(SystemTime),
+    Snapshot(String),
+}
+
+impl From<SeekTo> for Target {
+    fn from(to: SeekTo) -> Target {
+        use SeekTo::*;
+        match to {
+            Timestamp(t) => Target::Time(prost_types::Timestamp::from(t)),
+            Snapshot(s) => Target::Snapshot(s),
         }
     }
 }
@@ -426,6 +441,50 @@ impl Subscription {
     /// ```
     pub async fn ack(&self, ack_ids: Vec<String>) -> Result<(), Status> {
         ack(&self.subc, self.fqsn.to_string(), ack_ids).await
+    }
+
+    // seek seeks the subscription a past timestamp or a saved snapshot.
+    pub async fn seek(
+        &self,
+        to: SeekTo,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<(), Status> {
+        let req = SeekRequest {
+            subscription: self.fqsn.to_owned(),
+            target: Some(to.into()),
+        };
+        match self.subc.seek(req, cancel, retry).await {
+            Ok(_) => Ok(()),
+            Err(status) => Err(status),
+        }
+    }
+
+    pub async fn get_snapshot(
+        &self,
+        _snapshot: String,
+        _cancel: Option<CancellationToken>,
+        _retry: Option<RetrySetting>,
+    ) -> Result<Snapshot, Status> {
+        todo!();
+    }
+
+    pub async fn create_snapshot(
+        &self,
+        _name: String,
+        _cancel: Option<CancellationToken>,
+        _retry: Option<RetrySetting>,
+    ) -> Result<Snapshot, Status> {
+        todo!()
+    }
+
+    pub async fn delete_snapshot(
+        &self,
+        _snapshot: String,
+        _cancel: Option<CancellationToken>,
+        _retry: Option<RetrySetting>,
+    ) -> Result<(), Status> {
+        todo!()
     }
 }
 
