@@ -519,6 +519,7 @@ mod tests {
     use google_cloud_gax::grpc::Code;
     use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
     use serial_test::serial;
+    use std::collections::HashMap;
     use std::sync::atomic::AtomicU32;
     use std::sync::atomic::Ordering::SeqCst;
     use std::sync::Arc;
@@ -788,4 +789,35 @@ mod tests {
         assert!(ack_manager.await.is_ok());
         Ok(())
     }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_snapshots() -> Result<(), anyhow::Error> {
+        let ctx = CancellationToken::new();
+        let subscription = create_subscription(false).await?;
+
+        let snapshot_name = String::from("snapshotName");
+        let labels: HashMap<String, String>= HashMap::from_iter([
+            ("label-1".into(), "v1".into()),
+            ("label-2".into(), "v2".into()),
+        ]);
+
+        // create
+        let created_snapshot = subscription.create_snapshot(snapshot_name.clone(), labels.clone(), Some(ctx.clone()), None).await?;
+        assert_eq!(created_snapshot.name, snapshot_name);
+        assert_eq!(created_snapshot.labels, labels);
+
+        // get
+        let retrieved_snapshot = subscription.get_snapshot(snapshot_name.clone(), Some(ctx.clone()), None).await?;
+        assert_eq!(created_snapshot, retrieved_snapshot);
+
+        // delete
+        let _response = subscription.delete_snapshot(snapshot_name.clone(), Some(ctx.clone()), None).await?;
+
+        // TODO: get deleted snapshot, delete again
+
+        Ok(())
+    }
+
+    // TODO: test_seek
 }
