@@ -4,14 +4,16 @@ on:
   push:
     branches:
       - main
-  pull_request:
+  pull_request_target:
     branches:
       - main
+    types: [labeled]
 
 jobs:
   common:
     name: common
     runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'safe to test')
     steps:
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
@@ -123,6 +125,7 @@ jobs:
   storage:
     name: storage
     runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'safe to test')
     steps:
       - uses: actions/checkout@v2
       - name: Setup gcloud
