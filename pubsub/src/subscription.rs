@@ -10,8 +10,9 @@ use std::time::{Duration, SystemTime};
 
 use crate::apiv1::subscriber_client::SubscriberClient;
 use google_cloud_googleapis::pubsub::v1::{
-    BigQueryConfig, DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest, PullRequest,
-    PushConfig, RetryPolicy, SeekRequest, Snapshot, Subscription as InternalSubscription, UpdateSubscriptionRequest,
+    BigQueryConfig, CreateSnapshotRequest, DeadLetterPolicy, DeleteSnapshotRequest, DeleteSubscriptionRequest,
+    ExpirationPolicy, GetSnapshotRequest, GetSubscriptionRequest, PullRequest, PushConfig, RetryPolicy, SeekRequest,
+    Snapshot, Subscription as InternalSubscription, UpdateSubscriptionRequest,
 };
 
 use crate::subscriber::{ack, ReceivedMessage, Subscriber, SubscriberConfig};
@@ -460,31 +461,51 @@ impl Subscription {
         }
     }
 
+    // get_snapshot fetches an existing pubsub snapshot.
     pub async fn get_snapshot(
         &self,
-        _snapshot: String,
-        _cancel: Option<CancellationToken>,
-        _retry: Option<RetrySetting>,
+        snapshot: String,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Snapshot, Status> {
-        todo!();
+        let req = GetSnapshotRequest { snapshot };
+        match self.subc.get_snapshot(req, cancel, retry).await {
+            Ok(snapshot) => Ok(snapshot.into_inner()),
+            Err(s) => Err(s),
+        }
     }
 
+    // create_snapshot creates a new pubsub snapshot with the given name and set of labels.
     pub async fn create_snapshot(
         &self,
-        _name: String,
-        _cancel: Option<CancellationToken>,
-        _retry: Option<RetrySetting>,
+        name: String,
+        labels: HashMap<String, String>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<Snapshot, Status> {
-        todo!()
+        let req = CreateSnapshotRequest {
+            name,
+            labels,
+            subscription: self.fqsn.to_owned(),
+        };
+        match self.subc.create_snapshot(req, cancel, retry).await {
+            Ok(snapshot) => Ok(snapshot.into_inner()),
+            Err(s) => Err(s),
+        }
     }
 
+    // delete_snapshot deletes an existing pubsub snapshot.
     pub async fn delete_snapshot(
         &self,
-        _snapshot: String,
-        _cancel: Option<CancellationToken>,
-        _retry: Option<RetrySetting>,
+        snapshot: String,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
     ) -> Result<(), Status> {
-        todo!()
+        let req = DeleteSnapshotRequest { snapshot };
+        match self.subc.delete_snapshot(req, cancel, retry).await {
+            Ok(_) => Ok(()),
+            Err(s) => Err(s),
+        }
     }
 }
 
