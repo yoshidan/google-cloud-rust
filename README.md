@@ -19,3 +19,5 @@ Contributions are welcome.
 2. Make changes, commit to your fork.
 3. Send a pull request with your changes.
 4. Confirm the success of CI.
+
+test
