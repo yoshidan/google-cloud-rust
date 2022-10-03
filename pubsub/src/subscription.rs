@@ -127,6 +127,17 @@ impl Subscription {
         self.fqsn.as_str()
     }
 
+    fn fully_qualified_project_name(&self) -> String {
+        let parts: Vec<_> = self
+            .fqsn
+            .split('/')
+            .enumerate()
+            .filter(|&(i, _)| i < 2)
+            .map(|e| e.1)
+            .collect();
+        parts.join("/")
+    }
+
     /// create creates the subscription.
     pub async fn create(
         &self,
@@ -464,11 +475,13 @@ impl Subscription {
     // get_snapshot fetches an existing pubsub snapshot.
     pub async fn get_snapshot(
         &self,
-        snapshot: String,
+        snapshot_name: String,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Snapshot, Status> {
-        let req = GetSnapshotRequest { snapshot };
+        let req = GetSnapshotRequest {
+            snapshot: format!("{}/snapshots/{}", self.fully_qualified_project_name(), snapshot_name),
+        };
         match self.subc.get_snapshot(req, cancel, retry).await {
             Ok(snapshot) => Ok(snapshot.into_inner()),
             Err(s) => Err(s),
@@ -484,7 +497,7 @@ impl Subscription {
         retry: Option<RetrySetting>,
     ) -> Result<Snapshot, Status> {
         let req = CreateSnapshotRequest {
-            name,
+            name: format!("{}/snapshots/{}", self.fully_qualified_project_name(), name),
             labels,
             subscription: self.fqsn.to_owned(),
         };
@@ -497,11 +510,13 @@ impl Subscription {
     // delete_snapshot deletes an existing pubsub snapshot.
     pub async fn delete_snapshot(
         &self,
-        snapshot: String,
+        snapshot_name: String,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<(), Status> {
-        let req = DeleteSnapshotRequest { snapshot };
+        let req = DeleteSnapshotRequest {
+            snapshot: format!("{}/snapshots/{}", self.fully_qualified_project_name(), snapshot_name),
+        };
         match self.subc.delete_snapshot(req, cancel, retry).await {
             Ok(_) => Ok(()),
             Err(s) => Err(s),
@@ -796,23 +811,35 @@ mod tests {
         let ctx = CancellationToken::new();
         let subscription = create_subscription(false).await?;
 
-        let snapshot_name = String::from("snapshotName");
-        let labels: HashMap<String, String>= HashMap::from_iter([
-            ("label-1".into(), "v1".into()),
-            ("label-2".into(), "v2".into()),
-        ]);
+        let snapshot_name = String::from("somesnap");
+        let labels: HashMap<String, String> =
+            HashMap::from_iter([("label-1".into(), "v1".into()), ("label-2".into(), "v2".into())]);
+        let expected_fq_snap_name = format!("projects/{}/snapshots/{}", PROJECT_NAME, snapshot_name);
+
+        // cleanup; TODO: remove?
+        let _response = subscription
+            .delete_snapshot(snapshot_name.clone(), Some(ctx.clone()), None)
+            .await;
 
         // create
-        let created_snapshot = subscription.create_snapshot(snapshot_name.clone(), labels.clone(), Some(ctx.clone()), None).await?;
-        assert_eq!(created_snapshot.name, snapshot_name);
+        let created_snapshot = subscription
+            .create_snapshot(snapshot_name.clone(), labels.clone(), Some(ctx.clone()), None)
+            .await?;
+
+        assert_eq!(created_snapshot.name, expected_fq_snap_name);
+        // FIXME: test fails here. labels not reflected in created snapshot
         assert_eq!(created_snapshot.labels, labels);
 
         // get
-        let retrieved_snapshot = subscription.get_snapshot(snapshot_name.clone(), Some(ctx.clone()), None).await?;
+        let retrieved_snapshot = subscription
+            .get_snapshot(snapshot_name.clone(), Some(ctx.clone()), None)
+            .await?;
         assert_eq!(created_snapshot, retrieved_snapshot);
 
         // delete
-        let _response = subscription.delete_snapshot(snapshot_name.clone(), Some(ctx.clone()), None).await?;
+        let _response = subscription
+            .delete_snapshot(snapshot_name.clone(), Some(ctx.clone()), None)
+            .await?;
 
         // TODO: get deleted snapshot, delete again
 
