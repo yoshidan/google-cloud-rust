@@ -16,6 +16,9 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'safe to test')
     steps:
       - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{github.event.pull_request.head.repo.full_name}}
       - uses: actions/cache@v2
         with:
           path: |
@@ -59,6 +62,9 @@ jobs:
           PUBSUB_PROJECT1: "local-project,test-topic:test-subscription,test-topic1:test-subscription1"
     steps:
       - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{github.event.pull_request.head.repo.full_name}}
       - uses: actions/cache@v2
         with:
           path: |
@@ -88,6 +94,9 @@ jobs:
           - 9010:9010
     steps:
       - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{github.event.pull_request.head.repo.full_name}}
       - uses: actions/cache@v2
         with:
           path: |
@@ -128,6 +137,9 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'safe to test')
     steps:
       - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{github.event.pull_request.head.repo.full_name}}
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v0.6.0
         with:
