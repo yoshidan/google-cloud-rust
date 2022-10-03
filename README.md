@@ -20,4 +20,4 @@ Contributions are welcome.
 3. Send a pull request with your changes.
 4. Confirm the success of CI.
 
-test
+test2
