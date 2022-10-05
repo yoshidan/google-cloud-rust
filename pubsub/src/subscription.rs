@@ -462,10 +462,18 @@ impl Subscription {
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<(), Status> {
+        let to = match to {
+            SeekTo::Timestamp(t) => SeekTo::Timestamp(t),
+            SeekTo::Snapshot(name) => {
+                SeekTo::Snapshot(format!("{}/snapshots/{}", self.fully_qualified_project_name(), name))
+            }
+        };
+
         let req = SeekRequest {
             subscription: self.fqsn.to_owned(),
             target: Some(to.into()),
         };
+
         match self.subc.seek(req, cancel, retry).await {
             Ok(_) => Ok(()),
             Err(status) => Err(status),
