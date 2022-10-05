@@ -30,7 +30,7 @@ google-cloud-googleapis = { version = "0.5.1", path = "../googleapis", features 
 [dev-dependencies]
 tokio = { version="1.20", features=["rt-multi-thread"] }
 tracing-subscriber = "0.3"
-serial_test = "0.5.1"
+serial_test = "0.9"
 anyhow = "1.0.48"
 ctor = "0.1"
 

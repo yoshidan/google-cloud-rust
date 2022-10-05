@@ -27,9 +27,9 @@ google-cloud-googleapis = { version = "0.5.1", path = "../googleapis", features 
 [dev-dependencies]
 tokio = { version="1.20", features=["rt-multi-thread"] }
 tracing-subscriber = "0.3"
-serial_test = "0.5.1"
+serial_test = "0.9"
 anyhow = "1.0.48"
-uuid = { version="0.8.2", features=["v4"] }
+uuid = { version="1.1", features=["v4"] }
 ctor = "0.1.21"
 
 [features]

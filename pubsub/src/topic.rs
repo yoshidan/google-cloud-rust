@@ -41,7 +41,7 @@ impl Default for TopicConfig {
 /// Topic is a reference to a PubSub topic.
 ///
 /// The methods of Topic are safe for use by multiple tasks.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Topic {
     fqtn: String,
     pubc: PublisherClient,
@@ -169,7 +169,7 @@ mod tests {
         let cm2 = ConnectionManager::new(4, &Environment::Emulator("localhost:8681".to_string()), "").await?;
         let subc = SubscriberClient::new(cm2);
 
-        let uuid = Uuid::new_v4().to_hyphenated().to_string();
+        let uuid = Uuid::new_v4().hyphenated().to_string();
         let topic_name = format!("projects/local-project/topics/t{}", uuid);
         let ctx = CancellationToken::new();
 

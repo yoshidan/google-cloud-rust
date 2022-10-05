@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use crate::credentials;
 use crate::error::Error;
 use crate::misc::UnwrapOrEmpty;
@@ -29,12 +31,22 @@ impl Claims<'_> {
 // The audience is typically a URL that specifies the scope of the credentials.
 // see golang.org/x/oauth2/gen/jwt.go
 #[allow(dead_code)]
-#[derive(Debug)]
 pub struct ServiceAccountTokenSource {
     email: String,
     pk: jwt::EncodingKey,
     pk_id: String,
     audience: String,
+}
+
+impl Debug for ServiceAccountTokenSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // jwt::EncodingKey does not implement Debug
+        f.debug_struct("ServiceAccountTokenSource")
+            .field("email", &self.email)
+            .field("pk_id", &self.pk_id)
+            .field("audience", &self.audience)
+            .finish()
+    }
 }
 
 impl ServiceAccountTokenSource {
@@ -85,7 +97,6 @@ struct OAuth2Token {
 }
 
 //jwt implements the OAuth 2.0 JSON Web Token flow
-#[derive(Debug)]
 pub struct OAuth2ServiceAccountTokenSource {
     pub email: String,
     pub pk: jwt::EncodingKey,
@@ -94,6 +105,19 @@ pub struct OAuth2ServiceAccountTokenSource {
     pub token_url: String,
 
     pub client: reqwest::Client,
+}
+
+impl Debug for OAuth2ServiceAccountTokenSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // jwt::EncodingKey does not implement Debug
+        f.debug_struct("OAuth2ServiceAccountTokenSource")
+            .field("email", &self.email)
+            .field("pk_id", &self.pk_id)
+            .field("scopes", &self.scopes)
+            .field("token_url", &self.token_url)
+            .field("client", &self.client)
+            .finish()
+    }
 }
 
 impl OAuth2ServiceAccountTokenSource {

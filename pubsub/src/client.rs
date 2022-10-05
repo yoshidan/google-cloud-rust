@@ -261,7 +261,7 @@ mod tests {
 
         let order = !ordering_key.is_empty();
         // create
-        let uuid = Uuid::new_v4().to_hyphenated().to_string();
+        let uuid = Uuid::new_v4().hyphenated().to_string();
         let topic_id = &format!("t{}", &uuid);
         let subscription_id = &format!("s{}", &uuid);
         let ctx = Some(CancellationToken::new());
@@ -382,7 +382,7 @@ mod tests {
     async fn test_lifecycle() -> Result<(), anyhow::Error> {
         let client = create_client().await;
 
-        let uuid = Uuid::new_v4().to_hyphenated().to_string();
+        let uuid = Uuid::new_v4().hyphenated().to_string();
         let topic_id = &format!("t{}", &uuid);
         let subscription_id = &format!("s{}", &uuid);
         let ctx = Some(CancellationToken::new());

@@ -37,7 +37,7 @@ bytes = "1.2"
 
 [dev-dependencies]
 tokio = { version="1.20", features=["rt-multi-thread"] }
-serial_test = "0.5.1"
+serial_test = "0.9"
 tracing-subscriber = "0.3.11"
 ctor = "0.1.22"
 tokio-util =  {version ="0.7", features = ["codec"] }
