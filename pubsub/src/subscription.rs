@@ -545,10 +545,12 @@ mod tests {
     use crate::apiv1::conn_pool::ConnectionManager;
     use crate::apiv1::publisher_client::PublisherClient;
     use crate::apiv1::subscriber_client::SubscriberClient;
-    use crate::subscription::{Subscription, SubscriptionConfig, SubscriptionConfigToUpdate};
+    use crate::subscriber::ReceivedMessage;
+    use crate::subscription::{SeekTo, Subscription, SubscriptionConfig, SubscriptionConfigToUpdate};
     use google_cloud_gax::cancel::CancellationToken;
     use google_cloud_gax::grpc::Code;
     use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
+    
     use serial_test::serial;
     use std::collections::HashMap;
     use std::sync::atomic::AtomicU32;
@@ -556,7 +558,7 @@ mod tests {
     use std::sync::Arc;
 
     use google_cloud_gax::conn::Environment;
-    use std::time::Duration;
+    use std::time::{Duration};
     use uuid::Uuid;
 
     const PROJECT_NAME: &str = "local-project";
@@ -852,7 +854,7 @@ mod tests {
         assert_eq!(created_snapshot, retrieved_snapshot);
 
         // delete
-        let _response = subscription
+        subscription
             .delete_snapshot(snapshot_name.clone(), Some(ctx.clone()), None)
             .await?;
 
@@ -863,8 +865,98 @@ mod tests {
         Ok(())
     }
 
+    async fn ack_all(messages: &[ReceivedMessage]) -> anyhow::Result<()> {
+        for message in messages.iter() {
+            message.ack().await?;
+        }
         Ok(())
     }
 
-    // TODO: test_seek
+    #[tokio::test]
+    #[serial]
+    async fn test_seek_snapshot() -> Result<(), anyhow::Error> {
+        let subscription = create_subscription(false).await?;
+        let snapshot_name = format!("snapshot-{}", rand::random::<u64>());
+
+        // publish and receive a message
+        publish().await;
+        let messages = subscription.pull(100, None, None).await?;
+        ack_all(&messages).await?;
+        assert_eq!(messages.len(), 1);
+
+        // snapshot at received = 1
+        let _snapshot = subscription
+            .create_snapshot(snapshot_name.clone(), HashMap::new(), None, None)
+            .await?;
+
+        // publish and receive another message
+        publish().await;
+        let messages = subscription.pull(100, None, None).await?;
+        assert_eq!(messages.len(), 1);
+        ack_all(&messages).await?;
+
+        // rewind to snapshot at received = 1
+        subscription
+            .seek(SeekTo::Snapshot(snapshot_name.clone()), None, None)
+            .await?;
+
+        // assert we receive the 1 message we should receive again
+        let messages = subscription.pull(100, None, None).await?;
+        assert_eq!(messages.len(), 1);
+        ack_all(&messages).await?;
+
+        // cleanup
+        subscription.delete_snapshot(snapshot_name, None, None).await?;
+        subscription.delete(None, None).await?;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_seek_timestamp() -> Result<(), anyhow::Error> {
+        let subscription = create_subscription(false).await?;
+
+        // enable acked message retention on subscription -- required for timestamp-based seeks
+        subscription
+            .update(
+                SubscriptionConfigToUpdate {
+                    retain_acked_messages: Some(true),
+                    message_retention_duration: Some(Duration::new(60 * 60 * 2, 0)),
+                    ..Default::default()
+                },
+                None,
+                None,
+            )
+            .await?;
+
+        // publish and receive a message
+        publish().await;
+        let messages = subscription.pull(100, None, None).await?;
+        ack_all(&messages).await?;
+        assert_eq!(messages.len(), 1);
+
+        let message_publish_time = messages.get(0).unwrap().message.publish_time.to_owned().unwrap();
+
+        // rewind to a timestamp where message was just published
+        subscription
+            .seek(
+                SeekTo::Timestamp(message_publish_time.to_owned().try_into().unwrap()),
+                None,
+                None,
+            )
+            .await?;
+
+        // consume -- should receive the first message again
+        let messages = subscription.pull(100, None, None).await?;
+        ack_all(&messages).await?;
+        assert_eq!(messages.len(), 1);
+        let seek_message_publish_time = messages.get(0).unwrap().message.publish_time.to_owned().unwrap();
+        assert_eq!(seek_message_publish_time, message_publish_time);
+
+        // cleanup
+        subscription.delete(None, None).await?;
+
+        Ok(())
+    }
 }
