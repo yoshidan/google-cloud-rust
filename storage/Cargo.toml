@@ -19,7 +19,6 @@ chrono = { version = "0.4", features=["serde"]}
 base64 = "0.13"
 regex = "1.6"
 sha2 = "0.10"
-base16ct = "0.1"
 ring = "0.17.0-alpha.11"
 tokio = { version="1.20", features=["macros"] }
 async-stream = "0.3"
