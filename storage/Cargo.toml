@@ -19,7 +19,6 @@ chrono = { version = "0.4", features=["serde"]}
 base64 = "0.13"
 regex = "1.6"
 sha2 = "0.10"
-base16ct = "0.1"
 ring = "0.17.0-alpha.11"
 tokio = { version="1.20", features=["macros"] }
 async-stream = "0.3"
@@ -37,7 +36,7 @@ bytes = "1.2"
 
 [dev-dependencies]
 tokio = { version="1.20", features=["rt-multi-thread"] }
-serial_test = "0.5.1"
+serial_test = "0.9"
 tracing-subscriber = "0.3.11"
 ctor = "0.1.22"
 tokio-util =  {version ="0.7", features = ["codec"] }

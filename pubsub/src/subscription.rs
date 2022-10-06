@@ -459,7 +459,7 @@ mod tests {
         let cm = ConnectionManager::new(4, &Environment::Emulator(EMULATOR.to_string()), "").await?;
         let client = SubscriberClient::new(cm);
 
-        let uuid = Uuid::new_v4().to_hyphenated().to_string();
+        let uuid = Uuid::new_v4().hyphenated().to_string();
         let subscription_name = format!("projects/{}/subscriptions/s{}", PROJECT_NAME, &uuid);
         let topic_name = format!("projects/{}/topics/test-topic1", PROJECT_NAME);
         let cancel = CancellationToken::new();

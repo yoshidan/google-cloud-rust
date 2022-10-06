@@ -12,7 +12,6 @@ documentation = "https://docs.rs/google-cloud-spanner/latest/google_cloud_spanne
 
 [dependencies]
 tracing = "0.1"
-prost = "0.11"
 prost-types = "0.11"
 tokio = "1.20"
 chrono = "0.4"
@@ -30,7 +29,7 @@ google-cloud-googleapis = { version = "0.5.1", path = "../googleapis", features 
 [dev-dependencies]
 tokio = { version="1.20", features=["rt-multi-thread"] }
 tracing-subscriber = "0.3"
-serial_test = "0.5.1"
+serial_test = "0.9"
 anyhow = "1.0.48"
 ctor = "0.1"
 
