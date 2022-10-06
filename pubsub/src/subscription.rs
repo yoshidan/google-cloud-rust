@@ -550,7 +550,7 @@ mod tests {
     use google_cloud_gax::cancel::CancellationToken;
     use google_cloud_gax::grpc::Code;
     use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
-    
+
     use serial_test::serial;
     use std::collections::HashMap;
     use std::sync::atomic::AtomicU32;
@@ -558,7 +558,7 @@ mod tests {
     use std::sync::Arc;
 
     use google_cloud_gax::conn::Environment;
-    use std::time::{Duration};
+    use std::time::Duration;
     use uuid::Uuid;
 
     const PROJECT_NAME: &str = "local-project";
@@ -858,9 +858,15 @@ mod tests {
             .delete_snapshot(snapshot_name.clone(), Some(ctx.clone()), None)
             .await?;
 
-        let _deleted_snapshot_status = subscription.get_snapshot(snapshot_name.clone(), None, None).await.expect_err("snapshot should have been deleted");
+        let _deleted_snapshot_status = subscription
+            .get_snapshot(snapshot_name.clone(), None, None)
+            .await
+            .expect_err("snapshot should have been deleted");
 
-        let _delete_again = subscription.delete_snapshot(snapshot_name.clone(), None, None).await.expect_err("snapshot should already be deleted");
+        let _delete_again = subscription
+            .delete_snapshot(snapshot_name.clone(), None, None)
+            .await
+            .expect_err("snapshot should already be deleted");
 
         Ok(())
     }
