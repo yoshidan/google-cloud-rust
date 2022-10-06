@@ -13,6 +13,7 @@ documentation = "https://docs.rs/google-cloud-pubsub/latest/google_cloud_pubsub/
 [dependencies]
 tracing = "0.1"
 prost-types = "0.11"
+prost = "0.10"
 tokio = "1.20"
 async-channel = "1.6"
 async-stream = "0.3"
@@ -24,6 +25,7 @@ google-cloud-googleapis = { version = "0.5.1", path = "../googleapis", features 
 
 [dev-dependencies]
 tokio = { version="1.20", features=["rt-multi-thread"] }
+rand = "0.8.5"
 tracing-subscriber = "0.3"
 serial_test = "0.9"
 anyhow = "1.0.48"

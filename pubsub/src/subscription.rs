@@ -4,13 +4,15 @@ use std::future::Future;
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::RetrySetting;
+use google_cloud_googleapis::pubsub::v1::seek_request::Target;
 use prost_types::{DurationError, FieldMask};
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use crate::apiv1::subscriber_client::SubscriberClient;
 use google_cloud_googleapis::pubsub::v1::{
-    BigQueryConfig, DeadLetterPolicy, DeleteSubscriptionRequest, ExpirationPolicy, GetSubscriptionRequest, PullRequest,
-    PushConfig, RetryPolicy, Subscription as InternalSubscription, UpdateSubscriptionRequest,
+    BigQueryConfig, CreateSnapshotRequest, DeadLetterPolicy, DeleteSnapshotRequest, DeleteSubscriptionRequest,
+    ExpirationPolicy, GetSnapshotRequest, GetSubscriptionRequest, PullRequest, PushConfig, RetryPolicy, SeekRequest,
+    Snapshot, Subscription as InternalSubscription, UpdateSubscriptionRequest,
 };
 
 use crate::subscriber::{ack, ReceivedMessage, Subscriber, SubscriberConfig};
@@ -33,7 +35,6 @@ pub struct SubscriptionConfig {
     pub bigquery_config: Option<BigQueryConfig>,
     pub state: i32,
 }
-
 impl From<InternalSubscription> for SubscriptionConfig {
     fn from(f: InternalSubscription) -> Self {
         Self {
@@ -87,6 +88,21 @@ impl Default for ReceiveConfig {
     }
 }
 
+pub enum SeekTo {
+    Timestamp(SystemTime),
+    Snapshot(String),
+}
+
+impl From<SeekTo> for Target {
+    fn from(to: SeekTo) -> Target {
+        use SeekTo::*;
+        match to {
+            Timestamp(t) => Target::Time(prost_types::Timestamp::from(t)),
+            Snapshot(s) => Target::Snapshot(s),
+        }
+    }
+}
+
 /// Subscription is a reference to a PubSub subscription.
 #[derive(Clone, Debug)]
 pub struct Subscription {
@@ -109,6 +125,17 @@ impl Subscription {
     /// fully_qualified_name returns the globally unique printable name of the subscription.
     pub fn fully_qualified_name(&self) -> &str {
         self.fqsn.as_str()
+    }
+
+    fn fully_qualified_project_name(&self) -> String {
+        let parts: Vec<_> = self
+            .fqsn
+            .split('/')
+            .enumerate()
+            .filter(|&(i, _)| i < 2)
+            .map(|e| e.1)
+            .collect();
+        parts.join("/")
     }
 
     /// create creates the subscription.
@@ -427,6 +454,90 @@ impl Subscription {
     pub async fn ack(&self, ack_ids: Vec<String>) -> Result<(), Status> {
         ack(&self.subc, self.fqsn.to_string(), ack_ids).await
     }
+
+    // seek seeks the subscription a past timestamp or a saved snapshot.
+    pub async fn seek(
+        &self,
+        to: SeekTo,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<(), Status> {
+        let to = match to {
+            SeekTo::Timestamp(t) => SeekTo::Timestamp(t),
+            SeekTo::Snapshot(name) => {
+                SeekTo::Snapshot(format!("{}/snapshots/{}", self.fully_qualified_project_name(), name))
+            }
+        };
+
+        let req = SeekRequest {
+            subscription: self.fqsn.to_owned(),
+            target: Some(to.into()),
+        };
+
+        match self.subc.seek(req, cancel, retry).await {
+            Ok(_) => Ok(()),
+            Err(status) => Err(status),
+        }
+    }
+
+    // get_snapshot fetches an existing pubsub snapshot.
+    pub async fn get_snapshot(
+        &self,
+        snapshot_name: String,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Snapshot, Status> {
+        let req = GetSnapshotRequest {
+            snapshot: format!("{}/snapshots/{}", self.fully_qualified_project_name(), snapshot_name),
+        };
+        match self.subc.get_snapshot(req, cancel, retry).await {
+            Ok(snapshot) => Ok(snapshot.into_inner()),
+            Err(s) => Err(s),
+        }
+    }
+
+    // create_snapshot creates a new pubsub snapshot from the subscription's state at the time of calling.
+    // The snapshot retains the messages for the topic the subscription is subscribed to, with the acknowledgment
+    // states consistent with the subscriptions.
+    // The created snapshot is guaranteed to retain:
+    // - The message backlog on the subscription -- or to be specific, messages that are unacknowledged
+    //   at the time of the subscription's creation.
+    // - All messages published to the subscription's topic after the snapshot's creation.
+    // Snapshots have a finite lifetime -- a maximum of 7 days from the time of creation, beyond which
+    // they are discarded and any messages being retained solely due to the snapshot dropped.
+    pub async fn create_snapshot(
+        &self,
+        name: String,
+        labels: HashMap<String, String>,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Snapshot, Status> {
+        let req = CreateSnapshotRequest {
+            name: format!("{}/snapshots/{}", self.fully_qualified_project_name(), name),
+            labels,
+            subscription: self.fqsn.to_owned(),
+        };
+        match self.subc.create_snapshot(req, cancel, retry).await {
+            Ok(snapshot) => Ok(snapshot.into_inner()),
+            Err(s) => Err(s),
+        }
+    }
+
+    // delete_snapshot deletes an existing pubsub snapshot.
+    pub async fn delete_snapshot(
+        &self,
+        snapshot_name: String,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<(), Status> {
+        let req = DeleteSnapshotRequest {
+            snapshot: format!("{}/snapshots/{}", self.fully_qualified_project_name(), snapshot_name),
+        };
+        match self.subc.delete_snapshot(req, cancel, retry).await {
+            Ok(_) => Ok(()),
+            Err(s) => Err(s),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -434,17 +545,20 @@ mod tests {
     use crate::apiv1::conn_pool::ConnectionManager;
     use crate::apiv1::publisher_client::PublisherClient;
     use crate::apiv1::subscriber_client::SubscriberClient;
-    use crate::subscription::{Subscription, SubscriptionConfig, SubscriptionConfigToUpdate};
+    use crate::subscriber::ReceivedMessage;
+    use crate::subscription::{SeekTo, Subscription, SubscriptionConfig, SubscriptionConfigToUpdate};
     use google_cloud_gax::cancel::CancellationToken;
     use google_cloud_gax::grpc::Code;
     use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
+    
     use serial_test::serial;
+    use std::collections::HashMap;
     use std::sync::atomic::AtomicU32;
     use std::sync::atomic::Ordering::SeqCst;
     use std::sync::Arc;
 
     use google_cloud_gax::conn::Environment;
-    use std::time::Duration;
+    use std::time::{Duration};
     use uuid::Uuid;
 
     const PROJECT_NAME: &str = "local-project";
@@ -706,6 +820,143 @@ mod tests {
         ctx.cancel();
         let _ = handle.await;
         assert!(ack_manager.await.is_ok());
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_snapshots() -> Result<(), anyhow::Error> {
+        let ctx = CancellationToken::new();
+        let subscription = create_subscription(false).await?;
+
+        let snapshot_name = format!("snapshot-{}", rand::random::<u64>());
+        let labels: HashMap<String, String> =
+            HashMap::from_iter([("label-1".into(), "v1".into()), ("label-2".into(), "v2".into())]);
+        let expected_fq_snap_name = format!("projects/{}/snapshots/{}", PROJECT_NAME, snapshot_name);
+
+        // cleanup; TODO: remove?
+        let _response = subscription
+            .delete_snapshot(snapshot_name.clone(), Some(ctx.clone()), None)
+            .await;
+
+        // create
+        let created_snapshot = subscription
+            .create_snapshot(snapshot_name.clone(), labels.clone(), Some(ctx.clone()), None)
+            .await?;
+
+        assert_eq!(created_snapshot.name, expected_fq_snap_name);
+        // NOTE: we don't assert the labels due to lack of label support in the pubsub emulator.
+
+        // get
+        let retrieved_snapshot = subscription
+            .get_snapshot(snapshot_name.clone(), Some(ctx.clone()), None)
+            .await?;
+        assert_eq!(created_snapshot, retrieved_snapshot);
+
+        // delete
+        subscription
+            .delete_snapshot(snapshot_name.clone(), Some(ctx.clone()), None)
+            .await?;
+
+        let _deleted_snapshot_status = subscription.get_snapshot(snapshot_name.clone(), None, None).await.expect_err("snapshot should have been deleted");
+
+        let _delete_again = subscription.delete_snapshot(snapshot_name.clone(), None, None).await.expect_err("snapshot should already be deleted");
+
+        Ok(())
+    }
+
+    async fn ack_all(messages: &[ReceivedMessage]) -> anyhow::Result<()> {
+        for message in messages.iter() {
+            message.ack().await?;
+        }
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_seek_snapshot() -> Result<(), anyhow::Error> {
+        let subscription = create_subscription(false).await?;
+        let snapshot_name = format!("snapshot-{}", rand::random::<u64>());
+
+        // publish and receive a message
+        publish().await;
+        let messages = subscription.pull(100, None, None).await?;
+        ack_all(&messages).await?;
+        assert_eq!(messages.len(), 1);
+
+        // snapshot at received = 1
+        let _snapshot = subscription
+            .create_snapshot(snapshot_name.clone(), HashMap::new(), None, None)
+            .await?;
+
+        // publish and receive another message
+        publish().await;
+        let messages = subscription.pull(100, None, None).await?;
+        assert_eq!(messages.len(), 1);
+        ack_all(&messages).await?;
+
+        // rewind to snapshot at received = 1
+        subscription
+            .seek(SeekTo::Snapshot(snapshot_name.clone()), None, None)
+            .await?;
+
+        // assert we receive the 1 message we should receive again
+        let messages = subscription.pull(100, None, None).await?;
+        assert_eq!(messages.len(), 1);
+        ack_all(&messages).await?;
+
+        // cleanup
+        subscription.delete_snapshot(snapshot_name, None, None).await?;
+        subscription.delete(None, None).await?;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_seek_timestamp() -> Result<(), anyhow::Error> {
+        let subscription = create_subscription(false).await?;
+
+        // enable acked message retention on subscription -- required for timestamp-based seeks
+        subscription
+            .update(
+                SubscriptionConfigToUpdate {
+                    retain_acked_messages: Some(true),
+                    message_retention_duration: Some(Duration::new(60 * 60 * 2, 0)),
+                    ..Default::default()
+                },
+                None,
+                None,
+            )
+            .await?;
+
+        // publish and receive a message
+        publish().await;
+        let messages = subscription.pull(100, None, None).await?;
+        ack_all(&messages).await?;
+        assert_eq!(messages.len(), 1);
+
+        let message_publish_time = messages.get(0).unwrap().message.publish_time.to_owned().unwrap();
+
+        // rewind to a timestamp where message was just published
+        subscription
+            .seek(
+                SeekTo::Timestamp(message_publish_time.to_owned().try_into().unwrap()),
+                None,
+                None,
+            )
+            .await?;
+
+        // consume -- should receive the first message again
+        let messages = subscription.pull(100, None, None).await?;
+        ack_all(&messages).await?;
+        assert_eq!(messages.len(), 1);
+        let seek_message_publish_time = messages.get(0).unwrap().message.publish_time.to_owned().unwrap();
+        assert_eq!(seek_message_publish_time, message_publish_time);
+
+        // cleanup
+        subscription.delete(None, None).await?;
+
         Ok(())
     }
 }
