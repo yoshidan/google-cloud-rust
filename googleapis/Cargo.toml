@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-googleapis"
-version = "0.5.1"
+version = "0.6.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/googleapis"
