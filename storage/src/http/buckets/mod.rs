@@ -1,3 +1,5 @@
+use time::OffsetDateTime;
+
 use crate::http::bucket_access_controls::BucketAccessControl;
 use crate::http::object_access_controls::ObjectAccessControl;
 use crate::http::objects::Owner;
@@ -29,7 +31,7 @@ pub struct Bucket {
     /// \[<https://tools.ietf.org/html/rfc3339\][RFC> 3339] format.
     /// Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
-    pub time_created: Option<chrono::DateTime<chrono::Utc>>,
+    pub time_created: Option<OffsetDateTime>,
     /// The ID of the bucket. For buckets, the `id` and `name` properties are the
     /// same.
     /// Attempting to update this field after the bucket is created will result in
@@ -73,7 +75,7 @@ pub struct Bucket {
     /// The modification time of the bucket.
     /// Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
-    pub updated: Option<chrono::DateTime<chrono::Utc>>,
+    pub updated: Option<OffsetDateTime>,
     /// The default value for event-based hold on newly created objects in this
     /// bucket.  Event-based hold is a way to retain objects indefinitely until an
     /// event occurs, signified by the
@@ -177,6 +179,8 @@ pub struct IamConfiguration {
 }
 /// Nested message and enum types in `IamConfiguration`.
 pub mod iam_configuration {
+    use time::OffsetDateTime;
+
     #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
     #[serde(rename_all = "camelCase")]
     pub struct UniformBucketLevelAccess {
@@ -186,7 +190,7 @@ pub mod iam_configuration {
         /// <code>iamConfiguration.uniformBucketLevelAccess.enabled</code> from
         /// true to false in \[<https://tools.ietf.org/html/rfc3339\][RFC> 3339]. After
         /// the deadline is passed the field is immutable.
-        pub locked_time: Option<chrono::DateTime<chrono::Utc>>,
+        pub locked_time: Option<OffsetDateTime>,
     }
     /// Public Access Prevention configuration values.
     #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize, Debug)]
@@ -226,6 +230,8 @@ pub mod lifecycle {
     }
     /// Nested message and enum types in `Rule`.
     pub mod rule {
+        use time::OffsetDateTime;
+
         #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
         pub enum ActionType {
             /// Deletes a Bucket.
@@ -245,13 +251,13 @@ pub mod lifecycle {
         #[serde(rename_all = "camelCase")]
         pub struct Condition {
             pub age: i32,
-            pub created_before: Option<chrono::DateTime<chrono::Utc>>,
-            pub custom_time_before: Option<chrono::DateTime<chrono::Utc>>,
+            pub created_before: Option<OffsetDateTime>,
+            pub custom_time_before: Option<OffsetDateTime>,
             pub days_since_custom_time: Option<i32>,
             pub days_since_noncurrent_time: Option<i32>,
             pub is_live: Option<bool>,
             pub matches_storage_class: Option<Vec<String>>,
-            pub noncurrent_time_before: Option<chrono::DateTime<chrono::Utc>>,
+            pub noncurrent_time_before: Option<OffsetDateTime>,
             pub num_newer_versions: Option<i32>,
         }
     }
@@ -272,7 +278,7 @@ pub struct RetentionPolicy {
     /// Server-determined value that indicates the time from which policy was
     /// enforced and effective. This value is in
     /// \[<https://tools.ietf.org/html/rfc3339\][RFC> 3339] format.
-    pub effective_time: Option<chrono::DateTime<chrono::Utc>>,
+    pub effective_time: Option<OffsetDateTime>,
     /// Once locked, an object retention policy cannot be modified.
     pub is_locked: Option<bool>,
     /// The duration in seconds that objects need to be retained. Retention
@@ -316,7 +322,7 @@ pub struct Autoclass {
     /// Enables Autoclass.
     pub enabled: bool,
     /// Latest instant at which the `enabled` bit was flipped.
-    pub toggle_time: Option<chrono::DateTime<chrono::Utc>>,
+    pub toggle_time: Option<OffsetDateTime>,
 }
 
 /// An Identity and Access Management (IAM) policy, which specifies access

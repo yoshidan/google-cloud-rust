@@ -1,5 +1,4 @@
 use anyhow::Result;
-use chrono::{DateTime, NaiveDate, Utc};
 use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::Status;
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::SingleUseTransaction;
@@ -15,6 +14,7 @@ use google_cloud_spanner::statement::Statement;
 use google_cloud_spanner::transaction::CallOptions;
 use google_cloud_spanner::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use google_cloud_spanner::value::{CommitTimestamp, SpannerNumeric, TimestampBound};
+use time::{Date, OffsetDateTime};
 
 pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
@@ -120,7 +120,7 @@ pub async fn replace_test_data(
 }
 
 #[allow(dead_code)]
-pub fn create_user_mutation(user_id: &str, now: &DateTime<Utc>) -> Mutation {
+pub fn create_user_mutation(user_id: &str, now: &OffsetDateTime) -> Mutation {
     insert_or_update(
         "User",
         &user_columns(),
@@ -138,8 +138,8 @@ pub fn create_user_mutation(user_id: &str, now: &DateTime<Utc>) -> Mutation {
             &Some(SpannerNumeric::new("1000.42342")),
             now,
             &Some(*now),
-            &now.naive_utc().date(),
-            &None::<DateTime<Utc>>,
+            &now.date(),
+            &None::<OffsetDateTime>,
             &vec![10_i64, 20_i64, 30_i64],
             &None::<Vec<i64>>,
             &Some(user_id),
@@ -167,7 +167,7 @@ pub fn create_user_character_mutation(user_id: &str, character_id: i64) -> Mutat
 }
 
 #[allow(dead_code)]
-pub fn assert_user_row(row: &Row, source_user_id: &str, now: &DateTime<Utc>, commit_timestamp: &DateTime<Utc>) {
+pub fn assert_user_row(row: &Row, source_user_id: &str, now: &OffsetDateTime, commit_timestamp: &OffsetDateTime) {
     let user_id = row.column_by_name::<String>("UserId").unwrap();
     assert_eq!(user_id, source_user_id);
     let not_null_int64 = row.column_by_name::<i64>("NotNullINT64").unwrap();
@@ -190,15 +190,15 @@ pub fn assert_user_row(row: &Row, source_user_id: &str, now: &DateTime<Utc>, com
     assert_eq!(not_null_decimal.as_str(), "100.24");
     let nullable_decimal = row.column_by_name::<Option<SpannerNumeric>>("NullableNumeric").unwrap();
     assert_eq!(nullable_decimal.unwrap().as_str(), "1000.42342");
-    let not_null_ts = row.column_by_name::<DateTime<Utc>>("NotNullTimestamp").unwrap();
+    let not_null_ts = row.column_by_name::<OffsetDateTime>("NotNullTimestamp").unwrap();
     assert_eq!(not_null_ts.to_string(), now.to_string());
     let nullable_ts = row
-        .column_by_name::<Option<DateTime<Utc>>>("NullableTimestamp")
+        .column_by_name::<Option<OffsetDateTime>>("NullableTimestamp")
         .unwrap();
     assert_eq!(nullable_ts.unwrap().to_string(), now.to_string());
-    let not_null_date = row.column_by_name::<NaiveDate>("NotNullDate").unwrap();
-    assert_eq!(not_null_date.to_string(), now.naive_utc().date().to_string());
-    let nullable_date = row.column_by_name::<Option<NaiveDate>>("NullableDate").unwrap();
+    let not_null_date = row.column_by_name::<Date>("NotNullDate").unwrap();
+    assert_eq!(not_null_date.to_string(), now.date().to_string());
+    let nullable_date = row.column_by_name::<Option<Date>>("NullableDate").unwrap();
     assert_eq!(nullable_date, None);
     let mut not_null_array = row.column_by_name::<Vec<i64>>("NotNullArray").unwrap();
     assert_eq!(not_null_array.pop().unwrap(), 30); // from tail
@@ -210,7 +210,7 @@ pub fn assert_user_row(row: &Row, source_user_id: &str, now: &DateTime<Utc>, com
     assert_eq!(nullable_string.unwrap(), user_id);
     let updated_at = row.column_by_name::<CommitTimestamp>("UpdatedAt").unwrap();
     assert_eq!(
-        DateTime::<Utc>::from(updated_at).to_string(),
+        OffsetDateTime::from(updated_at).to_string(),
         commit_timestamp.to_string(),
         "commit timestamp"
     );
@@ -246,8 +246,8 @@ pub async fn all_rows(mut itr: RowIterator<'_>) -> Vec<Row> {
 pub async fn assert_partitioned_query(
     tx: &mut BatchReadOnlyTransaction,
     user_id: &str,
-    now: &DateTime<Utc>,
-    cts: &DateTime<Utc>,
+    now: &OffsetDateTime,
+    cts: &OffsetDateTime,
 ) {
     let mut stmt = Statement::new("SELECT * FROM User WHERE UserId = @UserID");
     stmt.add_param("UserId", &user_id);
@@ -281,8 +281,8 @@ pub async fn execute_partitioned_query(tx: &mut BatchReadOnlyTransaction, stmt: 
 pub async fn assert_partitioned_read(
     tx: &mut BatchReadOnlyTransaction,
     user_id: &str,
-    now: &DateTime<Utc>,
-    cts: &DateTime<Utc>,
+    now: &OffsetDateTime,
+    cts: &OffsetDateTime,
 ) {
     let partitions = match tx
         .partition_read("User", &user_columns(), vec![Key::new(&user_id)])

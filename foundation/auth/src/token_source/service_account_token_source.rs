@@ -7,6 +7,7 @@ use crate::token::{Token, TOKEN_URL};
 use crate::token_source::{default_http_client, InternalToken, TokenSource};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 
 #[derive(Clone, Serialize)]
 struct Claims<'a> {
@@ -66,16 +67,16 @@ impl ServiceAccountTokenSource {
 #[async_trait]
 impl TokenSource for ServiceAccountTokenSource {
     async fn token(&self) -> Result<Token, Error> {
-        let iat = chrono::Utc::now();
-        let exp = iat + chrono::Duration::hours(1);
+        let iat = OffsetDateTime::now_utc();
+        let exp = iat + time::Duration::hours(1);
 
         let token = Claims {
             iss: self.email.as_ref(),
             sub: Some(self.email.as_ref()),
             scope: None,
             aud: self.audience.as_ref(),
-            exp: exp.timestamp(),
-            iat: iat.timestamp(),
+            exp: exp.unix_timestamp(),
+            iat: iat.unix_timestamp(),
         }
         .token(&self.pk, &self.pk_id)?;
 
@@ -142,16 +143,16 @@ impl OAuth2ServiceAccountTokenSource {
 #[async_trait]
 impl TokenSource for OAuth2ServiceAccountTokenSource {
     async fn token(&self) -> Result<Token, Error> {
-        let iat = chrono::Utc::now();
-        let exp = iat + chrono::Duration::hours(1);
+        let iat = OffsetDateTime::now_utc();
+        let exp = iat + time::Duration::hours(1);
 
         let request_token = Claims {
             iss: self.email.as_ref(),
             sub: None, // TODO support impersonate credentials
             scope: Some(self.scopes.as_ref()),
             aud: self.token_url.as_ref(),
-            exp: exp.timestamp(),
-            iat: iat.timestamp(),
+            exp: exp.unix_timestamp(),
+            iat: iat.unix_timestamp(),
         }
         .token(&self.pk, &self.pk_id)?;
 

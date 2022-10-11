@@ -12,7 +12,6 @@ description = "Google Cloud Platform server application authentication library."
 [dependencies]
 tracing = "0.1"
 reqwest = { version="0.11", features = ["json"], default-features = false }
-chrono = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 json = { package = "serde_json", version = "1.0" }
 jwt = { package = "jsonwebtoken", version = "8" }
@@ -23,6 +22,7 @@ urlencoding = "2.1"
 tokio = { version = "1.20", features = ["fs"]}
 google-cloud-metadata = { version = "0.3.1", path = "../metadata", default-features = false }
 base64 = "0.13"
+time = "0.3"
 
 [dev-dependencies]
 tokio = { version = "1.20", features = ["test-util", "rt-multi-thread", "macros"]}

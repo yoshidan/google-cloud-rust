@@ -3,7 +3,6 @@ pub mod instance_admin_client;
 #[cfg(test)]
 mod tests {
     use crate::admin::instance::instance_admin_client::InstanceAdminClient;
-    use chrono::Utc;
 
     use google_cloud_googleapis::spanner::admin::instance::v1::instance::State;
     use google_cloud_googleapis::spanner::admin::instance::v1::{
@@ -12,11 +11,12 @@ mod tests {
     };
 
     use serial_test::serial;
+    use time::OffsetDateTime;
 
     async fn create_instance() -> Instance {
         std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
         let mut client = InstanceAdminClient::default().await.unwrap();
-        let instance_id = format!("test{}ut", Utc::now().timestamp_nanos());
+        let instance_id = format!("test{}ut", OffsetDateTime::now_utc().unix_timestamp_nanos());
         let name = format!("projects/local-project/instances/{}", instance_id);
         let request = CreateInstanceRequest {
             parent: "projects/local-project".to_string(),

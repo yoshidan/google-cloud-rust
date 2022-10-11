@@ -1,10 +1,12 @@
 use std::ops::{Deref, DerefMut};
 use std::sync::atomic::AtomicI64;
+use std::time::SystemTime;
 
 use google_cloud_googleapis::spanner::v1::{
     transaction_options, transaction_selector, BeginTransactionRequest, ExecuteSqlRequest, PartitionOptions,
     PartitionQueryRequest, PartitionReadRequest, ReadRequest, TransactionOptions, TransactionSelector,
 };
+use time::OffsetDateTime;
 
 use crate::key::KeySet;
 use crate::reader::{Reader, RowIterator, StatementReader, TableReader};
@@ -12,7 +14,6 @@ use crate::session::ManagedSession;
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, ReadOptions, Transaction};
 use crate::value::TimestampBound;
-use chrono::{DateTime, TimeZone, Utc};
 use google_cloud_gax::grpc::Status;
 
 /// ReadOnlyTransaction provides a snapshot transaction with guaranteed
@@ -31,7 +32,7 @@ use google_cloud_gax::grpc::Status;
 /// TimestampBound for more details.
 pub struct ReadOnlyTransaction {
     base_tx: Transaction,
-    pub rts: Option<DateTime<Utc>>,
+    pub rts: Option<time::OffsetDateTime>,
 }
 
 impl Deref for ReadOnlyTransaction {
@@ -86,6 +87,7 @@ impl ReadOnlyTransaction {
             Ok(response) => {
                 let tx = response.into_inner();
                 let rts = tx.read_timestamp.unwrap();
+                let st: SystemTime = rts.try_into().unwrap();
                 Ok(ReadOnlyTransaction {
                     base_tx: Transaction {
                         session: Some(session),
@@ -94,7 +96,7 @@ impl ReadOnlyTransaction {
                             selector: Some(transaction_selector::Selector::Id(tx.id)),
                         },
                     },
-                    rts: Utc.timestamp_opt(rts.seconds, rts.nanos as u32).single(),
+                    rts: Some(OffsetDateTime::from(st)),
                 })
             }
             Err(e) => Err(e),

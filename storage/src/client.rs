@@ -226,6 +226,7 @@ mod test {
     use crate::http::buckets::{lifecycle, Billing, Cors, IamConfiguration, Lifecycle, Website};
     use serial_test::serial;
     use std::collections::HashMap;
+    use time::OffsetDateTime;
 
     use crate::http::buckets::list::ListBucketsRequest;
     use crate::sign::{SignedURLMethod, SignedURLOptions};
@@ -303,7 +304,7 @@ mod test {
         };
 
         let client = Client::default().await.unwrap();
-        let bucket_name = format!("rust-test-{}", chrono::Utc::now().timestamp());
+        let bucket_name = format!("rust-test-{}", OffsetDateTime::now_utc().unix_timestamp());
         let req = InsertBucketRequest {
             name: bucket_name.clone(),
             param: InsertBucketParam {

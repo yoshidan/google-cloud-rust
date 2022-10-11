@@ -4,7 +4,6 @@ use google_cloud_spanner::client::{Client, RunInTxError};
 use google_cloud_spanner::statement::Statement;
 
 mod common;
-use chrono::{DateTime, TimeZone, Utc};
 use common::*;
 use google_cloud_spanner::key::Key;
 
@@ -12,6 +11,7 @@ use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_spanner::retry::TransactionRetry;
 use google_cloud_spanner::value::Timestamp;
 use serial_test::serial;
+use time::OffsetDateTime;
 
 const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
@@ -32,9 +32,9 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
     std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
 
     // test data
-    let now = Utc::now();
+    let now = OffsetDateTime::now_utc();
     let mut session = create_session().await;
-    let user_id = format!("user_{}", now.timestamp());
+    let user_id = format!("user_{}", now.unix_timestamp());
     replace_test_data(&mut session, vec![create_user_mutation(&user_id, &now)])
         .await
         .unwrap();
@@ -60,7 +60,10 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
         )
         .await;
     let value = result.unwrap().0.unwrap();
-    let ts = Utc.timestamp(value.seconds, value.nanos as u32);
+    let ts = OffsetDateTime::from_unix_timestamp(value.seconds)
+        .unwrap()
+        .replace_nanosecond(value.nanos as u32)
+        .unwrap();
 
     let mut ro = client.read_only_transaction().await?;
     let record = ro.read("User", &user_columns(), Key::new(&"user_client_1x")).await?;
@@ -75,8 +78,8 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
         .read("UserItem", &["UpdatedAt"], Key::composite(&[&user_id, &1]))
         .await?;
     let row = all_rows(record).await.pop().unwrap();
-    let cts = row.column_by_name::<DateTime<Utc>>("UpdatedAt").unwrap();
-    assert_eq!(cts.timestamp(), ts.timestamp());
+    let cts = row.column_by_name::<OffsetDateTime>("UpdatedAt").unwrap();
+    assert_eq!(cts.unix_timestamp(), ts.unix_timestamp());
     Ok(())
 }
 
@@ -86,10 +89,13 @@ async fn test_apply() -> Result<(), anyhow::Error> {
     std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
     let users: Vec<String> = (0..2).map(|x| format!("user_client_{}", x)).collect();
     let client = Client::new(DATABASE).await.context("error")?;
-    let now = Utc::now();
+    let now = OffsetDateTime::now_utc();
     let ms = users.iter().map(|id| create_user_mutation(id, &now)).collect();
     let value = client.apply(ms).await.unwrap().unwrap();
-    let ts = Utc.timestamp(value.seconds, value.nanos as u32);
+    let ts = OffsetDateTime::from_unix_timestamp(value.seconds)
+        .unwrap()
+        .replace_nanosecond(value.nanos as u32)
+        .unwrap();
 
     let mut ro = client.read_only_transaction().await?;
     for x in users {
@@ -106,10 +112,13 @@ async fn test_apply_at_least_once() -> Result<(), anyhow::Error> {
     std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
     let users: Vec<String> = (0..2).map(|x| format!("user_client_x_{}", x)).collect();
     let client = Client::new(DATABASE).await.context("error")?;
-    let now = Utc::now();
+    let now = OffsetDateTime::now_utc();
     let ms = users.iter().map(|id| create_user_mutation(id, &now)).collect();
     let value = client.apply_at_least_once(ms).await.unwrap().unwrap();
-    let ts = Utc.timestamp(value.seconds, value.nanos as u32);
+    let ts = OffsetDateTime::from_unix_timestamp(value.seconds)
+        .unwrap()
+        .replace_nanosecond(value.nanos as u32)
+        .unwrap();
 
     let mut ro = client.read_only_transaction().await?;
     for x in users {
@@ -124,8 +133,8 @@ async fn test_apply_at_least_once() -> Result<(), anyhow::Error> {
 #[serial]
 async fn test_partitioned_update() -> Result<(), anyhow::Error> {
     std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-    let now = Utc::now();
-    let user_id = format!("user_{}", now.timestamp());
+    let now = OffsetDateTime::now_utc();
+    let user_id = format!("user_{}", now.unix_timestamp());
     let mut session = create_session().await;
     replace_test_data(&mut session, vec![create_user_mutation(&user_id, &now)])
         .await
@@ -149,11 +158,11 @@ async fn test_partitioned_update() -> Result<(), anyhow::Error> {
 #[serial]
 async fn test_batch_read_only_transaction() -> Result<(), anyhow::Error> {
     std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-    let now = Utc::now();
+    let now = OffsetDateTime::now_utc();
 
     let mut session = create_session().await;
     let many = (0..20000)
-        .map(|x| create_user_mutation(&format!("user_partition_{}_{}", now.timestamp(), x), &now))
+        .map(|x| create_user_mutation(&format!("user_partition_{}_{}", now.unix_timestamp(), x), &now))
         .collect();
     replace_test_data(&mut session, many).await.unwrap();
 
@@ -162,7 +171,7 @@ async fn test_batch_read_only_transaction() -> Result<(), anyhow::Error> {
 
     let stmt = Statement::new(format!(
         "SELECT * FROM User p WHERE p.UserId LIKE 'user_partition_{}_%' ",
-        now.timestamp()
+        now.unix_timestamp()
     ));
     let rows = execute_partitioned_query(&mut tx, stmt).await;
     assert_eq!(20000, rows.len());

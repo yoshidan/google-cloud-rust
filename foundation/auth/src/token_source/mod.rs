@@ -32,12 +32,12 @@ struct InternalToken {
 }
 
 impl InternalToken {
-    fn to_token(&self, now: chrono::DateTime<chrono::Utc>) -> Token {
+    fn to_token(&self, now: time::OffsetDateTime) -> Token {
         //TODO support use ID token
         Token {
             access_token: self.access_token.clone(),
             token_type: self.token_type.clone(),
-            expiry: self.expires_in.map(|s| now + chrono::Duration::seconds(s)),
+            expiry: self.expires_in.map(|s| now + time::Duration::seconds(s)),
         }
     }
 }
@@ -59,7 +59,7 @@ mod tests {
         let ts = ServiceAccountTokenSource::new(&credentials, audience)?;
         let token = ts.token().await?;
         assert_eq!("Bearer", token.token_type);
-        assert!(token.expiry.unwrap().timestamp() > 0);
+        assert!(token.expiry.unwrap().unix_timestamp() > 0);
         Ok(())
     }
 
@@ -70,7 +70,7 @@ mod tests {
         let ts = OAuth2ServiceAccountTokenSource::new(&credentials, scope)?;
         let token = ts.token().await?;
         assert_eq!("Bearer", token.token_type);
-        assert!(token.expiry.unwrap().timestamp() > 0);
+        assert!(token.expiry.unwrap().unix_timestamp() > 0);
         Ok(())
     }
 }

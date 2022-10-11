@@ -15,7 +15,7 @@ google-cloud-auth = { version = "0.6.0", path = "../foundation/auth", default-fe
 google-cloud-metadata = { version = "0.3.1", path = "../foundation/metadata", default-features = false }
 rsa = "0.6"
 thiserror = "1.0"
-chrono = { version = "0.4", features=["serde"]}
+time = { version = "0.3", features = ["serde"] }
 base64 = "0.13"
 regex = "1.6"
 sha2 = "0.10"

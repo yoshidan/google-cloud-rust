@@ -20,7 +20,7 @@ convert_case = "0.6"
 
 [dev-dependencies]
 google-cloud-spanner = { path = "../spanner"}
-chrono = { version="0.4", features = ["serde"] }
+time = { version = "0.3", features = ["serde"] }
 tokio = { version="1.20", features=["rt-multi-thread"] }
 serial_test = "0.9"
 anyhow = "1.0"

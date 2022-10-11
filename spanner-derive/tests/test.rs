@@ -1,4 +1,3 @@
-use chrono::{DateTime, NaiveDate, Utc};
 use google_cloud_spanner::client::Client;
 use google_cloud_spanner::mutation::insert_struct;
 use google_cloud_spanner::reader::AsyncIterator;
@@ -7,25 +6,48 @@ use google_cloud_spanner::value::SpannerNumeric;
 use google_cloud_spanner_derive::{Query, Table};
 use serde::{Deserialize, Serialize};
 use serial_test::serial;
+use time::{Date, OffsetDateTime};
 
-#[derive(Table, Default, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Table, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UserCharacter {
     pub user_id: String,
     pub character_id: i64,
     pub level: i64,
     #[spanner(commitTimestamp)]
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: OffsetDateTime,
 }
 
-#[derive(Table, Default, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+impl Default for UserCharacter {
+    fn default() -> Self {
+        Self {
+            updated_at: OffsetDateTime::UNIX_EPOCH,
+            user_id: Default::default(),
+            character_id: Default::default(),
+            level: Default::default(),
+        }
+    }
+}
+
+#[derive(Table, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UserItem {
     pub user_id: String,
     pub item_id: i64,
     pub quantity: i64,
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: OffsetDateTime,
 }
 
-#[derive(Table, Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
+impl Default for UserItem {
+    fn default() -> Self {
+        Self {
+            updated_at: OffsetDateTime::UNIX_EPOCH,
+            user_id: Default::default(),
+            item_id: Default::default(),
+            quantity: Default::default(),
+        }
+    }
+}
+
+#[derive(Table, Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct User {
     pub user_id: String,
     #[spanner(name = "NotNullINT64")]
@@ -40,15 +62,41 @@ pub struct User {
     pub nullable_byte_array: Option<Vec<u8>>,
     pub not_null_numeric: SpannerNumeric,
     pub nullable_numeric: Option<SpannerNumeric>,
-    pub not_null_timestamp: DateTime<Utc>,
-    pub nullable_timestamp: Option<DateTime<Utc>>,
-    pub not_null_date: NaiveDate,
-    pub nullable_date: Option<NaiveDate>,
+    pub not_null_timestamp: OffsetDateTime,
+    pub nullable_timestamp: Option<OffsetDateTime>,
+    pub not_null_date: Date,
+    pub nullable_date: Option<Date>,
     pub not_null_array: Vec<i64>,
     pub nullable_array: Option<Vec<i64>>,
     pub nullable_string: Option<String>,
     #[spanner(commitTimestamp)]
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: OffsetDateTime,
+}
+
+impl Default for User {
+    fn default() -> Self {
+        Self {
+            not_null_timestamp: OffsetDateTime::UNIX_EPOCH,
+            not_null_date: OffsetDateTime::UNIX_EPOCH.date(),
+            updated_at: OffsetDateTime::UNIX_EPOCH,
+            user_id: Default::default(),
+            not_null_int64: Default::default(),
+            nullable_int64: Default::default(),
+            not_null_float64: Default::default(),
+            nullable_float64: Default::default(),
+            not_null_bool: Default::default(),
+            nullable_bool: Default::default(),
+            not_null_byte_array: Default::default(),
+            nullable_byte_array: Default::default(),
+            not_null_numeric: Default::default(),
+            nullable_numeric: Default::default(),
+            nullable_timestamp: Default::default(),
+            nullable_date: Default::default(),
+            not_null_array: Default::default(),
+            nullable_array: Default::default(),
+            nullable_string: Default::default(),
+        }
+    }
 }
 
 #[derive(Query)]
@@ -64,7 +112,7 @@ async fn test_table_derive() -> Result<(), anyhow::Error> {
     std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
     let client = Client::new("projects/local-project/instances/test-instance/databases/local-database").await?;
 
-    let now = Utc::now().timestamp();
+    let now = OffsetDateTime::now_utc().unix_timestamp();
     let user_id = format!("user{}", now);
     let user = User {
         user_id: user_id.clone(),
@@ -81,7 +129,7 @@ async fn test_table_derive() -> Result<(), anyhow::Error> {
         let v: User = row.try_into()?;
         assert_eq!(v.user_id, user_id);
         assert_eq!(v.not_null_numeric.as_str(), "-99999999999999999999999999999.999999999");
-        assert!(v.updated_at.timestamp() >= now);
+        assert!(v.updated_at.unix_timestamp() >= now);
         let json_string = serde_json::to_string(&v)?;
         let des = serde_json::from_str::<User>(json_string.as_str())?;
         assert_eq!(des, v);
@@ -97,7 +145,7 @@ async fn test_query_derive() -> Result<(), anyhow::Error> {
     std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
     let client = Client::new("projects/local-project/instances/test-instance/databases/local-database").await?;
 
-    let now = Utc::now().timestamp();
+    let now = OffsetDateTime::now_utc().unix_timestamp();
     let user_id = format!("user-q-{}", now);
     let user = User {
         user_id: user_id.clone(),
