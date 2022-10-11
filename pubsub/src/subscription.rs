@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 use std::future::Future;
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
 use google_cloud_gax::cancel::CancellationToken;
+use google_cloud_gax::grpc::codegen::futures_core::Stream;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::seek_request::Target;
@@ -100,6 +103,25 @@ impl From<SeekTo> for Target {
             Timestamp(t) => Target::Time(prost_types::Timestamp::from(t)),
             Snapshot(s) => Target::Snapshot(s),
         }
+    }
+}
+
+pub struct MessageStream {
+    queue: async_channel::Receiver<ReceivedMessage>,
+    cancel: CancellationToken,
+}
+
+impl Drop for MessageStream {
+    fn drop(&mut self) {
+        self.cancel.cancel();
+    }
+}
+
+impl Stream for MessageStream {
+    type Item = ReceivedMessage;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        Pin::new(&mut self.get_mut().queue).poll_next(cx)
     }
 }
 
@@ -310,6 +332,17 @@ impl Subscription {
             .filter(|m| m.message.is_some())
             .map(|m| ReceivedMessage::new(self.fqsn.clone(), self.subc.clone(), m.message.unwrap(), m.ack_id))
             .collect())
+    }
+
+    /// subscribe creates a `Stream` of `ReceivedMessage`
+    /// Terminates the underlying `Subscriber` when dropped.
+    pub async fn subscribe(&self, opt: Option<SubscriberConfig>) -> Result<MessageStream, Status> {
+        let (tx, rx) = async_channel::unbounded::<ReceivedMessage>();
+
+        let cancel = CancellationToken::new();
+        Subscriber::start(cancel.clone(), self.fqsn.clone(), self.subc.clone(), tx, opt);
+
+        Ok(MessageStream { queue: rx, cancel })
     }
 
     /// receive calls f with the outstanding messages from the subscription.
