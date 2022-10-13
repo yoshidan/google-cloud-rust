@@ -1006,11 +1006,11 @@ mod tests {
         let subscription = create_subscription(false).await?;
         let received = Arc::new(Mutex::new(false));
         let checking = received.clone();
-        let handler = tokio::spawn(async move {
+        let _handler = tokio::spawn(async move {
             let mut iter = subscription.subscribe(None).await.unwrap();
             while let Some(message) = iter.next().await {
                 *received.lock().unwrap() = true;
-                message.ack().await;
+                let _ = message.ack().await;
             }
         });
         publish().await;
