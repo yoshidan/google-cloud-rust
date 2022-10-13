@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-pubsub"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/pubsub"
@@ -31,6 +31,7 @@ serial_test = "0.9"
 anyhow = "1.0.48"
 uuid = { version="1.1", features=["v4"] }
 ctor = "0.1.21"
+futures-util = "0.3"
 
 [features]
 default = ["default-tls"]
