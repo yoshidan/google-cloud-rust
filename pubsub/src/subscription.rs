@@ -588,8 +588,9 @@ mod tests {
     use std::collections::HashMap;
     use std::sync::atomic::AtomicU32;
     use std::sync::atomic::Ordering::SeqCst;
-    use std::sync::Arc;
+    use std::sync::{Arc, Mutex};
 
+    use futures_util::StreamExt;
     use google_cloud_gax::conn::Environment;
     use std::time::Duration;
     use uuid::Uuid;
@@ -996,6 +997,25 @@ mod tests {
         // cleanup
         subscription.delete(None, None).await?;
 
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_subscribe() -> Result<(), anyhow::Error> {
+        let subscription = create_subscription(false).await?;
+        let received = Arc::new(Mutex::new(false));
+        let checking = received.clone();
+        let handler = tokio::spawn(async move {
+            let mut iter = subscription.subscribe(None).await.unwrap();
+            while let Some(message) = iter.next().await {
+                *received.lock().unwrap() = true;
+                message.ack().await;
+            }
+        });
+        publish().await;
+        tokio::time::sleep(Duration::from_secs(5)).await;
+        assert!(*checking.lock().unwrap());
         Ok(())
     }
 }
