@@ -336,6 +336,25 @@ impl Subscription {
 
     /// subscribe creates a `Stream` of `ReceivedMessage`
     /// Terminates the underlying `Subscriber` when dropped.
+    /// ```
+    /// use google_cloud_pubsub::client::Client;
+    /// use google_cloud_gax::cancel::CancellationToken;
+    /// use google_cloud_pubsub::subscription::Subscription;
+    /// use google_cloud_gax::grpc::Status;
+    /// use std::time::Duration;
+    /// use futures_util::StreamExt;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Status> {
+    ///     let mut client = Client::default().await.unwrap();
+    ///     let subscription = client.subscription("test-subscription");
+    ///     let mut iter = subscription.subscribe(None).await?;
+    ///     while let Some(message) = iter.next().await {
+    ///         let _ = message.ack().await;
+    ///     }
+    ///     Ok(())
+    ///  }
+    /// ```
     pub async fn subscribe(&self, opt: Option<SubscriberConfig>) -> Result<MessageStream, Status> {
         let (tx, rx) = async_channel::unbounded::<ReceivedMessage>();
 

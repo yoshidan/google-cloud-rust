@@ -119,6 +119,7 @@ google-cloud-pubsub = <version>
      });
 
      // Receive blocks until the ctx is cancelled or an error occurs.
+     // Or simply use the `subscription.subscribe` method.
      subscription.receive(|mut message, cancel| async move {
          // Handle data.
          let data = message.message.data.as_slice();
