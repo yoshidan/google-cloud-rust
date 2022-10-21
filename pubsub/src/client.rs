@@ -8,7 +8,9 @@ use crate::topic::{Topic, TopicConfig};
 use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
-use google_cloud_googleapis::pubsub::v1::{DetachSubscriptionRequest, ListSubscriptionsRequest, ListTopicsRequest};
+use google_cloud_googleapis::pubsub::v1::{
+    DetachSubscriptionRequest, ListSnapshotsRequest, ListSubscriptionsRequest, ListTopicsRequest, Snapshot,
+};
 
 #[derive(Debug)]
 pub struct ClientConfig {
@@ -202,6 +204,23 @@ impl Client {
         Topic::new(self.fully_qualified_topic_name(id), self.pubc.clone(), self.subc.clone())
     }
 
+    /// get_snapshots lists the existing snapshots. Snapshots are used in Seek (at https://cloud.google.com/pubsub/docs/replay-overview) operations, which
+    /// allow you to manage message acknowledgments in bulk. That is, you can set
+    /// the acknowledgment state of messages in an existing subscription to the
+    /// state captured by a snapshot.
+    pub async fn get_snapshots(
+        &self,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<Vec<Snapshot>, Status> {
+        let req = ListSnapshotsRequest {
+            project: self.fully_qualified_project_name(),
+            page_size: 0,
+            page_token: "".to_string(),
+        };
+        self.subc.list_snapshots(req, cancel, retry).await
+    }
+
     pub fn fully_qualified_topic_name(&self, id: &str) -> String {
         if id.contains('/') {
             id.to_string()
@@ -225,9 +244,9 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
     use serial_test::serial;
+    use std::collections::HashMap;
     use std::thread;
     use std::time::Duration;
 
@@ -385,14 +404,16 @@ mod tests {
         let uuid = Uuid::new_v4().hyphenated().to_string();
         let topic_id = &format!("t{}", &uuid);
         let subscription_id = &format!("s{}", &uuid);
+        let snapshot_id = &format!("snap{}", &uuid);
         let ctx = Some(CancellationToken::new());
         let topics = client.get_topics(ctx.clone(), None).await.unwrap();
         let subs = client.get_subscriptions(ctx.clone(), None).await.unwrap();
+        let snapshots = client.get_snapshots(ctx.clone(), None).await.unwrap();
         let _topic = client
             .create_topic(topic_id.as_str(), None, ctx.clone(), None)
             .await
             .unwrap();
-        let _subscription = client
+        let subscription = client
             .create_subscription(
                 subscription_id.as_str(),
                 topic_id.as_str(),
@@ -401,10 +422,17 @@ mod tests {
                 None,
             )
             .await?;
+
+        let _ = subscription
+            .create_snapshot(snapshot_id, HashMap::default(), ctx.clone(), None)
+            .await?;
+
         let topics_after = client.get_topics(ctx.clone(), None).await.unwrap();
         let subs_after = client.get_subscriptions(ctx.clone(), None).await.unwrap();
+        let snapshots_after = client.get_snapshots(ctx.clone(), None).await?;
         assert_eq!(1, topics_after.len() - topics.len());
         assert_eq!(1, subs_after.len() - subs.len());
+        assert_eq!(1, snapshots_after.len() - snapshots.len());
         Ok(())
     }
 }
