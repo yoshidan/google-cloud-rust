@@ -154,7 +154,7 @@ impl Subscription {
         if id.contains('/') {
             id.to_string()
         } else {
-            format!("projects/{}/snapshots/{}", self.fully_qualified_project_name(), id)
+            format!("{}/snapshots/{}", self.fully_qualified_project_name(), id)
         }
     }
 
@@ -540,12 +540,12 @@ impl Subscription {
     /// get_snapshot fetches an existing pubsub snapshot.
     pub async fn get_snapshot(
         &self,
-        name: String,
+        name: &str,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Snapshot, Status> {
         let req = GetSnapshotRequest {
-            snapshot: self.fully_qualified_snapshot_name(name.as_str()),
+            snapshot: self.fully_qualified_snapshot_name(name),
         };
         Ok(self.subc.get_snapshot(req, cancel, retry).await?.into_inner())
     }
@@ -561,13 +561,13 @@ impl Subscription {
     /// they are discarded and any messages being retained solely due to the snapshot dropped.
     pub async fn create_snapshot(
         &self,
-        name: String,
+        name: &str,
         labels: HashMap<String, String>,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Snapshot, Status> {
         let req = CreateSnapshotRequest {
-            name: self.fully_qualified_snapshot_name(name.as_str()),
+            name: self.fully_qualified_snapshot_name(name),
             labels,
             subscription: self.fqsn.to_owned(),
         };
@@ -577,12 +577,12 @@ impl Subscription {
     /// delete_snapshot deletes an existing pubsub snapshot.
     pub async fn delete_snapshot(
         &self,
-        name: String,
+        name: &str,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<(), Status> {
         let req = DeleteSnapshotRequest {
-            snapshot: self.fully_qualified_snapshot_name(name.as_str()),
+            snapshot: self.fully_qualified_snapshot_name(name),
         };
         let _ = self.subc.delete_snapshot(req, cancel, retry).await?;
         Ok(())
@@ -886,12 +886,12 @@ mod tests {
 
         // cleanup; TODO: remove?
         let _response = subscription
-            .delete_snapshot(snapshot_name.clone(), Some(ctx.clone()), None)
+            .delete_snapshot(snapshot_name.as_str(), Some(ctx.clone()), None)
             .await;
 
         // create
         let created_snapshot = subscription
-            .create_snapshot(snapshot_name.clone(), labels.clone(), Some(ctx.clone()), None)
+            .create_snapshot(snapshot_name.as_str(), labels.clone(), Some(ctx.clone()), None)
             .await?;
 
         assert_eq!(created_snapshot.name, expected_fq_snap_name);
@@ -899,22 +899,22 @@ mod tests {
 
         // get
         let retrieved_snapshot = subscription
-            .get_snapshot(snapshot_name.clone(), Some(ctx.clone()), None)
+            .get_snapshot(snapshot_name.as_str(), Some(ctx.clone()), None)
             .await?;
         assert_eq!(created_snapshot, retrieved_snapshot);
 
         // delete
         subscription
-            .delete_snapshot(snapshot_name.clone(), Some(ctx.clone()), None)
+            .delete_snapshot(snapshot_name.as_str(), Some(ctx.clone()), None)
             .await?;
 
         let _deleted_snapshot_status = subscription
-            .get_snapshot(snapshot_name.clone(), None, None)
+            .get_snapshot(snapshot_name.as_str(), None, None)
             .await
             .expect_err("snapshot should have been deleted");
 
         let _delete_again = subscription
-            .delete_snapshot(snapshot_name.clone(), None, None)
+            .delete_snapshot(snapshot_name.as_str(), None, None)
             .await
             .expect_err("snapshot should already be deleted");
 
@@ -942,7 +942,7 @@ mod tests {
 
         // snapshot at received = 1
         let _snapshot = subscription
-            .create_snapshot(snapshot_name.clone(), HashMap::new(), None, None)
+            .create_snapshot(snapshot_name.as_str(), HashMap::new(), None, None)
             .await?;
 
         // publish and receive another message
@@ -962,7 +962,7 @@ mod tests {
         ack_all(&messages).await?;
 
         // cleanup
-        subscription.delete_snapshot(snapshot_name, None, None).await?;
+        subscription.delete_snapshot(snapshot_name.as_str(), None, None).await?;
         subscription.delete(None, None).await?;
 
         Ok(())
