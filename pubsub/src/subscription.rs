@@ -149,6 +149,15 @@ impl Subscription {
         self.fqsn.as_str()
     }
 
+    /// fully_qualified_snapshot_name returns the globally unique printable name of the snapshot.
+    pub fn fully_qualified_snapshot_name(&self, id: &str) -> String {
+        if id.contains('/') {
+            id.to_string()
+        } else {
+            format!("projects/{}/snapshots/{}", self.fully_qualified_project_name(), id)
+        }
+    }
+
     fn fully_qualified_project_name(&self) -> String {
         let parts: Vec<_> = self
             .fqsn
@@ -507,7 +516,7 @@ impl Subscription {
         ack(&self.subc, self.fqsn.to_string(), ack_ids).await
     }
 
-    // seek seeks the subscription a past timestamp or a saved snapshot.
+    /// seek seeks the subscription a past timestamp or a saved snapshot.
     pub async fn seek(
         &self,
         to: SeekTo,
@@ -516,9 +525,7 @@ impl Subscription {
     ) -> Result<(), Status> {
         let to = match to {
             SeekTo::Timestamp(t) => SeekTo::Timestamp(t),
-            SeekTo::Snapshot(name) => {
-                SeekTo::Snapshot(format!("{}/snapshots/{}", self.fully_qualified_project_name(), name))
-            }
+            SeekTo::Snapshot(name) => SeekTo::Snapshot(self.fully_qualified_snapshot_name(name.as_str())),
         };
 
         let req = SeekRequest {
@@ -526,37 +533,32 @@ impl Subscription {
             target: Some(to.into()),
         };
 
-        match self.subc.seek(req, cancel, retry).await {
-            Ok(_) => Ok(()),
-            Err(status) => Err(status),
-        }
+        let _ = self.subc.seek(req, cancel, retry).await?;
+        Ok(())
     }
 
-    // get_snapshot fetches an existing pubsub snapshot.
+    /// get_snapshot fetches an existing pubsub snapshot.
     pub async fn get_snapshot(
         &self,
-        snapshot_name: String,
+        name: String,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Snapshot, Status> {
         let req = GetSnapshotRequest {
-            snapshot: format!("{}/snapshots/{}", self.fully_qualified_project_name(), snapshot_name),
+            snapshot: self.fully_qualified_snapshot_name(name.as_str()),
         };
-        match self.subc.get_snapshot(req, cancel, retry).await {
-            Ok(snapshot) => Ok(snapshot.into_inner()),
-            Err(s) => Err(s),
-        }
+        Ok(self.subc.get_snapshot(req, cancel, retry).await?.into_inner())
     }
 
-    // create_snapshot creates a new pubsub snapshot from the subscription's state at the time of calling.
-    // The snapshot retains the messages for the topic the subscription is subscribed to, with the acknowledgment
-    // states consistent with the subscriptions.
-    // The created snapshot is guaranteed to retain:
-    // - The message backlog on the subscription -- or to be specific, messages that are unacknowledged
-    //   at the time of the subscription's creation.
-    // - All messages published to the subscription's topic after the snapshot's creation.
-    // Snapshots have a finite lifetime -- a maximum of 7 days from the time of creation, beyond which
-    // they are discarded and any messages being retained solely due to the snapshot dropped.
+    /// create_snapshot creates a new pubsub snapshot from the subscription's state at the time of calling.
+    /// The snapshot retains the messages for the topic the subscription is subscribed to, with the acknowledgment
+    /// states consistent with the subscriptions.
+    /// The created snapshot is guaranteed to retain:
+    /// - The message backlog on the subscription -- or to be specific, messages that are unacknowledged
+    ///   at the time of the subscription's creation.
+    /// - All messages published to the subscription's topic after the snapshot's creation.
+    /// Snapshots have a finite lifetime -- a maximum of 7 days from the time of creation, beyond which
+    /// they are discarded and any messages being retained solely due to the snapshot dropped.
     pub async fn create_snapshot(
         &self,
         name: String,
@@ -565,30 +567,25 @@ impl Subscription {
         retry: Option<RetrySetting>,
     ) -> Result<Snapshot, Status> {
         let req = CreateSnapshotRequest {
-            name: format!("{}/snapshots/{}", self.fully_qualified_project_name(), name),
+            name: self.fully_qualified_snapshot_name(name.as_str()),
             labels,
             subscription: self.fqsn.to_owned(),
         };
-        match self.subc.create_snapshot(req, cancel, retry).await {
-            Ok(snapshot) => Ok(snapshot.into_inner()),
-            Err(s) => Err(s),
-        }
+        Ok(self.subc.create_snapshot(req, cancel, retry).await?.into_inner())
     }
 
-    // delete_snapshot deletes an existing pubsub snapshot.
+    /// delete_snapshot deletes an existing pubsub snapshot.
     pub async fn delete_snapshot(
         &self,
-        snapshot_name: String,
+        name: String,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<(), Status> {
         let req = DeleteSnapshotRequest {
-            snapshot: format!("{}/snapshots/{}", self.fully_qualified_project_name(), snapshot_name),
+            snapshot: self.fully_qualified_snapshot_name(name.as_str()),
         };
-        match self.subc.delete_snapshot(req, cancel, retry).await {
-            Ok(_) => Ok(()),
-            Err(s) => Err(s),
-        }
+        let _ = self.subc.delete_snapshot(req, cancel, retry).await?;
+        Ok(())
     }
 }
 
