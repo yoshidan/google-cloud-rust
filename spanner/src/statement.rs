@@ -56,7 +56,7 @@ impl Statement {
     }
 }
 
-fn single_type<T>(code: T) -> Type
+pub fn single_type<T>(code: T) -> Type
 where
     T: Into<i32>,
 {

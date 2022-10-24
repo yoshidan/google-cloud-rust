@@ -30,8 +30,10 @@ pub enum Error {
     DateParseError(String, #[source] ParseError),
     #[error("Failed to parse as ByteArray {0}")]
     ByteParseError(String, #[source] DecodeError),
-    #[error("FAiled to parse as Struct name={0}, {1}")]
+    #[error("Failed to parse as Struct name={0}, {1}")]
     StructParseError(String, &'static str),
+    #[error("Failed to parse as Custom Type {0}")]
+    CustomParseError(String),
     #[error("No column found: name={0}")]
     NoColumnFound(String),
     #[error("invalid column index: index={0}, length={1}")]
@@ -286,14 +288,14 @@ where
     T::try_from(value, &fields[column_index])
 }
 
-fn as_ref<'a>(item: &'a Value, field: &'a Field) -> Result<&'a Kind, Error> {
+pub fn as_ref<'a>(item: &'a Value, field: &'a Field) -> Result<&'a Kind, Error> {
     return match item.kind.as_ref() {
         Some(v) => Ok(v),
         None => Err(Error::NoKind(field.name.to_string())),
     };
 }
 
-fn kind_to_error<'a, T>(v: &'a value::Kind, field: &'a Field) -> Result<T, Error> {
+pub fn kind_to_error<'a, T>(v: &'a value::Kind, field: &'a Field) -> Result<T, Error> {
     let actual = match v {
         Kind::StringValue(_s) => "StringValue".to_string(),
         Kind::BoolValue(_s) => "BoolValue".to_string(),
