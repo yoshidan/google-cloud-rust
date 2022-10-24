@@ -228,7 +228,7 @@ async fn handle_message(
         if let Some(message) = received_message.message {
             let id = message.message_id.clone();
             tracing::debug!("message received: msg_id={id}");
-            if queue
+            if let Err(err) = queue
                 .send(ReceivedMessage::new(
                     subscription.to_string(),
                     client.clone(),
@@ -236,9 +236,8 @@ async fn handle_message(
                     received_message.ack_id.clone(),
                 ))
                 .await
-                .is_err()
             {
-                tracing::error!("failed to send receiver queue -> so nack immediately : msg_id={id}");
+                tracing::error!(%err, "failed to send receiver queue -> so nack immediately : msg_id={id}");
                 nack_targets.push(received_message.ack_id);
             }
         }
