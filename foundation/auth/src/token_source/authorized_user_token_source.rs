@@ -59,7 +59,7 @@ impl TokenSource for UserAccountTokenSource {
 
         let it = self
             .client
-            .put(self.token_url.to_string())
+            .post(self.token_url.to_string())
             .json(&data)
             .send()
             .await?
