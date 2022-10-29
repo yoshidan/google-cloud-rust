@@ -2,6 +2,9 @@
 
 Google Cloud Platform pub/sub library.
 
+[![crates.io](https://img.shields.io/crates/v/google-cloud-pubsub.svg)](https://crates.io/crates/google-cloud-pubsub)
+
+
 * [About Cloud Pub/Sub](https://cloud.google.com/pubsub/)
 * [Pub/Sub API Documentation](https://cloud.google.com/pubsub/docs)
 

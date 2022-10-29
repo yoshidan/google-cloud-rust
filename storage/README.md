@@ -2,6 +2,8 @@
 
 Google Cloud Platform Storage Client library.
 
+[![crates.io](https://img.shields.io/crates/v/google-cloud-storage.svg)](https://crates.io/crates/google-cloud-storage)
+
 * [About Cloud Storage](https://cloud.google.com/storage/)
 * [JSON API Documentation](https://cloud.google.com/storage/docs/json_api/v1)
 
