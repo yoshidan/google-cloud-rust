@@ -128,6 +128,15 @@ pub enum RunInTxError {
     Any(#[from] anyhow::Error),
 }
 
+impl From<TxError> for RunInTxError {
+    fn from(err: TxError) -> Self {
+        match err {
+            TxError::GRPC(err) => RunInTxError::GRPC(err),
+            TxError::InvalidSession(err) => RunInTxError::InvalidSession(err),
+        }
+    }
+}
+
 impl TryAs<Status> for RunInTxError {
     fn try_as(&self) -> Option<&Status> {
         match self {
