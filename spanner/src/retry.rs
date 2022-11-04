@@ -72,7 +72,10 @@ where
     }
 }
 
-impl<E> Default for TransactionRetry<E> {
+impl<E> Default for TransactionRetry<E>
+where
+    E: TryAs<Status>,
+{
     fn default() -> Self {
         Self::new()
     }
