@@ -72,6 +72,12 @@ where
     }
 }
 
+impl<E> Default for TransactionRetry<E> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct TransactionRetrySetting {
     pub inner: RetrySetting,
