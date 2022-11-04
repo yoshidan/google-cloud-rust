@@ -48,20 +48,22 @@ impl<E> TransactionRetry<E>
 where
     E: TryAs<Status>,
 {
-    pub fn next(&mut self, status: &E) -> Option<Duration> {
-        if self.condition.should_retry(status) {
+    pub async fn next(&mut self, status: E) -> Result<(), E> {
+        let duration = if self.condition.should_retry(status) {
             self.strategy.next()
         } else {
             None
+        };
+        match duration {
+            Some(duration) => {
+                tokio::time::sleep(duration).await;
+                Ok(())
+            }
+            None => Err(err),
         }
     }
-}
 
-impl<E> Default for TransactionRetry<E>
-where
-    E: TryAs<Status>,
-{
-    fn default() -> Self {
+    pub fn new() -> Self {
         let setting = TransactionRetrySetting::default();
         let strategy = <TransactionRetrySetting as Retry<E, TransactionCondition<E>>>::strategy(&setting);
         Self {

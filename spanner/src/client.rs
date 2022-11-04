@@ -571,7 +571,7 @@ impl Client {
     /// async fn main() -> Result<(), anyhow::Error> {
     ///     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
     ///     let client = Client::new(DATABASE).await?;
-    ///     let retry = &mut TransactionRetry::default();
+    ///     let retry = &mut TransactionRetry::new();
     ///     loop {
     ///         let tx = &mut client.new_read_write_transaction().await?;
     ///
@@ -580,11 +580,7 @@ impl Client {
     ///         // try to commit or rollback transaction.
     ///         match tx.done(result.err(), None).await {
     ///             Ok(_commit_timestamp) => Ok(()),
-    ///             Err(mut err) => {
-    ///                 // check retryable
-    ///                 let duration = retry.next(&mut err).ok_or(err)?;
-    ///                 tokio::time::sleep(duration)
-    ///             }
+    ///             Err(mut err) => retry.next(err).await? // check retry
     ///         }
     ///     }
     ///     Ok(())

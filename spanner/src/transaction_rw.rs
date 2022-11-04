@@ -227,9 +227,9 @@ impl ReadWriteTransaction {
             .collect())
     }
 
-    pub async fn done<E>(&mut self, err: Option<E>, options: Option<CommitOptions>) -> Result<Option<Timestamp>, Status>
+    pub async fn done<E>(&mut self, err: Option<E>, options: Option<CommitOptions>) -> Result<Option<Timestamp>, E>
     where
-        E: TryAs<Status> + From<SessionError> + From<Status>,
+        E: TryAs<Status> + From<Status>,
     {
         let opt = options.unwrap_or_default();
         match err {
@@ -241,7 +241,7 @@ impl ReadWriteTransaction {
                 if let Some(status) = err.try_as() {
                     // can't rollback. should retry
                     if status.code() == Code::Aborted {
-                        return Err(Status::aborted(status.message()));
+                        return Err(err);
                     }
                 }
                 let _ = self.rollback(opt.call_options.cancel, opt.call_options.retry).await;
