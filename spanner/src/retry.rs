@@ -2,7 +2,6 @@ use std::iter::Take;
 use std::marker::PhantomData;
 use std::time::Duration;
 
-use crate::session::SessionError;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::{CodeCondition, Condition, ExponentialBackoff, Retry, RetrySetting, TryAs};
 

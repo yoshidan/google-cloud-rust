@@ -244,14 +244,14 @@ impl ReadWriteTransaction {
                         return Err(Status::aborted(status.message()));
                     }
                 }
-                self.rollback(opt.call_options.cancel, opt.call_options.retry).await;
-                Ok(None)
+                let _ = self.rollback(opt.call_options.cancel, opt.call_options.retry).await;
+                Err(err)
             }
         }
     }
 
-    pub fn should_retry<E>(&mut self, status: Status, options: Option<CommitOptions>) -> bool {
-        return status.code() == Code::Aborted; //TODO check retry count
+    pub fn should_retry<E>(&mut self, status: Status, _options: Option<CommitOptions>) -> bool {
+        status.code() == Code::Aborted //TODO check retry count
     }
 
     pub async fn finish<T, E>(
@@ -283,14 +283,14 @@ impl ReadWriteTransaction {
                 let status = match err.try_as() {
                     Some(status) => status,
                     None => {
-                        self.rollback(opt.call_options.cancel, opt.call_options.retry).await;
+                        let _ = self.rollback(opt.call_options.cancel, opt.call_options.retry).await;
                         return Err((err, self.take_session()));
                     }
                 };
                 match status.code() {
                     Code::Aborted => Err((err, self.take_session())),
                     _ => {
-                        self.rollback(opt.call_options.cancel, opt.call_options.retry).await;
+                        let _ = self.rollback(opt.call_options.cancel, opt.call_options.retry).await;
                         return Err((err, self.take_session()));
                     }
                 }
@@ -316,7 +316,8 @@ impl ReadWriteTransaction {
         };
         let session = self.as_mut_session();
         let result = session.spanner_client.rollback(request, cancel, retry).await;
-        Ok(session.invalidate_if_needed(result).await?.into_inner())
+        session.invalidate_if_needed(result).await?.into_inner();
+        Ok(())
     }
 }
 
