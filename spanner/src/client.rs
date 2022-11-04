@@ -578,9 +578,9 @@ impl Client {
     ///         let result = run_in_transaction(tx).await;
     ///
     ///         // try to commit or rollback transaction.
-    ///         match tx.done(result.err(), None).await {
-    ///             Ok(_commit_timestamp) => return Ok(()),
-    ///             Err(mut err) => retry.next(err).await? // check retry
+    ///         match tx.done(result, None).await {
+    ///             Ok((_commit_timestamp, success)) => return Ok(success),
+    ///             Err(err) => retry.next(err).await? // check retry
     ///         }
     ///     }
     ///     Ok(())

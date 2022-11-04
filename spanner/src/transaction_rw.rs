@@ -227,17 +227,21 @@ impl ReadWriteTransaction {
             .collect())
     }
 
-    pub async fn done<E>(&mut self, err: Option<E>, options: Option<CommitOptions>) -> Result<Option<Timestamp>, E>
+    pub async fn done<S, E>(
+        &mut self,
+        result: Result<S, E>,
+        options: Option<CommitOptions>,
+    ) -> Result<(Option<Timestamp>, S), E>
     where
         E: TryAs<Status> + From<Status>,
     {
         let opt = options.unwrap_or_default();
-        match err {
-            None => {
+        match result {
+            Ok(success) => {
                 let cr = self.commit(opt).await?;
-                Ok(cr.commit_timestamp.map(|e| e.into()))
+                Ok((cr.commit_timestamp.map(|e| e.into()), success))
             }
-            Some(err) => {
+            Err(err) => {
                 if let Some(status) = err.try_as() {
                     // can't rollback. should retry
                     if status.code() == Code::Aborted {
@@ -248,10 +252,6 @@ impl ReadWriteTransaction {
                 Err(err)
             }
         }
-    }
-
-    pub fn should_retry<E>(&mut self, status: Status, _options: Option<CommitOptions>) -> bool {
-        status.code() == Code::Aborted //TODO check retry count
     }
 
     pub async fn finish<T, E>(
