@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicI64, Ordering};
 use google_cloud_gax::cancel::CancellationToken;
 use prost_types::Struct;
 
-use crate::session::{ManagedSession, SessionError};
+use crate::session::ManagedSession;
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, Transaction};
 use crate::value::Timestamp;
