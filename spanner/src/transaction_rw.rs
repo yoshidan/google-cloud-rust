@@ -227,7 +227,7 @@ impl ReadWriteTransaction {
             .collect())
     }
 
-    pub async fn done<S, E>(
+    pub async fn end<S, E>(
         &mut self,
         result: Result<S, E>,
         options: Option<CommitOptions>,
@@ -254,7 +254,7 @@ impl ReadWriteTransaction {
         }
     }
 
-    pub async fn finish<T, E>(
+    pub(crate) async fn finish<T, E>(
         &mut self,
         result: Result<T, E>,
         options: Option<CommitOptions>,
@@ -298,14 +298,14 @@ impl ReadWriteTransaction {
         };
     }
 
-    pub async fn commit(&mut self, options: CommitOptions) -> Result<CommitResponse, Status> {
+    pub(crate) async fn commit(&mut self, options: CommitOptions) -> Result<CommitResponse, Status> {
         let tx_id = self.tx_id.clone();
         let mutations = self.wb.to_vec();
         let session = self.as_mut_session();
         commit(session, mutations, TransactionId(tx_id), options).await
     }
 
-    pub async fn rollback(
+    pub(crate) async fn rollback(
         &mut self,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
@@ -321,7 +321,7 @@ impl ReadWriteTransaction {
     }
 }
 
-pub async fn commit(
+pub(crate) async fn commit(
     session: &mut ManagedSession,
     ms: Vec<Mutation>,
     tx: commit_request::Transaction,

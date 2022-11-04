@@ -555,7 +555,7 @@ impl Client {
         .await
     }
 
-    /// new_read_write_transaction creates new ReadWriteTransaction.
+    /// begin_read_write_transaction creates new ReadWriteTransaction.
     /// ```
     /// use google_cloud_spanner::mutation::update;
     /// use google_cloud_spanner::key::Key;
@@ -573,12 +573,12 @@ impl Client {
     ///     let client = Client::new(DATABASE).await?;
     ///     let retry = &mut TransactionRetry::new();
     ///     loop {
-    ///         let tx = &mut client.new_read_write_transaction().await?;
+    ///         let tx = &mut client.begin_read_write_transaction().await?;
     ///
     ///         let result = run_in_transaction(tx).await;
     ///
     ///         // try to commit or rollback transaction.
-    ///         match tx.done(result, None).await {
+    ///         match tx.end(result, None).await {
     ///             Ok((_commit_timestamp, success)) => return Ok(success),
     ///             Err(err) => retry.next(err).await? // check retry
     ///         }
@@ -601,7 +601,7 @@ impl Client {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn new_read_write_transaction(&self) -> Result<ReadWriteTransaction, TxError> {
+    pub async fn begin_read_write_transaction(&self) -> Result<ReadWriteTransaction, TxError> {
         let session = self.get_session().await?;
         ReadWriteTransaction::begin(session, ReadWriteTransactionOption::default().begin_options)
             .await
