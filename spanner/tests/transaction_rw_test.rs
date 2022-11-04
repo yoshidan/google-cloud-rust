@@ -76,7 +76,7 @@ async fn test_mutation_and_statement() {
             println!("commit time stamp is {}", naive);
             naive
         }
-        Err(e) => panic!("error {:?}", e.0),
+        Err(e) => panic!("error {:?}", e),
     };
 
     let ts = cr.commit_timestamp.as_ref().unwrap();
