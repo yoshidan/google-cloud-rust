@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicI64, Ordering};
 use google_cloud_gax::cancel::CancellationToken;
 use prost_types::Struct;
 
-use crate::session::ManagedSession;
+use crate::session::{ManagedSession, SessionError};
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, Transaction};
 use crate::value::Timestamp;
@@ -227,6 +227,33 @@ impl ReadWriteTransaction {
             .collect())
     }
 
+    pub async fn done<E>(&mut self, err: Option<E>, options: Option<CommitOptions>) -> Result<Option<Timestamp>, Status>
+        where
+            E: TryAs<Status> + From<SessionError> + From<Status>,
+    {
+        let opt = options.unwrap_or_default();
+        match err {
+            None => {
+                let cr = self.commit(opt).await?;
+                Ok(cr.commit_timestamp.map(|e| e.into()))
+            }
+            Some(err) => {
+                if let Some(status) = err.try_as() {
+                    // can't rollback. should retry
+                    if status.code() == Code::Aborted {
+                        return Err(Status::aborted(status.message()));
+                    }
+                }
+                self.rollback(opt.call_options.cancel, opt.call_options.retry).await;
+                Ok(None)
+            }
+        }
+    }
+
+    pub fn should_retry<E>(&mut self, status: Status, options: Option<CommitOptions>) -> bool {
+        return status.code() == Code::Aborted; //TODO check retry count
+    }
+
     pub async fn finish<T, E>(
         &mut self,
         result: Result<T, E>,
@@ -278,18 +305,14 @@ impl ReadWriteTransaction {
         commit(session, mutations, TransactionId(tx_id), options).await
     }
 
-    pub async fn rollback(&mut self, cancel: Option<CancellationToken>, retry: Option<RetrySetting>) {
+    pub async fn rollback(&mut self, cancel: Option<CancellationToken>, retry: Option<RetrySetting>) -> Result<(), Status>{
         let request = RollbackRequest {
             transaction_id: self.tx_id.clone(),
             session: self.get_session_name(),
         };
         let session = self.as_mut_session();
         let result = session.spanner_client.rollback(request, cancel, retry).await;
-        let response = session.invalidate_if_needed(result).await;
-        match response {
-            Ok(_) => {}
-            Err(e) => tracing::error!("failed to rollback transaction {:?}", e),
-        }
+        Ok(session.invalidate_if_needed(result).await?.into_inner())
     }
 }
 

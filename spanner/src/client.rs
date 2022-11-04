@@ -555,6 +555,62 @@ impl Client {
         .await
     }
 
+    /// new_read_write_transaction creates new ReadWriteTransaction.
+    /// ```
+    /// use google_cloud_spanner::mutation::update;
+    /// use google_cloud_spanner::key::Key;
+    /// use google_cloud_spanner::value::Timestamp;
+    /// use google_cloud_spanner::client::RunInTxError;
+    /// use google_cloud_spanner::client::Client;
+    /// use google_cloud_spanner::reader::AsyncIterator;
+    /// use google_cloud_spanner::transaction_rw::ReadWriteTransaction;
+    /// use google_cloud_googleapis::spanner::v1::execute_batch_dml_request::Statement;
+    /// use google_cloud_spanner::retry::TransactionRetry;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), anyhow::Error> {
+    ///     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
+    ///     let client = Client::new(DATABASE).await?;
+    ///     let &mut retry = TransactionRetry::default();
+    ///     loop {
+    ///         let result = run_in_transaction(&client).await;
+    ///
+    ///         // try to commit or rollback transaction.
+    ///         match tx.done(result.err(), None).await {
+    ///             Ok(_commit_timestamp) => Ok(()),
+    ///             // check retryable
+    ///             Err(err) => {
+    ///                 let duration = retry.next(err).ok_or(err)?;
+    ///                 tokio::time::sleep(duration)
+    ///             }
+    ///         }
+    ///     }
+    ///     Ok(())
+    /// }
+    ///
+    /// async fn run_in_transaction(client: &Client) -> Result<(), RunInTxError> {
+    ///     let mut tx = client.new_read_write_transaction().await?;
+    ///     let key = Key::new(&"user1");
+    ///     let mut reader = tx.read("UserItem", &["UserId", "ItemId", "Quantity"], key).await?;
+    ///     let mut ms = vec![];
+    ///     while let Some(row) = reader.next().await? {
+    ///         let user_id = row.column_by_name::<i64>("UserId")?;
+    ///         let item_id = row.column_by_name::<i64>("ItemId")?;
+    ///         let quantity = row.column_by_name::<i64>("Quantity")? + 1;
+    ///         let m = update("UserItem", &["Quantity"], &[&user_id, &item_id, &quantity]);
+    ///         ms.push(m);
+    ///     }
+    ///     tx.buffer_write(ms);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn new_read_write_transaction(&self) -> Result<ReadWriteTransaction, TxError> {
+        let session = self.get_session().await?;
+        ReadWriteTransaction::begin(session, ReadWriteTransactionOption::default().begin_options)
+            .await
+            .map_err(|e| e.status.into())
+    }
+
     /// Get open session count.
     pub fn session_count(&self) -> usize {
         self.sessions.num_opened()

@@ -1,5 +1,6 @@
 use std::iter::Take;
 use std::marker::PhantomData;
+use std::time::Duration;
 
 use crate::session::SessionError;
 use google_cloud_gax::grpc::{Code, Status};
@@ -36,7 +37,39 @@ where
     }
 }
 
-#[derive(Clone)]
+pub struct TransactionRetry<E>
+    where E: TryAs<Status> + From<SessionError> + From<Status>,
+{
+    strategy: Take<ExponentialBackoff>,
+    condition: TransactionCondition<E>,
+}
+
+impl<E> TransactionRetry<E> where
+    E: TryAs<Status> + From<SessionError> + From<Status>,
+{
+    pub fn next(&mut self, status: &E) -> Option<Duration> {
+        if self.condition.should_retry(status) {
+            self.strategy.next()
+        } else {
+            None
+        }
+    }
+}
+
+impl<E> Default for TransactionRetry<E> where
+    E: TryAs<Status> + From<SessionError> + From<Status>,
+{
+    fn default() -> Self {
+        let setting = TransactionRetrySetting::default();
+        let strategy = <TransactionRetrySetting as Retry<E, TransactionCondition<E>>>::strategy(&setting);
+        Self {
+            strategy,
+            condition: setting.condition()
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct TransactionRetrySetting {
     pub inner: RetrySetting,
 }
