@@ -49,7 +49,7 @@ where
     E: TryAs<Status>,
 {
     pub async fn next(&mut self, status: E) -> Result<(), E> {
-        let duration = if self.condition.should_retry(status) {
+        let duration = if self.condition.should_retry(&status) {
             self.strategy.next()
         } else {
             None
