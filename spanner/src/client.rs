@@ -579,7 +579,7 @@ impl Client {
     ///
     ///         // try to commit or rollback transaction.
     ///         match tx.done(result.err(), None).await {
-    ///             Ok(_commit_timestamp) => Ok(()),
+    ///             Ok(_commit_timestamp) => return Ok(()),
     ///             Err(mut err) => retry.next(err).await? // check retry
     ///         }
     ///     }
