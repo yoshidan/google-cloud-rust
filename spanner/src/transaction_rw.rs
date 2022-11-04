@@ -228,8 +228,8 @@ impl ReadWriteTransaction {
     }
 
     pub async fn done<E>(&mut self, err: Option<E>, options: Option<CommitOptions>) -> Result<Option<Timestamp>, Status>
-        where
-            E: TryAs<Status> + From<SessionError> + From<Status>,
+    where
+        E: TryAs<Status> + From<SessionError> + From<Status>,
     {
         let opt = options.unwrap_or_default();
         match err {
@@ -305,7 +305,11 @@ impl ReadWriteTransaction {
         commit(session, mutations, TransactionId(tx_id), options).await
     }
 
-    pub async fn rollback(&mut self, cancel: Option<CancellationToken>, retry: Option<RetrySetting>) -> Result<(), Status>{
+    pub async fn rollback(
+        &mut self,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<(), Status> {
         let request = RollbackRequest {
             transaction_id: self.tx_id.clone(),
             session: self.get_session_name(),

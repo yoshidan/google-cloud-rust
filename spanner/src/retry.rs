@@ -8,7 +8,7 @@ use google_cloud_gax::retry::{CodeCondition, Condition, ExponentialBackoff, Retr
 
 pub struct TransactionCondition<E>
 where
-    E: TryAs<Status> + From<SessionError> + From<Status>,
+    E: TryAs<Status>,
 {
     inner: CodeCondition,
     _marker: PhantomData<E>,
@@ -16,7 +16,7 @@ where
 
 impl<E> Condition<E> for TransactionCondition<E>
 where
-    E: TryAs<Status> + From<SessionError> + From<Status>,
+    E: TryAs<Status>,
 {
     fn should_retry(&mut self, error: &E) -> bool {
         if let Some(status) = error.try_as() {
@@ -38,14 +38,16 @@ where
 }
 
 pub struct TransactionRetry<E>
-    where E: TryAs<Status> + From<SessionError> + From<Status>,
+where
+    E: TryAs<Status>,
 {
     strategy: Take<ExponentialBackoff>,
     condition: TransactionCondition<E>,
 }
 
-impl<E> TransactionRetry<E> where
-    E: TryAs<Status> + From<SessionError> + From<Status>,
+impl<E> TransactionRetry<E>
+where
+    E: TryAs<Status>,
 {
     pub fn next(&mut self, status: &E) -> Option<Duration> {
         if self.condition.should_retry(status) {
@@ -56,15 +58,16 @@ impl<E> TransactionRetry<E> where
     }
 }
 
-impl<E> Default for TransactionRetry<E> where
-    E: TryAs<Status> + From<SessionError> + From<Status>,
+impl<E> Default for TransactionRetry<E>
+where
+    E: TryAs<Status>,
 {
     fn default() -> Self {
         let setting = TransactionRetrySetting::default();
         let strategy = <TransactionRetrySetting as Retry<E, TransactionCondition<E>>>::strategy(&setting);
         Self {
             strategy,
-            condition: setting.condition()
+            condition: setting.condition(),
         }
     }
 }
@@ -76,7 +79,7 @@ pub struct TransactionRetrySetting {
 
 impl<E> Retry<E, TransactionCondition<E>> for TransactionRetrySetting
 where
-    E: TryAs<Status> + From<SessionError> + From<Status>,
+    E: TryAs<Status>,
 {
     fn strategy(&self) -> Take<ExponentialBackoff> {
         self.inner.strategy()

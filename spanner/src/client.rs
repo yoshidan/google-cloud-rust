@@ -571,16 +571,18 @@ impl Client {
     /// async fn main() -> Result<(), anyhow::Error> {
     ///     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
     ///     let client = Client::new(DATABASE).await?;
-    ///     let &mut retry = TransactionRetry::default();
+    ///     let retry = &mut TransactionRetry::default();
     ///     loop {
-    ///         let result = run_in_transaction(&client).await;
+    ///         let tx = &mut client.new_read_write_transaction().await?;
+    ///
+    ///         let result = run_in_transaction(tx).await;
     ///
     ///         // try to commit or rollback transaction.
     ///         match tx.done(result.err(), None).await {
     ///             Ok(_commit_timestamp) => Ok(()),
-    ///             // check retryable
-    ///             Err(err) => {
-    ///                 let duration = retry.next(err).ok_or(err)?;
+    ///             Err(mut err) => {
+    ///                 // check retryable
+    ///                 let duration = retry.next(&mut err).ok_or(err)?;
     ///                 tokio::time::sleep(duration)
     ///             }
     ///         }
@@ -588,8 +590,7 @@ impl Client {
     ///     Ok(())
     /// }
     ///
-    /// async fn run_in_transaction(client: &Client) -> Result<(), RunInTxError> {
-    ///     let mut tx = client.new_read_write_transaction().await?;
+    /// async fn run_in_transaction(tx: &mut ReadWriteTransaction) -> Result<(), RunInTxError> {
     ///     let key = Key::new(&"user1");
     ///     let mut reader = tx.read("UserItem", &["UserId", "ItemId", "Quantity"], key).await?;
     ///     let mut ms = vec![];
