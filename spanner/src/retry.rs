@@ -58,7 +58,7 @@ where
                 tokio::time::sleep(duration).await;
                 Ok(())
             }
-            None => Err(err),
+            None => Err(status),
         }
     }
 
