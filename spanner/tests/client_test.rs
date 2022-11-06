@@ -188,7 +188,7 @@ async fn test_begin_read_write_transaction_retry() -> Result<(), anyhow::Error> 
                 if retry.next(err).await.is_err() {
                     break;
                 } else {
-                    retry_count += 5;
+                    retry_count += 1;
                 }
             }
         }
