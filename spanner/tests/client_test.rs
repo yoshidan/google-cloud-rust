@@ -8,7 +8,6 @@ use chrono::{DateTime, TimeZone, Utc};
 use common::*;
 use google_cloud_spanner::key::Key;
 
-
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_spanner::retry::TransactionRetry;
 use google_cloud_spanner::value::Timestamp;
