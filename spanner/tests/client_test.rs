@@ -8,7 +8,7 @@ use chrono::{DateTime, TimeZone, Utc};
 use common::*;
 use google_cloud_spanner::key::Key;
 
-use google_cloud_gax::grpc::Code::Aborted;
+
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_spanner::retry::TransactionRetry;
 use google_cloud_spanner::value::Timestamp;
@@ -183,7 +183,7 @@ async fn test_begin_read_write_transaction_retry() -> Result<(), anyhow::Error> 
         let result: Result<(), Status> = Err(Status::new(Code::Aborted, "test"));
         match tx.end(result, None).await {
             Ok(_) => {
-                assert!(false, "must never success");
+                unreachable!("must never success");
                 return Ok(());
             }
             Err(err) => {
