@@ -184,7 +184,6 @@ async fn test_begin_read_write_transaction_retry() -> Result<(), anyhow::Error> 
         match tx.end(result, None).await {
             Ok(_) => {
                 unreachable!("must never success");
-                return Ok(());
             }
             Err(err) => {
                 if retry.next(err).await.is_err() {
