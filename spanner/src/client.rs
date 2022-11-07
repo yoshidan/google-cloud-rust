@@ -594,7 +594,7 @@ impl Client {
     ///         let user_id = row.column_by_name::<String>("UserId")?;
     ///         let item_id = row.column_by_name::<i64>("ItemId")?;
     ///         let quantity = row.column_by_name::<i64>("Quantity")? + 1;
-    ///         let m = update("UserItem", &["Quantity"], &[&user_id, &item_id, &quantity]);
+    ///         let m = update("UserItem", &["UserId", "ItemId", "Quantity"], &[&user_id, &item_id, &quantity]);
     ///         ms.push(m);
     ///     }
     ///     tx.buffer_write(ms);
