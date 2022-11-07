@@ -460,7 +460,7 @@ impl Client {
     /// more details.
     /// ```
     /// use google_cloud_spanner::mutation::update;
-    /// use google_cloud_spanner::key::Key;
+    /// use google_cloud_spanner::key::{Key, all_keys};
     /// use google_cloud_spanner::value::Timestamp;
     /// use google_cloud_spanner::client::RunInTxError;
     /// use google_cloud_spanner::client::Client;
@@ -475,7 +475,7 @@ impl Client {
     ///             // The transaction function will be called again if the error code
     ///             // of this error is Aborted. The backend may automatically abort
     ///             // any read/write transaction if it detects a deadlock or other problems.
-    ///             let key = Key::new(&"user1");
+    ///             let key = all_keys();
     ///             let mut reader = tx.read("UserItem", &["UserId", "ItemId", "Quantity"], key).await?;
     ///             let mut ms = vec![];
     ///             while let Some(row) = reader.next().await? {
@@ -558,7 +558,7 @@ impl Client {
     /// begin_read_write_transaction creates new ReadWriteTransaction.
     /// ```
     /// use google_cloud_spanner::mutation::update;
-    /// use google_cloud_spanner::key::Key;
+    /// use google_cloud_spanner::key::{Key, all_keys};
     /// use google_cloud_spanner::value::Timestamp;
     /// use google_cloud_spanner::client::RunInTxError;
     /// use google_cloud_spanner::client::Client;
@@ -587,7 +587,7 @@ impl Client {
     /// }
     ///
     /// async fn run_in_transaction(tx: &mut ReadWriteTransaction) -> Result<(), RunInTxError> {
-    ///     let key = Key::new(&"user1");
+    ///     let key = all_keys();
     ///     let mut reader = tx.read("UserItem", &["UserId", "ItemId", "Quantity"], key).await?;
     ///     let mut ms = vec![];
     ///     while let Some(row) = reader.next().await? {

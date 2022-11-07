@@ -521,7 +521,7 @@
 //! It is necessary to write retry processing for transaction abort
 //! ```
 //! use google_cloud_spanner::mutation::update;
-//! use google_cloud_spanner::key::Key;
+//! use google_cloud_spanner::key::{Key, all_keys};
 //! use google_cloud_spanner::value::Timestamp;
 //! use google_cloud_spanner::client::RunInTxError;
 //! use google_cloud_spanner::client::Client;
@@ -550,7 +550,7 @@
 //! }
 //!
 //! async fn run_in_transaction(tx: &mut ReadWriteTransaction) -> Result<(), RunInTxError> {
-//!     let key = Key::new(&"user1");
+//!     let key = all_keys();
 //!     let mut reader = tx.read("UserItem", &["UserId", "ItemId", "Quantity"], key).await?;
 //!     let mut ms = vec![];
 //!     while let Some(row) = reader.next().await? {
