@@ -499,7 +499,7 @@
 //!                 let user_id = row.column_by_name::<i64>("UserId")?;
 //!                 let item_id = row.column_by_name::<i64>("ItemId")?;
 //!                 let quantity = row.column_by_name::<i64>("Quantity")? + 1;
-//!                 let m = update("UserItem", &["Quantity"], &[&user_id, &item_id, &quantity]);
+//!                 let m = update("UserItem", &["UserId", "ItemId", "Quantity"], &[&user_id, &item_id, &quantity]);
 //!                 ms.push(m);
 //!             }
 //!             // The buffered mutation will be committed.  If the commit
@@ -516,6 +516,54 @@
 //! * `From<google_cloud_googleapis::Status>`
 //! * `From<google_cloud_spanner::session::SessionError>`
 //! * `google_cloud_gax::invoke::TryAs<google_cloud_googleapis::Status>`
+//!
+//! You can begin transaction  by `begin_read_write_transaction`.
+//! It is necessary to write retry processing for transaction abort
+//! ```
+//! use google_cloud_spanner::mutation::update;
+//! use google_cloud_spanner::key::{Key, all_keys};
+//! use google_cloud_spanner::value::Timestamp;
+//! use google_cloud_spanner::client::RunInTxError;
+//! use google_cloud_spanner::client::Client;
+//! use google_cloud_spanner::reader::AsyncIterator;
+//! use google_cloud_spanner::transaction_rw::ReadWriteTransaction;
+//! use google_cloud_googleapis::spanner::v1::execute_batch_dml_request::Statement;
+//! use google_cloud_spanner::retry::TransactionRetry;
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), anyhow::Error> {
+//!     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
+//!     let client = Client::new(DATABASE).await?;
+//!     let retry = &mut TransactionRetry::new();
+//!     loop {
+//!         let tx = &mut client.begin_read_write_transaction().await?;
+//!
+//!         let result = run_in_transaction(tx).await;
+//!
+//!         // try to commit or rollback transaction.
+//!         match tx.end(result, None).await {
+//!             Ok((_commit_timestamp, success)) => return Ok(success),
+//!             Err(err) => retry.next(err).await? // check retry
+//!         }
+//!     }
+//!     Ok(())
+//! }
+//!
+//! async fn run_in_transaction(tx: &mut ReadWriteTransaction) -> Result<(), RunInTxError> {
+//!     let key = all_keys();
+//!     let mut reader = tx.read("UserItem", &["UserId", "ItemId", "Quantity"], key).await?;
+//!     let mut ms = vec![];
+//!     while let Some(row) = reader.next().await? {
+//!         let user_id = row.column_by_name::<String>("UserId")?;
+//!         let item_id = row.column_by_name::<i64>("ItemId")?;
+//!         let quantity = row.column_by_name::<i64>("Quantity")? + 1;
+//!         let m = update("UserItem", &["UserId", "ItemId", "Quantity"], &[&user_id, &item_id, &quantity]);
+//!         ms.push(m);
+//!     }
+//!     tx.buffer_write(ms);
+//!     Ok(())
+//! }
+//! ```
 //!
 //! ### <a name="DMLAndPartitionedDML"></a>DML and Partitioned DML
 //! For large databases, it may be more efficient to partition the DML statement.
