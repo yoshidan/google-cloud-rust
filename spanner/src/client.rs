@@ -479,7 +479,7 @@ impl Client {
     ///             let mut reader = tx.read("UserItem", &["UserId", "ItemId", "Quantity"], key).await?;
     ///             let mut ms = vec![];
     ///             while let Some(row) = reader.next().await? {
-    ///                 let user_id = row.column_by_name::<i64>("UserId")?;
+    ///                 let user_id = row.column_by_name::<String>("UserId")?;
     ///                 let item_id = row.column_by_name::<i64>("ItemId")?;
     ///                 let quantity = row.column_by_name::<i64>("Quantity")? + 1;
     ///                 let m = update("UserItem", &["Quantity"], &[&user_id, &item_id, &quantity]);
@@ -591,7 +591,7 @@ impl Client {
     ///     let mut reader = tx.read("UserItem", &["UserId", "ItemId", "Quantity"], key).await?;
     ///     let mut ms = vec![];
     ///     while let Some(row) = reader.next().await? {
-    ///         let user_id = row.column_by_name::<i64>("UserId")?;
+    ///         let user_id = row.column_by_name::<String>("UserId")?;
     ///         let item_id = row.column_by_name::<i64>("ItemId")?;
     ///         let quantity = row.column_by_name::<i64>("Quantity")? + 1;
     ///         let m = update("UserItem", &["Quantity"], &[&user_id, &item_id, &quantity]);
