@@ -1,6 +1,7 @@
 use crate::apiv1::conn_pool::{ConnectionManager, PUBSUB};
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
+use google_cloud_auth::Project;
 use google_cloud_gax::cancel::CancellationToken;
 
 use crate::subscription::{Subscription, SubscriptionConfig};
@@ -59,15 +60,15 @@ pub struct Client {
 impl Client {
     /// default creates a default Pub/Sub client.
     pub async fn default() -> Result<Self, Error> {
-        Self::new(Default::default()).await
+        Self::new(google_cloud_auth::project().await?, Default::default()).await
     }
 
     /// new creates a Pub/Sub client.
-    pub async fn new(config: ClientConfig) -> Result<Self, Error> {
+    pub async fn new(project: Project, config: ClientConfig) -> Result<Self, Error> {
         let pool_size = config.pool_size.unwrap_or_default();
         let environment = match std::env::var("PUBSUB_EMULATOR_HOST") {
             Ok(host) => Environment::Emulator(host),
-            Err(_) => Environment::GoogleCloud(google_cloud_auth::project().await?),
+            Err(_) => Environment::GoogleCloud(project),
         };
         let pubc =
             PublisherClient::new(ConnectionManager::new(pool_size, &environment, config.endpoint.as_str()).await?);
