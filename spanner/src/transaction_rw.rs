@@ -227,7 +227,34 @@ impl ReadWriteTransaction {
             .collect())
     }
 
-    pub async fn finish<T, E>(
+    pub async fn end<S, E>(
+        &mut self,
+        result: Result<S, E>,
+        options: Option<CommitOptions>,
+    ) -> Result<(Option<Timestamp>, S), E>
+    where
+        E: TryAs<Status> + From<Status>,
+    {
+        let opt = options.unwrap_or_default();
+        match result {
+            Ok(success) => {
+                let cr = self.commit(opt).await?;
+                Ok((cr.commit_timestamp.map(|e| e.into()), success))
+            }
+            Err(err) => {
+                if let Some(status) = err.try_as() {
+                    // can't rollback. should retry
+                    if status.code() == Code::Aborted {
+                        return Err(err);
+                    }
+                }
+                let _ = self.rollback(opt.call_options.cancel, opt.call_options.retry).await;
+                Err(err)
+            }
+        }
+    }
+
+    pub(crate) async fn finish<T, E>(
         &mut self,
         result: Result<T, E>,
         options: Option<CommitOptions>,
@@ -256,14 +283,14 @@ impl ReadWriteTransaction {
                 let status = match err.try_as() {
                     Some(status) => status,
                     None => {
-                        self.rollback(opt.call_options.cancel, opt.call_options.retry).await;
+                        let _ = self.rollback(opt.call_options.cancel, opt.call_options.retry).await;
                         return Err((err, self.take_session()));
                     }
                 };
                 match status.code() {
                     Code::Aborted => Err((err, self.take_session())),
                     _ => {
-                        self.rollback(opt.call_options.cancel, opt.call_options.retry).await;
+                        let _ = self.rollback(opt.call_options.cancel, opt.call_options.retry).await;
                         return Err((err, self.take_session()));
                     }
                 }
@@ -271,29 +298,30 @@ impl ReadWriteTransaction {
         };
     }
 
-    pub async fn commit(&mut self, options: CommitOptions) -> Result<CommitResponse, Status> {
+    pub(crate) async fn commit(&mut self, options: CommitOptions) -> Result<CommitResponse, Status> {
         let tx_id = self.tx_id.clone();
         let mutations = self.wb.to_vec();
         let session = self.as_mut_session();
         commit(session, mutations, TransactionId(tx_id), options).await
     }
 
-    pub async fn rollback(&mut self, cancel: Option<CancellationToken>, retry: Option<RetrySetting>) {
+    pub(crate) async fn rollback(
+        &mut self,
+        cancel: Option<CancellationToken>,
+        retry: Option<RetrySetting>,
+    ) -> Result<(), Status> {
         let request = RollbackRequest {
             transaction_id: self.tx_id.clone(),
             session: self.get_session_name(),
         };
         let session = self.as_mut_session();
         let result = session.spanner_client.rollback(request, cancel, retry).await;
-        let response = session.invalidate_if_needed(result).await;
-        match response {
-            Ok(_) => {}
-            Err(e) => tracing::error!("failed to rollback transaction {:?}", e),
-        }
+        session.invalidate_if_needed(result).await?.into_inner();
+        Ok(())
     }
 }
 
-pub async fn commit(
+pub(crate) async fn commit(
     session: &mut ManagedSession,
     ms: Vec<Mutation>,
     tx: commit_request::Transaction,

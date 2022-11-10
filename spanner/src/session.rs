@@ -14,6 +14,7 @@ use crate::apiv1::spanner_client::{ping_query_request, Client};
 
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::{Code, Status};
+use google_cloud_gax::retry::TryAs;
 use tokio::sync::broadcast;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
@@ -319,6 +320,15 @@ pub enum SessionError {
     FailedToCreateSession,
     #[error(transparent)]
     GRPC(#[from] Status),
+}
+
+impl TryAs<Status> for SessionError {
+    fn try_as(&self) -> Option<&Status> {
+        match self {
+            SessionError::GRPC(e) => Some(e),
+            _ => None,
+        }
+    }
 }
 
 impl SessionManager {

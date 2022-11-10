@@ -203,10 +203,7 @@ pub(crate) fn create_signed_buffer(
         header_names.join(";")
     };
 
-    let timestamp = now
-        .to_rfc3339_opts(SecondsFormat::Secs, true)
-        .replace('-', "")
-        .replace(':', "");
+    let timestamp = now.to_rfc3339_opts(SecondsFormat::Secs, true).replace(['-', ':'], "");
     let credential_scope = format!("{}/auto/storage/goog4_request", now.format("%Y%m%d"));
 
     // append query parameters

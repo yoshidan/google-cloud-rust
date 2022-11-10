@@ -128,6 +128,15 @@ pub enum RunInTxError {
     Any(#[from] anyhow::Error),
 }
 
+impl From<TxError> for RunInTxError {
+    fn from(err: TxError) -> Self {
+        match err {
+            TxError::GRPC(err) => RunInTxError::GRPC(err),
+            TxError::InvalidSession(err) => RunInTxError::InvalidSession(err),
+        }
+    }
+}
+
 impl TryAs<Status> for RunInTxError {
     fn try_as(&self) -> Option<&Status> {
         match self {
@@ -451,7 +460,7 @@ impl Client {
     /// more details.
     /// ```
     /// use google_cloud_spanner::mutation::update;
-    /// use google_cloud_spanner::key::Key;
+    /// use google_cloud_spanner::key::{Key, all_keys};
     /// use google_cloud_spanner::value::Timestamp;
     /// use google_cloud_spanner::client::RunInTxError;
     /// use google_cloud_spanner::client::Client;
@@ -466,11 +475,11 @@ impl Client {
     ///             // The transaction function will be called again if the error code
     ///             // of this error is Aborted. The backend may automatically abort
     ///             // any read/write transaction if it detects a deadlock or other problems.
-    ///             let key = Key::new(&"user1");
+    ///             let key = all_keys();
     ///             let mut reader = tx.read("UserItem", &["UserId", "ItemId", "Quantity"], key).await?;
     ///             let mut ms = vec![];
     ///             while let Some(row) = reader.next().await? {
-    ///                 let user_id = row.column_by_name::<i64>("UserId")?;
+    ///                 let user_id = row.column_by_name::<String>("UserId")?;
     ///                 let item_id = row.column_by_name::<i64>("ItemId")?;
     ///                 let quantity = row.column_by_name::<i64>("Quantity")? + 1;
     ///                 let m = update("UserItem", &["Quantity"], &[&user_id, &item_id, &quantity]);
@@ -544,6 +553,59 @@ impl Client {
             session,
         )
         .await
+    }
+
+    /// begin_read_write_transaction creates new ReadWriteTransaction.
+    /// ```
+    /// use google_cloud_spanner::mutation::update;
+    /// use google_cloud_spanner::key::{Key, all_keys};
+    /// use google_cloud_spanner::value::Timestamp;
+    /// use google_cloud_spanner::client::RunInTxError;
+    /// use google_cloud_spanner::client::Client;
+    /// use google_cloud_spanner::reader::AsyncIterator;
+    /// use google_cloud_spanner::transaction_rw::ReadWriteTransaction;
+    /// use google_cloud_googleapis::spanner::v1::execute_batch_dml_request::Statement;
+    /// use google_cloud_spanner::retry::TransactionRetry;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), anyhow::Error> {
+    ///     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
+    ///     let client = Client::new(DATABASE).await?;
+    ///     let retry = &mut TransactionRetry::new();
+    ///     loop {
+    ///         let tx = &mut client.begin_read_write_transaction().await?;
+    ///
+    ///         let result = run_in_transaction(tx).await;
+    ///
+    ///         // try to commit or rollback transaction.
+    ///         match tx.end(result, None).await {
+    ///             Ok((_commit_timestamp, success)) => return Ok(success),
+    ///             Err(err) => retry.next(err).await? // check retry
+    ///         }
+    ///     }
+    ///     Ok(())
+    /// }
+    ///
+    /// async fn run_in_transaction(tx: &mut ReadWriteTransaction) -> Result<(), RunInTxError> {
+    ///     let key = all_keys();
+    ///     let mut reader = tx.read("UserItem", &["UserId", "ItemId", "Quantity"], key).await?;
+    ///     let mut ms = vec![];
+    ///     while let Some(row) = reader.next().await? {
+    ///         let user_id = row.column_by_name::<String>("UserId")?;
+    ///         let item_id = row.column_by_name::<i64>("ItemId")?;
+    ///         let quantity = row.column_by_name::<i64>("Quantity")? + 1;
+    ///         let m = update("UserItem", &["UserId", "ItemId", "Quantity"], &[&user_id, &item_id, &quantity]);
+    ///         ms.push(m);
+    ///     }
+    ///     tx.buffer_write(ms);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn begin_read_write_transaction(&self) -> Result<ReadWriteTransaction, TxError> {
+        let session = self.get_session().await?;
+        ReadWriteTransaction::begin(session, ReadWriteTransactionOption::default().begin_options)
+            .await
+            .map_err(|e| e.status.into())
     }
 
     /// Get open session count.

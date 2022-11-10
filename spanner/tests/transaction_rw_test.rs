@@ -67,7 +67,7 @@ async fn test_mutation_and_statement() {
         tx.update( stmt2).await
     }.await;
 
-    let result = tx.finish(result, None).await;
+    let result = tx.end(result, None).await;
     let commit_timestamp = match result {
         Ok(s) => {
             assert!(s.0.is_some());
@@ -76,7 +76,7 @@ async fn test_mutation_and_statement() {
             println!("commit time stamp is {}", naive);
             naive
         }
-        Err(e) => panic!("error {:?}", e.0),
+        Err(e) => panic!("error {:?}", e),
     };
 
     let ts = cr.commit_timestamp.as_ref().unwrap();
@@ -141,7 +141,7 @@ async fn test_rollback() {
     }
     .await;
 
-    let _ = tx.finish(result, None).await;
+    let _ = tx.end(result, None).await;
     let session = create_session().await;
     let mut tx = read_only_transaction(session).await;
     let reader = tx.read("User", &user_columns(), Key::new(&past_user)).await.unwrap();
@@ -178,9 +178,9 @@ async fn assert_data(
     .await;
 
     // commit or rollback is required for rw transaction
-    let rows = match tx.finish(result, None).await {
+    let rows = match tx.end(result, None).await {
         Ok(s) => s.1,
-        Err(e) => panic!("tx error {:?}", e.0),
+        Err(e) => panic!("tx error {:?}", e),
     };
 
     assert_eq!(1, rows.len());

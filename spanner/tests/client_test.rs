@@ -8,6 +8,8 @@ use chrono::{DateTime, TimeZone, Utc};
 use common::*;
 use google_cloud_spanner::key::Key;
 
+use google_cloud_gax::grpc::{Code, Status};
+use google_cloud_spanner::retry::TransactionRetry;
 use google_cloud_spanner::value::Timestamp;
 use serial_test::serial;
 
@@ -164,5 +166,33 @@ async fn test_batch_read_only_transaction() -> Result<(), anyhow::Error> {
     ));
     let rows = execute_partitioned_query(&mut tx, stmt).await;
     assert_eq!(20000, rows.len());
+    Ok(())
+}
+
+#[tokio::test]
+#[serial]
+async fn test_begin_read_write_transaction_retry() -> Result<(), anyhow::Error> {
+    std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
+    let client = Client::new(DATABASE).await.context("error")?;
+
+    let tx = &mut client.begin_read_write_transaction().await?;
+    let retry = &mut TransactionRetry::new();
+    let mut retry_count = 0;
+    loop {
+        let result: Result<(), Status> = Err(Status::new(Code::Aborted, "test"));
+        match tx.end(result, None).await {
+            Ok(_) => {
+                unreachable!("must never success");
+            }
+            Err(err) => {
+                if retry.next(err).await.is_err() {
+                    break;
+                } else {
+                    retry_count += 1;
+                }
+            }
+        }
+    }
+    assert_eq!(retry_count, 5);
     Ok(())
 }
