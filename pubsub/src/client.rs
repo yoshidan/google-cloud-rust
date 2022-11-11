@@ -245,6 +245,7 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
+    use google_cloud_auth::{Project, ProjectInfo};
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
     use serial_test::serial;
     use std::collections::HashMap;
@@ -273,7 +274,10 @@ mod tests {
 
     async fn create_client() -> Client {
         std::env::set_var("PUBSUB_EMULATOR_HOST", "localhost:8681");
-        Client::default().await.unwrap()
+
+        Client::new(Project::FromMetadataServer(ProjectInfo {
+            project_id: None,
+        }), Default::default()).await.unwrap()
     }
 
     async fn do_publish_and_subscribe(ordering_key: &str, bulk: bool) -> Result<(), anyhow::Error> {
