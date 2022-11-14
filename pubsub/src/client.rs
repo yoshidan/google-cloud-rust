@@ -14,26 +14,63 @@ use google_cloud_googleapis::pubsub::v1::{
 };
 
 #[derive(Debug)]
+enum ProjectOptions {
+    Emulated(Option<String>),
+    Project(Project),
+    Default(Option<Project>, Option<String>),
+}
+
+#[derive(Debug)]
 pub struct ClientConfig {
     pub pool_size: Option<usize>,
-    /// The default project is determined by credentials.
-    /// - If the GOOGLE_APPLICATION_CREDENTIALS is specified the project_id is from credentials.
-    /// - If the server is running on CGP the project_id is from metadata server
-    /// - If the PUBSUB_EMULATOR_HOST is specified the project_id is 'local-project'
-    pub project_id: Option<String>,
+
+    project: ProjectOptions,
 
     /// Overriding service endpoint
     pub endpoint: String,
 }
 
+/// ClientConfigs created by default will prefer to use `PUBSUB_EMULATOR_HOST` if set and if not
+/// set will call ```google_cloud_auth::project``` to get the project.
 impl Default for ClientConfig {
     fn default() -> Self {
         Self {
             pool_size: Some(4),
-            project_id: None,
+            project: ProjectOptions::Default(None, std::env::var("PUBSUB_EMULATOR_HOST").ok()),
             endpoint: PUBSUB.to_string(),
         }
     }
+}
+
+impl ClientConfig {
+
+    /// When creating a client with this configuration, the client will prefer to use
+    /// `PUBSUB_EMULATOR_HOST` if specified otherwise it'll use the supplied project.
+    pub fn emulate_or(project: Project) -> Self {
+        Self {
+            project: ProjectOptions::Default(Some(project), std::env::var("PUBSUB_EMULATOR_HOST").ok()),
+            ..Default::default()
+        }
+    }
+
+    /// When creating a client with this configuration, the client will only continue if
+    /// `PUBSUB_EMULATOR_HOST` is set.
+    pub fn emulate() -> Self {
+        Self {
+            project: ProjectOptions::Emulated(std::env::var("PUBSUB_EMULATOR_HOST").ok()),
+            ..Default::default()
+        }
+    }
+
+    /// When creating a client with this configuration, the client will only continue with the
+    /// specified project and will never use the the emulator, even if set.
+    pub fn project(project: Project) -> Self {
+        Self {
+            project: ProjectOptions::Project(project),
+            ..Default::default()
+        }
+    }
+
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -44,6 +81,8 @@ pub enum Error {
     GAX(#[from] google_cloud_gax::conn::Error),
     #[error("invalid project_id")]
     ProjectIdNotFound,
+    #[error("PUBSUB_EMULATOR_HOST not set")]
+    EmulatorHostNotSet,
 }
 
 /// Client is a Google Pub/Sub client scoped to a single project.
@@ -60,28 +99,40 @@ pub struct Client {
 impl Client {
     /// default creates a default Pub/Sub client.
     pub async fn default() -> Result<Self, Error> {
-        Self::new(google_cloud_auth::project().await?, Default::default()).await
+        Self::new(Default::default()).await
     }
 
-    /// new creates a Pub/Sub client.
-    pub async fn new(project: Project, config: ClientConfig) -> Result<Self, Error> {
+    /// new creates a Pub/Sub client. See [`ClientConfig`] for more information.
+    pub async fn new(config: ClientConfig) -> Result<Self, Error> {
         let pool_size = config.pool_size.unwrap_or_default();
-        let environment = match std::env::var("PUBSUB_EMULATOR_HOST") {
-            Ok(host) => Environment::Emulator(host),
-            Err(_) => Environment::GoogleCloud(project),
+
+        let (project_id, environment) = match config.project {
+            ProjectOptions::Emulated(host) => {
+                let host = host.ok_or(Error::EmulatorHostNotSet)?;
+                (host.clone(), Environment::Emulator(host))
+            }
+            ProjectOptions::Project(project) => {
+                (project.project_id().ok_or(Error::ProjectIdNotFound)?.to_string(), Environment::GoogleCloud(project))
+            }
+            ProjectOptions::Default(project, emulator_host) => {
+                match emulator_host {
+                    Some(host) => (host.clone(), Environment::Emulator(host)),
+                    None => {
+                        let project = match project {
+                            Some(project) => project,
+                            None => google_cloud_auth::project().await?,
+                        };
+                        (project.project_id().ok_or(Error::ProjectIdNotFound)?.to_string(), Environment::GoogleCloud(project))
+                    }
+                }
+            }
         };
+
         let pubc =
             PublisherClient::new(ConnectionManager::new(pool_size, &environment, config.endpoint.as_str()).await?);
         let subc =
             SubscriberClient::new(ConnectionManager::new(pool_size, &environment, config.endpoint.as_str()).await?);
 
-        let project_id = match config.project_id {
-            Some(project_id) => project_id,
-            None => match environment {
-                Environment::GoogleCloud(project) => project.project_id().ok_or(Error::ProjectIdNotFound)?.to_string(),
-                Environment::Emulator(_) => "local-project".to_string(),
-            },
-        };
         Ok(Self { project_id, pubc, subc })
     }
 
@@ -245,7 +296,6 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use google_cloud_auth::{Project, ProjectInfo};
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
     use serial_test::serial;
     use std::collections::HashMap;
@@ -275,9 +325,7 @@ mod tests {
     async fn create_client() -> Client {
         std::env::set_var("PUBSUB_EMULATOR_HOST", "localhost:8681");
 
-        Client::new(Project::FromMetadataServer(ProjectInfo {
-            project_id: None,
-        }), Default::default()).await.unwrap()
+        Client::new(Default::default()).await.unwrap()
     }
 
     async fn do_publish_and_subscribe(ordering_key: &str, bulk: bool) -> Result<(), anyhow::Error> {
