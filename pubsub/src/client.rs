@@ -14,17 +14,18 @@ use google_cloud_googleapis::pubsub::v1::{
 };
 
 #[derive(Debug)]
-enum ProjectOptions {
-    Emulated(Option<String>),
-    Project(Project),
-    Default(Option<Project>, Option<String>),
+pub enum ProjectOptions {
+    Emulated(String),
+    Project(Option<Project>),
 }
 
 #[derive(Debug)]
 pub struct ClientConfig {
     pub pool_size: Option<usize>,
 
-    project: ProjectOptions,
+    pub project_id: Option<String>,
+
+    pub project: ProjectOptions,
 
     /// Overriding service endpoint
     pub endpoint: String,
@@ -36,41 +37,21 @@ impl Default for ClientConfig {
     fn default() -> Self {
         Self {
             pool_size: Some(4),
-            project: ProjectOptions::Default(None, std::env::var("PUBSUB_EMULATOR_HOST").ok()),
+            project: std::env::var("PUBSUB_EMULATOR_HOST")
+                .map(|host| ProjectOptions::Emulated(host))
+                .unwrap_or_else(|_| ProjectOptions::Project(None)),
+            project_id: None,
             endpoint: PUBSUB.to_string(),
         }
     }
 }
 
 impl ClientConfig {
-
-    /// When creating a client with this configuration, the client will prefer to use
-    /// `PUBSUB_EMULATOR_HOST` if specified otherwise it'll use the supplied project.
-    pub fn emulate_or(project: Project) -> Self {
-        Self {
-            project: ProjectOptions::Default(Some(project), std::env::var("PUBSUB_EMULATOR_HOST").ok()),
-            ..Default::default()
+    pub fn project(&mut self, project: Project) {
+        if let ProjectOptions::Project(_) = self.project {
+            self.project = ProjectOptions::Project(Some(project))
         }
     }
-
-    /// When creating a client with this configuration, the client will only continue if
-    /// `PUBSUB_EMULATOR_HOST` is set.
-    pub fn emulate() -> Self {
-        Self {
-            project: ProjectOptions::Emulated(std::env::var("PUBSUB_EMULATOR_HOST").ok()),
-            ..Default::default()
-        }
-    }
-
-    /// When creating a client with this configuration, the client will only continue with the
-    /// specified project and will never use the the emulator, even if set.
-    pub fn project(project: Project) -> Self {
-        Self {
-            project: ProjectOptions::Project(project),
-            ..Default::default()
-        }
-    }
-
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -106,23 +87,16 @@ impl Client {
     pub async fn new(config: ClientConfig) -> Result<Self, Error> {
         let pool_size = config.pool_size.unwrap_or_default();
 
-        let (project_id, environment) = match config.project {
+        let environment = match config.project {
             ProjectOptions::Emulated(host) => {
-                let host = host.ok_or(Error::EmulatorHostNotSet)?;
-                (host.clone(), Environment::Emulator(host))
+                Environment::Emulator(host)
             }
             ProjectOptions::Project(project) => {
-                (project.project_id().ok_or(Error::ProjectIdNotFound)?.to_string(), Environment::GoogleCloud(project))
-            }
-            ProjectOptions::Default(project, emulator_host) => {
-                match emulator_host {
-                    Some(host) => (host.clone(), Environment::Emulator(host)),
+                match project {
+                    Some(project) => Environment::GoogleCloud(project),
                     None => {
-                        let project = match project {
-                            Some(project) => project,
-                            None => google_cloud_auth::project().await?,
-                        };
-                        (project.project_id().ok_or(Error::ProjectIdNotFound)?.to_string(), Environment::GoogleCloud(project))
+                        let project = google_cloud_auth::project().await?;
+                        Environment::GoogleCloud(project)
                     }
                 }
             }
@@ -132,6 +106,14 @@ impl Client {
             PublisherClient::new(ConnectionManager::new(pool_size, &environment, config.endpoint.as_str()).await?);
         let subc =
             SubscriberClient::new(ConnectionManager::new(pool_size, &environment, config.endpoint.as_str()).await?);
+
+        let project_id = match config.project_id {
+            Some(project_id) => project_id,
+            None => match environment {
+                Environment::GoogleCloud(project) => project.project_id().ok_or(Error::ProjectIdNotFound)?.to_string(),
+                Environment::Emulator(_) => "local-project".to_string(),
+            },
+        };
 
         Ok(Self { project_id, pubc, subc })
     }
