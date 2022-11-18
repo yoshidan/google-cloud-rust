@@ -65,7 +65,7 @@ impl Client {
     pub async fn new(config: ClientConfig) -> Result<Self, Error> {
         let project = match config.project {
             Some(project) => project,
-            None => google_cloud_auth::project().await,
+            None => google_cloud_auth::project().await?,
         };
         let ts = create_token_source_from_project(
             &project,
