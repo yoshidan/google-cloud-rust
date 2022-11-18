@@ -66,14 +66,14 @@ pub enum Environment {
 }
 
 impl Environment {
-    pub async fn from_project(project: ProjectOptions) -> Self {
-        match project {
+    pub async fn from_project(project: ProjectOptions) -> Result<Self, google_cloud_auth::error::Error> {
+        Ok(match project {
             ProjectOptions::Emulated(host) => Environment::Emulator(host),
             ProjectOptions::Project(project) => match project {
                 Some(project) => Environment::GoogleCloud(project),
                 None => Environment::GoogleCloud(google_cloud_auth::project().await?),
             },
-        }
+        })
     }
 }
 
