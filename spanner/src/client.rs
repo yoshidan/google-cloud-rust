@@ -9,7 +9,6 @@ use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
 use crate::value::{Timestamp, TimestampBound};
 
-use crate::client::ProjectOptions::Emulated;
 use crate::retry::TransactionRetrySetting;
 use google_cloud_auth::Project;
 use google_cloud_gax::cancel::CancellationToken;
