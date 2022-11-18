@@ -38,7 +38,9 @@ impl Deref for Client {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct ClientConfig {
+    pub project: Option<Project>,
     pub storage_endpoint: String,
     pub service_account_endpoint: String,
 }
@@ -46,6 +48,7 @@ pub struct ClientConfig {
 impl Default for ClientConfig {
     fn default() -> Self {
         Self {
+            project: None,
             storage_endpoint: "https://storage.googleapis.com".to_string(),
             service_account_endpoint: "https://iamcredentials.googleapis.com".to_string(),
         }
@@ -53,16 +56,19 @@ impl Default for ClientConfig {
 }
 
 impl Client {
-    /// New client
+    /// Default client
     pub async fn default() -> Result<Self, Error> {
-        let project = google_cloud_auth::project().await?;
-        Self::new(&project, ClientConfig::default()).await
+        Self::new(ClientConfig::default()).await
     }
 
-    /// New client from project
-    pub async fn new(project: &google_cloud_auth::Project, config: ClientConfig) -> Result<Self, Error> {
+    /// New client
+    pub async fn new(config: ClientConfig) -> Result<Self, Error> {
+        let project = match config.project {
+            Some(project) => project,
+            None => google_cloud_auth::project().await,
+        };
         let ts = create_token_source_from_project(
-            project,
+            &project,
             Config {
                 audience: None,
                 scopes: Some(&storage_client::SCOPES),

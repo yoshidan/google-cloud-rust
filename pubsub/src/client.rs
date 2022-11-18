@@ -13,13 +13,13 @@ use google_cloud_googleapis::pubsub::v1::{
     DetachSubscriptionRequest, ListSnapshotsRequest, ListSubscriptionsRequest, ListTopicsRequest, Snapshot,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ProjectOptions {
     Emulated(String),
     Project(Option<Project>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ClientConfig {
     pub pool_size: Option<usize>,
 

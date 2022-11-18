@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-spanner"
-version = "0.12.0"
+version = "0.13.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/spanner"
@@ -21,9 +21,9 @@ parking_lot = "0.12"
 base64 = "0.13"
 anyhow = "1.0"
 
-google-cloud-auth= {  version = "0.5.1", path = "../foundation/auth", default-features = false}
-google-cloud-longrunning= { version = "0.8.1", path = "../foundation/longrunning", default-features = false}
-google-cloud-gax = { version = "0.9.1", path = "../foundation/gax", default-features = false}
+google-cloud-auth= { version = "0.5.2", path = "../foundation/auth", default-features = false}
+google-cloud-longrunning= { version = "0.8.2", path = "../foundation/longrunning", default-features = false}
+google-cloud-gax = { version = "0.9.2", path = "../foundation/gax", default-features = false}
 google-cloud-googleapis = { version = "0.6.0", path = "../googleapis", features = ["spanner"]}
 
 [dev-dependencies]

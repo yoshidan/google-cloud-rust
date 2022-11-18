@@ -5,14 +5,14 @@ use tokio::fs;
 const CREDENTIALS_FILE: &str = "application_default_credentials.json";
 
 #[allow(dead_code)]
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub(crate) struct Format {
     tp: String,
     subject_token_field_name: String,
 }
 
 #[allow(dead_code)]
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct CredentialSource {
     file: String,
     url: String,
@@ -25,7 +25,7 @@ pub struct CredentialSource {
 }
 
 #[allow(dead_code)]
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct CredentialsFile {
     #[serde(rename(deserialize = "type"))]
     pub tp: String,
@@ -55,7 +55,7 @@ pub struct CredentialsFile {
 }
 
 #[allow(dead_code)]
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct Credentials {
     client_id: String,
     client_secret: String,

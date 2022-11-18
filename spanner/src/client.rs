@@ -9,7 +9,9 @@ use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
 use crate::value::{Timestamp, TimestampBound};
 
+use crate::client::ProjectOptions::Emulated;
 use crate::retry::TransactionRetrySetting;
+use google_cloud_auth::Project;
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::{Code, Status};
@@ -56,8 +58,14 @@ impl Default for ChannelConfig {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum ProjectOptions {
+    Emulated(String),
+    Project(Option<Project>),
+}
+
 /// ClientConfig has configurations for the client.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ClientConfig {
     /// SessionPoolConfig is the configuration for session pool.
     pub session_config: SessionConfig,
@@ -65,6 +73,7 @@ pub struct ClientConfig {
     pub channel_config: ChannelConfig,
     /// Overriding service endpoint
     pub endpoint: String,
+    pub project: ProjectOptions,
 }
 
 impl Default for ClientConfig {
@@ -73,6 +82,9 @@ impl Default for ClientConfig {
             channel_config: Default::default(),
             session_config: Default::default(),
             endpoint: SPANNER.to_string(),
+            project: std::env::var("SPANNER_EMULATOR_HOST")
+                .map(ProjectOptions::Emulated)
+                .unwrap_or_else(|_| ProjectOptions::Project(None)),
         };
         config.session_config.min_opened = config.channel_config.num_channels * 4;
         config.session_config.max_opened = config.channel_config.num_channels * 100;
@@ -180,9 +192,15 @@ impl Client {
             )));
         }
 
-        let environment = match std::env::var("SPANNER_EMULATOR_HOST") {
-            Ok(host) => Environment::Emulator(host),
-            Err(_) => Environment::GoogleCloud(google_cloud_auth::project().await?),
+        let environment = match config.project {
+            ProjectOptions::Emulated(host) => Environment::Emulator(host),
+            ProjectOptions::Project(project) => match project {
+                Some(project) => Environment::GoogleCloud(project),
+                None => {
+                    let project = google_cloud_auth::project().await?;
+                    Environment::GoogleCloud(project)
+                }
+            },
         };
         let pool_size = config.channel_config.num_channels as usize;
         let conn_pool = ConnectionManager::new(pool_size, &environment, config.endpoint.as_str()).await?;
