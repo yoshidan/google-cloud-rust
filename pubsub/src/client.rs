@@ -88,18 +88,14 @@ impl Client {
         let pool_size = config.pool_size.unwrap_or_default();
 
         let environment = match config.project {
-            ProjectOptions::Emulated(host) => {
-                Environment::Emulator(host)
-            }
-            ProjectOptions::Project(project) => {
-                match project {
-                    Some(project) => Environment::GoogleCloud(project),
-                    None => {
-                        let project = google_cloud_auth::project().await?;
-                        Environment::GoogleCloud(project)
-                    }
+            ProjectOptions::Emulated(host) => Environment::Emulator(host),
+            ProjectOptions::Project(project) => match project {
+                Some(project) => Environment::GoogleCloud(project),
+                None => {
+                    let project = google_cloud_auth::project().await?;
+                    Environment::GoogleCloud(project)
                 }
-            }
+            },
         };
 
         let pubc =
