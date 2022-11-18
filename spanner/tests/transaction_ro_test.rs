@@ -249,9 +249,9 @@ async fn test_many_records_struct() {
     let user_id = "user_x_6";
     let mutations = vec![create_user_mutation(user_id, &now)];
     let _ = replace_test_data(&mut session, mutations).await.unwrap();
-    let item_mutations = (0..5000).map(|x| create_user_item_mutation(user_id, x)).collect();
+    let item_mutations = (0..4500).map(|x| create_user_item_mutation(user_id, x)).collect();
     let _ = replace_test_data(&mut session, item_mutations).await.unwrap();
-    let characters_mutations = (0..5000).map(|x| create_user_character_mutation(user_id, x)).collect();
+    let characters_mutations = (0..4500).map(|x| create_user_character_mutation(user_id, x)).collect();
     let _ = replace_test_data(&mut session, characters_mutations).await.unwrap();
 
     let mut tx = read_only_transaction(session).await;
@@ -267,9 +267,9 @@ async fn test_many_records_struct() {
     assert_eq!(1, rows.len());
     let row = rows.pop().unwrap();
     let items = row.column_by_name::<Vec<UserItem>>("UserItem").unwrap();
-    assert_eq!(5000, items.len());
+    assert_eq!(4500, items.len());
     let characters = row.column_by_name::<Vec<UserCharacter>>("UserCharacter").unwrap();
-    assert_eq!(5000, characters.len());
+    assert_eq!(4500, characters.len());
 }
 
 #[tokio::test]
