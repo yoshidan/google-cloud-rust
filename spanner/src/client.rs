@@ -14,6 +14,7 @@ use google_cloud_auth::Project;
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::{Code, Status};
+use google_cloud_gax::project::ProjectOptions;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -57,12 +58,6 @@ impl Default for ChannelConfig {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum ProjectOptions {
-    Emulated(String),
-    Project(Option<Project>),
-}
-
 /// ClientConfig has configurations for the client.
 #[derive(Debug, Clone)]
 pub struct ClientConfig {
@@ -72,6 +67,7 @@ pub struct ClientConfig {
     pub channel_config: ChannelConfig,
     /// Overriding service endpoint
     pub endpoint: String,
+    /// Runtime project
     pub project: ProjectOptions,
 }
 
@@ -191,16 +187,7 @@ impl Client {
             )));
         }
 
-        let environment = match config.project {
-            ProjectOptions::Emulated(host) => Environment::Emulator(host),
-            ProjectOptions::Project(project) => match project {
-                Some(project) => Environment::GoogleCloud(project),
-                None => {
-                    let project = google_cloud_auth::project().await?;
-                    Environment::GoogleCloud(project)
-                }
-            },
-        };
+        let environment = Environment::from_project(config.project).await?;
         let pool_size = config.channel_config.num_channels as usize;
         let conn_pool = ConnectionManager::new(pool_size, &environment, config.endpoint.as_str()).await?;
         let session_manager = SessionManager::new(database, conn_pool, config.session_config).await?;
