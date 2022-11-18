@@ -38,7 +38,7 @@ impl Default for ClientConfig {
         Self {
             pool_size: Some(4),
             project: std::env::var("PUBSUB_EMULATOR_HOST")
-                .map(|host| ProjectOptions::Emulated(host))
+                .map(ProjectOptions::Emulated)
                 .unwrap_or_else(|_| ProjectOptions::Project(None)),
             project_id: None,
             endpoint: PUBSUB.to_string(),
