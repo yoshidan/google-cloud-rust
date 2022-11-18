@@ -41,6 +41,16 @@ pub enum Project {
     FromMetadataServer(ProjectInfo),
 }
 
+// Possible sensitive info in debug messages
+impl std::fmt::Debug for Project {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Project::FromFile(_) => write!(f, "Project::FromFile"),
+            Project::FromMetadataServer(_) => write!(f, "Project::FromMetadataServer"),
+        }
+    }
+}
+
 impl Project {
     pub fn project_id(&self) -> Option<&String> {
         match self {
