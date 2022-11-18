@@ -68,7 +68,7 @@ impl CommitTimestamp {
 impl Default for CommitTimestamp {
     fn default() -> Self {
         CommitTimestamp {
-            timestamp: Utc.timestamp(0, 0),
+            timestamp: Utc.timestamp_opt(0, 0).unwrap(),
         }
     }
 }

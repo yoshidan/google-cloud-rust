@@ -94,7 +94,7 @@ impl ReadOnlyTransaction {
                             selector: Some(transaction_selector::Selector::Id(tx.id)),
                         },
                     },
-                    rts: Some(Utc.timestamp(rts.seconds, rts.nanos as u32)),
+                    rts: Utc.timestamp_opt(rts.seconds, rts.nanos as u32).single(),
                 })
             }
             Err(e) => Err(e),
