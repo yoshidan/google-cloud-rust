@@ -1676,7 +1676,7 @@ impl StorageClient {
     }
 
     /// Lists the objects.
-    /// https://cloud.google.com/storage/docs/json_api/v1/projects/hmacKeys/delete
+    /// https://cloud.google.com/storage/docs/json_api/v1/objects/list
     ///
     /// ```
     /// use google_cloud_storage::client::Client;
