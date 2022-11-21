@@ -10,7 +10,7 @@ use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
 use crate::value::{Timestamp, TimestampBound};
 
 use crate::retry::TransactionRetrySetting;
-use google_cloud_auth::Project;
+
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::{Code, Status};
