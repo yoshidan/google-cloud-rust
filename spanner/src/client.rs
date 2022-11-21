@@ -11,6 +11,7 @@ use crate::value::{Timestamp, TimestampBound};
 
 use crate::retry::TransactionRetrySetting;
 
+use google_cloud_auth::Project;
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::{Code, Status};
@@ -77,13 +78,19 @@ impl Default for ClientConfig {
             channel_config: Default::default(),
             session_config: Default::default(),
             endpoint: SPANNER.to_string(),
-            project: std::env::var("SPANNER_EMULATOR_HOST")
-                .map(ProjectOptions::Emulated)
-                .unwrap_or_else(|_| ProjectOptions::Project(None)),
+            project: ProjectOptions::new("SPANNER_EMULATOR_HOST"),
         };
         config.session_config.min_opened = config.channel_config.num_channels * 4;
         config.session_config.max_opened = config.channel_config.num_channels * 100;
         config
+    }
+}
+
+impl ClientConfig {
+    pub fn project(&mut self, project: Project) {
+        if let ProjectOptions::Project(_) = self.project {
+            self.project = ProjectOptions::Project(Some(project))
+        }
     }
 }
 
