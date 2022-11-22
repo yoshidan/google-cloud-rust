@@ -10,9 +10,12 @@ use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
 use crate::value::{Timestamp, TimestampBound};
 
 use crate::retry::TransactionRetrySetting;
+
+use google_cloud_auth::Project;
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::{Code, Status};
+use google_cloud_gax::project::ProjectOptions;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -57,7 +60,7 @@ impl Default for ChannelConfig {
 }
 
 /// ClientConfig has configurations for the client.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ClientConfig {
     /// SessionPoolConfig is the configuration for session pool.
     pub session_config: SessionConfig,
@@ -65,6 +68,8 @@ pub struct ClientConfig {
     pub channel_config: ChannelConfig,
     /// Overriding service endpoint
     pub endpoint: String,
+    /// Runtime project
+    pub project: ProjectOptions,
 }
 
 impl Default for ClientConfig {
@@ -73,10 +78,19 @@ impl Default for ClientConfig {
             channel_config: Default::default(),
             session_config: Default::default(),
             endpoint: SPANNER.to_string(),
+            project: ProjectOptions::new("SPANNER_EMULATOR_HOST"),
         };
         config.session_config.min_opened = config.channel_config.num_channels * 4;
         config.session_config.max_opened = config.channel_config.num_channels * 100;
         config
+    }
+}
+
+impl ClientConfig {
+    pub fn project(&mut self, project: Project) {
+        if let ProjectOptions::Project(_) = self.project {
+            self.project = ProjectOptions::Project(Some(project))
+        }
     }
 }
 
@@ -180,10 +194,7 @@ impl Client {
             )));
         }
 
-        let environment = match std::env::var("SPANNER_EMULATOR_HOST") {
-            Ok(host) => Environment::Emulator(host),
-            Err(_) => Environment::GoogleCloud(google_cloud_auth::project().await?),
-        };
+        let environment = Environment::from_project(config.project).await?;
         let pool_size = config.channel_config.num_channels as usize;
         let conn_pool = ConnectionManager::new(pool_size, &environment, config.endpoint.as_str()).await?;
         let session_manager = SessionManager::new(database, conn_pool, config.session_config).await?;

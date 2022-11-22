@@ -1,5 +1,6 @@
 use std::sync::atomic::{AtomicI64, Ordering};
 
+use crate::project::ProjectOptions;
 use google_cloud_auth::token_source::TokenSource;
 use google_cloud_auth::{create_token_source_from_project, Config, Project};
 use http::header::AUTHORIZATION;
@@ -62,6 +63,18 @@ pub enum Error {
 pub enum Environment {
     Emulator(String),
     GoogleCloud(Project),
+}
+
+impl Environment {
+    pub async fn from_project(project: ProjectOptions) -> Result<Self, google_cloud_auth::error::Error> {
+        Ok(match project {
+            ProjectOptions::Emulated(host) => Environment::Emulator(host),
+            ProjectOptions::Project(project) => match project {
+                Some(project) => Environment::GoogleCloud(project),
+                None => Environment::GoogleCloud(google_cloud_auth::project().await?),
+            },
+        })
+    }
 }
 
 #[derive(Debug)]

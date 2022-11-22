@@ -8,25 +8,20 @@ use crate::subscription::{Subscription, SubscriptionConfig};
 use crate::topic::{Topic, TopicConfig};
 use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::Status;
+use google_cloud_gax::project::ProjectOptions;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::{
     DetachSubscriptionRequest, ListSnapshotsRequest, ListSubscriptionsRequest, ListTopicsRequest, Snapshot,
 };
 
-#[derive(Debug)]
-pub enum ProjectOptions {
-    Emulated(String),
-    Project(Option<Project>),
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ClientConfig {
+    /// gRPC channel pool size
     pub pool_size: Option<usize>,
-
+    /// Pub/Sub project_id
     pub project_id: Option<String>,
-
+    /// Runtime project info
     pub project: ProjectOptions,
-
     /// Overriding service endpoint
     pub endpoint: String,
 }
@@ -37,9 +32,7 @@ impl Default for ClientConfig {
     fn default() -> Self {
         Self {
             pool_size: Some(4),
-            project: std::env::var("PUBSUB_EMULATOR_HOST")
-                .map(ProjectOptions::Emulated)
-                .unwrap_or_else(|_| ProjectOptions::Project(None)),
+            project: ProjectOptions::new("PUBSUB_EMULATOR_HOST"),
             project_id: None,
             endpoint: PUBSUB.to_string(),
         }
@@ -62,8 +55,6 @@ pub enum Error {
     GAX(#[from] google_cloud_gax::conn::Error),
     #[error("invalid project_id")]
     ProjectIdNotFound,
-    #[error("PUBSUB_EMULATOR_HOST not set")]
-    EmulatorHostNotSet,
 }
 
 /// Client is a Google Pub/Sub client scoped to a single project.
@@ -87,16 +78,7 @@ impl Client {
     pub async fn new(config: ClientConfig) -> Result<Self, Error> {
         let pool_size = config.pool_size.unwrap_or_default();
 
-        let environment = match config.project {
-            ProjectOptions::Emulated(host) => Environment::Emulator(host),
-            ProjectOptions::Project(project) => match project {
-                Some(project) => Environment::GoogleCloud(project),
-                None => {
-                    let project = google_cloud_auth::project().await?;
-                    Environment::GoogleCloud(project)
-                }
-            },
-        };
+        let environment = Environment::from_project(config.project).await?;
 
         let pubc =
             PublisherClient::new(ConnectionManager::new(pool_size, &environment, config.endpoint.as_str()).await?);

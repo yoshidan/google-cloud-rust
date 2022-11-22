@@ -32,10 +32,12 @@ impl Config<'_> {
     }
 }
 
+#[derive(Clone)]
 pub struct ProjectInfo {
     pub project_id: Option<String>,
 }
 
+#[derive(Clone)]
 pub enum Project {
     FromFile(Box<CredentialsFile>),
     FromMetadataServer(ProjectInfo),
