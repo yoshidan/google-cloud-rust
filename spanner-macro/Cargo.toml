@@ -1,0 +1,24 @@
+[package]
+name = "google-cloud-spanner-macro"
+version = "0.1.0"
+authors = ["yoshidan <naohiro.y@gmail.com>"]
+edition = "2021"
+repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/macro/spanner"
+keywords = ["gcp","spanner","googleapis","google-cloud-rust"]
+license = "MIT"
+readme = "README.md"
+description = "Google Cloud Platform spanner client library macro."
+documentation = "https://docs.rs/google-cloud-spanner/latest/google_cloud_spanner_macro/"
+
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+proc-macro = true
+
+[dependencies]
+google-cloud-spanner = { path = "../spanner"}
+quote = "1.0"
+syn = { version="1.0", features=["full"] }
+
+[dev-dependencies]
+chrono = "0.4"
