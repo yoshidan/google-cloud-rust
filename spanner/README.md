@@ -53,7 +53,6 @@ Create `Client` and call transaction API same as [Google Cloud Go](https://githu
 
 ## Related project
 * [google-cloud-spanner-derive](../spanner-derive)
-* [nene](https://github.com/yoshidan/nene)
 
 ## Performance 
 
