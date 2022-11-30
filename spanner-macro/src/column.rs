@@ -19,7 +19,7 @@ impl<'a> Column<'a> {
             Some(v) => v.to_string(),
             None => {
                 let field_var = self.field.ident.as_ref().unwrap();
-                field_var.unraw().to_string().to_case(Case::Title)
+                field_var.unraw().to_string().to_case(Case::Pascal)
             }
         }
     }

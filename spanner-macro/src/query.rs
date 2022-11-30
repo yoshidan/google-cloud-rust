@@ -28,7 +28,7 @@ pub(crate) fn generate_query_methods(item: ItemStruct) -> impl ToTokens {
             }
         }
 
-        impl std::convert::TryFrom<Row> for #struct_name {
+        impl TryFrom<Row> for #struct_name {
             type Error = RowError;
             fn try_from(s: Row) -> Result<Self, RowError> {
                 Ok(#struct_name {

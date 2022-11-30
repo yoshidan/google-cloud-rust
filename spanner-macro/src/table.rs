@@ -1,6 +1,6 @@
 use syn::ItemStruct;
 
-use quote::{quote, ToTokens};
+use quote::{format_ident, quote, ToTokens};
 
 use crate::column::Column;
 
@@ -14,17 +14,17 @@ pub(crate) fn generate_table_methods(item: ItemStruct) -> impl ToTokens {
         let column = Column::from(field);
         let column_name = column.name();
         let ty = &field.ty;
-        let mut get_field_type = quote! { #ty };
+        let mut get_field_type = quote! { <#ty> };
         let mut to_kind_field_type = quote! { self.#field_var };
         if column.commit_timestamp {
             get_field_type = quote! { CommitTimestamp };
             to_kind_field_type = quote! { CommitTimestamp::new() };
         }
         to_kinds_fields.push(quote! {
-            (stringify!(#column_name), #to_kind_field_type.to_kind())
+            (#column_name, #to_kind_field_type.to_kind())
         });
         get_types_fields.push(quote! {
-            (stringify!(#column_name), #get_field_type::get_type())
+            (#column_name, #get_field_type::get_type())
         });
     }
 

@@ -7,7 +7,7 @@ pub(crate) struct Symbol(&'static str);
 
 pub(crate) const COMMIT_TIMESTAMP: Symbol = Symbol("commitTimestamp");
 pub(crate) const COLUMN_NAME: Symbol = Symbol("name");
-pub(crate) const COLUMN: Symbol = Symbol("colmun");
+pub(crate) const COLUMN: Symbol = Symbol("spanner");
 
 impl PartialEq<Symbol> for Ident {
     fn eq(&self, word: &Symbol) -> bool {

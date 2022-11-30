@@ -13,6 +13,12 @@ pub struct SpannerNumeric {
     pub inner: String,
 }
 
+impl Default for SpannerNumeric {
+    fn default() -> Self {
+        Self::new("0")
+    }
+}
+
 impl SpannerNumeric {
     pub fn new(value: impl Into<String>) -> Self {
         Self { inner: value.into() }
