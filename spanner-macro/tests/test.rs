@@ -1,13 +1,13 @@
-use google_cloud_spanner_macro::Spanner;
+use google_cloud_spanner_macro::Table;
 
-#[derive(Spanner)]
-pub struct Table {
+#[derive(Table)]
+pub struct User {
     pub id: String
 }
 
 #[test]
-fn test_spanner_derive() {
-    let test = Table{
+fn test_table_derive() {
+    let test = User{
         id: "test".to_string(),
     };
 }
