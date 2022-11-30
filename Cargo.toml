@@ -8,5 +8,5 @@ members = [
     "spanner",
     "pubsub",
     "storage",
-    "spanner-macro"
+    "spanner-derive"
 ]

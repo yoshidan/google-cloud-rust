@@ -1,6 +1,6 @@
 use syn::ItemStruct;
 
-use quote::{format_ident, quote, ToTokens};
+use quote::{quote, ToTokens};
 
 use crate::column::Column;
 
