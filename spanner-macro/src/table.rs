@@ -2,26 +2,23 @@ use proc_macro::{TokenStream};
 use convert_case::{Case, Casing};
 use syn::{Error, Ident, ItemStruct, parse_macro_input};
 use syn::ext::IdentExt;
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::Lit::Str;
 use syn::Meta::{List, NameValue, Path};
 use syn::NestedMeta::Meta;
 use syn::spanned::Spanned;
 use crate::column::Column;
 use crate::symbol::{COLUMN, COLUMN_NAME, COMMIT_TIMESTAMP};
-use crate::util::wrap_in_dummy_mod;
 
-pub(crate) fn generate_table_methods(input: TokenStream) -> TokenStream {
-    let item = parse_macro_input!(input as ItemStruct);
+pub(crate) fn generate_table_methods(item: ItemStruct) -> impl ToTokens {
     let struct_name = item.ident;
 
     let mut to_kinds_fields = Vec::with_capacity(item.fields.len());
     let mut get_types_fields = Vec::with_capacity(item.fields.len());
-    let mut try_from_struct_fields = Vec::with_capacity(item.fields.len());
     for field in &item.fields {
         let field_var = field.ident.as_ref().unwrap();
-        let column = Column::from_ast(&field);
-        let column_name = column.column_name.unwrap_or_else(|| field_var.unraw().to_string().to_case(Case::Title));
+        let column = Column::from(field);
+        let column_name = column.name();
         let ty = &field.ty;
         let mut get_field_type  =  quote! { #ty };
         let mut to_kind_field_type = quote! { self.#field_var };
@@ -35,12 +32,9 @@ pub(crate) fn generate_table_methods(input: TokenStream) -> TokenStream {
         get_types_fields.push(quote! {
             (stringify!(#column_name), #get_field_type::get_type())
         });
-        try_from_struct_fields.push(quote! {
-            #field_var: s.column_by_name(#column_name)?
-        });
     }
 
-    let gen = quote! {
+quote! {
 
         impl ToStruct for #struct_name  {
 
@@ -59,29 +53,5 @@ pub(crate) fn generate_table_methods(input: TokenStream) -> TokenStream {
                 ]
             }
         }
-
-        impl TryFromStruct for #struct_name {
-            fn try_from_struct(s: Struct<'_>) -> Result<Self, RowError> {
-                Ok(#struct_name {
-                    #(
-                        #try_from_struct_fields,
-                    )*
-                })
-            }
-        }
-
-        impl std::convert::TryFrom<Row> for #struct_name {
-            type Error = RowError;
-            fn try_from(s: Row) -> Result<Self, RowError> {
-                Ok(#struct_name {
-                    #(
-                        #try_from_struct_fields,
-                    )*
-                })
-            }
-        }
-
-    };
-
-    wrap_in_dummy_mod(gen)
+    }
 }

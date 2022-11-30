@@ -1,19 +1,34 @@
-use syn::Error;
+use convert_case::{Case, Casing};
+use syn::{Error, Field};
+use syn::ext::IdentExt;
 use syn::Lit::Str;
 use syn::Meta::{List, NameValue, Path};
 use syn::NestedMeta::Meta;
 use syn::spanned::Spanned;
 use crate::symbol::{COLUMN, COLUMN_NAME, COMMIT_TIMESTAMP};
 
-pub(crate) struct Column {
+pub(crate) struct Column<'a> {
+    field: &'a Field,
     pub column_name: Option<String>,
     pub commit_timestamp : bool
 }
 
-impl Column {
+impl <'a> Column<'a> {
+   pub(crate) fn name(&self) -> String {
+       match &self.column_name {
+           Some(v) => v.to_string(),
+           None => {
+               let field_var = self.field.ident.as_ref().unwrap();
+               field_var.unraw().to_string().to_case(Case::Title)
+           }
+       }
+   }
+}
+
+impl <'a> From<&'a Field> for Column<'a> {
     /// Extract out the `#[column(...)]` attributes from a struct field.
-    pub(crate) fn from_ast(field: &syn::Field) -> Self {
-        let mut commit_timestamp= false;
+    fn from(field: &'a Field) -> Self {
+        let mut commit_timestamp = false;
         let mut column_name = None;
         for meta_item in field.attrs.iter().flat_map(|attr| get_meta_items(attr).unwrap()) {
             match &meta_item {
@@ -32,12 +47,13 @@ impl Column {
         }
 
         Self {
+            field,
             commit_timestamp,
             column_name
         }
     }
-}
 
+}
 
 fn get_meta_items(attr: &syn::Attribute) -> Result<Vec<syn::NestedMeta>, Error> {
     if attr.path != COLUMN {
