@@ -1,5 +1,6 @@
 mod table;
 mod symbol;
+mod util;
 
 use proc_macro::{TokenStream};
 

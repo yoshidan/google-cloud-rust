@@ -3,11 +3,11 @@ use std::fmt::Display;
 use syn::{Ident, Path};
 
 #[derive(Copy, Clone)]
-pub struct Symbol(&'static str);
+pub(crate) struct Symbol(&'static str);
 
-pub const COMMIT_TIMESTAMP: Symbol = Symbol("commitTimestamp");
-pub const COLUMN_NAME: Symbol = Symbol("name");
-pub const COLUMN : Symbol = Symbol("colmun");
+pub(crate) const COMMIT_TIMESTAMP: Symbol = Symbol("commitTimestamp");
+pub(crate) const COLUMN_NAME: Symbol = Symbol("name");
+pub(crate) const COLUMN : Symbol = Symbol("colmun");
 
 impl PartialEq<Symbol> for Ident {
     fn eq(&self, word: &Symbol) -> bool {
