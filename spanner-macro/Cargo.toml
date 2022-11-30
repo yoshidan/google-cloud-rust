@@ -18,6 +18,7 @@ proc-macro = true
 [dependencies]
 quote = "1.0"
 syn = { version="1.0", features=["full"] }
+convert_case = "0.6.0"
 
 [dev-dependencies]
 google-cloud-spanner = { path = "../spanner"}
