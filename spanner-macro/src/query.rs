@@ -1,13 +1,7 @@
-use proc_macro::{TokenStream};
-use syn::{Error, Ident, ItemStruct, parse_macro_input};
-use syn::ext::IdentExt;
+use syn::ItemStruct;
+
 use quote::{quote, ToTokens};
-use syn::Lit::Str;
-use syn::Meta::{List, NameValue, Path};
-use syn::NestedMeta::Meta;
-use syn::spanned::Spanned;
-use crate::symbol::{COLUMN, COLUMN_NAME, COMMIT_TIMESTAMP};
-use convert_case::{Case, Casing};
+
 use crate::column::Column;
 
 pub(crate) fn generate_query_methods(item: ItemStruct) -> impl ToTokens {
@@ -45,5 +39,4 @@ pub(crate) fn generate_query_methods(item: ItemStruct) -> impl ToTokens {
             }
         }
     }
-
 }

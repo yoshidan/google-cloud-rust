@@ -1,16 +1,16 @@
-mod table;
-mod symbol;
-mod query;
 mod column;
+mod query;
+mod symbol;
+mod table;
 
+use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
-use proc_macro::{TokenStream};
-use syn::{ItemStruct, parse_macro_input};
+use syn::{parse_macro_input, ItemStruct};
 
 #[proc_macro_derive(Table, attributes(column))]
 pub fn table(input: TokenStream) -> TokenStream {
     let item = parse_macro_input!(input as ItemStruct);
-    let table= table::generate_table_methods(item.clone());
+    let table = table::generate_table_methods(item.clone());
     let query = query::generate_query_methods(item);
     wrap_in_dummy_mod(quote! {
         #table

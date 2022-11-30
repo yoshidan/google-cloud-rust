@@ -3,7 +3,7 @@ use google_cloud_spanner_macro::Table;
 
 #[derive(Table)]
 pub struct TableOnly {
-    pub id: String
+    pub id: String,
 }
 
 #[derive(Table)]
@@ -11,12 +11,12 @@ pub struct TableWithColumn {
     pub id: String,
     #[column(name = "OtherName")]
     pub value2: i64,
-    pub value3: DateTime::<Utc>,
+    pub value3: DateTime<Utc>,
     pub value4: bool,
     #[column(name = "SpannerUpdatedAt", commitTimestamp)]
-    pub updated_at: DateTime::<Utc>,
+    pub updated_at: DateTime<Utc>,
     #[column(commitTimestamp)]
-    pub created_at: DateTime::<Utc>
+    pub created_at: DateTime<Utc>,
 }
 
 impl TableWithColumn {
@@ -27,16 +27,14 @@ impl TableWithColumn {
             value3: Utc::now(),
             value4: true,
             updated_at: Utc::now(),
-            created_at: Utc::now()
+            created_at: Utc::now(),
         }
     }
 }
 
 #[test]
 fn test_table_derive() {
-    let test = TableOnly{
-        id: "test".to_string(),
-    };
+    let _test = TableOnly { id: "test".to_string() };
 
-    let test2 = TableWithColumn::new();
+    let _test2 = TableWithColumn::new();
 }

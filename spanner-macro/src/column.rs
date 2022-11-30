@@ -1,31 +1,31 @@
+use crate::symbol::{COLUMN, COLUMN_NAME, COMMIT_TIMESTAMP};
 use convert_case::{Case, Casing};
-use syn::{Error, Field};
 use syn::ext::IdentExt;
+use syn::spanned::Spanned;
 use syn::Lit::Str;
 use syn::Meta::{List, NameValue, Path};
 use syn::NestedMeta::Meta;
-use syn::spanned::Spanned;
-use crate::symbol::{COLUMN, COLUMN_NAME, COMMIT_TIMESTAMP};
+use syn::{Error, Field};
 
 pub(crate) struct Column<'a> {
     field: &'a Field,
     pub column_name: Option<String>,
-    pub commit_timestamp : bool
+    pub commit_timestamp: bool,
 }
 
-impl <'a> Column<'a> {
-   pub(crate) fn name(&self) -> String {
-       match &self.column_name {
-           Some(v) => v.to_string(),
-           None => {
-               let field_var = self.field.ident.as_ref().unwrap();
-               field_var.unraw().to_string().to_case(Case::Title)
-           }
-       }
-   }
+impl<'a> Column<'a> {
+    pub(crate) fn name(&self) -> String {
+        match &self.column_name {
+            Some(v) => v.to_string(),
+            None => {
+                let field_var = self.field.ident.as_ref().unwrap();
+                field_var.unraw().to_string().to_case(Case::Title)
+            }
+        }
+    }
 }
 
-impl <'a> From<&'a Field> for Column<'a> {
+impl<'a> From<&'a Field> for Column<'a> {
     /// Extract out the `#[column(...)]` attributes from a struct field.
     fn from(field: &'a Field) -> Self {
         let mut commit_timestamp = false;
@@ -49,10 +49,9 @@ impl <'a> From<&'a Field> for Column<'a> {
         Self {
             field,
             commit_timestamp,
-            column_name
+            column_name,
         }
     }
-
 }
 
 fn get_meta_items(attr: &syn::Attribute) -> Result<Vec<syn::NestedMeta>, Error> {
@@ -62,8 +61,6 @@ fn get_meta_items(attr: &syn::Attribute) -> Result<Vec<syn::NestedMeta>, Error> 
 
     match attr.parse_meta()? {
         List(meta) => Ok(meta.nested.into_iter().collect()),
-        _ => {
-            Err(Error::new(attr.span(), "expected [column(...)]"))
-        }
+        _ => Err(Error::new(attr.span(), "expected [column(...)]")),
     }
 }
