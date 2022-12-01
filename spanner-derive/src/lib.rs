@@ -11,7 +11,7 @@
 //! * `ToStruct`
 //! * `TryFrom<Row>`
 //!
-//! ```
+//! ```ignore
 //! use chrono::{DateTime, Utc};
 //! use google_cloud_spanner::client::Client;
 //! use google_cloud_spanner::mutation::insert_struct;
@@ -30,17 +30,21 @@
 //!     pub updated_at: DateTime<Utc>,
 //! }
 //!
-//! async fn run(client: &Client) -> Result<Option<UserCharacter>, anyhow::Error> {
+//! async fn run(client: &Client) -> Result<Vec<UserCharacter>, anyhow::Error> {
 //!     let user = UserCharacter {
 //!         user_id: "user_id".to_string(),
 //!         ..Default::default()
 //!     };
-//!     client.apply(vec![insert_struct("User", user)]).await?;
+//!     client.apply(vec![insert_struct("UserCharacter", user)]).await?;
 //!
 //!     let mut tx = client.read_only_transaction().await?;
-//!     let stmt = Statement::new("SELECT * From User Limit 1");
+//!     let stmt = Statement::new("SELECT * From UserCharacter Limit 10");
 //!     let mut reader = tx.query(stmt).await?;
-//!     Ok(reader.next().await?.map(|row| row.try_into()?))
+//!     let mut result = vec![];
+//!     while let Some(row) = reader.next().await? {
+//!         result.push(row.try_into()?);
+//!     }
+//!     Ok(result)
 //! }
 //!```
 //!
@@ -95,7 +99,7 @@
 //! `#[derive(Query)]` generates the implementation for following traits.
 //! * `TryFrom<Row>`
 //!
-//!```
+//! ```ignore
 //! use chrono::{DateTime, Utc};
 //! use google_cloud_spanner::transaction::Transaction;
 //! use google_cloud_spanner::reader::AsyncIterator;
@@ -132,7 +136,10 @@
 //!    );
 //!    stmt.add_param("UserID", &user_id);
 //!    let mut reader = tx.query(stmt).await?;
-//!    Ok(reader.next().await?.map(|row| row.try_into()?))
+//!    match reader.next().await? {
+//!        Some(row) => Ok(row.try_into()?),
+//!        None => Ok(None)
+//!    }
 //! }
 //! ```
 
