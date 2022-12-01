@@ -131,6 +131,14 @@ jobs:
         env:
           SPANNER_EMULATOR_HOST: localhost:9010
           RUSTFLAGS: "-A dead_code -A unused"
+      - uses: actions-rs/cargo@v1
+        name: test-derive
+        with:
+          command: test
+          args: --release --all-features --manifest-path spanner-derive/Cargo.toml
+        env:
+          SPANNER_EMULATOR_HOST: localhost:9010
+          RUSTFLAGS: "-A dead_code -A unused"
   storage:
     name: storage
     runs-on: ubuntu-latest

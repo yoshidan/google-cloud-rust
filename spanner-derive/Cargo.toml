@@ -1,0 +1,26 @@
+[package]
+name = "google-cloud-spanner-derive"
+version = "0.1.0"
+authors = ["yoshidan <naohiro.y@gmail.com>"]
+edition = "2021"
+repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/macro/spanner"
+keywords = ["gcp","spanner","googleapis","google-cloud-rust"]
+license = "MIT"
+readme = "README.md"
+description = "Google Cloud Platform spanner client library macro derive."
+documentation = "https://docs.rs/google-cloud-spanner/latest/google_cloud_spanner_derive/"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+quote = "1.0"
+syn = { version="1.0", features=["full"] }
+convert_case = "0.6"
+
+[dev-dependencies]
+google-cloud-spanner = { path = "../spanner"}
+chrono = "0.4"
+tokio = { version="1.20", features=["rt-multi-thread"] }
+serial_test = "0.9"
+anyhow = "1.0.48"

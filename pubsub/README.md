@@ -138,7 +138,3 @@ google-cloud-pubsub = <version>
      Ok(())
  }
 ```
-
-## Example
-Here is the example with using Warp.
-* https://github.com/yoshidan/google-cloud-rust-example/tree/main/pubsub/rust

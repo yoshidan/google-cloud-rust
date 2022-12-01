@@ -51,9 +51,8 @@ Create `Client` and call transaction API same as [Google Cloud Go](https://githu
  }
 ```
 
-## Example
-Here is the example with using Warp.
-* https://github.com/yoshidan/google-cloud-rust-example/tree/main/spanner/rust
+## Related project
+* [google-cloud-spanner-derive](../spanner-derive)
 
 ## Performance 
 
@@ -71,4 +70,4 @@ Test condition
 * 2.0 vCPU GKE Autopilot Pod
 * 1 Node spanner database server
 * 100 Users
-* [Here](https://github.com/yoshidan/google-cloud-rust-example/tree/main/spanner) is the application for Load Test.
+* [Here](https://github.com/yoshidan/google-cloud-rust-example/commit/ccc484111bbd43d9642ee90ff27eca89e95ffe32) is the application for Load Test.

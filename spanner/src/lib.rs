@@ -5,6 +5,7 @@
 //! * [About Cloud Spanner](https://cloud.google.com/spanner/)
 //! * [Spanner API Documentation](https://cloud.google.com/spanner/docs)
 //! * [Rust client Documentation](#Documentation)
+//!
 //! ## Quick Start
 //!
 //! Create `Client` and call transaction API same as [Google Cloud Go](https://github.com/googleapis/google-cloud-go/tree/main/spanner).
@@ -42,9 +43,8 @@
 //! }
 //! ```
 //!
-//! ## Example
-//! Here is the example with using Warp.
-//! * <https://github.com/yoshidan/google-cloud-rust-example/tree/main/spanner/rust>
+//! ## Related project
+//! * [google-cloud-spanner-derive](https://github.com/yoshidan/google-cloud-rust/spanner-derive)
 //!
 //! ## <a name="Documentation"></a>Documentation
 //!
