@@ -98,7 +98,7 @@ async fn test_query_derive() -> Result<(), anyhow::Error> {
     let client = Client::new("projects/local-project/instances/test-instance/databases/local-database").await?;
 
     let now = Utc::now().timestamp();
-    let user_id = format!("user{}", now);
+    let user_id = format!("user-q-{}", now);
     let user = User {
         user_id: user_id.clone(),
         ..Default::default()
