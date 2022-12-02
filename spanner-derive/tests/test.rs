@@ -8,7 +8,7 @@ use google_cloud_spanner_derive::{Query, Table};
 use serde::{Deserialize, Serialize};
 use serial_test::serial;
 
-#[derive(Table, Default, Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Table, Default, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UserCharacter {
     pub user_id: String,
     pub character_id: i64,
@@ -17,7 +17,7 @@ pub struct UserCharacter {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Table, Default, Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Table, Default, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UserItem {
     pub user_id: String,
     pub item_id: i64,
