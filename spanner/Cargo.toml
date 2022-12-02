@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-spanner"
-version = "0.13.1"
+version = "0.14.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/spanner"
@@ -20,6 +20,7 @@ async-trait = "0.1"
 parking_lot = "0.12"
 base64 = "0.13"
 anyhow = "1.0"
+serde = { version = "1.0", optional = true }
 
 google-cloud-auth= { version = "0.6.0", path = "../foundation/auth", default-features = false}
 google-cloud-longrunning= { version = "0.9.0", path = "../foundation/longrunning", default-features = false}
@@ -34,7 +35,7 @@ anyhow = "1.0.48"
 ctor = "0.1"
 
 [features]
-default = ["default-tls"]
+default = ["default-tls", "serde"]
 default-tls = ["google-cloud-auth/default-tls", "google-cloud-gax/default-tls", "google-cloud-longrunning/default-tls"]
 rustls-tls = ["google-cloud-auth/rustls-tls", "google-cloud-gax/rustls-tls", "google-cloud-longrunning/rustls-tls"]
 trace = []

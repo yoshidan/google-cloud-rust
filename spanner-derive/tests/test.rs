@@ -5,9 +5,10 @@ use google_cloud_spanner::reader::AsyncIterator;
 use google_cloud_spanner::statement::Statement;
 use google_cloud_spanner::value::SpannerNumeric;
 use google_cloud_spanner_derive::{Query, Table};
+use serde::{Deserialize, Serialize};
 use serial_test::serial;
 
-#[derive(Table, Default)]
+#[derive(Table, Default, Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct UserCharacter {
     pub user_id: String,
     pub character_id: i64,
@@ -16,7 +17,7 @@ pub struct UserCharacter {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Table, Default)]
+#[derive(Table, Default, Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct UserItem {
     pub user_id: String,
     pub item_id: i64,
@@ -24,7 +25,7 @@ pub struct UserItem {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Table, Default, Debug)]
+#[derive(Table, Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct User {
     pub user_id: String,
     #[spanner(name = "NotNullINT64")]
@@ -67,7 +68,7 @@ async fn test_table_derive() -> Result<(), anyhow::Error> {
     let user_id = format!("user{}", now);
     let user = User {
         user_id: user_id.clone(),
-        not_null_numeric: SpannerNumeric { inner: "1".to_string() },
+        not_null_numeric: SpannerNumeric::new("-99999999999999999999999999999.999999999"),
         ..Default::default()
     };
     client.apply(vec![insert_struct("User", user)]).await?;
@@ -79,8 +80,11 @@ async fn test_table_derive() -> Result<(), anyhow::Error> {
     if let Some(row) = reader.next().await? {
         let v: User = row.try_into()?;
         assert_eq!(v.user_id, user_id);
-        assert_eq!(v.not_null_numeric.inner, "1".to_string());
+        assert_eq!(v.not_null_numeric.as_str(), "-99999999999999999999999999999.999999999");
         assert!(v.updated_at.timestamp() >= now);
+        let json_string = serde_json::to_string(&v)?;
+        let des = serde_json::from_str::<User>(json_string.as_str())?;
+        assert_eq!(des, v);
     } else {
         panic!("no data found");
     }
