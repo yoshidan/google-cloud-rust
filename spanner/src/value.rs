@@ -6,12 +6,12 @@ use chrono::{DateTime, TimeZone, Utc};
 use google_cloud_googleapis::spanner::v1::transaction_options::read_only::TimestampBound as InternalTimestampBound;
 use google_cloud_googleapis::spanner::v1::transaction_options::ReadOnly;
 
-#[derive(Debug, Clone)]
-pub struct SpannerNumeric {
-    /// https://cloud.google.com/spanner/docs/storing-numeric-data#precision_of_numeric_types
-    /// -99999999999999999999999999999.999999999～99999999999999999999999999999.999999999
-    pub inner: String,
-}
+/// https://cloud.google.com/spanner/docs/storing-numeric-data#precision_of_numeric_types
+/// -99999999999999999999999999999.999999999～99999999999999999999999999999.999999999
+/// TODO https://github.com/paupino/rust-decimal/issues/135
+#[derive(Debug, Clone, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct SpannerNumeric(String);
 
 impl Default for SpannerNumeric {
     fn default() -> Self {
@@ -21,11 +21,11 @@ impl Default for SpannerNumeric {
 
 impl SpannerNumeric {
     pub fn new(value: impl Into<String>) -> Self {
-        Self { inner: value.into() }
+        Self(value.into())
     }
 
     pub fn as_str(&self) -> &str {
-        self.inner.as_str()
+        self.0.as_str()
     }
 }
 
