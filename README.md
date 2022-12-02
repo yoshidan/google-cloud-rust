@@ -2,7 +2,7 @@
 Rust packages for [Google Cloud Platform](https://cloud.google.com/) services.  
 Providing a high level API for gRPC API like [Google Cloud Go](https://github.com/googleapis/google-cloud-go).
 
-![CI](https://github.com/yoshidan/google-cloud-rust/workflows/CI/badge.svg?branch=main)
+![CI](https://github.com/yoshidan/google-cloud-rust/workflows/CI/badge.svg?branch=main) 
 
 ## Component 
 
