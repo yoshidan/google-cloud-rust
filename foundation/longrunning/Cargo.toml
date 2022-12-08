@@ -11,7 +11,7 @@ description = "Google Cloud Platform longrunning library."
 
 [dependencies]
 google-cloud-googleapis = { version = "0.6.0", path = "../../googleapis" }
-google-cloud-gax = { version = "0.10.0", path = "../gax", default-features = false }
+google-cloud-gax = { version = "0.10.1", path = "../gax", default-features = false }
 tonic = { version = "0.8", features = ["tls", "prost"] }
 prost = "0.11"
 
