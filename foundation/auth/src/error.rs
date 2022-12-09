@@ -15,7 +15,7 @@ pub enum Error {
     #[error("jwt error: {0}")]
     JwtError(#[from] jwt::errors::Error),
 
-    #[error("http error")]
+    #[error("http error: {0}")]
     HttpError(#[from] reqwest::Error),
 
     #[error("GOOGLE_APPLICATION_CREDENTIALS or default credentials is required: {0}")]
