@@ -50,6 +50,10 @@ jobs:
         with:
           command: test
           args: --release --all-features --manifest-path foundation/auth/Cargo.toml
+      - name: cargo-deny
+        uses: EmbarkStudios/cargo-deny-action@v1
+        with:
+          arguments: --workspace --all-features
   pubsub:
     name: pubsub
     runs-on: ubuntu-latest
