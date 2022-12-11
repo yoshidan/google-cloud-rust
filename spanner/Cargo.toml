@@ -23,8 +23,8 @@ anyhow = "1.0"
 serde = { version = "1.0", optional = true }
 
 google-cloud-auth= { version = "0.6.1", path = "../foundation/auth", default-features = false}
-google-cloud-longrunning= { version = "0.9.0", path = "../foundation/longrunning", default-features = false}
-google-cloud-gax = { version = "0.10.0", path = "../foundation/gax", default-features = false}
+google-cloud-longrunning= { version = "0.9.1", path = "../foundation/longrunning", default-features = false}
+google-cloud-gax = { version = "0.10.1", path = "../foundation/gax", default-features = false}
 google-cloud-googleapis = { version = "0.6.0", path = "../googleapis", features = ["spanner"]}
 
 [dev-dependencies]
