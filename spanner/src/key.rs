@@ -34,8 +34,8 @@ use crate::statement::ToKind;
 ///   - bool and Option<bool> are mapped to Cloud Spanner's BOOL type.
 ///   - Vec<u8>, &[u8], Option<Vec<u8>> and Option<&[u8]> is mapped to Cloud Spanner's BYTES type.
 ///   - String, &str, Option<String>, Option<&str> are mapped to Cloud Spanner's STRING type.
-///   - chrono::NaiveDateTime and Option<chrono::NaiveDateTime> are mapped to Cloud Spanner's TIMESTAMP type.
-///   - chrono::DateTime and Option<chrono::DateTime> are mapped to Cloud Spanner's DATE type.
+///   - time::OffsetDateTime and Option<time::OffsetDateTime> are mapped to Cloud Spanner's TIMESTAMP type.
+///   - time::Date and Option<time::Date> are mapped to Cloud Spanner's DATE type.
 ///   - google_cloud_spanner::value::CommitTimestamp and Option<google_cloud_spanner::value::CommitTimestamp> are mapped to Cloud Spanner's TIMESTAMP type.
 #[derive(Clone)]
 pub struct Key {
