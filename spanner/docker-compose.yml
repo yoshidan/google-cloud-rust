@@ -29,6 +29,8 @@ services:
       SPANNER_EMULATOR_HOST: spanner:9010
     links:
       - spanner
+    depends_on:
+      - spanner-init
   spanner-drop:
     image: mercari/wrench
     command: drop
@@ -39,8 +41,12 @@ services:
       SPANNER_EMULATOR_HOST: spanner:9010
     links:
       - spanner
+    depends_on:
+      - spanner-init
   spanner-cli:
     image: sjdaws/spanner-cli:latest
     environment:
       SPANNER_EMULATOR_HOST: spanner:9010
     command: spanner-cli -p local-project -i test-instance -d local-database
+    depends_on:
+      - spanner-init
