@@ -19,7 +19,7 @@ pub struct WatchableChannel {
     /// delivered over this channel. Optional.
     pub token: String,
     /// Date and time of notification channel expiration. Optional.
-    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub expiration: Option<OffsetDateTime>,
     /// The type of delivery mechanism used for this channel.
     pub r#type: String,
@@ -44,6 +44,6 @@ pub struct Channel {
     /// Email address of the subscriber.
     pub subscriber_email: String,
     /// Time when the channel was created.
-    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub creation_time: Option<OffsetDateTime>,
 }

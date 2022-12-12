@@ -31,7 +31,7 @@ pub struct Bucket {
     /// \[<https://tools.ietf.org/html/rfc3339\][RFC> 3339] format.
     /// Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
-    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub time_created: Option<OffsetDateTime>,
     /// The ID of the bucket. For buckets, the `id` and `name` properties are the
     /// same.
@@ -76,7 +76,7 @@ pub struct Bucket {
     /// The modification time of the bucket.
     /// Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
-    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub updated: Option<OffsetDateTime>,
     /// The default value for event-based hold on newly created objects in this
     /// bucket.  Event-based hold is a way to retain objects indefinitely until an
@@ -257,15 +257,15 @@ pub mod lifecycle {
         #[serde(rename_all = "camelCase")]
         pub struct Condition {
             pub age: i32,
-            #[serde(with = "date_format::option")]
+            #[serde(default, with = "date_format::option")]
             pub created_before: Option<Date>,
-            #[serde(with = "date_format::option")]
+            #[serde(default, with = "date_format::option")]
             pub custom_time_before: Option<Date>,
             pub days_since_custom_time: Option<i32>,
             pub days_since_noncurrent_time: Option<i32>,
             pub is_live: Option<bool>,
             pub matches_storage_class: Option<Vec<String>>,
-            #[serde(with = "date_format::option")]
+            #[serde(default, with = "date_format::option")]
             pub noncurrent_time_before: Option<Date>,
             pub num_newer_versions: Option<i32>,
         }
@@ -287,7 +287,7 @@ pub struct RetentionPolicy {
     /// Server-determined value that indicates the time from which policy was
     /// enforced and effective. This value is in
     /// \[<https://tools.ietf.org/html/rfc3339\][RFC> 3339] format.
-    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub effective_time: Option<OffsetDateTime>,
     /// Once locked, an object retention policy cannot be modified.
     pub is_locked: Option<bool>,
@@ -332,7 +332,7 @@ pub struct Autoclass {
     /// Enables Autoclass.
     pub enabled: bool,
     /// Latest instant at which the `enabled` bit was flipped.
-    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub toggle_time: Option<OffsetDateTime>,
 }
 
