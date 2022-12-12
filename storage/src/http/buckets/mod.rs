@@ -192,7 +192,7 @@ pub mod iam_configuration {
         /// <code>iamConfiguration.uniformBucketLevelAccess.enabled</code> from
         /// true to false in \[<https://tools.ietf.org/html/rfc3339\][RFC> 3339]. After
         /// the deadline is passed the field is immutable.
-        #[serde(with = "time::serde::rfc3339::option")]
+        #[serde(default, with = "time::serde::rfc3339::option")]
         pub locked_time: Option<OffsetDateTime>,
     }
     /// Public Access Prevention configuration values.
