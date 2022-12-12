@@ -6,7 +6,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use time::format_description::well_known::iso8601::EncodedConfig;
+use time::format_description::well_known::iso8601::{EncodedConfig, TimePrecision};
 use time::format_description::well_known::{self, Iso8601};
 use time::macros::format_description;
 use time::OffsetDateTime;
@@ -206,7 +206,10 @@ pub(crate) fn create_signed_buffer(
         header_names.join(";")
     };
 
-    const CONFIG: EncodedConfig = well_known::iso8601::Config::DEFAULT.set_use_separators(false).encode();
+    const CONFIG: EncodedConfig = well_known::iso8601::Config::DEFAULT
+        .set_use_separators(false)
+        .set_time_precision(TimePrecision::Second { decimal_digits: None })
+        .encode();
 
     let timestamp = now.format(&Iso8601::<CONFIG>).unwrap();
     let credential_scope = format!(
