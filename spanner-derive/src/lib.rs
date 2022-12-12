@@ -12,14 +12,14 @@
 //! * `TryFrom<Row>`
 //!
 //! ```ignore
-//! use chrono::{DateTime, Utc};
+//! use time::OffsetDateTime;
 //! use google_cloud_spanner::client::Client;
 //! use google_cloud_spanner::mutation::insert_struct;
 //! use google_cloud_spanner::reader::AsyncIterator;
 //! use google_cloud_spanner::statement::Statement;
 //! use google_cloud_spanner_derive::Table;
 //!
-//! #[derive(Table, Default)]
+//! #[derive(Table)]
 //! pub struct UserCharacter {
 //!     pub user_id: String,
 //!     pub character_id: i64,
@@ -27,7 +27,18 @@
 //!     #[spanner(name="LevelX")]
 //!     pub level: i64,
 //!     #[spanner(commitTimestamp)]
-//!     pub updated_at: DateTime<Utc>,
+//!     pub updated_at: OffsetDateTime,
+//! }
+//!
+//! impl Default for UserCharacter {
+//!     fn default() -> Self {
+//!         Self {
+//!             user_id: Default::default(),
+//!             character_id: Default::default(),
+//!             level: Default::default(),
+//!             updated_at: OffsetDateTime::UNIX_EPOCH,
+//!         }
+//!     }
 //! }
 //!
 //! async fn run(client: &Client) -> Result<Vec<UserCharacter>, anyhow::Error> {
@@ -100,7 +111,6 @@
 //! * `TryFrom<Row>`
 //!
 //! ```ignore
-//! use chrono::{DateTime, Utc};
 //! use google_cloud_spanner::transaction::Transaction;
 //! use google_cloud_spanner::reader::AsyncIterator;
 //! use google_cloud_spanner::statement::Statement;
