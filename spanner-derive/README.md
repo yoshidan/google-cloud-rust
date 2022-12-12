@@ -21,7 +21,7 @@ google-cloud-spanner-derive = <version>
 * `TryFrom<Row>`
 
 ```rust
-use chrono::{DateTime, Utc};
+use time::OffsetDateTime;
 use google_cloud_spanner::client::Client;
 use google_cloud_spanner::mutation::insert_struct;
 use google_cloud_spanner::reader::AsyncIterator;
@@ -36,7 +36,7 @@ pub struct UserCharacter {
     #[spanner(name="LevelX")]
     pub level: i64,
     #[spanner(commitTimestamp)]
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: OffsetDateTime
 }
 
 async fn run(client: &Client) -> Result<Vec<UserCharacter>, anyhow::Error> {
@@ -109,7 +109,6 @@ impl TryFrom<Row> for UserCharacter {
 * `TryFrom<Row>`
 
 ```rust
-use chrono::{DateTime, Utc};
 use google_cloud_spanner::transaction::Transaction;
 use google_cloud_spanner::reader::AsyncIterator;
 use google_cloud_spanner::statement::Statement;
