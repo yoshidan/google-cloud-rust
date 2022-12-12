@@ -233,7 +233,10 @@ pub mod lifecycle {
     }
     /// Nested message and enum types in `Rule`.
     pub mod rule {
-        use time::OffsetDateTime;
+        use time::Date;
+
+        // RFC3339 Date part, in format YYYY-MM-DD
+        time::serde::format_description!(date_format, Date, "[year]-[month]-[day]");
 
         #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
         pub enum ActionType {
@@ -254,16 +257,16 @@ pub mod lifecycle {
         #[serde(rename_all = "camelCase")]
         pub struct Condition {
             pub age: i32,
-            #[serde(with = "time::serde::rfc3339::option")]
-            pub created_before: Option<OffsetDateTime>,
-            #[serde(with = "time::serde::rfc3339::option")]
-            pub custom_time_before: Option<OffsetDateTime>,
+            #[serde(with = "date_format::option")]
+            pub created_before: Option<Date>,
+            #[serde(with = "date_format::option")]
+            pub custom_time_before: Option<Date>,
             pub days_since_custom_time: Option<i32>,
             pub days_since_noncurrent_time: Option<i32>,
             pub is_live: Option<bool>,
             pub matches_storage_class: Option<Vec<String>>,
-            #[serde(with = "time::serde::rfc3339::option")]
-            pub noncurrent_time_before: Option<OffsetDateTime>,
+            #[serde(with = "date_format::option")]
+            pub noncurrent_time_before: Option<Date>,
             pub num_newer_versions: Option<i32>,
         }
     }
