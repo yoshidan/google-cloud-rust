@@ -1,3 +1,5 @@
+use time::OffsetDateTime;
+
 pub mod create;
 pub mod delete;
 pub mod get;
@@ -19,9 +21,11 @@ pub struct HmacKeyMetadata {
     /// State of the key. One of ACTIVE, INACTIVE, or DELETED.
     pub state: String,
     /// The creation time of the HMAC key in RFC 3339 format.
-    pub time_created: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub time_created: Option<OffsetDateTime>,
     /// The last modification time of the HMAC key metadata in RFC 3339 format.
-    pub updated: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub updated: Option<OffsetDateTime>,
     /// Tag updated with each key update.
     pub etag: String,
 }

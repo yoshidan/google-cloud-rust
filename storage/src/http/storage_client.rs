@@ -2388,7 +2388,7 @@ mod test {
     #[serial]
     pub async fn crud_bucket() {
         let client = client().await;
-        let name = format!("rust-test-insert-{}", chrono::Utc::now().timestamp());
+        let name = format!("rust-test-insert-{}", time::OffsetDateTime::now_utc().unix_timestamp());
         let bucket = client
             .insert_bucket(
                 &InsertBucketRequest {
@@ -2928,7 +2928,7 @@ mod test {
     #[serial]
     pub async fn streamed_object() {
         let bucket_name = "rust-object-test";
-        let file_name = format!("stream_{}", chrono::Utc::now().timestamp());
+        let file_name = format!("stream_{}", time::OffsetDateTime::now_utc().unix_timestamp());
         let client = client().await;
 
         // let stream= reqwest::Client::default().get("https://avatars.githubusercontent.com/u/958174?s=96&v=4").send().await.unwrap().bytes_stream();

@@ -42,6 +42,6 @@ impl TokenSource for ComputeTokenSource {
             .await?
             .json::<InternalToken>()
             .await?;
-        return Ok(it.to_token(chrono::Utc::now()));
+        return Ok(it.to_token(time::OffsetDateTime::now_utc()));
     }
 }

@@ -1,15 +1,16 @@
 use std::collections::{BTreeMap, HashMap};
 
-use chrono::{DateTime, NaiveDate, TimeZone};
 use prost_types::value::Kind;
 use prost_types::value::Kind::StringValue;
 use prost_types::{value, ListValue, Struct, Value};
 
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::{StructType, Type, TypeAnnotationCode, TypeCode};
+use time::format_description::well_known::Rfc3339;
+use time::macros::format_description;
+use time::{Date, OffsetDateTime};
 
 use crate::value::{CommitTimestamp, SpannerNumeric};
-use std::fmt::Display;
 
 /// A Statement is a SQL query with named parameters.
 ///
@@ -147,21 +148,20 @@ impl ToKind for bool {
     }
 }
 
-impl ToKind for NaiveDate {
+impl ToKind for Date {
     fn to_kind(&self) -> Kind {
-        self.format("%Y-%m-%d").to_string().to_kind()
+        self.format(format_description!("[year]-[month]-[day]"))
+            .unwrap()
+            .to_kind()
     }
     fn get_type() -> Type {
         single_type(TypeCode::Date)
     }
 }
 
-impl<Tz: TimeZone> ToKind for DateTime<Tz>
-where
-    Tz::Offset: Display,
-{
+impl ToKind for OffsetDateTime {
     fn to_kind(&self) -> Kind {
-        self.to_rfc3339_opts(chrono::SecondsFormat::Nanos, true).to_kind()
+        self.format(&Rfc3339).unwrap().to_kind()
     }
     fn get_type() -> Type {
         single_type(TypeCode::Timestamp)

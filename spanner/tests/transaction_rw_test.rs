@@ -1,5 +1,4 @@
 use anyhow::Result;
-use chrono::{DateTime, TimeZone, Utc};
 
 use google_cloud_spanner::key::Key;
 
@@ -13,6 +12,7 @@ use common::*;
 use google_cloud_gax::grpc::Status;
 use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
 use google_cloud_spanner::transaction_rw::ReadWriteTransaction;
+use time::OffsetDateTime;
 
 #[ctor::ctor]
 fn init() {
@@ -39,10 +39,10 @@ pub async fn all_rows(mut itr: RowIterator<'_>) -> Result<Vec<Row>, Status> {
 #[tokio::test]
 #[serial]
 async fn test_mutation_and_statement() {
-    let now = Utc::now();
+    let now = OffsetDateTime::now_utc();
     let mut session = create_session().await;
 
-    let past_user = format!("user_{}", now.timestamp());
+    let past_user = format!("user_{}", now.unix_timestamp());
     let cr = replace_test_data(&mut session, vec![create_user_mutation(&past_user, &now)])
         .await
         .unwrap();
@@ -72,25 +72,31 @@ async fn test_mutation_and_statement() {
         Ok(s) => {
             assert!(s.0.is_some());
             let ts = s.0.unwrap();
-            let naive = Utc.timestamp(ts.seconds, ts.nanos as u32);
-            println!("commit time stamp is {}", naive);
-            naive
+            let dt = OffsetDateTime::from_unix_timestamp(ts.seconds)
+                .unwrap()
+                .replace_nanosecond(ts.nanos as u32)
+                .unwrap();
+            println!("commit time stamp is {}", dt);
+            dt
         }
         Err(e) => panic!("error {:?}", e),
     };
 
     let ts = cr.commit_timestamp.as_ref().unwrap();
-    let ts = Utc.timestamp(ts.seconds, ts.nanos as u32);
+    let ts = OffsetDateTime::from_unix_timestamp(ts.seconds)
+        .unwrap()
+        .replace_nanosecond(ts.nanos as u32)
+        .unwrap();
     assert_data(&past_user, &now, &ts, &commit_timestamp).await;
 }
 
 #[tokio::test]
 #[serial]
 async fn test_partitioned_dml() {
-    let now = Utc::now();
+    let now = OffsetDateTime::now_utc();
     let mut session = create_session().await;
 
-    let user_id = format!("user_{}", now.timestamp());
+    let user_id = format!("user_{}", now.unix_timestamp());
     let _cr = replace_test_data(&mut session, vec![create_user_mutation(&user_id, &now)])
         .await
         .unwrap();
@@ -119,10 +125,10 @@ async fn test_partitioned_dml() {
 #[tokio::test]
 #[serial]
 async fn test_rollback() {
-    let now = Utc::now();
+    let now = OffsetDateTime::now_utc();
     let mut session = create_session().await;
 
-    let past_user = format!("user_{}", now.timestamp());
+    let past_user = format!("user_{}", now.unix_timestamp());
     let cr = replace_test_data(&mut session, vec![create_user_mutation(&past_user, &now)])
         .await
         .unwrap();
@@ -147,15 +153,18 @@ async fn test_rollback() {
     let reader = tx.read("User", &user_columns(), Key::new(&past_user)).await.unwrap();
     let row = all_rows(reader).await.unwrap().pop().unwrap();
     let ts = cr.commit_timestamp.as_ref().unwrap();
-    let ts = Utc.timestamp(ts.seconds, ts.nanos as u32);
+    let ts = OffsetDateTime::from_unix_timestamp(ts.seconds)
+        .unwrap()
+        .replace_nanosecond(ts.nanos as u32)
+        .unwrap();
     assert_user_row(&row, &past_user, &now, &ts);
 }
 
 async fn assert_data(
     user_id: &str,
-    now: &DateTime<Utc>,
-    user_commit_timestamp: &DateTime<Utc>,
-    commit_timestamp: &DateTime<Utc>,
+    now: &OffsetDateTime,
+    user_commit_timestamp: &OffsetDateTime,
+    commit_timestamp: &OffsetDateTime,
 ) {
     // get by another transaction
     let session = create_session().await;
@@ -193,7 +202,7 @@ async fn assert_data(
     assert_eq!(first_item.item_id, 10);
     assert_eq!(first_item.quantity, 1000);
     assert_eq!(
-        DateTime::<Utc>::from(first_item.updated_at).to_string(),
+        OffsetDateTime::from(first_item.updated_at).to_string(),
         commit_timestamp.to_string()
     );
     assert!(user_items.is_empty());
@@ -204,7 +213,7 @@ async fn assert_data(
     assert_eq!(first_character.character_id, 1);
     assert_eq!(first_character.level, 1);
     assert_eq!(
-        DateTime::<Utc>::from(first_character.updated_at).to_string(),
+        OffsetDateTime::from(first_character.updated_at).to_string(),
         commit_timestamp.to_string()
     );
     assert!(user_characters.is_empty());

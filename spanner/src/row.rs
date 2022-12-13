@@ -1,9 +1,11 @@
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
-use chrono::{DateTime, NaiveDate, ParseError, Utc};
 use prost_types::value::Kind;
 use prost_types::{value, Value};
+use time::format_description::well_known::Rfc3339;
+use time::macros::format_description;
+use time::{Date, OffsetDateTime};
 
 use crate::value::{CommitTimestamp, SpannerNumeric};
 use base64::DecodeError;
@@ -27,7 +29,7 @@ pub enum Error {
     #[error("Parse field: field={0}")]
     IntParseError(String, #[source] ParseIntError),
     #[error("Failed to parse as Date|DateTime {0}")]
-    DateParseError(String, #[source] ParseError),
+    DateParseError(String, #[source] time::error::Parse),
     #[error("Failed to parse as ByteArray {0}")]
     ByteParseError(String, #[source] DecodeError),
     #[error("Failed to parse as Struct name={0}, {1}")]
@@ -160,13 +162,11 @@ impl TryFromValue for bool {
     }
 }
 
-impl TryFromValue for DateTime<Utc> {
+impl TryFromValue for OffsetDateTime {
     fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
             Kind::StringValue(s) => {
-                let fixed =
-                    DateTime::parse_from_rfc3339(s).map_err(|e| Error::DateParseError(field.name.to_string(), e))?;
-                Ok(DateTime::<Utc>::from(fixed))
+                Ok(OffsetDateTime::parse(s, &Rfc3339).map_err(|e| Error::DateParseError(field.name.to_string(), e))?)
             }
             v => kind_to_error(v, field),
         }
@@ -181,12 +181,11 @@ impl TryFromValue for CommitTimestamp {
     }
 }
 
-impl TryFromValue for NaiveDate {
+impl TryFromValue for Date {
     fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
-            Kind::StringValue(s) => {
-                NaiveDate::parse_from_str(s, "%Y-%m-%d").map_err(|e| Error::DateParseError(field.name.to_string(), e))
-            }
+            Kind::StringValue(s) => Date::parse(s, format_description!("[year]-[month]-[day]"))
+                .map_err(|e| Error::DateParseError(field.name.to_string(), e)),
             v => kind_to_error(v, field),
         }
     }
@@ -312,15 +311,15 @@ mod tests {
     use crate::row::{Error, Row, Struct as RowStruct, TryFromStruct};
     use crate::statement::{Kinds, ToKind, ToStruct, Types};
     use crate::value::CommitTimestamp;
-    use chrono::{DateTime, Utc};
     use google_cloud_googleapis::spanner::v1::struct_type::Field;
     use prost_types::Value;
     use std::collections::HashMap;
     use std::sync::Arc;
+    use time::OffsetDateTime;
 
     struct TestStruct {
         pub struct_field: String,
-        pub struct_field_time: DateTime<Utc>,
+        pub struct_field_time: OffsetDateTime,
         pub commit_timestamp: CommitTimestamp,
     }
 
@@ -340,14 +339,14 @@ mod tests {
                 ("struct_field", self.struct_field.to_kind()),
                 ("struct_field_time", self.struct_field_time.to_kind()),
                 // value from DB is timestamp. it's not string 'spanner.commit_timestamp()'.
-                ("commit_timestamp", DateTime::from(self.commit_timestamp).to_kind()),
+                ("commit_timestamp", OffsetDateTime::from(self.commit_timestamp).to_kind()),
             ]
         }
 
         fn get_types() -> Types {
             vec![
                 ("struct_field", String::get_type()),
-                ("struct_field_time", DateTime::<Utc>::get_type()),
+                ("struct_field_time", OffsetDateTime::get_type()),
                 ("commit_timestamp", CommitTimestamp::get_type()),
             ]
         }
@@ -360,7 +359,7 @@ mod tests {
         index.insert("array".to_string(), 1);
         index.insert("struct".to_string(), 2);
 
-        let now = Utc::now();
+        let now = OffsetDateTime::now_utc();
         let row = Row {
             index: Arc::new(index),
             fields: Arc::new(vec![

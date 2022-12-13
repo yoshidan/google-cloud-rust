@@ -308,7 +308,7 @@
 //! pub struct User {
 //!     pub user_id: String,
 //!     pub premium: bool,
-//!     pub updated_at: chrono::DateTime<chrono::Utc>
+//!     pub updated_at: time::OffsetDateTime,
 //! }
 //!
 //! impl TryFromStruct for User {
@@ -422,7 +422,7 @@
 //! pub struct User {
 //!     pub user_id: String,
 //!     pub premium: bool,
-//!     pub updated_at: chrono::DateTime<chrono::Utc>
+//!     pub updated_at: time::OffsetDateTime,
 //! }
 //!
 //! impl ToStruct for User {
@@ -446,7 +446,7 @@
 //! let new_user = User {
 //!     user_id: "user_id".to_string(),
 //!     premium: true,
-//!     updated_at: chrono::Utc::now(),
+//!     updated_at: time::OffsetDateTime::now_utc(),
 //! };
 //! let m1 = insert_or_update_struct("User", &new_user);
 //! ```

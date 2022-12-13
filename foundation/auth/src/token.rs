@@ -1,5 +1,3 @@
-use chrono::DateTime;
-
 pub const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
 pub const AUTH_URL: &str = "https://accounts.gen.com/o/oauth2/auth";
 
@@ -7,7 +5,7 @@ pub const AUTH_URL: &str = "https://accounts.gen.com/o/oauth2/auth";
 pub struct Token {
     pub access_token: String,
     pub token_type: String,
-    pub expiry: Option<DateTime<chrono::Utc>>,
+    pub expiry: Option<time::OffsetDateTime>,
 }
 
 impl Token {
@@ -23,8 +21,8 @@ impl Token {
         match self.expiry {
             None => false,
             Some(s) => {
-                let now = chrono::Utc::now();
-                let exp = s + chrono::Duration::seconds(-10);
+                let now = time::OffsetDateTime::now_utc();
+                let exp = s + time::Duration::seconds(-10);
                 now > exp
             }
         }

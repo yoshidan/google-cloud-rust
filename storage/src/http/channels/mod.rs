@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use time::OffsetDateTime;
+
 pub mod stop;
 
 /// An notification channel used to watch for resource changes.
@@ -17,7 +19,8 @@ pub struct WatchableChannel {
     /// delivered over this channel. Optional.
     pub token: String,
     /// Date and time of notification channel expiration. Optional.
-    pub expiration: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub expiration: Option<OffsetDateTime>,
     /// The type of delivery mechanism used for this channel.
     pub r#type: String,
     /// The address where notifications are delivered for this channel.
@@ -41,5 +44,6 @@ pub struct Channel {
     /// Email address of the subscriber.
     pub subscriber_email: String,
     /// Time when the channel was created.
-    pub creation_time: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub creation_time: Option<OffsetDateTime>,
 }

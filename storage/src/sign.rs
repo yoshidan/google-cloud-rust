@@ -1,12 +1,15 @@
 use crate::http;
 
 use crate::sign::SignedURLError::InvalidOption;
-use chrono::{DateTime, SecondsFormat, Utc};
 
 use once_cell::sync::Lazy;
 use regex::Regex;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use time::format_description::well_known::iso8601::{EncodedConfig, TimePrecision};
+use time::format_description::well_known::{self, Iso8601};
+use time::macros::format_description;
+use time::OffsetDateTime;
 
 use std::time::Duration;
 use url;
@@ -174,7 +177,7 @@ pub(crate) fn create_signed_buffer(
     name: &str,
     opts: &SignedURLOptions,
 ) -> Result<(Vec<u8>, Url), SignedURLError> {
-    let now = Utc::now();
+    let now = OffsetDateTime::now_utc();
     validate_options(opts, &now)?;
 
     let headers = v4_sanitize_headers(&opts.headers);
@@ -203,8 +206,16 @@ pub(crate) fn create_signed_buffer(
         header_names.join(";")
     };
 
-    let timestamp = now.to_rfc3339_opts(SecondsFormat::Secs, true).replace(['-', ':'], "");
-    let credential_scope = format!("{}/auto/storage/goog4_request", now.format("%Y%m%d"));
+    const CONFIG: EncodedConfig = well_known::iso8601::Config::DEFAULT
+        .set_use_separators(false)
+        .set_time_precision(TimePrecision::Second { decimal_digits: None })
+        .encode();
+
+    let timestamp = now.format(&Iso8601::<CONFIG>).unwrap();
+    let credential_scope = format!(
+        "{}/auto/storage/goog4_request",
+        now.format(format_description!("[year][month][day]")).unwrap()
+    );
 
     // append query parameters
     {
@@ -310,7 +321,7 @@ fn extract_header_names(kvs: &[String]) -> Vec<&str> {
         .collect();
 }
 
-fn validate_options(opts: &SignedURLOptions, _now: &DateTime<Utc>) -> Result<(), SignedURLError> {
+fn validate_options(opts: &SignedURLOptions, _now: &OffsetDateTime) -> Result<(), SignedURLError> {
     if opts.google_access_id.is_empty() {
         return Err(InvalidOption("storage: missing required GoogleAccessID"));
     }

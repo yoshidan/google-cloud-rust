@@ -1,6 +1,7 @@
 use crate::http::object_access_controls::ObjectAccessControl;
 use reqwest::RequestBuilder;
 use std::collections::HashMap;
+use time::OffsetDateTime;
 
 pub mod compose;
 pub mod delete;
@@ -48,7 +49,8 @@ pub struct Object {
     /// version of the object has been deleted.
     /// Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
-    pub time_deleted: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub time_deleted: Option<OffsetDateTime>,
     /// Content-Type of the object data, matching
     /// \[<https://tools.ietf.org/html/rfc7231#section-3.1.1.5\][RFC> 7231 §3.1.1.5].
     /// If an object is stored without a Content-Type, it is served as
@@ -63,7 +65,8 @@ pub struct Object {
     /// The creation time of the object.
     /// Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
-    pub time_created: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub time_created: Option<OffsetDateTime>,
     /// CRC32c checksum. For more information about using the CRC32c
     /// checksum, see
     /// \[<https://cloud.google.com/storage/docs/hashes-etags#json-api\][Hashes> and
@@ -89,7 +92,8 @@ pub struct Object {
     /// The modification time of the object metadata.
     /// Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
-    pub updated: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub updated: Option<OffsetDateTime>,
     /// Storage class of the object.
     pub storage_class: String,
     /// Cloud KMS Key used to encrypt this object, if the object is encrypted by
@@ -99,7 +103,8 @@ pub struct Object {
     /// object is initially created, it will be set to time_created.
     /// Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
-    pub time_storage_class_updated: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub time_storage_class_updated: Option<OffsetDateTime>,
     /// Whether an object is under temporary hold. While this flag is set to true,
     /// the object is protected against deletion and overwrites.  A common use case
     /// of this flag is regulatory investigations where objects need to be retained
@@ -114,7 +119,8 @@ pub struct Object {
     /// Note 2: This value can be provided even when temporary hold is set (so that
     /// the user can reason about policy without having to first unset the
     /// temporary hold).
-    pub retention_expiration_time: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub retention_expiration_time: Option<OffsetDateTime>,
     /// User-provided metadata, in key/value pairs.
     pub metadata: Option<HashMap<String, String>>,
     /// Whether an object is under event-based hold. Event-based hold is a way to
@@ -155,7 +161,8 @@ pub struct Object {
     /// such a key.
     pub customer_encryption: Option<CustomerEncryption>,
     /// A user-specified timestamp set on an object.
-    pub custom_time: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub custom_time: Option<OffsetDateTime>,
 }
 
 /// Describes the customer-specified mechanism used to store the data at rest.

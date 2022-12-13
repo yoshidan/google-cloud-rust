@@ -3,7 +3,6 @@ pub mod database_admin_client;
 #[cfg(test)]
 mod tests {
     use crate::admin::database::database_admin_client::DatabaseAdminClient;
-    use chrono::Utc;
 
     use google_cloud_googleapis::spanner::admin::database::v1::database::State;
     use google_cloud_googleapis::spanner::admin::database::v1::{
@@ -12,11 +11,12 @@ mod tests {
     };
 
     use serial_test::serial;
+    use time::OffsetDateTime;
 
     async fn create_database() -> Database {
         std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
         let client = DatabaseAdminClient::default().await.unwrap();
-        let database_id = format!("test{}ut", Utc::now().timestamp_nanos());
+        let database_id = format!("test{}ut", OffsetDateTime::now_utc().unix_timestamp_nanos());
         let request = CreateDatabaseRequest {
             parent: "projects/local-project/instances/test-instance".to_string(),
             create_statement: format!("CREATE DATABASE {}", database_id),

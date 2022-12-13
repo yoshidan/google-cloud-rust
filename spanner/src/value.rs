@@ -1,8 +1,6 @@
 use std::ops::Deref;
 use std::time::Duration;
 
-use chrono::{DateTime, TimeZone, Utc};
-
 use google_cloud_googleapis::spanner::v1::transaction_options::read_only::TimestampBound as InternalTimestampBound;
 use google_cloud_googleapis::spanner::v1::transaction_options::ReadOnly;
 
@@ -62,7 +60,7 @@ impl From<prost_types::Timestamp> for Timestamp {
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
 pub struct CommitTimestamp {
-    pub(crate) timestamp: DateTime<Utc>,
+    pub(crate) timestamp: time::OffsetDateTime,
 }
 
 impl CommitTimestamp {
@@ -74,20 +72,20 @@ impl CommitTimestamp {
 impl Default for CommitTimestamp {
     fn default() -> Self {
         CommitTimestamp {
-            timestamp: Utc.timestamp_opt(0, 0).unwrap(),
+            timestamp: time::OffsetDateTime::UNIX_EPOCH,
         }
     }
 }
 
 impl Deref for CommitTimestamp {
-    type Target = DateTime<Utc>;
+    type Target = time::OffsetDateTime;
 
     fn deref(&self) -> &Self::Target {
         &self.timestamp
     }
 }
 
-impl From<CommitTimestamp> for DateTime<Utc> {
+impl From<CommitTimestamp> for time::OffsetDateTime {
     fn from(s: CommitTimestamp) -> Self {
         s.timestamp
     }

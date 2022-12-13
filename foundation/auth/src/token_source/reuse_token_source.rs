@@ -58,8 +58,8 @@ mod test {
     use crate::token::Token;
     use crate::{ReuseTokenSource, TokenSource};
     use async_trait::async_trait;
-    use chrono::{DateTime, Utc};
     use std::fmt::Debug;
+    use time::OffsetDateTime;
 
     use std::sync::Arc;
 
@@ -67,7 +67,7 @@ mod test {
 
     #[derive(Debug)]
     struct EmptyTokenSource {
-        pub expiry: DateTime<Utc>,
+        pub expiry: OffsetDateTime,
     }
     #[async_trait]
     impl TokenSource for EmptyTokenSource {
@@ -89,7 +89,7 @@ mod test {
     #[tokio::test]
     async fn test_all_valid() {
         let ts = Box::new(EmptyTokenSource {
-            expiry: Utc::now() + chrono::Duration::seconds(100),
+            expiry: OffsetDateTime::now_utc() + time::Duration::seconds(100),
         });
         let token = ts.token().await.unwrap();
         let results = run_task(ts, token).await;
@@ -100,9 +100,11 @@ mod test {
 
     #[tokio::test]
     async fn test_with_invalid() {
-        let mut ts = Box::new(EmptyTokenSource { expiry: Utc::now() });
+        let mut ts = Box::new(EmptyTokenSource {
+            expiry: OffsetDateTime::now_utc(),
+        });
         let token = ts.token().await.unwrap();
-        ts.expiry = Utc::now() + chrono::Duration::seconds(100);
+        ts.expiry = OffsetDateTime::now_utc() + time::Duration::seconds(100);
         let results = run_task(ts, token).await;
         for v in results {
             assert!(v)
@@ -111,7 +113,9 @@ mod test {
 
     #[tokio::test]
     async fn test_all_invalid() {
-        let ts = Box::new(EmptyTokenSource { expiry: Utc::now() });
+        let ts = Box::new(EmptyTokenSource {
+            expiry: OffsetDateTime::now_utc(),
+        });
         let token = ts.token().await.unwrap();
         let results = run_task(ts, token).await;
         for v in results {
