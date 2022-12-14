@@ -1,5 +1,6 @@
 /// The response for \[Commit][google.spanner.v1.Spanner.Commit\].
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CommitResponse {
     /// The Cloud Spanner timestamp at which the transaction committed.
     #[prost(message, optional, tag = "1")]
@@ -13,7 +14,8 @@ pub struct CommitResponse {
 /// Nested message and enum types in `CommitResponse`.
 pub mod commit_response {
     /// Additional statistics about a commit.
-    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct CommitStats {
         /// The total number of mutations for the transaction. Knowing the
         /// `mutation_count` value can help you maximize the number of mutations
@@ -38,15 +40,15 @@ pub mod commit_response {
 ///
 /// For example, consider the following table definition:
 ///
-///     CREATE TABLE UserEvents (
-///       UserName STRING(MAX),
-///       EventDate STRING(10)
-///     ) PRIMARY KEY(UserName, EventDate);
+///      CREATE TABLE UserEvents (
+///        UserName STRING(MAX),
+///        EventDate STRING(10)
+///      ) PRIMARY KEY(UserName, EventDate);
 ///
 /// The following keys name rows in this table:
 ///
-///     ["Bob", "2014-09-23"]
-///     ["Alfred", "2015-06-12"]
+///      ["Bob", "2014-09-23"]
+///      ["Alfred", "2015-06-12"]
 ///
 /// Since the `UserEvents` table's `PRIMARY KEY` clause names two
 /// columns, each `UserEvents` key has two elements; the first is the
@@ -57,8 +59,8 @@ pub mod commit_response {
 /// sort order. For example, the following range returns all events for
 /// user `"Bob"` that occurred in the year 2015:
 ///
-///     "start_closed": ["Bob", "2015-01-01"]
-///     "end_closed": ["Bob", "2015-12-31"]
+///      "start_closed": ["Bob", "2015-01-01"]
+///      "end_closed": ["Bob", "2015-12-31"]
 ///
 /// Start and end keys can omit trailing key components. This affects the
 /// inclusion and exclusion of rows that exactly match the provided key
@@ -69,51 +71,52 @@ pub mod commit_response {
 /// For example, the following range includes all events for `"Bob"` that
 /// occurred during and after the year 2000:
 ///
-///     "start_closed": ["Bob", "2000-01-01"]
-///     "end_closed": \["Bob"\]
+///      "start_closed": ["Bob", "2000-01-01"]
+///      "end_closed": \["Bob"\]
 ///
 /// The next example retrieves all events for `"Bob"`:
 ///
-///     "start_closed": \["Bob"\]
-///     "end_closed": \["Bob"\]
+///      "start_closed": \["Bob"\]
+///      "end_closed": \["Bob"\]
 ///
 /// To retrieve events before the year 2000:
 ///
-///     "start_closed": \["Bob"\]
-///     "end_open": ["Bob", "2000-01-01"]
+///      "start_closed": \["Bob"\]
+///      "end_open": ["Bob", "2000-01-01"]
 ///
 /// The following range includes all rows in the table:
 ///
-///     "start_closed": []
-///     "end_closed": []
+///      "start_closed": []
+///      "end_closed": []
 ///
 /// This range returns all users whose `UserName` begins with any
 /// character from A to C:
 ///
-///     "start_closed": \["A"\]
-///     "end_open": \["D"\]
+///      "start_closed": \["A"\]
+///      "end_open": \["D"\]
 ///
 /// This range returns all users whose `UserName` begins with B:
 ///
-///     "start_closed": \["B"\]
-///     "end_open": \["C"\]
+///      "start_closed": \["B"\]
+///      "end_open": \["C"\]
 ///
 /// Key ranges honor column sort order. For example, suppose a table is
 /// defined as follows:
 ///
-///     CREATE TABLE DescendingSortedTable {
-///       Key INT64,
-///       ...
-///     ) PRIMARY KEY(Key DESC);
+///      CREATE TABLE DescendingSortedTable {
+///        Key INT64,
+///        ...
+///      ) PRIMARY KEY(Key DESC);
 ///
 /// The following range retrieves all rows with key values between 1
 /// and 100 inclusive:
 ///
-///     "start_closed": \["100"\]
-///     "end_closed": \["1"\]
+///      "start_closed": \["100"\]
+///      "end_closed": \["1"\]
 ///
 /// Note that 100 is passed as the start, and 1 is passed as the end,
 /// because `Key` is a descending column in the schema.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct KeyRange {
     /// The start key must be provided. It can be either closed or open.
@@ -126,6 +129,7 @@ pub struct KeyRange {
 /// Nested message and enum types in `KeyRange`.
 pub mod key_range {
     /// The start key must be provided. It can be either closed or open.
+    #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum StartKeyType {
         /// If the start is closed, then the range includes all rows whose
@@ -138,6 +142,7 @@ pub mod key_range {
         StartOpen(::prost_types::ListValue),
     }
     /// The end key must be provided. It can be either closed or open.
+    #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum EndKeyType {
         /// If the end is closed, then the range includes all rows whose
@@ -157,6 +162,7 @@ pub mod key_range {
 /// If the same key is specified multiple times in the set (for example
 /// if two ranges, two keys, or a key and a range overlap), Cloud Spanner
 /// behaves as if the key were only specified once.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct KeySet {
     /// A list of specific keys. Entries in `keys` should have exactly as
@@ -178,6 +184,7 @@ pub struct KeySet {
 /// A modification to one or more Cloud Spanner rows.  Mutations can be
 /// applied to a Cloud Spanner database by sending them in a
 /// \[Commit][google.spanner.v1.Spanner.Commit\] call.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Mutation {
     /// Required. The operation to perform.
@@ -188,6 +195,7 @@ pub struct Mutation {
 pub mod mutation {
     /// Arguments to \[insert][google.spanner.v1.Mutation.insert\], \[update][google.spanner.v1.Mutation.update\], \[insert_or_update][google.spanner.v1.Mutation.insert_or_update\], and
     /// \[replace][google.spanner.v1.Mutation.replace\] operations.
+    #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Write {
         /// Required. The table whose rows will be written.
@@ -212,6 +220,7 @@ pub mod mutation {
         pub values: ::prost::alloc::vec::Vec<::prost_types::ListValue>,
     }
     /// Arguments to \[delete][google.spanner.v1.Mutation.delete\] operations.
+    #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Delete {
         /// Required. The table whose rows will be deleted.
@@ -227,6 +236,7 @@ pub mod mutation {
         pub key_set: ::core::option::Option<super::KeySet>,
     }
     /// Required. The operation to perform.
+    #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Operation {
         /// Insert new rows in a table. If any of the rows already exist,
@@ -264,6 +274,7 @@ pub mod mutation {
     }
 }
 /// Node information for nodes appearing in a \[QueryPlan.plan_nodes][google.spanner.v1.QueryPlan.plan_nodes\].
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PlanNode {
     /// The `PlanNode`'s index in [node list]\[google.spanner.v1.QueryPlan.plan_nodes\].
@@ -289,10 +300,10 @@ pub struct PlanNode {
     /// For example, a Parameter Reference node could have the following
     /// information in its metadata:
     ///
-    ///     {
-    ///       "parameter_reference": "param1",
-    ///       "parameter_type": "array"
-    ///     }
+    ///      {
+    ///        "parameter_reference": "param1",
+    ///        "parameter_type": "array"
+    ///      }
     #[prost(message, optional, tag = "6")]
     pub metadata: ::core::option::Option<::prost_types::Struct>,
     /// The execution statistics associated with the node, contained in a group of
@@ -306,7 +317,8 @@ pub struct PlanNode {
 pub mod plan_node {
     /// Metadata associated with a parent-child relationship appearing in a
     /// \[PlanNode][google.spanner.v1.PlanNode\].
-    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct ChildLink {
         /// The node to which the link points.
         #[prost(int32, tag = "1")]
@@ -330,7 +342,8 @@ pub mod plan_node {
     }
     /// Condensed representation of a node and its subtree. Only present for
     /// `SCALAR` \[PlanNode(s)][google.spanner.v1.PlanNode\].
-    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct ShortRepresentation {
         /// A string representation of the expression subtree rooted at this node.
         #[prost(string, tag = "1")]
@@ -345,7 +358,17 @@ pub mod plan_node {
     }
     /// The kind of \[PlanNode][google.spanner.v1.PlanNode\]. Distinguishes between the two different kinds of
     /// nodes that can appear in a query plan.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum Kind {
         /// Not specified.
@@ -360,8 +383,22 @@ pub mod plan_node {
         /// to column names.
         Scalar = 2,
     }
+    impl Kind {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Kind::Unspecified => "KIND_UNSPECIFIED",
+                Kind::Relational => "RELATIONAL",
+                Kind::Scalar => "SCALAR",
+            }
+        }
+    }
 }
 /// Contains an ordered list of nodes appearing in the query plan.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryPlan {
     /// The nodes in the query plan. Plan nodes are returned in pre-order starting
@@ -382,31 +419,32 @@ pub struct QueryPlan {
 ///
 /// Cloud Spanner supports three transaction modes:
 ///
-///   1. Locking read-write. This type of transaction is the only way
-///      to write data into Cloud Spanner. These transactions rely on
-///      pessimistic locking and, if necessary, two-phase commit.
-///      Locking read-write transactions may abort, requiring the
-///      application to retry.
+///    1. Locking read-write. This type of transaction is the only way
+///       to write data into Cloud Spanner. These transactions rely on
+///       pessimistic locking and, if necessary, two-phase commit.
+///       Locking read-write transactions may abort, requiring the
+///       application to retry.
 ///
-///   2. Snapshot read-only. Snapshot read-only transactions provide guaranteed
-///      consistency across several reads, but do not allow
-///      writes. Snapshot read-only transactions can be configured to read at
-///      timestamps in the past, or configured to perform a strong read
-///      (where Spanner will select a timestamp such that the read is
-///      guaranteed to see the effects of all transactions that have committed
-///      before the start of the read). Snapshot read-only transactions do not
-///      need to be committed.
+///    2. Snapshot read-only. Snapshot read-only transactions provide guaranteed
+///       consistency across several reads, but do not allow
+///       writes. Snapshot read-only transactions can be configured to read at
+///       timestamps in the past, or configured to perform a strong read
+///       (where Spanner will select a timestamp such that the read is
+///       guaranteed to see the effects of all transactions that have committed
+///       before the start of the read). Snapshot read-only transactions do not
+///       need to be committed.
 ///
-///      Queries on change streams must be performed with the snapshot read-only
-///      transaction mode, specifying a strong read. Please see
-///      \[TransactionOptions.ReadOnly.strong][google.spanner.v1.TransactionOptions.ReadOnly.strong\] for more details.
+///       Queries on change streams must be performed with the snapshot read-only
+///       transaction mode, specifying a strong read. Please see
+///       \[TransactionOptions.ReadOnly.strong][google.spanner.v1.TransactionOptions.ReadOnly.strong\]
+///       for more details.
 ///
-///   3. Partitioned DML. This type of transaction is used to execute
-///      a single Partitioned DML statement. Partitioned DML partitions
-///      the key space and runs the DML statement over each partition
-///      in parallel using separate, internal transactions that commit
-///      independently. Partitioned DML transactions do not need to be
-///      committed.
+///    3. Partitioned DML. This type of transaction is used to execute
+///       a single Partitioned DML statement. Partitioned DML partitions
+///       the key space and runs the DML statement over each partition
+///       in parallel using separate, internal transactions that commit
+///       independently. Partitioned DML transactions do not need to be
+///       committed.
 ///
 /// For transactions that only read, snapshot read-only transactions
 /// provide simpler semantics and are almost always faster. In
@@ -509,9 +547,9 @@ pub struct QueryPlan {
 ///
 /// The types of timestamp bound are:
 ///
-///   - Strong (the default).
-///   - Bounded staleness.
-///   - Exact staleness.
+///    - Strong (the default).
+///    - Bounded staleness.
+///    - Exact staleness.
 ///
 /// If the Cloud Spanner database to be read is geographically distributed,
 /// stale read-only transactions can execute more quickly than strong
@@ -535,7 +573,8 @@ pub struct QueryPlan {
 /// Queries on change streams (see below for more details) must also specify
 /// the strong read timestamp bound.
 ///
-/// See \[TransactionOptions.ReadOnly.strong][google.spanner.v1.TransactionOptions.ReadOnly.strong\].
+/// See
+/// \[TransactionOptions.ReadOnly.strong][google.spanner.v1.TransactionOptions.ReadOnly.strong\].
 ///
 /// Exact staleness:
 ///
@@ -556,7 +595,9 @@ pub struct QueryPlan {
 /// equivalent boundedly stale concurrency modes. On the other hand,
 /// boundedly stale reads usually return fresher results.
 ///
-/// See \[TransactionOptions.ReadOnly.read_timestamp][google.spanner.v1.TransactionOptions.ReadOnly.read_timestamp\] and
+/// See
+/// \[TransactionOptions.ReadOnly.read_timestamp][google.spanner.v1.TransactionOptions.ReadOnly.read_timestamp\]
+/// and
 /// \[TransactionOptions.ReadOnly.exact_staleness][google.spanner.v1.TransactionOptions.ReadOnly.exact_staleness\].
 ///
 /// Bounded staleness:
@@ -586,7 +627,9 @@ pub struct QueryPlan {
 /// which rows will be read, it can only be used with single-use
 /// read-only transactions.
 ///
-/// See \[TransactionOptions.ReadOnly.max_staleness][google.spanner.v1.TransactionOptions.ReadOnly.max_staleness\] and
+/// See
+/// \[TransactionOptions.ReadOnly.max_staleness][google.spanner.v1.TransactionOptions.ReadOnly.max_staleness\]
+/// and
 /// \[TransactionOptions.ReadOnly.min_read_timestamp][google.spanner.v1.TransactionOptions.ReadOnly.min_read_timestamp\].
 ///
 /// Old read timestamps and garbage collection:
@@ -652,42 +695,43 @@ pub struct QueryPlan {
 /// That said, Partitioned DML is not a drop-in replacement for standard DML used
 /// in ReadWrite transactions.
 ///
-///  - The DML statement must be fully-partitionable. Specifically, the statement
-///    must be expressible as the union of many statements which each access only
-///    a single row of the table.
+///   - The DML statement must be fully-partitionable. Specifically, the statement
+///     must be expressible as the union of many statements which each access only
+///     a single row of the table.
 ///
-///  - The statement is not applied atomically to all rows of the table. Rather,
-///    the statement is applied atomically to partitions of the table, in
-///    independent transactions. Secondary index rows are updated atomically
-///    with the base table rows.
+///   - The statement is not applied atomically to all rows of the table. Rather,
+///     the statement is applied atomically to partitions of the table, in
+///     independent transactions. Secondary index rows are updated atomically
+///     with the base table rows.
 ///
-///  - Partitioned DML does not guarantee exactly-once execution semantics
-///    against a partition. The statement will be applied at least once to each
-///    partition. It is strongly recommended that the DML statement should be
-///    idempotent to avoid unexpected results. For instance, it is potentially
-///    dangerous to run a statement such as
-///    `UPDATE table SET column = column + 1` as it could be run multiple times
-///    against some rows.
+///   - Partitioned DML does not guarantee exactly-once execution semantics
+///     against a partition. The statement will be applied at least once to each
+///     partition. It is strongly recommended that the DML statement should be
+///     idempotent to avoid unexpected results. For instance, it is potentially
+///     dangerous to run a statement such as
+///     `UPDATE table SET column = column + 1` as it could be run multiple times
+///     against some rows.
 ///
-///  - The partitions are committed automatically - there is no support for
-///    Commit or Rollback. If the call returns an error, or if the client issuing
-///    the ExecuteSql call dies, it is possible that some rows had the statement
-///    executed on them successfully. It is also possible that statement was
-///    never executed against other rows.
+///   - The partitions are committed automatically - there is no support for
+///     Commit or Rollback. If the call returns an error, or if the client issuing
+///     the ExecuteSql call dies, it is possible that some rows had the statement
+///     executed on them successfully. It is also possible that statement was
+///     never executed against other rows.
 ///
-///  - Partitioned DML transactions may only contain the execution of a single
-///    DML statement via ExecuteSql or ExecuteStreamingSql.
+///   - Partitioned DML transactions may only contain the execution of a single
+///     DML statement via ExecuteSql or ExecuteStreamingSql.
 ///
-///  - If any error is encountered during the execution of the partitioned DML
-///    operation (for instance, a UNIQUE INDEX violation, division by zero, or a
-///    value that cannot be stored due to schema constraints), then the
-///    operation is stopped at that point and an error is returned. It is
-///    possible that at this point, some partitions have been committed (or even
-///    committed multiple times), and other partitions have not been run at all.
+///   - If any error is encountered during the execution of the partitioned DML
+///     operation (for instance, a UNIQUE INDEX violation, division by zero, or a
+///     value that cannot be stored due to schema constraints), then the
+///     operation is stopped at that point and an error is returned. It is
+///     possible that at this point, some partitions have been committed (or even
+///     committed multiple times), and other partitions have not been run at all.
 ///
 /// Given the above, Partitioned DML is good fit for large, database-wide,
 /// operations that are idempotent, such as deleting old rows from a very large
 /// table.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TransactionOptions {
     /// Required. The type of transaction.
@@ -698,16 +742,70 @@ pub struct TransactionOptions {
 pub mod transaction_options {
     /// Message type to initiate a read-write transaction. Currently this
     /// transaction type has no options.
-    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
-    pub struct ReadWrite {}
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct ReadWrite {
+        /// Read lock mode for the transaction.
+        #[prost(enumeration = "read_write::ReadLockMode", tag = "1")]
+        pub read_lock_mode: i32,
+    }
+    /// Nested message and enum types in `ReadWrite`.
+    pub mod read_write {
+        /// `ReadLockMode` is used to set the read lock mode for read-write
+        /// transactions.
+        #[derive(
+            Clone,
+            Copy,
+            Debug,
+            PartialEq,
+            Eq,
+            Hash,
+            PartialOrd,
+            Ord,
+            ::prost::Enumeration
+        )]
+        #[repr(i32)]
+        pub enum ReadLockMode {
+            /// Default value.
+            ///
+            /// If the value is not specified, the pessimistic read lock is used.
+            Unspecified = 0,
+            /// Pessimistic lock mode.
+            ///
+            /// Read locks are acquired immediately on read.
+            Pessimistic = 1,
+            /// Optimistic lock mode.
+            ///
+            /// Locks for reads within the transaction are not acquired on read.
+            /// Instead the locks are acquired on a commit to validate that
+            /// read/queried data has not changed since the transaction started.
+            Optimistic = 2,
+        }
+        impl ReadLockMode {
+            /// String value of the enum field names used in the ProtoBuf definition.
+            ///
+            /// The values are not transformed in any way and thus are considered stable
+            /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+            pub fn as_str_name(&self) -> &'static str {
+                match self {
+                    ReadLockMode::Unspecified => "READ_LOCK_MODE_UNSPECIFIED",
+                    ReadLockMode::Pessimistic => "PESSIMISTIC",
+                    ReadLockMode::Optimistic => "OPTIMISTIC",
+                }
+            }
+        }
+    }
     /// Message type to initiate a Partitioned DML transaction.
-    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct PartitionedDml {}
     /// Message type to initiate a read-only transaction.
+    #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct ReadOnly {
         /// If true, the Cloud Spanner-selected read timestamp is included in
-        /// the \[Transaction][google.spanner.v1.Transaction\] message that describes the transaction.
+        /// the \[Transaction][google.spanner.v1.Transaction\] message that describes
+        /// the transaction.
         #[prost(bool, tag = "6")]
         pub return_read_timestamp: bool,
         /// How to choose the timestamp for the read-only transaction.
@@ -717,6 +815,7 @@ pub mod transaction_options {
     /// Nested message and enum types in `ReadOnly`.
     pub mod read_only {
         /// How to choose the timestamp for the read-only transaction.
+        #[allow(clippy::derive_partial_eq_without_eq)]
         #[derive(Clone, PartialEq, ::prost::Oneof)]
         pub enum TimestampBound {
             /// Read at a timestamp where all previously committed transactions
@@ -780,6 +879,7 @@ pub mod transaction_options {
         }
     }
     /// Required. The type of transaction.
+    #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Mode {
         /// Transaction may write.
@@ -806,7 +906,8 @@ pub mod transaction_options {
     }
 }
 /// A transaction.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Transaction {
     /// `id` may be used to identify the transaction in subsequent
     /// \[Read][google.spanner.v1.Spanner.Read\],
@@ -831,7 +932,9 @@ pub struct Transaction {
 /// \[Read][google.spanner.v1.Spanner.Read\] or
 /// \[ExecuteSql][google.spanner.v1.Spanner.ExecuteSql\] call runs.
 ///
-/// See \[TransactionOptions][google.spanner.v1.TransactionOptions\] for more information about transactions.
+/// See \[TransactionOptions][google.spanner.v1.TransactionOptions\] for more
+/// information about transactions.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TransactionSelector {
     /// If no fields are set, the default is a single use transaction
@@ -843,6 +946,7 @@ pub struct TransactionSelector {
 pub mod transaction_selector {
     /// If no fields are set, the default is a single use transaction
     /// with strong concurrency.
+    #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Selector {
         /// Execute the read or SQL query in a temporary transaction.
@@ -855,13 +959,15 @@ pub mod transaction_selector {
         Id(::prost::alloc::vec::Vec<u8>),
         /// Begin a new transaction and execute this read or SQL query in
         /// it. The transaction ID of the new transaction is returned in
-        /// \[ResultSetMetadata.transaction][google.spanner.v1.ResultSetMetadata.transaction\], which is a \[Transaction][google.spanner.v1.Transaction\].
+        /// \[ResultSetMetadata.transaction][google.spanner.v1.ResultSetMetadata.transaction\],
+        /// which is a \[Transaction][google.spanner.v1.Transaction\].
         #[prost(message, tag = "3")]
         Begin(super::TransactionOptions),
     }
 }
 /// `Type` indicates the type of a Cloud Spanner value, as might be stored in a
 /// table cell or returned from an SQL query.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Type {
     /// Required. The \[TypeCode][google.spanner.v1.TypeCode\] for this type.
@@ -885,6 +991,7 @@ pub struct Type {
     pub type_annotation: i32,
 }
 /// `StructType` defines the fields of a \[STRUCT][google.spanner.v1.TypeCode.STRUCT\] type.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StructType {
     /// The list of fields that make up this struct. Order is
@@ -899,6 +1006,7 @@ pub struct StructType {
 /// Nested message and enum types in `StructType`.
 pub mod struct_type {
     /// Message representing a single field of a struct.
+    #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Field {
         /// The name of the field. For reads, this is the column name. For
@@ -973,9 +1081,31 @@ pub enum TypeCode {
     /// - Whitespace characters are not preserved.
     /// - If a JSON object has duplicate keys, only the first key is preserved.
     /// - Members of a JSON object are not guaranteed to have their order
-    ///   preserved.
+    ///    preserved.
     /// - JSON array elements will have their order preserved.
     Json = 11,
+}
+impl TypeCode {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            TypeCode::Unspecified => "TYPE_CODE_UNSPECIFIED",
+            TypeCode::Bool => "BOOL",
+            TypeCode::Int64 => "INT64",
+            TypeCode::Float64 => "FLOAT64",
+            TypeCode::Timestamp => "TIMESTAMP",
+            TypeCode::Date => "DATE",
+            TypeCode::String => "STRING",
+            TypeCode::Bytes => "BYTES",
+            TypeCode::Array => "ARRAY",
+            TypeCode::Struct => "STRUCT",
+            TypeCode::Numeric => "NUMERIC",
+            TypeCode::Json => "JSON",
+        }
+    }
 }
 /// `TypeAnnotationCode` is used as a part of \[Type][google.spanner.v1.Type\] to
 /// disambiguate SQL types that should be used for a given Cloud Spanner value.
@@ -994,9 +1124,30 @@ pub enum TypeAnnotationCode {
     /// \[NUMERIC][google.spanner.v1.TypeCode.NUMERIC\] when a client interacts with PostgreSQL-enabled
     /// Spanner databases.
     PgNumeric = 2,
+    /// PostgreSQL compatible JSONB type. This annotation needs to be applied to
+    /// \[Type][google.spanner.v1.Type\] instances having \[JSON][google.spanner.v1.TypeCode.JSON\]
+    /// type code to specify that values of this type should be treated as
+    /// PostgreSQL JSONB values. Currently this annotation is always needed for
+    /// \[JSON][google.spanner.v1.TypeCode.JSON\] when a client interacts with PostgreSQL-enabled
+    /// Spanner databases.
+    PgJsonb = 3,
+}
+impl TypeAnnotationCode {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            TypeAnnotationCode::Unspecified => "TYPE_ANNOTATION_CODE_UNSPECIFIED",
+            TypeAnnotationCode::PgNumeric => "PG_NUMERIC",
+            TypeAnnotationCode::PgJsonb => "PG_JSONB",
+        }
+    }
 }
 /// Results from \[Read][google.spanner.v1.Spanner.Read\] or
 /// \[ExecuteSql][google.spanner.v1.Spanner.ExecuteSql\].
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResultSet {
     /// Metadata about the result set, such as row type information.
@@ -1024,6 +1175,7 @@ pub struct ResultSet {
 /// Partial results from a streaming read or SQL query. Streaming reads and
 /// SQL queries better tolerate large result sets, large rows, and large
 /// values, but are a little trickier to consume.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PartialResultSet {
     /// Metadata about the result set, such as row type information.
@@ -1045,60 +1197,60 @@ pub struct PartialResultSet {
     /// field. Two or more chunked values can be merged to form a
     /// complete value as follows:
     ///
-    ///   * `bool/number/null`: cannot be chunked
-    ///   * `string`: concatenate the strings
-    ///   * `list`: concatenate the lists. If the last element in a list is a
-    ///     `string`, `list`, or `object`, merge it with the first element in
-    ///     the next list by applying these rules recursively.
-    ///   * `object`: concatenate the (field name, field value) pairs. If a
-    ///     field name is duplicated, then apply these rules recursively
-    ///     to merge the field values.
+    ///    * `bool/number/null`: cannot be chunked
+    ///    * `string`: concatenate the strings
+    ///    * `list`: concatenate the lists. If the last element in a list is a
+    ///      `string`, `list`, or `object`, merge it with the first element in
+    ///      the next list by applying these rules recursively.
+    ///    * `object`: concatenate the (field name, field value) pairs. If a
+    ///      field name is duplicated, then apply these rules recursively
+    ///      to merge the field values.
     ///
     /// Some examples of merging:
     ///
-    ///     # Strings are concatenated.
-    ///     "foo", "bar" => "foobar"
+    ///      # Strings are concatenated.
+    ///      "foo", "bar" => "foobar"
     ///
-    ///     # Lists of non-strings are concatenated.
-    ///     [2, 3], \[4\] => [2, 3, 4]
+    ///      # Lists of non-strings are concatenated.
+    ///      [2, 3], \[4\] => [2, 3, 4]
     ///
-    ///     # Lists are concatenated, but the last and first elements are merged
-    ///     # because they are strings.
-    ///     ["a", "b"], ["c", "d"] => ["a", "bc", "d"]
+    ///      # Lists are concatenated, but the last and first elements are merged
+    ///      # because they are strings.
+    ///      ["a", "b"], ["c", "d"] => ["a", "bc", "d"]
     ///
-    ///     # Lists are concatenated, but the last and first elements are merged
-    ///     # because they are lists. Recursively, the last and first elements
-    ///     # of the inner lists are merged because they are strings.
-    ///     ["a", ["b", "c"]], \[["d"\], "e"] => ["a", ["b", "cd"], "e"]
+    ///      # Lists are concatenated, but the last and first elements are merged
+    ///      # because they are lists. Recursively, the last and first elements
+    ///      # of the inner lists are merged because they are strings.
+    ///      ["a", ["b", "c"]], \[["d"\], "e"] => ["a", ["b", "cd"], "e"]
     ///
-    ///     # Non-overlapping object fields are combined.
-    ///     {"a": "1"}, {"b": "2"} => {"a": "1", "b": 2"}
+    ///      # Non-overlapping object fields are combined.
+    ///      {"a": "1"}, {"b": "2"} => {"a": "1", "b": 2"}
     ///
-    ///     # Overlapping object fields are merged.
-    ///     {"a": "1"}, {"a": "2"} => {"a": "12"}
+    ///      # Overlapping object fields are merged.
+    ///      {"a": "1"}, {"a": "2"} => {"a": "12"}
     ///
-    ///     # Examples of merging objects containing lists of strings.
-    ///     {"a": \["1"\]}, {"a": \["2"\]} => {"a": \["12"\]}
+    ///      # Examples of merging objects containing lists of strings.
+    ///      {"a": \["1"\]}, {"a": \["2"\]} => {"a": \["12"\]}
     ///
     /// For a more complete example, suppose a streaming SQL query is
     /// yielding a result set whose rows contain a single string
     /// field. The following `PartialResultSet`s might be yielded:
     ///
-    ///     {
-    ///       "metadata": { ... }
-    ///       "values": ["Hello", "W"]
-    ///       "chunked_value": true
-    ///       "resume_token": "Af65..."
-    ///     }
-    ///     {
-    ///       "values": \["orl"\]
-    ///       "chunked_value": true
-    ///       "resume_token": "Bqp2..."
-    ///     }
-    ///     {
-    ///       "values": \["d"\]
-    ///       "resume_token": "Zx1B..."
-    ///     }
+    ///      {
+    ///        "metadata": { ... }
+    ///        "values": ["Hello", "W"]
+    ///        "chunked_value": true
+    ///        "resume_token": "Af65..."
+    ///      }
+    ///      {
+    ///        "values": \["orl"\]
+    ///        "chunked_value": true
+    ///        "resume_token": "Bqp2..."
+    ///      }
+    ///      {
+    ///        "values": \["d"\]
+    ///        "resume_token": "Zx1B..."
+    ///      }
     ///
     /// This sequence of `PartialResultSet`s encodes two rows, one
     /// containing the field value `"Hello"`, and a second containing the
@@ -1127,24 +1279,38 @@ pub struct PartialResultSet {
     pub stats: ::core::option::Option<ResultSetStats>,
 }
 /// Metadata about a \[ResultSet][google.spanner.v1.ResultSet\] or \[PartialResultSet][google.spanner.v1.PartialResultSet\].
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResultSetMetadata {
     /// Indicates the field names and types for the rows in the result
     /// set.  For example, a SQL query like `"SELECT UserId, UserName FROM
     /// Users"` could return a `row_type` value like:
     ///
-    ///     "fields": [
-    ///       { "name": "UserId", "type": { "code": "INT64" } },
-    ///       { "name": "UserName", "type": { "code": "STRING" } },
-    ///     ]
+    ///      "fields": [
+    ///        { "name": "UserId", "type": { "code": "INT64" } },
+    ///        { "name": "UserName", "type": { "code": "STRING" } },
+    ///      ]
     #[prost(message, optional, tag = "1")]
     pub row_type: ::core::option::Option<StructType>,
     /// If the read or SQL query began a transaction as a side-effect, the
     /// information about the new transaction is yielded here.
     #[prost(message, optional, tag = "2")]
     pub transaction: ::core::option::Option<Transaction>,
+    /// A SQL query can be parameterized. In PLAN mode, these parameters can be
+    /// undeclared. This indicates the field names and types for those undeclared
+    /// parameters in the SQL query. For example, a SQL query like `"SELECT * FROM
+    /// Users where UserId = @userId and UserName = @userName "` could return a
+    /// `undeclared_parameters` value like:
+    ///
+    ///      "fields": [
+    ///        { "name": "UserId", "type": { "code": "INT64" } },
+    ///        { "name": "UserName", "type": { "code": "STRING" } },
+    ///      ]
+    #[prost(message, optional, tag = "3")]
+    pub undeclared_parameters: ::core::option::Option<StructType>,
 }
 /// Additional statistics about a \[ResultSet][google.spanner.v1.ResultSet\] or \[PartialResultSet][google.spanner.v1.PartialResultSet\].
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResultSetStats {
     /// \[QueryPlan][google.spanner.v1.QueryPlan\] for the query associated with this result.
@@ -1154,11 +1320,11 @@ pub struct ResultSetStats {
     /// the query is profiled. For example, a query could return the statistics as
     /// follows:
     ///
-    ///     {
-    ///       "rows_returned": "3",
-    ///       "elapsed_time": "1.22 secs",
-    ///       "cpu_time": "1.19 secs"
-    ///     }
+    ///      {
+    ///        "rows_returned": "3",
+    ///        "elapsed_time": "1.22 secs",
+    ///        "cpu_time": "1.19 secs"
+    ///      }
     #[prost(message, optional, tag = "2")]
     pub query_stats: ::core::option::Option<::prost_types::Struct>,
     /// The number of rows modified by the DML statement.
@@ -1168,7 +1334,8 @@ pub struct ResultSetStats {
 /// Nested message and enum types in `ResultSetStats`.
 pub mod result_set_stats {
     /// The number of rows modified by the DML statement.
-    #[derive(Clone, PartialEq, Eq, ::prost::Oneof)]
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum RowCount {
         /// Standard DML returns an exact count of rows that were modified.
         #[prost(int64, tag = "3")]
@@ -1180,7 +1347,8 @@ pub mod result_set_stats {
     }
 }
 /// The request for \[CreateSession][google.spanner.v1.Spanner.CreateSession\].
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateSessionRequest {
     /// Required. The database in which the new session is created.
     #[prost(string, tag = "1")]
@@ -1190,7 +1358,8 @@ pub struct CreateSessionRequest {
     pub session: ::core::option::Option<Session>,
 }
 /// The request for \[BatchCreateSessions][google.spanner.v1.Spanner.BatchCreateSessions\].
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BatchCreateSessionsRequest {
     /// Required. The database in which the new sessions are created.
     #[prost(string, tag = "1")]
@@ -1207,29 +1376,34 @@ pub struct BatchCreateSessionsRequest {
     pub session_count: i32,
 }
 /// The response for \[BatchCreateSessions][google.spanner.v1.Spanner.BatchCreateSessions\].
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BatchCreateSessionsResponse {
     /// The freshly created sessions.
     #[prost(message, repeated, tag = "1")]
     pub session: ::prost::alloc::vec::Vec<Session>,
 }
 /// A session in the Cloud Spanner API.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Session {
     /// Output only. The name of the session. This is always system-assigned.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// The labels for the session.
     ///
-    ///  * Label keys must be between 1 and 63 characters long and must conform to
-    ///    the following regular expression: `\[a-z]([-a-z0-9]*[a-z0-9\])?`.
-    ///  * Label values must be between 0 and 63 characters long and must conform
-    ///    to the regular expression `(\[a-z]([-a-z0-9]*[a-z0-9\])?)?`.
-    ///  * No more than 64 labels can be associated with a given session.
+    ///   * Label keys must be between 1 and 63 characters long and must conform to
+    ///     the following regular expression: `\[a-z]([-a-z0-9]*[a-z0-9\])?`.
+    ///   * Label values must be between 0 and 63 characters long and must conform
+    ///     to the regular expression `(\[a-z]([-a-z0-9]*[a-z0-9\])?)?`.
+    ///   * No more than 64 labels can be associated with a given session.
     ///
     /// See <https://goo.gl/xmQnxf> for more information on and examples of labels.
     #[prost(map = "string, string", tag = "2")]
-    pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    pub labels: ::std::collections::HashMap<
+        ::prost::alloc::string::String,
+        ::prost::alloc::string::String,
+    >,
     /// Output only. The timestamp when the session is created.
     #[prost(message, optional, tag = "3")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
@@ -1242,14 +1416,16 @@ pub struct Session {
     pub creator_role: ::prost::alloc::string::String,
 }
 /// The request for \[GetSession][google.spanner.v1.Spanner.GetSession\].
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetSessionRequest {
     /// Required. The name of the session to retrieve.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// The request for \[ListSessions][google.spanner.v1.Spanner.ListSessions\].
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListSessionsRequest {
     /// Required. The database in which to list sessions.
     #[prost(string, tag = "1")]
@@ -1266,18 +1442,19 @@ pub struct ListSessionsRequest {
     /// An expression for filtering the results of the request. Filter rules are
     /// case insensitive. The fields eligible for filtering are:
     ///
-    ///   * `labels.key` where key is the name of a label
+    ///    * `labels.key` where key is the name of a label
     ///
     /// Some examples of using filters are:
     ///
-    ///   * `labels.env:*` --> The session has the label "env".
-    ///   * `labels.env:dev` --> The session has the label "env" and the value of
-    ///                        the label contains the string "dev".
+    ///    * `labels.env:*` --> The session has the label "env".
+    ///    * `labels.env:dev` --> The session has the label "env" and the value of
+    ///                         the label contains the string "dev".
     #[prost(string, tag = "4")]
     pub filter: ::prost::alloc::string::String,
 }
 /// The response for \[ListSessions][google.spanner.v1.Spanner.ListSessions\].
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListSessionsResponse {
     /// The list of requested sessions.
     #[prost(message, repeated, tag = "1")]
@@ -1289,14 +1466,16 @@ pub struct ListSessionsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request for \[DeleteSession][google.spanner.v1.Spanner.DeleteSession\].
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteSessionRequest {
     /// Required. The name of the session to delete.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// Common request options for various APIs.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestOptions {
     /// Priority for the request.
     #[prost(enumeration = "request_options::Priority", tag = "1")]
@@ -1336,16 +1515,26 @@ pub mod request_options {
     /// guarantee priority or order of execution. For example:
     ///
     /// * Some parts of a write operation always execute at `PRIORITY_HIGH`,
-    ///   regardless of the specified priority. This may cause you to see an
-    ///   increase in high priority workload even when executing a low priority
-    ///   request. This can also potentially cause a priority inversion where a
-    ///   lower priority request will be fulfilled ahead of a higher priority
-    ///   request.
+    ///    regardless of the specified priority. This may cause you to see an
+    ///    increase in high priority workload even when executing a low priority
+    ///    request. This can also potentially cause a priority inversion where a
+    ///    lower priority request will be fulfilled ahead of a higher priority
+    ///    request.
     /// * If a transaction contains multiple operations with different priorities,
-    ///   Cloud Spanner does not guarantee to process the higher priority
-    ///   operations first. There may be other constraints to satisfy, such as
-    ///   order of operations.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    ///    Cloud Spanner does not guarantee to process the higher priority
+    ///    operations first. There may be other constraints to satisfy, such as
+    ///    order of operations.
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum Priority {
         /// `PRIORITY_UNSPECIFIED` is equivalent to `PRIORITY_HIGH`.
@@ -1357,9 +1546,24 @@ pub mod request_options {
         /// This specifies that the request is high priority.
         High = 3,
     }
+    impl Priority {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Priority::Unspecified => "PRIORITY_UNSPECIFIED",
+                Priority::Low => "PRIORITY_LOW",
+                Priority::Medium => "PRIORITY_MEDIUM",
+                Priority::High => "PRIORITY_HIGH",
+            }
+        }
+    }
 }
 /// The request for \[ExecuteSql][google.spanner.v1.Spanner.ExecuteSql\] and
 /// \[ExecuteStreamingSql][google.spanner.v1.Spanner.ExecuteStreamingSql\].
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExecuteSqlRequest {
     /// Required. The session in which the SQL query should be performed.
@@ -1446,7 +1650,8 @@ pub struct ExecuteSqlRequest {
 /// Nested message and enum types in `ExecuteSqlRequest`.
 pub mod execute_sql_request {
     /// Query optimizer configuration.
-    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct QueryOptions {
         /// An option to control the selection of optimizer version.
         ///
@@ -1500,7 +1705,17 @@ pub mod execute_sql_request {
         pub optimizer_statistics_package: ::prost::alloc::string::String,
     }
     /// Mode in which the statement must be processed.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum QueryMode {
         /// The default mode. Only the statement results are returned.
@@ -1512,8 +1727,22 @@ pub mod execute_sql_request {
         /// with the results.
         Profile = 2,
     }
+    impl QueryMode {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                QueryMode::Normal => "NORMAL",
+                QueryMode::Plan => "PLAN",
+                QueryMode::Profile => "PROFILE",
+            }
+        }
+    }
 }
 /// The request for \[ExecuteBatchDml][google.spanner.v1.Spanner.ExecuteBatchDml\].
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExecuteBatchDmlRequest {
     /// Required. The session in which the DML statements should be performed.
@@ -1551,6 +1780,7 @@ pub struct ExecuteBatchDmlRequest {
 /// Nested message and enum types in `ExecuteBatchDmlRequest`.
 pub mod execute_batch_dml_request {
     /// A single DML statement.
+    #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Statement {
         /// Required. The DML string.
@@ -1579,7 +1809,10 @@ pub mod execute_batch_dml_request {
         /// definition of \[Type][google.spanner.v1.Type\] for more information
         /// about SQL types.
         #[prost(map = "string, message", tag = "3")]
-        pub param_types: ::std::collections::HashMap<::prost::alloc::string::String, super::Type>,
+        pub param_types: ::std::collections::HashMap<
+            ::prost::alloc::string::String,
+            super::Type,
+        >,
     }
 }
 /// The response for \[ExecuteBatchDml][google.spanner.v1.Spanner.ExecuteBatchDml\]. Contains a list
@@ -1590,10 +1823,10 @@ pub mod execute_batch_dml_request {
 /// To check for DML statements that failed, use the following approach:
 ///
 /// 1. Check the status in the response message. The \[google.rpc.Code][google.rpc.Code\] enum
-///    value `OK` indicates that all statements were executed successfully.
+///     value `OK` indicates that all statements were executed successfully.
 /// 2. If the status was not `OK`, check the number of result sets in the
-///    response. If the response contains `N` \[ResultSet][google.spanner.v1.ResultSet\] messages, then
-///    statement `N+1` in the request failed.
+///     response. If the response contains `N` \[ResultSet][google.spanner.v1.ResultSet\] messages, then
+///     statement `N+1` in the request failed.
 ///
 /// Example 1:
 ///
@@ -1604,8 +1837,9 @@ pub mod execute_batch_dml_request {
 ///
 /// * Request: 5 DML statements. The third statement has a syntax error.
 /// * Response: 2 \[ResultSet][google.spanner.v1.ResultSet\] messages, and a syntax error (`INVALID_ARGUMENT`)
-///   status. The number of \[ResultSet][google.spanner.v1.ResultSet\] messages indicates that the third
-///   statement failed, and the fourth and fifth statements were not executed.
+///    status. The number of \[ResultSet][google.spanner.v1.ResultSet\] messages indicates that the third
+///    statement failed, and the fourth and fifth statements were not executed.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExecuteBatchDmlResponse {
     /// One \[ResultSet][google.spanner.v1.ResultSet\] for each statement in the request that ran successfully,
@@ -1624,7 +1858,8 @@ pub struct ExecuteBatchDmlResponse {
 }
 /// Options for a PartitionQueryRequest and
 /// PartitionReadRequest.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PartitionOptions {
     /// **Note:** This hint is currently ignored by PartitionQuery and
     /// PartitionRead requests.
@@ -1646,6 +1881,7 @@ pub struct PartitionOptions {
     pub max_partitions: i64,
 }
 /// The request for \[PartitionQuery][google.spanner.v1.Spanner.PartitionQuery\]
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PartitionQueryRequest {
     /// Required. The session used to create the partitions.
@@ -1696,6 +1932,7 @@ pub struct PartitionQueryRequest {
     pub partition_options: ::core::option::Option<PartitionOptions>,
 }
 /// The request for \[PartitionRead][google.spanner.v1.Spanner.PartitionRead\]
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PartitionReadRequest {
     /// Required. The session used to create the partitions.
@@ -1732,7 +1969,8 @@ pub struct PartitionReadRequest {
 }
 /// Information returned for each partition returned in a
 /// PartitionResponse.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Partition {
     /// This token can be passed to Read, StreamingRead, ExecuteSql, or
     /// ExecuteStreamingSql requests to restrict the results to those identified by
@@ -1742,7 +1980,8 @@ pub struct Partition {
 }
 /// The response for \[PartitionQuery][google.spanner.v1.Spanner.PartitionQuery\]
 /// or \[PartitionRead][google.spanner.v1.Spanner.PartitionRead\]
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PartitionResponse {
     /// Partitions created by this request.
     #[prost(message, repeated, tag = "1")]
@@ -1753,6 +1992,7 @@ pub struct PartitionResponse {
 }
 /// The request for \[Read][google.spanner.v1.Spanner.Read\] and
 /// \[StreamingRead][google.spanner.v1.Spanner.StreamingRead\].
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ReadRequest {
     /// Required. The session in which the read should be performed.
@@ -1812,6 +2052,7 @@ pub struct ReadRequest {
     pub request_options: ::core::option::Option<RequestOptions>,
 }
 /// The request for \[BeginTransaction][google.spanner.v1.Spanner.BeginTransaction\].
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BeginTransactionRequest {
     /// Required. The session in which the transaction runs.
@@ -1829,6 +2070,7 @@ pub struct BeginTransactionRequest {
     pub request_options: ::core::option::Option<RequestOptions>,
 }
 /// The request for \[Commit][google.spanner.v1.Spanner.Commit\].
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CommitRequest {
     /// Required. The session in which the transaction to be committed is running.
@@ -1854,6 +2096,7 @@ pub struct CommitRequest {
 /// Nested message and enum types in `CommitRequest`.
 pub mod commit_request {
     /// Required. The transaction in which to commit.
+    #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Transaction {
         /// Commit a previously-started transaction.
@@ -1873,7 +2116,8 @@ pub mod commit_request {
     }
 }
 /// The request for \[Rollback][google.spanner.v1.Spanner.Rollback\].
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RollbackRequest {
     /// Required. The session in which the transaction to roll back is running.
     #[prost(string, tag = "1")]
@@ -1886,6 +2130,7 @@ pub struct RollbackRequest {
 pub mod spanner_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
     use tonic::codegen::*;
+    use tonic::codegen::http::Uri;
     /// Cloud Spanner API
     ///
     /// The Cloud Spanner API can be used to manage sessions and execute
@@ -1916,31 +2161,42 @@ pub mod spanner_client {
             let inner = tonic::client::Grpc::new(inner);
             Self { inner }
         }
-        pub fn with_interceptor<F>(inner: T, interceptor: F) -> SpannerClient<InterceptedService<T, F>>
+        pub fn with_origin(inner: T, origin: Uri) -> Self {
+            let inner = tonic::client::Grpc::with_origin(inner, origin);
+            Self { inner }
+        }
+        pub fn with_interceptor<F>(
+            inner: T,
+            interceptor: F,
+        ) -> SpannerClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
                 http::Request<tonic::body::BoxBody>,
-                Response = http::Response<<T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody>,
+                Response = http::Response<
+                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                >,
             >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error: Into<StdError> + Send + Sync,
+            <T as tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+            >>::Error: Into<StdError> + Send + Sync,
         {
             SpannerClient::new(InterceptedService::new(inner, interceptor))
         }
-        /// Compress requests with `gzip`.
+        /// Compress requests with the given encoding.
         ///
         /// This requires the server to support it otherwise it might respond with an
         /// error.
         #[must_use]
-        pub fn send_gzip(mut self) -> Self {
-            self.inner = self.inner.send_compressed(CompressionEncoding::Gzip);
+        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.send_compressed(encoding);
             self
         }
-        /// Enable decompressing responses with `gzip`.
+        /// Enable decompressing responses.
         #[must_use]
-        pub fn accept_gzip(mut self) -> Self {
-            self.inner = self.inner.accept_compressed(CompressionEncoding::Gzip);
+        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.accept_compressed(encoding);
             self
         }
         /// Creates a new session. A session can be used to perform
@@ -1966,11 +2222,19 @@ pub mod spanner_client {
             &mut self,
             request: impl tonic::IntoRequest<super::CreateSessionRequest>,
         ) -> Result<tonic::Response<super::Session>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/CreateSession");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/CreateSession",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Creates multiple new sessions.
@@ -1981,11 +2245,19 @@ pub mod spanner_client {
             &mut self,
             request: impl tonic::IntoRequest<super::BatchCreateSessionsRequest>,
         ) -> Result<tonic::Response<super::BatchCreateSessionsResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/BatchCreateSessions");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/BatchCreateSessions",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Gets a session. Returns `NOT_FOUND` if the session does not exist.
@@ -1995,11 +2267,19 @@ pub mod spanner_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetSessionRequest>,
         ) -> Result<tonic::Response<super::Session>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/GetSession");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/GetSession",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Lists all sessions in a given database.
@@ -2007,11 +2287,19 @@ pub mod spanner_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ListSessionsRequest>,
         ) -> Result<tonic::Response<super::ListSessionsResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/ListSessions");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/ListSessions",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Ends a session, releasing server resources associated with it. This will
@@ -2021,11 +2309,19 @@ pub mod spanner_client {
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteSessionRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/DeleteSession");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/DeleteSession",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Executes an SQL statement, returning all results in a single reply. This
@@ -2043,11 +2339,19 @@ pub mod spanner_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ExecuteSqlRequest>,
         ) -> Result<tonic::Response<super::ResultSet>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/ExecuteSql");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/ExecuteSql",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Like [ExecuteSql][google.spanner.v1.Spanner.ExecuteSql], except returns the result
@@ -2058,12 +2362,23 @@ pub mod spanner_client {
         pub async fn execute_streaming_sql(
             &mut self,
             request: impl tonic::IntoRequest<super::ExecuteSqlRequest>,
-        ) -> Result<tonic::Response<tonic::codec::Streaming<super::PartialResultSet>>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+        ) -> Result<
+            tonic::Response<tonic::codec::Streaming<super::PartialResultSet>>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/ExecuteStreamingSql");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/ExecuteStreamingSql",
+            );
             self.inner.server_streaming(request.into_request(), path, codec).await
         }
         /// Executes a batch of SQL DML statements. This method allows many statements
@@ -2081,11 +2396,19 @@ pub mod spanner_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ExecuteBatchDmlRequest>,
         ) -> Result<tonic::Response<super::ExecuteBatchDmlResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/ExecuteBatchDml");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/ExecuteBatchDml",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Reads rows from the database using key lookups and scans, as a
@@ -2105,11 +2428,19 @@ pub mod spanner_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ReadRequest>,
         ) -> Result<tonic::Response<super::ResultSet>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/Read");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/Read",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Like [Read][google.spanner.v1.Spanner.Read], except returns the result set as a
@@ -2120,12 +2451,23 @@ pub mod spanner_client {
         pub async fn streaming_read(
             &mut self,
             request: impl tonic::IntoRequest<super::ReadRequest>,
-        ) -> Result<tonic::Response<tonic::codec::Streaming<super::PartialResultSet>>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+        ) -> Result<
+            tonic::Response<tonic::codec::Streaming<super::PartialResultSet>>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/StreamingRead");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/StreamingRead",
+            );
             self.inner.server_streaming(request.into_request(), path, codec).await
         }
         /// Begins a new transaction. This step can often be skipped:
@@ -2136,11 +2478,19 @@ pub mod spanner_client {
             &mut self,
             request: impl tonic::IntoRequest<super::BeginTransactionRequest>,
         ) -> Result<tonic::Response<super::Transaction>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/BeginTransaction");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/BeginTransaction",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Commits a transaction. The request includes the mutations to be
@@ -2161,11 +2511,19 @@ pub mod spanner_client {
             &mut self,
             request: impl tonic::IntoRequest<super::CommitRequest>,
         ) -> Result<tonic::Response<super::CommitResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/Commit");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/Commit",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Rolls back a transaction, releasing any locks it holds. It is a good
@@ -2180,11 +2538,19 @@ pub mod spanner_client {
             &mut self,
             request: impl tonic::IntoRequest<super::RollbackRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/Rollback");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/Rollback",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Creates a set of partition tokens that can be used to execute a query
@@ -2202,11 +2568,19 @@ pub mod spanner_client {
             &mut self,
             request: impl tonic::IntoRequest<super::PartitionQueryRequest>,
         ) -> Result<tonic::Response<super::PartitionResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/PartitionQuery");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/PartitionQuery",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Creates a set of partition tokens that can be used to execute a read
@@ -2226,11 +2600,19 @@ pub mod spanner_client {
             &mut self,
             request: impl tonic::IntoRequest<super::PartitionReadRequest>,
         ) -> Result<tonic::Response<super::PartitionResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/PartitionRead");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/PartitionRead",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
     }

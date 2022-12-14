@@ -1,5 +1,6 @@
 /// A schema resource.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Schema {
     /// Required. Name of the schema.
     /// Format is `projects/{project}/schemas/{schema}`.
@@ -17,7 +18,17 @@ pub struct Schema {
 /// Nested message and enum types in `Schema`.
 pub mod schema {
     /// Possible schema definition types.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum Type {
         /// Default value. This value is unused.
@@ -27,9 +38,23 @@ pub mod schema {
         /// An Avro schema definition.
         Avro = 2,
     }
+    impl Type {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Type::Unspecified => "TYPE_UNSPECIFIED",
+                Type::ProtocolBuffer => "PROTOCOL_BUFFER",
+                Type::Avro => "AVRO",
+            }
+        }
+    }
 }
 /// Request for the CreateSchema method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateSchemaRequest {
     /// Required. The name of the project in which to create the schema.
     /// Format is `projects/{project-id}`.
@@ -51,7 +76,8 @@ pub struct CreateSchemaRequest {
     pub schema_id: ::prost::alloc::string::String,
 }
 /// Request for the GetSchema method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetSchemaRequest {
     /// Required. The name of the schema to get.
     /// Format is `projects/{project}/schemas/{schema}`.
@@ -64,7 +90,8 @@ pub struct GetSchemaRequest {
     pub view: i32,
 }
 /// Request for the `ListSchemas` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListSchemasRequest {
     /// Required. The name of the project in which to list schemas.
     /// Format is `projects/{project-id}`.
@@ -85,7 +112,8 @@ pub struct ListSchemasRequest {
     pub page_token: ::prost::alloc::string::String,
 }
 /// Response for the `ListSchemas` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListSchemasResponse {
     /// The resulting schemas.
     #[prost(message, repeated, tag = "1")]
@@ -96,7 +124,8 @@ pub struct ListSchemasResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// Request for the `DeleteSchema` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteSchemaRequest {
     /// Required. Name of the schema to delete.
     /// Format is `projects/{project}/schemas/{schema}`.
@@ -104,7 +133,8 @@ pub struct DeleteSchemaRequest {
     pub name: ::prost::alloc::string::String,
 }
 /// Request for the `ValidateSchema` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ValidateSchemaRequest {
     /// Required. The name of the project in which to validate schemas.
     /// Format is `projects/{project-id}`.
@@ -116,10 +146,12 @@ pub struct ValidateSchemaRequest {
 }
 /// Response for the `ValidateSchema` method.
 /// Empty for now.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ValidateSchemaResponse {}
 /// Request for the `ValidateMessage` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ValidateMessageRequest {
     /// Required. The name of the project in which to validate schemas.
     /// Format is `projects/{project-id}`.
@@ -136,7 +168,8 @@ pub struct ValidateMessageRequest {
 }
 /// Nested message and enum types in `ValidateMessageRequest`.
 pub mod validate_message_request {
-    #[derive(Clone, PartialEq, Eq, ::prost::Oneof)]
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum SchemaSpec {
         /// Name of the schema against which to validate.
         ///
@@ -150,7 +183,8 @@ pub mod validate_message_request {
 }
 /// Response for the `ValidateMessage` method.
 /// Empty for now.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ValidateMessageResponse {}
 /// View of Schema object fields to be returned by GetSchema and ListSchemas.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
@@ -164,6 +198,19 @@ pub enum SchemaView {
     /// Include all Schema object fields.
     Full = 2,
 }
+impl SchemaView {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            SchemaView::Unspecified => "SCHEMA_VIEW_UNSPECIFIED",
+            SchemaView::Basic => "BASIC",
+            SchemaView::Full => "FULL",
+        }
+    }
+}
 /// Possible encoding types for messages.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -176,10 +223,24 @@ pub enum Encoding {
     /// binary encoding may not be available.
     Binary = 2,
 }
+impl Encoding {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Encoding::Unspecified => "ENCODING_UNSPECIFIED",
+            Encoding::Json => "JSON",
+            Encoding::Binary => "BINARY",
+        }
+    }
+}
 /// Generated client implementations.
 pub mod schema_service_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
     use tonic::codegen::*;
+    use tonic::codegen::http::Uri;
     /// Service for doing schema-related operations.
     #[derive(Debug, Clone)]
     pub struct SchemaServiceClient<T> {
@@ -207,31 +268,42 @@ pub mod schema_service_client {
             let inner = tonic::client::Grpc::new(inner);
             Self { inner }
         }
-        pub fn with_interceptor<F>(inner: T, interceptor: F) -> SchemaServiceClient<InterceptedService<T, F>>
+        pub fn with_origin(inner: T, origin: Uri) -> Self {
+            let inner = tonic::client::Grpc::with_origin(inner, origin);
+            Self { inner }
+        }
+        pub fn with_interceptor<F>(
+            inner: T,
+            interceptor: F,
+        ) -> SchemaServiceClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
                 http::Request<tonic::body::BoxBody>,
-                Response = http::Response<<T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody>,
+                Response = http::Response<
+                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                >,
             >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error: Into<StdError> + Send + Sync,
+            <T as tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+            >>::Error: Into<StdError> + Send + Sync,
         {
             SchemaServiceClient::new(InterceptedService::new(inner, interceptor))
         }
-        /// Compress requests with `gzip`.
+        /// Compress requests with the given encoding.
         ///
         /// This requires the server to support it otherwise it might respond with an
         /// error.
         #[must_use]
-        pub fn send_gzip(mut self) -> Self {
-            self.inner = self.inner.send_compressed(CompressionEncoding::Gzip);
+        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.send_compressed(encoding);
             self
         }
-        /// Enable decompressing responses with `gzip`.
+        /// Enable decompressing responses.
         #[must_use]
-        pub fn accept_gzip(mut self) -> Self {
-            self.inner = self.inner.accept_compressed(CompressionEncoding::Gzip);
+        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.accept_compressed(encoding);
             self
         }
         /// Creates a schema.
@@ -239,11 +311,19 @@ pub mod schema_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::CreateSchemaRequest>,
         ) -> Result<tonic::Response<super::Schema>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.SchemaService/CreateSchema");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.SchemaService/CreateSchema",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Gets a schema.
@@ -251,11 +331,19 @@ pub mod schema_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetSchemaRequest>,
         ) -> Result<tonic::Response<super::Schema>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.SchemaService/GetSchema");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.SchemaService/GetSchema",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Lists schemas in a project.
@@ -263,11 +351,19 @@ pub mod schema_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ListSchemasRequest>,
         ) -> Result<tonic::Response<super::ListSchemasResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.SchemaService/ListSchemas");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.SchemaService/ListSchemas",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Deletes a schema.
@@ -275,11 +371,19 @@ pub mod schema_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteSchemaRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.SchemaService/DeleteSchema");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.SchemaService/DeleteSchema",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Validates a schema.
@@ -287,11 +391,19 @@ pub mod schema_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ValidateSchemaRequest>,
         ) -> Result<tonic::Response<super::ValidateSchemaResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.SchemaService/ValidateSchema");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.SchemaService/ValidateSchema",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Validates a message against a schema.
@@ -299,17 +411,26 @@ pub mod schema_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ValidateMessageRequest>,
         ) -> Result<tonic::Response<super::ValidateMessageResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.SchemaService/ValidateMessage");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.SchemaService/ValidateMessage",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
     }
 }
 /// A policy constraining the storage of messages published to the topic.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MessageStoragePolicy {
     /// A list of IDs of GCP regions where messages that are published to the topic
     /// may be persisted in storage. Messages published by publishers running in
@@ -317,10 +438,13 @@ pub struct MessageStoragePolicy {
     /// routed for storage in one of the allowed regions. An empty list means that
     /// no regions are allowed, and is not a valid configuration.
     #[prost(string, repeated, tag = "1")]
-    pub allowed_persistence_regions: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    pub allowed_persistence_regions: ::prost::alloc::vec::Vec<
+        ::prost::alloc::string::String,
+    >,
 }
 /// Settings for validating messages published against a schema.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SchemaSettings {
     /// Required. The name of the schema that messages published should be
     /// validated against. Format is `projects/{project}/schemas/{schema}`. The
@@ -333,6 +457,7 @@ pub struct SchemaSettings {
     pub encoding: i32,
 }
 /// A topic resource.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Topic {
     /// Required. The name of the topic. It must have the format
@@ -346,7 +471,10 @@ pub struct Topic {
     /// See [Creating and managing labels]
     /// (<https://cloud.google.com/pubsub/docs/labels>).
     #[prost(map = "string, string", tag = "2")]
-    pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    pub labels: ::std::collections::HashMap<
+        ::prost::alloc::string::String,
+        ::prost::alloc::string::String,
+    >,
     /// Policy constraining the set of Google Cloud Platform regions where messages
     /// published to the topic may be stored. If not present, then no constraints
     /// are in effect.
@@ -384,7 +512,8 @@ pub struct Topic {
 /// more information. See [quotas and limits]
 /// (<https://cloud.google.com/pubsub/quotas>) for more information about message
 /// limits.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PubsubMessage {
     /// The message data field. If this field is empty, the message must contain
     /// at least one attribute.
@@ -394,7 +523,10 @@ pub struct PubsubMessage {
     /// contain non-empty data. This can be used to filter messages on the
     /// subscription.
     #[prost(map = "string, string", tag = "2")]
-    pub attributes: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    pub attributes: ::std::collections::HashMap<
+        ::prost::alloc::string::String,
+        ::prost::alloc::string::String,
+    >,
     /// ID of this message, assigned by the server when the message is published.
     /// Guaranteed to be unique within the topic. This value may be read by a
     /// subscriber that receives a `PubsubMessage` via a `Pull` call or a push
@@ -416,7 +548,8 @@ pub struct PubsubMessage {
     pub ordering_key: ::prost::alloc::string::String,
 }
 /// Request for the GetTopic method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetTopicRequest {
     /// Required. The name of the topic to get.
     /// Format is `projects/{project}/topics/{topic}`.
@@ -424,6 +557,7 @@ pub struct GetTopicRequest {
     pub topic: ::prost::alloc::string::String,
 }
 /// Request for the UpdateTopic method.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateTopicRequest {
     /// Required. The updated topic object.
@@ -438,7 +572,8 @@ pub struct UpdateTopicRequest {
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
 /// Request for the Publish method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PublishRequest {
     /// Required. The messages in the request will be published on this topic.
     /// Format is `projects/{project}/topics/{topic}`.
@@ -449,7 +584,8 @@ pub struct PublishRequest {
     pub messages: ::prost::alloc::vec::Vec<PubsubMessage>,
 }
 /// Response for the `Publish` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PublishResponse {
     /// The server-assigned ID of each published message, in the same order as
     /// the messages in the request. IDs are guaranteed to be unique within
@@ -458,7 +594,8 @@ pub struct PublishResponse {
     pub message_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// Request for the `ListTopics` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListTopicsRequest {
     /// Required. The name of the project in which to list topics.
     /// Format is `projects/{project-id}`.
@@ -474,6 +611,7 @@ pub struct ListTopicsRequest {
     pub page_token: ::prost::alloc::string::String,
 }
 /// Response for the `ListTopics` method.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListTopicsResponse {
     /// The resulting topics.
@@ -485,7 +623,8 @@ pub struct ListTopicsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// Request for the `ListTopicSubscriptions` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListTopicSubscriptionsRequest {
     /// Required. The name of the topic that subscriptions are attached to.
     /// Format is `projects/{project}/topics/{topic}`.
@@ -501,7 +640,8 @@ pub struct ListTopicSubscriptionsRequest {
     pub page_token: ::prost::alloc::string::String,
 }
 /// Response for the `ListTopicSubscriptions` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListTopicSubscriptionsResponse {
     /// The names of subscriptions attached to the topic specified in the request.
     #[prost(string, repeated, tag = "1")]
@@ -513,7 +653,8 @@ pub struct ListTopicSubscriptionsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// Request for the `ListTopicSnapshots` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListTopicSnapshotsRequest {
     /// Required. The name of the topic that snapshots are attached to.
     /// Format is `projects/{project}/topics/{topic}`.
@@ -529,7 +670,8 @@ pub struct ListTopicSnapshotsRequest {
     pub page_token: ::prost::alloc::string::String,
 }
 /// Response for the `ListTopicSnapshots` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListTopicSnapshotsResponse {
     /// The names of the snapshots that match the request.
     #[prost(string, repeated, tag = "1")]
@@ -541,7 +683,8 @@ pub struct ListTopicSnapshotsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// Request for the `DeleteTopic` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteTopicRequest {
     /// Required. Name of the topic to delete.
     /// Format is `projects/{project}/topics/{topic}`.
@@ -549,7 +692,8 @@ pub struct DeleteTopicRequest {
     pub topic: ::prost::alloc::string::String,
 }
 /// Request for the DetachSubscription method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DetachSubscriptionRequest {
     /// Required. The subscription to detach.
     /// Format is `projects/{project}/subscriptions/{subscription}`.
@@ -558,9 +702,11 @@ pub struct DetachSubscriptionRequest {
 }
 /// Response for the DetachSubscription method.
 /// Reserved for future use.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DetachSubscriptionResponse {}
 /// A subscription resource.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Subscription {
     /// Required. The name of the subscription. It must have the format
@@ -629,7 +775,10 @@ pub struct Subscription {
     /// See <a href="<https://cloud.google.com/pubsub/docs/labels">> Creating and
     /// managing labels</a>.
     #[prost(map = "string, string", tag = "9")]
-    pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    pub labels: ::std::collections::HashMap<
+        ::prost::alloc::string::String,
+        ::prost::alloc::string::String,
+    >,
     /// If true, messages published with the same `ordering_key` in `PubsubMessage`
     /// will be delivered to the subscribers in the order in which they
     /// are received by the Pub/Sub system. Otherwise, they may be delivered in
@@ -697,7 +846,9 @@ pub struct Subscription {
     /// the `message_retention_duration` field in `Topic`. This field is set only
     /// in responses from the server; it is ignored if it is set in any requests.
     #[prost(message, optional, tag = "17")]
-    pub topic_message_retention_duration: ::core::option::Option<::prost_types::Duration>,
+    pub topic_message_retention_duration: ::core::option::Option<
+        ::prost_types::Duration,
+    >,
     /// Output only. An output-only field indicating whether or not the subscription can receive
     /// messages.
     #[prost(enumeration = "subscription::State", tag = "19")]
@@ -706,7 +857,17 @@ pub struct Subscription {
 /// Nested message and enum types in `Subscription`.
 pub mod subscription {
     /// Possible states for a subscription.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum State {
         /// Default value. This value is unused.
@@ -717,6 +878,19 @@ pub mod subscription {
         /// resource to which it pushes messages. See the more detailed error state
         /// in the corresponding configuration.
         ResourceError = 2,
+    }
+    impl State {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                State::Unspecified => "STATE_UNSPECIFIED",
+                State::Active => "ACTIVE",
+                State::ResourceError => "RESOURCE_ERROR",
+            }
+        }
     }
 }
 /// A policy that specifies how Cloud Pub/Sub retries message delivery.
@@ -730,6 +904,7 @@ pub mod subscription {
 /// Retry Policy is implemented on a best effort basis. At times, the delay
 /// between consecutive deliveries may not match the configuration. That is,
 /// delay can be more or less than configured backoff.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RetryPolicy {
     /// The minimum delay between consecutive deliveries of a given message.
@@ -746,7 +921,8 @@ pub struct RetryPolicy {
 ///
 /// If validation on any of the fields fails at subscription creation/updation,
 /// the create/update subscription request will fail.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeadLetterPolicy {
     /// The name of the topic to which dead letter messages should be published.
     /// Format is `projects/{project}/topics/{topic}`.The Cloud Pub/Sub service
@@ -777,6 +953,7 @@ pub struct DeadLetterPolicy {
 }
 /// A policy that specifies the conditions for resource expiration (i.e.,
 /// automatic resource deletion).
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExpirationPolicy {
     /// Specifies the "time-to-live" duration for an associated resource. The
@@ -789,7 +966,8 @@ pub struct ExpirationPolicy {
     pub ttl: ::core::option::Option<::prost_types::Duration>,
 }
 /// Configuration for a push delivery endpoint.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PushConfig {
     /// A URL locating the endpoint to which messages should be pushed.
     /// For example, a Webhook endpoint might use `<https://example.com/push`.>
@@ -817,7 +995,10 @@ pub struct PushConfig {
     /// For example:
     /// <pre><code>attributes { "x-goog-version": "v1" } </code></pre>
     #[prost(map = "string, string", tag = "2")]
-    pub attributes: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    pub attributes: ::std::collections::HashMap<
+        ::prost::alloc::string::String,
+        ::prost::alloc::string::String,
+    >,
     /// An authentication method used by push endpoints to verify the source of
     /// push requests. This can be used with push endpoints that are private by
     /// default to allow requests only from the Cloud Pub/Sub system, for example.
@@ -831,7 +1012,8 @@ pub mod push_config {
     /// Contains information needed for generating an
     /// [OpenID Connect
     /// token](<https://developers.google.com/identity/protocols/OpenIDConnect>).
-    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct OidcToken {
         /// [Service account
         /// email](<https://cloud.google.com/iam/docs/service-accounts>)
@@ -854,7 +1036,8 @@ pub mod push_config {
     /// default to allow requests only from the Cloud Pub/Sub system, for example.
     /// This field is optional and should be set only by users interested in
     /// authenticated push.
-    #[derive(Clone, PartialEq, Eq, ::prost::Oneof)]
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum AuthenticationMethod {
         /// If specified, Pub/Sub will generate and attach an OIDC JWT token as an
         /// `Authorization` header in the HTTP request for every pushed message.
@@ -863,7 +1046,8 @@ pub mod push_config {
     }
 }
 /// Configuration for a BigQuery subscription.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BigQueryConfig {
     /// The name of the table to which to write data, of the form
     /// {projectId}:{datasetId}.{tableId}
@@ -895,7 +1079,17 @@ pub struct BigQueryConfig {
 /// Nested message and enum types in `BigQueryConfig`.
 pub mod big_query_config {
     /// Possible states for a BigQuery subscription.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum State {
         /// Default value. This value is unused.
@@ -909,9 +1103,25 @@ pub mod big_query_config {
         /// Cannot write to the BigQuery table due to a schema mismatch.
         SchemaMismatch = 4,
     }
+    impl State {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                State::Unspecified => "STATE_UNSPECIFIED",
+                State::Active => "ACTIVE",
+                State::PermissionDenied => "PERMISSION_DENIED",
+                State::NotFound => "NOT_FOUND",
+                State::SchemaMismatch => "SCHEMA_MISMATCH",
+            }
+        }
+    }
 }
 /// A message and its corresponding acknowledgment ID.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ReceivedMessage {
     /// This ID can be used to acknowledge the received message.
     #[prost(string, tag = "1")]
@@ -939,7 +1149,8 @@ pub struct ReceivedMessage {
     pub delivery_attempt: i32,
 }
 /// Request for the GetSubscription method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetSubscriptionRequest {
     /// Required. The name of the subscription to get.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -947,6 +1158,7 @@ pub struct GetSubscriptionRequest {
     pub subscription: ::prost::alloc::string::String,
 }
 /// Request for the UpdateSubscription method.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateSubscriptionRequest {
     /// Required. The updated subscription object.
@@ -958,7 +1170,8 @@ pub struct UpdateSubscriptionRequest {
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
 /// Request for the `ListSubscriptions` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListSubscriptionsRequest {
     /// Required. The name of the project in which to list subscriptions.
     /// Format is `projects/{project-id}`.
@@ -974,6 +1187,7 @@ pub struct ListSubscriptionsRequest {
     pub page_token: ::prost::alloc::string::String,
 }
 /// Response for the `ListSubscriptions` method.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListSubscriptionsResponse {
     /// The subscriptions that match the request.
@@ -986,7 +1200,8 @@ pub struct ListSubscriptionsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// Request for the DeleteSubscription method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteSubscriptionRequest {
     /// Required. The subscription to delete.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -994,7 +1209,8 @@ pub struct DeleteSubscriptionRequest {
     pub subscription: ::prost::alloc::string::String,
 }
 /// Request for the ModifyPushConfig method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ModifyPushConfigRequest {
     /// Required. The name of the subscription.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -1010,7 +1226,8 @@ pub struct ModifyPushConfigRequest {
     pub push_config: ::core::option::Option<PushConfig>,
 }
 /// Request for the `Pull` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PullRequest {
     /// Required. The subscription from which messages should be pulled.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -1033,7 +1250,8 @@ pub struct PullRequest {
     pub max_messages: i32,
 }
 /// Response for the `Pull` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PullResponse {
     /// Received Pub/Sub messages. The list will be empty if there are no more
     /// messages available in the backlog. For JSON, the response can be entirely
@@ -1043,7 +1261,8 @@ pub struct PullResponse {
     pub received_messages: ::prost::alloc::vec::Vec<ReceivedMessage>,
 }
 /// Request for the ModifyAckDeadline method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ModifyAckDeadlineRequest {
     /// Required. The name of the subscription.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -1064,7 +1283,8 @@ pub struct ModifyAckDeadlineRequest {
     pub ack_deadline_seconds: i32,
 }
 /// Request for the Acknowledge method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AcknowledgeRequest {
     /// Required. The subscription whose message is being acknowledged.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -1079,7 +1299,8 @@ pub struct AcknowledgeRequest {
 /// Request for the `StreamingPull` streaming RPC method. This request is used to
 /// establish the initial stream as well as to stream acknowledgements and ack
 /// deadline modifications from the client to the server.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StreamingPullRequest {
     /// Required. The subscription for which to initialize the new stream. This
     /// must be provided in the first request on the stream, and must not be set in
@@ -1113,7 +1334,9 @@ pub struct StreamingPullRequest {
     /// subscriber, or to make the message available for redelivery if the
     /// processing was interrupted.
     #[prost(string, repeated, tag = "4")]
-    pub modify_deadline_ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    pub modify_deadline_ack_ids: ::prost::alloc::vec::Vec<
+        ::prost::alloc::string::String,
+    >,
     /// Required. The ack deadline to use for the stream. This must be provided in
     /// the first request on the stream, but it can also be updated on subsequent
     /// requests from client to server. The minimum deadline you can specify is 10
@@ -1153,7 +1376,8 @@ pub struct StreamingPullRequest {
 }
 /// Response for the `StreamingPull` method. This response is used to stream
 /// messages from the server to the client.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StreamingPullResponse {
     /// Received Pub/Sub messages. This will not be empty.
     #[prost(message, repeated, tag = "1")]
@@ -1161,21 +1385,27 @@ pub struct StreamingPullResponse {
     /// This field will only be set if `enable_exactly_once_delivery` is set to
     /// `true`.
     #[prost(message, optional, tag = "5")]
-    pub acknowledge_confirmation: ::core::option::Option<streaming_pull_response::AcknowledgeConfirmation>,
+    pub acknowledge_confirmation: ::core::option::Option<
+        streaming_pull_response::AcknowledgeConfirmation,
+    >,
     /// This field will only be set if `enable_exactly_once_delivery` is set to
     /// `true`.
     #[prost(message, optional, tag = "3")]
-    pub modify_ack_deadline_confirmation:
-        ::core::option::Option<streaming_pull_response::ModifyAckDeadlineConfirmation>,
+    pub modify_ack_deadline_confirmation: ::core::option::Option<
+        streaming_pull_response::ModifyAckDeadlineConfirmation,
+    >,
     /// Properties associated with this subscription.
     #[prost(message, optional, tag = "4")]
-    pub subscription_properties: ::core::option::Option<streaming_pull_response::SubscriptionProperties>,
+    pub subscription_properties: ::core::option::Option<
+        streaming_pull_response::SubscriptionProperties,
+    >,
 }
 /// Nested message and enum types in `StreamingPullResponse`.
 pub mod streaming_pull_response {
     /// Acknowledgement IDs sent in one or more previous requests to acknowledge a
     /// previously received message.
-    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct AcknowledgeConfirmation {
         /// Successfully processed acknowledgement IDs.
         #[prost(string, repeated, tag = "1")]
@@ -1190,7 +1420,8 @@ pub mod streaming_pull_response {
     }
     /// Acknowledgement IDs sent in one or more previous requests to modify the
     /// deadline for a specific message.
-    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct ModifyAckDeadlineConfirmation {
         /// Successfully processed acknowledgement IDs.
         #[prost(string, repeated, tag = "1")]
@@ -1201,7 +1432,8 @@ pub mod streaming_pull_response {
         pub invalid_ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     }
     /// Subscription properties sent as part of the response.
-    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct SubscriptionProperties {
         /// True iff exactly once delivery is enabled for this subscription.
         #[prost(bool, tag = "1")]
@@ -1212,7 +1444,8 @@ pub mod streaming_pull_response {
     }
 }
 /// Request for the `CreateSnapshot` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateSnapshotRequest {
     /// Required. User-provided name for this snapshot. If the name is not provided
     /// in the request, the server will assign a random name for this snapshot on
@@ -1224,21 +1457,25 @@ pub struct CreateSnapshotRequest {
     pub name: ::prost::alloc::string::String,
     /// Required. The subscription whose backlog the snapshot retains.
     /// Specifically, the created snapshot is guaranteed to retain:
-    ///  (a) The existing backlog on the subscription. More precisely, this is
-    ///      defined as the messages in the subscription's backlog that are
-    ///      unacknowledged upon the successful completion of the
-    ///      `CreateSnapshot` request; as well as:
-    ///  (b) Any messages published to the subscription's topic following the
-    ///      successful completion of the CreateSnapshot request.
+    ///   (a) The existing backlog on the subscription. More precisely, this is
+    ///       defined as the messages in the subscription's backlog that are
+    ///       unacknowledged upon the successful completion of the
+    ///       `CreateSnapshot` request; as well as:
+    ///   (b) Any messages published to the subscription's topic following the
+    ///       successful completion of the CreateSnapshot request.
     /// Format is `projects/{project}/subscriptions/{sub}`.
     #[prost(string, tag = "2")]
     pub subscription: ::prost::alloc::string::String,
     /// See <a href="<https://cloud.google.com/pubsub/docs/labels">> Creating and
     /// managing labels</a>.
     #[prost(map = "string, string", tag = "3")]
-    pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    pub labels: ::std::collections::HashMap<
+        ::prost::alloc::string::String,
+        ::prost::alloc::string::String,
+    >,
 }
 /// Request for the UpdateSnapshot method.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateSnapshotRequest {
     /// Required. The updated snapshot object.
@@ -1254,7 +1491,8 @@ pub struct UpdateSnapshotRequest {
 /// operations, which allow you to manage message acknowledgments in bulk. That
 /// is, you can set the acknowledgment state of messages in an existing
 /// subscription to the state captured by a snapshot.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Snapshot {
     /// The name of the snapshot.
     #[prost(string, tag = "1")]
@@ -1277,10 +1515,14 @@ pub struct Snapshot {
     /// See [Creating and managing labels]
     /// (<https://cloud.google.com/pubsub/docs/labels>).
     #[prost(map = "string, string", tag = "4")]
-    pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    pub labels: ::std::collections::HashMap<
+        ::prost::alloc::string::String,
+        ::prost::alloc::string::String,
+    >,
 }
 /// Request for the GetSnapshot method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetSnapshotRequest {
     /// Required. The name of the snapshot to get.
     /// Format is `projects/{project}/snapshots/{snap}`.
@@ -1288,7 +1530,8 @@ pub struct GetSnapshotRequest {
     pub snapshot: ::prost::alloc::string::String,
 }
 /// Request for the `ListSnapshots` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListSnapshotsRequest {
     /// Required. The name of the project in which to list snapshots.
     /// Format is `projects/{project-id}`.
@@ -1304,7 +1547,8 @@ pub struct ListSnapshotsRequest {
     pub page_token: ::prost::alloc::string::String,
 }
 /// Response for the `ListSnapshots` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListSnapshotsResponse {
     /// The resulting snapshots.
     #[prost(message, repeated, tag = "1")]
@@ -1315,7 +1559,8 @@ pub struct ListSnapshotsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// Request for the `DeleteSnapshot` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteSnapshotRequest {
     /// Required. The name of the snapshot to delete.
     /// Format is `projects/{project}/snapshots/{snap}`.
@@ -1323,7 +1568,8 @@ pub struct DeleteSnapshotRequest {
     pub snapshot: ::prost::alloc::string::String,
 }
 /// Request for the `Seek` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SeekRequest {
     /// Required. The subscription to affect.
     #[prost(string, tag = "1")]
@@ -1333,7 +1579,8 @@ pub struct SeekRequest {
 }
 /// Nested message and enum types in `SeekRequest`.
 pub mod seek_request {
-    #[derive(Clone, PartialEq, Eq, ::prost::Oneof)]
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Target {
         /// The time to seek to.
         /// Messages retained in the subscription that were published before this
@@ -1356,12 +1603,14 @@ pub mod seek_request {
     }
 }
 /// Response for the `Seek` method (this response is empty).
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SeekResponse {}
 /// Generated client implementations.
 pub mod publisher_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
     use tonic::codegen::*;
+    use tonic::codegen::http::Uri;
     /// The service that an application uses to manipulate topics, and to send
     /// messages to a topic.
     #[derive(Debug, Clone)]
@@ -1390,31 +1639,42 @@ pub mod publisher_client {
             let inner = tonic::client::Grpc::new(inner);
             Self { inner }
         }
-        pub fn with_interceptor<F>(inner: T, interceptor: F) -> PublisherClient<InterceptedService<T, F>>
+        pub fn with_origin(inner: T, origin: Uri) -> Self {
+            let inner = tonic::client::Grpc::with_origin(inner, origin);
+            Self { inner }
+        }
+        pub fn with_interceptor<F>(
+            inner: T,
+            interceptor: F,
+        ) -> PublisherClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
                 http::Request<tonic::body::BoxBody>,
-                Response = http::Response<<T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody>,
+                Response = http::Response<
+                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                >,
             >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error: Into<StdError> + Send + Sync,
+            <T as tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+            >>::Error: Into<StdError> + Send + Sync,
         {
             PublisherClient::new(InterceptedService::new(inner, interceptor))
         }
-        /// Compress requests with `gzip`.
+        /// Compress requests with the given encoding.
         ///
         /// This requires the server to support it otherwise it might respond with an
         /// error.
         #[must_use]
-        pub fn send_gzip(mut self) -> Self {
-            self.inner = self.inner.send_compressed(CompressionEncoding::Gzip);
+        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.send_compressed(encoding);
             self
         }
-        /// Enable decompressing responses with `gzip`.
+        /// Enable decompressing responses.
         #[must_use]
-        pub fn accept_gzip(mut self) -> Self {
-            self.inner = self.inner.accept_compressed(CompressionEncoding::Gzip);
+        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.accept_compressed(encoding);
             self
         }
         /// Creates the given topic with the given name. See the [resource name rules]
@@ -1423,11 +1683,19 @@ pub mod publisher_client {
             &mut self,
             request: impl tonic::IntoRequest<super::Topic>,
         ) -> Result<tonic::Response<super::Topic>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/CreateTopic");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Publisher/CreateTopic",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Updates an existing topic. Note that certain properties of a
@@ -1436,11 +1704,19 @@ pub mod publisher_client {
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateTopicRequest>,
         ) -> Result<tonic::Response<super::Topic>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/UpdateTopic");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Publisher/UpdateTopic",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Adds one or more messages to the topic. Returns `NOT_FOUND` if the topic
@@ -1449,11 +1725,19 @@ pub mod publisher_client {
             &mut self,
             request: impl tonic::IntoRequest<super::PublishRequest>,
         ) -> Result<tonic::Response<super::PublishResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/Publish");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Publisher/Publish",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Gets the configuration of a topic.
@@ -1461,11 +1745,19 @@ pub mod publisher_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetTopicRequest>,
         ) -> Result<tonic::Response<super::Topic>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/GetTopic");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Publisher/GetTopic",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Lists matching topics.
@@ -1473,23 +1765,42 @@ pub mod publisher_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ListTopicsRequest>,
         ) -> Result<tonic::Response<super::ListTopicsResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/ListTopics");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Publisher/ListTopics",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Lists the names of the attached subscriptions on this topic.
         pub async fn list_topic_subscriptions(
             &mut self,
             request: impl tonic::IntoRequest<super::ListTopicSubscriptionsRequest>,
-        ) -> Result<tonic::Response<super::ListTopicSubscriptionsResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+        ) -> Result<
+            tonic::Response<super::ListTopicSubscriptionsResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/ListTopicSubscriptions");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Publisher/ListTopicSubscriptions",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Lists the names of the snapshots on this topic. Snapshots are used in
@@ -1501,11 +1812,19 @@ pub mod publisher_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ListTopicSnapshotsRequest>,
         ) -> Result<tonic::Response<super::ListTopicSnapshotsResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/ListTopicSnapshots");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Publisher/ListTopicSnapshots",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Deletes the topic with the given name. Returns `NOT_FOUND` if the topic
@@ -1517,11 +1836,19 @@ pub mod publisher_client {
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteTopicRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/DeleteTopic");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Publisher/DeleteTopic",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Detaches a subscription from this topic. All messages retained in the
@@ -1532,11 +1859,19 @@ pub mod publisher_client {
             &mut self,
             request: impl tonic::IntoRequest<super::DetachSubscriptionRequest>,
         ) -> Result<tonic::Response<super::DetachSubscriptionResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/DetachSubscription");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Publisher/DetachSubscription",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
     }
@@ -1545,6 +1880,7 @@ pub mod publisher_client {
 pub mod subscriber_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
     use tonic::codegen::*;
+    use tonic::codegen::http::Uri;
     /// The service that an application uses to manipulate subscriptions and to
     /// consume messages from a subscription via the `Pull` method or by
     /// establishing a bi-directional stream using the `StreamingPull` method.
@@ -1574,31 +1910,42 @@ pub mod subscriber_client {
             let inner = tonic::client::Grpc::new(inner);
             Self { inner }
         }
-        pub fn with_interceptor<F>(inner: T, interceptor: F) -> SubscriberClient<InterceptedService<T, F>>
+        pub fn with_origin(inner: T, origin: Uri) -> Self {
+            let inner = tonic::client::Grpc::with_origin(inner, origin);
+            Self { inner }
+        }
+        pub fn with_interceptor<F>(
+            inner: T,
+            interceptor: F,
+        ) -> SubscriberClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
                 http::Request<tonic::body::BoxBody>,
-                Response = http::Response<<T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody>,
+                Response = http::Response<
+                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                >,
             >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error: Into<StdError> + Send + Sync,
+            <T as tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+            >>::Error: Into<StdError> + Send + Sync,
         {
             SubscriberClient::new(InterceptedService::new(inner, interceptor))
         }
-        /// Compress requests with `gzip`.
+        /// Compress requests with the given encoding.
         ///
         /// This requires the server to support it otherwise it might respond with an
         /// error.
         #[must_use]
-        pub fn send_gzip(mut self) -> Self {
-            self.inner = self.inner.send_compressed(CompressionEncoding::Gzip);
+        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.send_compressed(encoding);
             self
         }
-        /// Enable decompressing responses with `gzip`.
+        /// Enable decompressing responses.
         #[must_use]
-        pub fn accept_gzip(mut self) -> Self {
-            self.inner = self.inner.accept_compressed(CompressionEncoding::Gzip);
+        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.accept_compressed(encoding);
             self
         }
         /// Creates a subscription to a given topic. See the [resource name rules]
@@ -1616,11 +1963,19 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::Subscription>,
         ) -> Result<tonic::Response<super::Subscription>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/CreateSubscription");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Subscriber/CreateSubscription",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Gets the configuration details of a subscription.
@@ -1628,11 +1983,19 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetSubscriptionRequest>,
         ) -> Result<tonic::Response<super::Subscription>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/GetSubscription");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Subscriber/GetSubscription",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Updates an existing subscription. Note that certain properties of a
@@ -1641,11 +2004,19 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateSubscriptionRequest>,
         ) -> Result<tonic::Response<super::Subscription>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/UpdateSubscription");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Subscriber/UpdateSubscription",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Lists matching subscriptions.
@@ -1653,11 +2024,19 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ListSubscriptionsRequest>,
         ) -> Result<tonic::Response<super::ListSubscriptionsResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/ListSubscriptions");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Subscriber/ListSubscriptions",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Deletes an existing subscription. All messages retained in the subscription
@@ -1669,11 +2048,19 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteSubscriptionRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/DeleteSubscription");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Subscriber/DeleteSubscription",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Modifies the ack deadline for a specific message. This method is useful
@@ -1685,11 +2072,19 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ModifyAckDeadlineRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/ModifyAckDeadline");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Subscriber/ModifyAckDeadline",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Acknowledges the messages associated with the `ack_ids` in the
@@ -1703,11 +2098,19 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::AcknowledgeRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/Acknowledge");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Subscriber/Acknowledge",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Pulls messages from the server. The server may return `UNAVAILABLE` if
@@ -1717,11 +2120,19 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::PullRequest>,
         ) -> Result<tonic::Response<super::PullResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/Pull");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Subscriber/Pull",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Establishes a stream with the server, which sends messages down to the
@@ -1733,16 +2144,27 @@ pub mod subscriber_client {
         /// underlying RPC channel.
         pub async fn streaming_pull(
             &mut self,
-            request: impl tonic::IntoStreamingRequest<Message = super::StreamingPullRequest>,
-        ) -> Result<tonic::Response<tonic::codec::Streaming<super::StreamingPullResponse>>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/StreamingPull");
+            request: impl tonic::IntoStreamingRequest<
+                Message = super::StreamingPullRequest,
+            >,
+        ) -> Result<
+            tonic::Response<tonic::codec::Streaming<super::StreamingPullResponse>>,
+            tonic::Status,
+        > {
             self.inner
-                .streaming(request.into_streaming_request(), path, codec)
+                .ready()
                 .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Subscriber/StreamingPull",
+            );
+            self.inner.streaming(request.into_streaming_request(), path, codec).await
         }
         /// Modifies the `PushConfig` for a specified subscription.
         ///
@@ -1754,11 +2176,19 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ModifyPushConfigRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/ModifyPushConfig");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Subscriber/ModifyPushConfig",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Gets the configuration details of a snapshot. Snapshots are used in
@@ -1770,11 +2200,19 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetSnapshotRequest>,
         ) -> Result<tonic::Response<super::Snapshot>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/GetSnapshot");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Subscriber/GetSnapshot",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Lists the existing snapshots. Snapshots are used in [Seek](
@@ -1786,11 +2224,19 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ListSnapshotsRequest>,
         ) -> Result<tonic::Response<super::ListSnapshotsResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/ListSnapshots");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Subscriber/ListSnapshots",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Creates a snapshot from the requested subscription. Snapshots are used in
@@ -1813,11 +2259,19 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::CreateSnapshotRequest>,
         ) -> Result<tonic::Response<super::Snapshot>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/CreateSnapshot");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Subscriber/CreateSnapshot",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Updates an existing snapshot. Snapshots are used in
@@ -1830,11 +2284,19 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateSnapshotRequest>,
         ) -> Result<tonic::Response<super::Snapshot>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/UpdateSnapshot");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Subscriber/UpdateSnapshot",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Removes an existing snapshot. Snapshots are used in [Seek]
@@ -1850,11 +2312,19 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteSnapshotRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/DeleteSnapshot");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Subscriber/DeleteSnapshot",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Seeks an existing subscription to a point in time or to a given snapshot,
@@ -1868,11 +2338,19 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::SeekRequest>,
         ) -> Result<tonic::Response<super::SeekResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/Seek");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.pubsub.v1.Subscriber/Seek",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
     }

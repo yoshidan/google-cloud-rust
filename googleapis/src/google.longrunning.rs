@@ -1,5 +1,6 @@
 /// This resource represents a long-running operation that is the result of a
 /// network API call.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Operation {
     /// The server-assigned name, which is only unique within the same service that
@@ -29,6 +30,7 @@ pub mod operation {
     /// The operation result, which can be either an `error` or a valid `response`.
     /// If `done` == `false`, neither `error` nor `response` is set.
     /// If `done` == `true`, exactly one of `error` or `response` is set.
+    #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Result {
         /// The error result of the operation in case of failure or cancellation.
@@ -47,14 +49,16 @@ pub mod operation {
     }
 }
 /// The request message for \[Operations.GetOperation][google.longrunning.Operations.GetOperation\].
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetOperationRequest {
     /// The name of the operation resource.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// The request message for \[Operations.ListOperations][google.longrunning.Operations.ListOperations\].
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListOperationsRequest {
     /// The name of the operation's parent resource.
     #[prost(string, tag = "4")]
@@ -70,6 +74,7 @@ pub struct ListOperationsRequest {
     pub page_token: ::prost::alloc::string::String,
 }
 /// The response message for \[Operations.ListOperations][google.longrunning.Operations.ListOperations\].
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListOperationsResponse {
     /// A list of operations that matches the specified filter in the request.
@@ -80,20 +85,23 @@ pub struct ListOperationsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request message for \[Operations.CancelOperation][google.longrunning.Operations.CancelOperation\].
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CancelOperationRequest {
     /// The name of the operation resource to be cancelled.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// The request message for \[Operations.DeleteOperation][google.longrunning.Operations.DeleteOperation\].
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteOperationRequest {
     /// The name of the operation resource to be deleted.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// The request message for \[Operations.WaitOperation][google.longrunning.Operations.WaitOperation\].
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WaitOperationRequest {
     /// The name of the operation resource to wait on.
@@ -109,14 +117,15 @@ pub struct WaitOperationRequest {
 ///
 /// Example:
 ///
-///   rpc LongRunningRecognize(LongRunningRecognizeRequest)
-///       returns (google.longrunning.Operation) {
-///     option (google.longrunning.operation_info) = {
-///       response_type: "LongRunningRecognizeResponse"
-///       metadata_type: "LongRunningRecognizeMetadata"
-///     };
-///   }
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+///    rpc LongRunningRecognize(LongRunningRecognizeRequest)
+///        returns (google.longrunning.Operation) {
+///      option (google.longrunning.operation_info) = {
+///        response_type: "LongRunningRecognizeResponse"
+///        metadata_type: "LongRunningRecognizeMetadata"
+///      };
+///    }
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct OperationInfo {
     /// Required. The message name of the primary return type for this
     /// long-running operation.
@@ -142,6 +151,7 @@ pub struct OperationInfo {
 pub mod operations_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
     use tonic::codegen::*;
+    use tonic::codegen::http::Uri;
     /// Manages long-running operations with an API service.
     ///
     /// When an API method normally takes long time to complete, it can be designed
@@ -177,31 +187,42 @@ pub mod operations_client {
             let inner = tonic::client::Grpc::new(inner);
             Self { inner }
         }
-        pub fn with_interceptor<F>(inner: T, interceptor: F) -> OperationsClient<InterceptedService<T, F>>
+        pub fn with_origin(inner: T, origin: Uri) -> Self {
+            let inner = tonic::client::Grpc::with_origin(inner, origin);
+            Self { inner }
+        }
+        pub fn with_interceptor<F>(
+            inner: T,
+            interceptor: F,
+        ) -> OperationsClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
                 http::Request<tonic::body::BoxBody>,
-                Response = http::Response<<T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody>,
+                Response = http::Response<
+                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                >,
             >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error: Into<StdError> + Send + Sync,
+            <T as tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+            >>::Error: Into<StdError> + Send + Sync,
         {
             OperationsClient::new(InterceptedService::new(inner, interceptor))
         }
-        /// Compress requests with `gzip`.
+        /// Compress requests with the given encoding.
         ///
         /// This requires the server to support it otherwise it might respond with an
         /// error.
         #[must_use]
-        pub fn send_gzip(mut self) -> Self {
-            self.inner = self.inner.send_compressed(CompressionEncoding::Gzip);
+        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.send_compressed(encoding);
             self
         }
-        /// Enable decompressing responses with `gzip`.
+        /// Enable decompressing responses.
         #[must_use]
-        pub fn accept_gzip(mut self) -> Self {
-            self.inner = self.inner.accept_compressed(CompressionEncoding::Gzip);
+        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.accept_compressed(encoding);
             self
         }
         /// Lists operations that match the specified filter in the request. If the
@@ -218,11 +239,19 @@ pub mod operations_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ListOperationsRequest>,
         ) -> Result<tonic::Response<super::ListOperationsResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.longrunning.Operations/ListOperations");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.longrunning.Operations/ListOperations",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Gets the latest state of a long-running operation.  Clients can use this
@@ -232,11 +261,19 @@ pub mod operations_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetOperationRequest>,
         ) -> Result<tonic::Response<super::Operation>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.longrunning.Operations/GetOperation");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.longrunning.Operations/GetOperation",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Deletes a long-running operation. This method indicates that the client is
@@ -247,11 +284,19 @@ pub mod operations_client {
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteOperationRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.longrunning.Operations/DeleteOperation");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.longrunning.Operations/DeleteOperation",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Starts asynchronous cancellation on a long-running operation.  The server
@@ -268,11 +313,19 @@ pub mod operations_client {
             &mut self,
             request: impl tonic::IntoRequest<super::CancelOperationRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.longrunning.Operations/CancelOperation");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.longrunning.Operations/CancelOperation",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Waits until the specified long-running operation is done or reaches at most
@@ -288,11 +341,19 @@ pub mod operations_client {
             &mut self,
             request: impl tonic::IntoRequest<super::WaitOperationRequest>,
         ) -> Result<tonic::Response<super::Operation>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.longrunning.Operations/WaitOperation");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.longrunning.Operations/WaitOperation",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
     }
