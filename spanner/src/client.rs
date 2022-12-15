@@ -398,7 +398,7 @@ impl Client {
             Some(ro),
             |session| async {
                 let tx = commit_request::Transaction::SingleUseTransaction(TransactionOptions {
-                    mode: Some(transaction_options::Mode::ReadWrite(transaction_options::ReadWrite {})),
+                    mode: Some(transaction_options::Mode::ReadWrite(transaction_options::ReadWrite::default())),
                 });
                 match commit(session, ms.clone(), tx, options.clone()).await {
                     Ok(s) => Ok(s.commit_timestamp.map(|s| s.into())),

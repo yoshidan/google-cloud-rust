@@ -105,7 +105,7 @@ impl ReadWriteTransaction {
     pub async fn begin(session: ManagedSession, options: CallOptions) -> Result<ReadWriteTransaction, BeginError> {
         ReadWriteTransaction::begin_internal(
             session,
-            transaction_options::Mode::ReadWrite(transaction_options::ReadWrite {}),
+            transaction_options::Mode::ReadWrite(transaction_options::ReadWrite::default()),
             options,
         )
         .await

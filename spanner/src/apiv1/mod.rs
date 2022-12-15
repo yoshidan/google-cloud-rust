@@ -58,8 +58,8 @@ mod tests {
     async fn begin_read_write_transaction(client: &mut Client, session: &Session) -> Transaction {
         let request = BeginTransactionRequest {
             session: session.name.to_string(),
-            options: Option::from(TransactionOptions {
-                mode: Option::from(transaction_options::Mode::ReadWrite(transaction_options::ReadWrite {})),
+            options: Some(TransactionOptions {
+                mode: Some(transaction_options::Mode::ReadWrite(transaction_options::ReadWrite::default())),
             }),
             request_options: None,
         };
