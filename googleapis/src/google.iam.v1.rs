@@ -316,17 +316,7 @@ pub struct AuditLogConfig {
 pub mod audit_log_config {
     /// The list of valid permission types for which logging can be configured.
     /// Admin writes are always logged, and are not configurable.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum LogType {
         /// Default case. Should never be this.
@@ -390,17 +380,7 @@ pub struct BindingDelta {
 /// Nested message and enum types in `BindingDelta`.
 pub mod binding_delta {
     /// The type of action performed on a Binding in a policy.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Action {
         /// Unspecified.
@@ -453,17 +433,7 @@ pub struct AuditConfigDelta {
 /// Nested message and enum types in `AuditConfigDelta`.
 pub mod audit_config_delta {
     /// The type of action performed on an audit configuration in a policy.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Action {
         /// Unspecified.
@@ -549,8 +519,8 @@ pub struct TestIamPermissionsResponse {
 /// Generated client implementations.
 pub mod iam_policy_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
-    use tonic::codegen::*;
     use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
     /// API Overview
     ///
     ///
@@ -607,22 +577,15 @@ pub mod iam_policy_client {
             let inner = tonic::client::Grpc::with_origin(inner, origin);
             Self { inner }
         }
-        pub fn with_interceptor<F>(
-            inner: T,
-            interceptor: F,
-        ) -> IamPolicyClient<InterceptedService<T, F>>
+        pub fn with_interceptor<F>(inner: T, interceptor: F) -> IamPolicyClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
                 http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
-                >,
+                Response = http::Response<<T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody>,
             >,
-            <T as tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-            >>::Error: Into<StdError> + Send + Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error: Into<StdError> + Send + Sync,
         {
             IamPolicyClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -649,19 +612,11 @@ pub mod iam_policy_client {
             &mut self,
             request: impl tonic::IntoRequest<super::SetIamPolicyRequest>,
         ) -> Result<tonic::Response<super::Policy>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.iam.v1.IAMPolicy/SetIamPolicy",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.iam.v1.IAMPolicy/SetIamPolicy");
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Gets the access control policy for a resource.
@@ -671,19 +626,11 @@ pub mod iam_policy_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetIamPolicyRequest>,
         ) -> Result<tonic::Response<super::Policy>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.iam.v1.IAMPolicy/GetIamPolicy",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.iam.v1.IAMPolicy/GetIamPolicy");
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Returns permissions that a caller has on the specified resource.
@@ -697,19 +644,11 @@ pub mod iam_policy_client {
             &mut self,
             request: impl tonic::IntoRequest<super::TestIamPermissionsRequest>,
         ) -> Result<tonic::Response<super::TestIamPermissionsResponse>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.iam.v1.IAMPolicy/TestIamPermissions",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.iam.v1.IAMPolicy/TestIamPermissions");
             self.inner.unary(request.into_request(), path, codec).await
         }
     }
