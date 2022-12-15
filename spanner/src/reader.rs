@@ -475,6 +475,7 @@ mod tests {
                 fields: vec![field("column1")],
             }),
             transaction: None,
+            undeclared_parameters: None,
         });
         let values = vec![value("value1"), value("value2"), value("value3")];
         assert!(rs.add(metadata, values, false).unwrap());
@@ -496,6 +497,7 @@ mod tests {
                 fields: vec![field("column1"), field("column2")],
             }),
             transaction: None,
+            undeclared_parameters: None,
         });
         let values = vec![value("value1"), value("value2"), value("value3")];
         assert!(rs.add(metadata, values, false).unwrap());
@@ -515,6 +517,7 @@ mod tests {
                 fields: vec![field("column1"), field("column2")],
             }),
             transaction: None,
+            undeclared_parameters: None,
         });
         let values = vec![value("value1"), value("value2"), value("value3"), value("value4")];
         assert!(rs.add(metadata, values, false).unwrap());
@@ -535,6 +538,7 @@ mod tests {
                 fields: vec![field("column1")],
             }),
             transaction: None,
+            undeclared_parameters: None,
         });
         let values = vec![value("value1"), value("value2"), value("val")];
         assert!(rs.add(metadata.clone(), values, true).unwrap());
@@ -562,6 +566,7 @@ mod tests {
                 fields: vec![field("column1"), field("column2")],
             }),
             transaction: None,
+            undeclared_parameters: None,
         });
         let values = vec![value("value1"), value("value2"), value("val")];
         assert!(rs.add(metadata.clone(), values, true).unwrap());
@@ -593,6 +598,7 @@ mod tests {
                 fields: vec![field("column1"), field("column2")],
             }),
             transaction: None,
+            undeclared_parameters: None,
         });
         let values = vec![value(vec!["value1-1", "value1-2"])];
         assert!(rs.add(metadata.clone(), values, false).unwrap());
@@ -619,6 +625,7 @@ mod tests {
                 fields: vec![field("column1"), field("column2")],
             }),
             transaction: None,
+            undeclared_parameters: None,
         });
         let values = vec![value(vec!["value1-1", "value1-2"]), value(vec!["value2-"])];
         assert!(rs.add(metadata.clone(), values, true).unwrap());
@@ -653,6 +660,7 @@ mod tests {
                 fields: vec![field("column1"), field("column2")],
             }),
             transaction: None,
+            undeclared_parameters: None,
         });
         let values = vec![value(vec!["value1-1", "value1-2"]), value("va")];
         assert!(rs.add(metadata.clone(), values, true).unwrap());

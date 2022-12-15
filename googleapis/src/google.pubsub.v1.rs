@@ -1,5 +1,6 @@
 /// A schema resource.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Schema {
     /// Required. Name of the schema.
     /// Format is `projects/{project}/schemas/{schema}`.
@@ -27,9 +28,23 @@ pub mod schema {
         /// An Avro schema definition.
         Avro = 2,
     }
+    impl Type {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Type::Unspecified => "TYPE_UNSPECIFIED",
+                Type::ProtocolBuffer => "PROTOCOL_BUFFER",
+                Type::Avro => "AVRO",
+            }
+        }
+    }
 }
 /// Request for the CreateSchema method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateSchemaRequest {
     /// Required. The name of the project in which to create the schema.
     /// Format is `projects/{project-id}`.
@@ -51,7 +66,8 @@ pub struct CreateSchemaRequest {
     pub schema_id: ::prost::alloc::string::String,
 }
 /// Request for the GetSchema method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetSchemaRequest {
     /// Required. The name of the schema to get.
     /// Format is `projects/{project}/schemas/{schema}`.
@@ -64,7 +80,8 @@ pub struct GetSchemaRequest {
     pub view: i32,
 }
 /// Request for the `ListSchemas` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListSchemasRequest {
     /// Required. The name of the project in which to list schemas.
     /// Format is `projects/{project-id}`.
@@ -85,7 +102,8 @@ pub struct ListSchemasRequest {
     pub page_token: ::prost::alloc::string::String,
 }
 /// Response for the `ListSchemas` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListSchemasResponse {
     /// The resulting schemas.
     #[prost(message, repeated, tag = "1")]
@@ -96,7 +114,8 @@ pub struct ListSchemasResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// Request for the `DeleteSchema` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteSchemaRequest {
     /// Required. Name of the schema to delete.
     /// Format is `projects/{project}/schemas/{schema}`.
@@ -104,7 +123,8 @@ pub struct DeleteSchemaRequest {
     pub name: ::prost::alloc::string::String,
 }
 /// Request for the `ValidateSchema` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ValidateSchemaRequest {
     /// Required. The name of the project in which to validate schemas.
     /// Format is `projects/{project-id}`.
@@ -116,10 +136,12 @@ pub struct ValidateSchemaRequest {
 }
 /// Response for the `ValidateSchema` method.
 /// Empty for now.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ValidateSchemaResponse {}
 /// Request for the `ValidateMessage` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ValidateMessageRequest {
     /// Required. The name of the project in which to validate schemas.
     /// Format is `projects/{project-id}`.
@@ -136,7 +158,8 @@ pub struct ValidateMessageRequest {
 }
 /// Nested message and enum types in `ValidateMessageRequest`.
 pub mod validate_message_request {
-    #[derive(Clone, PartialEq, Eq, ::prost::Oneof)]
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum SchemaSpec {
         /// Name of the schema against which to validate.
         ///
@@ -150,7 +173,8 @@ pub mod validate_message_request {
 }
 /// Response for the `ValidateMessage` method.
 /// Empty for now.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ValidateMessageResponse {}
 /// View of Schema object fields to be returned by GetSchema and ListSchemas.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
@@ -164,6 +188,19 @@ pub enum SchemaView {
     /// Include all Schema object fields.
     Full = 2,
 }
+impl SchemaView {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            SchemaView::Unspecified => "SCHEMA_VIEW_UNSPECIFIED",
+            SchemaView::Basic => "BASIC",
+            SchemaView::Full => "FULL",
+        }
+    }
+}
 /// Possible encoding types for messages.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -176,9 +213,23 @@ pub enum Encoding {
     /// binary encoding may not be available.
     Binary = 2,
 }
+impl Encoding {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Encoding::Unspecified => "ENCODING_UNSPECIFIED",
+            Encoding::Json => "JSON",
+            Encoding::Binary => "BINARY",
+        }
+    }
+}
 /// Generated client implementations.
 pub mod schema_service_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
+    use tonic::codegen::http::Uri;
     use tonic::codegen::*;
     /// Service for doing schema-related operations.
     #[derive(Debug, Clone)]
@@ -207,6 +258,10 @@ pub mod schema_service_client {
             let inner = tonic::client::Grpc::new(inner);
             Self { inner }
         }
+        pub fn with_origin(inner: T, origin: Uri) -> Self {
+            let inner = tonic::client::Grpc::with_origin(inner, origin);
+            Self { inner }
+        }
         pub fn with_interceptor<F>(inner: T, interceptor: F) -> SchemaServiceClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
@@ -219,19 +274,19 @@ pub mod schema_service_client {
         {
             SchemaServiceClient::new(InterceptedService::new(inner, interceptor))
         }
-        /// Compress requests with `gzip`.
+        /// Compress requests with the given encoding.
         ///
         /// This requires the server to support it otherwise it might respond with an
         /// error.
         #[must_use]
-        pub fn send_gzip(mut self) -> Self {
-            self.inner = self.inner.send_compressed(CompressionEncoding::Gzip);
+        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.send_compressed(encoding);
             self
         }
-        /// Enable decompressing responses with `gzip`.
+        /// Enable decompressing responses.
         #[must_use]
-        pub fn accept_gzip(mut self) -> Self {
-            self.inner = self.inner.accept_compressed(CompressionEncoding::Gzip);
+        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.accept_compressed(encoding);
             self
         }
         /// Creates a schema.
@@ -309,7 +364,8 @@ pub mod schema_service_client {
     }
 }
 /// A policy constraining the storage of messages published to the topic.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MessageStoragePolicy {
     /// A list of IDs of GCP regions where messages that are published to the topic
     /// may be persisted in storage. Messages published by publishers running in
@@ -320,7 +376,8 @@ pub struct MessageStoragePolicy {
     pub allowed_persistence_regions: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// Settings for validating messages published against a schema.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SchemaSettings {
     /// Required. The name of the schema that messages published should be
     /// validated against. Format is `projects/{project}/schemas/{schema}`. The
@@ -333,6 +390,7 @@ pub struct SchemaSettings {
     pub encoding: i32,
 }
 /// A topic resource.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Topic {
     /// Required. The name of the topic. It must have the format
@@ -384,7 +442,8 @@ pub struct Topic {
 /// more information. See [quotas and limits]
 /// (<https://cloud.google.com/pubsub/quotas>) for more information about message
 /// limits.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PubsubMessage {
     /// The message data field. If this field is empty, the message must contain
     /// at least one attribute.
@@ -416,7 +475,8 @@ pub struct PubsubMessage {
     pub ordering_key: ::prost::alloc::string::String,
 }
 /// Request for the GetTopic method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetTopicRequest {
     /// Required. The name of the topic to get.
     /// Format is `projects/{project}/topics/{topic}`.
@@ -424,6 +484,7 @@ pub struct GetTopicRequest {
     pub topic: ::prost::alloc::string::String,
 }
 /// Request for the UpdateTopic method.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateTopicRequest {
     /// Required. The updated topic object.
@@ -438,7 +499,8 @@ pub struct UpdateTopicRequest {
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
 /// Request for the Publish method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PublishRequest {
     /// Required. The messages in the request will be published on this topic.
     /// Format is `projects/{project}/topics/{topic}`.
@@ -449,7 +511,8 @@ pub struct PublishRequest {
     pub messages: ::prost::alloc::vec::Vec<PubsubMessage>,
 }
 /// Response for the `Publish` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PublishResponse {
     /// The server-assigned ID of each published message, in the same order as
     /// the messages in the request. IDs are guaranteed to be unique within
@@ -458,7 +521,8 @@ pub struct PublishResponse {
     pub message_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// Request for the `ListTopics` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListTopicsRequest {
     /// Required. The name of the project in which to list topics.
     /// Format is `projects/{project-id}`.
@@ -474,6 +538,7 @@ pub struct ListTopicsRequest {
     pub page_token: ::prost::alloc::string::String,
 }
 /// Response for the `ListTopics` method.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListTopicsResponse {
     /// The resulting topics.
@@ -485,7 +550,8 @@ pub struct ListTopicsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// Request for the `ListTopicSubscriptions` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListTopicSubscriptionsRequest {
     /// Required. The name of the topic that subscriptions are attached to.
     /// Format is `projects/{project}/topics/{topic}`.
@@ -501,7 +567,8 @@ pub struct ListTopicSubscriptionsRequest {
     pub page_token: ::prost::alloc::string::String,
 }
 /// Response for the `ListTopicSubscriptions` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListTopicSubscriptionsResponse {
     /// The names of subscriptions attached to the topic specified in the request.
     #[prost(string, repeated, tag = "1")]
@@ -513,7 +580,8 @@ pub struct ListTopicSubscriptionsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// Request for the `ListTopicSnapshots` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListTopicSnapshotsRequest {
     /// Required. The name of the topic that snapshots are attached to.
     /// Format is `projects/{project}/topics/{topic}`.
@@ -529,7 +597,8 @@ pub struct ListTopicSnapshotsRequest {
     pub page_token: ::prost::alloc::string::String,
 }
 /// Response for the `ListTopicSnapshots` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListTopicSnapshotsResponse {
     /// The names of the snapshots that match the request.
     #[prost(string, repeated, tag = "1")]
@@ -541,7 +610,8 @@ pub struct ListTopicSnapshotsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// Request for the `DeleteTopic` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteTopicRequest {
     /// Required. Name of the topic to delete.
     /// Format is `projects/{project}/topics/{topic}`.
@@ -549,7 +619,8 @@ pub struct DeleteTopicRequest {
     pub topic: ::prost::alloc::string::String,
 }
 /// Request for the DetachSubscription method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DetachSubscriptionRequest {
     /// Required. The subscription to detach.
     /// Format is `projects/{project}/subscriptions/{subscription}`.
@@ -558,9 +629,11 @@ pub struct DetachSubscriptionRequest {
 }
 /// Response for the DetachSubscription method.
 /// Reserved for future use.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DetachSubscriptionResponse {}
 /// A subscription resource.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Subscription {
     /// Required. The name of the subscription. It must have the format
@@ -718,6 +791,19 @@ pub mod subscription {
         /// in the corresponding configuration.
         ResourceError = 2,
     }
+    impl State {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                State::Unspecified => "STATE_UNSPECIFIED",
+                State::Active => "ACTIVE",
+                State::ResourceError => "RESOURCE_ERROR",
+            }
+        }
+    }
 }
 /// A policy that specifies how Cloud Pub/Sub retries message delivery.
 ///
@@ -730,6 +816,7 @@ pub mod subscription {
 /// Retry Policy is implemented on a best effort basis. At times, the delay
 /// between consecutive deliveries may not match the configuration. That is,
 /// delay can be more or less than configured backoff.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RetryPolicy {
     /// The minimum delay between consecutive deliveries of a given message.
@@ -746,7 +833,8 @@ pub struct RetryPolicy {
 ///
 /// If validation on any of the fields fails at subscription creation/updation,
 /// the create/update subscription request will fail.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeadLetterPolicy {
     /// The name of the topic to which dead letter messages should be published.
     /// Format is `projects/{project}/topics/{topic}`.The Cloud Pub/Sub service
@@ -777,6 +865,7 @@ pub struct DeadLetterPolicy {
 }
 /// A policy that specifies the conditions for resource expiration (i.e.,
 /// automatic resource deletion).
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExpirationPolicy {
     /// Specifies the "time-to-live" duration for an associated resource. The
@@ -789,7 +878,8 @@ pub struct ExpirationPolicy {
     pub ttl: ::core::option::Option<::prost_types::Duration>,
 }
 /// Configuration for a push delivery endpoint.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PushConfig {
     /// A URL locating the endpoint to which messages should be pushed.
     /// For example, a Webhook endpoint might use `<https://example.com/push`.>
@@ -831,7 +921,8 @@ pub mod push_config {
     /// Contains information needed for generating an
     /// [OpenID Connect
     /// token](<https://developers.google.com/identity/protocols/OpenIDConnect>).
-    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct OidcToken {
         /// [Service account
         /// email](<https://cloud.google.com/iam/docs/service-accounts>)
@@ -854,7 +945,8 @@ pub mod push_config {
     /// default to allow requests only from the Cloud Pub/Sub system, for example.
     /// This field is optional and should be set only by users interested in
     /// authenticated push.
-    #[derive(Clone, PartialEq, Eq, ::prost::Oneof)]
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum AuthenticationMethod {
         /// If specified, Pub/Sub will generate and attach an OIDC JWT token as an
         /// `Authorization` header in the HTTP request for every pushed message.
@@ -863,7 +955,8 @@ pub mod push_config {
     }
 }
 /// Configuration for a BigQuery subscription.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BigQueryConfig {
     /// The name of the table to which to write data, of the form
     /// {projectId}:{datasetId}.{tableId}
@@ -909,9 +1002,25 @@ pub mod big_query_config {
         /// Cannot write to the BigQuery table due to a schema mismatch.
         SchemaMismatch = 4,
     }
+    impl State {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                State::Unspecified => "STATE_UNSPECIFIED",
+                State::Active => "ACTIVE",
+                State::PermissionDenied => "PERMISSION_DENIED",
+                State::NotFound => "NOT_FOUND",
+                State::SchemaMismatch => "SCHEMA_MISMATCH",
+            }
+        }
+    }
 }
 /// A message and its corresponding acknowledgment ID.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ReceivedMessage {
     /// This ID can be used to acknowledge the received message.
     #[prost(string, tag = "1")]
@@ -939,7 +1048,8 @@ pub struct ReceivedMessage {
     pub delivery_attempt: i32,
 }
 /// Request for the GetSubscription method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetSubscriptionRequest {
     /// Required. The name of the subscription to get.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -947,6 +1057,7 @@ pub struct GetSubscriptionRequest {
     pub subscription: ::prost::alloc::string::String,
 }
 /// Request for the UpdateSubscription method.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateSubscriptionRequest {
     /// Required. The updated subscription object.
@@ -958,7 +1069,8 @@ pub struct UpdateSubscriptionRequest {
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
 /// Request for the `ListSubscriptions` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListSubscriptionsRequest {
     /// Required. The name of the project in which to list subscriptions.
     /// Format is `projects/{project-id}`.
@@ -974,6 +1086,7 @@ pub struct ListSubscriptionsRequest {
     pub page_token: ::prost::alloc::string::String,
 }
 /// Response for the `ListSubscriptions` method.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListSubscriptionsResponse {
     /// The subscriptions that match the request.
@@ -986,7 +1099,8 @@ pub struct ListSubscriptionsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// Request for the DeleteSubscription method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteSubscriptionRequest {
     /// Required. The subscription to delete.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -994,7 +1108,8 @@ pub struct DeleteSubscriptionRequest {
     pub subscription: ::prost::alloc::string::String,
 }
 /// Request for the ModifyPushConfig method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ModifyPushConfigRequest {
     /// Required. The name of the subscription.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -1010,7 +1125,8 @@ pub struct ModifyPushConfigRequest {
     pub push_config: ::core::option::Option<PushConfig>,
 }
 /// Request for the `Pull` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PullRequest {
     /// Required. The subscription from which messages should be pulled.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -1033,7 +1149,8 @@ pub struct PullRequest {
     pub max_messages: i32,
 }
 /// Response for the `Pull` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PullResponse {
     /// Received Pub/Sub messages. The list will be empty if there are no more
     /// messages available in the backlog. For JSON, the response can be entirely
@@ -1043,7 +1160,8 @@ pub struct PullResponse {
     pub received_messages: ::prost::alloc::vec::Vec<ReceivedMessage>,
 }
 /// Request for the ModifyAckDeadline method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ModifyAckDeadlineRequest {
     /// Required. The name of the subscription.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -1064,7 +1182,8 @@ pub struct ModifyAckDeadlineRequest {
     pub ack_deadline_seconds: i32,
 }
 /// Request for the Acknowledge method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AcknowledgeRequest {
     /// Required. The subscription whose message is being acknowledged.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -1079,7 +1198,8 @@ pub struct AcknowledgeRequest {
 /// Request for the `StreamingPull` streaming RPC method. This request is used to
 /// establish the initial stream as well as to stream acknowledgements and ack
 /// deadline modifications from the client to the server.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StreamingPullRequest {
     /// Required. The subscription for which to initialize the new stream. This
     /// must be provided in the first request on the stream, and must not be set in
@@ -1153,7 +1273,8 @@ pub struct StreamingPullRequest {
 }
 /// Response for the `StreamingPull` method. This response is used to stream
 /// messages from the server to the client.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StreamingPullResponse {
     /// Received Pub/Sub messages. This will not be empty.
     #[prost(message, repeated, tag = "1")]
@@ -1175,7 +1296,8 @@ pub struct StreamingPullResponse {
 pub mod streaming_pull_response {
     /// Acknowledgement IDs sent in one or more previous requests to acknowledge a
     /// previously received message.
-    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct AcknowledgeConfirmation {
         /// Successfully processed acknowledgement IDs.
         #[prost(string, repeated, tag = "1")]
@@ -1190,7 +1312,8 @@ pub mod streaming_pull_response {
     }
     /// Acknowledgement IDs sent in one or more previous requests to modify the
     /// deadline for a specific message.
-    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct ModifyAckDeadlineConfirmation {
         /// Successfully processed acknowledgement IDs.
         #[prost(string, repeated, tag = "1")]
@@ -1201,7 +1324,8 @@ pub mod streaming_pull_response {
         pub invalid_ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     }
     /// Subscription properties sent as part of the response.
-    #[derive(Clone, PartialEq, Eq, ::prost::Message)]
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct SubscriptionProperties {
         /// True iff exactly once delivery is enabled for this subscription.
         #[prost(bool, tag = "1")]
@@ -1212,7 +1336,8 @@ pub mod streaming_pull_response {
     }
 }
 /// Request for the `CreateSnapshot` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateSnapshotRequest {
     /// Required. User-provided name for this snapshot. If the name is not provided
     /// in the request, the server will assign a random name for this snapshot on
@@ -1224,12 +1349,12 @@ pub struct CreateSnapshotRequest {
     pub name: ::prost::alloc::string::String,
     /// Required. The subscription whose backlog the snapshot retains.
     /// Specifically, the created snapshot is guaranteed to retain:
-    ///  (a) The existing backlog on the subscription. More precisely, this is
-    ///      defined as the messages in the subscription's backlog that are
-    ///      unacknowledged upon the successful completion of the
-    ///      `CreateSnapshot` request; as well as:
-    ///  (b) Any messages published to the subscription's topic following the
-    ///      successful completion of the CreateSnapshot request.
+    ///   (a) The existing backlog on the subscription. More precisely, this is
+    ///       defined as the messages in the subscription's backlog that are
+    ///       unacknowledged upon the successful completion of the
+    ///       `CreateSnapshot` request; as well as:
+    ///   (b) Any messages published to the subscription's topic following the
+    ///       successful completion of the CreateSnapshot request.
     /// Format is `projects/{project}/subscriptions/{sub}`.
     #[prost(string, tag = "2")]
     pub subscription: ::prost::alloc::string::String,
@@ -1239,6 +1364,7 @@ pub struct CreateSnapshotRequest {
     pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 /// Request for the UpdateSnapshot method.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateSnapshotRequest {
     /// Required. The updated snapshot object.
@@ -1254,7 +1380,8 @@ pub struct UpdateSnapshotRequest {
 /// operations, which allow you to manage message acknowledgments in bulk. That
 /// is, you can set the acknowledgment state of messages in an existing
 /// subscription to the state captured by a snapshot.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Snapshot {
     /// The name of the snapshot.
     #[prost(string, tag = "1")]
@@ -1280,7 +1407,8 @@ pub struct Snapshot {
     pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 /// Request for the GetSnapshot method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetSnapshotRequest {
     /// Required. The name of the snapshot to get.
     /// Format is `projects/{project}/snapshots/{snap}`.
@@ -1288,7 +1416,8 @@ pub struct GetSnapshotRequest {
     pub snapshot: ::prost::alloc::string::String,
 }
 /// Request for the `ListSnapshots` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListSnapshotsRequest {
     /// Required. The name of the project in which to list snapshots.
     /// Format is `projects/{project-id}`.
@@ -1304,7 +1433,8 @@ pub struct ListSnapshotsRequest {
     pub page_token: ::prost::alloc::string::String,
 }
 /// Response for the `ListSnapshots` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListSnapshotsResponse {
     /// The resulting snapshots.
     #[prost(message, repeated, tag = "1")]
@@ -1315,7 +1445,8 @@ pub struct ListSnapshotsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// Request for the `DeleteSnapshot` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteSnapshotRequest {
     /// Required. The name of the snapshot to delete.
     /// Format is `projects/{project}/snapshots/{snap}`.
@@ -1323,7 +1454,8 @@ pub struct DeleteSnapshotRequest {
     pub snapshot: ::prost::alloc::string::String,
 }
 /// Request for the `Seek` method.
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SeekRequest {
     /// Required. The subscription to affect.
     #[prost(string, tag = "1")]
@@ -1333,7 +1465,8 @@ pub struct SeekRequest {
 }
 /// Nested message and enum types in `SeekRequest`.
 pub mod seek_request {
-    #[derive(Clone, PartialEq, Eq, ::prost::Oneof)]
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Target {
         /// The time to seek to.
         /// Messages retained in the subscription that were published before this
@@ -1356,11 +1489,13 @@ pub mod seek_request {
     }
 }
 /// Response for the `Seek` method (this response is empty).
-#[derive(Clone, PartialEq, Eq, ::prost::Message)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SeekResponse {}
 /// Generated client implementations.
 pub mod publisher_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
+    use tonic::codegen::http::Uri;
     use tonic::codegen::*;
     /// The service that an application uses to manipulate topics, and to send
     /// messages to a topic.
@@ -1390,6 +1525,10 @@ pub mod publisher_client {
             let inner = tonic::client::Grpc::new(inner);
             Self { inner }
         }
+        pub fn with_origin(inner: T, origin: Uri) -> Self {
+            let inner = tonic::client::Grpc::with_origin(inner, origin);
+            Self { inner }
+        }
         pub fn with_interceptor<F>(inner: T, interceptor: F) -> PublisherClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
@@ -1402,19 +1541,19 @@ pub mod publisher_client {
         {
             PublisherClient::new(InterceptedService::new(inner, interceptor))
         }
-        /// Compress requests with `gzip`.
+        /// Compress requests with the given encoding.
         ///
         /// This requires the server to support it otherwise it might respond with an
         /// error.
         #[must_use]
-        pub fn send_gzip(mut self) -> Self {
-            self.inner = self.inner.send_compressed(CompressionEncoding::Gzip);
+        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.send_compressed(encoding);
             self
         }
-        /// Enable decompressing responses with `gzip`.
+        /// Enable decompressing responses.
         #[must_use]
-        pub fn accept_gzip(mut self) -> Self {
-            self.inner = self.inner.accept_compressed(CompressionEncoding::Gzip);
+        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.accept_compressed(encoding);
             self
         }
         /// Creates the given topic with the given name. See the [resource name rules]
@@ -1544,6 +1683,7 @@ pub mod publisher_client {
 /// Generated client implementations.
 pub mod subscriber_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
+    use tonic::codegen::http::Uri;
     use tonic::codegen::*;
     /// The service that an application uses to manipulate subscriptions and to
     /// consume messages from a subscription via the `Pull` method or by
@@ -1574,6 +1714,10 @@ pub mod subscriber_client {
             let inner = tonic::client::Grpc::new(inner);
             Self { inner }
         }
+        pub fn with_origin(inner: T, origin: Uri) -> Self {
+            let inner = tonic::client::Grpc::with_origin(inner, origin);
+            Self { inner }
+        }
         pub fn with_interceptor<F>(inner: T, interceptor: F) -> SubscriberClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
@@ -1586,19 +1730,19 @@ pub mod subscriber_client {
         {
             SubscriberClient::new(InterceptedService::new(inner, interceptor))
         }
-        /// Compress requests with `gzip`.
+        /// Compress requests with the given encoding.
         ///
         /// This requires the server to support it otherwise it might respond with an
         /// error.
         #[must_use]
-        pub fn send_gzip(mut self) -> Self {
-            self.inner = self.inner.send_compressed(CompressionEncoding::Gzip);
+        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.send_compressed(encoding);
             self
         }
-        /// Enable decompressing responses with `gzip`.
+        /// Enable decompressing responses.
         #[must_use]
-        pub fn accept_gzip(mut self) -> Self {
-            self.inner = self.inner.accept_compressed(CompressionEncoding::Gzip);
+        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.accept_compressed(encoding);
             self
         }
         /// Creates a subscription to a given topic. See the [resource name rules]

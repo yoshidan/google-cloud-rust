@@ -109,7 +109,7 @@ pub async fn replace_test_data(
                 return_commit_stats: false,
                 request_options: None,
                 transaction: Some(SingleUseTransaction(TransactionOptions {
-                    mode: Some(Mode::ReadWrite(ReadWrite {})),
+                    mode: Some(Mode::ReadWrite(ReadWrite::default())),
                 })),
             },
             None,
