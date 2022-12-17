@@ -195,7 +195,7 @@ impl Client {
         }
 
         let environment = Environment::from_project(config.project).await?;
-        let pool_size = config.channel_config.num_channels as usize;
+        let pool_size = config.channel_config.num_channels;
         let conn_pool = ConnectionManager::new(pool_size, &environment, config.endpoint.as_str()).await?;
         let session_manager = SessionManager::new(database, conn_pool, config.session_config).await?;
 

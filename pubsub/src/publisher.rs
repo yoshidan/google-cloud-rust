@@ -311,7 +311,7 @@ impl Tasks {
             Err(status) => {
                 for p in callback.into_iter() {
                     let code = status.code();
-                    let status = Status::new(code, &(*status.message()).to_string());
+                    let status = Status::new(code, (*status.message()).to_string());
                     if p.send(Err(status)).is_err() {
                         tracing::error!("failed to notify : status={}", code);
                     }
