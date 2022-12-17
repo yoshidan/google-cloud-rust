@@ -18,9 +18,9 @@ google-cloud-storage = <version>
 
 ```rust
 use google_cloud_storage::client::Client;
-use google_cloud_storage::client::http::Error;
 use google_cloud_storage::sign::SignedURLOptions;
 use google_cloud_storage::sign::SignedURLMethod;
+use google_cloud_storage::http::Error;
 use google_cloud_storage::http::objects::download::Range;
 use google_cloud_storage::http::objects::get::GetObjectRequest;
 use google_cloud_storage::http::objects::upload::UploadObjectRequest;
