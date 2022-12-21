@@ -77,6 +77,11 @@ impl CredentialsFile {
         Ok(json::from_slice(credentials_json.as_slice())?)
     }
 
+    pub async fn new_from_file(filepath: String) -> Result<Self, Error> {
+        let credentials_json = fs::read(filepath).await?;
+        Ok(json::from_slice(credentials_json.as_slice())?)
+    }
+
     async fn json_from_env() -> Result<Vec<u8>, ()> {
         let credentials = std::env::var("GOOGLE_APPLICATION_CREDENTIALS_JSON")
             .map_err(|_| ())
