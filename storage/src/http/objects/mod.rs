@@ -14,7 +14,7 @@ pub mod upload;
 pub mod watch_all;
 
 /// An object.
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Object {
     /// The link to this object.
@@ -95,7 +95,7 @@ pub struct Object {
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub updated: Option<OffsetDateTime>,
     /// Storage class of the object.
-    pub storage_class: String,
+    pub storage_class: Option<String>,
     /// Cloud KMS Key used to encrypt this object, if the object is encrypted by
     /// such a key.
     pub kms_key_name: Option<String>,
@@ -166,7 +166,7 @@ pub struct Object {
 }
 
 /// Describes the customer-specified mechanism used to store the data at rest.
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomerEncryption {
     /// The encryption algorithm.

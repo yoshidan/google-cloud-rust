@@ -2339,7 +2339,7 @@ mod test {
 
     use crate::http::notifications::EventType;
     use crate::http::objects::download::Range;
-    use crate::http::objects::SourceObjects;
+    use crate::http::objects::{Object, SourceObjects};
     use crate::http::storage_client::{StorageClient, SCOPES};
     use bytes::Buf;
     use futures_util::StreamExt;
@@ -2910,7 +2910,10 @@ mod test {
                     destination_object: format!("{}_composed", uploaded.name),
                     destination_predefined_acl: None,
                     composing_targets: ComposingTargets {
-                        destination: None,
+                        destination: Some(Object {
+                            content_type: Some("image/jpeg".to_string()),
+                            ..Default::default()
+                        }),
                         source_objects: vec![SourceObjects {
                             name: format!("{}_rewrite", uploaded.name),
                             ..Default::default()
