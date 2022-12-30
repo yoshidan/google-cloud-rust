@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-auth"
-version = "0.8.0"
+version = "0.7.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/foundation/auth"
@@ -19,13 +19,13 @@ thiserror = "1.0"
 async-trait = "0.1"
 home = "0.5"
 urlencoding = "2.1"
-tokio = { version = "1.23", features = ["fs"]}
-google-cloud-metadata = { version = "0.4.0", path = "../metadata", default-features = false }
+tokio = { version = "1.20", features = ["fs"]}
+google-cloud-metadata = { version = "0.3.1", path = "../metadata", default-features = false }
 base64 = "0.13"
 time = "0.3"
 
 [dev-dependencies]
-tokio = { version = "1.23", features = ["test-util", "rt-multi-thread", "macros"]}
+tokio = { version = "1.20", features = ["test-util", "rt-multi-thread", "macros"]}
 tracing-subscriber = {version="0.3", features=["env-filter","std"]}
 ctor = "0.1"
 serial_test = "0.9"
