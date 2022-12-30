@@ -51,23 +51,22 @@ impl SessionHandle {
             Ok(s) => Ok(s),
             Err(e) => {
                 if e.code() == Code::NotFound && e.message().contains("Session not found:") {
-                    self.invalidate().await;
+                    tracing::debug!("session invalidate {}", self.session.name);
+                    self.delete().await;
                 }
                 Err(e)
             }
         }
     }
 
-    async fn invalidate(&mut self) {
-        tracing::debug!("session invalidate {}", self.session.name);
+    async fn delete(&mut self) {
+        let session_name = &self.session.name;
         let request = DeleteSessionRequest {
-            name: self.session.name.to_string(),
+            name: session_name.to_string(),
         };
         match self.spanner_client.delete_session(request, None, None).await {
             Ok(_s) => self.valid = false,
-            Err(e) => {
-                tracing::error!("session remove error {} error={:?}", self.session.name, e);
-            }
+            Err(e) => tracing::error!("failed to delete session {}, {:?}", session_name, e),
         }
     }
 }
@@ -109,22 +108,23 @@ impl DerefMut for ManagedSession {
 }
 
 pub struct SessionQueue {
-    allocated: VecDeque<SessionHandle>,
+    available_sessions: VecDeque<SessionHandle>,
     waiters: VecDeque<oneshot::Sender<SessionHandle>>,
     inuse: usize,
+    allocating: usize
 }
 
 impl SessionQueue {
     fn grow(&mut self, session: SessionHandle) {
-        self.sessions.push_back(session);
+        self.available_sessions.push_back(session);
     }
 
     fn num_opened(&self) -> usize {
-        self.inuse + self.sessions.len()
+        self.inuse + self.available_sessions.len()
     }
 
     fn take(&mut self) -> Option<SessionHandle> {
-        match self.sessions.pop_front() {
+        match self.available_sessions.pop_front() {
             None => None,
             Some(s) => {
                 self.inuse += 1;
@@ -136,24 +136,33 @@ impl SessionQueue {
     fn release(&mut self, session: SessionHandle) {
         self.inuse -= 1;
         if session.valid {
-            self.sessions.push_back(session);
+            self.available_sessions.push_back(session);
         }
     }
 }
 
 pub struct SessionPool {
     queue: Arc<Mutex<SessionQueue>>,
-    allocation_request_sender: broadcast::Sender<bool>,
+    allocation_request_sender: broadcast::Sender<usize>,
+    min_opened: usize,
+    max_idle: usize,
+    idle_time: Duration,
+    inc_step: usize,
+    max_open: usize,
 }
 
 impl SessionPool {
     async fn new(
         database: String,
         conn_pool: &ConnectionManager,
+        allocation_request_sender: broadcast::Sender<usize>,
         min_opened: usize,
-        allocation_request_sender: broadcast::Sender<bool>,
+        max_idle: usize,
+        idle_time: Duration,
+        inc_step: usize,
+        max_open: usize
     ) -> Result<Self, Status> {
-        let sessions = Self::init_pool(database, conn_pool, min_opened).await?;
+        let sessions = Self::init_pool(database, conn_pool, min_opened.clone()).await?;
         let waiters = Arc::new(VecDeque::new());
 
         Ok(SessionPool {
@@ -163,6 +172,11 @@ impl SessionPool {
                 inuse: 0,
             })),
             allocation_request_sender,
+            min_opened,
+            max_idle,
+            idle_time,
+            inc_step,
+            max_open
         })
     }
 
@@ -191,7 +205,7 @@ impl SessionPool {
     }
 
     fn acquire(&self, wait_timeout:Duration) -> Result<ManagedSession, SessionError> {
-        let on_session_acquired= {
+        let (on_session_acquired,session_allocation_count)= {
             let mut queue = self.queue.lock();
 
             // Prioritize waiters over new acquirers.
@@ -204,10 +218,13 @@ impl SessionPool {
             // Add the participant to the waiting list.
             let (sender, receiver) = oneshot::channel();
             queue.waiters.push_back(sender);
-            receiver
+            let session_allocation_count = self.get_session_allocation_count(&mut queue);
+            (receiver, allocation_count)
         };
 
-        let _ = self.allocation_request_sender.send(true);
+        if session_allocation_count > 0 {
+           let _ = self.allocation_request_sender.send(session_allocation_count);
+        }
 
         // Wait for the session available notification.
         match timeout(wait_timeout, on_session_acquired).await {
@@ -223,11 +240,11 @@ impl SessionPool {
     }
 
     fn num_opened(&self) -> usize {
-        self.inner.lock().num_opened()
+        self.queue.lock().num_opened()
     }
 
     fn num_waiting(&self) -> usize {
-        self.waiters.lock().len()
+        self.queue.lock().waiters.len()
     }
 
     fn grow(&self, mut sessions: Vec<SessionHandle>) {
@@ -248,36 +265,63 @@ impl SessionPool {
         }
     }
 
-    fn recycle(&self, session: SessionHandle) {
+    fn recycle(&self, mut session: SessionHandle) {
         if session.valid {
             tracing::trace!("recycled name={}", session.session.name);
-            match { self.waiters.lock().pop_front() } {
+            let mut queue = self.queue.lock();
+            match queue.waiters.pop_front() {
+                // Immediately reuse session when the waiter exist
                 Some(c) => {
                     if let Err(session) = c.send(session) {
-                        self.inner.lock().release(session)
+                        queue.release(session)
                     }
                 }
-                None => self.inner.lock().release(session),
+                None => {
+                    if queue.num_opened() <= self.max_idle || session.created_at + self.idle_time > Instant::now() {
+                        // Not reuse expired idle session
+                        session.valid = false
+                    }
+                    queue.release(session)
+                },
             };
         } else {
-            self.inner.lock().release(session);
-
-            // request session creation
-            let _ = self.allocation_request_sender.send(true);
+            let mut queue = self.queue.lock();
+            queue.release(session);
+            if queue.num_opened() < self.min_opened && !queue.waiters.is_empty() {
+                let session_allocation_count = self.calculate_session_allocation_count(&mut queue);
+                if session_allocation_count > 0 {
+                   let _ = self.allocation_request_sender.send(session_allocation_count);
+                }
+            }
         }
+    }
+
+    fn calculate_session_allocation_count(&self, queue: &mut SessionQueue) -> usize {
+        // Request allocation when no one request.
+        let num_opened= queue.num_opened();
+        let limit = self.max_open;
+        let allocating = queue.allocating;
+        let mut increasable = limit - (allocating + num_opened);
+        if increasable <= 0 {
+            tracing::trace!("No available connections max={}, allocating={}, current={}", limit, allocating, num_opened);
+            return 0;
+        }else if increasable > self.inc_step {
+            return self.inc_step
+        }
+        return increasable;
     }
 
     async fn close(&self) {
         let deleting_sessions = {
             let mut queue= self.queue.lock();
             let mut deleting_sessions = Vec::with_capacity(queue.allocated.len());
-            while let Some(session) = queue.allocated.pop_front() {
+            while let Some(session) = queue.available_sessions.pop_front() {
                 deleting_sessions.push(session);
             }
             deleting_sessions
         };
         for mut session in deleting_sessions {
-            delete_session(&mut session).await;
+            session.delete().await;
         }
     }
 }
@@ -494,14 +538,6 @@ fn schedule_refresh(config: SessionConfig, session_pool: SessionPool, cancel: Ca
                 .await;
                 continue;
             }
-
-            shrink_idle_sessions(
-                now,
-                config.idle_timeout,
-                &session_pool,
-                max_removing_count as usize,
-                cancel.clone(),
-            )
             .await;
             health_check(
                 now + Duration::from_nanos(1),
@@ -529,7 +565,7 @@ async fn health_check(
         }
         let mut s = {
             // temporary take
-            let mut locked = sessions.inner.lock();
+            let mut locked = sessions.queue.lock();
             match locked.take() {
                 Some(mut s) => {
                     // all the session check complete.
@@ -556,70 +592,11 @@ async fn health_check(
                 sessions.recycle(s);
             }
             Err(_) => {
-                delete_session(&mut s).await;
+                s.delete().await;
                 s.valid = false;
                 sessions.recycle(s);
             }
         }
-    }
-}
-
-async fn shrink_idle_sessions(
-    now: Instant,
-    idle_timeout: Duration,
-    session_pool: &SessionPool,
-    max_shrink_count: usize,
-    cancel: CancellationToken,
-) {
-    let mut removed_count = 0;
-    let sleep_duration = Duration::from_millis(10);
-    loop {
-        if removed_count >= max_shrink_count {
-            break;
-        }
-
-        select! {
-            _ = sleep(sleep_duration) => {},
-            _ = cancel.cancelled() => break
-        }
-
-        // get old session
-        let mut s = {
-            // temporary take
-            let mut locked = session_pool.inner.lock();
-            match locked.take() {
-                Some(mut s) => {
-                    // all the session check complete.
-                    if s.last_checked_at == now {
-                        locked.release(s);
-                        break;
-                    }
-                    if s.last_used_at + idle_timeout >= now {
-                        s.last_checked_at = now;
-                        locked.release(s);
-                        continue;
-                    }
-                    s
-                }
-                None => break,
-            }
-        };
-
-        removed_count += 1;
-        delete_session(&mut s).await;
-        s.valid = false;
-        session_pool.recycle(s);
-    }
-}
-
-async fn delete_session(session: &mut SessionHandle) {
-    let session_name = &session.session.name;
-    let request = DeleteSessionRequest {
-        name: session_name.to_string(),
-    };
-    match session.spanner_client.delete_session(request, None, None).await {
-        Ok(_) => {}
-        Err(e) => tracing::error!("failed to delete session {}, {:?}", session_name, e),
     }
 }
 
@@ -678,7 +655,7 @@ mod tests {
             tokio::spawn(async move {
                 let mut session = sm.get().await.unwrap();
                 if use_invalidate {
-                    session.invalidate().await;
+                    session.delete().await;
                 }
                 counter.fetch_add(1, Ordering::SeqCst);
             });
