@@ -115,8 +115,22 @@ pub struct SessionQueue {
 }
 
 impl SessionQueue {
-    fn grow(&mut self, session: SessionHandle) {
-        self.available_sessions.push_back(session);
+
+    fn grow(&mut self, mut new_sessions: Vec<SessionHandle>) {
+        while let Some(session) = new_sessions.pop() {
+            match self.waiters.pop_front() {
+                Some(c) => {
+                    match c.send(session) {
+                        Err(session) => self.available_sessions.push_back(session),
+                        _ => {
+                            // Mark as using when notify to waiter directory.
+                            self.inuse += 1
+                        }
+                    };
+                }
+                None => self.available_sessions.push_back(session)
+            };
+        }
     }
 
     fn num_opened(&self) -> usize {
@@ -144,11 +158,7 @@ impl SessionQueue {
 pub struct SessionPool {
     queue: Arc<Mutex<SessionQueue>>,
     allocation_request_sender: broadcast::Sender<usize>,
-    min_opened: usize,
-    max_idle: usize,
-    idle_time: Duration,
-    inc_step: usize,
-    max_open: usize,
+    config: Arc<SessionConfig>
 }
 
 impl SessionPool {
@@ -156,11 +166,7 @@ impl SessionPool {
         database: String,
         conn_pool: &ConnectionManager,
         allocation_request_sender: broadcast::Sender<usize>,
-        min_opened: usize,
-        max_idle: usize,
-        idle_time: Duration,
-        inc_step: usize,
-        max_open: usize
+        config: Arc<SessionConfig>,
     ) -> Result<Self, Status> {
         let sessions = Self::init_pool(database, conn_pool, min_opened.clone()).await?;
         let waiters = Arc::new(VecDeque::new());
@@ -172,11 +178,7 @@ impl SessionPool {
                 inuse: 0,
             })),
             allocation_request_sender,
-            min_opened,
-            max_idle,
-            idle_time,
-            inc_step,
-            max_open
+            config
         })
     }
 
@@ -219,7 +221,7 @@ impl SessionPool {
             let (sender, receiver) = oneshot::channel();
             queue.waiters.push_back(sender);
             let session_allocation_count = self.get_session_allocation_count(&mut queue);
-            (receiver, allocation_count)
+            (receiver, session_allocation_count)
         };
 
         if session_allocation_count > 0 {
@@ -227,7 +229,7 @@ impl SessionPool {
         }
 
         // Wait for the session available notification.
-        match timeout(wait_timeout, on_session_acquired).await {
+        match timeout(self.config.session_get_timeout, on_session_acquired).await {
             Ok(Ok(mut session)) => {
                 session.last_used_at = Instant::now();
                 Ok(ManagedSession {
@@ -245,24 +247,6 @@ impl SessionPool {
 
     fn num_waiting(&self) -> usize {
         self.queue.lock().waiters.len()
-    }
-
-    fn grow(&self, mut sessions: Vec<SessionHandle>) {
-        while let Some(session) = sessions.pop() {
-            match { self.waiters.lock().pop_front() } {
-                Some(c) => {
-                    let mut inner = self.inner.lock();
-                    match c.send(session) {
-                        Err(session) => inner.grow(session),
-                        _ => {
-                            // Mark as using when notify to waiter directory.
-                            inner.inuse += 1
-                        }
-                    };
-                }
-                None => self.inner.lock().grow(session),
-            };
-        }
     }
 
     fn recycle(&self, mut session: SessionHandle) {
@@ -331,6 +315,7 @@ impl Clone for SessionPool {
         SessionPool {
             queue: Arc::clone(&self.queue),
             allocation_request_sender: self.allocation_request_sender.clone(),
+            config: self.config.clone()
         }
     }
 }
@@ -389,7 +374,6 @@ impl Default for SessionConfig {
 
 pub struct SessionManager {
     session_pool: SessionPool,
-    session_get_timeout: Duration,
     cancel: CancellationToken,
     tasks: Vec<JoinHandle<()>>,
 }
@@ -421,13 +405,11 @@ impl SessionManager {
     ) -> Result<SessionManager, Status> {
         let database = database.into();
         let (sender, receiver) = broadcast::channel(1);
-        let session_pool = SessionPool::new(database.clone(), &conn_pool, config.min_opened, sender).await?;
+        let session_pool = SessionPool::new(database.clone(), &conn_pool, sender, Arc::new(config.clone())).await?;
 
         let cancel = CancellationToken::new();
-        let session_get_timeout = config.session_get_timeout;
-        let task_cleaner = schedule_refresh(config.clone(), session_pool.clone(), cancel.clone());
+        let task_cleaner = schedule_refresh(config, session_pool.clone(), cancel.clone());
         let task_listener = listen_session_creation_request(
-            config,
             session_pool.clone(),
             database,
             conn_pool,
@@ -436,7 +418,6 @@ impl SessionManager {
         );
 
         let sm = SessionManager {
-            session_get_timeout,
             session_pool,
             cancel,
             tasks: vec![task_cleaner, task_listener],
@@ -470,44 +451,30 @@ impl SessionManager {
 }
 
 fn listen_session_creation_request(
-    config: SessionConfig,
     session_pool: SessionPool,
     database: String,
     conn_pool: ConnectionManager,
-    mut rx: broadcast::Receiver<bool>,
+    mut rx: broadcast::Receiver<usize>,
     cancel: CancellationToken,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
-        let mut allocation_request_size = 0;
         loop {
-            select! {
-                _ = rx.recv() => {},
+            let creation_count = select! {
+                _ = rx.recv(count) => count,
                 _ = cancel.cancelled() => break
-            }
-            let num_opened = session_pool.num_opened();
-            if num_opened >= config.min_opened && allocation_request_size >= session_pool.num_waiting() {
-                continue;
-            }
-
-            let mut creation_count = config.max_opened - num_opened;
-            if creation_count > config.inc_step {
-                creation_count = config.inc_step;
-            }
-            if creation_count == 0 {
-                continue;
-            }
-            allocation_request_size += creation_count;
-
+            };
             let database = database.clone();
             let next_client = conn_pool.conn();
 
             match batch_create_session(next_client, database, creation_count).await {
                 Ok(fresh_sessions) => {
-                    allocation_request_size -= creation_count;
-                    session_pool.grow(fresh_sessions)
+                    let mut queue = session_pool.queue.lock();
+                    queue.allocating -= creation_count;
+                    queue.grow(fresh_sessions)
                 }
                 Err(e) => {
-                    allocation_request_size -= creation_count;
+                    let queue = session_pool.queue.lock();
+                    queue.allocating -= creation_count;
                     tracing::error!("failed to create new sessions {:?}", e)
                 }
             };
@@ -527,18 +494,6 @@ fn schedule_refresh(config: SessionConfig, session_pool: SessionPool, cancel: Ca
                 _ = cancel.cancelled() => break
             }
             let now = Instant::now();
-            let max_removing_count = session_pool.num_opened() as i64 - config.max_idle as i64;
-            if max_removing_count < 0 {
-                health_check(
-                    now + Duration::from_nanos(1),
-                    config.session_alive_trust_duration,
-                    &session_pool,
-                    cancel.clone(),
-                )
-                .await;
-                continue;
-            }
-            .await;
             health_check(
                 now + Duration::from_nanos(1),
                 config.session_alive_trust_duration,
