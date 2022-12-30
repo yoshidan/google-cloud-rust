@@ -27,9 +27,10 @@ pub struct SessionHandle {
     pub session: Session,
     pub spanner_client: Client,
     valid: bool,
-    last_used_at: std::time::Instant,
-    last_checked_at: std::time::Instant,
-    last_pong_at: std::time::Instant,
+    last_used_at: Instant,
+    last_checked_at: Instant,
+    last_pong_at: Instant,
+    created_at: Instant
 }
 
 impl SessionHandle {
@@ -41,6 +42,7 @@ impl SessionHandle {
             last_used_at: now,
             last_checked_at: now,
             last_pong_at: now,
+            created_at: now,
         }
     }
 
@@ -106,12 +108,13 @@ impl DerefMut for ManagedSession {
     }
 }
 
-pub struct Sessions {
-    sessions: VecDeque<SessionHandle>,
+pub struct SessionQueue {
+    allocated: VecDeque<SessionHandle>,
+    waiters: VecDeque<oneshot::Sender<SessionHandle>>,
     inuse: usize,
 }
 
-impl Sessions {
+impl SessionQueue {
     fn grow(&mut self, session: SessionHandle) {
         self.sessions.push_back(session);
     }
@@ -139,8 +142,7 @@ impl Sessions {
 }
 
 pub struct SessionPool {
-    inner: Arc<Mutex<Sessions>>,
-    waiters: Arc<Waiters>,
+    queue: Arc<Mutex<SessionQueue>>,
     allocation_request_sender: broadcast::Sender<bool>,
 }
 
@@ -151,15 +153,15 @@ impl SessionPool {
         min_opened: usize,
         allocation_request_sender: broadcast::Sender<bool>,
     ) -> Result<Self, Status> {
-        let init_pool = Self::init_pool(database, conn_pool, min_opened).await?;
-        let waiters = Arc::new(Waiters::new(VecDeque::new()));
+        let sessions = Self::init_pool(database, conn_pool, min_opened).await?;
+        let waiters = Arc::new(VecDeque::new());
 
         Ok(SessionPool {
-            inner: Arc::new(Mutex::new(Sessions {
-                sessions: init_pool,
+            queue: Arc::new(Mutex::new(Sessions {
+                sessions,
+                waiters,
                 inuse: 0,
             })),
-            waiters,
             allocation_request_sender,
         })
     }
@@ -188,13 +190,36 @@ impl SessionPool {
         Ok(sessions.into())
     }
 
-    fn request(&self) -> oneshot::Receiver<SessionHandle> {
-        let (sender, receiver) = oneshot::channel();
-        {
-            self.waiters.lock().push_back(sender);
-        }
+    fn acquire(&self, wait_timeout:Duration) -> Result<ManagedSession, SessionError> {
+        let on_session_acquired= {
+            let mut queue = self.queue.lock();
+
+            // Prioritize waiters over new acquirers.
+            if queue.waiters.is_empty() {
+                if let Some(mut s) = queue.take() {
+                    s.last_used_at = Instant::now();
+                    return Ok(ManagedSession::new(self.clone(), s));
+                }
+            }
+            // Add the participant to the waiting list.
+            let (sender, receiver) = oneshot::channel();
+            queue.waiters.push_back(sender);
+            receiver
+        };
+
         let _ = self.allocation_request_sender.send(true);
-        receiver
+
+        // Wait for the session available notification.
+        match timeout(wait_timeout, on_session_acquired).await {
+            Ok(Ok(mut session)) => {
+                session.last_used_at = Instant::now();
+                Ok(ManagedSession {
+                    session_pool: self.clone(),
+                    session: Some(session),
+                })
+            }
+            _ => Err(SessionError::SessionGetTimeout),
+        }
     }
 
     fn num_opened(&self) -> usize {
@@ -241,13 +266,26 @@ impl SessionPool {
             let _ = self.allocation_request_sender.send(true);
         }
     }
+
+    async fn close(&self) {
+        let deleting_sessions = {
+            let mut queue= self.queue.lock();
+            let mut deleting_sessions = Vec::with_capacity(queue.allocated.len());
+            while let Some(session) = queue.allocated.pop_front() {
+                deleting_sessions.push(session);
+            }
+            deleting_sessions
+        };
+        for mut session in deleting_sessions {
+            delete_session(&mut session).await;
+        }
+    }
 }
 
 impl Clone for SessionPool {
     fn clone(&self) -> Self {
         SessionPool {
-            inner: Arc::clone(&self.inner),
-            waiters: Arc::clone(&self.waiters),
+            queue: Arc::clone(&self.queue),
             allocation_request_sender: self.allocation_request_sender.clone(),
         }
     }
@@ -371,22 +409,7 @@ impl SessionManager {
     }
 
     pub async fn get(&self) -> Result<ManagedSession, SessionError> {
-        if let Some(mut s) = self.session_pool.inner.lock().take() {
-            s.last_used_at = Instant::now();
-            return Ok(ManagedSession::new(self.session_pool.clone(), s));
-        }
-
-        // Wait for the session creation.
-        match timeout(self.session_get_timeout, self.session_pool.request()).await {
-            Ok(Ok(mut session)) => {
-                session.last_used_at = Instant::now();
-                Ok(ManagedSession {
-                    session_pool: self.session_pool.clone(),
-                    session: Some(session),
-                })
-            }
-            _ => Err(SessionError::SessionGetTimeout),
-        }
+        self.session_pool.acquire(self.session_get_timeout)
     }
 
     pub(crate) async fn close(&self) {
@@ -398,17 +421,7 @@ impl SessionManager {
         for task in &self.tasks {
             task.abort();
         }
-        let deleting_sessions = {
-            let mut lock = self.session_pool.inner.lock();
-            let mut deleting_sessions = Vec::with_capacity(lock.sessions.len());
-            while let Some(session) = lock.sessions.pop_front() {
-                deleting_sessions.push(session);
-            }
-            deleting_sessions
-        };
-        for mut session in deleting_sessions {
-            delete_session(&mut session).await;
-        }
+        self.session_pool.close().await;
     }
 }
 
