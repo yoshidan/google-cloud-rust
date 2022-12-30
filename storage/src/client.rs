@@ -186,7 +186,7 @@ impl Client {
                 let der = pkcs
                     .to_pkcs8_der()
                     .map_err(|e| SignedURLError::CertError(e.to_string()))?;
-                let key_pair = ring::signature::RsaKeyPair::from_pkcs8(der.as_bytes())
+                let key_pair = ring::signature::RsaKeyPair::from_pkcs8(der.as_ref())
                     .map_err(|e| SignedURLError::CertError(e.to_string()))?;
                 let mut signed = vec![0; key_pair.public_modulus_len()];
                 key_pair
