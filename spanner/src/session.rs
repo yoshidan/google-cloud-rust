@@ -595,7 +595,7 @@ async fn batch_create_session(
 #[cfg(test)]
 mod tests {
     use crate::apiv1::conn_pool::ConnectionManager;
-    use crate::session::{health_check, ManagedSession, SessionConfig, SessionError, SessionManager};
+    use crate::session::{health_check, SessionConfig, SessionError, SessionManager};
     use serial_test::serial;
 
     use google_cloud_gax::cancel::CancellationToken;
@@ -619,7 +619,8 @@ mod tests {
             .unwrap();
         let max = config.max_opened;
         let min = config.min_opened;
-        let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
+        let idle_timeout = config.idle_timeout;
+        let sm = Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
 
         let counter = Arc::new(AtomicI64::new(0));
         for _ in 0..100 {
@@ -637,12 +638,20 @@ mod tests {
             sleep(Duration::from_millis(5)).await;
         }
 
-        sleep(Duration::from_millis(100)).await;
+        sleep(Duration::from_secs(1)).await;
         let sessions = sm.session_pool.inner.lock();
-        assert_eq!(sessions.num_inuse, 0, "num is {}", sessions.num_inuse);
-        let num_opened = sessions.available_sessions.len();
-        assert!(num_opened <= max, "idle session must be lteq {} now is {}", max, num_opened);
-        assert!(num_opened >= min, "idle session must be gteq {} now is {}", min, num_opened);
+        assert_eq!(sessions.num_inuse, 0, "num_inuse is {}", sessions.num_inuse);
+        let waiters = sessions.waiters.len();
+        assert_eq!(waiters, 0, "waiters is {}", waiters);
+        let available_sessions = sessions.available_sessions.len();
+        if idle_timeout <= Duration::from_secs(1) && !use_invalidate {
+            // idle session expired
+            assert_eq!(available_sessions, min, "idle session must be {} now is {}", min, available_sessions);
+        }else {
+            assert!(available_sessions <= max, "idle session must be lteq {} now is {}", max, available_sessions);
+            assert!(available_sessions >= min, "idle session must be gteq {} now is {}", min, available_sessions);
+        }
+
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -741,7 +750,7 @@ mod tests {
             ..Default::default()
         };
         let sm = Arc::new(SessionManager::new(DATABASE, conn_pool, config.clone()).await.unwrap());
-        let mut mu = Arc::new(RwLock::new(Vec::new()));
+        let mu = Arc::new(RwLock::new(Vec::new()));
         let mut awaiters = Vec::with_capacity(100);
         for _ in 0..100 {
             let sm = sm.clone();
@@ -790,9 +799,47 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_rush_invalidate_with_cleanup() {
+    async fn test_rush() {
         let config = SessionConfig {
-            idle_timeout: Duration::from_millis(10),
+            min_opened: 10,
+            max_idle: 20,
+            max_opened: 45,
+            ..Default::default()
+        };
+        assert_rush(false, config).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_rush_with_invalidate() {
+        let config = SessionConfig {
+            min_opened: 10,
+            max_idle: 20,
+            max_opened: 45,
+            ..Default::default()
+        };
+        assert_rush(true, config).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_rush_with_health_check() {
+        let config = SessionConfig {
+            session_alive_trust_duration: Duration::from_millis(10),
+            refresh_interval: Duration::from_millis(250),
+            session_get_timeout: Duration::from_secs(20),
+            min_opened: 10,
+            max_idle: 20,
+            max_opened: 45,
+            ..Default::default()
+        };
+        assert_rush(false, config).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_rush_with_health_check_and_invalidate() {
+        let config = SessionConfig {
             session_alive_trust_duration: Duration::from_millis(10),
             refresh_interval: Duration::from_millis(250),
             session_get_timeout: Duration::from_secs(20),
@@ -806,12 +853,12 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_rush() {
+    async fn test_rush_with_idle_expired() {
         let config = SessionConfig {
-            session_get_timeout: Duration::from_secs(20),
             min_opened: 10,
             max_idle: 20,
             max_opened: 45,
+            idle_timeout: Duration::from_millis(1),
             ..Default::default()
         };
         assert_rush(false, config).await;
@@ -819,18 +866,34 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_rush_with_cleanup() {
+    async fn test_rush_with_health_check_and_idle_expired() {
         let config = SessionConfig {
-            idle_timeout: Duration::from_millis(10),
             session_alive_trust_duration: Duration::from_millis(10),
             refresh_interval: Duration::from_millis(250),
             session_get_timeout: Duration::from_secs(20),
             min_opened: 10,
             max_idle: 20,
             max_opened: 45,
+            idle_timeout: Duration::from_millis(1),
             ..Default::default()
         };
         assert_rush(false, config).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_rush_with_health_check_and_idle_expired_and_invalid() {
+        let config = SessionConfig {
+            session_alive_trust_duration: Duration::from_millis(10),
+            refresh_interval: Duration::from_millis(250),
+            session_get_timeout: Duration::from_secs(20),
+            min_opened: 10,
+            max_idle: 20,
+            max_opened: 45,
+            idle_timeout: Duration::from_millis(1),
+            ..Default::default()
+        };
+        assert_rush(true, config).await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
