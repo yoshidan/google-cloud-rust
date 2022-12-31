@@ -9,7 +9,7 @@ use google_cloud_spanner::key::Key;
 use google_cloud_spanner::mutation::insert_or_update;
 use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
 use google_cloud_spanner::row::{Error as RowError, Row, Struct, TryFromStruct};
-use google_cloud_spanner::session::{ManagedSession, SessionConfig, SessionHandle, SessionManager};
+use google_cloud_spanner::session::{ManagedSession, SessionConfig, SessionHandle};
 use google_cloud_spanner::statement::Statement;
 use google_cloud_spanner::transaction::CallOptions;
 use google_cloud_spanner::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
@@ -77,22 +77,6 @@ pub fn user_columns() -> Vec<&'static str> {
         "NullableString",
         "UpdatedAt",
     ]
-}
-
-#[allow(dead_code)]
-pub async fn create_session() -> ManagedSession {
-    let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()), "")
-        .await
-        .unwrap();
-    let mut config = SessionConfig::default();
-    config.min_opened = 1;
-    config.max_opened = 1;
-    SessionManager::new(DATABASE, cm, config)
-        .await
-        .unwrap()
-        .get()
-        .await
-        .unwrap()
 }
 
 #[allow(dead_code)]

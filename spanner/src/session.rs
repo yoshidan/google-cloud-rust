@@ -475,7 +475,7 @@ impl SessionManager {
     pub async fn close(&self) {
         self.cancel.cancel();
         let tasks = {
-            mem::replace(&mut *self.tasks.lock(), vec![])
+            std::mem::take(&mut *self.tasks.lock())
         };
         for task in tasks {
             let _ = task.await;
