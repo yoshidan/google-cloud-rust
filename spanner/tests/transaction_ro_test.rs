@@ -318,5 +318,5 @@ async fn test_read_multi_row() {
         .read("User", &["UserId"], vec![Key::new(&user_id), Key::new(&user_id2)])
         .await
         .unwrap();
-    assert_eq!(2, all_rows(row).await.len());
+    assert_eq!(2, all_rows(row).await.unwrap().len());
 }
