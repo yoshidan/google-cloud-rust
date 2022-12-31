@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -25,6 +26,7 @@ pub struct SessionHandle {
     pub session: Session,
     pub spanner_client: Client,
     valid: bool,
+    deleted: bool,
     last_used_at: Instant,
     last_checked_at: Instant,
     last_pong_at: Instant,
@@ -37,6 +39,7 @@ impl SessionHandle {
             session,
             spanner_client,
             valid: true,
+            deleted: false,
             last_used_at: now,
             last_checked_at: now,
             last_pong_at: now,
@@ -63,9 +66,10 @@ impl SessionHandle {
         let request = DeleteSessionRequest {
             name: session_name.to_string(),
         };
-        if let Err(e) = self.spanner_client.delete_session(request, None, None).await {
-            tracing::error!("failed to delete session {}, {:?}", session_name, e);
-        }
+        match self.spanner_client.delete_session(request, None, None).await {
+            Ok (_) => self.deleted = true,
+            Err(e) => tracing::error!("failed to delete session {}, {:?}", session_name, e)
+        };
     }
 }
 
@@ -112,6 +116,9 @@ struct Sessions {
 
     waiters: VecDeque<oneshot::Sender<SessionHandle>>,
 
+    /// Invalid session name living in the server.
+    orphans: Vec<SessionHandle>,
+
     /// number of sessions user uses.
     num_inuse: usize,
 
@@ -147,10 +154,12 @@ impl Sessions {
     fn release(&mut self, session: SessionHandle) {
         self.num_inuse -= 1;
         if session.valid {
-            tracing::trace!("recycled name={}", session.session.name);
             self.available_sessions.push_back(session);
         }else {
-            tracing::trace!("discarded name={}", session.session.name);
+            if !session.deleted {
+                tracing::trace!("save as orphan name={}", session.session.name);
+                self.orphans.push(session);
+            }
         }
     }
 
@@ -222,6 +231,7 @@ impl SessionPool {
             inner: Arc::new(RwLock::new(Sessions {
                 available_sessions,
                 waiters: VecDeque::new(),
+                orphans: Vec::new(),
                 num_inuse: 0,
                 num_creating: 0,
             })),
@@ -336,14 +346,21 @@ impl SessionPool {
     }
 
     async fn close(&self) {
-        let deleting_sessions = {
-            let mut sessions = self.inner.write();
-            let mut deleting_sessions = Vec::with_capacity(sessions.available_sessions.len());
-            while let Some(session) = sessions.available_sessions.pop_front() {
-                deleting_sessions.push(session);
-            }
-            deleting_sessions
+        let empty = VecDeque::new();
+        let mut deleting_sessions = {
+            mem::replace(&mut self.inner.write().available_sessions, empty)
         };
+        for mut session in deleting_sessions {
+            session.delete().await;
+        }
+
+        self.remove_orphans().await;
+    }
+
+    async fn remove_orphans(&self) {
+        let empty = vec![];
+        let mut deleting_sessions = { mem::replace(&mut self.inner.write().orphans, empty) };
+        tracing::trace!("remove {} orphan sessions", deleting_sessions.len());
         for mut session in deleting_sessions {
             session.delete().await;
         }
@@ -518,6 +535,11 @@ impl SessionManager {
                     _ = cancel.cancelled() => break
                 }
                 let now = Instant::now();
+
+                // Remove orphans first
+                session_pool.remove_orphans().await;
+
+                // start health check
                 health_check(
                     now + Duration::from_nanos(1),
                     config.session_alive_trust_duration,
@@ -618,8 +640,10 @@ mod tests {
     use parking_lot::RwLock;
     use std::sync::atomic::{AtomicI64, Ordering};
     use std::sync::{Arc};
+    use std::thread;
     use std::time::{Duration, Instant};
     use tokio::time::sleep;
+    use tracing::trace;
     use tracing_subscriber::filter::LevelFilter;
 
     pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
@@ -700,7 +724,7 @@ mod tests {
         health_check(Instant::now(), session_alive_trust_duration, &sm.session_pool, cancel.clone()).await;
 
         assert_eq!(sm.num_opened(), 5);
-        tokio::time::sleep(Duration::from_millis(500)).await;
+        sleep(Duration::from_millis(500)).await;
         cancel.cancel();
     }
 
@@ -797,7 +821,16 @@ mod tests {
             max_opened: 45,
             ..Default::default()
         };
-        assert_rush(true, config).await;
+        let sm = assert_rush(true, config.clone()).await;
+        {
+            let sessions = sm.session_pool.inner.read();
+            let available_sessions = sessions.available_sessions.len();
+            assert_eq!(sessions.num_inuse, 0);
+            assert_eq!(sessions.waiters.len(), 0);
+            assert_eq!(sessions.orphans.len(), 0);
+            assert!(available_sessions <= config.max_opened && available_sessions >= config.min_opened, "now is {}", available_sessions);
+        }
+        sm.close();
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -809,7 +842,16 @@ mod tests {
             max_opened: 45,
             ..Default::default()
         };
-        assert_rush(false, config).await;
+        let sm = assert_rush(false, config.clone()).await;
+        {
+            let sessions = sm.session_pool.inner.read();
+            let available_sessions = sessions.available_sessions.len();
+            assert_eq!(sessions.num_inuse, 0);
+            assert_eq!(sessions.waiters.len(), 0);
+            assert_eq!(sessions.orphans.len(), 0);
+            assert!(available_sessions <= config.max_opened && available_sessions >= config.min_opened, "now is {}", available_sessions);
+        }
+        sm.close().await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -822,11 +864,15 @@ mod tests {
             ..Default::default()
         };
         let sm = assert_rush(true, config.clone()).await;
-        let sessions = sm.session_pool.inner.read();
-        let available_sessions = sessions.available_sessions.len();
-        assert_eq!(sessions.num_inuse, 0);
-        assert_eq!(sessions.waiters.len(), 0);
-        assert!(available_sessions <= config.max_opened && available_sessions >= config.min_opened, "now is {}",available_sessions);
+        {
+            let sessions = sm.session_pool.inner.read();
+            let available_sessions = sessions.available_sessions.len();
+            assert_eq!(sessions.num_inuse, 0);
+            assert_eq!(sessions.waiters.len(), 0);
+            assert_eq!(sessions.orphans.len(), 0);
+            assert!(available_sessions <= config.max_opened && available_sessions >= config.min_opened, "now is {}", available_sessions);
+        }
+        sm.close().await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -842,11 +888,16 @@ mod tests {
             ..Default::default()
         };
         let sm = assert_rush(false, config.clone()).await;
-        let sessions = sm.session_pool.inner.read();
-        let available_sessions = sessions.available_sessions.len();
-        assert!(sessions.num_inuse <= 1, "num_inuse is {}", sessions.num_inuse);
-        assert_eq!(sessions.waiters.len(), 0);
-        assert!(available_sessions <= config.max_opened && available_sessions >= config.max_idle - 1, "now is {}",available_sessions);
+        sleep(Duration::from_secs(2)).await;
+        {
+            let sessions = sm.session_pool.inner.read();
+            let available_sessions = sessions.available_sessions.len();
+            assert!(sessions.num_inuse <= 1, "num_inuse is {}", sessions.num_inuse);
+            assert_eq!(sessions.waiters.len(), 0);
+            assert_eq!(sessions.orphans.len(), 0);
+            assert!(available_sessions <= config.max_opened && available_sessions >= config.max_idle - 1, "now is {}", available_sessions);
+        }
+        sm.close().await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -862,11 +913,16 @@ mod tests {
             ..Default::default()
         };
         let sm = assert_rush(true, config.clone()).await;
-        let sessions = sm.session_pool.inner.read();
-        let available_sessions = sessions.available_sessions.len();
-        assert!(sessions.num_inuse <= 1, "num_inuse is {}", sessions.num_inuse);
-        assert_eq!(sessions.waiters.len(), 0);
-        assert!(available_sessions <= config.max_opened && available_sessions >= config.min_opened - 1, "now is {}",available_sessions);
+        sleep(Duration::from_secs(2)).await;
+        {
+            let sessions = sm.session_pool.inner.read();
+            let available_sessions = sessions.available_sessions.len();
+            assert!(sessions.num_inuse <= 1, "num_inuse is {}", sessions.num_inuse);
+            assert_eq!(sessions.waiters.len(), 0);
+            assert_eq!(sessions.orphans.len(), 0);
+            assert!(available_sessions <= config.max_opened && available_sessions >= config.min_opened - 1, "now is {}", available_sessions);
+        }
+        sm.close().await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -880,10 +936,14 @@ mod tests {
             ..Default::default()
         };
         let sm = assert_rush(false, config.clone()).await;
-        let sessions = sm.session_pool.inner.read();
-        assert_eq!(sessions.num_inuse, 0);
-        assert_eq!(sessions.waiters.len(), 0);
-        assert_eq!(sessions.available_sessions.len(), config.max_idle);
+        {
+            let sessions = sm.session_pool.inner.read();
+            assert_eq!(sessions.num_inuse, 0);
+            assert_eq!(sessions.waiters.len(), 0);
+            assert_eq!(sessions.orphans.len(), 0);
+            assert_eq!(sessions.available_sessions.len(), config.max_idle);
+        }
+        sm.close().await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -900,11 +960,16 @@ mod tests {
             ..Default::default()
         };
         let sm = assert_rush(false, config.clone()).await;
-        let sessions = sm.session_pool.inner.read();
-        assert!(sessions.num_inuse <= 1, "num_inuse is {}", sessions.num_inuse);
-        assert_eq!(sessions.waiters.len(), 0);
-        let available_sessions = sessions.available_sessions.len();
-        assert!(available_sessions >= config.min_opened -1 && available_sessions <= config.max_idle, "now is {}", available_sessions);
+        sleep(Duration::from_secs(1)).await;
+        {
+            let sessions = sm.session_pool.inner.read();
+            assert!(sessions.num_inuse <= 1, "num_inuse is {}", sessions.num_inuse);
+            assert_eq!(sessions.waiters.len(), 0);
+            assert_eq!(sessions.orphans.len(), 0);
+            let available_sessions = sessions.available_sessions.len();
+            assert!(available_sessions >= config.min_opened - 1 && available_sessions <= config.max_idle, "now is {}", available_sessions);
+        }
+        sm.close().await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -921,23 +986,31 @@ mod tests {
             ..Default::default()
         };
         let sm = assert_rush(true, config.clone()).await;
-        let sessions = sm.session_pool.inner.read();
-        assert!(sessions.num_inuse <= 1, "num_inuse is {}", sessions.num_inuse);
-        assert_eq!(sessions.waiters.len(), 0, "invalid waiters");
-        let available_sessions = sessions.available_sessions.len();
-        assert!(available_sessions >= config.min_opened -1 && available_sessions <= config.max_idle, "now is {}", available_sessions);
+        sleep(Duration::from_secs(2)).await;
+        {
+            let sessions = sm.session_pool.inner.read();
+            assert!(sessions.num_inuse <= 1, "num_inuse is {}", sessions.num_inuse);
+            // health checker removes orphans
+            assert_eq!(sessions.orphans.len(), 0);
+            assert_eq!(sessions.waiters.len(), 0, "invalid waiters");
+            let available_sessions = sessions.available_sessions.len();
+            assert!(available_sessions >= config.min_opened - 1 && available_sessions <= config.max_idle, "now is {}", available_sessions);
+
+        }
+        sm.close().await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_close() {
-        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()), "")
+        let cm = ConnectionManager::new(4, &Environment::Emulator("localhost:9010".to_string()), "")
             .await
             .unwrap();
         let config = SessionConfig::default();
         let sm = SessionManager::new(DATABASE, cm, config.clone()).await.unwrap();
         assert_eq!(sm.num_opened(), config.min_opened);
         sm.close().await;
-        assert_eq!(sm.num_opened(), 0)
+        assert_eq!(sm.num_opened(), 0);
+        assert_eq!(sm.session_pool.inner.read().orphans.len(), 0);
     }
 }
