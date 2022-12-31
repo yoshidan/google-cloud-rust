@@ -162,16 +162,9 @@ impl TryAs<Status> for RunInTxError {
 
 /// Client is a client for reading and writing data to a Cloud Spanner database.
 /// A client is safe to use concurrently, except for its Close method.
+#[derive(Clone)]
 pub struct Client {
     sessions: Arc<SessionManager>,
-}
-
-impl Clone for Client {
-    fn clone(&self) -> Self {
-        Client {
-            sessions: Arc::clone(&self.sessions),
-        }
-    }
 }
 
 impl Client {
@@ -200,12 +193,13 @@ impl Client {
         let session_manager = SessionManager::new(database, conn_pool, config.session_config).await?;
 
         Ok(Client {
-            sessions: Arc::new(session_manager),
+            sessions: session_manager,
         })
     }
 
-    /// Close closes the client.
-    pub async fn close(&self) {
+    /// Close closes all the sessions gracefully.
+    /// This method can be called only once.
+    pub async fn close(self) {
         self.sessions.close().await;
     }
 

@@ -4,7 +4,7 @@ use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use thiserror;
 use tokio::select;
 
@@ -346,7 +346,7 @@ impl SessionPool {
 
     async fn close(&self) {
         let empty = VecDeque::new();
-        let mut deleting_sessions = { mem::replace(&mut self.inner.write().available_sessions, empty) };
+        let deleting_sessions = { mem::replace(&mut self.inner.write().available_sessions, empty) };
         for mut session in deleting_sessions {
             session.delete().await;
         }
@@ -356,7 +356,7 @@ impl SessionPool {
 
     async fn remove_orphans(&self) {
         let empty = vec![];
-        let mut deleting_sessions = { mem::replace(&mut self.inner.write().orphans, empty) };
+        let deleting_sessions = { mem::replace(&mut self.inner.write().orphans, empty) };
         tracing::trace!("remove {} orphan sessions", deleting_sessions.len());
         for mut session in deleting_sessions {
             session.delete().await;
@@ -435,10 +435,10 @@ impl TryAs<Status> for SessionError {
     }
 }
 
-pub struct SessionManager {
+pub(crate) struct SessionManager {
     session_pool: SessionPool,
     cancel: CancellationToken,
-    tasks: Vec<JoinHandle<()>>,
+    tasks: Mutex<Vec<JoinHandle<()>>>,
 }
 
 impl SessionManager {
@@ -446,7 +446,7 @@ impl SessionManager {
         database: impl Into<String>,
         conn_pool: ConnectionManager,
         config: SessionConfig,
-    ) -> Result<SessionManager, Status> {
+    ) -> Result<Arc<SessionManager>, Status> {
         let database = database.into();
         let (sender, receiver) = mpsc::unbounded_channel();
         let session_pool = SessionPool::new(database.clone(), &conn_pool, sender, Arc::new(config.clone())).await?;
@@ -459,9 +459,9 @@ impl SessionManager {
         let sm = SessionManager {
             session_pool,
             cancel,
-            tasks: vec![task_session_cleaner, task_session_creator],
+            tasks: Mutex::new(vec![task_session_cleaner, task_session_creator]),
         };
-        Ok(sm)
+        Ok(Arc::new(sm))
     }
 
     pub fn num_opened(&self) -> usize {
@@ -472,9 +472,12 @@ impl SessionManager {
         self.session_pool.acquire().await
     }
 
-    pub(crate) async fn close(&self) {
+    pub async fn close(&self) {
         self.cancel.cancel();
-        for task in &self.tasks {
+        let tasks = {
+            mem::replace(&mut *self.tasks.lock(), vec![])
+        };
+        for task in tasks {
             let _ = task.await;
         }
         self.session_pool.close().await;
@@ -499,7 +502,7 @@ impl SessionManager {
                 let result = batch_create_session(next_client, database, session_count).await;
                 session_pool.inner.write().replenish(session_count, result);
             }
-            tracing::trace!("stop session creating listener")
+            tracing::trace!("shutdown session creation task.")
         })
     }
 
@@ -531,7 +534,7 @@ impl SessionManager {
                 )
                 .await;
             }
-            tracing::trace!("stop session cleaner")
+            tracing::trace!("shutdown health check task.")
         })
     }
 }
@@ -639,7 +642,7 @@ mod tests {
         let cm = ConnectionManager::new(4, &Environment::Emulator("localhost:9010".to_string()), "")
             .await
             .unwrap();
-        let sm = Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
+        let sm =SessionManager::new(DATABASE, cm, config).await.unwrap();
 
         let counter = Arc::new(AtomicI64::new(0));
         let mut spawns = Vec::with_capacity(100);
@@ -815,7 +818,7 @@ mod tests {
                 available_sessions
             );
         }
-        sm.close();
+        sm.close().await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
