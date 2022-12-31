@@ -58,13 +58,13 @@ impl SessionHandle {
     }
 
     async fn delete(&mut self) {
+        self.valid = false;
         let session_name = &self.session.name;
         let request = DeleteSessionRequest {
             name: session_name.to_string(),
         };
-        match self.spanner_client.delete_session(request, None, None).await {
-            Ok(_s) => self.valid = false,
-            Err(e) => tracing::error!("failed to delete session {}, {:?}", session_name, e),
+        if let Err(e) = self.spanner_client.delete_session(request, None, None).await {
+            tracing::error!("failed to delete session {}, {:?}", session_name, e);
         }
     }
 }
@@ -76,7 +76,7 @@ pub struct ManagedSession {
 }
 
 impl ManagedSession {
-    pub(crate) fn new(session_pool: SessionPool, session: SessionHandle) -> Self {
+    fn new(session_pool: SessionPool, session: SessionHandle) -> Self {
         ManagedSession {
             session_pool,
             session: Some(session),
@@ -105,10 +105,17 @@ impl DerefMut for ManagedSession {
     }
 }
 
+/// Sessions have all sessions and waiters.
+/// This is for atomically locking the waiting list and free sessions.
 struct Sessions {
     available_sessions: VecDeque<SessionHandle>,
+
     waiters: VecDeque<oneshot::Sender<SessionHandle>>,
+
+    /// number of sessions user uses.
     num_inuse: usize,
+
+    /// number of sessions scheduled to be replenished.
     num_creating: usize,
 }
 
@@ -197,7 +204,7 @@ impl Sessions {
     }
 }
 
-pub struct SessionPool {
+struct SessionPool {
     inner: Arc<RwLock<Sessions>>,
     session_creation_sender: UnboundedSender<usize>,
     config: Arc<SessionConfig>,
@@ -247,6 +254,11 @@ impl SessionPool {
         Ok(sessions.into())
     }
 
+    /// acquire returns the available session.
+    /// First check the waiting list.
+    /// If someone is on the waiting list, it places itself on the waiting list and waits for contact.
+    /// If there is no one on the waiting list, it uses the first available session.
+    /// If no sessions are available, it places itself on the waiting list and waits for a call.
     async fn acquire(&self) -> Result<ManagedSession, SessionError> {
         let (on_session_acquired, session_count) = {
             let mut sessions = self.inner.write();
@@ -525,6 +537,8 @@ async fn health_check(
     sessions: &SessionPool,
     cancel: CancellationToken,
 ) {
+    tracing::trace!("start health check");
+    let start = Instant::now();
     let sleep_duration = Duration::from_millis(10);
     loop {
         select! {
@@ -561,11 +575,11 @@ async fn health_check(
             }
             Err(_) => {
                 s.delete().await;
-                s.valid = false;
                 sessions.recycle(s);
             }
         }
     }
+    tracing::trace!("end health check elapsed={}msec", start.elapsed().as_millis());
 }
 
 async fn batch_create_session(
