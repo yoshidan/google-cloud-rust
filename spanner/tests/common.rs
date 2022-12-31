@@ -1,23 +1,18 @@
 use anyhow::Result;
-use google_cloud_gax::conn::Environment;
-use google_cloud_gax::grpc::Status;
-use google_cloud_googleapis::spanner::v1::commit_request::Transaction::SingleUseTransaction;
-use google_cloud_googleapis::spanner::v1::transaction_options::{Mode, ReadWrite};
-use google_cloud_googleapis::spanner::v1::{CommitRequest, CommitResponse, Mutation, TransactionOptions};
+use google_cloud_googleapis::spanner::v1::Mutation;
 use google_cloud_spanner::apiv1::conn_pool::ConnectionManager;
 use google_cloud_spanner::key::Key;
 use google_cloud_spanner::mutation::insert_or_update;
 use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
 use google_cloud_spanner::row::{Error as RowError, Row, Struct, TryFromStruct};
-use google_cloud_spanner::session::{ManagedSession, SessionConfig};
+use google_cloud_spanner::session::{SessionConfig};
 use google_cloud_spanner::statement::Statement;
-use google_cloud_spanner::transaction::CallOptions;
-use google_cloud_spanner::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
-use google_cloud_spanner::value::{CommitTimestamp, SpannerNumeric, TimestampBound};
+use google_cloud_spanner::transaction_ro::{BatchReadOnlyTransaction};
+use google_cloud_spanner::value::{CommitTimestamp, SpannerNumeric};
 use time::{Date, OffsetDateTime};
+use google_cloud_gax::grpc::Status;
 use google_cloud_gax::project::ProjectOptions;
 use google_cloud_spanner::client::{ChannelConfig, Client, ClientConfig};
-use google_cloud_spanner::transaction_rw::ReadWriteTransaction;
 
 pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
@@ -195,15 +190,7 @@ pub fn assert_user_row(row: &Row, source_user_id: &str, now: &OffsetDateTime, co
 }
 
 #[allow(dead_code)]
-pub async fn read_only_transaction(session: ManagedSession) -> ReadOnlyTransaction {
-    match ReadOnlyTransaction::begin(session, TimestampBound::strong_read(), CallOptions::default()).await {
-        Ok(tx) => tx,
-        Err(status) => panic!("begin error {:?}", status),
-    }
-}
-
-#[allow(dead_code)]
-pub async fn all_rows(mut itr: RowIterator<'_>) -> Vec<Row> {
+pub async fn all_rows(mut itr: RowIterator<'_>) -> Result<Vec<Row>, Status> {
     let mut rows = vec![];
     loop {
         match itr.next().await {
@@ -214,12 +201,11 @@ pub async fn all_rows(mut itr: RowIterator<'_>) -> Vec<Row> {
                     break;
                 }
             }
-            Err(status) => panic!("reader aborted {:?}", status),
+            Err(status) => return Err(status),
         };
     }
-    rows
+    Ok(rows)
 }
-
 #[allow(dead_code)]
 pub async fn assert_partitioned_query(
     tx: &mut BatchReadOnlyTransaction,
@@ -247,7 +233,7 @@ pub async fn execute_partitioned_query(tx: &mut BatchReadOnlyTransaction, stmt: 
             Ok(tx) => tx,
             Err(status) => panic!("query error {:?}", status),
         };
-        let rows_per_partition = all_rows(reader).await;
+        let rows_per_partition = all_rows(reader).await.unwrap();
         for x in rows_per_partition {
             rows.push(x);
         }
@@ -276,7 +262,7 @@ pub async fn assert_partitioned_read(
             Ok(tx) => tx,
             Err(status) => panic!("query error {:?}", status),
         };
-        let rows_per_partition = all_rows(reader).await;
+        let rows_per_partition = all_rows(reader).await.unwrap();
         for x in rows_per_partition {
             rows.push(x);
         }
