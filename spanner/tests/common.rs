@@ -9,12 +9,15 @@ use google_cloud_spanner::key::Key;
 use google_cloud_spanner::mutation::insert_or_update;
 use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
 use google_cloud_spanner::row::{Error as RowError, Row, Struct, TryFromStruct};
-use google_cloud_spanner::session::{ManagedSession, SessionConfig, SessionHandle};
+use google_cloud_spanner::session::{ManagedSession, SessionConfig};
 use google_cloud_spanner::statement::Statement;
 use google_cloud_spanner::transaction::CallOptions;
 use google_cloud_spanner::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use google_cloud_spanner::value::{CommitTimestamp, SpannerNumeric, TimestampBound};
 use time::{Date, OffsetDateTime};
+use google_cloud_gax::project::ProjectOptions;
+use google_cloud_spanner::client::{ChannelConfig, Client, ClientConfig};
+use google_cloud_spanner::transaction_rw::ReadWriteTransaction;
 
 pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
@@ -80,27 +83,18 @@ pub fn user_columns() -> Vec<&'static str> {
 }
 
 #[allow(dead_code)]
-pub async fn replace_test_data(
-    session: &mut SessionHandle,
-    mutations: Vec<Mutation>,
-) -> Result<CommitResponse, Status> {
-    session
-        .spanner_client
-        .commit(
-            CommitRequest {
-                session: session.session.name.to_string(),
-                mutations,
-                return_commit_stats: false,
-                request_options: None,
-                transaction: Some(SingleUseTransaction(TransactionOptions {
-                    mode: Some(Mode::ReadWrite(ReadWrite::default())),
-                })),
-            },
-            None,
-            None,
-        )
-        .await
-        .map(|x| x.into_inner())
+pub async fn create_data_client() -> Client {
+    let mut session_config = SessionConfig::default();
+    session_config.min_opened = 1;
+    session_config.max_opened = 1;
+    Client::new_with_config(DATABASE, ClientConfig {
+        session_config,
+        project: ProjectOptions::Emulated("localhost:9010".to_string()),
+        channel_config: ChannelConfig {
+            num_channels: 1,
+        },
+        ..Default::default()
+    }).await.unwrap()
 }
 
 #[allow(dead_code)]
