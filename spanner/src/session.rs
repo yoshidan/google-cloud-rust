@@ -67,8 +67,8 @@ impl SessionHandle {
             name: session_name.to_string(),
         };
         match self.spanner_client.delete_session(request, None, None).await {
-            Ok (_) => self.deleted = true,
-            Err(e) => tracing::error!("failed to delete session {}, {:?}", session_name, e)
+            Ok(_) => self.deleted = true,
+            Err(e) => tracing::error!("failed to delete session {}, {:?}", session_name, e),
         };
     }
 }
@@ -116,7 +116,7 @@ struct Sessions {
 
     waiters: VecDeque<oneshot::Sender<SessionHandle>>,
 
-    /// Invalid session name living in the server.
+    /// Invalid sessions living in the server.
     orphans: Vec<SessionHandle>,
 
     /// number of sessions user uses.
@@ -155,7 +155,7 @@ impl Sessions {
         self.num_inuse -= 1;
         if session.valid {
             self.available_sessions.push_back(session);
-        }else {
+        } else {
             if !session.deleted {
                 tracing::trace!("save as orphan name={}", session.session.name);
                 self.orphans.push(session);
@@ -175,7 +175,7 @@ impl Sessions {
                 num_creating,
                 num_opened
             );
-            return 0
+            return 0;
         }
         let mut increasing = max_opened - (num_creating + num_opened);
         if increasing > inc_step {
@@ -186,17 +186,17 @@ impl Sessions {
     }
 
     fn replenish(&mut self, session_count: usize, result: Result<Vec<SessionHandle>, Status>) {
+        self.num_creating -= session_count;
         match result {
             Ok(mut new_sessions) => {
-                self.num_creating -= session_count;
                 while let Some(session) = new_sessions.pop() {
                     match self.take_waiter() {
                         Some(waiter) => match waiter.send(session) {
-                            // when the acquire timed out
+                            // When it just barely timed out
                             Err(session) => {
                                 self.available_sessions.push_back(session);
                             }
-                            _ => {
+                            Ok(_) => {
                                 // Mark as using when notify to waiter directory.
                                 self.num_inuse += 1;
                             }
@@ -205,14 +205,12 @@ impl Sessions {
                     }
                 }
             }
-            Err(e) => {
-                self.num_creating -= session_count;
-                tracing::error!("failed to create new sessions {:?}", e)
-            }
+            Err(e) => tracing::error!("failed to create new sessions {:?}", e),
         }
     }
 }
 
+#[derive(Clone)]
 struct SessionPool {
     inner: Arc<RwLock<Sessions>>,
     session_creation_sender: UnboundedSender<usize>,
@@ -266,9 +264,9 @@ impl SessionPool {
 
     /// acquire returns the available session.
     /// First check the waiting list.
-    /// If someone is on the waiting list, it places itself on the waiting list and waits for contact.
+    /// If someone is on the waiting list, it places itself on the waiting list and waits for notification.
     /// If there is no one on the waiting list, it uses the first available session.
-    /// If no sessions are available, it places itself on the waiting list and waits for a call.
+    /// If no sessions are available, it places itself on the waiting list and waits for notification.
     async fn acquire(&self) -> Result<ManagedSession, SessionError> {
         let (on_session_acquired, session_count) = {
             let mut sessions = self.inner.write();
@@ -308,6 +306,9 @@ impl SessionPool {
         self.inner.read().num_opened()
     }
 
+    /// recycle reuse the session.
+    /// If the session is valid and the wait list is not empty, send the session to first waiter(timeout waiters are skipped).
+    /// If the session is invalid and the number of available sessions falls below the threshold, spawn session creation request.
     fn recycle(&self, mut session: SessionHandle) {
         if session.valid {
             let mut sessions = self.inner.write();
@@ -347,9 +348,7 @@ impl SessionPool {
 
     async fn close(&self) {
         let empty = VecDeque::new();
-        let mut deleting_sessions = {
-            mem::replace(&mut self.inner.write().available_sessions, empty)
-        };
+        let mut deleting_sessions = { mem::replace(&mut self.inner.write().available_sessions, empty) };
         for mut session in deleting_sessions {
             session.delete().await;
         }
@@ -363,16 +362,6 @@ impl SessionPool {
         tracing::trace!("remove {} orphan sessions", deleting_sessions.len());
         for mut session in deleting_sessions {
             session.delete().await;
-        }
-    }
-}
-
-impl Clone for SessionPool {
-    fn clone(&self) -> Self {
-        SessionPool {
-            inner: self.inner.clone(),
-            session_creation_sender: self.session_creation_sender.clone(),
-            config: self.config.clone(),
         }
     }
 }
@@ -429,12 +418,6 @@ impl Default for SessionConfig {
     }
 }
 
-pub struct SessionManager {
-    session_pool: SessionPool,
-    cancel: CancellationToken,
-    tasks: Vec<JoinHandle<()>>,
-}
-
 #[derive(thiserror::Error, Debug)]
 pub enum SessionError {
     #[error("session get time out")]
@@ -452,6 +435,12 @@ impl TryAs<Status> for SessionError {
             _ => None,
         }
     }
+}
+
+pub struct SessionManager {
+    session_pool: SessionPool,
+    cancel: CancellationToken,
+    tasks: Vec<JoinHandle<()>>,
 }
 
 impl SessionManager {
@@ -486,13 +475,9 @@ impl SessionManager {
     }
 
     pub(crate) async fn close(&self) {
-        if self.cancel.is_cancelled() {
-            return;
-        }
         self.cancel.cancel();
-        sleep(Duration::from_secs(1)).await;
         for task in &self.tasks {
-            task.abort();
+            task.await;
         }
         self.session_pool.close().await;
     }
@@ -536,7 +521,7 @@ impl SessionManager {
                 }
                 let now = Instant::now();
 
-                // Remove orphans first
+                // remove orphans first
                 session_pool.remove_orphans().await;
 
                 // start health check
@@ -639,7 +624,7 @@ mod tests {
     use google_cloud_gax::conn::Environment;
     use parking_lot::RwLock;
     use std::sync::atomic::{AtomicI64, Ordering};
-    use std::sync::{Arc};
+    use std::sync::Arc;
     use std::thread;
     use std::time::{Duration, Instant};
     use tokio::time::sleep;
@@ -650,7 +635,8 @@ mod tests {
 
     #[ctor::ctor]
     fn init() {
-        let filter = tracing_subscriber::filter::EnvFilter::from_default_env().add_directive("google_cloud_spanner=trace".parse().unwrap());
+        let filter = tracing_subscriber::filter::EnvFilter::from_default_env()
+            .add_directive("google_cloud_spanner=trace".parse().unwrap());
         let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
     }
 
@@ -828,7 +814,11 @@ mod tests {
             assert_eq!(sessions.num_inuse, 0);
             assert_eq!(sessions.waiters.len(), 0);
             assert_eq!(sessions.orphans.len(), 0);
-            assert!(available_sessions <= config.max_opened && available_sessions >= config.min_opened, "now is {}", available_sessions);
+            assert!(
+                available_sessions <= config.max_opened && available_sessions >= config.min_opened,
+                "now is {}",
+                available_sessions
+            );
         }
         sm.close();
     }
@@ -849,7 +839,11 @@ mod tests {
             assert_eq!(sessions.num_inuse, 0);
             assert_eq!(sessions.waiters.len(), 0);
             assert_eq!(sessions.orphans.len(), 0);
-            assert!(available_sessions <= config.max_opened && available_sessions >= config.min_opened, "now is {}", available_sessions);
+            assert!(
+                available_sessions <= config.max_opened && available_sessions >= config.min_opened,
+                "now is {}",
+                available_sessions
+            );
         }
         sm.close().await;
     }
@@ -870,7 +864,11 @@ mod tests {
             assert_eq!(sessions.num_inuse, 0);
             assert_eq!(sessions.waiters.len(), 0);
             assert_eq!(sessions.orphans.len(), 0);
-            assert!(available_sessions <= config.max_opened && available_sessions >= config.min_opened, "now is {}", available_sessions);
+            assert!(
+                available_sessions <= config.max_opened && available_sessions >= config.min_opened,
+                "now is {}",
+                available_sessions
+            );
         }
         sm.close().await;
     }
@@ -895,7 +893,11 @@ mod tests {
             assert!(sessions.num_inuse <= 1, "num_inuse is {}", sessions.num_inuse);
             assert_eq!(sessions.waiters.len(), 0);
             assert_eq!(sessions.orphans.len(), 0);
-            assert!(available_sessions <= config.max_opened && available_sessions >= config.max_idle - 1, "now is {}", available_sessions);
+            assert!(
+                available_sessions <= config.max_opened && available_sessions >= config.max_idle - 1,
+                "now is {}",
+                available_sessions
+            );
         }
         sm.close().await;
     }
@@ -920,7 +922,11 @@ mod tests {
             assert!(sessions.num_inuse <= 1, "num_inuse is {}", sessions.num_inuse);
             assert_eq!(sessions.waiters.len(), 0);
             assert_eq!(sessions.orphans.len(), 0);
-            assert!(available_sessions <= config.max_opened && available_sessions >= config.min_opened - 1, "now is {}", available_sessions);
+            assert!(
+                available_sessions <= config.max_opened && available_sessions >= config.min_opened - 1,
+                "now is {}",
+                available_sessions
+            );
         }
         sm.close().await;
     }
@@ -967,7 +973,11 @@ mod tests {
             assert_eq!(sessions.waiters.len(), 0);
             assert_eq!(sessions.orphans.len(), 0);
             let available_sessions = sessions.available_sessions.len();
-            assert!(available_sessions >= config.min_opened - 1 && available_sessions <= config.max_idle, "now is {}", available_sessions);
+            assert!(
+                available_sessions >= config.min_opened - 1 && available_sessions <= config.max_idle,
+                "now is {}",
+                available_sessions
+            );
         }
         sm.close().await;
     }
@@ -994,8 +1004,11 @@ mod tests {
             assert_eq!(sessions.orphans.len(), 0);
             assert_eq!(sessions.waiters.len(), 0, "invalid waiters");
             let available_sessions = sessions.available_sessions.len();
-            assert!(available_sessions >= config.min_opened - 1 && available_sessions <= config.max_idle, "now is {}", available_sessions);
-
+            assert!(
+                available_sessions >= config.min_opened - 1 && available_sessions <= config.max_idle,
+                "now is {}",
+                available_sessions
+            );
         }
         sm.close().await;
     }
