@@ -32,11 +32,10 @@ pub enum DomainError {
 #[tokio::test]
 #[serial]
 async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
-
     // set up data
     let now = OffsetDateTime::now_utc();
     let user_id = format!("user_{}", now.unix_timestamp());
-    let data_client= create_data_client().await;
+    let data_client = create_data_client().await;
     data_client.apply(vec![create_user_mutation(&user_id, &now)]).await?;
 
     // test
@@ -131,11 +130,10 @@ async fn test_apply_at_least_once() -> Result<(), anyhow::Error> {
 #[tokio::test]
 #[serial]
 async fn test_partitioned_update() -> Result<(), anyhow::Error> {
-
     //set up test data
     let now = OffsetDateTime::now_utc();
     let user_id = format!("user_{}", now.unix_timestamp());
-    let data_client= create_data_client().await;
+    let data_client = create_data_client().await;
     data_client.apply(vec![create_user_mutation(&user_id, &now)]).await?;
 
     // test
@@ -157,13 +155,12 @@ async fn test_partitioned_update() -> Result<(), anyhow::Error> {
 #[tokio::test]
 #[serial]
 async fn test_batch_read_only_transaction() -> Result<(), anyhow::Error> {
-
     //set up test data
     let now = OffsetDateTime::now_utc();
     let many = (0..20000)
         .map(|x| create_user_mutation(&format!("user_partition_{}_{}", now.unix_timestamp(), x), &now))
         .collect();
-    let data_client= create_data_client().await;
+    let data_client = create_data_client().await;
     data_client.apply(many).await?;
 
     // test

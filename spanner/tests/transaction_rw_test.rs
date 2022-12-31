@@ -28,7 +28,8 @@ async fn test_mutation_and_statement() {
     let now = OffsetDateTime::now_utc();
     let data_client = create_data_client().await;
     let past_user = format!("user_{}", now.unix_timestamp());
-    let cr = data_client.apply(vec![create_user_mutation(&past_user, &now)])
+    let cr = data_client
+        .apply(vec![create_user_mutation(&past_user, &now)])
         .await
         .unwrap();
 
@@ -80,7 +81,8 @@ async fn test_rollback() {
     let now = OffsetDateTime::now_utc();
     let data_client = create_data_client().await;
     let past_user = format!("user_{}", now.unix_timestamp());
-    let cr = data_client.apply(vec![create_user_mutation(&past_user, &now)])
+    let cr = data_client
+        .apply(vec![create_user_mutation(&past_user, &now)])
         .await
         .unwrap();
 
@@ -163,4 +165,3 @@ async fn assert_data(
     );
     assert!(user_characters.is_empty());
 }
-

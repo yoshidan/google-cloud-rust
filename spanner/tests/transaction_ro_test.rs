@@ -56,14 +56,14 @@ async fn test_query_and_read() {
     let user_id_1 = "user_1";
     let user_id_2 = "user_2";
     let user_id_3 = "user_3";
-    let cr = data_client.apply(vec![
+    let cr = data_client
+        .apply(vec![
             create_user_mutation(user_id_1, &now),
             create_user_mutation(user_id_2, &now),
             create_user_mutation(user_id_3, &now),
-        ],
-    )
-    .await
-    .unwrap();
+        ])
+        .await
+        .unwrap();
 
     //test
     let mut tx = data_client.read_only_transaction().await.unwrap();
@@ -86,17 +86,16 @@ async fn test_complex_query() {
     let now = OffsetDateTime::now_utc();
     let data_client = create_data_client().await;
     let user_id_1 = "user_10";
-    let cr = data_client.apply(
-        vec![
+    let cr = data_client
+        .apply(vec![
             create_user_mutation(user_id_1, &now),
             create_user_item_mutation(user_id_1, 1),
             create_user_item_mutation(user_id_1, 2),
             create_user_character_mutation(user_id_1, 10),
             create_user_character_mutation(user_id_1, 20),
-        ],
-    )
-    .await
-    .unwrap();
+        ])
+        .await
+        .unwrap();
 
     let mut tx = data_client.read_only_transaction().await.unwrap();
     let mut stmt = Statement::new(
@@ -155,15 +154,14 @@ async fn test_batch_partition_query_and_read() {
     let user_id_1 = "user_1";
     let user_id_2 = "user_2";
     let user_id_3 = "user_3";
-    let cr = data_client.apply(
-        vec![
+    let cr = data_client
+        .apply(vec![
             create_user_mutation(user_id_1, &now),
             create_user_mutation(user_id_2, &now),
             create_user_mutation(user_id_3, &now),
-        ],
-    )
-    .await
-    .unwrap();
+        ])
+        .await
+        .unwrap();
 
     let many = (0..20000)
         .map(|x| create_user_mutation(&format!("user_partitionx_{}", x), &now))

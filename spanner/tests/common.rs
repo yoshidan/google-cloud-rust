@@ -1,18 +1,18 @@
 use anyhow::Result;
+use google_cloud_gax::grpc::Status;
+use google_cloud_gax::project::ProjectOptions;
 use google_cloud_googleapis::spanner::v1::Mutation;
 use google_cloud_spanner::apiv1::conn_pool::ConnectionManager;
+use google_cloud_spanner::client::{ChannelConfig, Client, ClientConfig};
 use google_cloud_spanner::key::Key;
 use google_cloud_spanner::mutation::insert_or_update;
 use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
 use google_cloud_spanner::row::{Error as RowError, Row, Struct, TryFromStruct};
-use google_cloud_spanner::session::{SessionConfig};
+use google_cloud_spanner::session::SessionConfig;
 use google_cloud_spanner::statement::Statement;
-use google_cloud_spanner::transaction_ro::{BatchReadOnlyTransaction};
+use google_cloud_spanner::transaction_ro::BatchReadOnlyTransaction;
 use google_cloud_spanner::value::{CommitTimestamp, SpannerNumeric};
 use time::{Date, OffsetDateTime};
-use google_cloud_gax::grpc::Status;
-use google_cloud_gax::project::ProjectOptions;
-use google_cloud_spanner::client::{ChannelConfig, Client, ClientConfig};
 
 pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
@@ -82,14 +82,17 @@ pub async fn create_data_client() -> Client {
     let mut session_config = SessionConfig::default();
     session_config.min_opened = 1;
     session_config.max_opened = 1;
-    Client::new_with_config(DATABASE, ClientConfig {
-        session_config,
-        project: ProjectOptions::Emulated("localhost:9010".to_string()),
-        channel_config: ChannelConfig {
-            num_channels: 1,
+    Client::new_with_config(
+        DATABASE,
+        ClientConfig {
+            session_config,
+            project: ProjectOptions::Emulated("localhost:9010".to_string()),
+            channel_config: ChannelConfig { num_channels: 1 },
+            ..Default::default()
         },
-        ..Default::default()
-    }).await.unwrap()
+    )
+    .await
+    .unwrap()
 }
 
 #[allow(dead_code)]

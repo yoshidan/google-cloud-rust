@@ -260,11 +260,16 @@ impl SessionPool {
         Ok(sessions.into())
     }
 
-    /// acquire returns the available session.
-    /// First check the waiting list.
-    /// If someone is on the waiting list, it places itself on the waiting list and waits for notification.
-    /// If there is no one on the waiting list, it uses the first available session.
-    /// If no sessions are available, it places itself on the waiting list and waits for notification.
+    fn num_opened(&self) -> usize {
+        self.inner.read().num_opened()
+    }
+
+    /// The client first checks the waiting list.
+    /// If the waiting list is empty, it retrieves the first available session.
+    /// If there are no available sessions, it enters the waiting list.
+    /// If the waiting list is not empty, the client enters the waiting list.
+    /// The client on the waiting list will be notified when another client's session has finished and
+    /// when the process of replenishing the available sessions is complete.
     async fn acquire(&self) -> Result<ManagedSession, SessionError> {
         let (on_session_acquired, session_count) = {
             let mut sessions = self.inner.write();
@@ -300,13 +305,11 @@ impl SessionPool {
         }
     }
 
-    fn num_opened(&self) -> usize {
-        self.inner.read().num_opened()
-    }
-
-    /// recycle reuse the session.
-    /// If the session is valid and the wait list is not empty, send the session to first waiter(timeout waiters are skipped).
-    /// If the session is invalid and the number of available sessions falls below the threshold, spawn session creation request.
+    /// If the session is valid
+    ///  - Pass the session to the first user on the waiting list.
+    ///  - If there is no waiting list, the session is returned to the list of available sessions.
+    /// If the session is invalid
+    ///  - Discard the session. If the number of sessions falls below the threshold as a result of discarding, the session replenishment process is called.
     fn recycle(&self, mut session: SessionHandle) {
         if session.valid {
             let mut sessions = self.inner.write();
@@ -473,8 +476,11 @@ impl SessionManager {
     }
 
     pub async fn close(&self) {
+        if self.cancel.is_cancelled() {
+            return;
+        }
         self.cancel.cancel();
-        let tasks = { std::mem::take(&mut *self.tasks.lock()) };
+        let tasks = { mem::take(&mut *self.tasks.lock()) };
         for task in tasks {
             let _ = task.await;
         }
