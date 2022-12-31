@@ -67,17 +67,17 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
 
     let mut ro = client.read_only_transaction().await?;
     let record = ro.read("User", &user_columns(), Key::new(&"user_client_1x")).await?;
-    let row = all_rows(record).await.pop().unwrap();
+    let row = all_rows(record).await.unwrap().pop().unwrap();
     assert_user_row(&row, "user_client_1x", &now, &ts);
 
     let record = ro.read("User", &user_columns(), Key::new(&"user_client_2x")).await?;
-    let row = all_rows(record).await.pop().unwrap();
+    let row = all_rows(record).await.unwrap().pop().unwrap();
     assert_user_row(&row, "user_client_2x", &now, &ts);
 
     let record = ro
         .read("UserItem", &["UpdatedAt"], Key::composite(&[&user_id, &1]))
         .await?;
-    let row = all_rows(record).await.pop().unwrap();
+    let row = all_rows(record).await.unwrap().pop().unwrap();
     let cts = row.column_by_name::<OffsetDateTime>("UpdatedAt").unwrap();
     assert_eq!(cts.unix_timestamp(), ts.unix_timestamp());
     Ok(())
@@ -99,7 +99,7 @@ async fn test_apply() -> Result<(), anyhow::Error> {
     let mut ro = client.read_only_transaction().await?;
     for x in users {
         let record = ro.read("User", &user_columns(), Key::new(&x)).await?;
-        let row = all_rows(record).await.pop().unwrap();
+        let row = all_rows(record).await.unwrap().pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
     }
     Ok(())
@@ -121,7 +121,7 @@ async fn test_apply_at_least_once() -> Result<(), anyhow::Error> {
     let mut ro = client.read_only_transaction().await?;
     for x in users {
         let record = ro.read("User", &user_columns(), Key::new(&x)).await?;
-        let row = all_rows(record).await.pop().unwrap();
+        let row = all_rows(record).await.unwrap().pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
     }
     Ok(())
@@ -146,7 +146,7 @@ async fn test_partitioned_update() -> Result<(), anyhow::Error> {
         .read("User", &["NullableString"], Key::new(&user_id))
         .await
         .unwrap();
-    let row = all_rows(rows).await.pop().unwrap();
+    let row = all_rows(rows).await.unwrap().pop().unwrap();
     let value = row.column_by_name::<String>("NullableString").unwrap();
     assert_eq!(value, "aaa");
     Ok(())
