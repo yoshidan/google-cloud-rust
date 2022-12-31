@@ -155,11 +155,9 @@ impl Sessions {
         self.num_inuse -= 1;
         if session.valid {
             self.available_sessions.push_back(session);
-        } else {
-            if !session.deleted {
-                tracing::trace!("save as orphan name={}", session.session.name);
-                self.orphans.push(session);
-            }
+        } else if !session.deleted {
+            tracing::trace!("save as orphan name={}", session.session.name);
+            self.orphans.push(session);
         }
     }
 
@@ -477,7 +475,7 @@ impl SessionManager {
     pub(crate) async fn close(&self) {
         self.cancel.cancel();
         for task in &self.tasks {
-            task.await;
+            let _ = task.await;
         }
         self.session_pool.close().await;
     }
@@ -625,11 +623,8 @@ mod tests {
     use parking_lot::RwLock;
     use std::sync::atomic::{AtomicI64, Ordering};
     use std::sync::Arc;
-    use std::thread;
     use std::time::{Duration, Instant};
     use tokio::time::sleep;
-    use tracing::trace;
-    use tracing_subscriber::filter::LevelFilter;
 
     pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
