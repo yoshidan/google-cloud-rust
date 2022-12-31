@@ -474,9 +474,7 @@ impl SessionManager {
 
     pub async fn close(&self) {
         self.cancel.cancel();
-        let tasks = {
-            std::mem::take(&mut *self.tasks.lock())
-        };
+        let tasks = { std::mem::take(&mut *self.tasks.lock()) };
         for task in tasks {
             let _ = task.await;
         }
@@ -642,7 +640,7 @@ mod tests {
         let cm = ConnectionManager::new(4, &Environment::Emulator("localhost:9010".to_string()), "")
             .await
             .unwrap();
-        let sm =SessionManager::new(DATABASE, cm, config).await.unwrap();
+        let sm = SessionManager::new(DATABASE, cm, config).await.unwrap();
 
         let counter = Arc::new(AtomicI64::new(0));
         let mut spawns = Vec::with_capacity(100);
