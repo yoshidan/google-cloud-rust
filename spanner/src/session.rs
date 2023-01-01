@@ -497,7 +497,10 @@ impl SessionManager {
         tokio::spawn(async move {
             loop {
                 let session_count: usize = select! {
-                    session_count = rx.recv() => session_count.unwrap_or(1),
+                    session_count = rx.recv() => match session_count {
+                        Some(session_count) => session_count,
+                        None => continue
+                    },
                     _ = cancel.cancelled() => break
                 };
                 let database = database.clone();

@@ -1,7 +1,4 @@
-
-
 use google_cloud_spanner::key::Key;
-
 
 use google_cloud_spanner::statement::Statement;
 
@@ -9,7 +6,6 @@ use serial_test::serial;
 
 mod common;
 use common::*;
-
 
 use time::OffsetDateTime;
 
