@@ -83,18 +83,19 @@ async fn test_rollback() {
         .unwrap();
 
     //test
-    let mut tx = data_client.begin_read_write_transaction().await.unwrap();
-    let result = async {
-        let mut stmt1 = Statement::new("UPDATE User SET NullableString = 'aaaaaaa' WHERE UserId = @UserId");
-        stmt1.add_param("UserId", &past_user);
-        tx.update(stmt1).await?;
+    {
+        let mut tx = data_client.begin_read_write_transaction().await.unwrap();
+        let result = async {
+            let mut stmt1 = Statement::new("UPDATE User SET NullableString = 'aaaaaaa' WHERE UserId = @UserId");
+            stmt1.add_param("UserId", &past_user);
+            tx.update(stmt1).await?;
 
-        let stmt2 = Statement::new("UPDATE UserNoteFound SET Quantity = 10000");
-        tx.update(stmt2).await
+            let stmt2 = Statement::new("UPDATE UserNoteFound SET Quantity = 10000");
+            tx.update(stmt2).await
+        }
+            .await;
+        let _ = tx.end(result, None).await;
     }
-    .await;
-
-    let _ = tx.end(result, None).await;
     let mut tx = data_client.read_only_transaction().await.unwrap();
     let reader = tx.read("User", &user_columns(), Key::new(&past_user)).await.unwrap();
     let row = all_rows(reader).await.unwrap().pop().unwrap();
