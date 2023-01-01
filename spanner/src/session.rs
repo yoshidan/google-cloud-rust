@@ -951,7 +951,7 @@ mod tests {
             let sessions = sm.session_pool.inner.read();
             assert_eq!(sessions.num_inuse, 0);
             assert_eq!(sessions.waiters.len(), 0);
-            assert_eq!(sessions.orphans.len(), 0);
+            assert_eq!(sessions.orphans.len(), config.max_opened - config.max_idle);
             assert_eq!(sessions.available_sessions.len(), config.max_idle);
         }
         sm.close().await;
