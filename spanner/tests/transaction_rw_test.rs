@@ -93,7 +93,7 @@ async fn test_rollback() {
             let stmt2 = Statement::new("UPDATE UserNoteFound SET Quantity = 10000");
             tx.update(stmt2).await
         }
-            .await;
+        .await;
         let _ = tx.end(result, None).await;
     }
     let mut tx = data_client.read_only_transaction().await.unwrap();
