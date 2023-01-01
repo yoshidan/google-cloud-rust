@@ -1,56 +1,36 @@
-use anyhow::Result;
-
 use google_cloud_spanner::key::Key;
 
-use google_cloud_spanner::row::Row;
 use google_cloud_spanner::statement::Statement;
-use google_cloud_spanner::transaction::CallOptions;
+
 use serial_test::serial;
 
 mod common;
 use common::*;
-use google_cloud_gax::grpc::Status;
-use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
-use google_cloud_spanner::transaction_rw::ReadWriteTransaction;
+
 use time::OffsetDateTime;
 
 #[ctor::ctor]
 fn init() {
-    let _ = tracing_subscriber::fmt().try_init();
-}
-
-pub async fn all_rows(mut itr: RowIterator<'_>) -> Result<Vec<Row>, Status> {
-    let mut rows = vec![];
-    loop {
-        match itr.next().await {
-            Ok(row) => {
-                if row.is_some() {
-                    rows.push(row.unwrap());
-                } else {
-                    break;
-                }
-            }
-            Err(status) => return Err(status),
-        };
-    }
-    Ok(rows)
+    let filter = tracing_subscriber::filter::EnvFilter::from_default_env()
+        .add_directive("google_cloud_spanner=trace".parse().unwrap());
+    let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
+    std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
 }
 
 #[tokio::test]
 #[serial]
 async fn test_mutation_and_statement() {
+    //set up test data
     let now = OffsetDateTime::now_utc();
-    let mut session = create_session().await;
-
+    let data_client = create_data_client().await;
     let past_user = format!("user_{}", now.unix_timestamp());
-    let cr = replace_test_data(&mut session, vec![create_user_mutation(&past_user, &now)])
+    let cr = data_client
+        .apply(vec![create_user_mutation(&past_user, &now)])
         .await
         .unwrap();
 
-    let mut tx = match ReadWriteTransaction::begin(session, CallOptions::default()).await {
-        Ok(tx) => tx,
-        Err(e) => panic!("begin first error {:?}", e.status),
-    };
+    //test
+    let mut tx = data_client.begin_read_write_transaction().await.unwrap();
     let result = async {
         let user_id_1 = "user_rw_1";
         let user_id_2 = "user_rw_2";
@@ -82,7 +62,7 @@ async fn test_mutation_and_statement() {
         Err(e) => panic!("error {:?}", e),
     };
 
-    let ts = cr.commit_timestamp.as_ref().unwrap();
+    let ts = cr.unwrap();
     let ts = OffsetDateTime::from_unix_timestamp(ts.seconds)
         .unwrap()
         .replace_nanosecond(ts.nanos as u32)
@@ -92,67 +72,34 @@ async fn test_mutation_and_statement() {
 
 #[tokio::test]
 #[serial]
-async fn test_partitioned_dml() {
-    let now = OffsetDateTime::now_utc();
-    let mut session = create_session().await;
-
-    let user_id = format!("user_{}", now.unix_timestamp());
-    let _cr = replace_test_data(&mut session, vec![create_user_mutation(&user_id, &now)])
-        .await
-        .unwrap();
-
-    let mut tx = match ReadWriteTransaction::begin_partitioned_dml(session, CallOptions::default()).await {
-        Ok(tx) => tx,
-        Err(e) => panic!("begin first error {:?}", e.status),
-    };
-    let result = async {
-        let stmt1 = Statement::new("UPDATE User SET NullableString = 'aaa' WHERE NullableString IS NOT NULL");
-        tx.update(stmt1).await
-    }
-    .await;
-
-    // partition dml doesn't support commit/rollback
-    assert!(result.is_ok());
-
-    let session = create_session().await;
-    let mut tx = read_only_transaction(session).await;
-    let reader = tx.read("User", &["NullableString"], Key::new(&user_id)).await.unwrap();
-    let row = all_rows(reader).await.unwrap().pop().unwrap();
-    let value = row.column_by_name::<String>("NullableString").unwrap();
-    assert_eq!(value, "aaa");
-}
-
-#[tokio::test]
-#[serial]
 async fn test_rollback() {
+    //set up test data
     let now = OffsetDateTime::now_utc();
-    let mut session = create_session().await;
-
+    let data_client = create_data_client().await;
     let past_user = format!("user_{}", now.unix_timestamp());
-    let cr = replace_test_data(&mut session, vec![create_user_mutation(&past_user, &now)])
+    let cr = data_client
+        .apply(vec![create_user_mutation(&past_user, &now)])
         .await
         .unwrap();
 
-    let mut tx = match ReadWriteTransaction::begin(session, CallOptions::default()).await {
-        Ok(tx) => tx,
-        Err(e) => panic!("begin first error {:?}", e.status),
-    };
-    let result = async {
-        let mut stmt1 = Statement::new("UPDATE User SET NullableString = 'aaaaaaa' WHERE UserId = @UserId");
-        stmt1.add_param("UserId", &past_user);
-        tx.update(stmt1).await?;
+    //test
+    {
+        let mut tx = data_client.begin_read_write_transaction().await.unwrap();
+        let result = async {
+            let mut stmt1 = Statement::new("UPDATE User SET NullableString = 'aaaaaaa' WHERE UserId = @UserId");
+            stmt1.add_param("UserId", &past_user);
+            tx.update(stmt1).await?;
 
-        let stmt2 = Statement::new("UPDATE UserNoteFound SET Quantity = 10000");
-        tx.update(stmt2).await
+            let stmt2 = Statement::new("UPDATE UserNoteFound SET Quantity = 10000");
+            tx.update(stmt2).await
+        }
+        .await;
+        let _ = tx.end(result, None).await;
     }
-    .await;
-
-    let _ = tx.end(result, None).await;
-    let session = create_session().await;
-    let mut tx = read_only_transaction(session).await;
+    let mut tx = data_client.read_only_transaction().await.unwrap();
     let reader = tx.read("User", &user_columns(), Key::new(&past_user)).await.unwrap();
     let row = all_rows(reader).await.unwrap().pop().unwrap();
-    let ts = cr.commit_timestamp.as_ref().unwrap();
+    let ts = cr.unwrap();
     let ts = OffsetDateTime::from_unix_timestamp(ts.seconds)
         .unwrap()
         .replace_nanosecond(ts.nanos as u32)
@@ -167,11 +114,8 @@ async fn assert_data(
     commit_timestamp: &OffsetDateTime,
 ) {
     // get by another transaction
-    let session = create_session().await;
-    let mut tx = match ReadWriteTransaction::begin(session, CallOptions::default()).await {
-        Ok(tx) => tx,
-        Err(e) => panic!("begin second error {:?}", e.status),
-    };
+    let data_client = create_data_client().await;
+    let mut tx = data_client.begin_read_write_transaction().await.unwrap();
     let result = async {
         let mut stmt = Statement::new(
             "SELECT *,

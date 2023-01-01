@@ -1,9 +1,10 @@
 use std::collections::VecDeque;
+use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use thiserror;
 use tokio::select;
 
@@ -15,21 +16,21 @@ use crate::apiv1::spanner_client::{ping_query_request, Client};
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::TryAs;
-use tokio::sync::broadcast;
-use tokio::sync::oneshot;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
-use tokio::time::{sleep, timeout, Duration};
-
-type Waiters = Mutex<VecDeque<oneshot::Sender<SessionHandle>>>;
+use tokio::time::{sleep, timeout};
 
 /// Session
 pub struct SessionHandle {
     pub session: Session,
     pub spanner_client: Client,
     valid: bool,
-    last_used_at: std::time::Instant,
-    last_checked_at: std::time::Instant,
-    last_pong_at: std::time::Instant,
+    deleted: bool,
+    last_used_at: Instant,
+    last_checked_at: Instant,
+    last_pong_at: Instant,
+    created_at: Instant,
 }
 
 impl SessionHandle {
@@ -38,9 +39,11 @@ impl SessionHandle {
             session,
             spanner_client,
             valid: true,
+            deleted: false,
             last_used_at: now,
             last_checked_at: now,
             last_pong_at: now,
+            created_at: now,
         }
     }
 
@@ -49,24 +52,24 @@ impl SessionHandle {
             Ok(s) => Ok(s),
             Err(e) => {
                 if e.code() == Code::NotFound && e.message().contains("Session not found:") {
-                    self.invalidate().await;
+                    tracing::debug!("session invalidate {}", self.session.name);
+                    self.delete().await;
                 }
                 Err(e)
             }
         }
     }
 
-    async fn invalidate(&mut self) {
-        tracing::debug!("session invalidate {}", self.session.name);
+    async fn delete(&mut self) {
+        self.valid = false;
+        let session_name = &self.session.name;
         let request = DeleteSessionRequest {
-            name: self.session.name.to_string(),
+            name: session_name.to_string(),
         };
         match self.spanner_client.delete_session(request, None, None).await {
-            Ok(_s) => self.valid = false,
-            Err(e) => {
-                tracing::error!("session remove error {} error={:?}", self.session.name, e);
-            }
-        }
+            Ok(_) => self.deleted = true,
+            Err(e) => tracing::error!("failed to delete session {}, {:?}", session_name, e),
+        };
     }
 }
 
@@ -77,7 +80,7 @@ pub struct ManagedSession {
 }
 
 impl ManagedSession {
-    pub(crate) fn new(session_pool: SessionPool, session: SessionHandle) -> Self {
+    fn new(session_pool: SessionPool, session: SessionHandle) -> Self {
         ManagedSession {
             session_pool,
             session: Some(session),
@@ -106,61 +109,130 @@ impl DerefMut for ManagedSession {
     }
 }
 
-pub struct Sessions {
-    sessions: VecDeque<SessionHandle>,
-    inuse: usize,
+/// Sessions have all sessions and waiters.
+/// This is for atomically locking the waiting list and free sessions.
+struct Sessions {
+    available_sessions: VecDeque<SessionHandle>,
+
+    waiters: VecDeque<oneshot::Sender<SessionHandle>>,
+
+    /// Invalid sessions living in the server.
+    orphans: Vec<SessionHandle>,
+
+    /// number of sessions user uses.
+    num_inuse: usize,
+
+    /// number of sessions scheduled to be replenished.
+    num_creating: usize,
 }
 
 impl Sessions {
-    fn grow(&mut self, session: SessionHandle) {
-        self.sessions.push_back(session);
+    fn num_opened(&self) -> usize {
+        self.num_inuse + self.available_sessions.len()
     }
 
-    fn num_opened(&self) -> usize {
-        self.inuse + self.sessions.len()
+    fn take_waiter(&mut self) -> Option<oneshot::Sender<SessionHandle>> {
+        while let Some(waiter) = self.waiters.pop_front() {
+            // Waiter can be closed when session acquisition times out.
+            if !waiter.is_closed() {
+                return Some(waiter);
+            }
+        }
+        None
     }
 
     fn take(&mut self) -> Option<SessionHandle> {
-        match self.sessions.pop_front() {
+        match self.available_sessions.pop_front() {
             None => None,
             Some(s) => {
-                self.inuse += 1;
+                self.num_inuse += 1;
                 Some(s)
             }
         }
     }
 
     fn release(&mut self, session: SessionHandle) {
-        self.inuse -= 1;
+        self.num_inuse -= 1;
         if session.valid {
-            self.sessions.push_back(session);
+            self.available_sessions.push_back(session);
+        } else if !session.deleted {
+            tracing::trace!("save as orphan name={}", session.session.name);
+            self.orphans.push(session);
+        }
+    }
+
+    /// reserve calculates next session count to create.
+    /// Must call replenish after calling this method.
+    fn reserve(&mut self, max_opened: usize, inc_step: usize) -> usize {
+        let num_opened = self.num_opened();
+        let num_creating = self.num_creating;
+        if max_opened < num_creating + num_opened {
+            tracing::trace!(
+                "No available connections max={}, num_creating={}, current={}",
+                max_opened,
+                num_creating,
+                num_opened
+            );
+            return 0;
+        }
+        let mut increasing = max_opened - (num_creating + num_opened);
+        if increasing > inc_step {
+            increasing = inc_step
+        }
+        self.num_creating += increasing;
+        increasing
+    }
+
+    fn replenish(&mut self, session_count: usize, result: Result<Vec<SessionHandle>, Status>) {
+        self.num_creating -= session_count;
+        match result {
+            Ok(mut new_sessions) => {
+                while let Some(session) = new_sessions.pop() {
+                    match self.take_waiter() {
+                        Some(waiter) => match waiter.send(session) {
+                            // When it just barely timed out
+                            Err(session) => {
+                                self.available_sessions.push_back(session);
+                            }
+                            Ok(_) => {
+                                // Mark as using when notify to waiter directory.
+                                self.num_inuse += 1;
+                            }
+                        },
+                        None => self.available_sessions.push_back(session),
+                    }
+                }
+            }
+            Err(e) => tracing::error!("failed to create new sessions {:?}", e),
         }
     }
 }
 
-pub struct SessionPool {
-    inner: Arc<Mutex<Sessions>>,
-    waiters: Arc<Waiters>,
-    allocation_request_sender: broadcast::Sender<bool>,
+#[derive(Clone)]
+struct SessionPool {
+    inner: Arc<RwLock<Sessions>>,
+    session_creation_sender: UnboundedSender<usize>,
+    config: Arc<SessionConfig>,
 }
 
 impl SessionPool {
     async fn new(
         database: String,
         conn_pool: &ConnectionManager,
-        min_opened: usize,
-        allocation_request_sender: broadcast::Sender<bool>,
+        session_creation_sender: UnboundedSender<usize>,
+        config: Arc<SessionConfig>,
     ) -> Result<Self, Status> {
-        let init_pool = Self::init_pool(database, conn_pool, min_opened).await?;
-        let waiters = Arc::new(Waiters::new(VecDeque::new()));
-
+        let available_sessions = Self::init_pool(database, conn_pool, config.min_opened).await?;
         Ok(SessionPool {
-            inner: Arc::new(Mutex::new(Sessions {
-                sessions: init_pool,
-                inuse: 0,
+            inner: Arc::new(RwLock::new(Sessions {
+                available_sessions,
+                waiters: VecDeque::new(),
+                orphans: Vec::new(),
+                num_inuse: 0,
+                num_creating: 0,
             })),
-            waiters,
-            allocation_request_sender,
+            session_creation_sender,
+            config,
         })
     }
 
@@ -188,67 +260,109 @@ impl SessionPool {
         Ok(sessions.into())
     }
 
-    fn request(&self) -> oneshot::Receiver<SessionHandle> {
-        let (sender, receiver) = oneshot::channel();
-        {
-            self.waiters.lock().push_back(sender);
-        }
-        let _ = self.allocation_request_sender.send(true);
-        receiver
-    }
-
     fn num_opened(&self) -> usize {
-        self.inner.lock().num_opened()
+        self.inner.read().num_opened()
     }
 
-    fn num_waiting(&self) -> usize {
-        self.waiters.lock().len()
-    }
+    /// The client first checks the waiting list.
+    /// If the waiting list is empty, it retrieves the first available session.
+    /// If there are no available sessions, it enters the waiting list.
+    /// If the waiting list is not empty, the client enters the waiting list.
+    /// The client on the waiting list will be notified when another client's session has finished and
+    /// when the process of replenishing the available sessions is complete.
+    async fn acquire(&self) -> Result<ManagedSession, SessionError> {
+        let (on_session_acquired, session_count) = {
+            let mut sessions = self.inner.write();
 
-    fn grow(&self, mut sessions: Vec<SessionHandle>) {
-        while let Some(session) = sessions.pop() {
-            match { self.waiters.lock().pop_front() } {
-                Some(c) => {
-                    let mut inner = self.inner.lock();
-                    match c.send(session) {
-                        Err(session) => inner.grow(session),
-                        _ => {
-                            // Mark as using when notify to waiter directory.
-                            inner.inuse += 1
-                        }
-                    };
+            // Prioritize waiters over new acquirers.
+            if sessions.waiters.is_empty() {
+                if let Some(mut s) = sessions.take() {
+                    s.last_used_at = Instant::now();
+                    return Ok(ManagedSession::new(self.clone(), s));
                 }
-                None => self.inner.lock().grow(session),
-            };
+            }
+            // Add the participant to the waiting list.
+            let (sender, receiver) = oneshot::channel();
+            sessions.waiters.push_back(sender);
+            let session_count = sessions.reserve(self.config.max_opened, self.config.inc_step);
+            (receiver, session_count)
+        };
+
+        if session_count > 0 {
+            let _ = self.session_creation_sender.send(session_count);
+        }
+
+        // Wait for the session available notification.
+        match timeout(self.config.session_get_timeout, on_session_acquired).await {
+            Ok(Ok(mut session)) => {
+                session.last_used_at = Instant::now();
+                Ok(ManagedSession {
+                    session_pool: self.clone(),
+                    session: Some(session),
+                })
+            }
+            _ => Err(SessionError::SessionGetTimeout),
         }
     }
 
-    fn recycle(&self, session: SessionHandle) {
+    /// If the session is valid
+    ///  - Pass the session to the first user on the waiting list.
+    ///  - If there is no waiting list, the session is returned to the list of available sessions.
+    /// If the session is invalid
+    ///  - Discard the session. If the number of sessions falls below the threshold as a result of discarding, the session replenishment process is called.
+    fn recycle(&self, mut session: SessionHandle) {
         if session.valid {
-            tracing::trace!("recycled name={}", session.session.name);
-            match { self.waiters.lock().pop_front() } {
+            let mut sessions = self.inner.write();
+            match sessions.take_waiter() {
+                // Immediately reuse session when the waiter exist
                 Some(c) => {
+                    tracing::trace!("sent waiter name={}", session.session.name);
                     if let Err(session) = c.send(session) {
-                        self.inner.lock().release(session)
+                        sessions.release(session)
                     }
                 }
-                None => self.inner.lock().release(session),
+                None => {
+                    if sessions.num_opened() > self.config.max_idle
+                        && session.created_at + self.config.idle_timeout < Instant::now()
+                    {
+                        // Not reuse expired idle session
+                        session.valid = false
+                    }
+                    sessions.release(session)
+                }
             };
         } else {
-            self.inner.lock().release(session);
-
-            // request session creation
-            let _ = self.allocation_request_sender.send(true);
+            let session_count = {
+                let mut sessions = self.inner.write();
+                sessions.release(session);
+                if sessions.num_opened() < self.config.min_opened && !sessions.waiters.is_empty() {
+                    sessions.reserve(self.config.max_opened, self.config.inc_step)
+                } else {
+                    0
+                }
+            };
+            if session_count > 0 {
+                let _ = self.session_creation_sender.send(session_count);
+            }
         }
     }
-}
 
-impl Clone for SessionPool {
-    fn clone(&self) -> Self {
-        SessionPool {
-            inner: Arc::clone(&self.inner),
-            waiters: Arc::clone(&self.waiters),
-            allocation_request_sender: self.allocation_request_sender.clone(),
+    async fn close(&self) {
+        let empty = VecDeque::new();
+        let deleting_sessions = { mem::replace(&mut self.inner.write().available_sessions, empty) };
+        for mut session in deleting_sessions {
+            session.delete().await;
+        }
+
+        self.remove_orphans().await;
+    }
+
+    async fn remove_orphans(&self) {
+        let empty = vec![];
+        let deleting_sessions = { mem::replace(&mut self.inner.write().orphans, empty) };
+        tracing::trace!("remove {} orphan sessions", deleting_sessions.len());
+        for mut session in deleting_sessions {
+            session.delete().await;
         }
     }
 }
@@ -275,15 +389,15 @@ pub struct SessionConfig {
     /// idle_timeout is the wait time before discarding an idle session.
     /// Sessions older than this value since they were last used will be discarded.
     /// However, if the number of sessions is less than or equal to min_opened, it will not be discarded.
-    pub idle_timeout: std::time::Duration,
+    pub idle_timeout: Duration,
 
-    pub session_alive_trust_duration: std::time::Duration,
+    pub session_alive_trust_duration: Duration,
 
     /// session_get_timeout is the maximum value of the waiting time that occurs when retrieving from the connection pool when there is no idle session.
-    pub session_get_timeout: std::time::Duration,
+    pub session_get_timeout: Duration,
 
     /// refresh_interval is the interval of cleanup and health check functions.
-    pub refresh_interval: std::time::Duration,
+    pub refresh_interval: Duration,
 
     /// incStep is the number of sessions to create in one batch when at least
     /// one more session is needed.
@@ -297,19 +411,12 @@ impl Default for SessionConfig {
             min_opened: 10,
             max_idle: 300,
             inc_step: 25,
-            idle_timeout: std::time::Duration::from_secs(30 * 60),
-            session_alive_trust_duration: std::time::Duration::from_secs(55 * 60),
-            session_get_timeout: std::time::Duration::from_secs(1),
-            refresh_interval: std::time::Duration::from_secs(5 * 60),
+            idle_timeout: Duration::from_secs(30 * 60),
+            session_alive_trust_duration: Duration::from_secs(55 * 60),
+            session_get_timeout: Duration::from_secs(1),
+            refresh_interval: Duration::from_secs(5 * 60),
         }
     }
-}
-
-pub struct SessionManager {
-    session_pool: SessionPool,
-    session_get_timeout: Duration,
-    cancel: CancellationToken,
-    tasks: Vec<JoinHandle<()>>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -331,147 +438,101 @@ impl TryAs<Status> for SessionError {
     }
 }
 
+pub(crate) struct SessionManager {
+    session_pool: SessionPool,
+    cancel: CancellationToken,
+    tasks: Mutex<Vec<JoinHandle<()>>>,
+}
+
 impl SessionManager {
     pub async fn new(
         database: impl Into<String>,
         conn_pool: ConnectionManager,
         config: SessionConfig,
-    ) -> Result<SessionManager, Status> {
+    ) -> Result<Arc<SessionManager>, Status> {
         let database = database.into();
-        let (sender, receiver) = broadcast::channel(1);
-        let session_pool = SessionPool::new(database.clone(), &conn_pool, config.min_opened, sender).await?;
+        let (sender, receiver) = mpsc::unbounded_channel();
+        let session_pool = SessionPool::new(database.clone(), &conn_pool, sender, Arc::new(config.clone())).await?;
 
         let cancel = CancellationToken::new();
-        let session_get_timeout = config.session_get_timeout;
-        let task_cleaner = schedule_refresh(config.clone(), session_pool.clone(), cancel.clone());
-        let task_listener = listen_session_creation_request(
-            config,
-            session_pool.clone(),
-            database,
-            conn_pool,
-            receiver,
-            cancel.clone(),
-        );
+        let task_session_cleaner = Self::spawn_health_check_task(config, session_pool.clone(), cancel.clone());
+        let task_session_creator =
+            Self::spawn_session_creation_task(session_pool.clone(), database, conn_pool, receiver, cancel.clone());
 
         let sm = SessionManager {
-            session_get_timeout,
             session_pool,
             cancel,
-            tasks: vec![task_cleaner, task_listener],
+            tasks: Mutex::new(vec![task_session_cleaner, task_session_creator]),
         };
-        Ok(sm)
+        Ok(Arc::new(sm))
     }
 
     pub fn num_opened(&self) -> usize {
         self.session_pool.num_opened()
     }
 
-    pub fn session_waiters(&self) -> usize {
-        self.session_pool.num_waiting()
-    }
-
     pub async fn get(&self) -> Result<ManagedSession, SessionError> {
-        if let Some(mut s) = self.session_pool.inner.lock().take() {
-            s.last_used_at = Instant::now();
-            return Ok(ManagedSession::new(self.session_pool.clone(), s));
-        }
-
-        // Wait for the session creation.
-        match timeout(self.session_get_timeout, self.session_pool.request()).await {
-            Ok(Ok(mut session)) => {
-                session.last_used_at = Instant::now();
-                Ok(ManagedSession {
-                    session_pool: self.session_pool.clone(),
-                    session: Some(session),
-                })
-            }
-            _ => Err(SessionError::SessionGetTimeout),
-        }
+        self.session_pool.acquire().await
     }
 
-    pub(crate) async fn close(&self) {
+    pub async fn close(&self) {
         if self.cancel.is_cancelled() {
             return;
         }
         self.cancel.cancel();
-        sleep(Duration::from_secs(1)).await;
-        for task in &self.tasks {
-            task.abort();
+        let tasks = { mem::take(&mut *self.tasks.lock()) };
+        for task in tasks {
+            let _ = task.await;
         }
-        let deleting_sessions = {
-            let mut lock = self.session_pool.inner.lock();
-            let mut deleting_sessions = Vec::with_capacity(lock.sessions.len());
-            while let Some(session) = lock.sessions.pop_front() {
-                deleting_sessions.push(session);
-            }
-            deleting_sessions
-        };
-        for mut session in deleting_sessions {
-            delete_session(&mut session).await;
-        }
+        self.session_pool.close().await;
     }
-}
 
-fn listen_session_creation_request(
-    config: SessionConfig,
-    session_pool: SessionPool,
-    database: String,
-    conn_pool: ConnectionManager,
-    mut rx: broadcast::Receiver<bool>,
-    cancel: CancellationToken,
-) -> JoinHandle<()> {
-    tokio::spawn(async move {
-        let mut allocation_request_size = 0;
-        loop {
-            select! {
-                _ = rx.recv() => {},
-                _ = cancel.cancelled() => break
-            }
-            let num_opened = session_pool.num_opened();
-            if num_opened >= config.min_opened && allocation_request_size >= session_pool.num_waiting() {
-                continue;
-            }
+    fn spawn_session_creation_task(
+        session_pool: SessionPool,
+        database: String,
+        conn_pool: ConnectionManager,
+        mut rx: UnboundedReceiver<usize>,
+        cancel: CancellationToken,
+    ) -> JoinHandle<()> {
+        tokio::spawn(async move {
+            loop {
+                let session_count: usize = select! {
+                    session_count = rx.recv() => match session_count {
+                        Some(session_count) => session_count,
+                        None => continue
+                    },
+                    _ = cancel.cancelled() => break
+                };
+                let database = database.clone();
+                let next_client = conn_pool.conn();
 
-            let mut creation_count = config.max_opened - num_opened;
-            if creation_count > config.inc_step {
-                creation_count = config.inc_step;
+                let result = batch_create_session(next_client, database, session_count).await;
+                session_pool.inner.write().replenish(session_count, result);
             }
-            if creation_count == 0 {
-                continue;
-            }
-            allocation_request_size += creation_count;
+            tracing::trace!("shutdown session creation task.")
+        })
+    }
 
-            let database = database.clone();
-            let next_client = conn_pool.conn();
+    fn spawn_health_check_task(
+        config: SessionConfig,
+        session_pool: SessionPool,
+        cancel: CancellationToken,
+    ) -> JoinHandle<()> {
+        let start = Instant::now() + config.refresh_interval;
+        let mut interval = tokio::time::interval_at(start.into(), config.refresh_interval);
 
-            match batch_create_session(next_client, database, creation_count).await {
-                Ok(fresh_sessions) => {
-                    allocation_request_size -= creation_count;
-                    session_pool.grow(fresh_sessions)
+        tokio::spawn(async move {
+            loop {
+                select! {
+                    _ = interval.tick() => {},
+                    _ = cancel.cancelled() => break
                 }
-                Err(e) => {
-                    allocation_request_size -= creation_count;
-                    tracing::error!("failed to create new sessions {:?}", e)
-                }
-            };
-        }
-        tracing::trace!("stop session creating listener")
-    })
-}
+                let now = Instant::now();
 
-fn schedule_refresh(config: SessionConfig, session_pool: SessionPool, cancel: CancellationToken) -> JoinHandle<()> {
-    let start = Instant::now() + config.refresh_interval;
-    let mut interval = tokio::time::interval_at(start.into(), config.refresh_interval);
+                // remove orphans first
+                session_pool.remove_orphans().await;
 
-    tokio::spawn(async move {
-        loop {
-            select! {
-                _ = interval.tick() => {},
-                _ = cancel.cancelled() => break
-            }
-            let now = Instant::now();
-            let max_removing_count = session_pool.num_opened() as i64 - config.max_idle as i64;
-            if max_removing_count < 0 {
+                // start health check
                 health_check(
                     now + Duration::from_nanos(1),
                     config.session_alive_trust_duration,
@@ -479,27 +540,10 @@ fn schedule_refresh(config: SessionConfig, session_pool: SessionPool, cancel: Ca
                     cancel.clone(),
                 )
                 .await;
-                continue;
             }
-
-            shrink_idle_sessions(
-                now,
-                config.idle_timeout,
-                &session_pool,
-                max_removing_count as usize,
-                cancel.clone(),
-            )
-            .await;
-            health_check(
-                now + Duration::from_nanos(1),
-                config.session_alive_trust_duration,
-                &session_pool,
-                cancel.clone(),
-            )
-            .await;
-        }
-        tracing::trace!("stop session cleaner")
-    })
+            tracing::trace!("shutdown health check task.")
+        })
+    }
 }
 
 async fn health_check(
@@ -508,6 +552,8 @@ async fn health_check(
     sessions: &SessionPool,
     cancel: CancellationToken,
 ) {
+    tracing::trace!("start health check");
+    let start = Instant::now();
     let sleep_duration = Duration::from_millis(10);
     loop {
         select! {
@@ -516,7 +562,7 @@ async fn health_check(
         }
         let mut s = {
             // temporary take
-            let mut locked = sessions.inner.lock();
+            let mut locked = sessions.inner.write();
             match locked.take() {
                 Some(mut s) => {
                     // all the session check complete.
@@ -543,85 +589,26 @@ async fn health_check(
                 sessions.recycle(s);
             }
             Err(_) => {
-                delete_session(&mut s).await;
-                s.valid = false;
+                s.delete().await;
                 sessions.recycle(s);
             }
         }
     }
-}
-
-async fn shrink_idle_sessions(
-    now: Instant,
-    idle_timeout: Duration,
-    session_pool: &SessionPool,
-    max_shrink_count: usize,
-    cancel: CancellationToken,
-) {
-    let mut removed_count = 0;
-    let sleep_duration = Duration::from_millis(10);
-    loop {
-        if removed_count >= max_shrink_count {
-            break;
-        }
-
-        select! {
-            _ = sleep(sleep_duration) => {},
-            _ = cancel.cancelled() => break
-        }
-
-        // get old session
-        let mut s = {
-            // temporary take
-            let mut locked = session_pool.inner.lock();
-            match locked.take() {
-                Some(mut s) => {
-                    // all the session check complete.
-                    if s.last_checked_at == now {
-                        locked.release(s);
-                        break;
-                    }
-                    if s.last_used_at + idle_timeout >= now {
-                        s.last_checked_at = now;
-                        locked.release(s);
-                        continue;
-                    }
-                    s
-                }
-                None => break,
-            }
-        };
-
-        removed_count += 1;
-        delete_session(&mut s).await;
-        s.valid = false;
-        session_pool.recycle(s);
-    }
-}
-
-async fn delete_session(session: &mut SessionHandle) {
-    let session_name = &session.session.name;
-    let request = DeleteSessionRequest {
-        name: session_name.to_string(),
-    };
-    match session.spanner_client.delete_session(request, None, None).await {
-        Ok(_) => {}
-        Err(e) => tracing::error!("failed to delete session {}, {:?}", session_name, e),
-    }
+    tracing::trace!("end health check elapsed={}msec", start.elapsed().as_millis());
 }
 
 async fn batch_create_session(
     mut spanner_client: Client,
     database: String,
-    creation_count: usize,
+    session_count: usize,
 ) -> Result<Vec<SessionHandle>, Status> {
     let request = BatchCreateSessionsRequest {
         database,
         session_template: None,
-        session_count: creation_count as i32,
+        session_count: session_count as i32,
     };
 
-    tracing::debug!("spawn session creation request : count to create = {}", creation_count);
+    tracing::debug!("spawn session creation request : session_count = {}", session_count);
     let response = spanner_client
         .batch_create_sessions(request, None, None)
         .await?
@@ -638,101 +625,56 @@ async fn batch_create_session(
 #[cfg(test)]
 mod tests {
     use crate::apiv1::conn_pool::ConnectionManager;
-    use crate::session::{health_check, shrink_idle_sessions, SessionConfig, SessionManager};
+    use crate::session::{health_check, SessionConfig, SessionError, SessionManager};
     use serial_test::serial;
 
     use google_cloud_gax::cancel::CancellationToken;
     use google_cloud_gax::conn::Environment;
+    use parking_lot::RwLock;
     use std::sync::atomic::{AtomicI64, Ordering};
     use std::sync::Arc;
-    use std::time::Instant;
-    use tokio::time::{sleep, Duration};
+    use std::time::{Duration, Instant};
+    use tokio::time::sleep;
 
     pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
-    async fn assert_rush(use_invalidate: bool, config: SessionConfig) {
-        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()), "")
+    #[ctor::ctor]
+    fn init() {
+        let filter = tracing_subscriber::filter::EnvFilter::from_default_env()
+            .add_directive("google_cloud_spanner=trace".parse().unwrap());
+        let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
+    }
+
+    async fn assert_rush(use_invalidate: bool, config: SessionConfig) -> Arc<SessionManager> {
+        let cm = ConnectionManager::new(4, &Environment::Emulator("localhost:9010".to_string()), "")
             .await
             .unwrap();
-        let max = config.max_opened;
-        let min = config.min_opened;
-        let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
+        let sm = SessionManager::new(DATABASE, cm, config).await.unwrap();
 
         let counter = Arc::new(AtomicI64::new(0));
+        let mut spawns = Vec::with_capacity(100);
         for _ in 0..100 {
             let sm = sm.clone();
             let counter = Arc::clone(&counter);
-            tokio::spawn(async move {
+            spawns.push(tokio::spawn(async move {
                 let mut session = sm.get().await.unwrap();
                 if use_invalidate {
-                    session.invalidate().await;
+                    session.delete().await;
                 }
                 counter.fetch_add(1, Ordering::SeqCst);
-            });
+                sleep(Duration::from_millis(300)).await;
+            }));
         }
-        while counter.load(Ordering::SeqCst) < 100 {
-            sleep(Duration::from_millis(5)).await;
+        for handler in spawns {
+            let _ = handler.await;
         }
-
-        sleep(tokio::time::Duration::from_millis(100)).await;
-        assert_eq!(sm.session_pool.inner.lock().inuse, 0);
-        let num_opened = sm.num_opened();
-        assert!(num_opened <= max, "idle session must be lteq {} now is {}", max, num_opened);
-        assert!(num_opened >= min, "idle session must be gteq {} now is {}", min, num_opened);
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
-    async fn test_shrink_sessions_not_expired() {
-        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()), "")
-            .await
-            .unwrap();
-        let idle_timeout = Duration::from_secs(100);
-        let config = SessionConfig {
-            min_opened: 5,
-            idle_timeout,
-            max_opened: 5,
-            ..Default::default()
-        };
-        let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
-        sleep(Duration::from_secs(1)).await;
-
-        let cancel = CancellationToken::new();
-        shrink_idle_sessions(Instant::now(), idle_timeout, &sm.session_pool, 5, cancel.clone()).await;
-
-        assert_eq!(sm.num_opened(), 5);
-        cancel.cancel();
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
-    async fn test_shrink_sessions_all_expired() {
-        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()), "")
-            .await
-            .unwrap();
-        let idle_timeout = Duration::from_millis(1);
-        let config = SessionConfig {
-            min_opened: 5,
-            idle_timeout,
-            max_opened: 5,
-            ..Default::default()
-        };
-        let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
-        sleep(Duration::from_secs(1)).await;
-        let cancel = CancellationToken::new();
-        shrink_idle_sessions(Instant::now(), idle_timeout, &sm.session_pool, 100, cancel.clone()).await;
-
-        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-        cancel.cancel();
-
-        // expired but created by allocation batch
-        assert_eq!(sm.num_opened(), 5);
+        sm
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_health_check_checked() {
-        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()), "")
+        let cm = ConnectionManager::new(4, &Environment::Emulator("localhost:9010".to_string()), "")
             .await
             .unwrap();
         let session_alive_trust_duration = Duration::from_millis(10);
@@ -749,14 +691,14 @@ mod tests {
         health_check(Instant::now(), session_alive_trust_duration, &sm.session_pool, cancel.clone()).await;
 
         assert_eq!(sm.num_opened(), 5);
-        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
         cancel.cancel();
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_health_check_not_checked() {
-        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()), "")
+        let cm = ConnectionManager::new(4, &Environment::Emulator("localhost:9010".to_string()), "")
             .await
             .unwrap();
         let session_alive_trust_duration = Duration::from_secs(10);
@@ -766,27 +708,25 @@ mod tests {
             max_opened: 5,
             ..Default::default()
         };
-        let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
+        let sm = Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
         sleep(Duration::from_secs(1)).await;
 
         let cancel = CancellationToken::new();
         health_check(Instant::now(), session_alive_trust_duration, &sm.session_pool, cancel.clone()).await;
 
         assert_eq!(sm.num_opened(), 5);
-        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+        sleep(Duration::from_millis(500)).await;
         cancel.cancel();
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_schedule_refresh() {
-        let conn_pool = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()), "")
+    async fn test_increase_session_and_idle_session_expired() {
+        let conn_pool = ConnectionManager::new(4, &Environment::Emulator("localhost:9010".to_string()), "")
             .await
             .unwrap();
         let config = SessionConfig {
             idle_timeout: Duration::from_millis(10),
-            session_alive_trust_duration: Duration::from_millis(10),
-            refresh_interval: Duration::from_millis(250),
             min_opened: 10,
             max_idle: 20,
             max_opened: 45,
@@ -801,23 +741,65 @@ mod tests {
 
             // all the session are using
             assert_eq!(sm.num_opened(), 45);
-            {
-                assert_eq!(sm.session_pool.inner.lock().inuse, 45, "all the session are using");
-            }
-            sleep(tokio::time::Duration::from_secs(1)).await;
+            assert_eq!(sm.session_pool.inner.read().num_inuse, 45, "all the session are using");
+            sleep(Duration::from_secs(1)).await;
         }
 
-        // idle session removed after cleanup
-        sleep(tokio::time::Duration::from_secs(3)).await;
-        {
-            let available_sessions = sm.session_pool.inner.lock().sessions.len();
-            assert!(
-                available_sessions == 19 || available_sessions == 20,
-                "available sessions are 19 or 20 (19 means that the cleaner is popping session)"
-            );
+        // idle session removed after drop
+        let sessions = sm.session_pool.inner.read();
+        assert_eq!(sessions.num_inuse, 0, "invalid num_inuse");
+        assert_eq!(sessions.available_sessions.len(), 20, "invalid available sessions");
+        assert_eq!(sessions.num_opened(), 20, "invalid num open");
+        assert_eq!(sessions.waiters.len(), 0, "session waiters is 0");
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_too_many_session_timeout() {
+        let conn_pool = ConnectionManager::new(4, &Environment::Emulator("localhost:9010".to_string()), "")
+            .await
+            .unwrap();
+        let config = SessionConfig {
+            idle_timeout: Duration::from_millis(10),
+            min_opened: 10,
+            max_idle: 20,
+            max_opened: 45,
+            session_get_timeout: Duration::from_secs(1),
+            ..Default::default()
+        };
+        let sm = Arc::new(SessionManager::new(DATABASE, conn_pool, config.clone()).await.unwrap());
+        let mu = Arc::new(RwLock::new(Vec::new()));
+        let mut awaiters = Vec::with_capacity(100);
+        for _ in 0..100 {
+            let sm = sm.clone();
+            let mu = mu.clone();
+            awaiters.push(tokio::spawn(async move {
+                let session = sm.get().await;
+                mu.write().push(session);
+                0
+            }))
         }
-        assert_eq!(sm.num_opened(), 20, "num sessions are 20");
-        assert_eq!(sm.session_waiters(), 0, "session waiters is 0");
+        for handler in awaiters {
+            let _ = handler.await;
+        }
+        let sessions = mu.read();
+        for i in 0..sessions.len() - 1 {
+            let session = &sessions[i];
+            if i >= config.max_opened {
+                assert!(session.is_err(), "must err {}", i);
+                match session.as_ref().err().unwrap() {
+                    SessionError::SessionGetTimeout => {}
+                    _ => {
+                        panic!("must be session timeout error")
+                    }
+                }
+            } else {
+                assert!(session.is_ok(), "must ok {}", i);
+            }
+        }
+        let pool = sm.session_pool.inner.read();
+        assert_eq!(pool.num_opened(), config.max_opened);
+        assert_eq!(pool.waiters.len(), 100 - config.max_opened); //include timeout sessions
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -830,43 +812,76 @@ mod tests {
             max_opened: 45,
             ..Default::default()
         };
-        assert_rush(true, config).await;
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
-    async fn test_rush_invalidate_with_cleanup() {
-        let config = SessionConfig {
-            idle_timeout: Duration::from_millis(10),
-            session_alive_trust_duration: Duration::from_millis(10),
-            refresh_interval: Duration::from_millis(250),
-            session_get_timeout: Duration::from_secs(20),
-            min_opened: 10,
-            max_idle: 20,
-            max_opened: 45,
-            ..Default::default()
-        };
-        assert_rush(true, config).await;
+        let sm = assert_rush(true, config.clone()).await;
+        {
+            let sessions = sm.session_pool.inner.read();
+            let available_sessions = sessions.available_sessions.len();
+            assert_eq!(sessions.num_inuse, 0);
+            assert_eq!(sessions.waiters.len(), 0);
+            assert_eq!(sessions.orphans.len(), 0);
+            assert!(
+                available_sessions <= config.max_opened && available_sessions >= config.min_opened,
+                "now is {}",
+                available_sessions
+            );
+        }
+        sm.close().await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_rush() {
         let config = SessionConfig {
-            session_get_timeout: Duration::from_secs(20),
             min_opened: 10,
             max_idle: 20,
             max_opened: 45,
             ..Default::default()
         };
-        assert_rush(false, config).await;
+        let sm = assert_rush(false, config.clone()).await;
+        {
+            let sessions = sm.session_pool.inner.read();
+            let available_sessions = sessions.available_sessions.len();
+            assert_eq!(sessions.num_inuse, 0);
+            assert_eq!(sessions.waiters.len(), 0);
+            assert_eq!(sessions.orphans.len(), 0);
+            assert!(
+                available_sessions <= config.max_opened && available_sessions >= config.min_opened,
+                "now is {}",
+                available_sessions
+            );
+        }
+        sm.close().await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_rush_with_cleanup() {
+    async fn test_rush_with_invalidate() {
         let config = SessionConfig {
-            idle_timeout: Duration::from_millis(10),
+            min_opened: 10,
+            max_idle: 20,
+            max_opened: 45,
+            ..Default::default()
+        };
+        let sm = assert_rush(true, config.clone()).await;
+        {
+            let sessions = sm.session_pool.inner.read();
+            let available_sessions = sessions.available_sessions.len();
+            assert_eq!(sessions.num_inuse, 0);
+            assert_eq!(sessions.waiters.len(), 0);
+            assert_eq!(sessions.orphans.len(), 0);
+            assert!(
+                available_sessions <= config.max_opened && available_sessions >= config.min_opened,
+                "now is {}",
+                available_sessions
+            );
+        }
+        sm.close().await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_rush_with_health_check() {
+        let config = SessionConfig {
             session_alive_trust_duration: Duration::from_millis(10),
             refresh_interval: Duration::from_millis(250),
             session_get_timeout: Duration::from_secs(20),
@@ -875,19 +890,145 @@ mod tests {
             max_opened: 45,
             ..Default::default()
         };
-        assert_rush(false, config).await;
+        let sm = assert_rush(false, config.clone()).await;
+        sleep(Duration::from_secs(2)).await;
+        {
+            let sessions = sm.session_pool.inner.read();
+            let available_sessions = sessions.available_sessions.len();
+            assert!(sessions.num_inuse <= 1, "num_inuse is {}", sessions.num_inuse);
+            assert_eq!(sessions.waiters.len(), 0);
+            assert_eq!(sessions.orphans.len(), 0);
+            assert!(
+                available_sessions <= config.max_opened && available_sessions >= config.max_idle - 1,
+                "now is {}",
+                available_sessions
+            );
+        }
+        sm.close().await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_rush_with_health_check_and_invalidate() {
+        let config = SessionConfig {
+            session_alive_trust_duration: Duration::from_millis(10),
+            refresh_interval: Duration::from_millis(250),
+            session_get_timeout: Duration::from_secs(20),
+            min_opened: 10,
+            max_idle: 20,
+            max_opened: 45,
+            ..Default::default()
+        };
+        let sm = assert_rush(true, config.clone()).await;
+        sleep(Duration::from_secs(2)).await;
+        {
+            let sessions = sm.session_pool.inner.read();
+            let available_sessions = sessions.available_sessions.len();
+            assert!(sessions.num_inuse <= 1, "num_inuse is {}", sessions.num_inuse);
+            assert_eq!(sessions.waiters.len(), 0);
+            assert_eq!(sessions.orphans.len(), 0);
+            assert!(
+                available_sessions <= config.max_opened && available_sessions >= config.min_opened - 1,
+                "now is {}",
+                available_sessions
+            );
+        }
+        sm.close().await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_rush_with_idle_expired() {
+        let config = SessionConfig {
+            min_opened: 10,
+            max_idle: 20,
+            max_opened: 45,
+            idle_timeout: Duration::from_millis(1),
+            ..Default::default()
+        };
+        let sm = assert_rush(false, config.clone()).await;
+        {
+            let sessions = sm.session_pool.inner.read();
+            assert_eq!(sessions.num_inuse, 0);
+            assert_eq!(sessions.waiters.len(), 0);
+            assert_eq!(sessions.orphans.len(), config.max_opened - config.max_idle);
+            assert_eq!(sessions.available_sessions.len(), config.max_idle);
+        }
+        sm.close().await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_rush_with_health_check_and_idle_expired() {
+        let config = SessionConfig {
+            session_alive_trust_duration: Duration::from_millis(10),
+            refresh_interval: Duration::from_millis(250),
+            session_get_timeout: Duration::from_secs(20),
+            min_opened: 10,
+            max_idle: 20,
+            max_opened: 45,
+            idle_timeout: Duration::from_millis(1),
+            ..Default::default()
+        };
+        let sm = assert_rush(false, config.clone()).await;
+        sleep(Duration::from_secs(1)).await;
+        {
+            let sessions = sm.session_pool.inner.read();
+            assert!(sessions.num_inuse <= 1, "num_inuse is {}", sessions.num_inuse);
+            assert_eq!(sessions.waiters.len(), 0);
+            assert_eq!(sessions.orphans.len(), 0);
+            let available_sessions = sessions.available_sessions.len();
+            assert!(
+                available_sessions >= config.min_opened - 1 && available_sessions <= config.max_idle,
+                "now is {}",
+                available_sessions
+            );
+        }
+        sm.close().await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_rush_with_health_check_and_idle_expired_and_invalid() {
+        let config = SessionConfig {
+            session_alive_trust_duration: Duration::from_millis(10),
+            refresh_interval: Duration::from_millis(250),
+            session_get_timeout: Duration::from_secs(20),
+            min_opened: 10,
+            max_idle: 20,
+            max_opened: 45,
+            idle_timeout: Duration::from_millis(1),
+            ..Default::default()
+        };
+        let sm = assert_rush(true, config.clone()).await;
+        sleep(Duration::from_secs(2)).await;
+        {
+            let sessions = sm.session_pool.inner.read();
+            assert!(sessions.num_inuse <= 1, "num_inuse is {}", sessions.num_inuse);
+            // health checker removes orphans
+            assert_eq!(sessions.orphans.len(), 0);
+            assert_eq!(sessions.waiters.len(), 0, "invalid waiters");
+            let available_sessions = sessions.available_sessions.len();
+            assert!(
+                available_sessions >= config.min_opened - 1 && available_sessions <= config.max_idle,
+                "now is {}",
+                available_sessions
+            );
+        }
+        sm.close().await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_close() {
-        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()), "")
+        let cm = ConnectionManager::new(4, &Environment::Emulator("localhost:9010".to_string()), "")
             .await
             .unwrap();
         let config = SessionConfig::default();
         let sm = SessionManager::new(DATABASE, cm, config.clone()).await.unwrap();
         assert_eq!(sm.num_opened(), config.min_opened);
         sm.close().await;
-        assert_eq!(sm.num_opened(), 0)
+        assert_eq!(sm.num_opened(), 0);
+        assert_eq!(sm.session_pool.inner.read().orphans.len(), 0);
     }
 }

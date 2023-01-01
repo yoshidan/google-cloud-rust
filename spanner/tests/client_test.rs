@@ -17,7 +17,10 @@ const DATABASE: &str = "projects/local-project/instances/test-instance/databases
 
 #[ctor::ctor]
 fn init() {
-    let _ = tracing_subscriber::fmt().try_init();
+    let filter = tracing_subscriber::filter::EnvFilter::from_default_env()
+        .add_directive("google_cloud_spanner=trace".parse().unwrap());
+    let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
+    std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -29,16 +32,13 @@ pub enum DomainError {
 #[tokio::test]
 #[serial]
 async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
-    std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-
-    // test data
+    // set up data
     let now = OffsetDateTime::now_utc();
-    let mut session = create_session().await;
     let user_id = format!("user_{}", now.unix_timestamp());
-    replace_test_data(&mut session, vec![create_user_mutation(&user_id, &now)])
-        .await
-        .unwrap();
+    let data_client = create_data_client().await;
+    data_client.apply(vec![create_user_mutation(&user_id, &now)]).await?;
 
+    // test
     let client = Client::new(DATABASE).await.context("error")?;
     let result: Result<(Option<Timestamp>, i64), RunInTxError> = client
         .read_write_transaction(
@@ -67,17 +67,17 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
 
     let mut ro = client.read_only_transaction().await?;
     let record = ro.read("User", &user_columns(), Key::new(&"user_client_1x")).await?;
-    let row = all_rows(record).await.pop().unwrap();
+    let row = all_rows(record).await.unwrap().pop().unwrap();
     assert_user_row(&row, "user_client_1x", &now, &ts);
 
     let record = ro.read("User", &user_columns(), Key::new(&"user_client_2x")).await?;
-    let row = all_rows(record).await.pop().unwrap();
+    let row = all_rows(record).await.unwrap().pop().unwrap();
     assert_user_row(&row, "user_client_2x", &now, &ts);
 
     let record = ro
         .read("UserItem", &["UpdatedAt"], Key::composite(&[&user_id, &1]))
         .await?;
-    let row = all_rows(record).await.pop().unwrap();
+    let row = all_rows(record).await.unwrap().pop().unwrap();
     let cts = row.column_by_name::<OffsetDateTime>("UpdatedAt").unwrap();
     assert_eq!(cts.unix_timestamp(), ts.unix_timestamp());
     Ok(())
@@ -86,7 +86,6 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
 #[tokio::test]
 #[serial]
 async fn test_apply() -> Result<(), anyhow::Error> {
-    std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
     let users: Vec<String> = (0..2).map(|x| format!("user_client_{}", x)).collect();
     let client = Client::new(DATABASE).await.context("error")?;
     let now = OffsetDateTime::now_utc();
@@ -100,7 +99,7 @@ async fn test_apply() -> Result<(), anyhow::Error> {
     let mut ro = client.read_only_transaction().await?;
     for x in users {
         let record = ro.read("User", &user_columns(), Key::new(&x)).await?;
-        let row = all_rows(record).await.pop().unwrap();
+        let row = all_rows(record).await.unwrap().pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
     }
     Ok(())
@@ -109,7 +108,6 @@ async fn test_apply() -> Result<(), anyhow::Error> {
 #[tokio::test]
 #[serial]
 async fn test_apply_at_least_once() -> Result<(), anyhow::Error> {
-    std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
     let users: Vec<String> = (0..2).map(|x| format!("user_client_x_{}", x)).collect();
     let client = Client::new(DATABASE).await.context("error")?;
     let now = OffsetDateTime::now_utc();
@@ -123,7 +121,7 @@ async fn test_apply_at_least_once() -> Result<(), anyhow::Error> {
     let mut ro = client.read_only_transaction().await?;
     for x in users {
         let record = ro.read("User", &user_columns(), Key::new(&x)).await?;
-        let row = all_rows(record).await.pop().unwrap();
+        let row = all_rows(record).await.unwrap().pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
     }
     Ok(())
@@ -132,13 +130,13 @@ async fn test_apply_at_least_once() -> Result<(), anyhow::Error> {
 #[tokio::test]
 #[serial]
 async fn test_partitioned_update() -> Result<(), anyhow::Error> {
-    std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
+    //set up test data
     let now = OffsetDateTime::now_utc();
     let user_id = format!("user_{}", now.unix_timestamp());
-    let mut session = create_session().await;
-    replace_test_data(&mut session, vec![create_user_mutation(&user_id, &now)])
-        .await
-        .unwrap();
+    let data_client = create_data_client().await;
+    data_client.apply(vec![create_user_mutation(&user_id, &now)]).await?;
+
+    // test
     let client = Client::new(DATABASE).await.context("error")?;
     let stmt = Statement::new("UPDATE User SET NullableString = 'aaa' WHERE NullableString IS NOT NULL");
     client.partitioned_update(stmt).await.unwrap();
@@ -148,7 +146,7 @@ async fn test_partitioned_update() -> Result<(), anyhow::Error> {
         .read("User", &["NullableString"], Key::new(&user_id))
         .await
         .unwrap();
-    let row = all_rows(rows).await.pop().unwrap();
+    let row = all_rows(rows).await.unwrap().pop().unwrap();
     let value = row.column_by_name::<String>("NullableString").unwrap();
     assert_eq!(value, "aaa");
     Ok(())
@@ -157,15 +155,15 @@ async fn test_partitioned_update() -> Result<(), anyhow::Error> {
 #[tokio::test]
 #[serial]
 async fn test_batch_read_only_transaction() -> Result<(), anyhow::Error> {
-    std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
+    //set up test data
     let now = OffsetDateTime::now_utc();
-
-    let mut session = create_session().await;
     let many = (0..20000)
         .map(|x| create_user_mutation(&format!("user_partition_{}_{}", now.unix_timestamp(), x), &now))
         .collect();
-    replace_test_data(&mut session, many).await.unwrap();
+    let data_client = create_data_client().await;
+    data_client.apply(many).await?;
 
+    // test
     let client = Client::new(DATABASE).await.context("error")?;
     let mut tx = client.batch_read_only_transaction().await.unwrap();
 
@@ -181,9 +179,7 @@ async fn test_batch_read_only_transaction() -> Result<(), anyhow::Error> {
 #[tokio::test]
 #[serial]
 async fn test_begin_read_write_transaction_retry() -> Result<(), anyhow::Error> {
-    std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
     let client = Client::new(DATABASE).await.context("error")?;
-
     let tx = &mut client.begin_read_write_transaction().await?;
     let retry = &mut TransactionRetry::new();
     let mut retry_count = 0;

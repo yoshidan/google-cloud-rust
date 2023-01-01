@@ -2,11 +2,8 @@ use google_cloud_spanner::key::Key;
 
 use google_cloud_spanner::row::Row;
 use google_cloud_spanner::statement::Statement;
-use google_cloud_spanner::transaction::CallOptions;
-use google_cloud_spanner::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
-use google_cloud_spanner::value::TimestampBound;
+use google_cloud_spanner::transaction_ro::ReadOnlyTransaction;
 use serial_test::serial;
-use std::ops::DerefMut;
 use time::OffsetDateTime;
 
 mod common;
@@ -16,7 +13,10 @@ use std::collections::HashMap;
 
 #[ctor::ctor]
 fn init() {
-    let _ = tracing_subscriber::fmt().try_init();
+    let filter = tracing_subscriber::filter::EnvFilter::from_default_env()
+        .add_directive("google_cloud_spanner=trace".parse().unwrap());
+    let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
+    std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
 }
 
 async fn assert_read(tx: &mut ReadOnlyTransaction, user_id: &str, now: &OffsetDateTime, cts: &OffsetDateTime) {
@@ -24,7 +24,7 @@ async fn assert_read(tx: &mut ReadOnlyTransaction, user_id: &str, now: &OffsetDa
         Ok(tx) => tx,
         Err(status) => panic!("read error {:?}", status),
     };
-    let mut rows = all_rows(reader).await;
+    let mut rows = all_rows(reader).await.unwrap();
     assert_eq!(1, rows.len(), "row must exists");
     let row = rows.pop().unwrap();
     assert_user_row(&row, user_id, now, cts);
@@ -44,30 +44,30 @@ async fn execute_query(tx: &mut ReadOnlyTransaction, stmt: Statement) -> Vec<Row
         Ok(tx) => tx,
         Err(status) => panic!("query error {:?}", status),
     };
-    all_rows(reader).await
+    all_rows(reader).await.unwrap()
 }
 
 #[tokio::test]
 #[serial]
 async fn test_query_and_read() {
+    //set up test data
     let now = OffsetDateTime::now_utc();
-    let mut session = create_session().await;
+    let data_client = create_data_client().await;
     let user_id_1 = "user_1";
     let user_id_2 = "user_2";
     let user_id_3 = "user_3";
-    let cr = replace_test_data(
-        session.deref_mut(),
-        vec![
+    let cr = data_client
+        .apply(vec![
             create_user_mutation(user_id_1, &now),
             create_user_mutation(user_id_2, &now),
             create_user_mutation(user_id_3, &now),
-        ],
-    )
-    .await
-    .unwrap();
+        ])
+        .await
+        .unwrap();
 
-    let mut tx = read_only_transaction(session).await;
-    let ts = cr.commit_timestamp.as_ref().unwrap();
+    //test
+    let mut tx = data_client.read_only_transaction().await.unwrap();
+    let ts = cr.unwrap();
     let ts = OffsetDateTime::from_unix_timestamp(ts.seconds)
         .unwrap()
         .replace_nanosecond(ts.nanos as u32)
@@ -84,22 +84,20 @@ async fn test_query_and_read() {
 #[serial]
 async fn test_complex_query() {
     let now = OffsetDateTime::now_utc();
-    let mut session = create_session().await;
+    let data_client = create_data_client().await;
     let user_id_1 = "user_10";
-    let cr = replace_test_data(
-        session.deref_mut(),
-        vec![
+    let cr = data_client
+        .apply(vec![
             create_user_mutation(user_id_1, &now),
             create_user_item_mutation(user_id_1, 1),
             create_user_item_mutation(user_id_1, 2),
             create_user_character_mutation(user_id_1, 10),
             create_user_character_mutation(user_id_1, 20),
-        ],
-    )
-    .await
-    .unwrap();
+        ])
+        .await
+        .unwrap();
 
-    let mut tx = read_only_transaction(session).await;
+    let mut tx = data_client.read_only_transaction().await.unwrap();
     let mut stmt = Statement::new(
         "SELECT *,
         ARRAY(SELECT AS STRUCT * FROM UserItem WHERE UserId = p.UserId) as UserItem,
@@ -113,7 +111,7 @@ async fn test_complex_query() {
     let row = rows.pop().unwrap();
 
     // check UserTable
-    let ts = cr.commit_timestamp.as_ref().unwrap();
+    let ts = cr.unwrap();
     let ts = OffsetDateTime::from_unix_timestamp(ts.seconds)
         .unwrap()
         .replace_nanosecond(ts.nanos as u32)
@@ -150,34 +148,29 @@ async fn test_complex_query() {
 #[tokio::test]
 #[serial]
 async fn test_batch_partition_query_and_read() {
+    // set up test data
     let now = OffsetDateTime::now_utc();
-    let mut session = create_session().await;
+    let data_client = create_data_client().await;
     let user_id_1 = "user_1";
     let user_id_2 = "user_2";
     let user_id_3 = "user_3";
-    let cr = replace_test_data(
-        session.deref_mut(),
-        vec![
+    let cr = data_client
+        .apply(vec![
             create_user_mutation(user_id_1, &now),
             create_user_mutation(user_id_2, &now),
             create_user_mutation(user_id_3, &now),
-        ],
-    )
-    .await
-    .unwrap();
+        ])
+        .await
+        .unwrap();
 
     let many = (0..20000)
         .map(|x| create_user_mutation(&format!("user_partitionx_{}", x), &now))
         .collect();
-    let cr2 = replace_test_data(session.deref_mut(), many).await.unwrap();
+    let cr2 = data_client.apply(many).await.unwrap();
 
-    let mut tx =
-        match BatchReadOnlyTransaction::begin(session, TimestampBound::strong_read(), CallOptions::default()).await {
-            Ok(tx) => tx,
-            Err(status) => panic!("begin error {:?}", status),
-        };
-
-    let ts = cr.commit_timestamp.as_ref().unwrap();
+    // test
+    let mut tx = data_client.batch_read_only_transaction().await.unwrap();
+    let ts = cr.unwrap();
     let ts = OffsetDateTime::from_unix_timestamp(ts.seconds)
         .unwrap()
         .replace_nanosecond(ts.nanos as u32)
@@ -198,7 +191,7 @@ async fn test_batch_partition_query_and_read() {
         map.insert(user_id, row);
     }
 
-    let ts = cr2.commit_timestamp.as_ref().unwrap();
+    let ts = cr2.unwrap();
     let ts = OffsetDateTime::from_unix_timestamp(ts.seconds)
         .unwrap()
         .replace_nanosecond(ts.nanos as u32)
@@ -211,18 +204,18 @@ async fn test_batch_partition_query_and_read() {
 
 async fn test_query(count: usize, prefix: &str) {
     let now = OffsetDateTime::now_utc();
-    let mut session = create_session().await;
     let mutations = (0..count)
         .map(|x| create_user_mutation(&format!("user_{}_{}", prefix, x), &now))
         .collect();
-    let cr = replace_test_data(&mut session, mutations).await.unwrap();
+    let data_client = create_data_client().await;
+    let cr = data_client.apply(mutations).await.unwrap();
 
-    let mut tx = read_only_transaction(session).await;
+    let mut tx = data_client.read_only_transaction().await.unwrap();
     let stmt = Statement::new(format!("SELECT *, Array[UserId,UserId,UserId,UserId,UserId] as UserIds, Array[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20] as NumArray FROM User p WHERE p.UserId LIKE 'user_{}_%' ORDER BY UserId ", prefix));
     let rows = execute_query(&mut tx, stmt).await;
     assert_eq!(count, rows.len());
 
-    let ts = cr.commit_timestamp.as_ref().unwrap();
+    let ts = cr.unwrap();
     let ts = OffsetDateTime::from_unix_timestamp(ts.seconds)
         .unwrap()
         .replace_nanosecond(ts.nanos as u32)
@@ -259,17 +252,19 @@ async fn test_many_records_value() {
 #[tokio::test]
 #[serial]
 async fn test_many_records_struct() {
+    //set up test data
     let now = OffsetDateTime::now_utc();
-    let mut session = create_session().await;
+    let data_client = create_data_client().await;
     let user_id = "user_x_6";
     let mutations = vec![create_user_mutation(user_id, &now)];
-    let _ = replace_test_data(&mut session, mutations).await.unwrap();
+    let _ = data_client.apply(mutations).await.unwrap();
     let item_mutations = (0..4500).map(|x| create_user_item_mutation(user_id, x)).collect();
-    let _ = replace_test_data(&mut session, item_mutations).await.unwrap();
+    let _ = data_client.apply(item_mutations).await.unwrap();
     let characters_mutations = (0..4500).map(|x| create_user_character_mutation(user_id, x)).collect();
-    let _ = replace_test_data(&mut session, characters_mutations).await.unwrap();
+    let _ = data_client.apply(characters_mutations).await.unwrap();
 
-    let mut tx = read_only_transaction(session).await;
+    //test
+    let mut tx = data_client.read_only_transaction().await.unwrap();
     let mut stmt = Statement::new(
         "SELECT *,
         ARRAY(SELECT AS STRUCT * FROM UserItem WHERE UserId = p.UserId) as UserItem,
@@ -290,13 +285,15 @@ async fn test_many_records_struct() {
 #[tokio::test]
 #[serial]
 async fn test_read_row() {
+    //set up test data
     let now = OffsetDateTime::now_utc();
-    let mut session = create_session().await;
     let user_id = "user_x_x";
     let mutations = vec![create_user_mutation(user_id, &now)];
-    let _ = replace_test_data(&mut session, mutations).await.unwrap();
+    let data_client = create_data_client().await;
+    let _ = data_client.apply(mutations).await.unwrap();
 
-    let mut tx = read_only_transaction(session).await;
+    //test
+    let mut tx = data_client.read_only_transaction().await.unwrap();
     let row = tx.read_row("User", &["UserId"], Key::new(&user_id)).await.unwrap();
     assert!(row.is_some())
 }
@@ -304,20 +301,22 @@ async fn test_read_row() {
 #[tokio::test]
 #[serial]
 async fn test_read_multi_row() {
+    //set up test data
     let now = OffsetDateTime::now_utc();
-    let mut session = create_session().await;
     let user_id = format!("user_x_{}", &now.second());
     let user_id2 = format!("user_x_{}", &now.second() + 1);
     let mutations = vec![
         create_user_mutation(&user_id, &now),
         create_user_mutation(&user_id2, &now),
     ];
-    let _ = replace_test_data(&mut session, mutations).await.unwrap();
+    let data_client = create_data_client().await;
+    let _ = data_client.apply(mutations).await.unwrap();
 
-    let mut tx = read_only_transaction(session).await;
+    // test
+    let mut tx = data_client.read_only_transaction().await.unwrap();
     let row = tx
         .read("User", &["UserId"], vec![Key::new(&user_id), Key::new(&user_id2)])
         .await
         .unwrap();
-    assert_eq!(2, all_rows(row).await.len());
+    assert_eq!(2, all_rows(row).await.unwrap().len());
 }
