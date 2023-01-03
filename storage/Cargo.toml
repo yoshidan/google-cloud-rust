@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-storage"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/storage"
@@ -11,7 +11,7 @@ description = "Google Cloud Platform storage client library."
 documentation = "https://docs.rs/google-cloud-storage/latest/google_cloud_storage/"
 
 [dependencies]
-google-cloud-auth = { version = "0.7.0", path = "../foundation/auth", default-features = false }
+google-cloud-auth = { version = "0.8.0", path = "../foundation/auth", default-features = false }
 google-cloud-metadata = { version = "0.3.1", path = "../foundation/metadata", default-features = false }
 rsa = "0.6"
 thiserror = "1.0"
