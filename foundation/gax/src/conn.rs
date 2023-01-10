@@ -1,4 +1,5 @@
-use std::sync::atomic::{AtomicI64, Ordering};
+use std::fmt::Debug;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::project::ProjectOptions;
 use google_cloud_auth::token_source::TokenSource;
@@ -78,9 +79,28 @@ impl Environment {
 }
 
 #[derive(Debug)]
+struct AtomicRing<T>
+where
+    T: Clone + Debug,
+{
+    index: AtomicUsize,
+    values: Vec<T>,
+}
+
+impl<T> AtomicRing<T>
+where
+    T: Clone + Debug,
+{
+    fn next(&self) -> T {
+        let current = self.index.fetch_add(1, Ordering::SeqCst) as usize;
+        //clone() reuses http/2 connection
+        self.values[current % self.values.len()].clone()
+    }
+}
+
+#[derive(Debug)]
 pub struct ConnectionManager {
-    index: AtomicI64,
-    conns: Vec<Channel>,
+    inner: AtomicRing<Channel>,
 }
 
 impl ConnectionManager {
@@ -98,8 +118,10 @@ impl ConnectionManager {
             Environment::Emulator(host) => Self::create_emulator_connections(host).await?,
         };
         Ok(Self {
-            index: AtomicI64::new(0),
-            conns,
+            inner: AtomicRing {
+                index: AtomicUsize::new(0),
+                values: conns,
+            },
         })
     }
 
@@ -153,12 +175,37 @@ impl ConnectionManager {
     }
 
     pub fn num(&self) -> usize {
-        self.conns.len()
+        self.inner.values.len()
     }
 
     pub fn conn(&self) -> Channel {
-        let current = self.index.fetch_add(1, Ordering::SeqCst) as usize;
-        //clone() reuses http/2 connection
-        self.conns[current % self.conns.len()].clone()
+        self.inner.next()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::conn::AtomicRing;
+    use std::collections::HashSet;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[test]
+    fn test_atomic_ring() {
+        let cm = AtomicRing::<&str> {
+            index: AtomicUsize::new(usize::MAX - 1),
+            values: vec!["a", "b", "c", "d"],
+        };
+        let mut values = HashSet::new();
+        assert_eq!(usize::MAX - 1, cm.index.load(Ordering::SeqCst));
+        assert!(values.insert(cm.next()));
+        assert_eq!(usize::MAX, cm.index.load(Ordering::SeqCst));
+        assert!(values.insert(cm.next()));
+        assert_eq!(0, cm.index.load(Ordering::SeqCst));
+        assert!(values.insert(cm.next()));
+        assert_eq!(1, cm.index.load(Ordering::SeqCst));
+        assert!(values.insert(cm.next()));
+        assert_eq!(2, cm.index.load(Ordering::SeqCst));
+        assert!(!values.insert(cm.next()));
+        assert_eq!(3, cm.index.load(Ordering::SeqCst));
     }
 }
