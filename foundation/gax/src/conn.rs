@@ -92,7 +92,7 @@ where
     T: Clone + Debug,
 {
     fn next(&self) -> T {
-        let current = self.index.fetch_add(1, Ordering::SeqCst) as usize;
+        let current = self.index.fetch_add(1, Ordering::SeqCst);
         //clone() reuses http/2 connection
         self.values[current % self.values.len()].clone()
     }
