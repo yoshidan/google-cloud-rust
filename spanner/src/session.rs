@@ -247,14 +247,9 @@ impl SessionPool {
         let mut sessions = Vec::<SessionHandle>::new();
         for _ in 0..channel_num {
             let next_client = conn_pool.conn();
-            match batch_create_session(next_client, database.clone(), creation_count_per_channel).await {
-                Ok(r) => {
-                    for i in r {
-                        sessions.push(i);
-                    }
-                }
-                Err(e) => return Err(e),
-            }
+            let new_sessions =
+                batch_create_sessions(next_client, database.as_str(), creation_count_per_channel).await?;
+            sessions.extend(new_sessions);
         }
         tracing::debug!("initial session created count = {}", sessions.len());
         Ok(sessions.into())
@@ -503,13 +498,10 @@ impl SessionManager {
                     },
                     _ = cancel.cancelled() => break
                 };
-                let database = database.clone();
-                let next_client = conn_pool.conn();
-
-                let result = batch_create_session(next_client, database, session_count).await;
+                let result = batch_create_sessions(conn_pool.conn(), database.as_str(), session_count).await;
                 session_pool.inner.write().replenish(session_count, result);
             }
-            tracing::trace!("shutdown session creation task.")
+            tracing::trace!("shutdown session creation task.");
         })
     }
 
@@ -597,13 +589,30 @@ async fn health_check(
     tracing::trace!("end health check elapsed={}msec", start.elapsed().as_millis());
 }
 
+async fn batch_create_sessions(
+    spanner_client: Client,
+    database: &str,
+    mut remaining_create_count: usize,
+) -> Result<Vec<SessionHandle>, Status> {
+    let mut created = Vec::with_capacity(remaining_create_count);
+    while remaining_create_count > 0 {
+        let sessions = batch_create_session(spanner_client.clone(), database, remaining_create_count).await?;
+        // Spanner could return less sessions than requested.
+        // In that case, we should do another call using the same gRPC channel.
+        let actually_created = sessions.len();
+        remaining_create_count -= actually_created;
+        created.extend(sessions);
+    }
+    Ok(created)
+}
+
 async fn batch_create_session(
     mut spanner_client: Client,
-    database: String,
+    database: &str,
     session_count: usize,
 ) -> Result<Vec<SessionHandle>, Status> {
     let request = BatchCreateSessionsRequest {
-        database,
+        database: database.to_string(),
         session_template: None,
         session_count: session_count as i32,
     };
@@ -625,11 +634,12 @@ async fn batch_create_session(
 #[cfg(test)]
 mod tests {
     use crate::apiv1::conn_pool::ConnectionManager;
-    use crate::session::{health_check, SessionConfig, SessionError, SessionManager};
+    use crate::session::{batch_create_sessions, health_check, SessionConfig, SessionError, SessionManager};
     use serial_test::serial;
 
     use google_cloud_gax::cancel::CancellationToken;
     use google_cloud_gax::conn::Environment;
+    use google_cloud_googleapis::spanner::v1::ExecuteSqlRequest;
     use parking_lot::RwLock;
     use std::sync::atomic::{AtomicI64, Ordering};
     use std::sync::Arc;
@@ -1030,5 +1040,45 @@ mod tests {
         sm.close().await;
         assert_eq!(sm.num_opened(), 0);
         assert_eq!(sm.session_pool.inner.read().orphans.len(), 0);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_batch_create_sessions() {
+        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()), "")
+            .await
+            .unwrap();
+        let client = cm.conn();
+        let session_count = 125;
+        let result = batch_create_sessions(client.clone(), DATABASE, session_count).await;
+        match result {
+            Ok(created) => {
+                assert_eq!(session_count, created.len());
+                for mut s in created {
+                    let ping_result = s
+                        .spanner_client
+                        .execute_sql(
+                            ExecuteSqlRequest {
+                                session: s.session.name.to_string(),
+                                transaction: None,
+                                sql: "SELECT 1".to_string(),
+                                params: None,
+                                param_types: Default::default(),
+                                resume_token: vec![],
+                                query_mode: 0,
+                                partition_token: vec![],
+                                seqno: 0,
+                                query_options: None,
+                                request_options: None,
+                            },
+                            None,
+                            None,
+                        )
+                        .await;
+                    assert!(ping_result.is_ok());
+                }
+            }
+            Err(err) => panic!("{:?}", err),
+        }
     }
 }
