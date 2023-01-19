@@ -1,4 +1,5 @@
 use crate::error::Error;
+use base64::prelude::*;
 use serde::Deserialize;
 use tokio::fs;
 
@@ -87,7 +88,7 @@ impl CredentialsFile {
             .map_err(|_| ())
             .map(Vec::<u8>::from)?;
 
-        if let Ok(decoded) = base64::decode(credentials.clone()) {
+        if let Ok(decoded) = BASE64_STANDARD.decode(credentials.clone()) {
             Ok(decoded)
         } else {
             Ok(credentials)

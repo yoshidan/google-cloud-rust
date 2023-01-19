@@ -16,7 +16,7 @@ google-cloud-metadata = { version = "0.3.1", path = "../foundation/metadata", de
 rsa = "0.6"
 thiserror = "1.0"
 time = { version = "0.3", features = ["serde"] }
-base64 = "0.13"
+base64 = "0.21"
 regex = "1.6"
 sha2 = "0.10"
 ring = "0.16"

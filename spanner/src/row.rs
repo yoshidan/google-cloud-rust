@@ -8,6 +8,7 @@ use time::macros::format_description;
 use time::{Date, OffsetDateTime};
 
 use crate::value::{CommitTimestamp, SpannerNumeric};
+use base64::prelude::*;
 use base64::DecodeError;
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::StructType;
@@ -194,7 +195,9 @@ impl TryFromValue for Date {
 impl TryFromValue for Vec<u8> {
     fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
-            Kind::StringValue(s) => base64::decode(s).map_err(|e| Error::ByteParseError(field.name.to_string(), e)),
+            Kind::StringValue(s) => BASE64_STANDARD
+                .decode(s)
+                .map_err(|e| Error::ByteParseError(field.name.to_string(), e)),
             v => kind_to_error(v, field),
         }
     }

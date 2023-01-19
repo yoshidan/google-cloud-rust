@@ -2,6 +2,7 @@ use crate::http;
 
 use crate::sign::SignedURLError::InvalidOption;
 
+use base64::prelude::*;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use sha2::{Digest, Sha256};
@@ -329,7 +330,7 @@ fn validate_options(opts: &SignedURLOptions, _now: &OffsetDateTime) -> Result<()
         return Err(InvalidOption("missing required expires option"));
     }
     if let Some(md5) = &opts.md5 {
-        match base64::decode(md5) {
+        match BASE64_STANDARD.decode(md5) {
             Ok(v) => {
                 if v.len() != 16 {
                     return Err(InvalidOption("storage: invalid MD5 checksum length"));

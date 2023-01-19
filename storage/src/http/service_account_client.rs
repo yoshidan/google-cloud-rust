@@ -4,6 +4,7 @@ use crate::http::Error;
 
 use google_cloud_auth::token_source::TokenSource;
 
+use base64::prelude::*;
 use reqwest::Client;
 
 use std::sync::Arc;
@@ -34,7 +35,7 @@ impl ServiceAccountClient {
 
     async fn _sign_blob(&self, name: &str, data: &[u8]) -> Result<Vec<u8>, Error> {
         let url = format!("{}/{}:signBlob", self.v1_endpoint, name);
-        let json_request = format!(r#"{{"payload": "{}"}}"#, base64::encode(data));
+        let json_request = format!(r#"{{"payload": "{}"}}"#, BASE64_STANDARD.encode(data));
         let token = self.ts.token().await?;
         let request = Client::default()
             .post(url)
@@ -47,7 +48,7 @@ impl ServiceAccountClient {
         if status.is_success() {
             let body = response.json::<HashMap<String, String>>().await?;
             match body.get("signedBlob") {
-                Some(v) => Ok(base64::decode(v)?),
+                Some(v) => Ok(BASE64_STANDARD.decode(v)?),
                 None => Err(Error::Response(status.as_u16(), "no signedBlob found".to_string())),
             }
         } else {

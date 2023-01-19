@@ -21,7 +21,7 @@ home = "0.5"
 urlencoding = "2.1"
 tokio = { version = "1.20", features = ["fs"]}
 google-cloud-metadata = { version = "0.3.1", path = "../metadata", default-features = false }
-base64 = "0.13"
+base64 = "0.21"
 time = "0.3"
 
 [dev-dependencies]
