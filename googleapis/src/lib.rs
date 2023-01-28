@@ -38,7 +38,12 @@ pub mod spanner {
 #[cfg(feature = "pubsub")]
 #[path = ""]
 pub mod pubsub {
+    #[cfg(not(feature = "bytes"))]
     #[path = "google.pubsub.v1.rs"]
+    pub mod v1;
+
+    #[cfg(feature = "bytes")]
+    #[path = "bytes/google.pubsub.v1.rs"]
     pub mod v1;
 }
 

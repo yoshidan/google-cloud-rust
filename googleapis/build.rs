@@ -1,9 +1,25 @@
-#[cfg(feature = "generate")]
 fn main() {
+    #[cfg(feature = "generate")]
+    {
+        let config = prost_build::Config::new();
+        generate(config, "src");
+    }
+
+    #[cfg(all(feature = "generate", feature = "bytes"))]
+    {
+        let mut bytes_config = prost_build::Config::new();
+        bytes_config.bytes(&["."]);
+        generate(bytes_config, "src/bytes");
+    }
+}
+
+#[cfg(feature = "generate")]
+fn generate(config: prost_build::Config, out_dir: impl AsRef<std::path::Path>) {
     tonic_build::configure()
         .build_server(false)
-        .out_dir("src") // you can change the generated code's location
-        .compile(
+        .out_dir(out_dir) // you can change the generated code's location
+        .compile_with_config(
+            config,
             &[
                 "googleapis/google/storage/v2/storage.proto",
                 "googleapis/google/pubsub/v1/pubsub.proto",
@@ -15,6 +31,3 @@ fn main() {
         )
         .unwrap();
 }
-
-#[cfg(not(feature = "generate"))]
-fn main() {}

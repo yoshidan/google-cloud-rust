@@ -18,9 +18,11 @@ prost-types = "0.11"
 
 [build-dependencies]
 tonic-build = { version = "0.8", optional = true }
+prost-build = { version = "0.11", optional = true }
 
 [features]
 spanner = []
 pubsub = []
 storage = []
-generate = ["dep:tonic-build"]
+generate = ["dep:tonic-build", "dep:prost-build"]
+bytes = []
