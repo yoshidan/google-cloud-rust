@@ -268,7 +268,9 @@ pub mod compose_object_request {
         pub generation: i64,
         /// Conditions that must be met for this operation to execute.
         #[prost(message, optional, tag = "3")]
-        pub object_preconditions: ::core::option::Option<source_object::ObjectPreconditions>,
+        pub object_preconditions: ::core::option::Option<
+            source_object::ObjectPreconditions,
+        >,
     }
     /// Nested message and enum types in `SourceObject`.
     pub mod source_object {
@@ -816,13 +818,13 @@ pub struct RewriteObjectRequest {
     /// The raw bytes (not base64-encoded) AES-256 encryption key used to encrypt
     /// the source object, if it was encrypted with a Customer-Supplied Encryption
     /// Key.
-    #[prost(bytes = "vec", tag = "21")]
-    pub copy_source_encryption_key_bytes: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "bytes", tag = "21")]
+    pub copy_source_encryption_key_bytes: ::prost::bytes::Bytes,
     /// The raw bytes (not base64-encoded) SHA256 hash of the encryption key used
     /// to encrypt the source object, if it was encrypted with a Customer-Supplied
     /// Encryption Key.
-    #[prost(bytes = "vec", tag = "22")]
-    pub copy_source_encryption_key_sha256_bytes: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "bytes", tag = "22")]
+    pub copy_source_encryption_key_sha256_bytes: ::prost::bytes::Bytes,
     /// A set of parameters common to Storage API requests concerning an object.
     #[prost(message, optional, tag = "19")]
     pub common_object_request_params: ::core::option::Option<CommonObjectRequestParams>,
@@ -965,8 +967,8 @@ pub struct CreateHmacKeyResponse {
     pub metadata: ::core::option::Option<HmacKeyMetadata>,
     /// HMAC key secret material.
     /// In raw bytes format (not base64-encoded).
-    #[prost(bytes = "vec", tag = "3")]
-    pub secret_key_bytes: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "bytes", tag = "3")]
+    pub secret_key_bytes: ::prost::bytes::Bytes,
 }
 /// Request object to delete a given HMAC key.
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1057,12 +1059,12 @@ pub struct CommonObjectRequestParams {
     pub encryption_algorithm: ::prost::alloc::string::String,
     /// Encryption key used with the Customer-Supplied Encryption Keys feature.
     /// In raw bytes format (not base64-encoded).
-    #[prost(bytes = "vec", tag = "4")]
-    pub encryption_key_bytes: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "bytes", tag = "4")]
+    pub encryption_key_bytes: ::prost::bytes::Bytes,
     /// SHA256 hash of encryption key used with the Customer-Supplied Encryption
     /// Keys feature.
-    #[prost(bytes = "vec", tag = "5")]
-    pub encryption_key_sha256_bytes: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "bytes", tag = "5")]
+    pub encryption_key_sha256_bytes: ::prost::bytes::Bytes,
 }
 /// Shared constants.
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1071,7 +1073,17 @@ pub struct ServiceConstants {}
 /// Nested message and enum types in `ServiceConstants`.
 pub mod service_constants {
     /// A collection of constant values meaningful to the Storage API.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum Values {
         /// Unused. Proto3 requires first enum to be 0.
@@ -1133,17 +1145,33 @@ pub mod service_constants {
                 Values::Unspecified => "VALUES_UNSPECIFIED",
                 Values::MaxReadChunkBytes => "MAX_READ_CHUNK_BYTES",
                 Values::MaxObjectSizeMb => "MAX_OBJECT_SIZE_MB",
-                Values::MaxCustomMetadataFieldNameBytes => "MAX_CUSTOM_METADATA_FIELD_NAME_BYTES",
-                Values::MaxCustomMetadataFieldValueBytes => "MAX_CUSTOM_METADATA_FIELD_VALUE_BYTES",
-                Values::MaxCustomMetadataTotalSizeBytes => "MAX_CUSTOM_METADATA_TOTAL_SIZE_BYTES",
-                Values::MaxBucketMetadataTotalSizeBytes => "MAX_BUCKET_METADATA_TOTAL_SIZE_BYTES",
-                Values::MaxNotificationConfigsPerBucket => "MAX_NOTIFICATION_CONFIGS_PER_BUCKET",
-                Values::MaxNotificationCustomAttributes => "MAX_NOTIFICATION_CUSTOM_ATTRIBUTES",
-                Values::MaxNotificationCustomAttributeKeyLength => "MAX_NOTIFICATION_CUSTOM_ATTRIBUTE_KEY_LENGTH",
+                Values::MaxCustomMetadataFieldNameBytes => {
+                    "MAX_CUSTOM_METADATA_FIELD_NAME_BYTES"
+                }
+                Values::MaxCustomMetadataFieldValueBytes => {
+                    "MAX_CUSTOM_METADATA_FIELD_VALUE_BYTES"
+                }
+                Values::MaxCustomMetadataTotalSizeBytes => {
+                    "MAX_CUSTOM_METADATA_TOTAL_SIZE_BYTES"
+                }
+                Values::MaxBucketMetadataTotalSizeBytes => {
+                    "MAX_BUCKET_METADATA_TOTAL_SIZE_BYTES"
+                }
+                Values::MaxNotificationConfigsPerBucket => {
+                    "MAX_NOTIFICATION_CONFIGS_PER_BUCKET"
+                }
+                Values::MaxNotificationCustomAttributes => {
+                    "MAX_NOTIFICATION_CUSTOM_ATTRIBUTES"
+                }
+                Values::MaxNotificationCustomAttributeKeyLength => {
+                    "MAX_NOTIFICATION_CUSTOM_ATTRIBUTE_KEY_LENGTH"
+                }
                 Values::MaxLabelsEntriesCount => "MAX_LABELS_ENTRIES_COUNT",
                 Values::MaxLabelsKeyValueLength => "MAX_LABELS_KEY_VALUE_LENGTH",
                 Values::MaxLabelsKeyValueBytes => "MAX_LABELS_KEY_VALUE_BYTES",
-                Values::MaxObjectIdsPerDeleteObjectsRequest => "MAX_OBJECT_IDS_PER_DELETE_OBJECTS_REQUEST",
+                Values::MaxObjectIdsPerDeleteObjectsRequest => {
+                    "MAX_OBJECT_IDS_PER_DELETE_OBJECTS_REQUEST"
+                }
                 Values::SplitTokenMaxValidDays => "SPLIT_TOKEN_MAX_VALID_DAYS",
             }
         }
@@ -1153,17 +1181,33 @@ pub mod service_constants {
                 "VALUES_UNSPECIFIED" => Some(Self::Unspecified),
                 "MAX_READ_CHUNK_BYTES" => Some(Self::MaxReadChunkBytes),
                 "MAX_OBJECT_SIZE_MB" => Some(Self::MaxObjectSizeMb),
-                "MAX_CUSTOM_METADATA_FIELD_NAME_BYTES" => Some(Self::MaxCustomMetadataFieldNameBytes),
-                "MAX_CUSTOM_METADATA_FIELD_VALUE_BYTES" => Some(Self::MaxCustomMetadataFieldValueBytes),
-                "MAX_CUSTOM_METADATA_TOTAL_SIZE_BYTES" => Some(Self::MaxCustomMetadataTotalSizeBytes),
-                "MAX_BUCKET_METADATA_TOTAL_SIZE_BYTES" => Some(Self::MaxBucketMetadataTotalSizeBytes),
-                "MAX_NOTIFICATION_CONFIGS_PER_BUCKET" => Some(Self::MaxNotificationConfigsPerBucket),
-                "MAX_NOTIFICATION_CUSTOM_ATTRIBUTES" => Some(Self::MaxNotificationCustomAttributes),
-                "MAX_NOTIFICATION_CUSTOM_ATTRIBUTE_KEY_LENGTH" => Some(Self::MaxNotificationCustomAttributeKeyLength),
+                "MAX_CUSTOM_METADATA_FIELD_NAME_BYTES" => {
+                    Some(Self::MaxCustomMetadataFieldNameBytes)
+                }
+                "MAX_CUSTOM_METADATA_FIELD_VALUE_BYTES" => {
+                    Some(Self::MaxCustomMetadataFieldValueBytes)
+                }
+                "MAX_CUSTOM_METADATA_TOTAL_SIZE_BYTES" => {
+                    Some(Self::MaxCustomMetadataTotalSizeBytes)
+                }
+                "MAX_BUCKET_METADATA_TOTAL_SIZE_BYTES" => {
+                    Some(Self::MaxBucketMetadataTotalSizeBytes)
+                }
+                "MAX_NOTIFICATION_CONFIGS_PER_BUCKET" => {
+                    Some(Self::MaxNotificationConfigsPerBucket)
+                }
+                "MAX_NOTIFICATION_CUSTOM_ATTRIBUTES" => {
+                    Some(Self::MaxNotificationCustomAttributes)
+                }
+                "MAX_NOTIFICATION_CUSTOM_ATTRIBUTE_KEY_LENGTH" => {
+                    Some(Self::MaxNotificationCustomAttributeKeyLength)
+                }
                 "MAX_LABELS_ENTRIES_COUNT" => Some(Self::MaxLabelsEntriesCount),
                 "MAX_LABELS_KEY_VALUE_LENGTH" => Some(Self::MaxLabelsKeyValueLength),
                 "MAX_LABELS_KEY_VALUE_BYTES" => Some(Self::MaxLabelsKeyValueBytes),
-                "MAX_OBJECT_IDS_PER_DELETE_OBJECTS_REQUEST" => Some(Self::MaxObjectIdsPerDeleteObjectsRequest),
+                "MAX_OBJECT_IDS_PER_DELETE_OBJECTS_REQUEST" => {
+                    Some(Self::MaxObjectIdsPerDeleteObjectsRequest)
+                }
                 "SPLIT_TOKEN_MAX_VALID_DAYS" => Some(Self::SplitTokenMaxValidDays),
                 _ => None,
             }
@@ -1271,7 +1315,10 @@ pub struct Bucket {
     pub default_event_based_hold: bool,
     /// User-provided labels, in key/value pairs.
     #[prost(map = "string, string", tag = "15")]
-    pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    pub labels: ::std::collections::HashMap<
+        ::prost::alloc::string::String,
+        ::prost::alloc::string::String,
+    >,
     /// The bucket's website config, controlling how the service behaves
     /// when accessing bucket contents as a web site. See the
     /// \[<https://cloud.google.com/storage/docs/static-website\][Static> Website
@@ -1374,7 +1421,9 @@ pub mod bucket {
     pub struct IamConfig {
         /// Bucket restriction options currently enforced on the bucket.
         #[prost(message, optional, tag = "1")]
-        pub uniform_bucket_level_access: ::core::option::Option<iam_config::UniformBucketLevelAccess>,
+        pub uniform_bucket_level_access: ::core::option::Option<
+            iam_config::UniformBucketLevelAccess,
+        >,
         /// Whether IAM will enforce public access prevention. Valid values are
         /// "enforced" or "inherited".
         #[prost(string, tag = "3")]
@@ -1450,7 +1499,9 @@ pub mod bucket {
                 /// This condition is satisfied when an object is created before midnight
                 /// of the specified date in UTC.
                 #[prost(message, optional, tag = "2")]
-                pub created_before: ::core::option::Option<super::super::super::super::super::r#type::Date>,
+                pub created_before: ::core::option::Option<
+                    super::super::super::super::super::r#type::Date,
+                >,
                 /// Relevant only for versioned objects. If the value is
                 /// `true`, this condition matches live objects; if the value
                 /// is `false`, it matches archived objects.
@@ -1466,7 +1517,9 @@ pub mod bucket {
                 /// `NEARLINE`, `COLDLINE`, `STANDARD`, and
                 /// `DURABLE_REDUCED_AVAILABILITY`.
                 #[prost(string, repeated, tag = "5")]
-                pub matches_storage_class: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+                pub matches_storage_class: ::prost::alloc::vec::Vec<
+                    ::prost::alloc::string::String,
+                >,
                 /// Number of days that have elapsed since the custom timestamp set on an
                 /// object.
                 /// The value of the field must be a nonnegative integer.
@@ -1475,7 +1528,9 @@ pub mod bucket {
                 /// An object matches this condition if the custom timestamp set on the
                 /// object is before the specified date in UTC.
                 #[prost(message, optional, tag = "8")]
-                pub custom_time_before: ::core::option::Option<super::super::super::super::super::r#type::Date>,
+                pub custom_time_before: ::core::option::Option<
+                    super::super::super::super::super::r#type::Date,
+                >,
                 /// This condition is relevant only for versioned objects. An object
                 /// version satisfies this condition only if these many days have been
                 /// passed since it became noncurrent. The value of the field must be a
@@ -1487,15 +1542,21 @@ pub mod bucket {
                 /// version satisfies this condition only if it became noncurrent before
                 /// the specified date in UTC.
                 #[prost(message, optional, tag = "10")]
-                pub noncurrent_time_before: ::core::option::Option<super::super::super::super::super::r#type::Date>,
+                pub noncurrent_time_before: ::core::option::Option<
+                    super::super::super::super::super::r#type::Date,
+                >,
                 /// List of object name prefixes. If any prefix exactly matches the
                 /// beginning of the object name, the condition evaluates to true.
                 #[prost(string, repeated, tag = "11")]
-                pub matches_prefix: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+                pub matches_prefix: ::prost::alloc::vec::Vec<
+                    ::prost::alloc::string::String,
+                >,
                 /// List of object name suffixes. If any suffix exactly matches the
                 /// end of the object name, the condition evaluates to true.
                 #[prost(string, repeated, tag = "12")]
-                pub matches_suffix: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+                pub matches_suffix: ::prost::alloc::vec::Vec<
+                    ::prost::alloc::string::String,
+                >,
             }
         }
     }
@@ -1650,8 +1711,8 @@ pub struct BucketAccessControl {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ChecksummedData {
     /// The data.
-    #[prost(bytes = "vec", tag = "1")]
-    pub content: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "bytes", tag = "1")]
+    pub content: ::prost::bytes::Bytes,
     /// If set, the CRC32C digest of the content field.
     #[prost(fixed32, optional, tag = "2")]
     pub crc32c: ::core::option::Option<u32>,
@@ -1673,8 +1734,8 @@ pub struct ObjectChecksums {
     /// Not all objects will provide an MD5 hash. For example, composite objects
     /// provide only crc32c hashes.
     /// This value is equivalent to running `cat object.txt | openssl md5 -binary`
-    #[prost(bytes = "vec", tag = "2")]
-    pub md5_hash: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "bytes", tag = "2")]
+    pub md5_hash: ::prost::bytes::Bytes,
 }
 /// Hmac Key Metadata, which includes all information other than the secret.
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1737,7 +1798,10 @@ pub struct Notification {
     /// A list of additional attributes to attach to each Pub/Sub
     /// message published for this notification subscription.
     #[prost(map = "string, string", tag = "4")]
-    pub custom_attributes: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    pub custom_attributes: ::std::collections::HashMap<
+        ::prost::alloc::string::String,
+        ::prost::alloc::string::String,
+    >,
     /// If present, only apply this notification config to object names that
     /// begin with this prefix.
     #[prost(string, tag = "5")]
@@ -1756,8 +1820,8 @@ pub struct CustomerEncryption {
     pub encryption_algorithm: ::prost::alloc::string::String,
     /// SHA256 hash value of the encryption key.
     /// In raw bytes format (not base64-encoded).
-    #[prost(bytes = "vec", tag = "3")]
-    pub key_sha256_bytes: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "bytes", tag = "3")]
+    pub key_sha256_bytes: ::prost::bytes::Bytes,
 }
 /// An object.
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1890,7 +1954,10 @@ pub struct Object {
     pub retention_expire_time: ::core::option::Option<::prost_types::Timestamp>,
     /// User-provided metadata, in key/value pairs.
     #[prost(map = "string, string", tag = "22")]
-    pub metadata: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    pub metadata: ::std::collections::HashMap<
+        ::prost::alloc::string::String,
+        ::prost::alloc::string::String,
+    >,
     /// Whether an object is under event-based hold.
     /// An event-based hold is a way to force the retention of an object until
     /// after some event occurs. Once the hold is released by explicitly setting
@@ -2035,8 +2102,8 @@ pub struct ContentRange {
 /// Generated client implementations.
 pub mod storage_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
-    use tonic::codegen::http::Uri;
     use tonic::codegen::*;
+    use tonic::codegen::http::Uri;
     /// ## API Overview and Naming Syntax
     ///
     /// The Cloud Storage gRPC API allows applications to read and write data through
@@ -2088,15 +2155,22 @@ pub mod storage_client {
             let inner = tonic::client::Grpc::with_origin(inner, origin);
             Self { inner }
         }
-        pub fn with_interceptor<F>(inner: T, interceptor: F) -> StorageClient<InterceptedService<T, F>>
+        pub fn with_interceptor<F>(
+            inner: T,
+            interceptor: F,
+        ) -> StorageClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
                 http::Request<tonic::body::BoxBody>,
-                Response = http::Response<<T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody>,
+                Response = http::Response<
+                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                >,
             >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error: Into<StdError> + Send + Sync,
+            <T as tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+            >>::Error: Into<StdError> + Send + Sync,
         {
             StorageClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -2120,11 +2194,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteBucketRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/DeleteBucket");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/DeleteBucket",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Returns metadata for the specified bucket.
@@ -2132,11 +2214,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetBucketRequest>,
         ) -> Result<tonic::Response<super::Bucket>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/GetBucket");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/GetBucket",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Creates a new bucket.
@@ -2144,11 +2234,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::CreateBucketRequest>,
         ) -> Result<tonic::Response<super::Bucket>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/CreateBucket");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/CreateBucket",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Retrieves a list of buckets for a given project.
@@ -2156,11 +2254,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ListBucketsRequest>,
         ) -> Result<tonic::Response<super::ListBucketsResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/ListBuckets");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/ListBuckets",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Locks retention policy on a bucket.
@@ -2168,11 +2274,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::LockBucketRetentionPolicyRequest>,
         ) -> Result<tonic::Response<super::Bucket>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/LockBucketRetentionPolicy");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/LockBucketRetentionPolicy",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Gets the IAM policy for a specified bucket or object.
@@ -2181,13 +2295,26 @@ pub mod storage_client {
         /// projects/_/buckets/<bucket_name>/objects/<object_name> for an object.
         pub async fn get_iam_policy(
             &mut self,
-            request: impl tonic::IntoRequest<super::super::super::iam::v1::GetIamPolicyRequest>,
-        ) -> Result<tonic::Response<super::super::super::iam::v1::Policy>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            request: impl tonic::IntoRequest<
+                super::super::super::iam::v1::GetIamPolicyRequest,
+            >,
+        ) -> Result<
+            tonic::Response<super::super::super::iam::v1::Policy>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/GetIamPolicy");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/GetIamPolicy",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Updates an IAM policy for the specified bucket or object.
@@ -2196,13 +2323,26 @@ pub mod storage_client {
         /// projects/_/buckets/<bucket_name>/objects/<object_name> for an object.
         pub async fn set_iam_policy(
             &mut self,
-            request: impl tonic::IntoRequest<super::super::super::iam::v1::SetIamPolicyRequest>,
-        ) -> Result<tonic::Response<super::super::super::iam::v1::Policy>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            request: impl tonic::IntoRequest<
+                super::super::super::iam::v1::SetIamPolicyRequest,
+            >,
+        ) -> Result<
+            tonic::Response<super::super::super::iam::v1::Policy>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/SetIamPolicy");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/SetIamPolicy",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Tests a set of permissions on the given bucket or object to see which, if
@@ -2212,13 +2352,26 @@ pub mod storage_client {
         /// projects/_/buckets/<bucket_name>/objects/<object_name> for an object.
         pub async fn test_iam_permissions(
             &mut self,
-            request: impl tonic::IntoRequest<super::super::super::iam::v1::TestIamPermissionsRequest>,
-        ) -> Result<tonic::Response<super::super::super::iam::v1::TestIamPermissionsResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            request: impl tonic::IntoRequest<
+                super::super::super::iam::v1::TestIamPermissionsRequest,
+            >,
+        ) -> Result<
+            tonic::Response<super::super::super::iam::v1::TestIamPermissionsResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/TestIamPermissions");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/TestIamPermissions",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Updates a bucket. Equivalent to JSON API's storage.buckets.patch method.
@@ -2226,11 +2379,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateBucketRequest>,
         ) -> Result<tonic::Response<super::Bucket>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/UpdateBucket");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/UpdateBucket",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Permanently deletes a notification subscription.
@@ -2238,11 +2399,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteNotificationRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/DeleteNotification");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/DeleteNotification",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// View a notification config.
@@ -2250,11 +2419,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetNotificationRequest>,
         ) -> Result<tonic::Response<super::Notification>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/GetNotification");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/GetNotification",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Creates a notification subscription for a given bucket.
@@ -2265,11 +2442,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::CreateNotificationRequest>,
         ) -> Result<tonic::Response<super::Notification>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/CreateNotification");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/CreateNotification",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Retrieves a list of notification subscriptions for a given bucket.
@@ -2277,11 +2462,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ListNotificationsRequest>,
         ) -> Result<tonic::Response<super::ListNotificationsResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/ListNotifications");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/ListNotifications",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Concatenates a list of existing objects into a new object in the same
@@ -2290,11 +2483,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ComposeObjectRequest>,
         ) -> Result<tonic::Response<super::Object>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/ComposeObject");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/ComposeObject",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Deletes an object and its metadata. Deletions are permanent if versioning
@@ -2303,23 +2504,42 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteObjectRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/DeleteObject");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/DeleteObject",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Cancels an in-progress resumable upload.
         pub async fn cancel_resumable_write(
             &mut self,
             request: impl tonic::IntoRequest<super::CancelResumableWriteRequest>,
-        ) -> Result<tonic::Response<super::CancelResumableWriteResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+        ) -> Result<
+            tonic::Response<super::CancelResumableWriteResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/CancelResumableWrite");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/CancelResumableWrite",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Retrieves an object's metadata.
@@ -2327,23 +2547,42 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetObjectRequest>,
         ) -> Result<tonic::Response<super::Object>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/GetObject");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/GetObject",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Reads an object's data.
         pub async fn read_object(
             &mut self,
             request: impl tonic::IntoRequest<super::ReadObjectRequest>,
-        ) -> Result<tonic::Response<tonic::codec::Streaming<super::ReadObjectResponse>>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+        ) -> Result<
+            tonic::Response<tonic::codec::Streaming<super::ReadObjectResponse>>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/ReadObject");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/ReadObject",
+            );
             self.inner.server_streaming(request.into_request(), path, codec).await
         }
         /// Updates an object's metadata.
@@ -2352,11 +2591,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateObjectRequest>,
         ) -> Result<tonic::Response<super::Object>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/UpdateObject");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/UpdateObject",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Stores a new object and metadata.
@@ -2413,13 +2660,23 @@ pub mod storage_client {
         /// metadata.
         pub async fn write_object(
             &mut self,
-            request: impl tonic::IntoStreamingRequest<Message = super::WriteObjectRequest>,
+            request: impl tonic::IntoStreamingRequest<
+                Message = super::WriteObjectRequest,
+            >,
         ) -> Result<tonic::Response<super::WriteObjectResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/WriteObject");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/WriteObject",
+            );
             self.inner
                 .client_streaming(request.into_streaming_request(), path, codec)
                 .await
@@ -2429,11 +2686,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ListObjectsRequest>,
         ) -> Result<tonic::Response<super::ListObjectsResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/ListObjects");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/ListObjects",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Rewrites a source object to a destination object. Optionally overrides
@@ -2442,11 +2707,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::RewriteObjectRequest>,
         ) -> Result<tonic::Response<super::RewriteResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/RewriteObject");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/RewriteObject",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Starts a resumable write. How long the write operation remains valid, and
@@ -2456,11 +2729,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::StartResumableWriteRequest>,
         ) -> Result<tonic::Response<super::StartResumableWriteResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/StartResumableWrite");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/StartResumableWrite",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Determines the `persisted_size` for an object that is being written, which
@@ -2480,11 +2761,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::QueryWriteStatusRequest>,
         ) -> Result<tonic::Response<super::QueryWriteStatusResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/QueryWriteStatus");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/QueryWriteStatus",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Retrieves the name of a project's Google Cloud Storage service account.
@@ -2492,11 +2781,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetServiceAccountRequest>,
         ) -> Result<tonic::Response<super::ServiceAccount>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/GetServiceAccount");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/GetServiceAccount",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Creates a new HMAC key for the given service account.
@@ -2504,11 +2801,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::CreateHmacKeyRequest>,
         ) -> Result<tonic::Response<super::CreateHmacKeyResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/CreateHmacKey");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/CreateHmacKey",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Deletes a given HMAC key.  Key must be in an INACTIVE state.
@@ -2516,11 +2821,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteHmacKeyRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/DeleteHmacKey");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/DeleteHmacKey",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Gets an existing HMAC key metadata for the given id.
@@ -2528,11 +2841,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetHmacKeyRequest>,
         ) -> Result<tonic::Response<super::HmacKeyMetadata>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/GetHmacKey");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/GetHmacKey",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Lists HMAC keys under a given project with the additional filters provided.
@@ -2540,11 +2861,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ListHmacKeysRequest>,
         ) -> Result<tonic::Response<super::ListHmacKeysResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/ListHmacKeys");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/ListHmacKeys",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Updates a given HMAC key state between ACTIVE and INACTIVE.
@@ -2552,11 +2881,19 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateHmacKeyRequest>,
         ) -> Result<tonic::Response<super::HmacKeyMetadata>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/UpdateHmacKey");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/UpdateHmacKey",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
     }

@@ -237,8 +237,8 @@ pub struct ValidateMessageRequest {
     #[prost(string, tag = "1")]
     pub parent: ::prost::alloc::string::String,
     /// Message to validate against the provided `schema_spec`.
-    #[prost(bytes = "vec", tag = "4")]
-    pub message: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "bytes", tag = "4")]
+    pub message: ::prost::bytes::Bytes,
     /// The encoding expected for messages
     #[prost(enumeration = "Encoding", tag = "5")]
     pub encoding: i32,
@@ -612,8 +612,8 @@ pub struct Topic {
 pub struct PubsubMessage {
     /// The message data field. If this field is empty, the message must contain
     /// at least one attribute.
-    #[prost(bytes = "vec", tag = "1")]
-    pub data: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "bytes", tag = "1")]
+    pub data: ::prost::bytes::Bytes,
     /// Attributes for this message. If this field is empty, the message must
     /// contain non-empty data. This can be used to filter messages on the
     /// subscription.
