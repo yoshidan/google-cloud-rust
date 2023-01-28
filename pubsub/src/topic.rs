@@ -300,7 +300,7 @@ mod tests {
         // Publish message.
         let msgs = ["msg1", "msg2"]
             .map(|v| PubsubMessage {
-                data: v.as_bytes().to_vec(),
+                data: v.into(),
                 ..Default::default()
             })
             .to_vec();
