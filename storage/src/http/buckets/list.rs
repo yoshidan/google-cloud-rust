@@ -33,6 +33,6 @@ pub struct ListBucketsResponse {
 }
 
 pub(crate) fn build(base_url: &str, client: &Client, req: &ListBucketsRequest) -> RequestBuilder {
-    let url = format!("{}/b", base_url);
+    let url = format!("{base_url}/b");
     client.get(url).query(&req)
 }

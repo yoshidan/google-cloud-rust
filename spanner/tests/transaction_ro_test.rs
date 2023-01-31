@@ -22,7 +22,7 @@ fn init() {
 async fn assert_read(tx: &mut ReadOnlyTransaction, user_id: &str, now: &OffsetDateTime, cts: &OffsetDateTime) {
     let reader = match tx.read("User", &user_columns(), Key::new(&user_id)).await {
         Ok(tx) => tx,
-        Err(status) => panic!("read error {:?}", status),
+        Err(status) => panic!("read error {status:?}"),
     };
     let mut rows = all_rows(reader).await.unwrap();
     assert_eq!(1, rows.len(), "row must exists");
@@ -42,7 +42,7 @@ async fn assert_query(tx: &mut ReadOnlyTransaction, user_id: &str, now: &OffsetD
 async fn execute_query(tx: &mut ReadOnlyTransaction, stmt: Statement) -> Vec<Row> {
     let reader = match tx.query(stmt).await {
         Ok(tx) => tx,
-        Err(status) => panic!("query error {:?}", status),
+        Err(status) => panic!("query error {status:?}"),
     };
     all_rows(reader).await.unwrap()
 }
@@ -164,7 +164,7 @@ async fn test_batch_partition_query_and_read() {
         .unwrap();
 
     let many = (0..20000)
-        .map(|x| create_user_mutation(&format!("user_partitionx_{}", x), &now))
+        .map(|x| create_user_mutation(&format!("user_partitionx_{x}"), &now))
         .collect();
     let cr2 = data_client.apply(many).await.unwrap();
 
@@ -197,7 +197,7 @@ async fn test_batch_partition_query_and_read() {
         .replace_nanosecond(ts.nanos as u32)
         .unwrap();
     (0..20000).for_each(|x| {
-        let user_id = format!("user_partitionx_{}", x);
+        let user_id = format!("user_partitionx_{x}");
         assert_user_row(map.get(&user_id).unwrap(), &user_id, &now, &ts)
     });
 }
@@ -205,13 +205,13 @@ async fn test_batch_partition_query_and_read() {
 async fn test_query(count: usize, prefix: &str) {
     let now = OffsetDateTime::now_utc();
     let mutations = (0..count)
-        .map(|x| create_user_mutation(&format!("user_{}_{}", prefix, x), &now))
+        .map(|x| create_user_mutation(&format!("user_{prefix}_{x}"), &now))
         .collect();
     let data_client = create_data_client().await;
     let cr = data_client.apply(mutations).await.unwrap();
 
     let mut tx = data_client.read_only_transaction().await.unwrap();
-    let stmt = Statement::new(format!("SELECT *, Array[UserId,UserId,UserId,UserId,UserId] as UserIds, Array[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20] as NumArray FROM User p WHERE p.UserId LIKE 'user_{}_%' ORDER BY UserId ", prefix));
+    let stmt = Statement::new(format!("SELECT *, Array[UserId,UserId,UserId,UserId,UserId] as UserIds, Array[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20] as NumArray FROM User p WHERE p.UserId LIKE 'user_{prefix}_%' ORDER BY UserId "));
     let rows = execute_query(&mut tx, stmt).await;
     assert_eq!(count, rows.len());
 
@@ -220,7 +220,7 @@ async fn test_query(count: usize, prefix: &str) {
         .unwrap()
         .replace_nanosecond(ts.nanos as u32)
         .unwrap();
-    let mut user_ids: Vec<String> = (0..count).map(|x| format!("user_{}_{}", prefix, x)).collect();
+    let mut user_ids: Vec<String> = (0..count).map(|x| format!("user_{prefix}_{x}")).collect();
     user_ids.sort();
     for (x, user_id) in user_ids.iter().enumerate() {
         let row = rows.get(x).unwrap();

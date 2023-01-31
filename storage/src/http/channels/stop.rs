@@ -11,6 +11,6 @@ pub struct StopChannelRequest {
 
 #[allow(dead_code)]
 pub(crate) fn build(base_url: &str, client: &Client, req: &StopChannelRequest) -> RequestBuilder {
-    let url = format!("{}/channels/stop", base_url);
+    let url = format!("{base_url}/channels/stop");
     client.post(url).json(&req.channel)
 }

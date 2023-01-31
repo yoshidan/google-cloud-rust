@@ -17,7 +17,7 @@ mod tests {
         std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
         let mut client = InstanceAdminClient::default().await.unwrap();
         let instance_id = format!("test{}ut", OffsetDateTime::now_utc().unix_timestamp_nanos());
-        let name = format!("projects/local-project/instances/{}", instance_id);
+        let name = format!("projects/local-project/instances/{instance_id}");
         let request = CreateInstanceRequest {
             parent: "projects/local-project".to_string(),
             instance_id: instance_id.to_string(),
@@ -37,11 +37,11 @@ mod tests {
 
         let creation_result = match client.create_instance(request, None, None).await {
             Ok(mut res) => res.wait(None, None).await,
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
         match creation_result {
             Ok(res) => res.unwrap(),
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         }
     }
 
@@ -68,7 +68,7 @@ mod tests {
                 let instance = res.into_inner();
                 assert_eq!(instance.name, name);
             }
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
     }
 
@@ -100,7 +100,7 @@ mod tests {
                 println!("size = {}", res.len());
                 assert!(!res.is_empty());
             }
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
     }
 
@@ -120,7 +120,7 @@ mod tests {
                 println!("size = {}", res.len());
                 assert!(!res.is_empty());
             }
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
     }
 
@@ -137,7 +137,7 @@ mod tests {
                 let instance = res;
                 assert_eq!(instance.name, name);
             }
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
     }
 }

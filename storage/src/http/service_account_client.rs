@@ -18,7 +18,7 @@ impl ServiceAccountClient {
     pub(crate) fn new(ts: Arc<dyn TokenSource>, endpoint: &str) -> Self {
         Self {
             ts,
-            v1_endpoint: format!("{}/v1", endpoint),
+            v1_endpoint: format!("{endpoint}/v1"),
         }
     }
 

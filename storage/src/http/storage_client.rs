@@ -78,8 +78,8 @@ impl StorageClient {
     pub(crate) fn new(ts: Arc<dyn TokenSource>, endpoint: &str) -> Self {
         Self {
             ts,
-            v1_endpoint: format!("{}/storage/v1", endpoint),
-            v1_upload_endpoint: format!("{}/upload/storage/v1", endpoint),
+            v1_endpoint: format!("{endpoint}/storage/v1"),
+            v1_upload_endpoint: format!("{endpoint}/upload/storage/v1"),
         }
     }
 
@@ -2271,7 +2271,7 @@ async fn map_error(r: Response) -> Error {
     let status = r.status().as_u16();
     let text = match r.text().await {
         Ok(text) => text,
-        Err(e) => format!("{}", e),
+        Err(e) => format!("{e}"),
     };
     Error::Response(status, text)
 }
@@ -2718,7 +2718,7 @@ mod test {
                 &InsertNotificationRequest {
                     bucket: bucket_name.to_string(),
                     notification: NotificationCreationConfig {
-                        topic: format!("projects/{}/topics/{}", PROJECT, bucket_name),
+                        topic: format!("projects/{PROJECT}/topics/{bucket_name}"),
                         event_types: Some(vec![EventType::ObjectMetadataUpdate, EventType::ObjectDelete]),
                         object_name_prefix: Some("notification-test".to_string()),
                         ..Default::default()
@@ -2753,7 +2753,7 @@ mod test {
             .create_hmac_key(
                 &CreateHmacKeyRequest {
                     project_id: PROJECT.to_string(),
-                    service_account_email: format!("spanner@{}.iam.gserviceaccount.com", PROJECT),
+                    service_account_email: format!("spanner@{PROJECT}.iam.gserviceaccount.com"),
                 },
                 None,
             )

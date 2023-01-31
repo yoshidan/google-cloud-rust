@@ -625,7 +625,7 @@ mod tests {
 
         let uuid = Uuid::new_v4().hyphenated().to_string();
         let subscription_name = format!("projects/{}/subscriptions/s{}", PROJECT_NAME, &uuid);
-        let topic_name = format!("projects/{}/topics/test-topic1", PROJECT_NAME);
+        let topic_name = format!("projects/{PROJECT_NAME}/topics/test-topic1");
         let cancel = CancellationToken::new();
         let subscription = Subscription::new(subscription_name, client);
         let config = SubscriptionConfig {
@@ -651,7 +651,7 @@ mod tests {
             ..Default::default()
         };
         let req = PublishRequest {
-            topic: format!("projects/{}/topics/test-topic1", PROJECT_NAME),
+            topic: format!("projects/{PROJECT_NAME}/topics/test-topic1"),
             messages: vec![msg],
         };
         let _ = pubc.publish(req, Some(CancellationToken::new()), None).await;
@@ -660,7 +660,7 @@ mod tests {
     async fn test_subscription(enable_exactly_once_delivery: bool) -> Result<(), anyhow::Error> {
         let subscription = create_subscription(enable_exactly_once_delivery).await.unwrap();
 
-        let topic_name = format!("projects/{}/topics/test-topic1", PROJECT_NAME);
+        let topic_name = format!("projects/{PROJECT_NAME}/topics/test-topic1");
         let cancel = CancellationToken::new();
         let config = subscription.config(Some(cancel.clone()), None).await?;
         assert_eq!(config.0, topic_name);
@@ -882,7 +882,7 @@ mod tests {
         let snapshot_name = format!("snapshot-{}", rand::random::<u64>());
         let labels: HashMap<String, String> =
             HashMap::from_iter([("label-1".into(), "v1".into()), ("label-2".into(), "v2".into())]);
-        let expected_fq_snap_name = format!("projects/{}/snapshots/{}", PROJECT_NAME, snapshot_name);
+        let expected_fq_snap_name = format!("projects/{PROJECT_NAME}/snapshots/{snapshot_name}");
 
         // cleanup; TODO: remove?
         let _response = subscription

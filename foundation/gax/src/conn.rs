@@ -39,9 +39,9 @@ impl AsyncPredicate<Request<BoxBody>> for AsyncAuthInterceptor {
             let token = ts
                 .token()
                 .await
-                .map_err(|e| Status::new(Code::Unauthenticated, format!("token error: {:?}", e)))?;
+                .map_err(|e| Status::new(Code::Unauthenticated, format!("token error: {e:?}")))?;
             let token_header = HeaderValue::from_str(token.value().as_ref())
-                .map_err(|e| Status::new(Code::Unauthenticated, format!("token error: {:?}", e)))?;
+                .map_err(|e| Status::new(Code::Unauthenticated, format!("token error: {e:?}")))?;
             let (mut parts, body) = request.into_parts();
             parts.headers.insert(AUTHORIZATION, token_header);
             Ok(Request::from_parts(parts, body))
@@ -158,7 +158,7 @@ impl ConnectionManager {
 
     async fn create_emulator_connections(host: &str) -> Result<Vec<Channel>, Error> {
         let mut conns = Vec::with_capacity(1);
-        let endpoint = TonicChannel::from_shared(format!("http://{}", host).into_bytes())
+        let endpoint = TonicChannel::from_shared(format!("http://{host}").into_bytes())
             .map_err(|_| Error::InvalidEmulatorHOST(host.to_string()))?;
         let con = Self::connect(endpoint).await?;
         conns.push(

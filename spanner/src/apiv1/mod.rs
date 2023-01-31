@@ -84,7 +84,7 @@ mod tests {
                 println!("created session = {}", res.get_ref().name);
                 assert!(!res.get_ref().name.is_empty());
             }
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
     }
 
@@ -107,7 +107,7 @@ mod tests {
                     res.get_ref().session.len()
                 );
             }
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
     }
 
@@ -124,7 +124,7 @@ mod tests {
             Ok(res) => {
                 assert_eq!(res.get_ref().name, session.name.to_string());
             }
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
     }
 
@@ -143,7 +143,7 @@ mod tests {
             Ok(res) => {
                 println!("list session size = {}", res.get_ref().sessions.len());
             }
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
     }
 
@@ -169,7 +169,7 @@ mod tests {
 
             match client.delete_session(request, None, None).await {
                 Ok(_) => {}
-                Err(err) => panic!("err: {:?}", err),
+                Err(err) => panic!("err: {err:?}"),
             };
         }
     }
@@ -196,7 +196,7 @@ mod tests {
             Ok(res) => {
                 assert_eq!(1, res.into_inner().rows.len());
             }
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
     }
 
@@ -228,7 +228,7 @@ mod tests {
                     None
                 }
             }
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
         assert!(resume_token.is_some());
         println!("resume token = {:?}", resume_token.clone().unwrap());
@@ -239,7 +239,7 @@ mod tests {
                 let mut result = res.into_inner();
                 assert!(!result.message().await.unwrap().unwrap().values.is_empty())
             }
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         }
     }
 
@@ -262,10 +262,10 @@ mod tests {
         match client.begin_transaction(request, None, None).await {
             Ok(res) => {
                 let tx_id = res.into_inner().id;
-                println!("tx id is {:?}", tx_id);
+                println!("tx id is {tx_id:?}");
                 assert!(!tx_id.is_empty());
             }
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
     }
 
@@ -313,9 +313,9 @@ mod tests {
         match result {
             Ok(res) => {
                 let status = res.into_inner().status.unwrap();
-                assert_eq!(Code::Ok, Code::from(status.code), "gRPC success but error found : {:?}", status);
+                assert_eq!(Code::Ok, Code::from(status.code), "gRPC success but error found : {status:?}");
             }
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
     }
 
@@ -358,8 +358,7 @@ mod tests {
                 assert_eq!(
                     Code::InvalidArgument,
                     status.code(),
-                    "gRPC success but error found : {:?}",
-                    status
+                    "gRPC success but error found : {status:?}"
                 );
             }
         };
@@ -391,7 +390,7 @@ mod tests {
             Ok(res) => {
                 println!("row size = {:?}", res.into_inner().rows.len());
             }
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
     }
 
@@ -420,9 +419,9 @@ mod tests {
         match client.streaming_read(request, None, None).await {
             Ok(res) => match res.into_inner().message().await {
                 Ok(..) => {}
-                Err(err) => panic!("err: {:?}", err),
+                Err(err) => panic!("err: {err:?}"),
             },
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
     }
 
@@ -470,7 +469,7 @@ mod tests {
             Ok(res) => {
                 assert!(res.into_inner().commit_timestamp.is_some());
             }
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
     }
 
@@ -487,7 +486,7 @@ mod tests {
 
         match client.rollback(request, None, None).await {
             Ok(_) => {}
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
     }
 

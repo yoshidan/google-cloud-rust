@@ -71,7 +71,7 @@ impl DatabaseAdminClient {
         //eager loading
         loop {
             let action = || async {
-                let request = create_request(format!("parent={}", parent), req.clone());
+                let request = create_request(format!("parent={parent}"), req.clone());
                 self.inner.clone().list_databases(request).await.map(|d| d.into_inner())
             };
             let response = invoke(cancel.clone(), retry.clone(), action).await?;
@@ -119,7 +119,7 @@ impl DatabaseAdminClient {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let parent = &req.parent;
         let action = || async {
-            let request = create_request(format!("parent={}", parent), req.clone());
+            let request = create_request(format!("parent={parent}"), req.clone());
             self.inner.clone().create_database(request).await
         };
         invoke(cancel, retry, action)
@@ -159,7 +159,7 @@ impl DatabaseAdminClient {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let name = &req.name;
         let action = || async {
-            let request = create_request(format!("name={}", name), req.clone());
+            let request = create_request(format!("name={name}"), req.clone());
             self.inner.clone().get_database(request).await
         };
         invoke(cancel, retry, action).await
@@ -204,7 +204,7 @@ impl DatabaseAdminClient {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let database = &req.database;
         let action = || async {
-            let request = create_request(format!("database={}", database), req.clone());
+            let request = create_request(format!("database={database}"), req.clone());
             self.inner.clone().update_database_ddl(request).await
         };
         invoke(cancel, retry, action)
@@ -246,7 +246,7 @@ impl DatabaseAdminClient {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let database = &req.database;
         let action = || async {
-            let request = create_request(format!("database={}", database), req.clone());
+            let request = create_request(format!("database={database}"), req.clone());
             self.inner.clone().drop_database(request).await
         };
         invoke(cancel, retry, action).await
@@ -286,7 +286,7 @@ impl DatabaseAdminClient {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let database = &req.database;
         let action = || async {
-            let request = create_request(format!("database={}", database), req.clone());
+            let request = create_request(format!("database={database}"), req.clone());
             self.inner.clone().get_database_ddl(request).await
         };
         invoke(cancel, retry, action).await
@@ -330,7 +330,7 @@ impl DatabaseAdminClient {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let resource = &req.resource;
         let action = || async {
-            let request = create_request(format!("resource={}", resource), req.clone());
+            let request = create_request(format!("resource={resource}"), req.clone());
             self.inner.clone().set_iam_policy(request).await
         };
         invoke(cancel, retry, action).await
@@ -375,7 +375,7 @@ impl DatabaseAdminClient {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let resource = &req.resource;
         let action = || async {
-            let request = create_request(format!("resource={}", resource), req.clone());
+            let request = create_request(format!("resource={resource}"), req.clone());
             self.inner.clone().get_iam_policy(request).await
         };
         invoke(cancel, retry, action).await
@@ -422,7 +422,7 @@ impl DatabaseAdminClient {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let resource = &req.resource;
         let action = || async {
-            let request = create_request(format!("resource={}", resource), req.clone());
+            let request = create_request(format!("resource={resource}"), req.clone());
             self.inner.clone().test_iam_permissions(request).await
         };
         invoke(cancel, retry, action).await
@@ -471,7 +471,7 @@ impl DatabaseAdminClient {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let parent = &req.parent;
         let action = || async {
-            let request = create_request(format!("parent={}", parent), req.clone());
+            let request = create_request(format!("parent={parent}"), req.clone());
             self.inner.clone().create_backup(request).await
         };
         invoke(cancel, retry, action)
@@ -511,7 +511,7 @@ impl DatabaseAdminClient {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let name = &req.name;
         let action = || async {
-            let request = create_request(format!("name={}", name), req.clone());
+            let request = create_request(format!("name={name}"), req.clone());
             self.inner.clone().get_backup(request).await
         };
         invoke(cancel, retry, action).await
@@ -549,7 +549,7 @@ impl DatabaseAdminClient {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let name = &req.backup.as_ref().unwrap().name;
         let action = || async {
-            let request = create_request(format!("backup.name={}", name), req.clone());
+            let request = create_request(format!("backup.name={name}"), req.clone());
             self.inner.clone().update_backup(request).await
         };
         invoke(cancel, retry, action).await
@@ -587,7 +587,7 @@ impl DatabaseAdminClient {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let name = &req.name;
         let action = || async {
-            let request = create_request(format!("name={}", name), req.clone());
+            let request = create_request(format!("name={name}"), req.clone());
             self.inner.clone().delete_backup(request).await
         };
         invoke(cancel, retry, action).await
@@ -630,7 +630,7 @@ impl DatabaseAdminClient {
         //eager loading
         loop {
             let action = || async {
-                let request = create_request(format!("parent={}", parent), req.clone());
+                let request = create_request(format!("parent={parent}"), req.clone());
                 self.inner.clone().list_backups(request).await.map(|d| d.into_inner())
             };
             let response = invoke(cancel.clone(), retry.clone(), action).await?;
@@ -690,7 +690,7 @@ impl DatabaseAdminClient {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let parent = &req.parent;
         let action = || async {
-            let request = create_request(format!("parent={}", parent), req.clone());
+            let request = create_request(format!("parent={parent}"), req.clone());
             self.inner.clone().restore_database(request).await
         };
         invoke(cancel, retry, action)
@@ -742,7 +742,7 @@ impl DatabaseAdminClient {
         //eager loading
         loop {
             let action = || async {
-                let request = create_request(format!("parent={}", parent), req.clone());
+                let request = create_request(format!("parent={parent}"), req.clone());
                 self.inner
                     .clone()
                     .list_backup_operations(request)
@@ -800,7 +800,7 @@ impl DatabaseAdminClient {
         //eager loading
         loop {
             let action = || async {
-                let request = create_request(format!("parent={}", parent), req.clone());
+                let request = create_request(format!("parent={parent}"), req.clone());
                 self.inner
                     .clone()
                     .list_database_operations(request)

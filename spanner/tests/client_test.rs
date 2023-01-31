@@ -86,7 +86,7 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
 #[tokio::test]
 #[serial]
 async fn test_apply() -> Result<(), anyhow::Error> {
-    let users: Vec<String> = (0..2).map(|x| format!("user_client_{}", x)).collect();
+    let users: Vec<String> = (0..2).map(|x| format!("user_client_{x}")).collect();
     let client = Client::new(DATABASE).await.context("error")?;
     let now = OffsetDateTime::now_utc();
     let ms = users.iter().map(|id| create_user_mutation(id, &now)).collect();
@@ -108,7 +108,7 @@ async fn test_apply() -> Result<(), anyhow::Error> {
 #[tokio::test]
 #[serial]
 async fn test_apply_at_least_once() -> Result<(), anyhow::Error> {
-    let users: Vec<String> = (0..2).map(|x| format!("user_client_x_{}", x)).collect();
+    let users: Vec<String> = (0..2).map(|x| format!("user_client_x_{x}")).collect();
     let client = Client::new(DATABASE).await.context("error")?;
     let now = OffsetDateTime::now_utc();
     let ms = users.iter().map(|id| create_user_mutation(id, &now)).collect();

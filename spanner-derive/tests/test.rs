@@ -113,7 +113,7 @@ async fn test_table_derive() -> Result<(), anyhow::Error> {
     let client = Client::new("projects/local-project/instances/test-instance/databases/local-database").await?;
 
     let now = OffsetDateTime::now_utc().unix_timestamp();
-    let user_id = format!("user{}", now);
+    let user_id = format!("user{now}");
     let user = User {
         user_id: user_id.clone(),
         not_null_numeric: SpannerNumeric::new("-99999999999999999999999999999.999999999"),
@@ -146,7 +146,7 @@ async fn test_query_derive() -> Result<(), anyhow::Error> {
     let client = Client::new("projects/local-project/instances/test-instance/databases/local-database").await?;
 
     let now = OffsetDateTime::now_utc().unix_timestamp();
-    let user_id = format!("user-q-{}", now);
+    let user_id = format!("user-q-{now}");
     let user = User {
         user_id: user_id.clone(),
         ..Default::default()

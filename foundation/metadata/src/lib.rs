@@ -43,7 +43,7 @@ async fn test_on_gce() -> Result<bool, Error> {
         .timeout(Duration::from_secs(3))
         .build()
         .unwrap();
-    let url = format!("http://{}", METADATA_IP);
+    let url = format!("http://{METADATA_IP}");
 
     let response = client.get(&url).send().await;
     if response.is_ok() {
@@ -85,7 +85,7 @@ pub async fn project_id() -> String {
 }
 
 pub async fn email(service_account: &str) -> Result<String, Error> {
-    get_etag_with_trim(&format!("instance/service-accounts/{}/email", service_account)).await
+    get_etag_with_trim(&format!("instance/service-accounts/{service_account}/email")).await
 }
 
 async fn get_etag_with_trim(suffix: &str) -> Result<String, Error> {
@@ -95,7 +95,7 @@ async fn get_etag_with_trim(suffix: &str) -> Result<String, Error> {
 
 async fn get_etag(suffix: &str) -> Result<String, Error> {
     let host = std::env::var(METADATA_HOST_ENV).unwrap_or_else(|_| METADATA_GOOGLE_HOST.to_string());
-    let url = format!("http://{}/computeMetadata/v1/{}", host, suffix);
+    let url = format!("http://{host}/computeMetadata/v1/{suffix}");
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(3))
         .build()

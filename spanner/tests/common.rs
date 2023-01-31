@@ -227,14 +227,14 @@ pub async fn assert_partitioned_query(
 pub async fn execute_partitioned_query(tx: &mut BatchReadOnlyTransaction, stmt: Statement) -> Vec<Row> {
     let partitions = match tx.partition_query(stmt).await {
         Ok(tx) => tx,
-        Err(status) => panic!("query error {:?}", status),
+        Err(status) => panic!("query error {status:?}"),
     };
     println!("partition count = {}", partitions.len());
     let mut rows = vec![];
     for p in partitions.into_iter() {
         let reader = match tx.execute(p, None).await {
             Ok(tx) => tx,
-            Err(status) => panic!("query error {:?}", status),
+            Err(status) => panic!("query error {status:?}"),
         };
         let rows_per_partition = all_rows(reader).await.unwrap();
         for x in rows_per_partition {
@@ -256,14 +256,14 @@ pub async fn assert_partitioned_read(
         .await
     {
         Ok(tx) => tx,
-        Err(status) => panic!("query error {:?}", status),
+        Err(status) => panic!("query error {status:?}"),
     };
     println!("partition count = {}", partitions.len());
     let mut rows = vec![];
     for p in partitions.into_iter() {
         let reader = match tx.execute(p, None).await {
             Ok(tx) => tx,
-            Err(status) => panic!("query error {:?}", status),
+            Err(status) => panic!("query error {status:?}"),
         };
         let rows_per_partition = all_rows(reader).await.unwrap();
         for x in rows_per_partition {
