@@ -10,10 +10,10 @@ pub enum Error {
     RefreshTokenIsRequired,
 
     #[error("json error: {0}")]
-    JsonError(#[from] json::Error),
+    JsonError(#[from] serde_json::Error),
 
     #[error("jwt error: {0}")]
-    JwtError(#[from] jwt::errors::Error),
+    JwtError(#[from] jsonwebtoken::errors::Error),
 
     #[error("http error: {0}")]
     HttpError(#[from] reqwest::Error),

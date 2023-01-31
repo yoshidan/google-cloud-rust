@@ -76,12 +76,12 @@ impl CredentialsFile {
             }
         };
 
-        Ok(json::from_slice(credentials_json.as_slice())?)
+        Ok(serde_json::from_slice(credentials_json.as_slice())?)
     }
 
     pub async fn new_from_file(filepath: String) -> Result<Self, Error> {
         let credentials_json = fs::read(filepath).await?;
-        Ok(json::from_slice(credentials_json.as_slice())?)
+        Ok(serde_json::from_slice(credentials_json.as_slice())?)
     }
 
     async fn json_from_env() -> Result<Vec<u8>, ()> {
@@ -120,9 +120,9 @@ impl CredentialsFile {
         Ok(credentials_json)
     }
 
-    pub(crate) fn try_to_private_key(&self) -> Result<jwt::EncodingKey, Error> {
+    pub(crate) fn try_to_private_key(&self) -> Result<jsonwebtoken::EncodingKey, Error> {
         match self.private_key.as_ref() {
-            Some(key) => Ok(jwt::EncodingKey::from_rsa_pem(key.as_bytes())?),
+            Some(key) => Ok(jsonwebtoken::EncodingKey::from_rsa_pem(key.as_bytes())?),
             None => Err(Error::NoPrivateKeyFound),
         }
     }
