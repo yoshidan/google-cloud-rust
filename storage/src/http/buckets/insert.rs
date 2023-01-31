@@ -92,6 +92,6 @@ pub struct InsertBucketRequest {
 }
 
 pub(crate) fn build(base_url: &str, client: &Client, req: &InsertBucketRequest) -> RequestBuilder {
-    let url = format!("{}/b", base_url);
+    let url = format!("{base_url}/b");
     client.post(url).query(&req.param).json(&req)
 }

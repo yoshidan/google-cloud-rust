@@ -63,7 +63,7 @@ impl PublisherClient {
         let name = &req.name;
         let action = || async {
             let mut client = self.client();
-            let request = create_request(format!("name={}", name), req.clone());
+            let request = create_request(format!("name={name}"), req.clone());
             client.create_topic(request).await
         };
         invoke(cancel, retry, action).await
@@ -105,7 +105,7 @@ impl PublisherClient {
         };
         let action = || async {
             let mut client = self.client();
-            let request = create_request(format!("name={}", name), req.clone());
+            let request = create_request(format!("name={name}"), req.clone());
             client.update_topic(request).await
         };
         invoke(cancel, retry, action).await
@@ -158,7 +158,7 @@ impl PublisherClient {
         let name = &req.topic;
         let action = || async {
             let mut client = self.client();
-            let request = create_request(format!("name={}", name), req.clone());
+            let request = create_request(format!("name={name}"), req.clone());
             client.publish(request).await
         };
         invoke(cancel, Some(setting), action).await
@@ -196,7 +196,7 @@ impl PublisherClient {
         let topic = &req.topic;
         let action = || async {
             let mut client = self.client();
-            let request = create_request(format!("topic={}", topic), req.clone());
+            let request = create_request(format!("topic={topic}"), req.clone());
             client.get_topic(request).await
         };
         invoke(cancel, retry, action).await
@@ -237,7 +237,7 @@ impl PublisherClient {
         loop {
             let action = || async {
                 let mut client = self.client();
-                let request = create_request(format!("project={}", project), req.clone());
+                let request = create_request(format!("project={project}"), req.clone());
                 client.list_topics(request).await.map(|d| d.into_inner())
             };
             let response = invoke(cancel.clone(), retry.clone(), action).await?;
@@ -284,7 +284,7 @@ impl PublisherClient {
         loop {
             let action = || async {
                 let mut client = self.client();
-                let request = create_request(format!("topic={}", topic), req.clone());
+                let request = create_request(format!("topic={topic}"), req.clone());
                 client.list_topic_subscriptions(request).await.map(|d| d.into_inner())
             };
             let response = invoke(cancel.clone(), retry.clone(), action).await?;
@@ -335,7 +335,7 @@ impl PublisherClient {
         loop {
             let action = || async {
                 let mut client = self.client();
-                let request = create_request(format!("topic={}", topic), req.clone());
+                let request = create_request(format!("topic={topic}"), req.clone());
                 client.list_topic_snapshots(request).await.map(|d| d.into_inner())
             };
             let response = invoke(cancel.clone(), retry.clone(), action).await?;
@@ -383,7 +383,7 @@ impl PublisherClient {
         let topic = &req.topic;
         let action = || async {
             let mut client = self.client();
-            let request = create_request(format!("topic={}", topic), req.clone());
+            let request = create_request(format!("topic={topic}"), req.clone());
             client.delete_topic(request).await
         };
         invoke(cancel, retry, action).await
@@ -424,7 +424,7 @@ impl PublisherClient {
         let subscription = &req.subscription;
         let action = || async {
             let mut client = self.client();
-            let request = create_request(format!("subscription={}", subscription), req.clone());
+            let request = create_request(format!("subscription={subscription}"), req.clone());
             client.detach_subscription(request).await
         };
         invoke(cancel, retry, action).await

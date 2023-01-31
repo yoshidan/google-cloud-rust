@@ -19,7 +19,7 @@ mod tests {
         let database_id = format!("test{}ut", OffsetDateTime::now_utc().unix_timestamp_nanos());
         let request = CreateDatabaseRequest {
             parent: "projects/local-project/instances/test-instance".to_string(),
-            create_statement: format!("CREATE DATABASE {}", database_id),
+            create_statement: format!("CREATE DATABASE {database_id}"),
             extra_statements: vec!["CREATE TABLE Tbl (ID STRING(MAX)) PRIMARY KEY(ID)".to_string()],
             encryption_config: None,
             database_dialect: DatabaseDialect::GoogleStandardSql.into(),
@@ -27,11 +27,11 @@ mod tests {
 
         let creation_result = match client.create_database(request, None, None).await {
             Ok(mut res) => res.wait(None, None).await,
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
         match creation_result {
             Ok(res) => res.unwrap(),
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         }
     }
 
@@ -55,7 +55,7 @@ mod tests {
                 let db = res.into_inner();
                 assert_eq!(db.name, name);
             }
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
     }
 
@@ -86,7 +86,7 @@ mod tests {
                 println!("size = {}", res.len());
                 assert!(!res.is_empty());
             }
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
     }
 
@@ -104,7 +104,7 @@ mod tests {
             Ok(res) => {
                 assert_eq!(res.into_inner().statements.len(), 1);
             }
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
     }
 
@@ -122,7 +122,7 @@ mod tests {
 
         let update_result = match client.update_database_ddl(request, None, None).await {
             Ok(mut res) => res.wait(None, None).await,
-            Err(err) => panic!("err: {:?}", err),
+            Err(err) => panic!("err: {err:?}"),
         };
         let _ = update_result.unwrap();
     }

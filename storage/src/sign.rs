@@ -58,7 +58,7 @@ impl URLStyle for PathStyle {
         if object.is_empty() {
             return bucket.to_string();
         }
-        format!("{}/{}", bucket, object)
+        format!("{bucket}/{object}")
     }
 }
 
@@ -237,13 +237,13 @@ pub(crate) fn create_signed_buffer(
 
     // create header with value
     let header_with_value = {
-        let mut header_with_value = vec![format!("host:{}", host)];
+        let mut header_with_value = vec![format!("host:{host}")];
         header_with_value.extend_from_slice(&headers);
         if let Some(content_type) = &opts.content_type {
-            header_with_value.push(format!("content-type:{}", content_type))
+            header_with_value.push(format!("content-type:{content_type}"))
         }
         if let Some(md5) = &opts.md5 {
-            header_with_value.push(format!("content-md5:{}", md5))
+            header_with_value.push(format!("content-md5:{md5}"))
         }
         header_with_value.sort();
         header_with_value
@@ -284,8 +284,8 @@ pub(crate) fn create_signed_buffer(
     let hex_digest = hex::encode(Sha256::digest(buffer));
     let mut signed_buffer: Vec<u8> = vec![];
     signed_buffer.extend_from_slice("GOOG4-RSA-SHA256\n".as_bytes());
-    signed_buffer.extend_from_slice(format!("{}\n", timestamp).as_bytes());
-    signed_buffer.extend_from_slice(format!("{}\n", credential_scope).as_bytes());
+    signed_buffer.extend_from_slice(format!("{timestamp}\n").as_bytes());
+    signed_buffer.extend_from_slice(format!("{credential_scope}\n").as_bytes());
     signed_buffer.extend_from_slice(hex_digest.as_bytes());
     Ok((signed_buffer, builder))
 }

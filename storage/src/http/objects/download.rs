@@ -13,12 +13,12 @@ impl Range {
     fn with_header(&self, builder: RequestBuilder) -> RequestBuilder {
         if let Some(from) = self.0 {
             if let Some(to) = self.1 {
-                builder.header("Range", format!("bytes={}-{}", from, to))
+                builder.header("Range", format!("bytes={from}-{to}"))
             } else {
-                builder.header("Range", format!("bytes={}-", from))
+                builder.header("Range", format!("bytes={from}-"))
             }
         } else if let Some(reverse_from) = self.1 {
-            builder.header("Range", format!("bytes=-{}", reverse_from))
+            builder.header("Range", format!("bytes=-{reverse_from}"))
         } else {
             builder
         }

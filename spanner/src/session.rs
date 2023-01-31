@@ -796,7 +796,7 @@ mod tests {
         for i in 0..sessions.len() - 1 {
             let session = &sessions[i];
             if i >= config.max_opened {
-                assert!(session.is_err(), "must err {}", i);
+                assert!(session.is_err(), "must err {i}");
                 match session.as_ref().err().unwrap() {
                     SessionError::SessionGetTimeout => {}
                     _ => {
@@ -804,7 +804,7 @@ mod tests {
                     }
                 }
             } else {
-                assert!(session.is_ok(), "must ok {}", i);
+                assert!(session.is_ok(), "must ok {i}");
             }
         }
         let pool = sm.session_pool.inner.read();
@@ -831,8 +831,7 @@ mod tests {
             assert_eq!(sessions.orphans.len(), 0);
             assert!(
                 available_sessions <= config.max_opened && available_sessions >= config.min_opened,
-                "now is {}",
-                available_sessions
+                "now is {available_sessions}"
             );
         }
         sm.close().await;
@@ -856,8 +855,7 @@ mod tests {
             assert_eq!(sessions.orphans.len(), 0);
             assert!(
                 available_sessions <= config.max_opened && available_sessions >= config.min_opened,
-                "now is {}",
-                available_sessions
+                "now is {available_sessions}"
             );
         }
         sm.close().await;
@@ -881,8 +879,7 @@ mod tests {
             assert_eq!(sessions.orphans.len(), 0);
             assert!(
                 available_sessions <= config.max_opened && available_sessions >= config.min_opened,
-                "now is {}",
-                available_sessions
+                "now is {available_sessions}"
             );
         }
         sm.close().await;
@@ -910,8 +907,7 @@ mod tests {
             assert_eq!(sessions.orphans.len(), 0);
             assert!(
                 available_sessions <= config.max_opened && available_sessions >= config.max_idle - 1,
-                "now is {}",
-                available_sessions
+                "now is {available_sessions}"
             );
         }
         sm.close().await;
@@ -939,8 +935,7 @@ mod tests {
             assert_eq!(sessions.orphans.len(), 0);
             assert!(
                 available_sessions <= config.max_opened && available_sessions >= config.min_opened - 1,
-                "now is {}",
-                available_sessions
+                "now is {available_sessions}"
             );
         }
         sm.close().await;
@@ -990,8 +985,7 @@ mod tests {
             let available_sessions = sessions.available_sessions.len();
             assert!(
                 available_sessions >= config.min_opened - 1 && available_sessions <= config.max_idle,
-                "now is {}",
-                available_sessions
+                "now is {available_sessions}"
             );
         }
         sm.close().await;
@@ -1021,8 +1015,7 @@ mod tests {
             let available_sessions = sessions.available_sessions.len();
             assert!(
                 available_sessions >= config.min_opened - 1 && available_sessions <= config.max_idle,
-                "now is {}",
-                available_sessions
+                "now is {available_sessions}"
             );
         }
         sm.close().await;
@@ -1078,7 +1071,7 @@ mod tests {
                     assert!(ping_result.is_ok());
                 }
             }
-            Err(err) => panic!("{:?}", err),
+            Err(err) => panic!("{err:?}"),
         }
     }
 }

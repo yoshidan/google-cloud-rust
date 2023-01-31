@@ -104,7 +104,7 @@ impl Client {
             cancel,
             Some(setting),
             |spanner_client| async {
-                let request = create_request(format!("database={}", database), req.clone());
+                let request = create_request(format!("database={database}"), req.clone());
                 spanner_client
                     .create_session(request)
                     .await
@@ -153,7 +153,7 @@ impl Client {
             cancel,
             Some(setting),
             |spanner_client| async {
-                let request = create_request(format!("database={}", database), req.clone());
+                let request = create_request(format!("database={database}"), req.clone());
                 spanner_client
                     .batch_create_sessions(request)
                     .await
@@ -200,7 +200,7 @@ impl Client {
             cancel,
             Some(setting),
             |spanner_client| async {
-                let request = create_request(format!("name={}", name), req.clone());
+                let request = create_request(format!("name={name}"), req.clone());
                 spanner_client
                     .get_session(request)
                     .await
@@ -246,7 +246,7 @@ impl Client {
             cancel,
             Some(setting),
             |spanner_client| async {
-                let request = create_request(format!("database={}", database), req.clone());
+                let request = create_request(format!("database={database}"), req.clone());
                 spanner_client
                     .list_sessions(request)
                     .await
@@ -294,7 +294,7 @@ impl Client {
             cancel,
             Some(setting),
             |spanner_client| async {
-                let request = create_request(format!("name={}", name), req.clone());
+                let request = create_request(format!("name={name}"), req.clone());
                 spanner_client
                     .delete_session(request)
                     .await
@@ -350,7 +350,7 @@ impl Client {
             cancel,
             Some(setting),
             |spanner_client| async {
-                let request = create_request(format!("session={}", session), req.clone());
+                let request = create_request(format!("session={session}"), req.clone());
                 spanner_client
                     .execute_sql(request)
                     .await
@@ -400,7 +400,7 @@ impl Client {
             cancel,
             Some(setting),
             |spanner_client| async {
-                let request = create_request(format!("session={}", session), req.clone());
+                let request = create_request(format!("session={session}"), req.clone());
                 spanner_client
                     .execute_streaming_sql(request)
                     .await
@@ -456,7 +456,7 @@ impl Client {
             cancel,
             Some(setting),
             |spanner_client| async {
-                let request = create_request(format!("session={}", session), req.clone());
+                let request = create_request(format!("session={session}"), req.clone());
                 let result = spanner_client.execute_batch_dml(request).await;
                 match result {
                     Ok(response) => match response.get_ref().status.as_ref() {
@@ -525,7 +525,7 @@ impl Client {
             cancel,
             Some(setting),
             |spanner_client| async {
-                let request = create_request(format!("session={}", session), req.clone());
+                let request = create_request(format!("session={session}"), req.clone());
                 spanner_client.read(request).await.map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
@@ -572,7 +572,7 @@ impl Client {
             cancel,
             Some(setting),
             |spanner_client| async {
-                let request = create_request(format!("session={}", session), req.clone());
+                let request = create_request(format!("session={session}"), req.clone());
                 spanner_client
                     .streaming_read(request)
                     .await
@@ -621,7 +621,7 @@ impl Client {
             cancel,
             Some(setting),
             |spanner_client| async {
-                let request = create_request(format!("session={}", session), req.clone());
+                let request = create_request(format!("session={session}"), req.clone());
                 spanner_client
                     .begin_transaction(request)
                     .await
@@ -680,7 +680,7 @@ impl Client {
             cancel,
             Some(setting),
             |spanner_client| async {
-                let request = create_request(format!("session={}", session), req.clone());
+                let request = create_request(format!("session={session}"), req.clone());
                 spanner_client.commit(request).await.map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
@@ -730,7 +730,7 @@ impl Client {
             cancel,
             Some(setting),
             |spanner_client| async {
-                let request = create_request(format!("session={}", session), req.clone());
+                let request = create_request(format!("session={session}"), req.clone());
                 spanner_client.rollback(request).await.map_err(|e| (e, spanner_client))
             },
             &mut self.inner,
@@ -783,7 +783,7 @@ impl Client {
             cancel,
             Some(setting),
             |spanner_client| async {
-                let request = create_request(format!("session={}", session), req.clone());
+                let request = create_request(format!("session={session}"), req.clone());
                 spanner_client
                     .partition_query(request)
                     .await
@@ -841,7 +841,7 @@ impl Client {
             cancel,
             Some(setting),
             |spanner_client| async {
-                let request = create_request(format!("session={}", session), req.clone());
+                let request = create_request(format!("session={session}"), req.clone());
                 spanner_client
                     .partition_read(request)
                     .await

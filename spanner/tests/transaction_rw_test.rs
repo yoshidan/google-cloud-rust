@@ -56,10 +56,10 @@ async fn test_mutation_and_statement() {
                 .unwrap()
                 .replace_nanosecond(ts.nanos as u32)
                 .unwrap();
-            println!("commit time stamp is {}", dt);
+            println!("commit time stamp is {dt}");
             dt
         }
-        Err(e) => panic!("error {:?}", e),
+        Err(e) => panic!("error {e:?}"),
     };
 
     let ts = cr.unwrap();
@@ -133,7 +133,7 @@ async fn assert_data(
     // commit or rollback is required for rw transaction
     let rows = match tx.end(result, None).await {
         Ok(s) => s.1,
-        Err(e) => panic!("tx error {:?}", e),
+        Err(e) => panic!("tx error {e:?}"),
     };
 
     assert_eq!(1, rows.len());

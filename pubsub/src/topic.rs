@@ -170,7 +170,7 @@ mod tests {
         let subc = SubscriberClient::new(cm2);
 
         let uuid = Uuid::new_v4().hyphenated().to_string();
-        let topic_name = format!("projects/local-project/topics/t{}", uuid);
+        let topic_name = format!("projects/local-project/topics/t{uuid}");
         let ctx = CancellationToken::new();
 
         // Create topic.

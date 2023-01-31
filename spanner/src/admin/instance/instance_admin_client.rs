@@ -68,7 +68,7 @@ impl InstanceAdminClient {
         //eager loading
         loop {
             let action = || async {
-                let request = create_request(format!("parent={}", parent), req.clone());
+                let request = create_request(format!("parent={parent}"), req.clone());
                 self.inner
                     .clone()
                     .list_instance_configs(request)
@@ -116,7 +116,7 @@ impl InstanceAdminClient {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let name = &req.name;
         let action = || async {
-            let request = create_request(format!("name={}", name), req.clone());
+            let request = create_request(format!("name={name}"), req.clone());
             self.inner
                 .clone()
                 .get_instance_config(request)
@@ -161,7 +161,7 @@ impl InstanceAdminClient {
         //eager loading
         loop {
             let action = || async {
-                let request = create_request(format!("parent={}", parent), req.clone());
+                let request = create_request(format!("parent={parent}"), req.clone());
                 self.inner.clone().list_instances(request).await.map(|d| d.into_inner())
             };
             let response = invoke(cancel.clone(), retry.clone(), action).await?;
@@ -205,7 +205,7 @@ impl InstanceAdminClient {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let name = &req.name;
         let action = || async {
-            let request = create_request(format!("name={}", name), req.clone());
+            let request = create_request(format!("name={name}"), req.clone());
             self.inner.clone().get_instance(request).await
         };
         invoke(cancel, retry, action).await
@@ -281,7 +281,7 @@ impl InstanceAdminClient {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let parent = &req.parent;
         let action = || async {
-            let request = create_request(format!("parent={}", parent), req.clone());
+            let request = create_request(format!("parent={parent}"), req.clone());
             self.inner.clone().create_instance(request).await
         };
         invoke(cancel, retry, action)
@@ -364,7 +364,7 @@ impl InstanceAdminClient {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let instance_name = &req.instance.as_ref().unwrap().name;
         let action = || async {
-            let request = create_request(format!("instance.name={}", instance_name), req.clone());
+            let request = create_request(format!("instance.name={instance_name}"), req.clone());
             self.inner.clone().update_instance(request).await
         };
         invoke(cancel, retry, action)
@@ -414,7 +414,7 @@ impl InstanceAdminClient {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let name = &req.name;
         let action = || async {
-            let request = create_request(format!("name={}", name), req.clone());
+            let request = create_request(format!("name={name}"), req.clone());
             self.inner.clone().delete_instance(request).await
         };
         invoke(cancel, retry, action).await
@@ -455,7 +455,7 @@ impl InstanceAdminClient {
         let resource = &req.resource;
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let action = || async {
-            let request = create_request(format!("resource={}", resource), req.clone());
+            let request = create_request(format!("resource={resource}"), req.clone());
             self.inner.clone().set_iam_policy(request).await
         };
         invoke(cancel, retry, action).await
@@ -496,7 +496,7 @@ impl InstanceAdminClient {
         let resource = &req.resource;
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let action = || async {
-            let request = create_request(format!("resource={}", resource), req.clone());
+            let request = create_request(format!("resource={resource}"), req.clone());
             self.inner.clone().get_iam_policy(request).await
         };
         invoke(cancel, retry, action).await
@@ -539,7 +539,7 @@ impl InstanceAdminClient {
         let resource = &req.resource;
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let action = || async {
-            let request = create_request(format!("resource={}", resource), req.clone());
+            let request = create_request(format!("resource={resource}"), req.clone());
             self.inner.clone().test_iam_permissions(request).await
         };
         invoke(cancel, retry, action).await

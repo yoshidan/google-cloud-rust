@@ -356,7 +356,7 @@ mod test {
             .signed_url(bucket_name, "signed_uploadtest", option)
             .await
             .unwrap();
-        println!("uploading={:?}", url);
+        println!("uploading={url:?}");
         let request = reqwest::Client::default()
             .put(url)
             .header("content-type", content_type)
@@ -374,7 +374,7 @@ mod test {
             .signed_url(bucket_name, "signed_uploadtest", option)
             .await
             .unwrap();
-        println!("downloading={:?}", url);
+        println!("downloading={url:?}");
         let result = reqwest::Client::default()
             .get(url)
             .header("content-type", content_type)
