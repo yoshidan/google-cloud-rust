@@ -40,6 +40,7 @@ impl Deref for Client {
 
 #[derive(Debug, Clone)]
 pub struct ClientConfig {
+    pub http: Option<reqwest::Client>,
     pub project: Option<Project>,
     pub storage_endpoint: String,
     pub service_account_endpoint: String,
@@ -48,6 +49,7 @@ pub struct ClientConfig {
 impl Default for ClientConfig {
     fn default() -> Self {
         Self {
+            http: None,
             project: None,
             storage_endpoint: "https://storage.googleapis.com".to_string(),
             service_account_endpoint: "https://iamcredentials.googleapis.com".to_string(),
@@ -80,6 +82,7 @@ impl Client {
         let service_account_client =
             ServiceAccountClient::new(Arc::clone(&ts), config.service_account_endpoint.as_str());
 
+        let http = config.http.unwrap_or_default();
         match project {
             Project::FromFile(cred) => Ok(Client {
                 private_key: cred.private_key.clone(),
@@ -93,7 +96,7 @@ impl Client {
                     .as_ref()
                     .ok_or(Error::Other("no project_id was found"))?
                     .to_string(),
-                storage_client: StorageClient::new(ts, config.storage_endpoint.as_str()),
+                storage_client: StorageClient::new(ts, config.storage_endpoint.as_str(), http),
                 service_account_client,
             }),
             Project::FromMetadataServer(info) => Ok(Client {
@@ -104,7 +107,7 @@ impl Client {
                     .as_ref()
                     .ok_or(Error::Other("no project_id was found"))?
                     .to_string(),
-                storage_client: StorageClient::new(ts, config.storage_endpoint.as_str()),
+                storage_client: StorageClient::new(ts, config.storage_endpoint.as_str(), http),
                 service_account_client,
             }),
         }
