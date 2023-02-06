@@ -72,14 +72,16 @@ pub struct StorageClient {
     ts: Arc<dyn TokenSource>,
     v1_endpoint: String,
     v1_upload_endpoint: String,
+    http: Client,
 }
 
 impl StorageClient {
-    pub(crate) fn new(ts: Arc<dyn TokenSource>, endpoint: &str) -> Self {
+    pub(crate) fn new(ts: Arc<dyn TokenSource>, endpoint: &str, http: Client) -> Self {
         Self {
             ts,
             v1_endpoint: format!("{endpoint}/storage/v1"),
             v1_upload_endpoint: format!("{endpoint}/upload/storage/v1"),
+            http,
         }
     }
 
@@ -121,7 +123,7 @@ impl StorageClient {
     #[inline(always)]
     async fn _delete_bucket(&self, req: &DeleteBucketRequest, cancel: Option<CancellationToken>) -> Result<(), Error> {
         let action = async {
-            let builder = buckets::delete::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = buckets::delete::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send_get_empty(builder).await
         };
         invoke(cancel, action).await
@@ -173,7 +175,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Bucket, Error> {
         let action = async {
-            let builder = buckets::insert::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = buckets::insert::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -209,7 +211,7 @@ impl StorageClient {
     #[inline(always)]
     async fn _get_bucket(&self, req: &GetBucketRequest, cancel: Option<CancellationToken>) -> Result<Bucket, Error> {
         let action = async {
-            let builder = buckets::get::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = buckets::get::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -260,7 +262,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Bucket, Error> {
         let action = async {
-            let builder = buckets::patch::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = buckets::patch::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -308,7 +310,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ListBucketsResponse, Error> {
         let action = async {
-            let builder = buckets::list::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = buckets::list::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -365,7 +367,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Policy, Error> {
         let action = async {
-            let builder = buckets::set_iam_policy::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = buckets::set_iam_policy::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -414,7 +416,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Policy, Error> {
         let action = async {
-            let builder = buckets::get_iam_policy::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = buckets::get_iam_policy::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -462,7 +464,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<TestIamPermissionsResponse, Error> {
         let action = async {
-            let builder = buckets::test_iam_permissions::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = buckets::test_iam_permissions::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -511,8 +513,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ListDefaultObjectAccessControlsResponse, Error> {
         let action = async {
-            let builder =
-                default_object_access_controls::list::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = default_object_access_controls::list::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -560,8 +561,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
         let action = async {
-            let builder =
-                default_object_access_controls::get::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = default_object_access_controls::get::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -614,8 +614,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
         let action = async {
-            let builder =
-                default_object_access_controls::insert::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = default_object_access_controls::insert::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -670,8 +669,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
         let action = async {
-            let builder =
-                default_object_access_controls::patch::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = default_object_access_controls::patch::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -719,8 +717,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
-            let builder =
-                default_object_access_controls::delete::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = default_object_access_controls::delete::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send_get_empty(builder).await
         };
         invoke(cancel, action).await
@@ -767,7 +764,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ListBucketAccessControlsResponse, Error> {
         let action = async {
-            let builder = bucket_access_controls::list::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = bucket_access_controls::list::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -815,7 +812,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<BucketAccessControl, Error> {
         let action = async {
-            let builder = bucket_access_controls::get::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = bucket_access_controls::get::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -867,7 +864,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<BucketAccessControl, Error> {
         let action = async {
-            let builder = bucket_access_controls::insert::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = bucket_access_controls::insert::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -921,7 +918,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<BucketAccessControl, Error> {
         let action = async {
-            let builder = bucket_access_controls::patch::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = bucket_access_controls::patch::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -968,7 +965,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
-            let builder = bucket_access_controls::delete::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = bucket_access_controls::delete::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send_get_empty(builder).await
         };
         invoke(cancel, action).await
@@ -1017,7 +1014,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ListBucketAccessControlsResponse, Error> {
         let action = async {
-            let builder = object_access_controls::list::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = object_access_controls::list::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1067,7 +1064,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
         let action = async {
-            let builder = object_access_controls::get::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = object_access_controls::get::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1121,7 +1118,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
         let action = async {
-            let builder = object_access_controls::insert::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = object_access_controls::insert::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1176,7 +1173,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
         let action = async {
-            let builder = object_access_controls::patch::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = object_access_controls::patch::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1227,7 +1224,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
-            let builder = object_access_controls::delete::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = object_access_controls::delete::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send_get_empty(builder).await
         };
         invoke(cancel, action).await
@@ -1275,7 +1272,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ListNotificationsResponse, Error> {
         let action = async {
-            let builder = notifications::list::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = notifications::list::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1323,7 +1320,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Notification, Error> {
         let action = async {
-            let builder = notifications::get::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = notifications::get::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1376,7 +1373,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Notification, Error> {
         let action = async {
-            let builder = notifications::insert::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = notifications::insert::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1424,7 +1421,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
-            let builder = notifications::delete::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = notifications::delete::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send_get_empty(builder).await
         };
         invoke(cancel, action).await
@@ -1472,7 +1469,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ListHmacKeysResponse, Error> {
         let action = async {
-            let builder = hmac_keys::list::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = hmac_keys::list::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1520,7 +1517,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<HmacKeyMetadata, Error> {
         let action = async {
-            let builder = hmac_keys::get::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = hmac_keys::get::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1568,7 +1565,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<CreateHmacKeyResponse, Error> {
         let action = async {
-            let builder = hmac_keys::create::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = hmac_keys::create::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1621,7 +1618,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<HmacKeyMetadata, Error> {
         let action = async {
-            let builder = hmac_keys::update::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = hmac_keys::update::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1669,7 +1666,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
-            let builder = hmac_keys::delete::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = hmac_keys::delete::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send_get_empty(builder).await
         };
         invoke(cancel, action).await
@@ -1717,7 +1714,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ListObjectsResponse, Error> {
         let action = async {
-            let builder = objects::list::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = objects::list::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1754,7 +1751,7 @@ impl StorageClient {
     #[inline(always)]
     async fn _get_object(&self, req: &GetObjectRequest, cancel: Option<CancellationToken>) -> Result<Object, Error> {
         let action = async {
-            let builder = objects::get::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = objects::get::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -1808,7 +1805,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Vec<u8>, Error> {
         let action = async {
-            let builder = objects::download::build(self.v1_endpoint.as_str(), &Client::default(), req, range);
+            let builder = objects::download::build(self.v1_endpoint.as_str(), &self.http, req, range);
             let request = self.with_headers(builder).await?;
             let response = request.send().await?;
             if response.status().is_success() {
@@ -1872,7 +1869,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<impl Stream<Item = reqwest::Result<bytes::Bytes>>, Error> {
         let action = async {
-            let builder = objects::download::build(self.v1_endpoint.as_str(), &Client::default(), req, range);
+            let builder = objects::download::build(self.v1_endpoint.as_str(), &self.http, req, range);
             let request = self.with_headers(builder).await?;
             let response = request.send().await?;
             if response.status().is_success() {
@@ -1936,7 +1933,7 @@ impl StorageClient {
         let action = async {
             let builder = objects::upload::build(
                 self.v1_upload_endpoint.as_str(),
-                &Client::default(),
+                &self.http,
                 req,
                 Some(data.len()),
                 content_type,
@@ -2022,7 +2019,7 @@ impl StorageClient {
         let action = async {
             let builder = objects::upload::build(
                 self.v1_upload_endpoint.as_str(),
-                &Client::default(),
+                &self.http,
                 req,
                 content_length,
                 content_type,
@@ -2076,7 +2073,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
         let action = async {
-            let builder = objects::patch::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = objects::patch::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -2121,7 +2118,7 @@ impl StorageClient {
     #[inline(always)]
     async fn _delete_object(&self, req: &DeleteObjectRequest, cancel: Option<CancellationToken>) -> Result<(), Error> {
         let action = async {
-            let builder = objects::delete::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = objects::delete::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send_get_empty(builder).await
         };
         invoke(cancel, action).await
@@ -2172,7 +2169,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<RewriteObjectResponse, Error> {
         let action = async {
-            let builder = objects::rewrite::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = objects::rewrite::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -2230,7 +2227,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
         let action = async {
-            let builder = objects::compose::build(self.v1_endpoint.as_str(), &Client::default(), req);
+            let builder = objects::compose::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -2361,7 +2358,7 @@ mod test {
         })
         .await
         .unwrap();
-        StorageClient::new(Arc::from(ts), "https://storage.googleapis.com")
+        StorageClient::new(Arc::from(ts), "https://storage.googleapis.com", reqwest::Client::new())
     }
 
     #[tokio::test]
