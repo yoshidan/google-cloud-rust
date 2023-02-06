@@ -41,7 +41,7 @@ impl Default for TopicConfig {
 /// Topic is a reference to a PubSub topic.
 ///
 /// The methods of Topic are safe for use by multiple tasks.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Topic {
     fqtn: String,
     pubc: PublisherClient,
