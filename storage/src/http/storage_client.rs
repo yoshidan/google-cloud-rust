@@ -513,8 +513,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ListDefaultObjectAccessControlsResponse, Error> {
         let action = async {
-            let builder =
-                default_object_access_controls::list::build(self.v1_endpoint.as_str(), &self.http, req);
+            let builder = default_object_access_controls::list::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -562,8 +561,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
         let action = async {
-            let builder =
-                default_object_access_controls::get::build(self.v1_endpoint.as_str(), &self.http, req);
+            let builder = default_object_access_controls::get::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -616,8 +614,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
         let action = async {
-            let builder =
-                default_object_access_controls::insert::build(self.v1_endpoint.as_str(), &self.http, req);
+            let builder = default_object_access_controls::insert::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -672,8 +669,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
         let action = async {
-            let builder =
-                default_object_access_controls::patch::build(self.v1_endpoint.as_str(), &self.http, req);
+            let builder = default_object_access_controls::patch::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
         };
         invoke(cancel, action).await
@@ -721,8 +717,7 @@ impl StorageClient {
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
         let action = async {
-            let builder =
-                default_object_access_controls::delete::build(self.v1_endpoint.as_str(), &self.http, req);
+            let builder = default_object_access_controls::delete::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send_get_empty(builder).await
         };
         invoke(cancel, action).await
