@@ -2133,14 +2133,22 @@ impl StorageClient {
     ///
     /// #[tokio::main]
     /// async fn main() {
+    ///     let mut done = false;
+    ///     let mut rewrite_token = None;
     ///     let client = Client::default().await.unwrap();
-    ///     let result = client.rewrite_object(&RewriteObjectRequest{
-    ///         source_bucket: "bucket1".to_string(),
-    ///         source_object: "object".to_string(),
-    ///         destination_bucket: "bucket2".to_string(),
-    ///         destination_object: "object1".to_string(),
-    ///         ..Default::default()
-    ///     }, None).await;
+    ///     while !done {
+    ///         let result = client.rewrite_object(&RewriteObjectRequest{
+    ///             source_bucket: "bucket1".to_string(),
+    ///             source_object: "object".to_string(),
+    ///             destination_bucket: "bucket2".to_string(),
+    ///             destination_object: "object1".to_string(),
+    ///             rewrite_token: rewrite_token.clone(),
+    ///             ..Default::default()
+    ///         }, None).await.unwrap();
+    ///
+    ///         done = result.done;
+    ///         rewrite_token = result.rewrite_token;
+    ///     }
     /// }
     /// ```
     #[cfg(not(feature = "trace"))]
