@@ -24,8 +24,8 @@ pub enum Error {
 
 pub struct Client {
     private_key: Option<String>,
-    service_account_email: String,
-    project_id: String,
+    service_account_email: Option<String>,
+    project_id: Option<String>,
     storage_client: StorageClient,
     service_account_client: ServiceAccountClient,
 }
@@ -86,27 +86,18 @@ impl Client {
         match project {
             Project::FromFile(cred) => Ok(Client {
                 private_key: cred.private_key.clone(),
-                service_account_email: cred
-                    .client_email
-                    .as_ref()
-                    .ok_or(Error::Other("no client_email was found"))?
-                    .to_string(),
-                project_id: cred
-                    .project_id
-                    .as_ref()
-                    .ok_or(Error::Other("no project_id was found"))?
-                    .to_string(),
+                service_account_email: cred.client_email,
+                project_id: cred.project_id,
                 storage_client: StorageClient::new(ts, config.storage_endpoint.as_str(), http),
                 service_account_client,
             }),
             Project::FromMetadataServer(info) => Ok(Client {
                 private_key: None,
-                service_account_email: google_cloud_metadata::email("default").await?,
-                project_id: info
-                    .project_id
-                    .as_ref()
-                    .ok_or(Error::Other("no project_id was found"))?
-                    .to_string(),
+                service_account_email: match google_cloud_metadata::email("default").await {
+                    Ok(v) => Some(v),
+                    Err(_) => None,
+                },
+                project_id: info.project_id,
                 storage_client: StorageClient::new(ts, config.storage_endpoint.as_str(), http),
                 service_account_client,
             }),
@@ -114,8 +105,8 @@ impl Client {
     }
 
     /// Gets the project_id from Credentials
-    pub fn project_id(&self) -> &str {
-        &self.project_id
+    pub fn project_id(&self) -> Option<&String> {
+        self.project_id.as_ref()
     }
 
     /// Get signed url.
@@ -162,8 +153,10 @@ impl Client {
     #[inline(always)]
     async fn _signed_url(&self, bucket: &str, object: &str, opts: SignedURLOptions) -> Result<String, SignedURLError> {
         let mut opts = opts;
-        if !self.service_account_email.is_empty() && opts.google_access_id.is_empty() {
-            opts.google_access_id = self.service_account_email.to_string();
+        if opts.google_access_id.is_empty() {
+            if let Some(email) = self.service_account_email.as_ref() {
+                opts.google_access_id = email.to_string()
+            }
         }
         if let SignBy::PrivateKey(pk) = &opts.sign_by {
             if pk.is_empty() {
