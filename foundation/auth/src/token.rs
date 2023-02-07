@@ -1,3 +1,11 @@
+use std::sync::Arc;
+use crate::credentials::CredentialsFile;
+use crate::error::Error;
+use crate::token_source::TokenSource as InternalTokenSource;
+use crate::project::{create_token_source_from_project, project, Config, Project};
+use google_cloud_token::{TokenSource, TokenSourceProvider};
+use async_trait::async_trait;
+
 pub const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
 pub const AUTH_URL: &str = "https://accounts.gen.com/o/oauth2/auth";
 
@@ -26,5 +34,49 @@ impl Token {
                 now > exp
             }
         }
+    }
+}
+
+pub struct DefaultTokenSourceProvider {
+    token_source: Arc<DefaultTokenSource>,
+    pub project_id: Option<String>,
+    pub source_credentials: Option<Box<CredentialsFile>>,
+}
+
+impl DefaultTokenSourceProvider {
+    pub async fn new(config: Config<'_>) -> Result<Self, Error> {
+        let project = project().await?;
+        let internal_token_source = create_token_source_from_project(&project, config).await?;
+
+        let (project_id, source_credentials) = match project {
+            Project::FromMetadataServer(info) => (info.project_id, None),
+            Project::FromFile(cred) => (cred.project_id.clone(), Some(cred)),
+        };
+        Ok(Self {
+            token_source: Arc::new(DefaultTokenSource {
+                inner: internal_token_source.into()
+            }),
+            project_id,
+            source_credentials,
+        })
+    }
+}
+
+impl TokenSourceProvider for DefaultTokenSourceProvider {
+    fn token_source(&self) -> Arc<dyn TokenSource> {
+        self.token_source.clone()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DefaultTokenSource {
+    inner: Arc<dyn InternalTokenSource>,
+}
+
+#[async_trait]
+impl TokenSource for DefaultTokenSource {
+    async fn token(&self) -> Result<String, Box<dyn std::error::Error>> {
+        let token = self.inner.token().await.map_err(Box::new)?;
+        Ok(format!("Bearer {0}", token.access_token))
     }
 }
