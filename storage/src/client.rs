@@ -3,7 +3,6 @@ use crate::http::storage_client::StorageClient;
 
 use crate::http::service_account_client::ServiceAccountClient;
 
-use google_cloud_auth::{create_token_source_from_project, Config, Project};
 use ring::{rand, signature};
 use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey};
 use std::ops::Deref;
@@ -13,22 +12,14 @@ use std::sync::Arc;
 
 use crate::sign::{create_signed_buffer, SignBy, SignedURLError, SignedURLOptions};
 
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-    #[error(transparent)]
-    Auth(#[from] google_cloud_auth::error::Error),
-    #[error(transparent)]
-    Metadata(#[from] google_cloud_metadata::Error),
-    #[error("error: {0}")]
-    Other(&'static str),
-}
-
 #[derive(Debug, Clone)]
 pub struct ClientConfig {
     pub http: Option<reqwest::Client>,
     pub storage_endpoint: String,
     pub service_account_endpoint: String,
     pub token_source_provider: Box<dyn TokenSourceProvider>,
+    pub default_google_access_id: Option<String>,
+    pub default_sign_by: Option<SignBy>,
 }
 
 impl Default for ClientConfig {
@@ -38,11 +29,15 @@ impl Default for ClientConfig {
             storage_endpoint: "https://storage.googleapis.com".to_string(),
             token_source_provider: Box::new(NopeTokenSourceProvider {}),
             service_account_endpoint: "https://iamcredentials.googleapis.com".to_string(),
+            default_google_access_id: None,
+            default_sign_by: None,
         }
     }
 }
 
 pub struct Client {
+    default_google_access_id: Option<String>,
+    default_sign_by: Option<SignBy>,
     storage_client: StorageClient,
     service_account_client: ServiceAccountClient,
 }
@@ -71,6 +66,8 @@ impl Client {
         let storage_client = StorageClient::new(ts, config.service_account_endpoint.as_str(), http);
 
         Self {
+            default_google_access_id: config.default_google_access_id,
+            default_sign_by: config.default_sign_by,
             storage_client,
             service_account_client,
         }
@@ -120,28 +117,23 @@ impl Client {
     #[inline(always)]
     async fn _signed_url(&self, bucket: &str, object: &str, opts: SignedURLOptions) -> Result<String, SignedURLError> {
         let mut opts = opts;
+        let sign_by = match opts.sign_by {
+            Some(sign_by) => sign_by,
+            None => match self.default_sign_by {
+                Some(ref v) => v.clone(),
+                None => return Err(SignedURLError::InvalidOption("No default sign_by was found")),
+            },
+        };
         if opts.google_access_id.is_empty() {
-            if let Some(email) = self.service_account_email.as_ref() {
-                opts.google_access_id = email.to_string()
-            }
+            opts.google_access_id = self
+                .default_google_access_id
+                .ok_or(SignedURLError::InvalidOption("No default google_access_id is found"))?;
         }
-        if let SignBy::PrivateKey(pk) = &opts.sign_by {
-            if pk.is_empty() {
-                if let Some(pk) = &self.private_key {
-                    opts.sign_by = SignBy::PrivateKey(pk.clone().into_bytes())
-                } else if google_cloud_metadata::on_gce().await {
-                    opts.sign_by = SignBy::SignBytes
-                } else {
-                    return Err(SignedURLError::InvalidOption("credentials is required to sign url"));
-                }
-            }
-        }
-
         let (signed_buffer, mut builder) = create_signed_buffer(bucket, object, &opts)?;
         tracing::trace!("signed_buffer={:?}", String::from_utf8_lossy(&signed_buffer));
 
         // create signature
-        let signature = match &opts.sign_by {
+        let signature = match &sign_by {
             SignBy::PrivateKey(private_key) => {
                 let str = String::from_utf8_lossy(private_key);
                 let pkcs = rsa::RsaPrivateKey::from_pkcs8_pem(str.as_ref())

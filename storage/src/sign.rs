@@ -89,7 +89,7 @@ pub struct SignedURLOptions {
     /// Exactly one of PrivateKey or SignBytes must be non-nil.
     ///
     /// SignBytes is a function for implementing custom signing.
-    pub sign_by: SignBy,
+    pub sign_by: Option<SignBy>,
 
     /// Method is the HTTP method to be used with the signed URL.
     /// Signed URLs can be used with GET, HEAD, PUT, and DELETE requests.
@@ -165,10 +165,6 @@ pub enum SignedURLError {
     ParseError(#[from] ParseError),
     #[error("cert error by: {0}")]
     CertError(String),
-    #[error(transparent)]
-    CredentialError(#[from] google_cloud_auth::error::Error),
-    #[error(transparent)]
-    MetadataError(#[from] google_cloud_metadata::Error),
     #[error(transparent)]
     SignBlob(#[from] http::Error),
 }

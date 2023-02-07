@@ -1,0 +1,30 @@
+[package]
+name = "google-cloud-default"
+version = "0.1.0"
+authors = ["yoshidan <naohiro.y@gmail.com>"]
+edition = "2021"
+repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/foundation/auth"
+keywords = ["gcp","googleapis","google-cloud-rust"]
+license = "MIT"
+readme = "README.md"
+description = "Google Cloud Platform default config."
+
+[dependencies]
+thiserror = "1.0"
+
+google-cloud-auth = { version = "0.9.0", path = "../foundation/auth", default-features = false }
+google-cloud-metadata = { version = "0.3.1", path = "../foundation/metadata", default-features = false }
+google-cloud-gax = { version = "0.13.0", path = "../foundation/gax" }
+
+# components
+google-cloud-pubsub = { version = "0.13.0", path = "../pubsub", optional = true }
+google-cloud-spanner = { version = "0.17.0", path = "../spanner", optional = true }
+google-cloud-storage = { version = "0.9", path = "../storage", optional = true }
+
+[features]
+default = ["default-tls"]
+default-tls = ["google-cloud-auth/default-tls", "google-cloud-metadata/default-tls"]
+rustls-tls = ["google-cloud-auth/rustls-tls", "google-cloud-metadata/rustls-tls"]
+spanner = ["google-cloud-spanner"]
+pubsub = ["google-cloud-pubsub"]
+storage = ["google-cloud-storage"]

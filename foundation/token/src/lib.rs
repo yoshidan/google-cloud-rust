@@ -6,7 +6,7 @@ pub trait TokenSourceError: Display + Debug + Sync + Send {}
 
 pub trait TokenSource: Send + Sync + Debug {
     /// token returns the valid token
-    async fn token(&self) -> Result<String, Box<dyn Error>>;
+    async fn token(&self) -> Result<String, Box<dyn TokenSourceError>>;
 }
 
 pub trait TokenSourceProvider: Send + Sync + Debug {

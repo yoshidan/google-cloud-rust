@@ -2,7 +2,7 @@ use std::fmt::Debug;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::project::ProjectOptions;
-use google_cloud_token::{TokenSource, TokenSourceProvider};
+use google_cloud_token::{TokenSource, TokenSourceError, TokenSourceProvider};
 use http::header::AUTHORIZATION;
 use http::{HeaderValue, Request};
 use std::future::Future;
@@ -51,7 +51,7 @@ impl AsyncPredicate<Request<BoxBody>> for AsyncAuthInterceptor {
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
-    Auth(#[from] google_cloud_auth::error::Error),
+    Auth(#[from] Box<dyn TokenSourceError>),
 
     #[error("tonic error : {0}")]
     TonicTransport(#[from] tonic::transport::Error),
