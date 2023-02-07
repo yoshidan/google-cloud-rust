@@ -19,7 +19,7 @@ async-stream = "0.3"
 thiserror = "1.0"
 
 google-cloud-token = { version = "0.1.0", path = "../foundation/token" }
-google-cloud-gax = { version = "0.13.0", path = "../foundation/gax", default-features = false }
+google-cloud-gax = { version = "0.13.0", path = "../foundation/gax" }
 google-cloud-googleapis = { version = "0.7.0", path = "../googleapis", features = ["pubsub"]}
 
 [dev-dependencies]
