@@ -9,7 +9,7 @@ pub trait TokenSource: Send + Sync + Debug{
     async fn token(&self) -> Result<String, Box<dyn std::error::Error>>;
 }
 
-pub trait TokenSourceProvider: Send + Sync  {
+pub trait TokenSourceProvider: Send + Sync + Debug {
     /// token returns the token source implementation
     fn token_source(&self) -> Arc<dyn TokenSource>;
 }

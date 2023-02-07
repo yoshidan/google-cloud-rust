@@ -59,6 +59,7 @@ pub enum Error {
     InvalidEmulatorHOST(String),
 }
 
+#[derive(Debug)]
 pub enum Environment {
     Emulator(String),
     GoogleCloud(Box<dyn TokenSourceProvider>),

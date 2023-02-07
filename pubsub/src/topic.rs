@@ -163,10 +163,11 @@ mod tests {
         let _ = tracing_subscriber::fmt().try_init();
     }
 
-    async fn create_topic() -> Result<Topic, anyhow::Error> {
-        let cm1 = ConnectionManager::new(4, &Environment::Emulator("localhost:8681".to_string()), "").await?;
+    async fn create_topic() -> Topic {
+        let environment = Environment::Emulator("localhost:8681".to_string());
+        let cm1 = ConnectionManager::new(4, "", &environment).await.unwrap();
         let pubc = PublisherClient::new(cm1);
-        let cm2 = ConnectionManager::new(4, &Environment::Emulator("localhost:8681".to_string()), "").await?;
+        let cm2 = ConnectionManager::new(4, "", &environment).await.unwrap();
         let subc = SubscriberClient::new(cm2);
 
         let uuid = Uuid::new_v4().hyphenated().to_string();
@@ -175,10 +176,10 @@ mod tests {
 
         // Create topic.
         let topic = Topic::new(topic_name, pubc, subc);
-        if !topic.exists(Some(ctx.clone()), None).await? {
-            topic.create(None, Some(ctx.clone()), None).await?;
+        if !topic.exists(Some(ctx.clone()), None).await.unwrap() {
+            topic.create(None, Some(ctx.clone()), None).await.unwrap();
         }
-        Ok(topic)
+        topic
     }
 
     async fn publish(ctx: CancellationToken, publisher: Publisher) -> Vec<JoinHandle<Result<String, Status>>> {
@@ -199,9 +200,9 @@ mod tests {
             .collect()
     }
 
-    async fn publish_after_shutdown(bulk: bool) -> Result<(), anyhow::Error> {
+    async fn publish_after_shutdown(bulk: bool) {
         let ctx = CancellationToken::new();
-        let topic = create_topic().await?;
+        let topic = create_topic().await;
         let config = PublisherConfig {
             flush_interval: Duration::from_secs(10),
             bundle_size: 11,
@@ -219,7 +220,7 @@ mod tests {
 
         // Confirm flush bundle.
         for task in tasks {
-            let message_id = task.await?;
+            let message_id = task.await.unwrap();
             assert!(message_id.is_ok());
             assert!(!message_id.unwrap().is_empty());
         }
@@ -241,17 +242,15 @@ mod tests {
             assert_eq!("closed", err.message());
         }
 
-        topic.delete(None, None).await?;
-        assert!(!topic.exists(None, None).await?);
-
-        Ok(())
+        topic.delete(None, None).await.unwrap();
+        assert!(!topic.exists(None, None).await.unwrap());
     }
 
     #[tokio::test]
     #[serial]
-    async fn test_publish() -> Result<(), anyhow::Error> {
+    async fn test_publish() {
         let ctx = CancellationToken::new();
-        let topic = create_topic().await?;
+        let topic = create_topic().await;
         let publisher = topic.new_publisher(None);
 
         // Publish message.
@@ -259,7 +258,7 @@ mod tests {
 
         // Wait for all publish task finish
         for task in tasks {
-            let message_id = task.await??;
+            let message_id = task.await.unwrap().unwrap();
             tracing::trace!("{}", message_id);
             assert!(!message_id.is_empty())
         }
@@ -276,28 +275,26 @@ mod tests {
             .await;
         assert!(result.is_err());
 
-        topic.delete(Some(ctx.clone()), None).await?;
-
-        Ok(())
+        topic.delete(Some(ctx.clone()), None).await.unwrap();
     }
 
     #[tokio::test]
     #[serial]
-    async fn test_publish_after_shutdown() -> Result<(), anyhow::Error> {
+    async fn test_publish_after_shutdown() {
         publish_after_shutdown(false).await
     }
 
     #[tokio::test]
     #[serial]
-    async fn test_publish_bulk_after_shutdown() -> Result<(), anyhow::Error> {
-        publish_after_shutdown(true).await
+    async fn test_publish_bulk_after_shutdown()  {
+        publish_after_shutdown(true).await;
     }
 
     #[tokio::test]
     #[serial]
-    async fn test_publish_immediately() -> Result<(), anyhow::Error> {
+    async fn test_publish_immediately() {
         let ctx = CancellationToken::new();
-        let topic = create_topic().await?;
+        let topic = create_topic().await;
         let publisher = topic.new_publisher(None);
 
         // Publish message.
@@ -307,13 +304,12 @@ mod tests {
                 ..Default::default()
             })
             .to_vec();
-        let ack_ids = publisher.publish_immediately(msgs, Some(ctx.clone()), None).await?;
+        let ack_ids = publisher.publish_immediately(msgs, Some(ctx.clone()), None).await.unwrap();
 
         assert_eq!(2, ack_ids.len());
 
         let mut publisher = publisher;
         publisher.shutdown().await;
-        topic.delete(Some(ctx.clone()), None).await?;
-        Ok(())
+        topic.delete(Some(ctx.clone()), None).await.unwrap();
     }
 }

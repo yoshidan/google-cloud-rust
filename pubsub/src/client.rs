@@ -3,27 +3,18 @@ use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
 use google_cloud_gax::cancel::CancellationToken;
 use std::env::var;
-use std::thread::scope;
 
 use crate::subscription::{Subscription, SubscriptionConfig};
 use crate::topic::{Topic, TopicConfig};
 use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::Status;
-use google_cloud_gax::project::ProjectOptions;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::{
     DetachSubscriptionRequest, ListSnapshotsRequest, ListSubscriptionsRequest, ListTopicsRequest, Snapshot,
 };
 use google_cloud_token::NopeTokenSourceProvider;
 
-pub const AUDIENCE: &str = "https://pubsub.googleapis.com/";
-pub const PUBSUB: &str = "pubsub.googleapis.com";
-pub const SCOPES: [&str; 2] = [
-    "https://www.googleapis.com/auth/cloud-platform",
-    "https://www.googleapis.com/auth/pubsub.data",
-];
-
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ClientConfig {
     /// gRPC channel pool size
     pub pool_size: Option<usize>,
@@ -42,7 +33,7 @@ impl Default for ClientConfig {
             pool_size: Some(4),
             environment: match var("PUBSUB_EMULATOR_HOST").ok() {
                 Some(v) => Environment::Emulator(v),
-                None => Environment::GoogleCloud(NopeTokenSourceProvider),
+                None => Environment::GoogleCloud(Box::new(NopeTokenSourceProvider{})),
             },
             project_id: Some("local-project".to_string()),
             endpoint: PUBSUB.to_string(),
@@ -70,20 +61,16 @@ pub struct Client {
 }
 
 impl Client {
-    /// default creates a default Pub/Sub client.
-    pub async fn default() -> Result<Self, Error> {
-        Self::new(Default::default().await?).await
-    }
 
     /// new creates a Pub/Sub client. See [`ClientConfig`] for more information.
     pub async fn new(config: ClientConfig) -> Result<Self, Error> {
         let pool_size = config.pool_size.unwrap_or_default();
 
         let pubc = PublisherClient::new(
-            ConnectionManager::new(pool_size, &config.environment, config.endpoint.as_str()).await?,
+            ConnectionManager::new(pool_size, config.endpoint.as_str(), &config.environment).await?,
         );
         let subc = SubscriberClient::new(
-            ConnectionManager::new(pool_size, &config.environment, config.endpoint.as_str()).await?,
+            ConnectionManager::new(pool_size, config.endpoint.as_str(), &config.environment).await?,
         );
 
         Ok(Self {
@@ -285,7 +272,7 @@ mod tests {
         Client::new(Default::default()).await.unwrap()
     }
 
-    async fn do_publish_and_subscribe(ordering_key: &str, bulk: bool) -> Result<(), anyhow::Error> {
+    async fn do_publish_and_subscribe(ordering_key: &str, bulk: bool)  {
         let client = create_client().await;
 
         let order = !ordering_key.is_empty();
@@ -378,37 +365,35 @@ mod tests {
 
         let mut publisher = publisher;
         publisher.shutdown().await;
-
-        Ok(())
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_publish_subscribe_ordered() -> Result<(), anyhow::Error> {
-        do_publish_and_subscribe("ordering", false).await
+    async fn test_publish_subscribe_ordered() {
+        do_publish_and_subscribe("ordering", false).await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_publish_subscribe_ordered_bulk() -> Result<(), anyhow::Error> {
-        do_publish_and_subscribe("ordering", true).await
+    async fn test_publish_subscribe_ordered_bulk() {
+        do_publish_and_subscribe("ordering", true).await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_publish_subscribe_random() -> Result<(), anyhow::Error> {
-        do_publish_and_subscribe("", false).await
+    async fn test_publish_subscribe_random() {
+        do_publish_and_subscribe("", false).await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_publish_subscribe_random_bulk() -> Result<(), anyhow::Error> {
-        do_publish_and_subscribe("", true).await
+    async fn test_publish_subscribe_random_bulk() {
+        do_publish_and_subscribe("", true).await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_lifecycle() -> Result<(), anyhow::Error> {
+    async fn test_lifecycle() {
         let client = create_client().await;
 
         let uuid = Uuid::new_v4().hyphenated().to_string();
@@ -431,18 +416,17 @@ mod tests {
                 ctx.clone(),
                 None,
             )
-            .await?;
+            .await.unwrap();
 
         let _ = subscription
             .create_snapshot(snapshot_id, HashMap::default(), ctx.clone(), None)
-            .await?;
+            .await.unwrap();
 
         let topics_after = client.get_topics(ctx.clone(), None).await.unwrap();
         let subs_after = client.get_subscriptions(ctx.clone(), None).await.unwrap();
-        let snapshots_after = client.get_snapshots(ctx.clone(), None).await?;
+        let snapshots_after = client.get_snapshots(ctx.clone(), None).await.unwrap();
         assert_eq!(1, topics_after.len() - topics.len());
         assert_eq!(1, subs_after.len() - subs.len());
         assert_eq!(1, snapshots_after.len() - snapshots.len());
-        Ok(())
     }
 }
