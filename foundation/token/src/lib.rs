@@ -1,17 +1,16 @@
-use std::error::Error;
-use std::fmt::{Debug, Display};
-use std::result::Iter;
 
-pub trait TokenSourceError: Display + Debug + Sync + Send {}
+use std::fmt::{Debug};
+use async_trait::async_trait;
 
+#[async_trait]
 pub trait TokenSource: Send + Sync + Debug {
     /// token returns the valid token
-    async fn token(&self) -> Result<String, Box<dyn TokenSourceError>>;
+    async fn token(&self) -> Result<String, Box<dyn std::error::Error>>;
 }
 
 pub trait TokenSourceProvider: Send + Sync + Debug {
     /// token returns the token source implementation
-    fn token_source(&self) -> dyn TokenSource;
+    fn token_source(&self) -> Box<dyn TokenSource>;
 }
 
 #[derive(Debug)]

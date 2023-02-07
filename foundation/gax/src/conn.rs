@@ -1,8 +1,7 @@
 use std::fmt::Debug;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::project::ProjectOptions;
-use google_cloud_token::{TokenSource, TokenSourceError, TokenSourceProvider};
+use google_cloud_token::{TokenSource, TokenSourceProvider};
 use http::header::AUTHORIZATION;
 use http::{HeaderValue, Request};
 use std::future::Future;
@@ -51,7 +50,7 @@ impl AsyncPredicate<Request<BoxBody>> for AsyncAuthInterceptor {
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
-    Auth(#[from] Box<dyn TokenSourceError>),
+    Auth(#[from] Box<dyn std::error::Error>),
 
     #[error("tonic error : {0}")]
     TonicTransport(#[from] tonic::transport::Error),
@@ -94,11 +93,12 @@ impl ConnectionManager {
     pub async fn new(
         pool_size: usize,
         domain_name: impl Into<String>,
+        audience: &'static str,
         environment: &Environment,
     ) -> Result<Self, Error> {
         let conns = match environment {
-            Environment::GoogleCloud(token_option) => {
-                Self::create_connections(pool_size, domain_name, token_option).await?
+            Environment::GoogleCloud(ts_provider) => {
+                Self::create_connections(pool_size, domain_name, audience, ts_provider.as_ref()).await?
             }
             Environment::Emulator(host) => Self::create_emulator_connections(host).await?,
         };
@@ -113,12 +113,13 @@ impl ConnectionManager {
     async fn create_connections(
         pool_size: usize,
         domain_name: impl Into<String>,
-        token_option: &TokenOption,
+        audience: &'static str,
+        ts_provider: &dyn TokenSourceProvider,
     ) -> Result<Vec<Channel>, Error> {
         let tls_config = ClientTlsConfig::new().domain_name(domain_name);
         let mut conns = Vec::with_capacity(pool_size);
 
-        let ts = token_option.token_source_provider.token_source().await.map(Arc::from)?;
+        let ts = Arc::from(ts_provider.token_source());
 
         for _i_ in 0..pool_size {
             let endpoint = TonicChannel::from_static(audience).tls_config(tls_config.clone())?;
