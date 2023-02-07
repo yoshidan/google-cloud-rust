@@ -1,8 +1,9 @@
 use crate::apiv1::conn_pool::{ConnectionManager, PUBSUB};
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
-use google_cloud_auth::Project;
 use google_cloud_gax::cancel::CancellationToken;
+use std::env::var;
+use std::thread::scope;
 
 use crate::subscription::{Subscription, SubscriptionConfig};
 use crate::topic::{Topic, TopicConfig};
@@ -13,6 +14,14 @@ use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::{
     DetachSubscriptionRequest, ListSnapshotsRequest, ListSubscriptionsRequest, ListTopicsRequest, Snapshot,
 };
+use google_cloud_token::NopeTokenSourceProvider;
+
+pub const AUDIENCE: &str = "https://pubsub.googleapis.com/";
+pub const PUBSUB: &str = "pubsub.googleapis.com";
+pub const SCOPES: [&str; 2] = [
+    "https://www.googleapis.com/auth/cloud-platform",
+    "https://www.googleapis.com/auth/pubsub.data",
+];
 
 #[derive(Debug, Clone)]
 pub struct ClientConfig {
@@ -21,36 +30,28 @@ pub struct ClientConfig {
     /// Pub/Sub project_id
     pub project_id: Option<String>,
     /// Runtime project info
-    pub project: ProjectOptions,
+    pub environment: Environment,
     /// Overriding service endpoint
     pub endpoint: String,
 }
 
-/// ClientConfigs created by default will prefer to use `PUBSUB_EMULATOR_HOST` if set and if not
-/// set will call ```google_cloud_auth::project``` to get the project.
+/// ClientConfigs created by default will prefer to use `PUBSUB_EMULATOR_HOST`
 impl Default for ClientConfig {
     fn default() -> Self {
         Self {
             pool_size: Some(4),
-            project: ProjectOptions::new("PUBSUB_EMULATOR_HOST"),
-            project_id: None,
+            environment: match var("PUBSUB_EMULATOR_HOST").ok() {
+                Some(v) => Environment::Emulator(v),
+                None => Environment::GoogleCloud(NopeTokenSourceProvider),
+            },
+            project_id: Some("local-project".to_string()),
             endpoint: PUBSUB.to_string(),
-        }
-    }
-}
-
-impl ClientConfig {
-    pub fn project(&mut self, project: Project) {
-        if let ProjectOptions::Project(_) = self.project {
-            self.project = ProjectOptions::Project(Some(project))
         }
     }
 }
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error(transparent)]
-    Auth(#[from] google_cloud_auth::error::Error),
     #[error(transparent)]
     GAX(#[from] google_cloud_gax::conn::Error),
     #[error("invalid project_id")]
@@ -71,29 +72,25 @@ pub struct Client {
 impl Client {
     /// default creates a default Pub/Sub client.
     pub async fn default() -> Result<Self, Error> {
-        Self::new(Default::default()).await
+        Self::new(Default::default().await?).await
     }
 
     /// new creates a Pub/Sub client. See [`ClientConfig`] for more information.
     pub async fn new(config: ClientConfig) -> Result<Self, Error> {
         let pool_size = config.pool_size.unwrap_or_default();
 
-        let environment = Environment::from_project(config.project).await?;
+        let pubc = PublisherClient::new(
+            ConnectionManager::new(pool_size, &config.environment, config.endpoint.as_str()).await?,
+        );
+        let subc = SubscriberClient::new(
+            ConnectionManager::new(pool_size, &config.environment, config.endpoint.as_str()).await?,
+        );
 
-        let pubc =
-            PublisherClient::new(ConnectionManager::new(pool_size, &environment, config.endpoint.as_str()).await?);
-        let subc =
-            SubscriberClient::new(ConnectionManager::new(pool_size, &environment, config.endpoint.as_str()).await?);
-
-        let project_id = match config.project_id {
-            Some(project_id) => project_id,
-            None => match environment {
-                Environment::GoogleCloud(project) => project.project_id().ok_or(Error::ProjectIdNotFound)?.to_string(),
-                Environment::Emulator(_) => "local-project".to_string(),
-            },
-        };
-
-        Ok(Self { project_id, pubc, subc })
+        Ok(Self {
+            project_id: config.project_id.ok_or(Error::ProjectIdNotFound)?,
+            pubc,
+            subc,
+        })
     }
 
     /// create_subscription creates a new subscription on a topic.

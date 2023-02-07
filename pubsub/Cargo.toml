@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-pubsub"
-version = "0.12.1"
+version = "0.13.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/pubsub"
@@ -18,8 +18,8 @@ async-channel = "1.6"
 async-stream = "0.3"
 thiserror = "1.0"
 
-google-cloud-auth = { version = "0.8.1", path = "../foundation/auth", default-features = false }
-google-cloud-gax = { version = "0.12.1", path = "../foundation/gax", default-features = false }
+google-cloud-token = { version = "0.1.0", path = "../foundation/token" }
+google-cloud-gax = { version = "0.13.0", path = "../foundation/gax", default-features = false }
 google-cloud-googleapis = { version = "0.7.0", path = "../googleapis", features = ["pubsub"]}
 
 [dev-dependencies]
@@ -33,7 +33,5 @@ ctor = "0.1.21"
 futures-util = "0.3"
 
 [features]
-default = ["default-tls"]
-default-tls = ["google-cloud-auth/default-tls", "google-cloud-gax/default-tls"]
-rustls-tls = ["google-cloud-auth/rustls-tls", "google-cloud-gax/rustls-tls"]
+default = []
 trace = []

@@ -1,5 +1,7 @@
 use google_cloud_gax::retry::{invoke_fn, TryAs};
 use google_cloud_googleapis::spanner::v1::{commit_request, transaction_options, Mutation, TransactionOptions};
+use std::env::var;
+use std::fmt::{Debug, Display};
 
 use crate::apiv1::conn_pool::{ConnectionManager, SPANNER};
 use crate::session::{ManagedSession, SessionConfig, SessionError, SessionManager};
@@ -11,7 +13,6 @@ use crate::value::{Timestamp, TimestampBound};
 
 use crate::retry::TransactionRetrySetting;
 
-use google_cloud_auth::Project;
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::{Code, Status};
@@ -19,6 +20,13 @@ use google_cloud_gax::project::ProjectOptions;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+
+pub const AUDIENCE: &str = "https://spanner.googleapis.com/";
+pub const SPANNER: &str = "spanner.googleapis.com";
+pub const SCOPES: [&str; 2] = [
+    "https://www.googleapis.com/auth/cloud-platform",
+    "https://www.googleapis.com/auth/spanner.data",
+];
 
 #[derive(Clone, Default)]
 pub struct PartitionedUpdateOption {
@@ -69,7 +77,7 @@ pub struct ClientConfig {
     /// Overriding service endpoint
     pub endpoint: String,
     /// Runtime project
-    pub project: ProjectOptions,
+    pub environment: Environment,
 }
 
 impl Default for ClientConfig {
@@ -78,7 +86,10 @@ impl Default for ClientConfig {
             channel_config: Default::default(),
             session_config: Default::default(),
             endpoint: SPANNER.to_string(),
-            project: ProjectOptions::new("SPANNER_EMULATOR_HOST"),
+            environment: match var("SPANNER_EMULATOR_HOST").ok() {
+                Some(v) => Environment::Emulator(v),
+                None => Environment::GoogleCloud(NopeTokenSourceProvider),
+            },
         };
         config.session_config.min_opened = config.channel_config.num_channels * 4;
         config.session_config.max_opened = config.channel_config.num_channels * 100;
@@ -101,9 +112,6 @@ pub enum InitializationError {
 
     #[error(transparent)]
     FailedToCreateChannelPool(#[from] google_cloud_gax::conn::Error),
-
-    #[error(transparent)]
-    Auth(#[from] google_cloud_auth::error::Error),
 
     #[error("invalid config: {0}")]
     InvalidConfig(String),
@@ -138,8 +146,7 @@ pub enum RunInTxError {
     #[error(transparent)]
     ParseError(#[from] crate::row::Error),
 
-    #[error(transparent)]
-    Any(#[from] anyhow::Error),
+    AppError(Box<dyn Display + Debug + Sync + Send>),
 }
 
 impl From<TxError> for RunInTxError {
@@ -187,9 +194,8 @@ impl Client {
             )));
         }
 
-        let environment = Environment::from_project(config.project).await?;
         let pool_size = config.channel_config.num_channels;
-        let conn_pool = ConnectionManager::new(pool_size, &environment, config.endpoint.as_str()).await?;
+        let conn_pool = ConnectionManager::new(pool_size, &config.environment, config.endpoint.as_str()).await?;
         let session_manager = SessionManager::new(database, conn_pool, config.session_config).await?;
 
         Ok(Client {

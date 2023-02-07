@@ -8,6 +8,7 @@ use ring::{rand, signature};
 use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey};
 use std::ops::Deref;
 
+use google_cloud_token::{NopeTokenSourceProvider, TokenSource, TokenSourceProvider};
 use std::sync::Arc;
 
 use crate::sign::{create_signed_buffer, SignBy, SignedURLError, SignedURLOptions};
@@ -22,10 +23,26 @@ pub enum Error {
     Other(&'static str),
 }
 
+#[derive(Debug, Clone)]
+pub struct ClientConfig {
+    pub http: Option<reqwest::Client>,
+    pub storage_endpoint: String,
+    pub service_account_endpoint: String,
+    pub token_source_provider: Box<dyn TokenSourceProvider>,
+}
+
+impl Default for ClientConfig {
+    fn default() -> Self {
+        Self {
+            http: None,
+            storage_endpoint: "https://storage.googleapis.com".to_string(),
+            token_source_provider: Box::new(NopeTokenSourceProvider {}),
+            service_account_endpoint: "https://iamcredentials.googleapis.com".to_string(),
+        }
+    }
+}
+
 pub struct Client {
-    private_key: Option<String>,
-    service_account_email: Option<String>,
-    project_id: Option<String>,
     storage_client: StorageClient,
     service_account_client: ServiceAccountClient,
 }
@@ -38,75 +55,25 @@ impl Deref for Client {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct ClientConfig {
-    pub http: Option<reqwest::Client>,
-    pub project: Option<Project>,
-    pub storage_endpoint: String,
-    pub service_account_endpoint: String,
-}
-
-impl Default for ClientConfig {
+impl Default for Client {
     fn default() -> Self {
-        Self {
-            http: None,
-            project: None,
-            storage_endpoint: "https://storage.googleapis.com".to_string(),
-            service_account_endpoint: "https://iamcredentials.googleapis.com".to_string(),
-        }
+        Self::new(ClientConfig::default())
     }
 }
 
 impl Client {
-    /// Default client
-    pub async fn default() -> Result<Self, Error> {
-        Self::new(ClientConfig::default()).await
-    }
-
     /// New client
-    pub async fn new(config: ClientConfig) -> Result<Self, Error> {
-        let project = match config.project {
-            Some(project) => project,
-            None => google_cloud_auth::project().await?,
-        };
-        let ts = create_token_source_from_project(
-            &project,
-            Config {
-                audience: None,
-                scopes: Some(&storage_client::SCOPES),
-            },
-        )
-        .await?;
-
-        let ts = Arc::from(ts);
-        let service_account_client =
-            ServiceAccountClient::new(Arc::clone(&ts), config.service_account_endpoint.as_str());
-
+    pub fn new(config: ClientConfig) -> Self {
+        let ts = Arc::from(config.token_source_provider.token_source());
         let http = config.http.unwrap_or_default();
-        match project {
-            Project::FromFile(cred) => Ok(Client {
-                private_key: cred.private_key.clone(),
-                service_account_email: cred.client_email,
-                project_id: cred.project_id,
-                storage_client: StorageClient::new(ts, config.storage_endpoint.as_str(), http),
-                service_account_client,
-            }),
-            Project::FromMetadataServer(info) => Ok(Client {
-                private_key: None,
-                service_account_email: match google_cloud_metadata::email("default").await {
-                    Ok(v) => Some(v),
-                    Err(_) => None,
-                },
-                project_id: info.project_id,
-                storage_client: StorageClient::new(ts, config.storage_endpoint.as_str(), http),
-                service_account_client,
-            }),
-        }
-    }
 
-    /// Gets the project_id from Credentials
-    pub fn project_id(&self) -> Option<&String> {
-        self.project_id.as_ref()
+        let service_account_client = ServiceAccountClient::new(ts.clone(), config.service_account_endpoint.as_str());
+        let storage_client = StorageClient::new(ts, config.service_account_endpoint.as_str(), http);
+
+        Self {
+            storage_client,
+            service_account_client,
+        }
     }
 
     /// Get signed url.

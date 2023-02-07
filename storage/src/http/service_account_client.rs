@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::http::Error;
 
-use google_cloud_auth::token_source::TokenSource;
+use google_cloud_token::TokenSource;
 
 use base64::prelude::*;
 use reqwest::Client;
@@ -60,7 +60,6 @@ impl ServiceAccountClient {
 #[cfg(test)]
 mod test {
     use crate::http::service_account_client::ServiceAccountClient;
-    use google_cloud_auth::{create_token_source, Config};
     use serial_test::serial;
     use std::sync::Arc;
 

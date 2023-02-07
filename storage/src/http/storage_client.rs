@@ -53,7 +53,7 @@ use crate::http::{
     objects, CancellationToken, Error,
 };
 use futures_util::{Stream, TryStream};
-use google_cloud_auth::token_source::TokenSource;
+use google_cloud_token::TokenSource;
 
 use reqwest::{Body, Client, RequestBuilder, Response};
 
