@@ -1,4 +1,3 @@
-use anyhow::Context;
 use google_cloud_spanner::client::{Client, RunInTxError};
 
 use google_cloud_spanner::statement::Statement;
@@ -52,7 +51,7 @@ async fn test_read_write_transaction() {
                     stmt.add_param("UserId", &user_id);
                     let updated = tx.update(stmt).await.unwrap();
                     if updated == 0 {
-                        Err(anyhow::Error::msg("error").into())
+                        Err("error".into())
                     }else {
                         Ok(updated)
                     }

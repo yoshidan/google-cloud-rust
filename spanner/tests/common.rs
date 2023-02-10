@@ -1,5 +1,4 @@
 use google_cloud_gax::grpc::Status;
-use google_cloud_gax::project::ProjectOptions;
 use google_cloud_googleapis::spanner::v1::Mutation;
 
 use google_cloud_spanner::client::{ChannelConfig, Client, ClientConfig};
