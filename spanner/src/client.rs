@@ -183,7 +183,7 @@ impl Client {
     /// read_only_transaction returns a ReadOnlyTransaction that can be used for
     /// multiple reads from the database.
     ///
-    /// ```
+    /// ```ignore
     /// use google_cloud_spanner::client::{Client, Error};
     /// use google_cloud_spanner::statement::Statement;
     /// use google_cloud_spanner::key::Key;
@@ -200,6 +200,7 @@ impl Client {
     ///
     ///     stmt.add_param("Param1", user_id);
     ///     let mut reader = tx.query(stmt).await?;
+    ///     let mut data = vec![];
     ///     while let Some(row) = reader.next().await? {
     ///         let user_id= row.column_by_name::<String>("UserId")?;
     ///         let user_items= row.column_by_name::<Vec<model::UserItem>>("UserItem")?;

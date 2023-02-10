@@ -180,11 +180,9 @@ impl Transaction {
     /// ```
     /// use google_cloud_spanner::key::Key;
     /// use google_cloud_spanner::client::Client;
+    /// use google_cloud_spanner::client::Error;
     ///
-    /// #[tokio::main]
-    /// async fn main() -> Result<(), anyhow::Error> {
-    ///     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
-    ///     let client = Client::new(DATABASE).await?;
+    /// async fn run(client: Client) -> Result<(), Error> {
     ///     let mut tx = client.single().await?;
     ///     let row = tx.read_row("Guild", &["GuildID", "OwnerUserID"], Key::new(&"guild1")).await?;
     ///     Ok(())

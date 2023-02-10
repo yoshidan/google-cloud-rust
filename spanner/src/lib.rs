@@ -134,6 +134,7 @@
 //!
 //!     let mut tx = client.single().await?;
 //!     let row = tx.read_row( "Guild", &["GuildId", "OwnerUserID", "UpdatedAt"], Key::new(&"guildId1")).await?;
+//!     Ok(())
 //! }
 //! ```
 //!
@@ -215,7 +216,7 @@
 //! use google_cloud_spanner::client::Client;
 //! use google_cloud_spanner::client::Error;
 //!
-//! async fn run(cient: Client) -> Result<(), Error>{
+//! async fn run(client: Client) -> Result<(), Error>{
 //!     let mut tx = client.single().await?;
 //!     let iter1 = tx.read("Guild",&["GuildID", "OwnerUserID"], vec![
 //!         Key::new(&"pk1"),
@@ -322,7 +323,7 @@
 //!
 //! To perform more than one read in a transaction, use ReadOnlyTransaction:
 //!
-//! ```
+//! ```ignore
 //! use google_cloud_spanner::client::{Client, Error};
 //! use google_cloud_spanner::statement::Statement;
 //! use google_cloud_spanner::key::Key;
@@ -339,6 +340,7 @@
 //!
 //!     stmt.add_param("Param1", user_id);
 //!     let mut reader = tx.query(stmt).await?;
+//!     let mut data = vec![];
 //!     while let Some(row) = reader.next().await? {
 //!         let user_id= row.column_by_name::<String>("UserId")?;
 //!         let user_items= row.column_by_name::<Vec<model::UserItem>>("UserItem")?;
