@@ -8,8 +8,8 @@ use std::ops::Deref;
 
 use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
 
-use crate::sign::{create_signed_buffer, SignBy, SignedURLError, SignedURLOptions};
 use crate::sign::SignBy::PrivateKey;
+use crate::sign::{create_signed_buffer, SignBy, SignedURLError, SignedURLOptions};
 
 #[derive(Debug)]
 pub struct ClientConfig {
@@ -128,7 +128,10 @@ impl Client {
         let mut sign_by = opts.sign_by;
         if let PrivateKey(pk) = &sign_by {
             if pk.is_empty() {
-                sign_by = self.default_sign_by.clone().ok_or(SignedURLError::InvalidOption("No default sign_by was found"))?;
+                sign_by = self
+                    .default_sign_by
+                    .clone()
+                    .ok_or(SignedURLError::InvalidOption("No default sign_by was found"))?;
             }
         }
 
@@ -216,7 +219,7 @@ mod test {
     #[serial]
     async fn test_buckets() {
         let prefix = Some("rust-bucket-test".to_string());
-        let (client ,project) = create_client().await;
+        let (client, project) = create_client().await;
         let result = client
             .list_buckets(
                 &ListBucketsRequest {
@@ -279,7 +282,7 @@ mod test {
             ..Default::default()
         };
 
-        let (client ,project) = create_client().await;
+        let (client, project) = create_client().await;
         let bucket_name = format!("rust-test-{}", OffsetDateTime::now_utc().unix_timestamp());
         let req = InsertBucketRequest {
             name: bucket_name.clone(),

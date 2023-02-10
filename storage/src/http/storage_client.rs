@@ -2358,7 +2358,7 @@ mod test {
         let _ = tracing_subscriber::fmt::try_init();
     }
 
-    async fn client() -> (StorageClient, String)  {
+    async fn client() -> (StorageClient, String) {
         let tsp = DefaultTokenSourceProvider::new(Config {
             audience: None,
             scopes: Some(&SCOPES),
@@ -2374,7 +2374,7 @@ mod test {
     #[tokio::test]
     #[serial]
     pub async fn list_buckets() {
-        let (client,project)= client().await;
+        let (client, project) = client().await;
         let buckets = client
             .list_buckets(
                 &ListBucketsRequest {
@@ -2394,7 +2394,7 @@ mod test {
     #[tokio::test]
     #[serial]
     pub async fn crud_bucket() {
-        let (client,project)= client().await;
+        let (client, project) = client().await;
         let name = format!("rust-test-insert-{}", time::OffsetDateTime::now_utc().unix_timestamp());
         let bucket = client
             .insert_bucket(
@@ -2469,7 +2469,7 @@ mod test {
     #[serial]
     async fn set_get_test_iam() {
         let bucket_name = "rust-iam-test";
-        let (client,project)= client().await;
+        let (client, _project) = client().await;
         let mut policy = client
             .get_iam_policy(
                 &GetIamPolicyRequest {
@@ -2516,7 +2516,7 @@ mod test {
     #[serial]
     pub async fn crud_default_object_controls() {
         let bucket_name = "rust-default-object-acl-test";
-        let (client, project) = client().await;
+        let (client, _project) = client().await;
 
         client
             .delete_default_object_access_control(
@@ -2574,7 +2574,7 @@ mod test {
     #[serial]
     pub async fn crud_bucket_access_controls() {
         let bucket_name = "rust-bucket-acl-test";
-        let (client , project) = client().await;
+        let (client, _project) = client().await;
 
         let _post = client
             .insert_bucket_access_control(
@@ -2631,7 +2631,7 @@ mod test {
     pub async fn crud_object_access_controls() {
         let bucket_name = "rust-default-object-acl-test";
         let object_name = "test.txt";
-        let (client , project) = client().await;
+        let (client, _project) = client().await;
 
         let _post = client
             .insert_object_access_control(
@@ -2695,7 +2695,7 @@ mod test {
     #[serial]
     pub async fn crud_notification() {
         let bucket_name = "rust-bucket-test";
-        let (client , project) = client().await;
+        let (client, project) = client().await;
 
         let notifications = client
             .list_notifications(
@@ -2754,7 +2754,7 @@ mod test {
     #[serial]
     pub async fn crud_hmac_key() {
         let _key_name = "rust-hmac-test";
-        let (client, project_id ) = client().await;
+        let (client, project_id) = client().await;
 
         let post = client
             .create_hmac_key(
@@ -2825,7 +2825,7 @@ mod test {
     #[serial]
     pub async fn crud_object() {
         let bucket_name = "rust-object-test";
-        let (client , project) = client().await;
+        let (client, _project) = client().await;
 
         let objects = client
             .list_objects(
@@ -2939,7 +2939,7 @@ mod test {
     pub async fn streamed_object() {
         let bucket_name = "rust-object-test";
         let file_name = format!("stream_{}", time::OffsetDateTime::now_utc().unix_timestamp());
-        let (client , project) = client().await;
+        let (client, _project) = client().await;
 
         // let stream= reqwest::Client::default().get("https://avatars.githubusercontent.com/u/958174?s=96&v=4").send().await.unwrap().bytes_stream();
         let source = vec!["hello", " ", "world"];
