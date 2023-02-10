@@ -11,7 +11,9 @@ use google_cloud_spanner::retry::TransactionRetry;
 use google_cloud_spanner::value::Timestamp;
 use serial_test::serial;
 use time::OffsetDateTime;
+use google_cloud_gax::retry::TryAs;
 use google_cloud_spanner::row::Row;
+use google_cloud_spanner::session::SessionError;
 
 const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
@@ -26,7 +28,30 @@ fn init() {
 #[derive(thiserror::Error, Debug)]
 pub enum DomainError {
     #[error("invalid")]
-    UpdateInvalid(),
+    UpdateInvalid,
+    #[error(transparent)]
+    Tx(#[from] RunInTxError)
+}
+
+impl TryAs<Status> for DomainError {
+    fn try_as(&self) -> Option<&Status> {
+        match self {
+            DomainError::Tx(RunInTxError::GRPC(status)) => Some(status),
+            _ => None,
+        }
+    }
+}
+
+impl From<Status> for DomainError {
+    fn from(status: Status) -> Self{
+        Self::Tx(RunInTxError::GRPC(status))
+    }
+}
+
+impl From<SessionError> for DomainError {
+    fn from(se: SessionError) -> Self{
+        Self::Tx(RunInTxError::InvalidSession(se))
+    }
 }
 
 #[tokio::test]
@@ -40,7 +65,7 @@ async fn test_read_write_transaction() {
 
     // test
     let client = Client::new(DATABASE).await.unwrap();
-    let result: Result<(Option<Timestamp>, i64), RunInTxError> = client
+    let result: Result<(Option<Timestamp>, i64), DomainError> = client
         .read_write_transaction(
             |tx, _cancel| {
                 let user_id= user_id.to_string();
@@ -49,9 +74,9 @@ async fn test_read_write_transaction() {
                     tx.buffer_write(ms);
                     let mut stmt = Statement::new("Insert Into UserItem (UserId,ItemId,Quantity,UpdatedAt) VALUES(@UserId,1,1,PENDING_COMMIT_TIMESTAMP())");
                     stmt.add_param("UserId", &user_id);
-                    let updated = tx.update(stmt).await.unwrap();
+                    let updated = tx.update(stmt).await?;
                     if updated == 0 {
-                        Err("error".into())
+                        Err(DomainError::UpdateInvalid)
                     }else {
                         Ok(updated)
                     }

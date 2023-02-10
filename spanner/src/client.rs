@@ -130,9 +130,6 @@ pub enum RunInTxError {
 
     #[error(transparent)]
     ParseError(#[from] crate::row::Error),
-
-    #[error(transparent)]
-    AppError(Box<dyn std::error::Error + Send + Sync>),
 }
 
 impl From<TxError> for RunInTxError {
