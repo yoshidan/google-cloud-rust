@@ -1,8 +1,8 @@
 use std::env::var;
-use google_cloud_gax::conn::{Channel, ConnectionManager, Environment, Error};
+use google_cloud_gax::conn::{Environment};
 use google_cloud_gax::grpc::Code;
 use google_cloud_gax::retry::RetrySetting;
-use google_cloud_longrunning::autogen::operations_client::OperationsClient;
+
 use std::time::Duration;
 use google_cloud_token::NopeTokenSourceProvider;
 
@@ -22,13 +22,13 @@ pub struct AdminClientConfig {
 
 impl Default for AdminClientConfig {
     fn default() -> Self {
-        let mut config = AdminClientConfig {
+        
+        AdminClientConfig {
             environment: match var("SPANNER_EMULATOR_HOST").ok() {
                 Some(v) => Environment::Emulator(v),
                 None => Environment::GoogleCloud(Box::new(NopeTokenSourceProvider{})),
             },
-        };
-        config
+        }
     }
 }
 

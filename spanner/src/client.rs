@@ -1,7 +1,7 @@
 use google_cloud_gax::retry::{invoke_fn, TryAs};
 use google_cloud_googleapis::spanner::v1::{commit_request, transaction_options, Mutation, TransactionOptions};
 use std::env::var;
-use std::fmt::{Debug, Display};
+use std::fmt::{Debug};
 
 use crate::apiv1::conn_pool::{ConnectionManager, SPANNER};
 use crate::session::{ManagedSession, SessionConfig, SessionError, SessionManager};
@@ -61,7 +61,7 @@ impl Default for ChannelConfig {
 }
 
 /// ClientConfig has configurations for the client.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ClientConfig {
     /// SessionPoolConfig is the configuration for session pool.
     pub session_config: SessionConfig,
@@ -131,7 +131,8 @@ pub enum RunInTxError {
     #[error(transparent)]
     ParseError(#[from] crate::row::Error),
 
-    AppError(Box<dyn std::error::Error>),
+    #[error(transparent)]
+    AppError(Box<dyn std::error::Error + Send + Sync>),
 }
 
 impl From<TxError> for RunInTxError {

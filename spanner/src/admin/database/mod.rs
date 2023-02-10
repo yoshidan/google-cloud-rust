@@ -71,7 +71,7 @@ mod tests {
     #[serial]
     async fn test_delete_database() {
         let database = create_database().await;
-        let client = DatabaseAdminClient::default().await.unwrap();
+        let client = new_client().await;
         let request = DropDatabaseRequest {
             database: database.name.to_string(),
         };

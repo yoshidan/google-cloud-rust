@@ -8,6 +8,7 @@ mod common;
 use common::*;
 
 use time::OffsetDateTime;
+use google_cloud_spanner::row::Row;
 
 #[ctor::ctor]
 fn init() {
@@ -98,7 +99,7 @@ async fn test_rollback() {
     }
     let mut tx = data_client.read_only_transaction().await.unwrap();
     let reader = tx.read("User", &user_columns(), Key::new(&past_user)).await.unwrap();
-    let row = all_rows(reader).await.unwrap().pop().unwrap();
+    let row :Row= all_rows(reader).await.unwrap().pop().unwrap();
     let ts = cr.unwrap();
     let ts = OffsetDateTime::from_unix_timestamp(ts.seconds)
         .unwrap()
@@ -131,7 +132,7 @@ async fn assert_data(
     .await;
 
     // commit or rollback is required for rw transaction
-    let rows = match tx.end(result, None).await {
+    let rows : Vec<Row> = match tx.end(result, None).await {
         Ok(s) => s.1,
         Err(e) => panic!("tx error {e:?}"),
     };

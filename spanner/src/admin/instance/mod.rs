@@ -84,7 +84,7 @@ mod tests {
     #[serial]
     async fn test_delete_instance() {
         let instance = create_instance().await;
-        let client = InstanceAdminClient::default().await.unwrap();
+        let client = new_client().await;
         let request = DeleteInstanceRequest {
             name: instance.name.to_string(),
         };

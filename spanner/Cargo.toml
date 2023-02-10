@@ -14,12 +14,12 @@ documentation = "https://docs.rs/google-cloud-spanner/latest/google_cloud_spanne
 tracing = "0.1"
 prost-types = "0.11"
 tokio = "1.20"
-time = "0.3"
+time = { version="0.3", features = ["std", "macros", "formatting", "parsing"] }
 thiserror = "1.0"
 async-trait = "0.1"
 parking_lot = "0.12"
 base64 = "0.21"
-serde = { version = "1.0", optional = true }
+serde = { version = "1.0", optional = true, features = ["derive"] }
 
 google-cloud-token = { version = "0.1.0", path = "../foundation/token" }
 google-cloud-longrunning= { version = "0.12.0", path = "../foundation/longrunning" }
@@ -30,7 +30,6 @@ google-cloud-googleapis = { version = "0.7.0", path = "../googleapis", features 
 tokio = { version="1.20", features=["rt-multi-thread"] }
 tracing-subscriber = { version="0.3", features=["env-filter"] }
 serial_test = "0.9"
-anyhow = "1.0.48"
 ctor = "0.1"
 
 [features]

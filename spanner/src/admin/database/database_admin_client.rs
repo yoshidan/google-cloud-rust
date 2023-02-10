@@ -14,7 +14,7 @@ use google_cloud_googleapis::spanner::admin::database::v1::{
 use crate::admin::default_retry_setting;
 
 use google_cloud_gax::cancel::CancellationToken;
-use google_cloud_gax::conn::{Channel, Error};
+use google_cloud_gax::conn::{Channel};
 use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::{Response, Status};
 use google_cloud_longrunning::autogen::operations_client::OperationsClient;
