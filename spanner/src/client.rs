@@ -129,7 +129,7 @@ impl Client {
     /// the form projects/PROJECT_ID/instances/INSTANCE_ID/databases/DATABASE_ID.
     pub async fn new(database: impl Into<String>, config: ClientConfig) -> Result<Self, Error> {
         if config.session_config.max_opened > config.channel_config.num_channels * 100 {
-            return Err(InitializationError::InvalidConfig(format!(
+            return Err(Error::InvalidConfig(format!(
                 "max session size is {} because max session size is 100 per gRPC connection",
                 config.channel_config.num_channels * 100
             )));
