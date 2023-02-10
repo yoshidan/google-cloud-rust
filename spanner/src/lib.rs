@@ -583,9 +583,6 @@
 //!     Ok(())
 //! }
 //! ```
-pub const AUDIENCE: &str = "https://spanner.googleapis.com/";
-pub const SPANNER: &str = "spanner.googleapis.com";
-
 pub mod admin;
 pub mod apiv1;
 pub mod client;

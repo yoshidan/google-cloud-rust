@@ -16,17 +16,10 @@ use crate::retry::TransactionRetrySetting;
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::{Code, Status};
-use google_cloud_gax::project::ProjectOptions;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-
-pub const AUDIENCE: &str = "https://spanner.googleapis.com/";
-pub const SPANNER: &str = "spanner.googleapis.com";
-pub const SCOPES: [&str; 2] = [
-    "https://www.googleapis.com/auth/cloud-platform",
-    "https://www.googleapis.com/auth/spanner.data",
-];
+use google_cloud_token::NopeTokenSourceProvider;
 
 #[derive(Clone, Default)]
 pub struct PartitionedUpdateOption {
@@ -88,20 +81,12 @@ impl Default for ClientConfig {
             endpoint: SPANNER.to_string(),
             environment: match var("SPANNER_EMULATOR_HOST").ok() {
                 Some(v) => Environment::Emulator(v),
-                None => Environment::GoogleCloud(NopeTokenSourceProvider),
+                None => Environment::GoogleCloud(Box::new(NopeTokenSourceProvider{})),
             },
         };
         config.session_config.min_opened = config.channel_config.num_channels * 4;
         config.session_config.max_opened = config.channel_config.num_channels * 100;
         config
-    }
-}
-
-impl ClientConfig {
-    pub fn project(&mut self, project: Project) {
-        if let ProjectOptions::Project(_) = self.project {
-            self.project = ProjectOptions::Project(Some(project))
-        }
     }
 }
 
@@ -146,7 +131,7 @@ pub enum RunInTxError {
     #[error(transparent)]
     ParseError(#[from] crate::row::Error),
 
-    AppError(Box<dyn Display + Debug + Sync + Send>),
+    AppError(Box<dyn std::error::Error>),
 }
 
 impl From<TxError> for RunInTxError {

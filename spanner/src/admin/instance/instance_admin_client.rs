@@ -4,7 +4,7 @@ use google_cloud_googleapis::iam::v1::{
 
 use google_cloud_googleapis::spanner::admin::instance::v1::instance_admin_client::InstanceAdminClient as InternalInstanceAdminClient;
 
-use crate::admin::{default_internal_client, default_retry_setting};
+use crate::admin::default_retry_setting;
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::{Channel, Error};
 use google_cloud_gax::create_request;
@@ -26,11 +26,6 @@ pub struct InstanceAdminClient {
 impl InstanceAdminClient {
     pub fn new(inner: InternalInstanceAdminClient<Channel>, lro_client: OperationsClient) -> Self {
         Self { inner, lro_client }
-    }
-
-    pub async fn default() -> Result<Self, Error> {
-        let (conn, lro_client) = default_internal_client().await?;
-        Ok(Self::new(InternalInstanceAdminClient::new(conn), lro_client))
     }
 
     /// list_instance_configs lists the supported instance configurations for a given project.
@@ -252,7 +247,7 @@ impl InstanceAdminClient {
     /// Instance, if successful.
     #[cfg(not(feature = "trace"))]
     pub async fn create_instance(
-        &mut self,
+        &self,
         req: CreateInstanceRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
@@ -263,7 +258,7 @@ impl InstanceAdminClient {
     #[cfg(feature = "trace")]
     #[tracing::instrument(skip_all)]
     pub async fn create_instance(
-        &mut self,
+        &self,
         req: CreateInstanceRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
@@ -273,7 +268,7 @@ impl InstanceAdminClient {
 
     #[inline(always)]
     async fn _create_instance(
-        &mut self,
+        &self,
         req: CreateInstanceRequest,
         cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
