@@ -17,18 +17,18 @@
 //! use google_cloud_spanner::statement::Statement;
 //! use google_cloud_spanner::reader::AsyncIterator;
 //! use google_cloud_spanner::value::CommitTimestamp;
-//! use google_cloud_spanner::client::RunInTxError;
+//! use google_cloud_spanner::client::Error;
 //! use google_cloud_spanner::client::ClientConfig;
 //! use google_cloud_gax::grpc::Status;
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), RunInTxError>{
+//! async fn main() -> Result<(), Error>{
 //!
 //!     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 //!
 //!     // Create spanner client
 //!     let config = ClientConfig::default();//.with_auth().await.unwrap();
-//!     let mut client = Client::new(DATABASE, config).await.unwrap();
+//!     let mut client = Client::new(DATABASE, config).await?;
 //!
 //!     // Insert or update
 //!     let mutation = insert_or_update("Guild", &["GuildId", "OwnerUserID", "UpdatedAt"], &[&"guildId", &"ownerId", &CommitTimestamp::new()]);
@@ -103,15 +103,17 @@
 //! ```
 //! use google_cloud_spanner::client::Client;
 //! use google_cloud_spanner::client::ClientConfig;
+//! use google_cloud_spanner::client::Error;
 //!
 //! #[tokio::main]
-//! async fn main() {
+//! async fn main() -> Result<(), Error>{
 //!     // Set SPANNER_EMULATOR_HOST environment variable.
 //!     std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
 //!
 //!     // Create client as usual.
 //!     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
-//!     let client = Client::new(DATABASE, ClientConfig::default()).await.unwrap();
+//!     let client = Client::new(DATABASE, ClientConfig::default()).await?;
+//!     Ok(())
 //! }
 //! ```
 //!
@@ -123,10 +125,10 @@
 //! use google_cloud_spanner::key::Key;
 //! use google_cloud_spanner::value::CommitTimestamp;
 //! use google_cloud_spanner::statement::ToKind;
-//! use google_cloud_spanner::client::{Client, TxError};
+//! use google_cloud_spanner::client::{Client, Error};
 //! use google_cloud_spanner::mutation::insert_or_update;
 //!
-//! async fn run(client: Client) -> Result<(), TxError>{
+//! async fn run(client: Client) -> Result<(), Error>{
 //!     let mutation = insert_or_update("Guild", &["GuildId", "OwnerUserID", "UpdatedAt"], &[&"guildId1", &"ownerId1", &CommitTimestamp::new()]);
 //!     let commit_timestamp = client.apply(vec![mutation]).await?;
 //!
@@ -196,9 +198,9 @@
 //!
 //! ```
 //! use google_cloud_spanner::key::Key;
-//! use google_cloud_spanner::client::{Client, TxError};
+//! use google_cloud_spanner::client::{Client, Error};
 //!
-//! async fn run(client: Client) -> Result<(), TxError>{
+//! async fn run(client: Client) -> Result<(), Error>{
 //!     let mut tx = client.single().await?;
 //!     let row = tx.read_row("Guild", &["GuildID", "OwnerUserID"], Key::new(&"guild1")).await;
 //!     Ok(())
@@ -211,13 +213,15 @@
 //! use google_cloud_spanner::key::Key;
 //! use google_cloud_spanner::statement::ToKind;
 //! use google_cloud_spanner::client::Client;
+//! use google_cloud_spanner::client::Error;
 //!
-//! async fn run(cient: Client)  {
-//!     let mut tx = client.single().await.unwrap();
+//! async fn run(cient: Client) -> Result<(), Error>{
+//!     let mut tx = client.single().await?;
 //!     let iter1 = tx.read("Guild",&["GuildID", "OwnerUserID"], vec![
 //!         Key::new(&"pk1"),
 //!         Key::new(&"pk2")
 //!     ]).await?;
+//!     Ok(())
 //! }
 //! ```
 //!
@@ -227,19 +231,21 @@
 //! use google_cloud_spanner::key::Key;
 //! use google_cloud_spanner::client::Client;
 //! use google_cloud_spanner::reader::AsyncIterator;
+//! use google_cloud_spanner::client::Error;
 //!
 //! #[tokio::main]
-//! async fn run(client: Client) {
-//!     let mut tx = client.single().await.unwrap();
+//! async fn run(client: Client) -> Result<(), Error>{
+//!     let mut tx = client.single().await?;
 //!     let mut iter = tx.read("Guild", &["GuildID", "OwnerUserID"], vec![
 //!         Key::new(&"pk1"),
 //!         Key::new(&"pk2")
 //!     ]).await.unwrap();
 //!
-//!     while let Some(row) = iter.next().await.unwrap() {
+//!     while let Some(row) = iter.next().await? {
 //!         let guild_id = row.column_by_name::<String>("GuildID");
 //!         //do something
 //!     };
+//!     Ok(())
 //! }
 //! ```
 //!
@@ -263,14 +269,15 @@
 //! Use the Query method to run the statement and obtain an iterator:
 //!
 //! ```
-//! use google_cloud_spanner::client::{Client, TxError};
+//! use google_cloud_spanner::client::{Client, Error};
 //! use google_cloud_spanner::statement::Statement;
 //!
-//! async fn run(client: Client) -> Result<(), TxError>{
+//! async fn run(client: Client) -> Result<(), Error>{
 //!     let mut stmt = Statement::new("SELECT * FROM Guild WHERE OwnerUserID = @OwnerUserID");
 //!     stmt.add_param("OwnerUserID", &"key");
 //!     let mut tx = client.single().await?;
-//!     let iter = tx.query(stmt).await;
+//!     let iter = tx.query(stmt).await?;
+//!     Ok(())
 //! }
 //! ```
 //!
@@ -316,12 +323,12 @@
 //! To perform more than one read in a transaction, use ReadOnlyTransaction:
 //!
 //! ```
-//! use google_cloud_spanner::client::{Client, TxError};
+//! use google_cloud_spanner::client::{Client, Error};
 //! use google_cloud_spanner::statement::Statement;
 //! use google_cloud_spanner::key::Key;
 //! use google_cloud_spanner::reader::AsyncIterator;
 //!
-//! async fn run(client: Client) -> Result<(), TxError> {
+//! async fn run(client: Client) -> Result<(), Error> {
 //!     let mut tx = client.read_only_transaction().await?;
 //!
 //!     let mut stmt = Statement::new("SELECT * , \
@@ -342,14 +349,16 @@
 //!     let mut reader2 = tx.read("User", &["UserId"], vec![
 //!         Key::new(&"user-1"),
 //!         Key::new(&"user-2")
-//!     ]).await;
+//!     ]).await?;
 //!
 //!     // iterate reader2 ...
 //!
 //!     let mut reader3 = tx.read("Table", &["col1", "col2"], vec![
 //!         Key::composite(&[&"composite-pk-1-1",&"composite-pk-1-2"]),
 //!         Key::composite(&[&"composite-pk-2-1",&"composite-pk-2-2"])
-//!     ]).await;
+//!     ]).await?;
+//!
+//!     Ok(())
 //! }
 //! // iterate reader3 ...
 //! ```
@@ -364,11 +373,12 @@
 //! You can control the read timestamp selected by a transaction. For example, to perform a query on data that is at most one minute stale, use
 //!
 //! ```
-//! use google_cloud_spanner::client::Client;
+//! use google_cloud_spanner::client::{Client, Error};
 //! use google_cloud_spanner::value::TimestampBound;
 //!
-//! pub async fn run(client: Client) {
-//!     let tx = client.single_with_timestamp_bound(TimestampBound::max_staleness(std::time::Duration::from_secs(60))).await.unwrap();
+//! pub async fn run(client: Client) -> Result<(), Error>{
+//!     let tx = client.single_with_timestamp_bound(TimestampBound::max_staleness(std::time::Duration::from_secs(60))).await?;
+//!     Ok(())
 //! }
 //! ```
 //!
@@ -450,13 +460,14 @@
 //! use google_cloud_spanner::mutation::delete;
 //! use google_cloud_spanner::key::all_keys;
 //! use google_cloud_spanner::statement::ToKind;
-//! use google_cloud_spanner::client::Client;
 //! use google_cloud_spanner::value::CommitTimestamp;
+//! use google_cloud_spanner::client::{Client, Error};
 //!
-//! async fn run(client: Client) {
+//! async fn run(client: Client) -> Result<(), Error>{
 //!     let m1 = delete("Guild", all_keys());
 //!     let m2 = insert("Guild", &["GuildID", "OwnerUserID", "UpdatedAt"], &[&"1", &"2", &CommitTimestamp::new()]);
-//!     let commit_timestamp = client.apply(vec![m1,m2]).await.unwrap();
+//!     let commit_timestamp = client.apply(vec![m1,m2]).await?;
+//!     Ok(())
 //! }
 //! ```
 //!
@@ -466,11 +477,11 @@
 //! use google_cloud_spanner::mutation::update;
 //! use google_cloud_spanner::key::Key;
 //! use google_cloud_spanner::value::Timestamp;
-//! use google_cloud_spanner::client::RunInTxError;
+//! use google_cloud_spanner::client::Error;
 //! use google_cloud_spanner::client::Client;
 //! use google_cloud_spanner::reader::AsyncIterator;
 //!
-//! async fn run(client: Client) ->Result<(Option<Timestamp>,()), RunInTxError> {
+//! async fn run(client: Client) ->Result<(Option<Timestamp>,()), Error> {
 //!     client.read_write_transaction(|tx, _| {
 //!         Box::pin(async move {
 //!             // The transaction function will be called again if the error code
@@ -506,14 +517,14 @@
 //! use google_cloud_spanner::mutation::update;
 //! use google_cloud_spanner::key::{Key, all_keys};
 //! use google_cloud_spanner::value::Timestamp;
-//! use google_cloud_spanner::client::{RunInTxError, TxError};
+//! use google_cloud_spanner::client::{Error, Error};
 //! use google_cloud_spanner::client::Client;
 //! use google_cloud_spanner::reader::AsyncIterator;
 //! use google_cloud_spanner::transaction_rw::ReadWriteTransaction;
 //! use google_cloud_googleapis::spanner::v1::execute_batch_dml_request::Statement;
 //! use google_cloud_spanner::retry::TransactionRetry;
 //!
-//! async fn run(client: Client) -> Result<(), TxError> {
+//! async fn run(client: Client) -> Result<(), Error> {
 //!     let retry = &mut TransactionRetry::new();
 //!     loop {
 //!         let tx = &mut client.begin_read_write_transaction().await?;
@@ -528,7 +539,7 @@
 //!     }
 //! }
 //!
-//! async fn run_in_transaction(tx: &mut ReadWriteTransaction) -> Result<(), RunInTxError> {
+//! async fn run_in_transaction(tx: &mut ReadWriteTransaction) -> Result<(), Error> {
 //!     let key = all_keys();
 //!     let mut reader = tx.read("UserItem", &["UserId", "ItemId", "Quantity"], key).await?;
 //!     let mut ms = vec![];
@@ -549,13 +560,14 @@
 //! Use client.partitioned_update to run a DML statement in this way. Not all DML statements can be partitioned.
 //!
 //! ```
-//! use google_cloud_spanner::client::Client;
+//! use google_cloud_spanner::client::{Client, Error};
 //! use google_cloud_spanner::statement::Statement;
 //!
 //! #[tokio::main]
-//! async fn run(client:Client)  {
+//! async fn run(client:Client) -> Result<(), Error>{
 //!     let stmt = Statement::new("UPDATE User SET NullableString = 'aaa' WHERE NullableString IS NOT NULL");
-//!     let result = client.partitioned_update(stmt).await.unwrap();
+//!     let result = client.partitioned_update(stmt).await?;
+//!     Ok(())
 //! }
 //! ```
 pub mod admin;

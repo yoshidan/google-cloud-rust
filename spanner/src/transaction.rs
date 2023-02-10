@@ -122,11 +122,11 @@ impl Transaction {
     /// read returns a RowIterator for reading multiple rows from the database.
     /// ```
     /// use google_cloud_spanner::key::Key;
-    /// use google_cloud_spanner::client::{Client, RunInTxError};
+    /// use google_cloud_spanner::client::{Client, Error};
     /// use google_cloud_spanner::reader::AsyncIterator;
     ///
     /// #[tokio::main]
-    /// async fn run(client: Client) -> Result<(), RunInTxError> {
+    /// async fn run(client: Client) -> Result<(), Error> {
     ///     let mut tx = client.single().await?;
     ///     let mut iter = tx.read("Guild", &["GuildID", "OwnerUserID"], vec![
     ///         Key::new(&"pk1"),

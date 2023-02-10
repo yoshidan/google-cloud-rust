@@ -1,4 +1,4 @@
-use google_cloud_spanner::client::{Client, RunInTxError};
+use google_cloud_spanner::client::{Client, ClientConfig, Error};
 
 use google_cloud_spanner::statement::Statement;
 
@@ -30,13 +30,13 @@ pub enum DomainError {
     #[error("invalid")]
     UpdateInvalid,
     #[error(transparent)]
-    Tx(#[from] RunInTxError),
+    Tx(#[from] Error),
 }
 
 impl TryAs<Status> for DomainError {
     fn try_as(&self) -> Option<&Status> {
         match self {
-            DomainError::Tx(RunInTxError::GRPC(status)) => Some(status),
+            DomainError::Tx(Error::GRPC(status)) => Some(status),
             _ => None,
         }
     }
@@ -44,13 +44,13 @@ impl TryAs<Status> for DomainError {
 
 impl From<Status> for DomainError {
     fn from(status: Status) -> Self {
-        Self::Tx(RunInTxError::GRPC(status))
+        Self::Tx(Error::GRPC(status))
     }
 }
 
 impl From<SessionError> for DomainError {
     fn from(se: SessionError) -> Self {
-        Self::Tx(RunInTxError::InvalidSession(se))
+        Self::Tx(Error::InvalidSession(se))
     }
 }
 
@@ -67,7 +67,7 @@ async fn test_read_write_transaction() {
         .unwrap();
 
     // test
-    let client = Client::new(DATABASE).await.unwrap();
+    let client = Client::new(DATABASE, ClientConfig::default()).await.unwrap();
     let result: Result<(Option<Timestamp>, i64), DomainError> = client
         .read_write_transaction(
             |tx, _cancel| {
@@ -121,7 +121,7 @@ async fn test_read_write_transaction() {
 #[serial]
 async fn test_apply() {
     let users: Vec<String> = (0..2).map(|x| format!("user_client_{x}")).collect();
-    let client = Client::new(DATABASE).await.unwrap();
+    let client = Client::new(DATABASE, ClientConfig::default()).await.unwrap();
     let now = OffsetDateTime::now_utc();
     let ms = users.iter().map(|id| create_user_mutation(id, &now)).collect();
     let value = client.apply(ms).await.unwrap().unwrap();
@@ -142,7 +142,7 @@ async fn test_apply() {
 #[serial]
 async fn test_apply_at_least_once() {
     let users: Vec<String> = (0..2).map(|x| format!("user_client_x_{x}")).collect();
-    let client = Client::new(DATABASE).await.unwrap();
+    let client = Client::new(DATABASE, ClientConfig::default()).await.unwrap();
     let now = OffsetDateTime::now_utc();
     let ms = users.iter().map(|id| create_user_mutation(id, &now)).collect();
     let value = client.apply_at_least_once(ms).await.unwrap().unwrap();
@@ -172,7 +172,7 @@ async fn test_partitioned_update() {
         .unwrap();
 
     // test
-    let client = Client::new(DATABASE).await.unwrap();
+    let client = Client::new(DATABASE, ClientConfig::default()).await.unwrap();
     let stmt = Statement::new("UPDATE User SET NullableString = 'aaa' WHERE NullableString IS NOT NULL");
     client.partitioned_update(stmt).await.unwrap();
 
@@ -198,7 +198,7 @@ async fn test_batch_read_only_transaction() {
     data_client.apply(many).await.unwrap();
 
     // test
-    let client = Client::new(DATABASE).await.unwrap();
+    let client = Client::new(DATABASE, ClientConfig::default()).await.unwrap();
     let mut tx = client.batch_read_only_transaction().await.unwrap();
 
     let stmt = Statement::new(format!(
@@ -212,7 +212,7 @@ async fn test_batch_read_only_transaction() {
 #[tokio::test]
 #[serial]
 async fn test_begin_read_write_transaction_retry() {
-    let client = Client::new(DATABASE).await.unwrap();
+    let client = Client::new(DATABASE, ClientConfig::default()).await.unwrap();
     let tx = &mut client.begin_read_write_transaction().await.unwrap();
     let retry = &mut TransactionRetry::new();
     let mut retry_count = 0;
