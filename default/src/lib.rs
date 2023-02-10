@@ -1,6 +1,7 @@
 use google_cloud_auth::bridge::DefaultTokenSourceProvider;
 use google_cloud_auth::error::Error as AuthError;
 use google_cloud_auth::project::Config;
+use google_cloud_auth::token::DefaultTokenSourceProvider;
 use google_cloud_gax::conn::Environment;
 use google_cloud_metadata::Error as MetadataError;
 

@@ -1,3 +1,4 @@
+use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 use crate::credentials::CredentialsFile;
 use crate::error::Error;
@@ -38,9 +39,15 @@ impl Token {
 }
 
 pub struct DefaultTokenSourceProvider {
-    token_source: Arc<DefaultTokenSource>,
+    ts: Arc<DefaultTokenSource>,
     pub project_id: Option<String>,
     pub source_credentials: Option<Box<CredentialsFile>>,
+}
+
+impl Debug for DefaultTokenSourceProvider {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Ok(())
+    }
 }
 
 impl DefaultTokenSourceProvider {
@@ -53,7 +60,7 @@ impl DefaultTokenSourceProvider {
             Project::FromFile(cred) => (cred.project_id.clone(), Some(cred)),
         };
         Ok(Self {
-            token_source: Arc::new(DefaultTokenSource {
+            ts: Arc::new(DefaultTokenSource {
                 inner: internal_token_source.into()
             }),
             project_id,
@@ -64,7 +71,7 @@ impl DefaultTokenSourceProvider {
 
 impl TokenSourceProvider for DefaultTokenSourceProvider {
     fn token_source(&self) -> Arc<dyn TokenSource> {
-        self.token_source.clone()
+        self.ts.clone()
     }
 }
 

@@ -7,6 +7,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::fmt::{Debug, Formatter, Write};
 use time::format_description::well_known::iso8601::{EncodedConfig, TimePrecision};
 use time::format_description::well_known::{self, Iso8601};
 use time::macros::format_description;
@@ -62,9 +63,19 @@ impl URLStyle for PathStyle {
     }
 }
 
+#[derive(Clone)]
 pub enum SignBy {
     PrivateKey(Vec<u8>),
     SignBytes,
+}
+
+impl Debug for SignBy {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SignBy::PrivateKey(_) => f.write_str("private_key"),
+            SignBy::SignBytes => f.write_str("sign_bytes")
+        }
+    }
 }
 
 /// SignedURLOptions allows you to restrict the access to the signed URL.
@@ -144,7 +155,7 @@ impl Default for SignedURLOptions {
     fn default() -> Self {
         Self {
             google_access_id: "".to_string(),
-            sign_by: SignBy::PrivateKey(vec![]),
+            sign_by: Some(SignBy::PrivateKey(vec![])),
             method: SignedURLMethod::GET,
             expires: std::time::Duration::from_secs(600),
             content_type: None,
@@ -365,7 +376,7 @@ mod test {
             param
         };
         let opts = SignedURLOptions {
-            sign_by: SignBy::PrivateKey(file.private_key.unwrap().into()),
+            sign_by: Some(SignBy::PrivateKey(file.private_key.unwrap().into())),
             google_access_id: file.client_email.unwrap(),
             expires: Duration::from_secs(3600),
             query_parameters: param,

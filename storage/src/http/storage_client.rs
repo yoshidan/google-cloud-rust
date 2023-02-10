@@ -2246,7 +2246,7 @@ impl StorageClient {
         Ok(builder
             .header("X-Goog-Api-Client", "rust")
             .header(reqwest::header::USER_AGENT, "google-cloud-storage")
-            .header(reqwest::header::AUTHORIZATION, token.value()))
+            .header(reqwest::header::AUTHORIZATION, token))
     }
 
     async fn send<T: for<'de> serde::Deserialize<'de>>(&self, builder: RequestBuilder) -> Result<T, Error> {
@@ -2348,9 +2348,11 @@ mod test {
     use crate::http::storage_client::{StorageClient, SCOPES};
     use bytes::Buf;
     use futures_util::StreamExt;
-    use google_cloud_auth::{create_token_source, Config};
     use serial_test::serial;
     use std::sync::Arc;
+    use google_cloud_auth::project::Config;
+    use google_cloud_auth::token::DefaultTokenSourceProvider;
+    use google_cloud_token::TokenSourceProvider;
 
     const PROJECT: &str = "atl-dev1";
 
@@ -2360,13 +2362,11 @@ mod test {
     }
 
     async fn client() -> StorageClient {
-        let ts = create_token_source(Config {
+        let ts = DefaultTokenSourceProvider::new(Config {
             audience: None,
             scopes: Some(&SCOPES),
-        })
-        .await
-        .unwrap();
-        StorageClient::new(Arc::from(ts), "https://storage.googleapis.com", reqwest::Client::new())
+        }).await.unwrap().token_source();
+        StorageClient::new(ts, "https://storage.googleapis.com", reqwest::Client::new())
     }
 
     #[tokio::test]

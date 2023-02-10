@@ -1,4 +1,4 @@
-use crate::http::storage_client;
+
 use crate::http::storage_client::StorageClient;
 
 use crate::http::service_account_client::ServiceAccountClient;
@@ -7,12 +7,12 @@ use ring::{rand, signature};
 use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey};
 use std::ops::Deref;
 
-use google_cloud_token::{NopeTokenSourceProvider, TokenSource, TokenSourceProvider};
-use std::sync::Arc;
+use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
+
 
 use crate::sign::{create_signed_buffer, SignBy, SignedURLError, SignedURLOptions};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ClientConfig {
     pub http: Option<reqwest::Client>,
     pub storage_endpoint: String,
@@ -59,7 +59,7 @@ impl Default for Client {
 impl Client {
     /// New client
     pub fn new(config: ClientConfig) -> Self {
-        let ts = Arc::from(config.token_source_provider.token_source());
+        let ts = config.token_source_provider.token_source();
         let http = config.http.unwrap_or_default();
 
         let service_account_client = ServiceAccountClient::new(ts.clone(), config.service_account_endpoint.as_str());
@@ -85,7 +85,7 @@ impl Client {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///     let client = create_client().await;
     ///     let url_for_download = client.signed_url("bucket", "file.txt", SignedURLOptions::default()).await;
     ///     let url_for_upload = client.signed_url("bucket", "file.txt", SignedURLOptions {
     ///         method: SignedURLMethod::PUT,
@@ -117,20 +117,21 @@ impl Client {
     #[inline(always)]
     async fn _signed_url(&self, bucket: &str, object: &str, opts: SignedURLOptions) -> Result<String, SignedURLError> {
         let mut opts = opts;
-        let sign_by = match opts.sign_by {
-            Some(sign_by) => sign_by,
-            None => match self.default_sign_by {
-                Some(ref v) => v.clone(),
-                None => return Err(SignedURLError::InvalidOption("No default sign_by was found")),
-            },
-        };
         if opts.google_access_id.is_empty() {
             opts.google_access_id = self
-                .default_google_access_id
+                .default_google_access_id.clone()
                 .ok_or(SignedURLError::InvalidOption("No default google_access_id is found"))?;
         }
         let (signed_buffer, mut builder) = create_signed_buffer(bucket, object, &opts)?;
         tracing::trace!("signed_buffer={:?}", String::from_utf8_lossy(&signed_buffer));
+
+        let sign_by = match opts.sign_by {
+            Some(sign_by) => sign_by,
+            None => match &self.default_sign_by {
+                Some(v) => v.clone(),
+                None => return Err(SignedURLError::InvalidOption("No default sign_by was found")),
+            },
+        };
 
         // create signature
         let signature = match &sign_by {
@@ -171,7 +172,7 @@ impl Client {
 
 #[cfg(test)]
 mod test {
-    use crate::client::Client;
+    use crate::client::{Client, ClientConfig};
 
     use crate::http::buckets::delete::DeleteBucketRequest;
     use crate::http::buckets::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
@@ -182,24 +183,41 @@ mod test {
     use serial_test::serial;
     use std::collections::HashMap;
     use time::OffsetDateTime;
+    use google_cloud_auth::project::Config;
+    use google_cloud_auth::token::DefaultTokenSourceProvider;
 
     use crate::http::buckets::list::ListBucketsRequest;
-    use crate::sign::{SignedURLMethod, SignedURLOptions};
+    use crate::http::storage_client::SCOPES;
+    use crate::sign::{SignBy, SignedURLMethod, SignedURLOptions};
 
     #[ctor::ctor]
     fn init() {
         let _ = tracing_subscriber::fmt::try_init();
     }
 
+    async fn create_client() -> Client {
+        let mut config = ClientConfig::default();
+        let ts = DefaultTokenSourceProvider::new(Config {
+            audience: None,
+            scopes: Some(&SCOPES),
+        }).await.unwrap();
+        
+        let cred = &ts.source_credentials.clone().unwrap();
+        config.token_source_provider = Box::new(ts);
+        config.default_google_access_id = cred.client_email.clone();
+        config.default_sign_by = Some(SignBy::PrivateKey(cred.private_key.clone().unwrap().into_bytes()));
+        Client::new(config)
+    }
+    
     #[tokio::test]
     #[serial]
     async fn buckets() {
         let prefix = Some("rust-bucket-test".to_string());
-        let client = Client::default().await.unwrap();
+        let client = create_client().await;
         let result = client
             .list_buckets(
                 &ListBucketsRequest {
-                    project: client.project_id().to_string(),
+                    project: "atl-dev1".to_string(),
                     prefix,
                     ..Default::default()
                 },
@@ -258,12 +276,12 @@ mod test {
             ..Default::default()
         };
 
-        let client = Client::default().await.unwrap();
+        let client = create_client().await;
         let bucket_name = format!("rust-test-{}", OffsetDateTime::now_utc().unix_timestamp());
         let req = InsertBucketRequest {
             name: bucket_name.clone(),
             param: InsertBucketParam {
-                project: client.project_id().to_string(),
+                project: "atl-dev1".to_string(),
                 ..Default::default()
             },
             bucket: config,
@@ -296,7 +314,7 @@ mod test {
     #[tokio::test]
     #[serial]
     async fn sign() {
-        let client = Client::default().await.unwrap();
+        let client = create_client().await;
         let bucket_name = "rust-object-test";
         let data = "aiueo";
         let content_type = "application/octet-stream";

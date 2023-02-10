@@ -29,6 +29,8 @@ pub enum Error {
     Cancelled,
     #[error(transparent)]
     Base64DecodeError(#[from] base64::DecodeError),
+    #[error(transparent)]
+    Std(#[from] Box<dyn std::error::Error>),
 }
 
 pub(crate) trait Escape {
