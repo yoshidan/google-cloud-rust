@@ -2349,7 +2349,7 @@ mod test {
     use bytes::Buf;
     use futures_util::StreamExt;
     use serial_test::serial;
-    use std::sync::Arc;
+
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_token::TokenSourceProvider;
@@ -2365,7 +2365,10 @@ mod test {
         let ts = DefaultTokenSourceProvider::new(Config {
             audience: None,
             scopes: Some(&SCOPES),
-        }).await.unwrap().token_source();
+        })
+        .await
+        .unwrap()
+        .token_source();
         StorageClient::new(ts, "https://storage.googleapis.com", reqwest::Client::new())
     }
 

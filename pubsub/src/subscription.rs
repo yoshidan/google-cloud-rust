@@ -620,7 +620,9 @@ mod tests {
     }
 
     async fn create_subscription(enable_exactly_once_delivery: bool) -> Subscription {
-        let cm = ConnectionManager::new(4, "", &Environment::Emulator(EMULATOR.to_string())).await.unwrap();
+        let cm = ConnectionManager::new(4, "", &Environment::Emulator(EMULATOR.to_string()))
+            .await
+            .unwrap();
         let client = SubscriberClient::new(cm);
 
         let uuid = Uuid::new_v4().hyphenated().to_string();
@@ -635,7 +637,8 @@ mod tests {
         if !subscription.exists(Some(cancel.clone()), None).await.unwrap() {
             subscription
                 .create(topic_name.as_str(), config, Some(cancel), None)
-                .await.unwrap();
+                .await
+                .unwrap();
         }
         subscription
     }
@@ -732,7 +735,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_subscription_exactly_once()  {
+    async fn test_subscription_exactly_once() {
         test_subscription(true).await;
     }
 
@@ -744,7 +747,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_multi_subscriber_single_subscription()  {
+    async fn test_multi_subscriber_single_subscription() {
         let subscription = create_subscription(false).await;
         let cancellation_token = CancellationToken::new();
         let cancel_receiver = cancellation_token.clone();
@@ -886,7 +889,8 @@ mod tests {
         // create
         let created_snapshot = subscription
             .create_snapshot(snapshot_name.as_str(), labels.clone(), Some(ctx.clone()), None)
-            .await.unwrap();
+            .await
+            .unwrap();
 
         assert_eq!(created_snapshot.name, expected_fq_snap_name);
         // NOTE: we don't assert the labels due to lack of label support in the pubsub emulator.
@@ -894,13 +898,15 @@ mod tests {
         // get
         let retrieved_snapshot = subscription
             .get_snapshot(snapshot_name.as_str(), Some(ctx.clone()), None)
-            .await.unwrap();
+            .await
+            .unwrap();
         assert_eq!(created_snapshot, retrieved_snapshot);
 
         // delete
         subscription
             .delete_snapshot(snapshot_name.as_str(), Some(ctx.clone()), None)
-            .await.unwrap();
+            .await
+            .unwrap();
 
         let _deleted_snapshot_status = subscription
             .get_snapshot(snapshot_name.as_str(), None, None)
@@ -913,7 +919,7 @@ mod tests {
             .expect_err("snapshot should already be deleted");
     }
 
-    async fn ack_all(messages: &[ReceivedMessage])  {
+    async fn ack_all(messages: &[ReceivedMessage]) {
         for message in messages.iter() {
             message.ack().await.unwrap();
         }
@@ -934,7 +940,8 @@ mod tests {
         // snapshot at received = 1
         let _snapshot = subscription
             .create_snapshot(snapshot_name.as_str(), HashMap::new(), None, None)
-            .await.unwrap();
+            .await
+            .unwrap();
 
         // publish and receive another message
         publish().await;
@@ -945,7 +952,8 @@ mod tests {
         // rewind to snapshot at received = 1
         subscription
             .seek(SeekTo::Snapshot(snapshot_name.clone()), None, None)
-            .await.unwrap();
+            .await
+            .unwrap();
 
         // assert we receive the 1 message we should receive again
         let messages = subscription.pull(100, None, None).await.unwrap();
@@ -953,7 +961,10 @@ mod tests {
         ack_all(&messages).await;
 
         // cleanup
-        subscription.delete_snapshot(snapshot_name.as_str(), None, None).await.unwrap();
+        subscription
+            .delete_snapshot(snapshot_name.as_str(), None, None)
+            .await
+            .unwrap();
         subscription.delete(None, None).await.unwrap();
     }
 
@@ -973,7 +984,8 @@ mod tests {
                 None,
                 None,
             )
-            .await.unwrap();
+            .await
+            .unwrap();
 
         // publish and receive a message
         publish().await;
@@ -990,7 +1002,8 @@ mod tests {
                 None,
                 None,
             )
-            .await.unwrap();
+            .await
+            .unwrap();
 
         // consume -- should receive the first message again
         let messages = subscription.pull(100, None, None).await.unwrap();

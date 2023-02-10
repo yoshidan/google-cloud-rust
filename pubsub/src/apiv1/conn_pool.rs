@@ -1,4 +1,3 @@
-
 use google_cloud_gax::conn::{Channel, Environment};
 use google_cloud_gax::conn::{ConnectionManager as GRPCConnectionManager, Error};
 
@@ -8,7 +7,6 @@ pub const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
     "https://www.googleapis.com/auth/pubsub.data",
 ];
-
 
 #[derive(Debug)]
 pub struct ConnectionManager {

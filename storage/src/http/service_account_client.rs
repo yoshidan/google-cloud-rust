@@ -61,7 +61,7 @@ impl ServiceAccountClient {
 mod test {
     use crate::http::service_account_client::ServiceAccountClient;
     use serial_test::serial;
-    use std::sync::Arc;
+
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_token::TokenSourceProvider;
@@ -75,7 +75,10 @@ mod test {
         let ts = DefaultTokenSourceProvider::new(Config {
             audience: None,
             scopes: Some(&["https://www.googleapis.com/auth/cloud-platform"]),
-        }).await.unwrap().token_source();
+        })
+        .await
+        .unwrap()
+        .token_source();
         ServiceAccountClient::new(ts, "https://iamcredentials.googleapis.com")
     }
 

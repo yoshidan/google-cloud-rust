@@ -120,7 +120,7 @@ impl ConnectionManager {
         let tls_config = ClientTlsConfig::new().domain_name(domain_name);
         let mut conns = Vec::with_capacity(pool_size);
 
-        let ts = Arc::from(ts_provider.token_source());
+        let ts = ts_provider.token_source();
 
         for _i_ in 0..pool_size {
             let endpoint = TonicChannel::from_static(audience).tls_config(tls_config.clone())?;

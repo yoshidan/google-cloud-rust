@@ -1,10 +1,9 @@
-
-use std::fmt::{Debug};
-use std::sync::Arc;
 use async_trait::async_trait;
+use std::fmt::Debug;
+use std::sync::Arc;
 
 #[async_trait]
-pub trait TokenSource: Send + Sync + Debug{
+pub trait TokenSource: Send + Sync + Debug {
     /// token returns the valid token
     async fn token(&self) -> Result<String, Box<dyn std::error::Error>>;
 }

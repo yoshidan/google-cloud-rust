@@ -73,7 +73,7 @@ impl Debug for SignBy {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             SignBy::PrivateKey(_) => f.write_str("private_key"),
-            SignBy::SignBytes => f.write_str("sign_bytes")
+            SignBy::SignBytes => f.write_str("sign_bytes"),
         }
     }
 }

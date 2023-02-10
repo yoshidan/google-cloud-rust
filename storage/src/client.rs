@@ -1,4 +1,3 @@
-
 use crate::http::storage_client::StorageClient;
 
 use crate::http::service_account_client::ServiceAccountClient;
@@ -8,7 +7,6 @@ use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey};
 use std::ops::Deref;
 
 use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
-
 
 use crate::sign::{create_signed_buffer, SignBy, SignedURLError, SignedURLOptions};
 
@@ -119,7 +117,8 @@ impl Client {
         let mut opts = opts;
         if opts.google_access_id.is_empty() {
             opts.google_access_id = self
-                .default_google_access_id.clone()
+                .default_google_access_id
+                .clone()
                 .ok_or(SignedURLError::InvalidOption("No default google_access_id is found"))?;
         }
         let (signed_buffer, mut builder) = create_signed_buffer(bucket, object, &opts)?;
@@ -180,11 +179,11 @@ mod test {
         BucketCreationConfig, InsertBucketParam, InsertBucketRequest, RetentionPolicyCreationConfig,
     };
     use crate::http::buckets::{lifecycle, Billing, Cors, IamConfiguration, Lifecycle, Website};
+    use google_cloud_auth::project::Config;
+    use google_cloud_auth::token::DefaultTokenSourceProvider;
     use serial_test::serial;
     use std::collections::HashMap;
     use time::OffsetDateTime;
-    use google_cloud_auth::project::Config;
-    use google_cloud_auth::token::DefaultTokenSourceProvider;
 
     use crate::http::buckets::list::ListBucketsRequest;
     use crate::http::storage_client::SCOPES;
@@ -200,15 +199,17 @@ mod test {
         let ts = DefaultTokenSourceProvider::new(Config {
             audience: None,
             scopes: Some(&SCOPES),
-        }).await.unwrap();
-        
+        })
+        .await
+        .unwrap();
+
         let cred = &ts.source_credentials.clone().unwrap();
         config.token_source_provider = Box::new(ts);
         config.default_google_access_id = cred.client_email.clone();
         config.default_sign_by = Some(SignBy::PrivateKey(cred.private_key.clone().unwrap().into_bytes()));
         Client::new(config)
     }
-    
+
     #[tokio::test]
     #[serial]
     async fn buckets() {

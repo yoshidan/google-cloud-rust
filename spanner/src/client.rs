@@ -1,7 +1,7 @@
 use google_cloud_gax::retry::{invoke_fn, TryAs};
 use google_cloud_googleapis::spanner::v1::{commit_request, transaction_options, Mutation, TransactionOptions};
 use std::env::var;
-use std::fmt::{Debug};
+use std::fmt::Debug;
 
 use crate::apiv1::conn_pool::{ConnectionManager, SPANNER};
 use crate::session::{ManagedSession, SessionConfig, SessionError, SessionManager};
@@ -16,10 +16,10 @@ use crate::retry::TransactionRetrySetting;
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::{Code, Status};
+use google_cloud_token::NopeTokenSourceProvider;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use google_cloud_token::NopeTokenSourceProvider;
 
 #[derive(Clone, Default)]
 pub struct PartitionedUpdateOption {
@@ -81,7 +81,7 @@ impl Default for ClientConfig {
             endpoint: SPANNER.to_string(),
             environment: match var("SPANNER_EMULATOR_HOST").ok() {
                 Some(v) => Environment::Emulator(v),
-                None => Environment::GoogleCloud(Box::new(NopeTokenSourceProvider{})),
+                None => Environment::GoogleCloud(Box::new(NopeTokenSourceProvider {})),
             },
         };
         config.session_config.min_opened = config.channel_config.num_channels * 4;

@@ -1,9 +1,7 @@
 use google_cloud_auth::error::Error as AuthError;
-use google_cloud_auth::project::Config;
-use google_cloud_auth::token::DefaultTokenSourceProvider;
-use google_cloud_gax::conn::Environment;
-use google_cloud_metadata::Error as MetadataError;
+
 use async_trait::async_trait;
+use google_cloud_metadata::Error as MetadataError;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -16,7 +14,9 @@ pub enum Error {
 
 #[async_trait]
 pub trait WithAuthExt {
-    async fn with_auth(mut self) -> Result<Self, Error> where Self: Sized;
+    async fn with_auth(mut self) -> Result<Self, Error>
+    where
+        Self: Sized;
 }
 
 #[cfg(feature = "pubsub")]
@@ -66,7 +66,8 @@ impl WithAuthExt for google_cloud_storage::client::ClientConfig {
             //Credential file is used.
             Some(cred) => {
                 if let Some(pk) = &cred.private_key {
-                    self.default_sign_by = Some(google_cloud_storage::sign::SignBy::PrivateKey(pk.clone().into_bytes()));
+                    self.default_sign_by =
+                        Some(google_cloud_storage::sign::SignBy::PrivateKey(pk.clone().into_bytes()));
                 }
                 self.default_google_access_id = cred.client_email.clone()
             }
@@ -84,12 +85,15 @@ impl WithAuthExt for google_cloud_storage::client::ClientConfig {
 
 #[cfg(test)]
 mod test {
-    use google_cloud_gax::conn::Environment;
     use crate::WithAuthExt;
+    use google_cloud_gax::conn::Environment;
 
     #[tokio::test]
     async fn test_spanner() {
-        let config = google_cloud_spanner::client::ClientConfig::default().with_auth().await.unwrap();
+        let config = google_cloud_spanner::client::ClientConfig::default()
+            .with_auth()
+            .await
+            .unwrap();
         if let Environment::Emulator(_) = config.environment {
             unreachable!()
         }
@@ -97,7 +101,10 @@ mod test {
 
     #[tokio::test]
     async fn test_pubsub() {
-        let config = google_cloud_pubsub::client::ClientConfig::default().with_auth().await.unwrap();
+        let config = google_cloud_pubsub::client::ClientConfig::default()
+            .with_auth()
+            .await
+            .unwrap();
         if let Environment::Emulator(_) = config.environment {
             unreachable!()
         }
@@ -105,7 +112,10 @@ mod test {
 
     #[tokio::test]
     async fn test_storage() {
-        let config = google_cloud_storage::client::ClientConfig::default().with_auth().await.unwrap();
+        let config = google_cloud_storage::client::ClientConfig::default()
+            .with_auth()
+            .await
+            .unwrap();
         assert!(config.default_google_access_id.is_some());
         assert!(config.default_sign_by.is_some());
     }

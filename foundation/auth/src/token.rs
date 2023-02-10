@@ -1,11 +1,11 @@
-use std::fmt::{Debug, Formatter};
-use std::sync::Arc;
 use crate::credentials::CredentialsFile;
 use crate::error::Error;
-use crate::token_source::TokenSource as InternalTokenSource;
 use crate::project::{create_token_source_from_project, project, Config, Project};
-use google_cloud_token::{TokenSource, TokenSourceProvider};
+use crate::token_source::TokenSource as InternalTokenSource;
 use async_trait::async_trait;
+use google_cloud_token::{TokenSource, TokenSourceProvider};
+use std::fmt::{Debug, Formatter};
+use std::sync::Arc;
 
 pub const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
 pub const AUTH_URL: &str = "https://accounts.gen.com/o/oauth2/auth";
@@ -61,7 +61,7 @@ impl DefaultTokenSourceProvider {
         };
         Ok(Self {
             ts: Arc::new(DefaultTokenSource {
-                inner: internal_token_source.into()
+                inner: internal_token_source.into(),
             }),
             project_id,
             source_credentials,

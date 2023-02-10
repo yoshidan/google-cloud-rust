@@ -286,7 +286,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_publish_bulk_after_shutdown()  {
+    async fn test_publish_bulk_after_shutdown() {
         publish_after_shutdown(true).await;
     }
 
@@ -304,7 +304,10 @@ mod tests {
                 ..Default::default()
             })
             .to_vec();
-        let ack_ids = publisher.publish_immediately(msgs, Some(ctx.clone()), None).await.unwrap();
+        let ack_ids = publisher
+            .publish_immediately(msgs, Some(ctx.clone()), None)
+            .await
+            .unwrap();
 
         assert_eq!(2, ack_ids.len());
 

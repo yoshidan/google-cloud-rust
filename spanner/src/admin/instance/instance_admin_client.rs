@@ -6,7 +6,7 @@ use google_cloud_googleapis::spanner::admin::instance::v1::instance_admin_client
 
 use crate::admin::default_retry_setting;
 use google_cloud_gax::cancel::CancellationToken;
-use google_cloud_gax::conn::{Channel};
+use google_cloud_gax::conn::Channel;
 use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::{Response, Status};
 use google_cloud_gax::retry::{invoke, RetrySetting};

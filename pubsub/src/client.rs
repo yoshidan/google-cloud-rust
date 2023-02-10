@@ -33,7 +33,7 @@ impl Default for ClientConfig {
             pool_size: Some(4),
             environment: match var("PUBSUB_EMULATOR_HOST").ok() {
                 Some(v) => Environment::Emulator(v),
-                None => Environment::GoogleCloud(Box::new(NopeTokenSourceProvider{})),
+                None => Environment::GoogleCloud(Box::new(NopeTokenSourceProvider {})),
             },
             project_id: Some("local-project".to_string()),
             endpoint: PUBSUB.to_string(),
@@ -61,7 +61,6 @@ pub struct Client {
 }
 
 impl Client {
-
     /// new creates a Pub/Sub client. See [`ClientConfig`] for more information.
     pub async fn new(config: ClientConfig) -> Result<Self, Error> {
         let pool_size = config.pool_size.unwrap_or_default();
@@ -272,7 +271,7 @@ mod tests {
         Client::new(Default::default()).await.unwrap()
     }
 
-    async fn do_publish_and_subscribe(ordering_key: &str, bulk: bool)  {
+    async fn do_publish_and_subscribe(ordering_key: &str, bulk: bool) {
         let client = create_client().await;
 
         let order = !ordering_key.is_empty();
@@ -416,11 +415,13 @@ mod tests {
                 ctx.clone(),
                 None,
             )
-            .await.unwrap();
+            .await
+            .unwrap();
 
         let _ = subscription
             .create_snapshot(snapshot_id, HashMap::default(), ctx.clone(), None)
-            .await.unwrap();
+            .await
+            .unwrap();
 
         let topics_after = client.get_topics(ctx.clone(), None).await.unwrap();
         let subs_after = client.get_subscriptions(ctx.clone(), None).await.unwrap();

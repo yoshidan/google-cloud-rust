@@ -7,13 +7,13 @@ use common::*;
 use google_cloud_spanner::key::Key;
 
 use google_cloud_gax::grpc::{Code, Status};
+use google_cloud_gax::retry::TryAs;
 use google_cloud_spanner::retry::TransactionRetry;
+use google_cloud_spanner::row::Row;
+use google_cloud_spanner::session::SessionError;
 use google_cloud_spanner::value::Timestamp;
 use serial_test::serial;
 use time::OffsetDateTime;
-use google_cloud_gax::retry::TryAs;
-use google_cloud_spanner::row::Row;
-use google_cloud_spanner::session::SessionError;
 
 const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
@@ -30,7 +30,7 @@ pub enum DomainError {
     #[error("invalid")]
     UpdateInvalid,
     #[error(transparent)]
-    Tx(#[from] RunInTxError)
+    Tx(#[from] RunInTxError),
 }
 
 impl TryAs<Status> for DomainError {
@@ -43,13 +43,13 @@ impl TryAs<Status> for DomainError {
 }
 
 impl From<Status> for DomainError {
-    fn from(status: Status) -> Self{
+    fn from(status: Status) -> Self {
         Self::Tx(RunInTxError::GRPC(status))
     }
 }
 
 impl From<SessionError> for DomainError {
-    fn from(se: SessionError) -> Self{
+    fn from(se: SessionError) -> Self {
         Self::Tx(RunInTxError::InvalidSession(se))
     }
 }
@@ -61,7 +61,10 @@ async fn test_read_write_transaction() {
     let now = OffsetDateTime::now_utc();
     let user_id = format!("user_{}", now.unix_timestamp());
     let data_client = create_data_client().await;
-    data_client.apply(vec![create_user_mutation(&user_id, &now)]).await.unwrap();
+    data_client
+        .apply(vec![create_user_mutation(&user_id, &now)])
+        .await
+        .unwrap();
 
     // test
     let client = Client::new(DATABASE).await.unwrap();
@@ -91,17 +94,24 @@ async fn test_read_write_transaction() {
         .unwrap();
 
     let mut ro = client.read_only_transaction().await.unwrap();
-    let record = ro.read("User", &user_columns(), Key::new(&"user_client_1x")).await.unwrap();
+    let record = ro
+        .read("User", &user_columns(), Key::new(&"user_client_1x"))
+        .await
+        .unwrap();
     let row = all_rows(record).await.unwrap().pop().unwrap();
     assert_user_row(&row, "user_client_1x", &now, &ts);
 
-    let record = ro.read("User", &user_columns(), Key::new(&"user_client_2x")).await.unwrap();
+    let record = ro
+        .read("User", &user_columns(), Key::new(&"user_client_2x"))
+        .await
+        .unwrap();
     let row = all_rows(record).await.unwrap().pop().unwrap();
     assert_user_row(&row, "user_client_2x", &now, &ts);
 
     let record = ro
         .read("UserItem", &["UpdatedAt"], Key::composite(&[&user_id, &1]))
-        .await.unwrap();
+        .await
+        .unwrap();
     let row = all_rows(record).await.unwrap().pop().unwrap();
     let cts = row.column_by_name::<OffsetDateTime>("UpdatedAt").unwrap();
     assert_eq!(cts.unix_timestamp(), ts.unix_timestamp());
@@ -109,7 +119,7 @@ async fn test_read_write_transaction() {
 
 #[tokio::test]
 #[serial]
-async fn test_apply()  {
+async fn test_apply() {
     let users: Vec<String> = (0..2).map(|x| format!("user_client_{x}")).collect();
     let client = Client::new(DATABASE).await.unwrap();
     let now = OffsetDateTime::now_utc();
@@ -130,7 +140,7 @@ async fn test_apply()  {
 
 #[tokio::test]
 #[serial]
-async fn test_apply_at_least_once()  {
+async fn test_apply_at_least_once() {
     let users: Vec<String> = (0..2).map(|x| format!("user_client_x_{x}")).collect();
     let client = Client::new(DATABASE).await.unwrap();
     let now = OffsetDateTime::now_utc();
@@ -151,12 +161,15 @@ async fn test_apply_at_least_once()  {
 
 #[tokio::test]
 #[serial]
-async fn test_partitioned_update()  {
+async fn test_partitioned_update() {
     //set up test data
     let now = OffsetDateTime::now_utc();
     let user_id = format!("user_{}", now.unix_timestamp());
     let data_client = create_data_client().await;
-    data_client.apply(vec![create_user_mutation(&user_id, &now)]).await.unwrap();
+    data_client
+        .apply(vec![create_user_mutation(&user_id, &now)])
+        .await
+        .unwrap();
 
     // test
     let client = Client::new(DATABASE).await.unwrap();
@@ -175,7 +188,7 @@ async fn test_partitioned_update()  {
 
 #[tokio::test]
 #[serial]
-async fn test_batch_read_only_transaction()  {
+async fn test_batch_read_only_transaction() {
     //set up test data
     let now = OffsetDateTime::now_utc();
     let many = (0..20000)
@@ -198,7 +211,7 @@ async fn test_batch_read_only_transaction()  {
 
 #[tokio::test]
 #[serial]
-async fn test_begin_read_write_transaction_retry()  {
+async fn test_begin_read_write_transaction_retry() {
     let client = Client::new(DATABASE).await.unwrap();
     let tx = &mut client.begin_read_write_transaction().await.unwrap();
     let retry = &mut TransactionRetry::new();

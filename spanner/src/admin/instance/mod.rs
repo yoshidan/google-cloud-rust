@@ -11,14 +11,17 @@ mod tests {
         ListInstanceConfigsRequest, ListInstancesRequest,
     };
 
-    use serial_test::serial;
-    use time::OffsetDateTime;
+    use crate::apiv1::conn_pool::{AUDIENCE, SPANNER};
     use google_cloud_gax::conn::{ConnectionManager, Environment};
     use google_cloud_longrunning::autogen::operations_client::OperationsClient;
-    use crate::apiv1::conn_pool::{AUDIENCE, SPANNER};
+    use serial_test::serial;
+    use time::OffsetDateTime;
 
     async fn new_client() -> InstanceAdminClient {
-        let conn_pool = ConnectionManager::new(1, SPANNER, AUDIENCE, &Environment::Emulator("localhost:9010".to_string())).await.unwrap();
+        let conn_pool =
+            ConnectionManager::new(1, SPANNER, AUDIENCE, &Environment::Emulator("localhost:9010".to_string()))
+                .await
+                .unwrap();
         let lro_client = OperationsClient::new(conn_pool.conn()).await.unwrap();
         InstanceAdminClient::new(InternalInstanceAdminClient::new(conn_pool.conn()), lro_client)
     }
