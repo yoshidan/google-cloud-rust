@@ -18,7 +18,6 @@
 //! use google_cloud_pubsub::topic::TopicConfig;
 //! use google_cloud_pubsub::subscription::SubscriptionConfig;
 //! use google_cloud_gax::grpc::Status;
-//! use google_cloud_default;
 //! use tokio::task::JoinHandle;
 //! // use google_cloud_default::WithAuthExt;
 //!
@@ -29,7 +28,7 @@
 //!     // Create pubsub client.
 //!     // `with_auth` is the trait defined at google-cloud-default crate.
 //!     let config = ClientConfig::default();//.with_auth().await.unwrap();
-//!     let client = Client::new(config).await?;
+//!     let client = Client::new(config).await.unwrap();
 //!
 //!     // Create topic.
 //!     let topic = client.topic("test-topic");
@@ -87,7 +86,7 @@
 //!     // Create pubsub client.
 //!     // `with_auth` is the trait defined at google-cloud-default crate.
 //!     let config = ClientConfig::default();//.with_auth().await.unwrap();
-//!     let client = Client::new(config).await?;
+//!     let client = Client::new(config).await.unwrap();
 //!
 //!     // Get the topic to subscribe to.
 //!     let topic = client.topic("test-topic");

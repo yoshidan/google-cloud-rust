@@ -35,7 +35,7 @@ google-cloud-default = { version = <version>, features = ["pubsub"] }
 
      // Create pubsub client. 
      let config = ClientConfig::default().with_auth().await.unwrap();
-     let client = Client::new(config).await?;
+     let client = Client::new(config).await.unwrap();
 
      // Create topic.
      let topic = client.topic("test-topic");
@@ -92,7 +92,7 @@ google-cloud-default = { version = <version>, features = ["pubsub"] }
 
      // Create pubsub client. 
      let config = ClientConfig::default().with_auth().await.unwrap();
-     let client = Client::new(config).await?;
+     let client = Client::new(config).await.unwrap();
 
      // Get the topic to subscribe to.
      let topic = client.topic("test-topic");
