@@ -82,7 +82,7 @@ pub async fn create_data_client() -> Client {
     session_config.min_opened = 1;
     session_config.max_opened = 1;
 
-    Client::new_with_config(
+    Client::new(
         DATABASE,
         ClientConfig {
             session_config,

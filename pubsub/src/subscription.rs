@@ -347,15 +347,11 @@ impl Subscription {
     /// Terminates the underlying `Subscriber` when dropped.
     /// ```
     /// use google_cloud_pubsub::client::Client;
-    /// use google_cloud_gax::cancel::CancellationToken;
     /// use google_cloud_pubsub::subscription::Subscription;
     /// use google_cloud_gax::grpc::Status;
-    /// use std::time::Duration;
     /// use futures_util::StreamExt;
     ///
-    /// #[tokio::main]
-    /// async fn main() -> Result<(), Status> {
-    ///     let mut client = Client::default().await.unwrap();
+    /// async fn run(client: Client) -> Result<(), Status> {
     ///     let subscription = client.subscription("test-subscription");
     ///     let mut iter = subscription.subscribe(None).await?;
     ///     while let Some(message) = iter.next().await {
@@ -461,8 +457,7 @@ impl Subscription {
     /// use std::time::Duration;
     ///
     /// #[tokio::main]
-    /// async fn main() -> Result<(), Status> {
-    ///     let mut client = Client::default().await.unwrap();
+    /// async fn run(client: Client) -> Result<(), Status> {
     ///     let subscription = client.subscription("test-subscription");
     ///     let ctx = CancellationToken::new();
     ///     let (sender, mut receiver)  = tokio::sync::mpsc::unbounded_channel();

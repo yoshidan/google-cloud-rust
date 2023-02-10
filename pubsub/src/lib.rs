@@ -7,26 +7,29 @@
 //!
 //! ## Quick Start
 //!
+//! You can use [google-cloud-default](https://crates.io/crates/google-cloud-default) to create `ClientConfig`
+//!
 //! ### Publish Message
 //!
 //! ```
-//! use google_cloud_pubsub::client::Client;
+//! use google_cloud_pubsub::client::{Client, ClientConfig};
 //! use google_cloud_gax::cancel::CancellationToken;
 //! use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 //! use google_cloud_pubsub::topic::TopicConfig;
 //! use google_cloud_pubsub::subscription::SubscriptionConfig;
 //! use google_cloud_gax::grpc::Status;
+//! use google_cloud_default;
 //! use tokio::task::JoinHandle;
+//! // use google_cloud_default::WithAuthExt;
 //!
+//! // Client config
 //! #[tokio::main]
 //! async fn main() -> Result<(), Status> {
 //!
 //!     // Create pubsub client.
-//!     // The default project is determined by credentials.
-//!     // - If the GOOGLE_APPLICATION_CREDENTIALS is specified the project_id is from credentials.
-//!     // - If the server is running on GCP the project_id is from metadata server
-//!     // - If the PUBSUB_EMULATOR_HOST is specified the project_id is 'local-project'
-//!     let mut client = Client::default().await.unwrap();
+//!     // `with_auth` is the trait defined at google-cloud-default crate.
+//!     let config = ClientConfig::default();//.with_auth().await.unwrap();
+//!     let client = Client::new(config).await?;
 //!
 //!     // Create topic.
 //!     let topic = client.topic("test-topic");
@@ -70,22 +73,21 @@
 //! ### Subscribe Message
 //!
 //! ```
-//! use google_cloud_pubsub::client::Client;
+//! use google_cloud_pubsub::client::{Client, ClientConfig};
 //! use google_cloud_gax::cancel::CancellationToken;
 //! use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 //! use google_cloud_pubsub::subscription::SubscriptionConfig;
 //! use google_cloud_gax::grpc::Status;
 //! use std::time::Duration;
+//! // use google_cloud_default::WithAuthExt;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Status> {
 //!
 //!     // Create pubsub client.
-//!     // The default project is determined by credentials.
-//!     // - If the GOOGLE_APPLICATION_CREDENTIALS is specified the project_id is from credentials.
-//!     // - If the server is running on GCP the project_id is from metadata server
-//!     // - If the PUBSUB_EMULATOR_HOST is specified the project_id is 'local-project'
-//!     let mut client = Client::default().await.unwrap();
+//!     // `with_auth` is the trait defined at google-cloud-default crate.
+//!     let config = ClientConfig::default();//.with_auth().await.unwrap();
+//!     let client = Client::new(config).await?;
 //!
 //!     // Get the topic to subscribe to.
 //!     let topic = client.topic("test-topic");
