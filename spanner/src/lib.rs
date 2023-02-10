@@ -510,6 +510,39 @@
 //! * `From<google_cloud_googleapis::Status>`
 //! * `From<google_cloud_spanner::session::SessionError>`
 //! * `google_cloud_gax::invoke::TryAs<google_cloud_googleapis::Status>`
+//! ```
+//! use google_cloud_gax::grpc::Status;
+//! use google_cloud_gax::retry::TryAs;
+//! use google_cloud_spanner::client::Error;
+//! use google_cloud_spanner::session::SessionError;
+//!
+//! #[derive(thiserror::Error, Debug)]
+//! pub enum DomainError {
+//!     #[error("invalid")]
+//!     OtherError,
+//!     #[error(transparent)]
+//!     Tx(#[from] Error),
+//! }
+//!
+//! impl TryAs<Status> for DomainError {
+//! fn try_as(&self) -> Option<&Status> {
+//!     match self {
+//!         DomainError::Tx(Error::GRPC(status)) => Some(status),
+//!         _ => None,
+//!     }
+//!  }
+//! }
+//! impl From<Status> for DomainError {
+//!     fn from(status: Status) -> Self {
+//!         Self::Tx(Error::GRPC(status))
+//!     }
+//! }
+//! impl From<SessionError> for DomainError {
+//!     fn from(se: SessionError) -> Self {
+//!         Self::Tx(Error::InvalidSession(se))
+//!     }
+//!  }
+//! ```
 //!
 //! You can begin transaction  by `begin_read_write_transaction`.
 //! It is necessary to write retry processing for transaction abort
