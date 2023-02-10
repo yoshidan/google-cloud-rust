@@ -550,7 +550,7 @@
 //! use google_cloud_spanner::mutation::update;
 //! use google_cloud_spanner::key::{Key, all_keys};
 //! use google_cloud_spanner::value::Timestamp;
-//! use google_cloud_spanner::client::{Error, Error};
+//! use google_cloud_spanner::client::Error;
 //! use google_cloud_spanner::client::Client;
 //! use google_cloud_spanner::reader::AsyncIterator;
 //! use google_cloud_spanner::transaction_rw::ReadWriteTransaction;
