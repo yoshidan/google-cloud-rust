@@ -100,7 +100,7 @@ pub struct SignedURLOptions {
     /// Exactly one of PrivateKey or SignBytes must be non-nil.
     ///
     /// SignBytes is a function for implementing custom signing.
-    pub sign_by: Option<SignBy>,
+    pub sign_by: SignBy,
 
     /// Method is the HTTP method to be used with the signed URL.
     /// Signed URLs can be used with GET, HEAD, PUT, and DELETE requests.
@@ -155,7 +155,7 @@ impl Default for SignedURLOptions {
     fn default() -> Self {
         Self {
             google_access_id: "".to_string(),
-            sign_by: Some(SignBy::PrivateKey(vec![])),
+            sign_by: SignBy::PrivateKey(vec![]),
             method: SignedURLMethod::GET,
             expires: std::time::Duration::from_secs(600),
             content_type: None,
@@ -376,7 +376,7 @@ mod test {
             param
         };
         let opts = SignedURLOptions {
-            sign_by: Some(SignBy::PrivateKey(file.private_key.unwrap().into())),
+            sign_by: SignBy::PrivateKey(file.private_key.unwrap().into()),
             google_access_id: file.client_email.unwrap(),
             expires: Duration::from_secs(3600),
             query_parameters: param,

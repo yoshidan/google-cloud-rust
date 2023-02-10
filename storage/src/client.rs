@@ -9,6 +9,7 @@ use std::ops::Deref;
 use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
 
 use crate::sign::{create_signed_buffer, SignBy, SignedURLError, SignedURLOptions};
+use crate::sign::SignBy::PrivateKey;
 
 #[derive(Debug)]
 pub struct ClientConfig {
@@ -18,6 +19,7 @@ pub struct ClientConfig {
     pub token_source_provider: Box<dyn TokenSourceProvider>,
     pub default_google_access_id: Option<String>,
     pub default_sign_by: Option<SignBy>,
+    pub project_id: Option<String>,
 }
 
 impl Default for ClientConfig {
@@ -29,6 +31,7 @@ impl Default for ClientConfig {
             service_account_endpoint: "https://iamcredentials.googleapis.com".to_string(),
             default_google_access_id: None,
             default_sign_by: None,
+            project_id: None,
         }
     }
 }
@@ -61,7 +64,7 @@ impl Client {
         let http = config.http.unwrap_or_default();
 
         let service_account_client = ServiceAccountClient::new(ts.clone(), config.service_account_endpoint.as_str());
-        let storage_client = StorageClient::new(ts, config.service_account_endpoint.as_str(), http);
+        let storage_client = StorageClient::new(ts, config.storage_endpoint.as_str(), http);
 
         Self {
             default_google_access_id: config.default_google_access_id,
@@ -81,9 +84,7 @@ impl Client {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::sign::{SignedURLOptions, SignedURLMethod};
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = create_client().await;
+    /// async fn run(client: Client) {
     ///     let url_for_download = client.signed_url("bucket", "file.txt", SignedURLOptions::default()).await;
     ///     let url_for_upload = client.signed_url("bucket", "file.txt", SignedURLOptions {
     ///         method: SignedURLMethod::PUT,
@@ -124,17 +125,16 @@ impl Client {
         let (signed_buffer, mut builder) = create_signed_buffer(bucket, object, &opts)?;
         tracing::trace!("signed_buffer={:?}", String::from_utf8_lossy(&signed_buffer));
 
-        let sign_by = match opts.sign_by {
-            Some(sign_by) => sign_by,
-            None => match &self.default_sign_by {
-                Some(v) => v.clone(),
-                None => return Err(SignedURLError::InvalidOption("No default sign_by was found")),
-            },
-        };
+        let mut sign_by = opts.sign_by;
+        if let PrivateKey(pk) = &sign_by {
+            if pk.is_empty() {
+                sign_by = self.default_sign_by.clone().ok_or(SignedURLError::InvalidOption("No default sign_by was found"))?;
+            }
+        }
 
         // create signature
         let signature = match &sign_by {
-            SignBy::PrivateKey(private_key) => {
+            PrivateKey(private_key) => {
                 let str = String::from_utf8_lossy(private_key);
                 let pkcs = rsa::RsaPrivateKey::from_pkcs8_pem(str.as_ref())
                     .map_err(|e| SignedURLError::CertError(e.to_string()))?;
@@ -194,7 +194,7 @@ mod test {
         let _ = tracing_subscriber::fmt::try_init();
     }
 
-    async fn create_client() -> Client {
+    async fn create_client() -> (Client, String) {
         let mut config = ClientConfig::default();
         let ts = DefaultTokenSourceProvider::new(Config {
             audience: None,
@@ -204,21 +204,23 @@ mod test {
         .unwrap();
 
         let cred = &ts.source_credentials.clone().unwrap();
+        config.project_id = cred.project_id.clone();
         config.token_source_provider = Box::new(ts);
         config.default_google_access_id = cred.client_email.clone();
         config.default_sign_by = Some(SignBy::PrivateKey(cred.private_key.clone().unwrap().into_bytes()));
-        Client::new(config)
+        let project_id = config.project_id.clone();
+        (Client::new(config), project_id.unwrap())
     }
 
     #[tokio::test]
     #[serial]
-    async fn buckets() {
+    async fn test_buckets() {
         let prefix = Some("rust-bucket-test".to_string());
-        let client = create_client().await;
+        let (client ,project) = create_client().await;
         let result = client
             .list_buckets(
                 &ListBucketsRequest {
-                    project: "atl-dev1".to_string(),
+                    project,
                     prefix,
                     ..Default::default()
                 },
@@ -231,7 +233,7 @@ mod test {
 
     #[tokio::test]
     #[serial]
-    async fn create_bucket() {
+    async fn test_create_bucket() {
         let mut labels = HashMap::new();
         labels.insert("labelkey".to_string(), "labelvalue".to_string());
         let config = BucketCreationConfig {
@@ -277,12 +279,12 @@ mod test {
             ..Default::default()
         };
 
-        let client = create_client().await;
+        let (client ,project) = create_client().await;
         let bucket_name = format!("rust-test-{}", OffsetDateTime::now_utc().unix_timestamp());
         let req = InsertBucketRequest {
             name: bucket_name.clone(),
             param: InsertBucketParam {
-                project: "atl-dev1".to_string(),
+                project,
                 ..Default::default()
             },
             bucket: config,
@@ -314,8 +316,8 @@ mod test {
 
     #[tokio::test]
     #[serial]
-    async fn sign() {
-        let client = create_client().await;
+    async fn test_sign() {
+        let (client, _) = create_client().await;
         let bucket_name = "rust-object-test";
         let data = "aiueo";
         let content_type = "application/octet-stream";

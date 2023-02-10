@@ -12,6 +12,7 @@ Google Cloud Platform Storage Client library.
 ```
 [dependencies]
 google-cloud-storage = <version>
+google-cloud-default = { version = <version>, features = ["storage"] }
 ```
 
 ## Quick Start
@@ -28,12 +29,14 @@ use tokio::task::JoinHandle;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
+use google_cloud_default::WithAuthExt;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
 
     // Create client.
-    let mut client = Client::default().await.unwrap();
+    let config = ClientConfig::default().with_auth().await.unwrap();
+    let mut client = Client::new(config);
 
     // Upload the file
     let uploaded = client.upload_object(&UploadObjectRequest {

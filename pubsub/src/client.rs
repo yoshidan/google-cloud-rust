@@ -29,13 +29,14 @@ pub struct ClientConfig {
 /// ClientConfigs created by default will prefer to use `PUBSUB_EMULATOR_HOST`
 impl Default for ClientConfig {
     fn default() -> Self {
+        let emulator = var("PUBSUB_EMULATOR_HOST").ok();
         Self {
             pool_size: Some(4),
-            environment: match var("PUBSUB_EMULATOR_HOST").ok() {
+            environment: match emulator {
                 Some(v) => Environment::Emulator(v),
                 None => Environment::GoogleCloud(Box::new(NopeTokenSourceProvider {})),
             },
-            project_id: Some("local-project".to_string()),
+            project_id: emulator.map(|_| "local-project".to_string()),
             endpoint: PUBSUB.to_string(),
         }
     }
