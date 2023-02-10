@@ -45,7 +45,7 @@ pub struct DefaultTokenSourceProvider {
 }
 
 impl Debug for DefaultTokenSourceProvider {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, _: &mut Formatter<'_>) -> std::fmt::Result {
         Ok(())
     }
 }

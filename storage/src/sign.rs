@@ -7,7 +7,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use std::fmt::{Debug, Formatter, Write};
+use std::fmt::{Debug, Formatter};
 use time::format_description::well_known::iso8601::{EncodedConfig, TimePrecision};
 use time::format_description::well_known::{self, Iso8601};
 use time::macros::format_description;
