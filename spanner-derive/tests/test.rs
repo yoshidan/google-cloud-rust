@@ -1,4 +1,4 @@
-use google_cloud_spanner::client::Client;
+use google_cloud_spanner::client::{Client, ClientConfig, Error};
 use google_cloud_spanner::mutation::insert_struct;
 use google_cloud_spanner::reader::AsyncIterator;
 use google_cloud_spanner::statement::Statement;
@@ -108,9 +108,14 @@ pub struct UserBundle {
 
 #[tokio::test]
 #[serial]
-async fn test_table_derive() -> Result<(), anyhow::Error> {
+async fn test_table_derive() -> Result<(), Error> {
     std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-    let client = Client::new("projects/local-project/instances/test-instance/databases/local-database").await?;
+    let config = ClientConfig::default();
+    let client = Client::new(
+        "projects/local-project/instances/test-instance/databases/local-database",
+        config,
+    )
+    .await?;
 
     let now = OffsetDateTime::now_utc().unix_timestamp();
     let user_id = format!("user{now}");
@@ -130,8 +135,8 @@ async fn test_table_derive() -> Result<(), anyhow::Error> {
         assert_eq!(v.user_id, user_id);
         assert_eq!(v.not_null_numeric.as_str(), "-99999999999999999999999999999.999999999");
         assert!(v.updated_at.unix_timestamp() >= now);
-        let json_string = serde_json::to_string(&v)?;
-        let des = serde_json::from_str::<User>(json_string.as_str())?;
+        let json_string = serde_json::to_string(&v).unwrap();
+        let des = serde_json::from_str::<User>(json_string.as_str()).unwrap();
         assert_eq!(des, v);
     } else {
         panic!("no data found");
@@ -141,9 +146,14 @@ async fn test_table_derive() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 #[serial]
-async fn test_query_derive() -> Result<(), anyhow::Error> {
+async fn test_query_derive() -> Result<(), Error> {
     std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-    let client = Client::new("projects/local-project/instances/test-instance/databases/local-database").await?;
+    let config = ClientConfig::default();
+    let client = Client::new(
+        "projects/local-project/instances/test-instance/databases/local-database",
+        config,
+    )
+    .await?;
 
     let now = OffsetDateTime::now_utc().unix_timestamp();
     let user_id = format!("user-q-{now}");

@@ -30,7 +30,7 @@ pub enum Error {
     #[error(transparent)]
     Base64DecodeError(#[from] base64::DecodeError),
     #[error(transparent)]
-    Std(#[from] Box<dyn std::error::Error>),
+    Std(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 
 pub(crate) trait Escape {

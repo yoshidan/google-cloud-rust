@@ -82,7 +82,7 @@ pub struct DefaultTokenSource {
 
 #[async_trait]
 impl TokenSource for DefaultTokenSource {
-    async fn token(&self) -> Result<String, Box<dyn std::error::Error>> {
+    async fn token(&self) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         let token = self.inner.token().await.map_err(Box::new)?;
         Ok(format!("Bearer {0}", token.access_token))
     }

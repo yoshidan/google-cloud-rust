@@ -11,9 +11,9 @@
 //! * `ToStruct`
 //! * `TryFrom<Row>`
 //!
-//! ```ignore
+//! ```
 //! use time::OffsetDateTime;
-//! use google_cloud_spanner::client::Client;
+//! use google_cloud_spanner::client::{Client,Error};
 //! use google_cloud_spanner::mutation::insert_struct;
 //! use google_cloud_spanner::reader::AsyncIterator;
 //! use google_cloud_spanner::statement::Statement;
@@ -41,7 +41,7 @@
 //!     }
 //! }
 //!
-//! async fn run(client: &Client) -> Result<Vec<UserCharacter>, anyhow::Error> {
+//! async fn run(client: &Client) -> Result<Vec<UserCharacter>, Error> {
 //!     let user = UserCharacter {
 //!         user_id: "user_id".to_string(),
 //!         ..Default::default()
@@ -60,7 +60,11 @@
 //!```
 //!
 //! Here is the generated implementation.
-//!```ignore
+//!```
+//! use google_cloud_spanner::row::{Row, Struct, TryFromStruct};
+//! use google_cloud_spanner::statement::{Kinds, ToKind, ToStruct, Types};
+//! use google_cloud_spanner::value::CommitTimestamp;
+//!
 //! impl ToStruct for UserCharacter {
 //!     fn to_kinds(&self) -> Kinds {
 //!         vec![
@@ -110,9 +114,10 @@
 //! `#[derive(Query)]` generates the implementation for following traits.
 //! * `TryFrom<Row>`
 //!
-//! ```ignore
+//!```
 //! use google_cloud_spanner::transaction::Transaction;
 //! use google_cloud_spanner::reader::AsyncIterator;
+//! use google_cloud_spanner::client::{Client, Error};
 //! use google_cloud_spanner::statement::Statement;
 //! use google_cloud_spanner_derive::{Table, Query};
 //!
@@ -136,7 +141,7 @@
 //!    pub user_items: Vec<UserItem>
 //! }
 //!
-//! async fn run(user_id: &str, tx: &mut Transaction) -> Result<Option<UserBundle>, anyhow::Error> {
+//! async fn run(user_id: &str, tx: &mut Transaction) -> Result<Option<UserBundle>, Error> {
 //!    let mut stmt = Statement::new("
 //!        SELECT
 //!            UserId,

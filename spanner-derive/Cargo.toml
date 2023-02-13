@@ -23,6 +23,5 @@ google-cloud-spanner = { path = "../spanner"}
 time = { version = "0.3", features = ["serde"] }
 tokio = { version="1.20", features=["rt-multi-thread"] }
 serial_test = "0.9"
-anyhow = "1.0"
 serde = "1.0"
 serde_json = "1.0"
