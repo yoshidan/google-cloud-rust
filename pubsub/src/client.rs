@@ -30,13 +30,14 @@ pub struct ClientConfig {
 impl Default for ClientConfig {
     fn default() -> Self {
         let emulator = var("PUBSUB_EMULATOR_HOST").ok();
+        let default_project_id = emulator.as_ref().map(|_| "local-project".to_string());
         Self {
             pool_size: Some(4),
             environment: match emulator {
                 Some(v) => Environment::Emulator(v),
                 None => Environment::GoogleCloud(Box::new(NopeTokenSourceProvider {})),
             },
-            project_id: emulator.map(|_| "local-project".to_string()),
+            project_id: default_project_id,
             endpoint: PUBSUB.to_string(),
         }
     }
