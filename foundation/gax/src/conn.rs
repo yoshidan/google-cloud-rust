@@ -50,7 +50,7 @@ impl AsyncPredicate<Request<BoxBody>> for AsyncAuthInterceptor {
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
-    Auth(#[from] Box<dyn std::error::Error>),
+    Auth(#[from] Box<dyn std::error::Error + Send + Sync>),
 
     #[error("tonic error : {0}")]
     TonicTransport(#[from] tonic::transport::Error),

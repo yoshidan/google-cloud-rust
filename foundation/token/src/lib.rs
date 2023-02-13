@@ -5,7 +5,7 @@ use std::sync::Arc;
 #[async_trait]
 pub trait TokenSource: Send + Sync + Debug {
     /// token returns the valid token
-    async fn token(&self) -> Result<String, Box<dyn std::error::Error>>;
+    async fn token(&self) -> Result<String, Box<dyn std::error::Error + Send + Sync>>;
 }
 
 pub trait TokenSourceProvider: Send + Sync + Debug {
