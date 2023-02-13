@@ -68,7 +68,7 @@ impl WithAuthExt for google_cloud_storage::client::ClientConfig {
         match &ts.source_credentials {
             //Credential file is used.
             Some(cred) => {
-                self.project_id = cred.project_id;
+                self.project_id = cred.project_id.clone();
                 if let Some(pk) = &cred.private_key {
                     self.default_sign_by =
                         Some(google_cloud_storage::sign::SignBy::PrivateKey(pk.clone().into_bytes()));
@@ -77,9 +77,9 @@ impl WithAuthExt for google_cloud_storage::client::ClientConfig {
             }
             // On Google Cloud
             None => {
-                self.project_id = Some(google_cloud_metadata::project_id());
+                self.project_id = Some(google_cloud_metadata::project_id().await);
                 self.default_sign_by = Some(google_cloud_storage::sign::SignBy::SignBytes);
-                self.default_google_access_id = Some(google_cloud_metadata::email("default").await?);
+                self.default_google_access_id = google_cloud_metadata::email("default").await.ok();
             }
         }
 
