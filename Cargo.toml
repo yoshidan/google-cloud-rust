@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "foundation/token",
     "foundation/metadata",
     "foundation/gax",
     "foundation/longrunning",
@@ -8,5 +9,6 @@ members = [
     "spanner",
     "pubsub",
     "storage",
-    "spanner-derive"
+    "spanner-derive",
+    "default",
 ]

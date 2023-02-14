@@ -7,6 +7,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::fmt::{Debug, Formatter};
 use time::format_description::well_known::iso8601::{EncodedConfig, TimePrecision};
 use time::format_description::well_known::{self, Iso8601};
 use time::macros::format_description;
@@ -62,9 +63,19 @@ impl URLStyle for PathStyle {
     }
 }
 
+#[derive(Clone)]
 pub enum SignBy {
     PrivateKey(Vec<u8>),
     SignBytes,
+}
+
+impl Debug for SignBy {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SignBy::PrivateKey(_) => f.write_str("private_key"),
+            SignBy::SignBytes => f.write_str("sign_bytes"),
+        }
+    }
 }
 
 /// SignedURLOptions allows you to restrict the access to the signed URL.
@@ -165,10 +176,6 @@ pub enum SignedURLError {
     ParseError(#[from] ParseError),
     #[error("cert error by: {0}")]
     CertError(String),
-    #[error(transparent)]
-    CredentialError(#[from] google_cloud_auth::error::Error),
-    #[error(transparent)]
-    MetadataError(#[from] google_cloud_metadata::Error),
     #[error(transparent)]
     SignBlob(#[from] http::Error),
 }

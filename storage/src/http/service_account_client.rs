@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::http::Error;
 
-use google_cloud_auth::token_source::TokenSource;
+use google_cloud_token::TokenSource;
 
 use base64::prelude::*;
 use reqwest::Client;
@@ -42,7 +42,7 @@ impl ServiceAccountClient {
             .body(json_request)
             .header("X-Goog-Api-Client", "rust")
             .header(reqwest::header::USER_AGENT, "google-cloud-storage")
-            .header(reqwest::header::AUTHORIZATION, token.value());
+            .header(reqwest::header::AUTHORIZATION, token);
         let response = request.send().await?;
         let status = response.status();
         if status.is_success() {
@@ -60,9 +60,11 @@ impl ServiceAccountClient {
 #[cfg(test)]
 mod test {
     use crate::http::service_account_client::ServiceAccountClient;
-    use google_cloud_auth::{create_token_source, Config};
     use serial_test::serial;
-    use std::sync::Arc;
+
+    use google_cloud_auth::project::Config;
+    use google_cloud_auth::token::DefaultTokenSourceProvider;
+    use google_cloud_token::TokenSourceProvider;
 
     #[ctor::ctor]
     fn init() {
@@ -70,13 +72,14 @@ mod test {
     }
 
     async fn client() -> ServiceAccountClient {
-        let ts = create_token_source(Config {
+        let ts = DefaultTokenSourceProvider::new(Config {
             audience: None,
             scopes: Some(&["https://www.googleapis.com/auth/cloud-platform"]),
         })
         .await
-        .unwrap();
-        ServiceAccountClient::new(Arc::from(ts), "https://iamcredentials.googleapis.com")
+        .unwrap()
+        .token_source();
+        ServiceAccountClient::new(ts, "https://iamcredentials.googleapis.com")
     }
 
     #[tokio::test]

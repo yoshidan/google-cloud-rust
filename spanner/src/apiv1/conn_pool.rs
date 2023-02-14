@@ -5,7 +5,7 @@ use crate::apiv1::spanner_client::Client;
 
 pub const AUDIENCE: &str = "https://spanner.googleapis.com/";
 pub const SPANNER: &str = "spanner.googleapis.com";
-const SCOPES: [&str; 2] = [
+pub const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
     "https://www.googleapis.com/auth/spanner.data",
 ];
@@ -17,7 +17,7 @@ pub struct ConnectionManager {
 impl ConnectionManager {
     pub async fn new(pool_size: usize, environment: &Environment, domain: &str) -> Result<Self, Error> {
         Ok(ConnectionManager {
-            inner: GRPCConnectionManager::new(pool_size, domain, AUDIENCE, Some(&SCOPES), environment).await?,
+            inner: GRPCConnectionManager::new(pool_size, domain, AUDIENCE, environment).await?,
         })
     }
 

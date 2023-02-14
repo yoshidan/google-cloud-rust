@@ -53,7 +53,7 @@ use crate::http::{
     objects, CancellationToken, Error,
 };
 use futures_util::{Stream, TryStream};
-use google_cloud_auth::token_source::TokenSource;
+use google_cloud_token::TokenSource;
 
 use reqwest::{Body, Client, RequestBuilder, Response};
 
@@ -92,9 +92,9 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::buckets::delete::DeleteBucketRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.delete_bucket(&DeleteBucketRequest {
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
@@ -136,13 +136,12 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::buckets::insert::{BucketCreationConfig, InsertBucketParam, InsertBucketRequest};
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.insert_bucket(&InsertBucketRequest {
     ///         name: "bucket".to_string(),
     ///         param: InsertBucketParam {
-    ///             project: client.project_id().to_string(),
+    ///             project: "project_id".to_string(),
     ///             ..Default::default()
     ///         },
     ///         ..Default::default()
@@ -188,9 +187,9 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::buckets::get::GetBucketRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.get_bucket(&GetBucketRequest {
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
@@ -224,9 +223,9 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::buckets::patch::{BucketPatchConfig, PatchBucketRequest};
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run() {
+    ///     
     ///     let result = client.patch_bucket(&PatchBucketRequest {
     ///         bucket: "bucket".to_string(),
     ///         metadata: Some(BucketPatchConfig {
@@ -275,11 +274,11 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::buckets::list::ListBucketsRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.list_buckets(&ListBucketsRequest{
-    ///         project: client.project_id().to_string(),
+    ///         project: "project_id".to_string(),
     ///         ..Default::default()
     ///     }, None).await;
     /// }
@@ -324,9 +323,9 @@ impl StorageClient {
     /// use google_cloud_storage::http::buckets::{Binding, Policy};
     /// use google_cloud_storage::http::buckets::set_iam_policy::SetIamPolicyRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.set_iam_policy(&SetIamPolicyRequest{
     ///         resource: "bucket".to_string(),
     ///         policy: Policy {
@@ -381,9 +380,9 @@ impl StorageClient {
     /// use google_cloud_storage::http::buckets::get_iam_policy::GetIamPolicyRequest;
     /// use google_cloud_storage::http::buckets::list::ListBucketsRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.get_iam_policy(&GetIamPolicyRequest{
     ///         resource: "bucket".to_string(),
     ///         ..Default::default()
@@ -429,9 +428,9 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::buckets::test_iam_permissions::TestIamPermissionsRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.test_iam_permissions(&TestIamPermissionsRequest{
     ///         resource: "bucket".to_string(),
     ///         permissions: vec!["storage.buckets.get".to_string()],
@@ -478,9 +477,9 @@ impl StorageClient {
     /// use google_cloud_storage::http::buckets::test_iam_permissions::TestIamPermissionsRequest;
     /// use google_cloud_storage::http::default_object_access_controls::list::ListDefaultObjectAccessControlsRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.list_default_object_access_controls(&ListDefaultObjectAccessControlsRequest{
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
@@ -526,9 +525,9 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::default_object_access_controls::get::GetDefaultObjectAccessControlRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.get_default_object_access_control(&GetDefaultObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
@@ -576,9 +575,9 @@ impl StorageClient {
     /// use google_cloud_storage::http::object_access_controls::insert::ObjectAccessControlCreationConfig;
     /// use google_cloud_storage::http::object_access_controls::ObjectACLRole;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.insert_default_object_access_control(&InsertDefaultObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         object_access_control: ObjectAccessControlCreationConfig {
@@ -630,9 +629,9 @@ impl StorageClient {
     /// use google_cloud_storage::http::object_access_controls::{ObjectAccessControl, ObjectACLRole};
     /// use google_cloud_storage::http::object_access_controls::patch::PatchObjectAccessControlRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.patch_default_object_access_control(&PatchDefaultObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
@@ -682,9 +681,9 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::default_object_access_controls::delete::DeleteDefaultObjectAccessControlRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.delete_default_object_access_control(&DeleteDefaultObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
@@ -730,9 +729,9 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::bucket_access_controls::list::ListBucketAccessControlsRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.list_bucket_access_controls(&ListBucketAccessControlsRequest{
     ///         bucket: "bucket".to_string(),
     ///     }, None).await;
@@ -777,9 +776,9 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::bucket_access_controls::get::GetBucketAccessControlRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.get_bucket_access_control(&GetBucketAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
@@ -826,9 +825,9 @@ impl StorageClient {
     /// use google_cloud_storage::http::bucket_access_controls::BucketACLRole;
     /// use google_cloud_storage::http::bucket_access_controls::insert::{BucketAccessControlCreationConfig, InsertBucketAccessControlRequest};
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.insert_bucket_access_control(&InsertBucketAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         acl: BucketAccessControlCreationConfig {
@@ -879,9 +878,9 @@ impl StorageClient {
     /// use google_cloud_storage::http::bucket_access_controls::BucketACLRole;
     /// use google_cloud_storage::http::bucket_access_controls::patch::PatchBucketAccessControlRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.patch_bucket_access_control(&PatchBucketAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
@@ -930,9 +929,9 @@ impl StorageClient {
     /// use google_cloud_storage::http::bucket_access_controls::BucketAccessControl;
     /// use google_cloud_storage::http::bucket_access_controls::delete::DeleteBucketAccessControlRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.delete_bucket_access_control(&DeleteBucketAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
@@ -978,9 +977,9 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::object_access_controls::list::ListObjectAccessControlsRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.list_object_access_controls(&ListObjectAccessControlsRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "filename".to_string(),
@@ -1027,9 +1026,9 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::object_access_controls::get::GetObjectAccessControlRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.get_object_access_control(&GetObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "filename".to_string(),
@@ -1078,9 +1077,9 @@ impl StorageClient {
     /// use google_cloud_storage::http::object_access_controls::insert::{InsertObjectAccessControlRequest, ObjectAccessControlCreationConfig};
     /// use google_cloud_storage::http::object_access_controls::ObjectACLRole;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.insert_object_access_control(&InsertObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "filename".to_string(),
@@ -1132,9 +1131,9 @@ impl StorageClient {
     /// use google_cloud_storage::http::object_access_controls::{ObjectAccessControl, ObjectACLRole};
     /// use google_cloud_storage::http::object_access_controls::patch::PatchObjectAccessControlRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.patch_object_access_control(&PatchObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "filename".to_string(),
@@ -1187,9 +1186,9 @@ impl StorageClient {
     /// use google_cloud_storage::http::object_access_controls::{ObjectAccessControl, ObjectACLRole};
     /// use google_cloud_storage::http::object_access_controls::delete::DeleteObjectAccessControlRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.delete_object_access_control(&DeleteObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "filename".to_string(),
@@ -1237,9 +1236,9 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::notifications::list::ListNotificationsRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.list_notifications(&ListNotificationsRequest{
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
@@ -1285,9 +1284,9 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::notifications::get::GetNotificationRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.get_notification(&GetNotificationRequest{
     ///         bucket: "bucket".to_string(),
     ///         notification: "notification".to_string()
@@ -1334,9 +1333,9 @@ impl StorageClient {
     /// use google_cloud_storage::http::notifications::EventType;
     /// use google_cloud_storage::http::notifications::insert::{InsertNotificationRequest, NotificationCreationConfig};
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.insert_notification(&InsertNotificationRequest {
     ///         bucket: "bucket".to_string(),
     ///         notification: NotificationCreationConfig {
@@ -1386,9 +1385,9 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::notifications::delete::DeleteNotificationRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.delete_notification(&DeleteNotificationRequest {
     ///         bucket: "bucket".to_string(),
     ///         notification: "notification".to_string()
@@ -1434,11 +1433,11 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::hmac_keys::list::ListHmacKeysRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.list_hmac_keys(&ListHmacKeysRequest {
-    ///         project_id: client.project_id().to_string(),
+    ///         project_id: "project_id".to_string(),
     ///         ..Default::default()
     ///     }, None).await;
     /// }
@@ -1482,12 +1481,12 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::hmac_keys::get::GetHmacKeyRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.get_hmac_key(&GetHmacKeyRequest {
     ///         access_id: "access_id".to_string(),
-    ///         project_id: client.project_id().to_string(),
+    ///         project_id: "project_id".to_string(),
     ///     }, None).await;
     /// }
     /// ```
@@ -1530,12 +1529,12 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::hmac_keys::create::CreateHmacKeyRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.create_hmac_key(&CreateHmacKeyRequest {
     ///         service_account_email: "service_account_email".to_string(),
-    ///         project_id: client.project_id().to_string(),
+    ///         project_id: "project".to_string(),
     ///     }, None).await;
     /// }
     /// ```
@@ -1579,12 +1578,12 @@ impl StorageClient {
     /// use google_cloud_storage::http::hmac_keys::HmacKeyMetadata;
     /// use google_cloud_storage::http::hmac_keys::update::UpdateHmacKeyRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.update_hmac_key(&UpdateHmacKeyRequest{
     ///         access_id: "access_id".to_string(),
-    ///         project_id: client.project_id().to_string(),
+    ///         project_id: "project_id".to_string(),
     ///         metadata: HmacKeyMetadata {
     ///             state: "INACTIVE".to_string(),
     ///             ..Default::default()
@@ -1631,12 +1630,12 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::hmac_keys::delete::DeleteHmacKeyRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.delete_hmac_key(&DeleteHmacKeyRequest{
     ///         access_id: "access_id".to_string(),
-    ///         project_id: client.project_id().to_string(),
+    ///         project_id:"project_id".to_string(),
     ///     }, None).await;
     /// }
     /// ```
@@ -1679,9 +1678,9 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::list::ListObjectsRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.list_objects(&ListObjectsRequest{
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
@@ -1727,9 +1726,9 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::get::GetObjectRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.get_object(&GetObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
@@ -1766,9 +1765,9 @@ impl StorageClient {
     /// use google_cloud_storage::http::objects::get::GetObjectRequest;
     /// use google_cloud_storage::http::objects::download::Range;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.download_object(&GetObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
@@ -1826,9 +1825,9 @@ impl StorageClient {
     /// use google_cloud_storage::http::objects::get::GetObjectRequest;
     /// use google_cloud_storage::http::objects::download::Range;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.download_streamed_object(&GetObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
@@ -1889,9 +1888,9 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::upload::UploadObjectRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.upload_object(&UploadObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         name: "filename".to_string(),
@@ -1951,9 +1950,9 @@ impl StorageClient {
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::upload::UploadObjectRequest;
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let source = vec!["hello", " ", "world"];
     ///     let size = source.iter().map(|x| x.len()).sum();
     ///     let chunks: Vec<Result<_, ::std::io::Error>> = source.clone().into_iter().map(|x| Ok(x)).collect();
@@ -2037,9 +2036,9 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::patch::PatchObjectRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.patch_object(&PatchObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
@@ -2086,9 +2085,9 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::delete::DeleteObjectRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.delete_object(&DeleteObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
@@ -2131,16 +2130,24 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::rewrite::RewriteObjectRequest;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
-    ///     let result = client.rewrite_object(&RewriteObjectRequest{
-    ///         source_bucket: "bucket1".to_string(),
-    ///         source_object: "object".to_string(),
-    ///         destination_bucket: "bucket2".to_string(),
-    ///         destination_object: "object1".to_string(),
-    ///         ..Default::default()
-    ///     }, None).await;
+    ///
+    /// async fn run(client:Client) {
+    ///     let mut done = false;
+    ///     let mut rewrite_token = None;
+    ///     
+    ///     while !done {
+    ///         let result = client.rewrite_object(&RewriteObjectRequest{
+    ///             source_bucket: "bucket1".to_string(),
+    ///             source_object: "object".to_string(),
+    ///             destination_bucket: "bucket2".to_string(),
+    ///             destination_object: "object1".to_string(),
+    ///             rewrite_token: rewrite_token.clone(),
+    ///             ..Default::default()
+    ///         }, None).await.unwrap();
+    ///
+    ///         done = result.done;
+    ///         rewrite_token = result.rewrite_token;
+    ///     }
     /// }
     /// ```
     #[cfg(not(feature = "trace"))]
@@ -2184,9 +2191,9 @@ impl StorageClient {
     /// use google_cloud_storage::http::objects::rewrite::RewriteObjectRequest;
     /// use google_cloud_storage::http::objects::SourceObjects;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    ///
+    /// async fn run(client:Client) {
+    ///     
     ///     let result = client.compose_object(&ComposeObjectRequest{
     ///         bucket: "bucket1".to_string(),
     ///         destination_object: "object1".to_string(),
@@ -2238,7 +2245,7 @@ impl StorageClient {
         Ok(builder
             .header("X-Goog-Api-Client", "rust")
             .header(reqwest::header::USER_AGENT, "google-cloud-storage")
-            .header(reqwest::header::AUTHORIZATION, token.value()))
+            .header(reqwest::header::AUTHORIZATION, token))
     }
 
     async fn send<T: for<'de> serde::Deserialize<'de>>(&self, builder: RequestBuilder) -> Result<T, Error> {
@@ -2340,35 +2347,38 @@ mod test {
     use crate::http::storage_client::{StorageClient, SCOPES};
     use bytes::Buf;
     use futures_util::StreamExt;
-    use google_cloud_auth::{create_token_source, Config};
     use serial_test::serial;
-    use std::sync::Arc;
 
-    const PROJECT: &str = "atl-dev1";
+    use google_cloud_auth::project::Config;
+    use google_cloud_auth::token::DefaultTokenSourceProvider;
+    use google_cloud_token::TokenSourceProvider;
 
     #[ctor::ctor]
     fn init() {
         let _ = tracing_subscriber::fmt::try_init();
     }
 
-    async fn client() -> StorageClient {
-        let ts = create_token_source(Config {
+    async fn client() -> (StorageClient, String) {
+        let tsp = DefaultTokenSourceProvider::new(Config {
             audience: None,
             scopes: Some(&SCOPES),
         })
         .await
         .unwrap();
-        StorageClient::new(Arc::from(ts), "https://storage.googleapis.com", reqwest::Client::new())
+        let cred = tsp.source_credentials.clone();
+        let ts = tsp.token_source();
+        let client = StorageClient::new(ts, "https://storage.googleapis.com", reqwest::Client::new());
+        (client, cred.unwrap().project_id.unwrap())
     }
 
     #[tokio::test]
     #[serial]
     pub async fn list_buckets() {
-        let client = client().await;
+        let (client, project) = client().await;
         let buckets = client
             .list_buckets(
                 &ListBucketsRequest {
-                    project: PROJECT.to_string(),
+                    project,
                     max_results: None,
                     page_token: None,
                     prefix: Some("rust-iam-test".to_string()),
@@ -2384,14 +2394,14 @@ mod test {
     #[tokio::test]
     #[serial]
     pub async fn crud_bucket() {
-        let client = client().await;
+        let (client, project) = client().await;
         let name = format!("rust-test-insert-{}", time::OffsetDateTime::now_utc().unix_timestamp());
         let bucket = client
             .insert_bucket(
                 &InsertBucketRequest {
                     name,
                     param: InsertBucketParam {
-                        project: PROJECT.to_string(),
+                        project,
                         ..Default::default()
                     },
                     bucket: BucketCreationConfig {
@@ -2459,7 +2469,7 @@ mod test {
     #[serial]
     async fn set_get_test_iam() {
         let bucket_name = "rust-iam-test";
-        let client = client().await;
+        let (client, _project) = client().await;
         let mut policy = client
             .get_iam_policy(
                 &GetIamPolicyRequest {
@@ -2506,7 +2516,7 @@ mod test {
     #[serial]
     pub async fn crud_default_object_controls() {
         let bucket_name = "rust-default-object-acl-test";
-        let client = client().await;
+        let (client, _project) = client().await;
 
         client
             .delete_default_object_access_control(
@@ -2564,7 +2574,7 @@ mod test {
     #[serial]
     pub async fn crud_bucket_access_controls() {
         let bucket_name = "rust-bucket-acl-test";
-        let client = client().await;
+        let (client, _project) = client().await;
 
         let _post = client
             .insert_bucket_access_control(
@@ -2621,7 +2631,7 @@ mod test {
     pub async fn crud_object_access_controls() {
         let bucket_name = "rust-default-object-acl-test";
         let object_name = "test.txt";
-        let client = client().await;
+        let (client, _project) = client().await;
 
         let _post = client
             .insert_object_access_control(
@@ -2685,7 +2695,7 @@ mod test {
     #[serial]
     pub async fn crud_notification() {
         let bucket_name = "rust-bucket-test";
-        let client = client().await;
+        let (client, project) = client().await;
 
         let notifications = client
             .list_notifications(
@@ -2715,7 +2725,7 @@ mod test {
                 &InsertNotificationRequest {
                     bucket: bucket_name.to_string(),
                     notification: NotificationCreationConfig {
-                        topic: format!("projects/{PROJECT}/topics/{bucket_name}"),
+                        topic: format!("projects/{project}/topics/{bucket_name}"),
                         event_types: Some(vec![EventType::ObjectMetadataUpdate, EventType::ObjectDelete]),
                         object_name_prefix: Some("notification-test".to_string()),
                         ..Default::default()
@@ -2744,13 +2754,13 @@ mod test {
     #[serial]
     pub async fn crud_hmac_key() {
         let _key_name = "rust-hmac-test";
-        let client = client().await;
+        let (client, project_id) = client().await;
 
         let post = client
             .create_hmac_key(
                 &CreateHmacKeyRequest {
-                    project_id: PROJECT.to_string(),
-                    service_account_email: format!("spanner@{PROJECT}.iam.gserviceaccount.com"),
+                    project_id: project_id.clone(),
+                    service_account_email: format!("spanner@{project_id}.iam.gserviceaccount.com"),
                 },
                 None,
             )
@@ -2761,7 +2771,7 @@ mod test {
             .get_hmac_key(
                 &GetHmacKeyRequest {
                     access_id: post.metadata.access_id.to_string(),
-                    project_id: PROJECT.to_string(),
+                    project_id: project_id.clone(),
                 },
                 None,
             )
@@ -2773,7 +2783,7 @@ mod test {
         let keys = client
             .list_hmac_keys(
                 &ListHmacKeysRequest {
-                    project_id: PROJECT.to_string(),
+                    project_id: project_id.clone(),
                     ..Default::default()
                 },
                 None,
@@ -2815,7 +2825,7 @@ mod test {
     #[serial]
     pub async fn crud_object() {
         let bucket_name = "rust-object-test";
-        let client = client().await;
+        let (client, _project) = client().await;
 
         let objects = client
             .list_objects(
@@ -2929,7 +2939,7 @@ mod test {
     pub async fn streamed_object() {
         let bucket_name = "rust-object-test";
         let file_name = format!("stream_{}", time::OffsetDateTime::now_utc().unix_timestamp());
-        let client = client().await;
+        let (client, _project) = client().await;
 
         // let stream= reqwest::Client::default().get("https://avatars.githubusercontent.com/u/958174?s=96&v=4").send().await.unwrap().bytes_stream();
         let source = vec!["hello", " ", "world"];

@@ -11,9 +11,9 @@
 //! * `ToStruct`
 //! * `TryFrom<Row>`
 //!
-//! ```ignore
+//! ```
 //! use time::OffsetDateTime;
-//! use google_cloud_spanner::client::Client;
+//! use google_cloud_spanner::client::{Client,Error};
 //! use google_cloud_spanner::mutation::insert_struct;
 //! use google_cloud_spanner::reader::AsyncIterator;
 //! use google_cloud_spanner::statement::Statement;
@@ -41,7 +41,7 @@
 //!     }
 //! }
 //!
-//! async fn run(client: &Client) -> Result<Vec<UserCharacter>, anyhow::Error> {
+//! async fn run(client: &Client) -> Result<Vec<UserCharacter>, Error> {
 //!     let user = UserCharacter {
 //!         user_id: "user_id".to_string(),
 //!         ..Default::default()
@@ -60,7 +60,20 @@
 //!```
 //!
 //! Here is the generated implementation.
-//!```ignore
+//!```
+//! use time::OffsetDateTime;
+//! use google_cloud_spanner::statement::{ToStruct, ToKind, Kinds, Types};
+//! use google_cloud_spanner::row::{Struct, TryFromValue, TryFromStruct, Row, Error as RowError};
+//! use google_cloud_spanner::value::CommitTimestamp;
+//! use std::convert::TryFrom;
+//!
+//! pub struct UserCharacter {
+//!     pub user_id: String,
+//!     pub character_id: i64,
+//!     pub level: i64,
+//!     pub updated_at: OffsetDateTime,
+//! }
+//!
 //! impl ToStruct for UserCharacter {
 //!     fn to_kinds(&self) -> Kinds {
 //!         vec![
@@ -110,9 +123,10 @@
 //! `#[derive(Query)]` generates the implementation for following traits.
 //! * `TryFrom<Row>`
 //!
-//! ```ignore
+//!```
 //! use google_cloud_spanner::transaction::Transaction;
 //! use google_cloud_spanner::reader::AsyncIterator;
+//! use google_cloud_spanner::client::{Client, Error};
 //! use google_cloud_spanner::statement::Statement;
 //! use google_cloud_spanner_derive::{Table, Query};
 //!
@@ -136,7 +150,7 @@
 //!    pub user_items: Vec<UserItem>
 //! }
 //!
-//! async fn run(user_id: &str, tx: &mut Transaction) -> Result<Option<UserBundle>, anyhow::Error> {
+//! async fn run(user_id: &str, tx: &mut Transaction) -> Result<Option<UserBundle>, Error> {
 //!    let mut stmt = Statement::new("
 //!        SELECT
 //!            UserId,
@@ -147,7 +161,7 @@
 //!    stmt.add_param("UserID", &user_id);
 //!    let mut reader = tx.query(stmt).await?;
 //!    match reader.next().await? {
-//!        Some(row) => Ok(row.try_into()?),
+//!        Some(row) => Ok(Some(row.try_into()?)),
 //!        None => Ok(None)
 //!    }
 //! }

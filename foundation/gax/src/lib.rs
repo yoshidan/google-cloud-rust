@@ -1,7 +1,6 @@
 pub mod cancel;
 pub mod conn;
 pub mod grpc;
-pub mod project;
 pub mod retry;
 
 pub fn create_request<T>(param_string: String, into_request: impl grpc::IntoRequest<T>) -> grpc::Request<T> {

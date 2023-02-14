@@ -1,8 +1,7 @@
-use anyhow::Result;
 use google_cloud_gax::grpc::Status;
-use google_cloud_gax::project::ProjectOptions;
 use google_cloud_googleapis::spanner::v1::Mutation;
 
+use google_cloud_gax::conn::Environment;
 use google_cloud_spanner::client::{ChannelConfig, Client, ClientConfig};
 use google_cloud_spanner::key::Key;
 use google_cloud_spanner::mutation::insert_or_update;
@@ -82,11 +81,12 @@ pub async fn create_data_client() -> Client {
     let mut session_config = SessionConfig::default();
     session_config.min_opened = 1;
     session_config.max_opened = 1;
-    Client::new_with_config(
+
+    Client::new(
         DATABASE,
         ClientConfig {
             session_config,
-            project: ProjectOptions::Emulated("localhost:9010".to_string()),
+            environment: Environment::Emulator("localhost:9010".to_string()),
             channel_config: ChannelConfig { num_channels: 1 },
             ..Default::default()
         },

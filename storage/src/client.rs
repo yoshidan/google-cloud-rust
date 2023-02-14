@@ -1,31 +1,44 @@
-use crate::http::storage_client;
 use crate::http::storage_client::StorageClient;
 
 use crate::http::service_account_client::ServiceAccountClient;
 
-use google_cloud_auth::{create_token_source_from_project, Config, Project};
 use ring::{rand, signature};
 use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey};
 use std::ops::Deref;
 
-use std::sync::Arc;
+use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
 
+use crate::sign::SignBy::PrivateKey;
 use crate::sign::{create_signed_buffer, SignBy, SignedURLError, SignedURLOptions};
 
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-    #[error(transparent)]
-    Auth(#[from] google_cloud_auth::error::Error),
-    #[error(transparent)]
-    Metadata(#[from] google_cloud_metadata::Error),
-    #[error("error: {0}")]
-    Other(&'static str),
+#[derive(Debug)]
+pub struct ClientConfig {
+    pub http: Option<reqwest::Client>,
+    pub storage_endpoint: String,
+    pub service_account_endpoint: String,
+    pub token_source_provider: Box<dyn TokenSourceProvider>,
+    pub default_google_access_id: Option<String>,
+    pub default_sign_by: Option<SignBy>,
+    pub project_id: Option<String>,
+}
+
+impl Default for ClientConfig {
+    fn default() -> Self {
+        Self {
+            http: None,
+            storage_endpoint: "https://storage.googleapis.com".to_string(),
+            token_source_provider: Box::new(NopeTokenSourceProvider {}),
+            service_account_endpoint: "https://iamcredentials.googleapis.com".to_string(),
+            default_google_access_id: None,
+            default_sign_by: None,
+            project_id: None,
+        }
+    }
 }
 
 pub struct Client {
-    private_key: Option<String>,
-    service_account_email: String,
-    project_id: String,
+    default_google_access_id: Option<String>,
+    default_sign_by: Option<SignBy>,
     storage_client: StorageClient,
     service_account_client: ServiceAccountClient,
 }
@@ -38,84 +51,27 @@ impl Deref for Client {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct ClientConfig {
-    pub http: Option<reqwest::Client>,
-    pub project: Option<Project>,
-    pub storage_endpoint: String,
-    pub service_account_endpoint: String,
-}
-
-impl Default for ClientConfig {
+impl Default for Client {
     fn default() -> Self {
-        Self {
-            http: None,
-            project: None,
-            storage_endpoint: "https://storage.googleapis.com".to_string(),
-            service_account_endpoint: "https://iamcredentials.googleapis.com".to_string(),
-        }
+        Self::new(ClientConfig::default())
     }
 }
 
 impl Client {
-    /// Default client
-    pub async fn default() -> Result<Self, Error> {
-        Self::new(ClientConfig::default()).await
-    }
-
     /// New client
-    pub async fn new(config: ClientConfig) -> Result<Self, Error> {
-        let project = match config.project {
-            Some(project) => project,
-            None => google_cloud_auth::project().await?,
-        };
-        let ts = create_token_source_from_project(
-            &project,
-            Config {
-                audience: None,
-                scopes: Some(&storage_client::SCOPES),
-            },
-        )
-        .await?;
-
-        let ts = Arc::from(ts);
-        let service_account_client =
-            ServiceAccountClient::new(Arc::clone(&ts), config.service_account_endpoint.as_str());
-
+    pub fn new(config: ClientConfig) -> Self {
+        let ts = config.token_source_provider.token_source();
         let http = config.http.unwrap_or_default();
-        match project {
-            Project::FromFile(cred) => Ok(Client {
-                private_key: cred.private_key.clone(),
-                service_account_email: cred
-                    .client_email
-                    .as_ref()
-                    .ok_or(Error::Other("no client_email was found"))?
-                    .to_string(),
-                project_id: cred
-                    .project_id
-                    .as_ref()
-                    .ok_or(Error::Other("no project_id was found"))?
-                    .to_string(),
-                storage_client: StorageClient::new(ts, config.storage_endpoint.as_str(), http),
-                service_account_client,
-            }),
-            Project::FromMetadataServer(info) => Ok(Client {
-                private_key: None,
-                service_account_email: google_cloud_metadata::email("default").await?,
-                project_id: info
-                    .project_id
-                    .as_ref()
-                    .ok_or(Error::Other("no project_id was found"))?
-                    .to_string(),
-                storage_client: StorageClient::new(ts, config.storage_endpoint.as_str(), http),
-                service_account_client,
-            }),
-        }
-    }
 
-    /// Gets the project_id from Credentials
-    pub fn project_id(&self) -> &str {
-        &self.project_id
+        let service_account_client = ServiceAccountClient::new(ts.clone(), config.service_account_endpoint.as_str());
+        let storage_client = StorageClient::new(ts, config.storage_endpoint.as_str(), http);
+
+        Self {
+            default_google_access_id: config.default_google_access_id,
+            default_sign_by: config.default_sign_by,
+            storage_client,
+            service_account_client,
+        }
     }
 
     /// Get signed url.
@@ -128,9 +84,7 @@ impl Client {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::sign::{SignedURLOptions, SignedURLMethod};
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::default().await.unwrap();
+    /// async fn run(client: Client) {
     ///     let url_for_download = client.signed_url("bucket", "file.txt", SignedURLOptions::default()).await;
     ///     let url_for_upload = client.signed_url("bucket", "file.txt", SignedURLOptions {
     ///         method: SignedURLMethod::PUT,
@@ -162,27 +116,28 @@ impl Client {
     #[inline(always)]
     async fn _signed_url(&self, bucket: &str, object: &str, opts: SignedURLOptions) -> Result<String, SignedURLError> {
         let mut opts = opts;
-        if !self.service_account_email.is_empty() && opts.google_access_id.is_empty() {
-            opts.google_access_id = self.service_account_email.to_string();
+        if opts.google_access_id.is_empty() {
+            opts.google_access_id = self
+                .default_google_access_id
+                .clone()
+                .ok_or(SignedURLError::InvalidOption("No default google_access_id is found"))?;
         }
-        if let SignBy::PrivateKey(pk) = &opts.sign_by {
-            if pk.is_empty() {
-                if let Some(pk) = &self.private_key {
-                    opts.sign_by = SignBy::PrivateKey(pk.clone().into_bytes())
-                } else if google_cloud_metadata::on_gce().await {
-                    opts.sign_by = SignBy::SignBytes
-                } else {
-                    return Err(SignedURLError::InvalidOption("credentials is required to sign url"));
-                }
-            }
-        }
-
         let (signed_buffer, mut builder) = create_signed_buffer(bucket, object, &opts)?;
         tracing::trace!("signed_buffer={:?}", String::from_utf8_lossy(&signed_buffer));
 
+        let mut sign_by = opts.sign_by;
+        if let PrivateKey(pk) = &sign_by {
+            if pk.is_empty() {
+                sign_by = self
+                    .default_sign_by
+                    .clone()
+                    .ok_or(SignedURLError::InvalidOption("No default sign_by was found"))?;
+            }
+        }
+
         // create signature
-        let signature = match &opts.sign_by {
-            SignBy::PrivateKey(private_key) => {
+        let signature = match &sign_by {
+            PrivateKey(private_key) => {
                 let str = String::from_utf8_lossy(private_key);
                 let pkcs = rsa::RsaPrivateKey::from_pkcs8_pem(str.as_ref())
                     .map_err(|e| SignedURLError::CertError(e.to_string()))?;
@@ -219,7 +174,7 @@ impl Client {
 
 #[cfg(test)]
 mod test {
-    use crate::client::Client;
+    use crate::client::{Client, ClientConfig};
 
     use crate::http::buckets::delete::DeleteBucketRequest;
     use crate::http::buckets::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
@@ -227,27 +182,48 @@ mod test {
         BucketCreationConfig, InsertBucketParam, InsertBucketRequest, RetentionPolicyCreationConfig,
     };
     use crate::http::buckets::{lifecycle, Billing, Cors, IamConfiguration, Lifecycle, Website};
+    use google_cloud_auth::project::Config;
+    use google_cloud_auth::token::DefaultTokenSourceProvider;
     use serial_test::serial;
     use std::collections::HashMap;
     use time::OffsetDateTime;
 
     use crate::http::buckets::list::ListBucketsRequest;
-    use crate::sign::{SignedURLMethod, SignedURLOptions};
+    use crate::http::storage_client::SCOPES;
+    use crate::sign::{SignBy, SignedURLMethod, SignedURLOptions};
 
     #[ctor::ctor]
     fn init() {
         let _ = tracing_subscriber::fmt::try_init();
     }
 
+    async fn create_client() -> (Client, String) {
+        let mut config = ClientConfig::default();
+        let ts = DefaultTokenSourceProvider::new(Config {
+            audience: None,
+            scopes: Some(&SCOPES),
+        })
+        .await
+        .unwrap();
+
+        let cred = &ts.source_credentials.clone().unwrap();
+        config.project_id = cred.project_id.clone();
+        config.token_source_provider = Box::new(ts);
+        config.default_google_access_id = cred.client_email.clone();
+        config.default_sign_by = Some(SignBy::PrivateKey(cred.private_key.clone().unwrap().into_bytes()));
+        let project_id = config.project_id.clone();
+        (Client::new(config), project_id.unwrap())
+    }
+
     #[tokio::test]
     #[serial]
-    async fn buckets() {
+    async fn test_buckets() {
         let prefix = Some("rust-bucket-test".to_string());
-        let client = Client::default().await.unwrap();
+        let (client, project) = create_client().await;
         let result = client
             .list_buckets(
                 &ListBucketsRequest {
-                    project: client.project_id().to_string(),
+                    project,
                     prefix,
                     ..Default::default()
                 },
@@ -260,7 +236,7 @@ mod test {
 
     #[tokio::test]
     #[serial]
-    async fn create_bucket() {
+    async fn test_create_bucket() {
         let mut labels = HashMap::new();
         labels.insert("labelkey".to_string(), "labelvalue".to_string());
         let config = BucketCreationConfig {
@@ -306,12 +282,12 @@ mod test {
             ..Default::default()
         };
 
-        let client = Client::default().await.unwrap();
+        let (client, project) = create_client().await;
         let bucket_name = format!("rust-test-{}", OffsetDateTime::now_utc().unix_timestamp());
         let req = InsertBucketRequest {
             name: bucket_name.clone(),
             param: InsertBucketParam {
-                project: client.project_id().to_string(),
+                project,
                 ..Default::default()
             },
             bucket: config,
@@ -343,8 +319,8 @@ mod test {
 
     #[tokio::test]
     #[serial]
-    async fn sign() {
-        let client = Client::default().await.unwrap();
+    async fn test_sign() {
+        let (client, _) = create_client().await;
         let bucket_name = "rust-object-test";
         let data = "aiueo";
         let content_type = "application/octet-stream";

@@ -7,8 +7,11 @@
 //!
 //! ## Quick Start
 //!
+//! You can use [google-cloud-default](https://crates.io/crates/google-cloud-default) to create `ClientConfig`
+//!
 //! ```
 //! use google_cloud_storage::client::Client;
+//! use google_cloud_storage::client::ClientConfig;
 //! use google_cloud_storage::sign::SignedURLOptions;
 //! use google_cloud_storage::sign::SignedURLMethod;
 //! use google_cloud_storage::http::Error;
@@ -20,11 +23,12 @@
 //! use std::io::BufReader;
 //! use std::io::Read;
 //!
-//! #[tokio::main]
-//! async fn main() -> Result<(), Error> {
+//! // use google_cloud_default::WithAuthExt;
+//! // let config = ClientConfig::default().with_auth().await?;
+//! async fn run(config: ClientConfig) -> Result<(), Error> {
 //!
 //!     // Create client.
-//!     let mut client = Client::default().await.unwrap();
+//!     let mut client = Client::new(config);
 //!
 //!     // Upload the file
 //!     let uploaded = client.upload_object(&UploadObjectRequest {

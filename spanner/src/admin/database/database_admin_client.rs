@@ -11,10 +11,10 @@ use google_cloud_googleapis::spanner::admin::database::v1::{
     UpdateBackupRequest, UpdateDatabaseDdlRequest,
 };
 
-use crate::admin::{default_internal_client, default_retry_setting};
+use crate::admin::default_retry_setting;
 
 use google_cloud_gax::cancel::CancellationToken;
-use google_cloud_gax::conn::{Channel, Error};
+use google_cloud_gax::conn::Channel;
 use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::{Response, Status};
 use google_cloud_longrunning::autogen::operations_client::OperationsClient;
@@ -29,11 +29,6 @@ pub struct DatabaseAdminClient {
 impl DatabaseAdminClient {
     pub fn new(inner: InternalDatabaseAdminClient<Channel>, lro_client: OperationsClient) -> Self {
         Self { inner, lro_client }
-    }
-
-    pub async fn default() -> Result<Self, Error> {
-        let (conn, lro_client) = default_internal_client().await?;
-        Ok(Self::new(InternalDatabaseAdminClient::new(conn), lro_client))
     }
 
     /// list_databases lists Cloud Spanner databases.

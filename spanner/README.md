@@ -13,6 +13,7 @@ Google Cloud Platform spanner library.
 ```
 [dependencies]
 google-cloud-spanner = <version>
+google-cloud-default = { version = <version>, features = ["spanner"] }
 ```
 
 ## Quick Start
@@ -25,15 +26,17 @@ Create `Client` and call transaction API same as [Google Cloud Go](https://githu
  use google_cloud_spanner::statement::Statement;
  use google_cloud_spanner::reader::AsyncIterator;
  use google_cloud_spanner::value::CommitTimestamp;
- use google_cloud_spanner::client::RunInTxError;
+ use google_cloud_spanner::client::Error;
+ use google_cloud_default::WithAuthExt;
 
  #[tokio::main]
- async fn main() -> Result<(), anyhow::Error> {
+ async fn main() -> Result<(), Error> {
 
      const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
      // Create spanner client
-     let mut client = Client::new(DATABASE).await?;
+     let config = ClientConfig::default().with_auth().await.unwrap();
+     let mut client = Client::new(DATABASE, config).await.unwrap();
 
      // Insert
      let mutation = insert("Guild", &["GuildId", "OwnerUserID", "UpdatedAt"], &[&"guildId", &"ownerId", &CommitTimestamp::new()]);

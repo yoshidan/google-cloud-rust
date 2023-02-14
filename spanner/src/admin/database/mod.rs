@@ -3,6 +3,7 @@ pub mod database_admin_client;
 #[cfg(test)]
 mod tests {
     use crate::admin::database::database_admin_client::DatabaseAdminClient;
+    use google_cloud_googleapis::spanner::admin::database::v1::database_admin_client::DatabaseAdminClient as InternalDatabaseAdminClient;
 
     use google_cloud_googleapis::spanner::admin::database::v1::database::State;
     use google_cloud_googleapis::spanner::admin::database::v1::{
@@ -10,12 +11,23 @@ mod tests {
         GetDatabaseRequest, ListDatabasesRequest, UpdateDatabaseDdlRequest,
     };
 
+    use crate::apiv1::conn_pool::{AUDIENCE, SPANNER};
+    use google_cloud_gax::conn::{ConnectionManager, Environment};
+    use google_cloud_longrunning::autogen::operations_client::OperationsClient;
     use serial_test::serial;
     use time::OffsetDateTime;
 
+    async fn new_client() -> DatabaseAdminClient {
+        let conn_pool =
+            ConnectionManager::new(1, SPANNER, AUDIENCE, &Environment::Emulator("localhost:9010".to_string()))
+                .await
+                .unwrap();
+        let lro_client = OperationsClient::new(conn_pool.conn()).await.unwrap();
+        DatabaseAdminClient::new(InternalDatabaseAdminClient::new(conn_pool.conn()), lro_client)
+    }
+
     async fn create_database() -> Database {
-        std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-        let client = DatabaseAdminClient::default().await.unwrap();
+        let client = new_client().await;
         let database_id = format!("test{}ut", OffsetDateTime::now_utc().unix_timestamp_nanos());
         let request = CreateDatabaseRequest {
             parent: "projects/local-project/instances/test-instance".to_string(),
@@ -45,8 +57,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_get_database() {
-        std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-        let client = DatabaseAdminClient::default().await.unwrap();
+        let client = new_client().await;
         let name = "projects/local-project/instances/test-instance/databases/local-database".to_string();
         let request = GetDatabaseRequest { name: name.clone() };
 
@@ -63,7 +74,7 @@ mod tests {
     #[serial]
     async fn test_delete_database() {
         let database = create_database().await;
-        let client = DatabaseAdminClient::default().await.unwrap();
+        let client = new_client().await;
         let request = DropDatabaseRequest {
             database: database.name.to_string(),
         };
@@ -73,8 +84,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_list_databases() {
-        std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-        let client = DatabaseAdminClient::default().await.unwrap();
+        let client = new_client().await;
         let request = ListDatabasesRequest {
             parent: "projects/local-project/instances/test-instance".to_string(),
             page_size: 1,
@@ -94,8 +104,7 @@ mod tests {
     #[serial]
     async fn test_get_database_ddl() {
         let database = create_database().await;
-        std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-        let client = DatabaseAdminClient::default().await.unwrap();
+        let client = new_client().await;
         let request = GetDatabaseDdlRequest {
             database: database.name.to_string(),
         };
@@ -112,8 +121,7 @@ mod tests {
     #[serial]
     async fn test_update_database_ddl() {
         let database = create_database().await;
-        std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-        let client = DatabaseAdminClient::default().await.unwrap();
+        let client = new_client().await;
         let request = UpdateDatabaseDdlRequest {
             database: database.name.to_string(),
             statements: vec!["CREATE TABLE Tbl1 (ID INT64) PRIMARY KEY(ID)".to_string()],

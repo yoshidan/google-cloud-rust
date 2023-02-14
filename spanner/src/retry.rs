@@ -121,18 +121,18 @@ impl Default for TransactionRetrySetting {
 
 #[cfg(test)]
 mod tests {
-    use crate::client::{RunInTxError, TxError};
+    use crate::client::Error;
     use crate::retry::TransactionRetrySetting;
     use google_cloud_gax::grpc::{Code, Status};
     use google_cloud_gax::retry::{Condition, Retry};
 
     #[test]
     fn test_transaction_condition() {
-        let err = &TxError::GRPC(Status::new(Code::Internal, "stream terminated by RST_STREAM"));
+        let err = &Error::GRPC(Status::new(Code::Internal, "stream terminated by RST_STREAM"));
         let default = TransactionRetrySetting::default();
         assert!(!default.condition().should_retry(err));
 
-        let err = &RunInTxError::GRPC(Status::new(Code::Aborted, ""));
+        let err = &Error::GRPC(Status::new(Code::Aborted, ""));
         assert!(default.condition().should_retry(err));
     }
 }

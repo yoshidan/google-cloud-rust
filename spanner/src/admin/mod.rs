@@ -1,17 +1,35 @@
-use crate::{AUDIENCE, SPANNER};
-use google_cloud_gax::conn::{Channel, ConnectionManager, Environment, Error};
+use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::Code;
 use google_cloud_gax::retry::RetrySetting;
-use google_cloud_longrunning::autogen::operations_client::OperationsClient;
+use std::env::var;
+
+use google_cloud_token::NopeTokenSourceProvider;
 use std::time::Duration;
 
+pub mod client;
 pub mod database;
 pub mod instance;
 
-const SCOPES: [&str; 2] = [
+pub const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
     "https://www.googleapis.com/auth/spanner.admin",
 ];
+
+pub struct AdminClientConfig {
+    /// Runtime project
+    pub environment: Environment,
+}
+
+impl Default for AdminClientConfig {
+    fn default() -> Self {
+        AdminClientConfig {
+            environment: match var("SPANNER_EMULATOR_HOST").ok() {
+                Some(v) => Environment::Emulator(v),
+                None => Environment::GoogleCloud(Box::new(NopeTokenSourceProvider {})),
+            },
+        }
+    }
+}
 
 pub fn default_retry_setting() -> RetrySetting {
     RetrySetting {
@@ -21,15 +39,4 @@ pub fn default_retry_setting() -> RetrySetting {
         take: 20,
         codes: vec![Code::Unavailable, Code::Unknown, Code::DeadlineExceeded],
     }
-}
-
-pub async fn default_internal_client() -> Result<(Channel, OperationsClient), Error> {
-    let environment = match std::env::var("SPANNER_EMULATOR_HOST") {
-        Ok(s) => Environment::Emulator(s),
-        Err(_) => Environment::GoogleCloud(google_cloud_auth::project().await?),
-    };
-    let conn_pool = ConnectionManager::new(1, SPANNER, AUDIENCE, Some(&SCOPES), &environment).await?;
-    let conn = conn_pool.conn();
-    let lro_client = OperationsClient::new(conn).await?;
-    Ok((conn_pool.conn(), lro_client))
 }

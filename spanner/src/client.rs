@@ -1,5 +1,7 @@
 use google_cloud_gax::retry::{invoke_fn, TryAs};
 use google_cloud_googleapis::spanner::v1::{commit_request, transaction_options, Mutation, TransactionOptions};
+use std::env::var;
+use std::fmt::Debug;
 
 use crate::apiv1::conn_pool::{ConnectionManager, SPANNER};
 use crate::session::{ManagedSession, SessionConfig, SessionError, SessionManager};
@@ -11,11 +13,10 @@ use crate::value::{Timestamp, TimestampBound};
 
 use crate::retry::TransactionRetrySetting;
 
-use google_cloud_auth::Project;
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::{Code, Status};
-use google_cloud_gax::project::ProjectOptions;
+use google_cloud_token::NopeTokenSourceProvider;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -60,7 +61,7 @@ impl Default for ChannelConfig {
 }
 
 /// ClientConfig has configurations for the client.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ClientConfig {
     /// SessionPoolConfig is the configuration for session pool.
     pub session_config: SessionConfig,
@@ -69,7 +70,7 @@ pub struct ClientConfig {
     /// Overriding service endpoint
     pub endpoint: String,
     /// Runtime project
-    pub project: ProjectOptions,
+    pub environment: Environment,
 }
 
 impl Default for ClientConfig {
@@ -78,7 +79,10 @@ impl Default for ClientConfig {
             channel_config: Default::default(),
             session_config: Default::default(),
             endpoint: SPANNER.to_string(),
-            project: ProjectOptions::new("SPANNER_EMULATOR_HOST"),
+            environment: match var("SPANNER_EMULATOR_HOST").ok() {
+                Some(v) => Environment::Emulator(v),
+                None => Environment::GoogleCloud(Box::new(NopeTokenSourceProvider {})),
+            },
         };
         config.session_config.min_opened = config.channel_config.num_channels * 4;
         config.session_config.max_opened = config.channel_config.num_channels * 100;
@@ -86,49 +90,8 @@ impl Default for ClientConfig {
     }
 }
 
-impl ClientConfig {
-    pub fn project(&mut self, project: Project) {
-        if let ProjectOptions::Project(_) = self.project {
-            self.project = ProjectOptions::Project(Some(project))
-        }
-    }
-}
-
 #[derive(thiserror::Error, Debug)]
-pub enum InitializationError {
-    #[error(transparent)]
-    FailedToCreateSessionPool(#[from] Status),
-
-    #[error(transparent)]
-    FailedToCreateChannelPool(#[from] google_cloud_gax::conn::Error),
-
-    #[error(transparent)]
-    Auth(#[from] google_cloud_auth::error::Error),
-
-    #[error("invalid config: {0}")]
-    InvalidConfig(String),
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum TxError {
-    #[error(transparent)]
-    GRPC(#[from] Status),
-
-    #[error(transparent)]
-    InvalidSession(#[from] SessionError),
-}
-
-impl TryAs<Status> for TxError {
-    fn try_as(&self) -> Option<&Status> {
-        match self {
-            TxError::GRPC(s) => Some(s),
-            _ => None,
-        }
-    }
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum RunInTxError {
+pub enum Error {
     #[error(transparent)]
     GRPC(#[from] Status),
 
@@ -139,22 +102,16 @@ pub enum RunInTxError {
     ParseError(#[from] crate::row::Error),
 
     #[error(transparent)]
-    Any(#[from] anyhow::Error),
+    Connection(#[from] google_cloud_gax::conn::Error),
+
+    #[error("invalid config: {0}")]
+    InvalidConfig(String),
 }
 
-impl From<TxError> for RunInTxError {
-    fn from(err: TxError) -> Self {
-        match err {
-            TxError::GRPC(err) => RunInTxError::GRPC(err),
-            TxError::InvalidSession(err) => RunInTxError::InvalidSession(err),
-        }
-    }
-}
-
-impl TryAs<Status> for RunInTxError {
+impl TryAs<Status> for Error {
     fn try_as(&self) -> Option<&Status> {
         match self {
-            RunInTxError::GRPC(e) => Some(e),
+            Error::GRPC(e) => Some(e),
             _ => None,
         }
     }
@@ -170,26 +127,16 @@ pub struct Client {
 impl Client {
     /// new creates a client to a database. A valid database name has
     /// the form projects/PROJECT_ID/instances/INSTANCE_ID/databases/DATABASE_ID.
-    pub async fn new(database: impl Into<String>) -> Result<Self, InitializationError> {
-        Client::new_with_config(database, Default::default()).await
-    }
-
-    /// new creates a client to a database. A valid database name has
-    /// the form projects/PROJECT_ID/instances/INSTANCE_ID/databases/DATABASE_ID.
-    pub async fn new_with_config(
-        database: impl Into<String>,
-        config: ClientConfig,
-    ) -> Result<Self, InitializationError> {
+    pub async fn new(database: impl Into<String>, config: ClientConfig) -> Result<Self, Error> {
         if config.session_config.max_opened > config.channel_config.num_channels * 100 {
-            return Err(InitializationError::InvalidConfig(format!(
+            return Err(Error::InvalidConfig(format!(
                 "max session size is {} because max session size is 100 per gRPC connection",
                 config.channel_config.num_channels * 100
             )));
         }
 
-        let environment = Environment::from_project(config.project).await?;
         let pool_size = config.channel_config.num_channels;
-        let conn_pool = ConnectionManager::new(pool_size, &environment, config.endpoint.as_str()).await?;
+        let conn_pool = ConnectionManager::new(pool_size, &config.environment, config.endpoint.as_str()).await?;
         let session_manager = SessionManager::new(database, conn_pool, config.session_config).await?;
 
         Ok(Client {
@@ -212,26 +159,22 @@ impl Client {
     /// use google_cloud_spanner::client::Client;
     ///
     /// #[tokio::main]
-    /// async fn main() -> Result<(), anyhow::Error> {
-    ///     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
-    ///     let client = Client::new(DATABASE).await?;
-    ///
-    ///     let mut tx = client.single().await?;
+    /// async fn run(client: Client) {
+    ///     let mut tx = client.single().await.unwrap();
     ///     let iter1 = tx.read("Guild",&["GuildID", "OwnerUserID"], vec![
     ///         Key::new(&"pk1"),
     ///         Key::new(&"pk2")
-    ///     ]).await?;
-    ///     Ok(())
+    ///     ]).await.unwrap();
     /// }
     /// ```
-    pub async fn single(&self) -> Result<ReadOnlyTransaction, TxError> {
+    pub async fn single(&self) -> Result<ReadOnlyTransaction, Error> {
         self.single_with_timestamp_bound(TimestampBound::strong_read()).await
     }
 
     /// single provides a read-only snapshot transaction optimized for the case
     /// where only a single read or query is needed.  This is more efficient than
     /// using read_only_transaction for a single read or query.
-    pub async fn single_with_timestamp_bound(&self, tb: TimestampBound) -> Result<ReadOnlyTransaction, TxError> {
+    pub async fn single_with_timestamp_bound(&self, tb: TimestampBound) -> Result<ReadOnlyTransaction, Error> {
         let session = self.get_session().await?;
         let result = ReadOnlyTransaction::single(session, tb).await?;
         Ok(result)
@@ -241,31 +184,38 @@ impl Client {
     /// multiple reads from the database.
     ///
     /// ```ignore
+    /// use google_cloud_spanner::client::{Client, Error};
     /// use google_cloud_spanner::statement::Statement;
     /// use google_cloud_spanner::key::Key;
+    /// use google_cloud_spanner::reader::AsyncIterator;
     ///
-    /// let tx = client.read_only_transaction().await?;
+    /// async fn run(client: Client) -> Result<(), Error>{
+    ///     let mut tx = client.read_only_transaction().await?;
     ///
-    /// let mut stmt = Statement::new("SELECT * , \
+    ///     let mut stmt = Statement::new("SELECT * , \
     ///             ARRAY (SELECT AS STRUCT * FROM UserItem WHERE UserId = @Param1 ) AS UserItem, \
     ///             ARRAY (SELECT AS STRUCT * FROM UserCharacter WHERE UserId = @Param1 ) AS UserCharacter  \
     ///             FROM User \
     ///             WHERE UserId = @Param1");
     ///
-    /// stmt.add_param("Param1", user_id);
-    /// let mut reader = tx.query(stmt).await?;
-    /// while let Some(row) = reader.next().await? {
-    ///     let user_id= row.column_by_name::<String>("UserId")?;
-    ///     let user_items= row.column_by_name::<Vec<model::UserItem>>("UserItem")?;
-    ///     let user_characters = row.column_by_name::<Vec<model::UserCharacter>>("UserCharacter")?;
-    ///     data.push(user_id);
-    /// }
+    ///     stmt.add_param("Param1", user_id);
+    ///     let mut reader = tx.query(stmt).await?;
+    ///     let mut data = vec![];
+    ///     while let Some(row) = reader.next().await? {
+    ///         let user_id= row.column_by_name::<String>("UserId")?;
+    ///         let user_items= row.column_by_name::<Vec<model::UserItem>>("UserItem")?;
+    ///         let user_characters = row.column_by_name::<Vec<model::UserCharacter>>("UserCharacter")?;
+    ///         data.push(user_id);
+    ///     }
     ///
-    /// let mut reader2 = tx.read("User", &["UserId"], vec![
-    ///     Key::new(&"user-1"),
-    ///     Key::new(&"user-2")
-    /// ]).await?;
-    pub async fn read_only_transaction(&self) -> Result<ReadOnlyTransaction, TxError> {
+    ///     let mut reader2 = tx.read("User", &["UserId"], vec![
+    ///         Key::new(&"user-1"),
+    ///         Key::new(&"user-2")
+    ///     ]).await?;
+    ///
+    ///     Ok(())
+    /// }
+    pub async fn read_only_transaction(&self) -> Result<ReadOnlyTransaction, Error> {
         self.read_only_transaction_with_option(ReadOnlyTransactionOption::default())
             .await
     }
@@ -275,7 +225,7 @@ impl Client {
     pub async fn read_only_transaction_with_option(
         &self,
         options: ReadOnlyTransactionOption,
-    ) -> Result<ReadOnlyTransaction, TxError> {
+    ) -> Result<ReadOnlyTransaction, Error> {
         let session = self.get_session().await?;
         let result = ReadOnlyTransaction::begin(session, options.timestamp_bound, options.call_options).await?;
         Ok(result)
@@ -285,7 +235,7 @@ impl Client {
     /// for partitioned reads or queries from a snapshot of the database. This is
     /// useful in batch processing pipelines where one wants to divide the work of
     /// reading from the database across multiple machines.
-    pub async fn batch_read_only_transaction(&self) -> Result<BatchReadOnlyTransaction, TxError> {
+    pub async fn batch_read_only_transaction(&self) -> Result<BatchReadOnlyTransaction, Error> {
         self.batch_read_only_transaction_with_option(ReadOnlyTransactionOption::default())
             .await
     }
@@ -297,7 +247,7 @@ impl Client {
     pub async fn batch_read_only_transaction_with_option(
         &self,
         options: ReadOnlyTransactionOption,
-    ) -> Result<BatchReadOnlyTransaction, TxError> {
+    ) -> Result<BatchReadOnlyTransaction, Error> {
         let session = self.get_session().await?;
         let result = BatchReadOnlyTransaction::begin(session, options.timestamp_bound, options.call_options).await?;
         Ok(result)
@@ -311,7 +261,7 @@ impl Client {
     ///
     /// PartitionedUpdate returns an estimated count of the number of rows affected.
     /// The actual number of affected rows may be greater than the estimate.
-    pub async fn partitioned_update(&self, stmt: Statement) -> Result<i64, TxError> {
+    pub async fn partitioned_update(&self, stmt: Statement) -> Result<i64, Error> {
         self.partitioned_update_with_option(stmt, PartitionedUpdateOption::default())
             .await
     }
@@ -328,7 +278,7 @@ impl Client {
         &self,
         stmt: Statement,
         options: PartitionedUpdateOption,
-    ) -> Result<i64, TxError> {
+    ) -> Result<i64, Error> {
         let ro = TransactionRetrySetting::new(vec![Code::Aborted, Code::Internal]);
         let session = Some(self.get_session().await?);
 
@@ -342,7 +292,7 @@ impl Client {
                         .await
                     {
                         Ok(tx) => tx,
-                        Err(e) => return Err((TxError::GRPC(e.status), Some(e.session))),
+                        Err(e) => return Err((Error::GRPC(e.status), Some(e.session))),
                     };
                 let qo = match options.query_options.clone() {
                     Some(o) => o,
@@ -350,7 +300,7 @@ impl Client {
                 };
                 tx.update_with_option(stmt.clone(), qo)
                     .await
-                    .map_err(|e| (TxError::GRPC(e), tx.take_session()))
+                    .map_err(|e| (Error::GRPC(e), tx.take_session()))
             },
             session,
         )
@@ -366,7 +316,7 @@ impl Client {
     /// apply's default replay protection may require an additional RPC.  So this
     /// method may be appropriate for latency sensitive and/or high throughput blind
     /// writing.
-    pub async fn apply_at_least_once(&self, ms: Vec<Mutation>) -> Result<Option<Timestamp>, TxError> {
+    pub async fn apply_at_least_once(&self, ms: Vec<Mutation>) -> Result<Option<Timestamp>, Error> {
         self.apply_at_least_once_with_option(ms, CommitOptions::default()).await
     }
 
@@ -383,7 +333,7 @@ impl Client {
         &self,
         ms: Vec<Mutation>,
         options: CommitOptions,
-    ) -> Result<Option<Timestamp>, TxError> {
+    ) -> Result<Option<Timestamp>, Error> {
         let ro = TransactionRetrySetting::default();
         let mut session = self.get_session().await?;
 
@@ -396,7 +346,7 @@ impl Client {
                 });
                 match commit(session, ms.clone(), tx, options.clone()).await {
                     Ok(s) => Ok(s.commit_timestamp.map(|s| s.into())),
-                    Err(e) => Err((TxError::GRPC(e), session)),
+                    Err(e) => Err((Error::GRPC(e), session)),
                 }
             },
             &mut session,
@@ -410,20 +360,17 @@ impl Client {
     /// use google_cloud_spanner::mutation::delete;
     /// use google_cloud_spanner::key::all_keys;
     /// use google_cloud_spanner::statement::ToKind;
-    /// use google_cloud_spanner::client::Client;
+    /// use google_cloud_spanner::client::{Client, Error};
     /// use google_cloud_spanner::value::CommitTimestamp;
     ///
-    /// #[tokio::main]
-    /// async fn main() -> Result<(), anyhow::Error> {
-    ///     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
-    ///     let client = Client::new(DATABASE).await?;
+    /// async fn run(client: Client) -> Result<(), Error>{
     ///     let m1 = delete("Guild", all_keys());
     ///     let m2 = insert("Guild", &["GuildID", "OwnerUserID", "UpdatedAt"], &[&"1", &"2", &CommitTimestamp::new()]);
     ///     let commit_timestamp = client.apply(vec![m1,m2]).await?;
     ///     Ok(())
     /// }
     /// ```
-    pub async fn apply(&self, ms: Vec<Mutation>) -> Result<Option<Timestamp>, TxError> {
+    pub async fn apply(&self, ms: Vec<Mutation>) -> Result<Option<Timestamp>, Error> {
         self.apply_with_option(ms, ReadWriteTransactionOption::default()).await
     }
 
@@ -432,8 +379,8 @@ impl Client {
         &self,
         ms: Vec<Mutation>,
         options: ReadWriteTransactionOption,
-    ) -> Result<Option<Timestamp>, TxError> {
-        let result: Result<(Option<Timestamp>, ()), TxError> = self
+    ) -> Result<Option<Timestamp>, Error> {
+        let result: Result<(Option<Timestamp>, ()), Error> = self
             .read_write_transaction_sync_with_option(
                 |tx, _cancel| {
                     tx.buffer_write(ms.to_vec());
@@ -467,15 +414,13 @@ impl Client {
     /// use google_cloud_spanner::mutation::update;
     /// use google_cloud_spanner::key::{Key, all_keys};
     /// use google_cloud_spanner::value::Timestamp;
-    /// use google_cloud_spanner::client::RunInTxError;
+    /// use google_cloud_spanner::client::Error;
     /// use google_cloud_spanner::client::Client;
     /// use google_cloud_spanner::reader::AsyncIterator;
     ///
     /// #[tokio::main]
-    /// async fn main() -> Result<(), anyhow::Error> {
-    ///     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
-    ///     let client = Client::new(DATABASE).await?;
-    ///     let tx_result: Result<(Option<Timestamp>,()), RunInTxError> = client.read_write_transaction(|tx, _| {
+    /// async fn run(client: Client) ->  Result<(Option<Timestamp>,()), Error>{
+    ///     client.read_write_transaction(|tx, _| {
     ///         Box::pin(async move {
     ///             // The transaction function will be called again if the error code
     ///             // of this error is Aborted. The backend may automatically abort
@@ -495,8 +440,7 @@ impl Client {
     ///             tx.buffer_write(ms);
     ///             Ok(())
     ///         })
-    ///     }).await;
-    ///     Ok(())
+    ///     }).await
     /// }
     pub async fn read_write_transaction<'a, T, E, F>(&self, f: F) -> Result<(Option<Timestamp>, T), E>
     where
@@ -565,17 +509,14 @@ impl Client {
     /// use google_cloud_spanner::mutation::update;
     /// use google_cloud_spanner::key::{Key, all_keys};
     /// use google_cloud_spanner::value::Timestamp;
-    /// use google_cloud_spanner::client::RunInTxError;
+    /// use google_cloud_spanner::client::Error;
     /// use google_cloud_spanner::client::Client;
     /// use google_cloud_spanner::reader::AsyncIterator;
     /// use google_cloud_spanner::transaction_rw::ReadWriteTransaction;
     /// use google_cloud_googleapis::spanner::v1::execute_batch_dml_request::Statement;
     /// use google_cloud_spanner::retry::TransactionRetry;
     ///
-    /// #[tokio::main]
-    /// async fn main() -> Result<(), anyhow::Error> {
-    ///     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
-    ///     let client = Client::new(DATABASE).await?;
+    /// async fn run(client: Client) -> Result<(), Error>{
     ///     let retry = &mut TransactionRetry::new();
     ///     loop {
     ///         let tx = &mut client.begin_read_write_transaction().await?;
@@ -588,10 +529,9 @@ impl Client {
     ///             Err(err) => retry.next(err).await? // check retry
     ///         }
     ///     }
-    ///     Ok(())
     /// }
     ///
-    /// async fn run_in_transaction(tx: &mut ReadWriteTransaction) -> Result<(), RunInTxError> {
+    /// async fn run_in_transaction(tx: &mut ReadWriteTransaction) -> Result<(), Error> {
     ///     let key = all_keys();
     ///     let mut reader = tx.read("UserItem", &["UserId", "ItemId", "Quantity"], key).await?;
     ///     let mut ms = vec![];
@@ -606,7 +546,7 @@ impl Client {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn begin_read_write_transaction(&self) -> Result<ReadWriteTransaction, TxError> {
+    pub async fn begin_read_write_transaction(&self) -> Result<ReadWriteTransaction, Error> {
         let session = self.get_session().await?;
         ReadWriteTransaction::begin(session, ReadWriteTransactionOption::default().begin_options)
             .await

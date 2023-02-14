@@ -1,9 +1,7 @@
 use std::fmt::Debug;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::project::ProjectOptions;
-use google_cloud_auth::token_source::TokenSource;
-use google_cloud_auth::{create_token_source_from_project, Config, Project};
+use google_cloud_token::{TokenSource, TokenSourceProvider};
 use http::header::AUTHORIZATION;
 use http::{HeaderValue, Request};
 use std::future::Future;
@@ -40,7 +38,7 @@ impl AsyncPredicate<Request<BoxBody>> for AsyncAuthInterceptor {
                 .token()
                 .await
                 .map_err(|e| Status::new(Code::Unauthenticated, format!("token error: {e:?}")))?;
-            let token_header = HeaderValue::from_str(token.value().as_ref())
+            let token_header = HeaderValue::from_str(token.as_str())
                 .map_err(|e| Status::new(Code::Unauthenticated, format!("token error: {e:?}")))?;
             let (mut parts, body) = request.into_parts();
             parts.headers.insert(AUTHORIZATION, token_header);
@@ -52,7 +50,7 @@ impl AsyncPredicate<Request<BoxBody>> for AsyncAuthInterceptor {
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
-    Auth(#[from] google_cloud_auth::error::Error),
+    Auth(#[from] Box<dyn std::error::Error + Send + Sync>),
 
     #[error("tonic error : {0}")]
     TonicTransport(#[from] tonic::transport::Error),
@@ -61,21 +59,10 @@ pub enum Error {
     InvalidEmulatorHOST(String),
 }
 
+#[derive(Debug)]
 pub enum Environment {
     Emulator(String),
-    GoogleCloud(Project),
-}
-
-impl Environment {
-    pub async fn from_project(project: ProjectOptions) -> Result<Self, google_cloud_auth::error::Error> {
-        Ok(match project {
-            ProjectOptions::Emulated(host) => Environment::Emulator(host),
-            ProjectOptions::Project(project) => match project {
-                Some(project) => Environment::GoogleCloud(project),
-                None => Environment::GoogleCloud(google_cloud_auth::project().await?),
-            },
-        })
-    }
+    GoogleCloud(Box<dyn TokenSourceProvider>),
 }
 
 #[derive(Debug)]
@@ -108,12 +95,11 @@ impl ConnectionManager {
         pool_size: usize,
         domain_name: impl Into<String>,
         audience: &'static str,
-        scopes: Option<&'static [&'static str]>,
         environment: &Environment,
     ) -> Result<Self, Error> {
         let conns = match environment {
-            Environment::GoogleCloud(project) => {
-                Self::create_connections(pool_size, domain_name, audience, scopes, project).await?
+            Environment::GoogleCloud(ts_provider) => {
+                Self::create_connections(pool_size, domain_name, audience, ts_provider.as_ref()).await?
             }
             Environment::Emulator(host) => Self::create_emulator_connections(host).await?,
         };
@@ -129,21 +115,12 @@ impl ConnectionManager {
         pool_size: usize,
         domain_name: impl Into<String>,
         audience: &'static str,
-        scopes: Option<&'static [&'static str]>,
-        project: &Project,
+        ts_provider: &dyn TokenSourceProvider,
     ) -> Result<Vec<Channel>, Error> {
         let tls_config = ClientTlsConfig::new().domain_name(domain_name);
         let mut conns = Vec::with_capacity(pool_size);
 
-        let ts = create_token_source_from_project(
-            project,
-            Config {
-                audience: Some(audience),
-                scopes,
-            },
-        )
-        .await
-        .map(Arc::from)?;
+        let ts = ts_provider.token_source();
 
         for _i_ in 0..pool_size {
             let endpoint = TonicChannel::from_static(audience).tls_config(tls_config.clone())?;

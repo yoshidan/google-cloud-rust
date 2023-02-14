@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-auth"
-version = "0.8.1"
+version = "0.9.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/foundation/auth"
@@ -20,7 +20,8 @@ async-trait = "0.1"
 home = "0.5"
 urlencoding = "2.1"
 tokio = { version = "1.20", features = ["fs"]}
-google-cloud-metadata = { version = "0.3.1", path = "../metadata", default-features = false }
+google-cloud-metadata = { version = "0.3.1", path = "../metadata" }
+google-cloud-token = { version = "0.1.0", path = "../token" }
 base64 = "0.21"
 time = "0.3"
 
@@ -32,5 +33,5 @@ serial_test = "0.9"
 
 [features]
 default = ["default-tls"]
-default-tls = ["reqwest/default-tls", "google-cloud-metadata/default-tls"]
-rustls-tls = ["reqwest/rustls-tls", "google-cloud-metadata/rustls-tls"]
+default-tls = ["reqwest/default-tls"]
+rustls-tls = ["reqwest/rustls-tls"]

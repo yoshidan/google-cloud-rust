@@ -56,7 +56,8 @@ impl ReuseTokenSource {
 mod test {
     use crate::error::Error;
     use crate::token::Token;
-    use crate::{ReuseTokenSource, TokenSource};
+    use crate::token_source::reuse_token_source::ReuseTokenSource;
+    use crate::token_source::TokenSource;
     use async_trait::async_trait;
     use std::fmt::Debug;
     use time::OffsetDateTime;

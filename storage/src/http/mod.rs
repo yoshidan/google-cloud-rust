@@ -25,12 +25,12 @@ pub enum Error {
     HttpClient(#[from] reqwest::Error),
     #[error(transparent)]
     ResponseJson(#[from] serde_json::Error),
-    #[error(transparent)]
-    AuthError(#[from] google_cloud_auth::error::Error),
     #[error("operation cancelled")]
     Cancelled,
     #[error(transparent)]
     Base64DecodeError(#[from] base64::DecodeError),
+    #[error(transparent)]
+    Std(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 
 pub(crate) trait Escape {

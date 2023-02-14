@@ -3,6 +3,7 @@ pub mod instance_admin_client;
 #[cfg(test)]
 mod tests {
     use crate::admin::instance::instance_admin_client::InstanceAdminClient;
+    use google_cloud_googleapis::spanner::admin::instance::v1::instance_admin_client::InstanceAdminClient as InternalInstanceAdminClient;
 
     use google_cloud_googleapis::spanner::admin::instance::v1::instance::State;
     use google_cloud_googleapis::spanner::admin::instance::v1::{
@@ -10,12 +11,23 @@ mod tests {
         ListInstanceConfigsRequest, ListInstancesRequest,
     };
 
+    use crate::apiv1::conn_pool::{AUDIENCE, SPANNER};
+    use google_cloud_gax::conn::{ConnectionManager, Environment};
+    use google_cloud_longrunning::autogen::operations_client::OperationsClient;
     use serial_test::serial;
     use time::OffsetDateTime;
 
+    async fn new_client() -> InstanceAdminClient {
+        let conn_pool =
+            ConnectionManager::new(1, SPANNER, AUDIENCE, &Environment::Emulator("localhost:9010".to_string()))
+                .await
+                .unwrap();
+        let lro_client = OperationsClient::new(conn_pool.conn()).await.unwrap();
+        InstanceAdminClient::new(InternalInstanceAdminClient::new(conn_pool.conn()), lro_client)
+    }
+
     async fn create_instance() -> Instance {
-        std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-        let mut client = InstanceAdminClient::default().await.unwrap();
+        let client = new_client().await;
         let instance_id = format!("test{}ut", OffsetDateTime::now_utc().unix_timestamp_nanos());
         let name = format!("projects/local-project/instances/{instance_id}");
         let request = CreateInstanceRequest {
@@ -55,8 +67,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_get_instance() {
-        std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-        let client = InstanceAdminClient::default().await.unwrap();
+        let client = new_client().await;
         let name = "projects/local-project/instances/test-instance".to_string();
         let request = GetInstanceRequest {
             name: name.clone(),
@@ -76,7 +87,7 @@ mod tests {
     #[serial]
     async fn test_delete_instance() {
         let instance = create_instance().await;
-        let client = InstanceAdminClient::default().await.unwrap();
+        let client = new_client().await;
         let request = DeleteInstanceRequest {
             name: instance.name.to_string(),
         };
@@ -86,8 +97,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_list_instances() {
-        std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-        let client = InstanceAdminClient::default().await.unwrap();
+        let client = new_client().await;
         let request = ListInstancesRequest {
             parent: "projects/local-project".to_string(),
             page_size: 1,
@@ -107,8 +117,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_list_instance_configs() {
-        std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-        let client = InstanceAdminClient::default().await.unwrap();
+        let client = new_client().await;
         let request = ListInstanceConfigsRequest {
             parent: "projects/local-project".to_string(),
             page_size: 1,
@@ -127,8 +136,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_get_instance_config() {
-        std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
-        let client = InstanceAdminClient::default().await.unwrap();
+        let client = new_client().await;
         let name = "projects/local-project/instanceConfigs/emulator-config".to_string();
         let request = GetInstanceConfigRequest { name: name.clone() };
 

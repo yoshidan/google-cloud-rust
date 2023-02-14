@@ -1,5 +1,4 @@
-use anyhow::Context;
-use google_cloud_spanner::client::{Client, RunInTxError};
+use google_cloud_spanner::client::{Client, ClientConfig, Error};
 
 use google_cloud_spanner::statement::Statement;
 
@@ -8,7 +7,10 @@ use common::*;
 use google_cloud_spanner::key::Key;
 
 use google_cloud_gax::grpc::{Code, Status};
+use google_cloud_gax::retry::TryAs;
 use google_cloud_spanner::retry::TransactionRetry;
+use google_cloud_spanner::row::Row;
+use google_cloud_spanner::session::SessionError;
 use google_cloud_spanner::value::Timestamp;
 use serial_test::serial;
 use time::OffsetDateTime;
@@ -26,21 +28,47 @@ fn init() {
 #[derive(thiserror::Error, Debug)]
 pub enum DomainError {
     #[error("invalid")]
-    UpdateInvalid(),
+    UpdateInvalid,
+    #[error(transparent)]
+    Tx(#[from] Error),
+}
+
+impl TryAs<Status> for DomainError {
+    fn try_as(&self) -> Option<&Status> {
+        match self {
+            DomainError::Tx(Error::GRPC(status)) => Some(status),
+            _ => None,
+        }
+    }
+}
+
+impl From<Status> for DomainError {
+    fn from(status: Status) -> Self {
+        Self::Tx(Error::GRPC(status))
+    }
+}
+
+impl From<SessionError> for DomainError {
+    fn from(se: SessionError) -> Self {
+        Self::Tx(Error::InvalidSession(se))
+    }
 }
 
 #[tokio::test]
 #[serial]
-async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
+async fn test_read_write_transaction() {
     // set up data
     let now = OffsetDateTime::now_utc();
     let user_id = format!("user_{}", now.unix_timestamp());
     let data_client = create_data_client().await;
-    data_client.apply(vec![create_user_mutation(&user_id, &now)]).await?;
+    data_client
+        .apply(vec![create_user_mutation(&user_id, &now)])
+        .await
+        .unwrap();
 
     // test
-    let client = Client::new(DATABASE).await.context("error")?;
-    let result: Result<(Option<Timestamp>, i64), RunInTxError> = client
+    let client = Client::new(DATABASE, ClientConfig::default()).await.unwrap();
+    let result: Result<(Option<Timestamp>, i64), DomainError> = client
         .read_write_transaction(
             |tx, _cancel| {
                 let user_id= user_id.to_string();
@@ -51,7 +79,7 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
                     stmt.add_param("UserId", &user_id);
                     let updated = tx.update(stmt).await?;
                     if updated == 0 {
-                        Err(anyhow::Error::msg("error").into())
+                        Err(DomainError::UpdateInvalid)
                     }else {
                         Ok(updated)
                     }
@@ -65,29 +93,35 @@ async fn test_read_write_transaction() -> Result<(), anyhow::Error> {
         .replace_nanosecond(value.nanos as u32)
         .unwrap();
 
-    let mut ro = client.read_only_transaction().await?;
-    let record = ro.read("User", &user_columns(), Key::new(&"user_client_1x")).await?;
+    let mut ro = client.read_only_transaction().await.unwrap();
+    let record = ro
+        .read("User", &user_columns(), Key::new(&"user_client_1x"))
+        .await
+        .unwrap();
     let row = all_rows(record).await.unwrap().pop().unwrap();
     assert_user_row(&row, "user_client_1x", &now, &ts);
 
-    let record = ro.read("User", &user_columns(), Key::new(&"user_client_2x")).await?;
+    let record = ro
+        .read("User", &user_columns(), Key::new(&"user_client_2x"))
+        .await
+        .unwrap();
     let row = all_rows(record).await.unwrap().pop().unwrap();
     assert_user_row(&row, "user_client_2x", &now, &ts);
 
     let record = ro
         .read("UserItem", &["UpdatedAt"], Key::composite(&[&user_id, &1]))
-        .await?;
+        .await
+        .unwrap();
     let row = all_rows(record).await.unwrap().pop().unwrap();
     let cts = row.column_by_name::<OffsetDateTime>("UpdatedAt").unwrap();
     assert_eq!(cts.unix_timestamp(), ts.unix_timestamp());
-    Ok(())
 }
 
 #[tokio::test]
 #[serial]
-async fn test_apply() -> Result<(), anyhow::Error> {
+async fn test_apply() {
     let users: Vec<String> = (0..2).map(|x| format!("user_client_{x}")).collect();
-    let client = Client::new(DATABASE).await.context("error")?;
+    let client = Client::new(DATABASE, ClientConfig::default()).await.unwrap();
     let now = OffsetDateTime::now_utc();
     let ms = users.iter().map(|id| create_user_mutation(id, &now)).collect();
     let value = client.apply(ms).await.unwrap().unwrap();
@@ -96,20 +130,19 @@ async fn test_apply() -> Result<(), anyhow::Error> {
         .replace_nanosecond(value.nanos as u32)
         .unwrap();
 
-    let mut ro = client.read_only_transaction().await?;
+    let mut ro = client.read_only_transaction().await.unwrap();
     for x in users {
-        let record = ro.read("User", &user_columns(), Key::new(&x)).await?;
-        let row = all_rows(record).await.unwrap().pop().unwrap();
+        let record = ro.read("User", &user_columns(), Key::new(&x)).await.unwrap();
+        let row: Row = all_rows(record).await.unwrap().pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
     }
-    Ok(())
 }
 
 #[tokio::test]
 #[serial]
-async fn test_apply_at_least_once() -> Result<(), anyhow::Error> {
+async fn test_apply_at_least_once() {
     let users: Vec<String> = (0..2).map(|x| format!("user_client_x_{x}")).collect();
-    let client = Client::new(DATABASE).await.context("error")?;
+    let client = Client::new(DATABASE, ClientConfig::default()).await.unwrap();
     let now = OffsetDateTime::now_utc();
     let ms = users.iter().map(|id| create_user_mutation(id, &now)).collect();
     let value = client.apply_at_least_once(ms).await.unwrap().unwrap();
@@ -118,26 +151,28 @@ async fn test_apply_at_least_once() -> Result<(), anyhow::Error> {
         .replace_nanosecond(value.nanos as u32)
         .unwrap();
 
-    let mut ro = client.read_only_transaction().await?;
+    let mut ro = client.read_only_transaction().await.unwrap();
     for x in users {
-        let record = ro.read("User", &user_columns(), Key::new(&x)).await?;
+        let record = ro.read("User", &user_columns(), Key::new(&x)).await.unwrap();
         let row = all_rows(record).await.unwrap().pop().unwrap();
         assert_user_row(&row, &x, &now, &ts);
     }
-    Ok(())
 }
 
 #[tokio::test]
 #[serial]
-async fn test_partitioned_update() -> Result<(), anyhow::Error> {
+async fn test_partitioned_update() {
     //set up test data
     let now = OffsetDateTime::now_utc();
     let user_id = format!("user_{}", now.unix_timestamp());
     let data_client = create_data_client().await;
-    data_client.apply(vec![create_user_mutation(&user_id, &now)]).await?;
+    data_client
+        .apply(vec![create_user_mutation(&user_id, &now)])
+        .await
+        .unwrap();
 
     // test
-    let client = Client::new(DATABASE).await.context("error")?;
+    let client = Client::new(DATABASE, ClientConfig::default()).await.unwrap();
     let stmt = Statement::new("UPDATE User SET NullableString = 'aaa' WHERE NullableString IS NOT NULL");
     client.partitioned_update(stmt).await.unwrap();
 
@@ -149,22 +184,21 @@ async fn test_partitioned_update() -> Result<(), anyhow::Error> {
     let row = all_rows(rows).await.unwrap().pop().unwrap();
     let value = row.column_by_name::<String>("NullableString").unwrap();
     assert_eq!(value, "aaa");
-    Ok(())
 }
 
 #[tokio::test]
 #[serial]
-async fn test_batch_read_only_transaction() -> Result<(), anyhow::Error> {
+async fn test_batch_read_only_transaction() {
     //set up test data
     let now = OffsetDateTime::now_utc();
     let many = (0..20000)
         .map(|x| create_user_mutation(&format!("user_partition_{}_{}", now.unix_timestamp(), x), &now))
         .collect();
     let data_client = create_data_client().await;
-    data_client.apply(many).await?;
+    data_client.apply(many).await.unwrap();
 
     // test
-    let client = Client::new(DATABASE).await.context("error")?;
+    let client = Client::new(DATABASE, ClientConfig::default()).await.unwrap();
     let mut tx = client.batch_read_only_transaction().await.unwrap();
 
     let stmt = Statement::new(format!(
@@ -173,14 +207,13 @@ async fn test_batch_read_only_transaction() -> Result<(), anyhow::Error> {
     ));
     let rows = execute_partitioned_query(&mut tx, stmt).await;
     assert_eq!(20000, rows.len());
-    Ok(())
 }
 
 #[tokio::test]
 #[serial]
-async fn test_begin_read_write_transaction_retry() -> Result<(), anyhow::Error> {
-    let client = Client::new(DATABASE).await.context("error")?;
-    let tx = &mut client.begin_read_write_transaction().await?;
+async fn test_begin_read_write_transaction_retry() {
+    let client = Client::new(DATABASE, ClientConfig::default()).await.unwrap();
+    let tx = &mut client.begin_read_write_transaction().await.unwrap();
     let retry = &mut TransactionRetry::new();
     let mut retry_count = 0;
     loop {
@@ -199,5 +232,4 @@ async fn test_begin_read_write_transaction_retry() -> Result<(), anyhow::Error> 
         }
     }
     assert_eq!(retry_count, 5);
-    Ok(())
 }
