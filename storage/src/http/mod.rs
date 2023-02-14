@@ -24,7 +24,7 @@ pub enum Error {
     #[error(transparent)]
     HttpClient(#[from] reqwest::Error),
     #[error(transparent)]
-    ResponseJson(#[from] serde_json::Error),
+    Json(#[from] serde_json::Error),
     #[error("operation cancelled")]
     Cancelled,
     #[error(transparent)]

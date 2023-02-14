@@ -1,9 +1,64 @@
 use crate::http::object_access_controls::{PredefinedObjectAcl, Projection};
 
-use crate::http::objects::Encryption;
+use crate::http::objects::{Encryption, Object};
 use crate::http::Escape;
 use reqwest::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use reqwest::{Client, RequestBuilder};
+
+pub struct Multipart {
+    pub boundary: String,
+    pub metadata: Object,
+}
+
+pub enum UploadType {
+    Simple(String),
+    Multipart(Multipart),
+}
+
+impl UploadType {
+    pub fn content_type(&self) -> String {
+        match self {
+            UploadType::Simple(v) => v.to_string(),
+            UploadType::Multipart(v) => format!("multipart/related; boundary={}", v.boundary.as_str()),
+        }
+    }
+
+    pub fn upload_type(&self) -> &'static str {
+        match self {
+            UploadType::Simple(_) => "media",
+            UploadType::Multipart(_) => "multipart",
+        }
+    }
+
+    pub fn data(&self, data: &[u8]) -> Result<Vec<u8>, serde_json::Error> {
+        Ok(match self {
+            UploadType::Simple(_) => Vec::from(data),
+            UploadType::Multipart(metadata) => {
+                let data_content_type = metadata
+                    .metadata
+                    .content_type
+                    .clone()
+                    .unwrap_or("application/octet-stream".to_string());
+                let mut multipart_data = Vec::with_capacity(data.len());
+                multipart_data.extend(
+                    format!(
+                        "--{}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n",
+                        metadata.boundary
+                    )
+                    .into_bytes(),
+                );
+                multipart_data.extend(serde_json::to_vec(&metadata.metadata)?);
+                multipart_data.extend(
+                    format!("\r\n\r\n--{}\r\nContent-Type: {}\r\n\r\n", metadata.boundary, data_content_type)
+                        .into_bytes(),
+                );
+                multipart_data.extend_from_slice(data);
+                multipart_data.extend(format!("\r\n--{}--\r\n", metadata.boundary).into_bytes());
+                multipart_data
+            }
+        })
+    }
+}
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
@@ -62,15 +117,20 @@ pub(crate) fn build<T: Into<reqwest::Body>>(
     client: &Client,
     req: &UploadObjectRequest,
     content_length: Option<usize>,
-    content_type: &str,
+    upload_type: UploadType,
     body: T,
 ) -> RequestBuilder {
-    let url = format!("{}/b/{}/o", base_url, req.bucket.escape());
+    let url = format!(
+        "{}/b/{}/o?uploadType={}",
+        base_url,
+        req.bucket.escape(),
+        upload_type.upload_type()
+    );
     let mut builder = client
         .post(url)
         .query(&req)
         .body(body)
-        .header(CONTENT_TYPE, content_type);
+        .header(CONTENT_TYPE, upload_type.content_type());
 
     if let Some(len) = content_length {
         builder = builder.header(CONTENT_LENGTH, len.to_string())

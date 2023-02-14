@@ -45,7 +45,7 @@ use crate::http::objects::get::GetObjectRequest;
 use crate::http::objects::list::{ListObjectsRequest, ListObjectsResponse};
 use crate::http::objects::patch::PatchObjectRequest;
 use crate::http::objects::rewrite::{RewriteObjectRequest, RewriteObjectResponse};
-use crate::http::objects::upload::UploadObjectRequest;
+use crate::http::objects::upload::{UploadObjectRequest, UploadType};
 
 use crate::http::objects::Object;
 use crate::http::{
@@ -1882,20 +1882,17 @@ impl StorageClient {
 
     /// Uploads the object.
     /// https://cloud.google.com/storage/docs/json_api/v1/objects/insert
-    /// 'uploadType' is always media - Data-only upload. Upload the object data only, without any metadata.
     ///
     /// ```
     /// use google_cloud_storage::client::Client;
-    /// use google_cloud_storage::http::objects::upload::UploadObjectRequest;
-    ///
+    /// use google_cloud_storage::http::objects::upload::{UploadObjectRequest, UploadType};
     ///
     /// async fn run(client:Client) {
-    ///     
     ///     let result = client.upload_object(&UploadObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         name: "filename".to_string(),
     ///         ..Default::default()
-    ///     }, "hello world".as_bytes(), "application/octet-stream", None).await;
+    ///     }, "hello world".as_bytes(), UploadType::Simple("application/octet-stream".to_string()), None).await;
     /// }
     /// ```
     #[cfg(not(feature = "trace"))]
@@ -1903,10 +1900,10 @@ impl StorageClient {
         &self,
         req: &UploadObjectRequest,
         data: &[u8],
-        content_type: &str,
+        upload_type: UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
-        self._upload_object(req, data, content_type, cancel).await
+        self._upload_object(req, data, upload_type, cancel).await
     }
 
     #[cfg(feature = "trace")]
@@ -1915,10 +1912,10 @@ impl StorageClient {
         &self,
         req: &UploadObjectRequest,
         data: &[u8],
-        content_type: &str,
+        upload_type: UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
-        self._upload_object(req, data, content_type, cancel).await
+        self._upload_object(req, data, upload_type, cancel).await
     }
 
     #[inline(always)]
@@ -1926,17 +1923,18 @@ impl StorageClient {
         &self,
         req: &UploadObjectRequest,
         data: &[u8],
-        content_type: &str,
+        upload_type: UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
+        let data = upload_type.data(data)?;
         let action = async {
             let builder = objects::upload::build(
                 self.v1_upload_endpoint.as_str(),
                 &self.http,
                 req,
                 Some(data.len()),
-                content_type,
-                Vec::from(data),
+                upload_type,
+                data,
             );
             self.send(builder).await
         };
@@ -2021,7 +2019,7 @@ impl StorageClient {
                 &self.http,
                 req,
                 content_length,
-                content_type,
+                UploadType::Simple(content_type.to_string()),
                 Body::wrap_stream(data),
             );
             self.send(builder).await
@@ -2339,7 +2337,7 @@ mod test {
     use crate::http::objects::get::GetObjectRequest;
     use crate::http::objects::list::ListObjectsRequest;
     use crate::http::objects::rewrite::RewriteObjectRequest;
-    use crate::http::objects::upload::UploadObjectRequest;
+    use crate::http::objects::upload::{UploadObjectRequest, UploadType};
 
     use crate::http::notifications::EventType;
     use crate::http::objects::download::Range;
@@ -2861,7 +2859,7 @@ mod test {
                     ..Default::default()
                 },
                 &[1, 2, 3, 4, 5, 6],
-                "text/plain",
+                UploadType::Simple("text/plain".to_string()),
                 None,
             )
             .await
