@@ -19,14 +19,13 @@
 //! use google_cloud_pubsub::subscription::SubscriptionConfig;
 //! use google_cloud_gax::grpc::Status;
 //! use tokio::task::JoinHandle;
-//! // use google_cloud_default::WithAuthExt;
 //!
 //! // Client config
 //! #[tokio::main]
 //! async fn main() -> Result<(), Status> {
 //!
 //!     // Create pubsub client.
-//!     // `with_auth` is the trait defined at google-cloud-default crate.
+//!     // `use google_cloud_default::WithAuthExt;` is required to use default authentication.
 //!     let config = ClientConfig::default();//.with_auth().await.unwrap();
 //!     let client = Client::new(config).await.unwrap();
 //!

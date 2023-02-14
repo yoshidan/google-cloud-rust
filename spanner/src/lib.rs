@@ -27,6 +27,7 @@
 //!     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 //!
 //!     // Create spanner client
+//!     // `use google_cloud_default::WithAuthExt;` is required to use default authentication.
 //!     let config = ClientConfig::default();//.with_auth().await.unwrap();
 //!     let mut client = Client::new(DATABASE, config).await?;
 //!

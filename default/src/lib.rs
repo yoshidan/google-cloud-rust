@@ -1,19 +1,6 @@
-use google_cloud_auth::error::Error as AuthError;
+use google_cloud_auth::error::Error;
 
 use async_trait::async_trait;
-use google_cloud_auth::project::Config;
-use google_cloud_auth::token::DefaultTokenSourceProvider;
-use google_cloud_gax::conn::Environment;
-use google_cloud_metadata::Error as MetadataError;
-
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-    #[error(transparent)]
-    Auth(#[from] AuthError),
-
-    #[error(transparent)]
-    Metadata(#[from] MetadataError),
-}
 
 #[async_trait]
 pub trait WithAuthExt {
@@ -26,14 +13,14 @@ pub trait WithAuthExt {
 #[async_trait]
 impl WithAuthExt for google_cloud_pubsub::client::ClientConfig {
     async fn with_auth(mut self) -> Result<Self, Error> {
-        if let Environment::GoogleCloud(_) = self.environment {
-            let ts = DefaultTokenSourceProvider::new(Config {
+        if let google_cloud_gax::conn::Environment::GoogleCloud(_) = self.environment {
+            let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new(google_cloud_auth::project::Config {
                 audience: Some(google_cloud_pubsub::apiv1::conn_pool::AUDIENCE),
                 scopes: Some(&google_cloud_pubsub::apiv1::conn_pool::SCOPES),
             })
             .await?;
             self.project_id = ts.project_id.clone();
-            self.environment = Environment::GoogleCloud(Box::new(ts))
+            self.environment = google_cloud_gax::conn::Environment::GoogleCloud(Box::new(ts))
         }
         Ok(self)
     }
@@ -43,13 +30,13 @@ impl WithAuthExt for google_cloud_pubsub::client::ClientConfig {
 #[async_trait]
 impl WithAuthExt for google_cloud_spanner::client::ClientConfig {
     async fn with_auth(mut self) -> Result<Self, Error> {
-        if let Environment::GoogleCloud(_) = self.environment {
-            let ts = DefaultTokenSourceProvider::new(Config {
+        if let google_cloud_gax::conn::Environment::GoogleCloud(_) = self.environment {
+            let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new(google_cloud_auth::project::Config {
                 audience: Some(google_cloud_spanner::apiv1::conn_pool::AUDIENCE),
                 scopes: Some(&google_cloud_spanner::apiv1::conn_pool::SCOPES),
             })
             .await?;
-            self.environment = Environment::GoogleCloud(Box::new(ts))
+            self.environment = google_cloud_gax::conn::Environment::GoogleCloud(Box::new(ts))
         }
         Ok(self)
     }
@@ -59,7 +46,7 @@ impl WithAuthExt for google_cloud_spanner::client::ClientConfig {
 #[async_trait]
 impl WithAuthExt for google_cloud_storage::client::ClientConfig {
     async fn with_auth(mut self) -> Result<Self, Error> {
-        let ts = DefaultTokenSourceProvider::new(Config {
+        let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new(google_cloud_auth::project::Config {
             audience: None,
             scopes: Some(&google_cloud_storage::http::storage_client::SCOPES),
         })

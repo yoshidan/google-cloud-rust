@@ -10,12 +10,13 @@ readme = "README.md"
 description = "Google Cloud Platform default config."
 
 [dependencies]
-thiserror = "1.0"
 async-trait = "0.1"
 
 google-cloud-auth = { version = "0.9.0", path = "../foundation/auth", default-features = false }
-google-cloud-metadata = { version = "0.3.1", path = "../foundation/metadata", default-features = false }
-google-cloud-gax = { version = "0.13.0", path = "../foundation/gax" }
+
+# optional
+google-cloud-metadata = { version = "0.3.1", path = "../foundation/metadata", optional = true }
+google-cloud-gax = { version = "0.13.0", path = "../foundation/gax", optional = true }
 
 # components
 google-cloud-pubsub = { version = "0.13.0", path = "../pubsub", optional = true }
@@ -28,8 +29,8 @@ serial_test = "0.9"
 
 [features]
 default = ["default-tls"]
-default-tls = ["google-cloud-auth/default-tls", "google-cloud-metadata/default-tls"]
-rustls-tls = ["google-cloud-auth/rustls-tls", "google-cloud-metadata/rustls-tls"]
-spanner = ["google-cloud-spanner"]
-pubsub = ["google-cloud-pubsub"]
-storage = ["google-cloud-storage"]
+default-tls = ["google-cloud-auth/default-tls"]
+rustls-tls = ["google-cloud-auth/rustls-tls"]
+spanner = ["google-cloud-spanner", "google-cloud-gax"]
+pubsub = ["google-cloud-pubsub", "google-cloud-gax"]
+storage = ["google-cloud-storage", "google-cloud-metadata"]
