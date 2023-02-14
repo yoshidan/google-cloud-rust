@@ -61,9 +61,18 @@
 //!
 //! Here is the generated implementation.
 //!```
-//! use google_cloud_spanner::row::{Row, Struct, TryFromStruct};
-//! use google_cloud_spanner::statement::{Kinds, ToKind, ToStruct, Types};
+//! use time::OffsetDateTime;
+//! use google_cloud_spanner::statement::{ToStruct, ToKind, Kinds, Types};
+//! use google_cloud_spanner::row::{Struct, TryFromValue, TryFromStruct, Row, Error as RowError};
 //! use google_cloud_spanner::value::CommitTimestamp;
+//! use std::convert::TryFrom;
+//!
+//! pub struct UserCharacter {
+//!     pub user_id: String,
+//!     pub character_id: i64,
+//!     pub level: i64,
+//!     pub updated_at: OffsetDateTime,
+//! }
 //!
 //! impl ToStruct for UserCharacter {
 //!     fn to_kinds(&self) -> Kinds {
@@ -152,7 +161,7 @@
 //!    stmt.add_param("UserID", &user_id);
 //!    let mut reader = tx.query(stmt).await?;
 //!    match reader.next().await? {
-//!        Some(row) => Ok(row.try_into()?),
+//!        Some(row) => Ok(Some(row.try_into()?)),
 //!        None => Ok(None)
 //!    }
 //! }
