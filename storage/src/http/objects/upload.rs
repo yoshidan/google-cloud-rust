@@ -22,7 +22,7 @@ impl Default for Media {
 
 pub enum UploadType {
     Simple(Media),
-    Multipart(Object),
+    Multipart(Box<Object>),
 }
 
 impl Default for UploadType {

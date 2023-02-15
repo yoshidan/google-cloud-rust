@@ -1901,12 +1901,12 @@ impl StorageClient {
     /// async fn run_multipart(client:Client) {
     ///     let mut metadata = HashMap::<String, String>::new();
     ///     metadata.insert("key1".to_string(), "value1".to_string());
-    ///     let upload_type = UploadType::Multipart(Object {
+    ///     let upload_type = UploadType::Multipart(Box::new(Object {
     ///         name: "test1_meta".to_string(),
     ///         content_type: Some("text/plain".to_string()),
     ///         metadata: Some(metadata),
     ///         ..Default::default()
-    ///     });
+    ///     }));
     ///     let result = client.upload_object(&UploadObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
@@ -2851,13 +2851,13 @@ mod test {
                     ..Default::default()
                 },
                 vec![1, 2, 3, 4, 5, 6, 7],
-                UploadType::Multipart(Object {
+                UploadType::Multipart(Box::new(Object {
                     name: "test1_meta".to_string(),
                     content_type: Some("text/plain".to_string()),
                     content_language: Some("ja".to_string()),
                     metadata: Some(metadata),
                     ..Default::default()
-                }),
+                })),
                 None,
             )
             .await
