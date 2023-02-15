@@ -122,6 +122,7 @@ pub(crate) fn build_multipart<T: Into<reqwest::Body>>(
     let data_part = Part::stream(body);
     let form = form.part("metadata", metadata_part).part("data", data_part);
 
+    // Content-Length is automatically set by multipart
     let builder = client.post(url).query(&req).multipart(form);
 
     if let Some(e) = &req.encryption {

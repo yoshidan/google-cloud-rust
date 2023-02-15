@@ -1971,22 +1971,26 @@ impl StorageClient {
 
     /// Uploads the streamed object.
     /// https://cloud.google.com/storage/docs/json_api/v1/objects/insert
-    /// 'uploadType' is always media - Data-only upload. Upload the object data only, without any metadata.
+    /// TODO resumable upload
     ///
     /// ```
     /// use google_cloud_storage::client::Client;
-    /// use google_cloud_storage::http::objects::upload::UploadObjectRequest;
+    /// use google_cloud_storage::http::objects::upload::{Media, UploadObjectRequest, UploadType};
     ///
     /// async fn run(client:Client) {
     ///     let source = vec!["hello", " ", "world"];
     ///     let size = source.iter().map(|x| x.len()).sum();
     ///     let chunks: Vec<Result<_, ::std::io::Error>> = source.clone().into_iter().map(|x| Ok(x)).collect();
     ///     let stream = futures_util::stream::iter(chunks);
+    ///     let upload_type = UploadType::Simple(Media {
+    ///         content_length: Some(size),
+    ///         ..Default::Default()
+    ///     });
     ///     let result = client.upload_streamed_object(&UploadObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         name: Some("filename".to_string()),
     ///         ..Default::default()
-    ///     }, stream, "application/octet-stream", Some(size), None).await;
+    ///     }, stream, upload_type, None).await;
     /// }
     /// ```
     #[cfg(not(feature = "trace"))]
@@ -2013,8 +2017,7 @@ impl StorageClient {
         &self,
         req: &UploadObjectRequest,
         data: S,
-        content_type: &str,
-        content_length: Option<usize>,
+        upload_type: UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error>
     where
@@ -2022,8 +2025,7 @@ impl StorageClient {
         S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
         bytes::Bytes: From<S::Ok>,
     {
-        self._upload_streamed_object(req, data, content_type, content_length, cancel)
-            .await
+        self._upload_streamed_object(req, data, upload_type, cancel).await
     }
 
     #[inline(always)]
@@ -2031,8 +2033,7 @@ impl StorageClient {
         &self,
         req: &UploadObjectRequest,
         data: S,
-        content_type: &str,
-        content_length: Option<usize>,
+        upload_type: UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error>
     where
@@ -2040,20 +2041,8 @@ impl StorageClient {
         S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
         bytes::Bytes: From<S::Ok>,
     {
-        let action = async {
-            let builder = objects::upload::build(
-                self.v1_upload_endpoint.as_str(),
-                &self.http,
-                req,
-                &Media {
-                    content_type: content_type.to_string(),
-                    content_length,
-                },
-                Body::wrap_stream(data),
-            );
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+        //TODO resumable upload
+        self._upload_object(req, Body::wrap_stream(data), upload_type, cancel)
     }
 
     /// Patches the object.
@@ -2220,7 +2209,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.compose_object(&ComposeObjectRequest{
     ///         bucket: "bucket1".to_string(),
     ///         destination_object: "object1".to_string(),
@@ -3045,6 +3034,10 @@ mod test {
         let size = source.iter().map(|x| x.len()).sum();
         let chunks: Vec<Result<_, ::std::io::Error>> = source.clone().into_iter().map(Ok).collect();
         let stream = futures_util::stream::iter(chunks);
+        let upload_type = UploadType::Simple(Media {
+            content_length: Some(size),
+            ..Default::Default()
+        });
         let uploaded = client
             .upload_streamed_object(
                 &UploadObjectRequest {
@@ -3054,8 +3047,7 @@ mod test {
                     ..Default::default()
                 },
                 stream,
-                "application/octet-stream",
-                Some(size),
+                upload_type,
                 None,
             )
             .await
