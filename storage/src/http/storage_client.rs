@@ -1890,7 +1890,7 @@ impl StorageClient {
     /// async fn run(client:Client) {
     ///     let result = client.upload_object(&UploadObjectRequest{
     ///         bucket: "bucket".to_string(),
-    ///         name: "filename".to_string(),
+    ///         name: Some("filename".to_string()),
     ///         ..Default::default()
     ///     }, "hello world".as_bytes(), UploadType::Simple("application/octet-stream".to_string()), None).await;
     /// }
@@ -2337,7 +2337,8 @@ mod test {
     use crate::http::objects::get::GetObjectRequest;
     use crate::http::objects::list::ListObjectsRequest;
     use crate::http::objects::rewrite::RewriteObjectRequest;
-    use crate::http::objects::upload::{UploadObjectRequest, UploadType};
+    use crate::http::objects::upload::{Multipart, UploadObjectRequest, UploadType};
+    use std::collections::HashMap;
 
     use crate::http::notifications::EventType;
     use crate::http::objects::download::Range;
@@ -2821,6 +2822,75 @@ mod test {
 
     #[tokio::test]
     #[serial]
+    pub async fn upload_metadata() {
+        let bucket_name = "rust-object-test";
+        let (client, _project) = client().await;
+        let mut metadata = HashMap::<String, String>::new();
+        metadata.insert("key1".to_string(), "value1".to_string());
+        let uploaded = client
+            .upload_object(
+                &UploadObjectRequest {
+                    bucket: bucket_name.to_string(),
+                    ..Default::default()
+                },
+                &[1, 2, 3, 4, 5, 6, 7],
+                UploadType::Multipart(Multipart {
+                    metadata: Object {
+                        name: "test1_meta".to_string(),
+                        content_type: Some("text/plain".to_string()),
+                        metadata: Some(metadata),
+                        ..Default::default()
+                    },
+                    boundary: "boundary".to_string(),
+                }),
+                None,
+            )
+            .await
+            .unwrap();
+        assert_eq!(uploaded.content_type.unwrap(), "text/plain".to_string());
+        assert_eq!(uploaded.metadata.unwrap().get("key1").unwrap().clone(), "value1".to_string());
+
+        let download = |range: Range| {
+            let client = client.clone();
+            let bucket_name = uploaded.bucket.clone();
+            let object_name = uploaded.name.clone();
+            async move {
+                client
+                    .download_object(
+                        &GetObjectRequest {
+                            bucket: bucket_name,
+                            object: object_name,
+                            ..Default::default()
+                        },
+                        &range,
+                        None,
+                    )
+                    .await
+                    .unwrap()
+            }
+        };
+
+        let object = client
+            .get_object(
+                &GetObjectRequest {
+                    bucket: uploaded.bucket.clone(),
+                    object: uploaded.name.clone(),
+                    ..Default::default()
+                },
+                None,
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(object.content_type.unwrap(), "text/plain".to_string());
+        assert_eq!(object.metadata.unwrap().get("key1").unwrap().clone(), "value1".to_string());
+
+        let downloaded = download(Range::default()).await;
+        assert_eq!(downloaded, vec![1, 2, 3, 4, 5, 6, 7]);
+    }
+
+    #[tokio::test]
+    #[serial]
     pub async fn crud_object() {
         let bucket_name = "rust-object-test";
         let (client, _project) = client().await;
@@ -2855,7 +2925,7 @@ mod test {
             .upload_object(
                 &UploadObjectRequest {
                     bucket: bucket_name.to_string(),
-                    name: "test1".to_string(),
+                    name: Some("test1".to_string()),
                     ..Default::default()
                 },
                 &[1, 2, 3, 4, 5, 6],
@@ -2864,6 +2934,8 @@ mod test {
             )
             .await
             .unwrap();
+
+        assert_eq!(uploaded.content_type.unwrap(), "text/plain".to_string());
 
         let download = |range: Range| {
             let client = client.clone();
@@ -2948,7 +3020,7 @@ mod test {
             .upload_streamed_object(
                 &UploadObjectRequest {
                     bucket: bucket_name.to_string(),
-                    name: file_name.to_string(),
+                    name: Some(file_name.to_string()),
                     predefined_acl: None,
                     ..Default::default()
                 },

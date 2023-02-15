@@ -69,3 +69,7 @@ where
     let s = String::deserialize(deserializer)?;
     T::from_str(&s).map_err(de::Error::custom)
 }
+
+pub fn is_i64_zero(num: &i64) -> bool {
+    *num == 0
+}

@@ -54,6 +54,8 @@ impl UploadType {
                 );
                 multipart_data.extend_from_slice(data);
                 multipart_data.extend(format!("\r\n--{}--\r\n", metadata.boundary).into_bytes());
+                let v = String::from_utf8_lossy(multipart_data.as_slice().clone()).to_string();
+                tracing::info!("\n{:?}", v);
                 multipart_data
             }
         })
@@ -70,7 +72,7 @@ pub struct UploadObjectRequest {
     /// Name of the object. Not required if the request body contains object metadata
     /// that includes a name value. Overrides the object metadata's name value, if any.
     /// For information about how to URL encode object names to be path safe, see Encoding URI path parts.
-    pub name: String,
+    pub name: Option<String>,
     pub generation: Option<i64>,
     /// Makes the operation conditional on whether the object's current generation
     /// matches the given value. Setting to 0 makes the operation succeed only if
