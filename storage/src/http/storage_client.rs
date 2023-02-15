@@ -45,7 +45,7 @@ use crate::http::objects::get::GetObjectRequest;
 use crate::http::objects::list::{ListObjectsRequest, ListObjectsResponse};
 use crate::http::objects::patch::PatchObjectRequest;
 use crate::http::objects::rewrite::{RewriteObjectRequest, RewriteObjectResponse};
-use crate::http::objects::upload::{Media, UploadObjectRequest, UploadType};
+use crate::http::objects::upload::{UploadObjectRequest, UploadType};
 
 use crate::http::objects::Object;
 use crate::http::{
@@ -1953,7 +1953,7 @@ impl StorageClient {
                         req,
                         &meta,
                         data,
-                    );
+                    )?;
                     self.send(builder).await
                 };
                 invoke(cancel, action).await
@@ -1998,8 +1998,7 @@ impl StorageClient {
         &self,
         req: &UploadObjectRequest,
         data: S,
-        content_type: &str,
-        content_length: Option<usize>,
+        upload_type: UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error>
     where
@@ -2007,8 +2006,7 @@ impl StorageClient {
         S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
         bytes::Bytes: From<S::Ok>,
     {
-        self._upload_streamed_object(req, data, content_type, content_length, cancel)
-            .await
+        self._upload_streamed_object(req, data, upload_type, cancel).await
     }
 
     #[cfg(feature = "trace")]
@@ -2043,6 +2041,7 @@ impl StorageClient {
     {
         //TODO resumable upload
         self._upload_object(req, Body::wrap_stream(data), upload_type, cancel)
+            .await
     }
 
     /// Patches the object.
@@ -2855,6 +2854,7 @@ mod test {
                 UploadType::Multipart(Object {
                     name: "test1_meta".to_string(),
                     content_type: Some("text/plain".to_string()),
+                    content_language: Some("ja".to_string()),
                     metadata: Some(metadata),
                     ..Default::default()
                 }),
@@ -2863,6 +2863,7 @@ mod test {
             .await
             .unwrap();
         assert_eq!(uploaded.content_type.unwrap(), "text/plain".to_string());
+        assert_eq!(uploaded.content_language.unwrap(), "ja".to_string());
         assert_eq!(uploaded.metadata.unwrap().get("key1").unwrap().clone(), "value1".to_string());
 
         let download = |range: Range| {
@@ -2898,6 +2899,7 @@ mod test {
             .unwrap();
 
         assert_eq!(object.content_type.unwrap(), "text/plain".to_string());
+        assert_eq!(object.content_language.unwrap(), "ja".to_string());
         assert_eq!(object.metadata.unwrap().get("key1").unwrap().clone(), "value1".to_string());
 
         let downloaded = download(Range::default()).await;
@@ -3036,7 +3038,7 @@ mod test {
         let stream = futures_util::stream::iter(chunks);
         let upload_type = UploadType::Simple(Media {
             content_length: Some(size),
-            ..Default::Default()
+            ..Default::default()
         });
         let uploaded = client
             .upload_streamed_object(

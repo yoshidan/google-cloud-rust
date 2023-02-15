@@ -1,7 +1,7 @@
 use crate::http::object_access_controls::{PredefinedObjectAcl, Projection};
 
 use crate::http::objects::{Encryption, Object};
-use crate::http::Escape;
+use crate::http::{Error, Escape};
 use reqwest::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use reqwest::multipart::{Form, Part};
 use reqwest::{Client, RequestBuilder};
@@ -113,21 +113,19 @@ pub(crate) fn build_multipart<T: Into<reqwest::Body>>(
     req: &UploadObjectRequest,
     metadata: &Object,
     body: T,
-) -> RequestBuilder {
+) -> Result<RequestBuilder, Error> {
     let url = format!("{}/b/{}/o?uploadType=multipart", base_url, req.bucket.escape(),);
     let form = Form::new();
-    let metadata_part = Part::text(serde_json::to_string(metadata).unwrap())
-        .mime_str("application/json; charset=UTF-8")
-        .unwrap();
+    let metadata_part = Part::text(serde_json::to_string(metadata)?).mime_str("application/json; charset=UTF-8")?;
     let data_part = Part::stream(body);
     let form = form.part("metadata", metadata_part).part("data", data_part);
 
     // Content-Length is automatically set by multipart
     let builder = client.post(url).query(&req).multipart(form);
 
-    if let Some(e) = &req.encryption {
+    Ok(if let Some(e) = &req.encryption {
         e.with_headers(builder)
     } else {
         builder
-    }
+    })
 }
