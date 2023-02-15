@@ -3,62 +3,31 @@ use crate::http::object_access_controls::{PredefinedObjectAcl, Projection};
 use crate::http::objects::{Encryption, Object};
 use crate::http::Escape;
 use reqwest::header::{CONTENT_LENGTH, CONTENT_TYPE};
+use reqwest::multipart::{Form, Part};
 use reqwest::{Client, RequestBuilder};
 
-pub struct Multipart {
-    pub boundary: String,
-    pub metadata: Object,
+pub struct Media {
+    pub content_type: String,
+    pub content_length: Option<usize>,
+}
+
+impl Default for Media {
+    fn default() -> Self {
+        Self {
+            content_type: "application/octet-stream".to_string(),
+            content_length: None,
+        }
+    }
 }
 
 pub enum UploadType {
-    Simple(String),
-    Multipart(Multipart),
+    Simple(Media),
+    Multipart(Object),
 }
 
-impl UploadType {
-    pub fn content_type(&self) -> String {
-        match self {
-            UploadType::Simple(v) => v.to_string(),
-            UploadType::Multipart(v) => format!("multipart/related; boundary={}", v.boundary.as_str()),
-        }
-    }
-
-    pub fn upload_type(&self) -> &'static str {
-        match self {
-            UploadType::Simple(_) => "media",
-            UploadType::Multipart(_) => "multipart",
-        }
-    }
-
-    pub fn data(&self, data: &[u8]) -> Result<Vec<u8>, serde_json::Error> {
-        Ok(match self {
-            UploadType::Simple(_) => Vec::from(data),
-            UploadType::Multipart(metadata) => {
-                let data_content_type = metadata
-                    .metadata
-                    .content_type
-                    .clone()
-                    .unwrap_or("application/octet-stream".to_string());
-                let mut multipart_data = Vec::with_capacity(data.len());
-                multipart_data.extend(
-                    format!(
-                        "--{}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n",
-                        metadata.boundary
-                    )
-                    .into_bytes(),
-                );
-                multipart_data.extend(serde_json::to_vec(&metadata.metadata)?);
-                multipart_data.extend(
-                    format!("\r\n\r\n--{}\r\nContent-Type: {}\r\n\r\n", metadata.boundary, data_content_type)
-                        .into_bytes(),
-                );
-                multipart_data.extend_from_slice(data);
-                multipart_data.extend(format!("\r\n--{}--\r\n", metadata.boundary).into_bytes());
-                let v = String::from_utf8_lossy(multipart_data.as_slice().clone()).to_string();
-                tracing::info!("\n{:?}", v);
-                multipart_data
-            }
-        })
+impl Default for UploadType {
+    fn default() -> Self {
+        Self::Simple(Media::default())
     }
 }
 
@@ -118,25 +87,43 @@ pub(crate) fn build<T: Into<reqwest::Body>>(
     base_url: &str,
     client: &Client,
     req: &UploadObjectRequest,
-    content_length: Option<usize>,
-    upload_type: UploadType,
+    media: &Media,
     body: T,
 ) -> RequestBuilder {
-    let url = format!(
-        "{}/b/{}/o?uploadType={}",
-        base_url,
-        req.bucket.escape(),
-        upload_type.upload_type()
-    );
+    let url = format!("{}/b/{}/o?uploadType=media", base_url, req.bucket.escape(),);
     let mut builder = client
         .post(url)
         .query(&req)
         .body(body)
-        .header(CONTENT_TYPE, upload_type.content_type());
+        .header(CONTENT_TYPE, media.content_type.to_string());
 
-    if let Some(len) = content_length {
+    if let Some(len) = media.content_length {
         builder = builder.header(CONTENT_LENGTH, len.to_string())
     }
+    if let Some(e) = &req.encryption {
+        e.with_headers(builder)
+    } else {
+        builder
+    }
+}
+
+pub(crate) fn build_multipart<T: Into<reqwest::Body>>(
+    base_url: &str,
+    client: &Client,
+    req: &UploadObjectRequest,
+    metadata: &Object,
+    body: T,
+) -> RequestBuilder {
+    let url = format!("{}/b/{}/o?uploadType=multipart", base_url, req.bucket.escape(),);
+    let form = Form::new();
+    let metadata_part = Part::text(serde_json::to_string(metadata).unwrap())
+        .mime_str("application/json; charset=UTF-8")
+        .unwrap();
+    let data_part = Part::stream(body);
+    let form = form.part("metadata", metadata_part).part("data", data_part);
+
+    let builder = client.post(url).query(&req).multipart(form);
+
     if let Some(e) = &req.encryption {
         e.with_headers(builder)
     } else {

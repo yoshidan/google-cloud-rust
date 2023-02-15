@@ -45,7 +45,7 @@ use crate::http::objects::get::GetObjectRequest;
 use crate::http::objects::list::{ListObjectsRequest, ListObjectsResponse};
 use crate::http::objects::patch::PatchObjectRequest;
 use crate::http::objects::rewrite::{RewriteObjectRequest, RewriteObjectResponse};
-use crate::http::objects::upload::{UploadObjectRequest, UploadType};
+use crate::http::objects::upload::{Media, UploadObjectRequest, UploadType};
 
 use crate::http::objects::Object;
 use crate::http::{
@@ -1884,22 +1884,40 @@ impl StorageClient {
     /// https://cloud.google.com/storage/docs/json_api/v1/objects/insert
     ///
     /// ```
+    /// use std::collections::HashMap;
     /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::objects::Object;
     /// use google_cloud_storage::http::objects::upload::{UploadObjectRequest, UploadType};
     ///
-    /// async fn run(client:Client) {
+    /// async fn run_simple(client:Client) {
+    ///     let upload_type = UploadType::Default();
     ///     let result = client.upload_object(&UploadObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         name: Some("filename".to_string()),
     ///         ..Default::default()
-    ///     }, "hello world".as_bytes(), UploadType::Simple("application/octet-stream".to_string()), None).await;
+    ///     }, "hello world".as_bytes(), upload_type, None).await;
+    /// }
+    ///
+    /// async fn run_multipart(client:Client) {
+    ///     let mut metadata = HashMap::<String, String>::new();
+    ///     metadata.insert("key1".to_string(), "value1".to_string());
+    ///     let upload_type = UploadType::Multipart(Object {
+    ///         name: "test1_meta".to_string(),
+    ///         content_type: Some("text/plain".to_string()),
+    ///         metadata: Some(metadata),
+    ///         ..Default::default()
+    ///     });
+    ///     let result = client.upload_object(&UploadObjectRequest{
+    ///         bucket: "bucket".to_string(),
+    ///         ..Default::default()
+    ///     }, "hello world".as_bytes(), upload_type, None).await;
     /// }
     /// ```
     #[cfg(not(feature = "trace"))]
-    pub async fn upload_object(
+    pub async fn upload_object<T: Into<Body>>(
         &self,
         req: &UploadObjectRequest,
-        data: &[u8],
+        data: T,
         upload_type: UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
@@ -1908,10 +1926,10 @@ impl StorageClient {
 
     #[cfg(feature = "trace")]
     #[tracing::instrument(skip_all)]
-    pub async fn upload_object(
+    pub async fn upload_object<T: Into<Body>>(
         &self,
         req: &UploadObjectRequest,
-        data: &[u8],
+        data: T,
         upload_type: UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
@@ -1919,26 +1937,36 @@ impl StorageClient {
     }
 
     #[inline(always)]
-    async fn _upload_object(
+    async fn _upload_object<T: Into<Body>>(
         &self,
         req: &UploadObjectRequest,
-        data: &[u8],
+        data: T,
         upload_type: UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
-        let data = upload_type.data(data)?;
-        let action = async {
-            let builder = objects::upload::build(
-                self.v1_upload_endpoint.as_str(),
-                &self.http,
-                req,
-                Some(data.len()),
-                upload_type,
-                data,
-            );
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+        match upload_type {
+            UploadType::Multipart(meta) => {
+                let action = async {
+                    let builder = objects::upload::build_multipart(
+                        self.v1_upload_endpoint.as_str(),
+                        &self.http,
+                        req,
+                        &meta,
+                        data,
+                    );
+                    self.send(builder).await
+                };
+                invoke(cancel, action).await
+            }
+            UploadType::Simple(media) => {
+                let action = async {
+                    let builder =
+                        objects::upload::build(self.v1_upload_endpoint.as_str(), &self.http, req, &media, data);
+                    self.send(builder).await
+                };
+                invoke(cancel, action).await
+            }
+        }
     }
 
     /// Uploads the streamed object.
@@ -1950,14 +1978,13 @@ impl StorageClient {
     /// use google_cloud_storage::http::objects::upload::UploadObjectRequest;
     ///
     /// async fn run(client:Client) {
-    ///     
     ///     let source = vec!["hello", " ", "world"];
     ///     let size = source.iter().map(|x| x.len()).sum();
     ///     let chunks: Vec<Result<_, ::std::io::Error>> = source.clone().into_iter().map(|x| Ok(x)).collect();
     ///     let stream = futures_util::stream::iter(chunks);
     ///     let result = client.upload_streamed_object(&UploadObjectRequest{
     ///         bucket: "bucket".to_string(),
-    ///         name: "filename".to_string(),
+    ///         name: Some("filename".to_string()),
     ///         ..Default::default()
     ///     }, stream, "application/octet-stream", Some(size), None).await;
     /// }
@@ -2018,8 +2045,10 @@ impl StorageClient {
                 self.v1_upload_endpoint.as_str(),
                 &self.http,
                 req,
-                content_length,
-                UploadType::Simple(content_type.to_string()),
+                &Media {
+                    content_type: content_type.to_string(),
+                    content_length,
+                },
                 Body::wrap_stream(data),
             );
             self.send(builder).await
@@ -2337,7 +2366,7 @@ mod test {
     use crate::http::objects::get::GetObjectRequest;
     use crate::http::objects::list::ListObjectsRequest;
     use crate::http::objects::rewrite::RewriteObjectRequest;
-    use crate::http::objects::upload::{Multipart, UploadObjectRequest, UploadType};
+    use crate::http::objects::upload::{Media, UploadObjectRequest, UploadType};
     use std::collections::HashMap;
 
     use crate::http::notifications::EventType;
@@ -2833,15 +2862,12 @@ mod test {
                     bucket: bucket_name.to_string(),
                     ..Default::default()
                 },
-                &[1, 2, 3, 4, 5, 6, 7],
-                UploadType::Multipart(Multipart {
-                    metadata: Object {
-                        name: "test1_meta".to_string(),
-                        content_type: Some("text/plain".to_string()),
-                        metadata: Some(metadata),
-                        ..Default::default()
-                    },
-                    boundary: "boundary".to_string(),
+                vec![1, 2, 3, 4, 5, 6, 7],
+                UploadType::Multipart(Object {
+                    name: "test1_meta".to_string(),
+                    content_type: Some("text/plain".to_string()),
+                    metadata: Some(metadata),
+                    ..Default::default()
                 }),
                 None,
             )
@@ -2928,8 +2954,11 @@ mod test {
                     name: Some("test1".to_string()),
                     ..Default::default()
                 },
-                &[1, 2, 3, 4, 5, 6],
-                UploadType::Simple("text/plain".to_string()),
+                vec![1, 2, 3, 4, 5, 6],
+                UploadType::Simple(Media {
+                    content_type: "text/plain".to_string(),
+                    ..Default::default()
+                }),
                 None,
             )
             .await
