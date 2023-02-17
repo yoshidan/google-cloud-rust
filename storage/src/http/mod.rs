@@ -24,7 +24,7 @@ pub enum Error {
     #[error(transparent)]
     HttpClient(#[from] reqwest::Error),
     #[error(transparent)]
-    ResponseJson(#[from] serde_json::Error),
+    Json(#[from] serde_json::Error),
     #[error("operation cancelled")]
     Cancelled,
     #[error(transparent)]
@@ -68,4 +68,8 @@ where
 {
     let s = String::deserialize(deserializer)?;
     T::from_str(&s).map_err(de::Error::custom)
+}
+
+pub fn is_i64_zero(num: &i64) -> bool {
+    *num == 0
 }

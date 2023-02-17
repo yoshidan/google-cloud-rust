@@ -17,7 +17,7 @@
 //! use google_cloud_storage::http::Error;
 //! use google_cloud_storage::http::objects::download::Range;
 //! use google_cloud_storage::http::objects::get::GetObjectRequest;
-//! use google_cloud_storage::http::objects::upload::UploadObjectRequest;
+//! use google_cloud_storage::http::objects::upload::{Media, UploadObjectRequest, UploadType};
 //! use tokio::task::JoinHandle;
 //! use std::fs::File;
 //! use std::io::BufReader;
@@ -31,11 +31,11 @@
 //!     let mut client = Client::new(config);
 //!
 //!     // Upload the file
+//!     let upload_type = UploadType::Simple(Media::new("file.png"));
 //!     let uploaded = client.upload_object(&UploadObjectRequest {
 //!         bucket: "bucket".to_string(),
-//!         name: "file.png".to_string(),
 //!         ..Default::default()
-//!     }, "hello world".as_bytes(), "application/octet-stream", None).await;
+//!     }, "hello world".as_bytes(), upload_type, None).await;
 //!
 //!     // Download the file
 //!     let data = client.download_object(&GetObjectRequest {

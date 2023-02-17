@@ -1,9 +1,34 @@
 use crate::http::object_access_controls::{PredefinedObjectAcl, Projection};
+use std::borrow::Cow;
 
-use crate::http::objects::Encryption;
-use crate::http::Escape;
+use crate::http::objects::{Encryption, Object};
+use crate::http::{Error, Escape};
 use reqwest::header::{CONTENT_LENGTH, CONTENT_TYPE};
+use reqwest::multipart::{Form, Part};
 use reqwest::{Client, RequestBuilder};
+
+#[derive(Clone, Debug)]
+pub struct Media {
+    pub name: Cow<'static, str>,
+    pub content_type: Cow<'static, str>,
+    pub content_length: Option<usize>,
+}
+
+impl Media {
+    pub fn new(name: impl Into<Cow<'static, str>>) -> Self {
+        Self {
+            name: name.into(),
+            content_type: "application/octet-stream".into(),
+            content_length: None,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum UploadType {
+    Simple(Media),
+    Multipart(Box<Object>),
+}
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
@@ -12,10 +37,6 @@ pub struct UploadObjectRequest {
     /// Overrides the provided object metadata's bucket value, if any.
     #[serde(skip_serializing)]
     pub bucket: String,
-    /// Name of the object. Not required if the request body contains object metadata
-    /// that includes a name value. Overrides the object metadata's name value, if any.
-    /// For information about how to URL encode object names to be path safe, see Encoding URI path parts.
-    pub name: String,
     pub generation: Option<i64>,
     /// Makes the operation conditional on whether the object's current generation
     /// matches the given value. Setting to 0 makes the operation succeed only if
@@ -61,18 +82,18 @@ pub(crate) fn build<T: Into<reqwest::Body>>(
     base_url: &str,
     client: &Client,
     req: &UploadObjectRequest,
-    content_length: Option<usize>,
-    content_type: &str,
+    media: &Media,
     body: T,
 ) -> RequestBuilder {
-    let url = format!("{}/b/{}/o", base_url, req.bucket.escape());
+    let url = format!("{}/b/{}/o?uploadType=media", base_url, req.bucket.escape(),);
     let mut builder = client
         .post(url)
         .query(&req)
+        .query(&[("name", &media.name)])
         .body(body)
-        .header(CONTENT_TYPE, content_type);
+        .header(CONTENT_TYPE, media.content_type.to_string());
 
-    if let Some(len) = content_length {
+    if let Some(len) = media.content_length {
         builder = builder.header(CONTENT_LENGTH, len.to_string())
     }
     if let Some(e) = &req.encryption {
@@ -80,4 +101,27 @@ pub(crate) fn build<T: Into<reqwest::Body>>(
     } else {
         builder
     }
+}
+
+pub(crate) fn build_multipart<T: Into<reqwest::Body>>(
+    base_url: &str,
+    client: &Client,
+    req: &UploadObjectRequest,
+    metadata: &Object,
+    body: T,
+) -> Result<RequestBuilder, Error> {
+    let url = format!("{}/b/{}/o?uploadType=multipart", base_url, req.bucket.escape(),);
+    let form = Form::new();
+    let metadata_part = Part::text(serde_json::to_string(metadata)?).mime_str("application/json; charset=UTF-8")?;
+    let data_part = Part::stream(body);
+    let form = form.part("metadata", metadata_part).part("data", data_part);
+
+    // Content-Length is automatically set by multipart
+    let builder = client.post(url).query(&req).multipart(form);
+
+    Ok(if let Some(e) = &req.encryption {
+        e.with_headers(builder)
+    } else {
+        builder
+    })
 }

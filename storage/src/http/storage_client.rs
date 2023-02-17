@@ -45,7 +45,7 @@ use crate::http::objects::get::GetObjectRequest;
 use crate::http::objects::list::{ListObjectsRequest, ListObjectsResponse};
 use crate::http::objects::patch::PatchObjectRequest;
 use crate::http::objects::rewrite::{RewriteObjectRequest, RewriteObjectResponse};
-use crate::http::objects::upload::UploadObjectRequest;
+use crate::http::objects::upload::{UploadObjectRequest, UploadType};
 
 use crate::http::objects::Object;
 use crate::http::{
@@ -1882,86 +1882,112 @@ impl StorageClient {
 
     /// Uploads the object.
     /// https://cloud.google.com/storage/docs/json_api/v1/objects/insert
-    /// 'uploadType' is always media - Data-only upload. Upload the object data only, without any metadata.
     ///
     /// ```
+    /// use std::collections::HashMap;
     /// use google_cloud_storage::client::Client;
-    /// use google_cloud_storage::http::objects::upload::UploadObjectRequest;
+    /// use google_cloud_storage::http::objects::Object;
+    /// use google_cloud_storage::http::objects::upload::{Media, UploadObjectRequest, UploadType};
     ///
-    ///
-    /// async fn run(client:Client) {
-    ///     
+    /// async fn run_simple(client:Client) {
+    ///     let upload_type = UploadType::Simple(Media::new("filename"));
     ///     let result = client.upload_object(&UploadObjectRequest{
     ///         bucket: "bucket".to_string(),
-    ///         name: "filename".to_string(),
     ///         ..Default::default()
-    ///     }, "hello world".as_bytes(), "application/octet-stream", None).await;
+    ///     }, "hello world".as_bytes(), upload_type, None).await;
+    /// }
+    ///
+    /// async fn run_multipart(client:Client) {
+    ///     let mut metadata = HashMap::<String, String>::new();
+    ///     metadata.insert("key1".to_string(), "value1".to_string());
+    ///     let upload_type = UploadType::Multipart(Box::new(Object {
+    ///         name: "test1_meta".to_string(),
+    ///         content_type: Some("text/plain".to_string()),
+    ///         metadata: Some(metadata),
+    ///         ..Default::default()
+    ///     }));
+    ///     let result = client.upload_object(&UploadObjectRequest{
+    ///         bucket: "bucket".to_string(),
+    ///         ..Default::default()
+    ///     }, "hello world".as_bytes(), upload_type, None).await;
     /// }
     /// ```
     #[cfg(not(feature = "trace"))]
-    pub async fn upload_object(
+    pub async fn upload_object<T: Into<Body>>(
         &self,
         req: &UploadObjectRequest,
-        data: &[u8],
-        content_type: &str,
+        data: T,
+        upload_type: UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
-        self._upload_object(req, data, content_type, cancel).await
+        self._upload_object(req, data, upload_type, cancel).await
     }
 
     #[cfg(feature = "trace")]
     #[tracing::instrument(skip_all)]
-    pub async fn upload_object(
+    pub async fn upload_object<T: Into<Body>>(
         &self,
         req: &UploadObjectRequest,
-        data: &[u8],
-        content_type: &str,
+        data: T,
+        upload_type: UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
-        self._upload_object(req, data, content_type, cancel).await
+        self._upload_object(req, data, upload_type, cancel).await
     }
 
     #[inline(always)]
-    async fn _upload_object(
+    async fn _upload_object<T: Into<Body>>(
         &self,
         req: &UploadObjectRequest,
-        data: &[u8],
-        content_type: &str,
+        data: T,
+        upload_type: UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
-        let action = async {
-            let builder = objects::upload::build(
-                self.v1_upload_endpoint.as_str(),
-                &self.http,
-                req,
-                Some(data.len()),
-                content_type,
-                Vec::from(data),
-            );
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+        match upload_type {
+            UploadType::Multipart(meta) => {
+                let action = async {
+                    let builder = objects::upload::build_multipart(
+                        self.v1_upload_endpoint.as_str(),
+                        &self.http,
+                        req,
+                        &meta,
+                        data,
+                    )?;
+                    self.send(builder).await
+                };
+                invoke(cancel, action).await
+            }
+            UploadType::Simple(media) => {
+                let action = async {
+                    let builder =
+                        objects::upload::build(self.v1_upload_endpoint.as_str(), &self.http, req, &media, data);
+                    self.send(builder).await
+                };
+                invoke(cancel, action).await
+            }
+        }
     }
 
     /// Uploads the streamed object.
     /// https://cloud.google.com/storage/docs/json_api/v1/objects/insert
-    /// 'uploadType' is always media - Data-only upload. Upload the object data only, without any metadata.
+    /// TODO resumable upload
     ///
     /// ```
     /// use google_cloud_storage::client::Client;
-    /// use google_cloud_storage::http::objects::upload::UploadObjectRequest;
+    /// use google_cloud_storage::http::objects::upload::{Media, UploadObjectRequest, UploadType};
     ///
     /// async fn run(client:Client) {
-    ///     
     ///     let source = vec!["hello", " ", "world"];
     ///     let size = source.iter().map(|x| x.len()).sum();
     ///     let chunks: Vec<Result<_, ::std::io::Error>> = source.clone().into_iter().map(|x| Ok(x)).collect();
     ///     let stream = futures_util::stream::iter(chunks);
+    ///     let mut media = Media::nwe("filename");
+    ///     media.content_length = Some(size);
+    ///     let mut upload_type = UploadType::Simple(media);
     ///     let result = client.upload_streamed_object(&UploadObjectRequest{
     ///         bucket: "bucket".to_string(),
-    ///         name: "filename".to_string(),
     ///         ..Default::default()
-    ///     }, stream, "application/octet-stream", Some(size), None).await;
+    ///     }, stream, upload_type, None).await;
     /// }
     /// ```
     #[cfg(not(feature = "trace"))]
@@ -1969,8 +1995,7 @@ impl StorageClient {
         &self,
         req: &UploadObjectRequest,
         data: S,
-        content_type: &str,
-        content_length: Option<usize>,
+        upload_type: UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error>
     where
@@ -1978,8 +2003,7 @@ impl StorageClient {
         S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
         bytes::Bytes: From<S::Ok>,
     {
-        self._upload_streamed_object(req, data, content_type, content_length, cancel)
-            .await
+        self._upload_streamed_object(req, data, upload_type, cancel).await
     }
 
     #[cfg(feature = "trace")]
@@ -1988,8 +2012,7 @@ impl StorageClient {
         &self,
         req: &UploadObjectRequest,
         data: S,
-        content_type: &str,
-        content_length: Option<usize>,
+        upload_type: UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error>
     where
@@ -1997,8 +2020,7 @@ impl StorageClient {
         S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
         bytes::Bytes: From<S::Ok>,
     {
-        self._upload_streamed_object(req, data, content_type, content_length, cancel)
-            .await
+        self._upload_streamed_object(req, data, upload_type, cancel).await
     }
 
     #[inline(always)]
@@ -2006,8 +2028,7 @@ impl StorageClient {
         &self,
         req: &UploadObjectRequest,
         data: S,
-        content_type: &str,
-        content_length: Option<usize>,
+        upload_type: UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error>
     where
@@ -2015,18 +2036,9 @@ impl StorageClient {
         S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
         bytes::Bytes: From<S::Ok>,
     {
-        let action = async {
-            let builder = objects::upload::build(
-                self.v1_upload_endpoint.as_str(),
-                &self.http,
-                req,
-                content_length,
-                content_type,
-                Body::wrap_stream(data),
-            );
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+        //TODO resumable upload
+        self._upload_object(req, Body::wrap_stream(data), upload_type, cancel)
+            .await
     }
 
     /// Patches the object.
@@ -2193,7 +2205,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.compose_object(&ComposeObjectRequest{
     ///         bucket: "bucket1".to_string(),
     ///         destination_object: "object1".to_string(),
@@ -2339,7 +2351,8 @@ mod test {
     use crate::http::objects::get::GetObjectRequest;
     use crate::http::objects::list::ListObjectsRequest;
     use crate::http::objects::rewrite::RewriteObjectRequest;
-    use crate::http::objects::upload::UploadObjectRequest;
+    use crate::http::objects::upload::{Media, UploadObjectRequest, UploadType};
+    use std::collections::HashMap;
 
     use crate::http::notifications::EventType;
     use crate::http::objects::download::Range;
@@ -2823,6 +2836,75 @@ mod test {
 
     #[tokio::test]
     #[serial]
+    pub async fn upload_metadata() {
+        let bucket_name = "rust-object-test";
+        let (client, _project) = client().await;
+        let mut metadata = HashMap::<String, String>::new();
+        metadata.insert("key1".to_string(), "value1".to_string());
+        let uploaded = client
+            .upload_object(
+                &UploadObjectRequest {
+                    bucket: bucket_name.to_string(),
+                    ..Default::default()
+                },
+                vec![1, 2, 3, 4, 5, 6, 7],
+                UploadType::Multipart(Box::new(Object {
+                    name: "test1_meta".to_string(),
+                    content_type: Some("text/plain".to_string()),
+                    content_language: Some("ja".to_string()),
+                    metadata: Some(metadata),
+                    ..Default::default()
+                })),
+                None,
+            )
+            .await
+            .unwrap();
+        assert_eq!(uploaded.content_type.unwrap(), "text/plain".to_string());
+        assert_eq!(uploaded.content_language.unwrap(), "ja".to_string());
+        assert_eq!(uploaded.metadata.unwrap().get("key1").unwrap().clone(), "value1".to_string());
+
+        let download = |range: Range| {
+            let client = client.clone();
+            let bucket_name = uploaded.bucket.clone();
+            let object_name = uploaded.name.clone();
+            async move {
+                client
+                    .download_object(
+                        &GetObjectRequest {
+                            bucket: bucket_name,
+                            object: object_name,
+                            ..Default::default()
+                        },
+                        &range,
+                        None,
+                    )
+                    .await
+                    .unwrap()
+            }
+        };
+
+        let object = client
+            .get_object(
+                &GetObjectRequest {
+                    bucket: uploaded.bucket.clone(),
+                    object: uploaded.name.clone(),
+                    ..Default::default()
+                },
+                None,
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(object.content_type.unwrap(), "text/plain".to_string());
+        assert_eq!(object.content_language.unwrap(), "ja".to_string());
+        assert_eq!(object.metadata.unwrap().get("key1").unwrap().clone(), "value1".to_string());
+
+        let downloaded = download(Range::default()).await;
+        assert_eq!(downloaded, vec![1, 2, 3, 4, 5, 6, 7]);
+    }
+
+    #[tokio::test]
+    #[serial]
     pub async fn crud_object() {
         let bucket_name = "rust-object-test";
         let (client, _project) = client().await;
@@ -2853,19 +2935,22 @@ mod test {
                 .unwrap();
         }
 
+        let mut media = Media::new("test1");
+        media.content_type = "text/plain".into();
         let uploaded = client
             .upload_object(
                 &UploadObjectRequest {
                     bucket: bucket_name.to_string(),
-                    name: "test1".to_string(),
                     ..Default::default()
                 },
-                &[1, 2, 3, 4, 5, 6],
-                "text/plain",
+                vec![1, 2, 3, 4, 5, 6],
+                UploadType::Simple(media),
                 None,
             )
             .await
             .unwrap();
+
+        assert_eq!(uploaded.content_type.unwrap(), "text/plain".to_string());
 
         let download = |range: Range| {
             let client = client.clone();
@@ -2946,17 +3031,18 @@ mod test {
         let size = source.iter().map(|x| x.len()).sum();
         let chunks: Vec<Result<_, ::std::io::Error>> = source.clone().into_iter().map(Ok).collect();
         let stream = futures_util::stream::iter(chunks);
+        let mut media = Media::new(file_name);
+        media.content_length = Some(size);
+        let upload_type = UploadType::Simple(media);
         let uploaded = client
             .upload_streamed_object(
                 &UploadObjectRequest {
                     bucket: bucket_name.to_string(),
-                    name: file_name.to_string(),
                     predefined_acl: None,
                     ..Default::default()
                 },
                 stream,
-                "application/octet-stream",
-                Some(size),
+                upload_type,
                 None,
             )
             .await

@@ -25,7 +25,7 @@ once_cell = "1.13"
 hex = "0.4.3"
 url = "2.2.2"
 tracing = "0.1"
-reqwest = { version = "0.11", features = ["json", "stream"], default-features = false }
+reqwest = { version = "0.11", features = ["json", "stream", "multipart"], default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio-util = "0.7"
@@ -42,5 +42,7 @@ tokio-util =  {version ="0.7", features = ["codec"] }
 google-cloud-auth = { path = "../foundation/auth" }
 
 [features]
-default = []
+default = ["default-tls"]
+default-tls = ["reqwest/default-tls"]
+rustls-tls = ["reqwest/rustls-tls"]
 trace = []
