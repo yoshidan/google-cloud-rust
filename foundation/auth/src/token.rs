@@ -1,6 +1,8 @@
 use crate::credentials::CredentialsFile;
 use crate::error::Error;
-use crate::project::{create_token_source_from_project, project, Config, Project};
+use crate::project::{
+    create_token_source_from_credentials, create_token_source_from_project, project, Config, Project,
+};
 use crate::token_source::TokenSource as InternalTokenSource;
 use async_trait::async_trait;
 use google_cloud_token::{TokenSource, TokenSourceProvider};
@@ -63,6 +65,21 @@ impl DefaultTokenSourceProvider {
             ts: Arc::new(DefaultTokenSource {
                 inner: internal_token_source.into(),
             }),
+            project_id,
+            source_credentials,
+        })
+    }
+
+    ///Creates source using existing credentials file
+    pub async fn new_with_credentials(config: Config<'_>, credentials: Box<CredentialsFile>) -> Result<Self, Error> {
+        let inner = create_token_source_from_credentials(&credentials, &config)
+            .await?
+            .into();
+        let project_id = credentials.project_id.clone();
+        let ts = Arc::new(DefaultTokenSource { inner });
+        let source_credentials = Some(credentials);
+        Ok(Self {
+            ts,
             project_id,
             source_credentials,
         })

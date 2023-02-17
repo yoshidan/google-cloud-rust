@@ -75,17 +75,23 @@ pub async fn project() -> Result<Project, error::Error> {
     }
 }
 
+/// Creates token source using provided credentials file
+pub async fn create_token_source_from_credentials(
+    credentials: &CredentialsFile,
+    config: &Config<'_>,
+) -> Result<Box<dyn TokenSource>, error::Error> {
+    let ts = credentials_from_json_with_params(credentials, config)?;
+    let token = ts.token().await?;
+    Ok(Box::new(ReuseTokenSource::new(ts, token)))
+}
+
 /// create_token_source_from_project creates the token source.
 pub async fn create_token_source_from_project(
     project: &Project,
     config: Config<'_>,
 ) -> Result<Box<dyn TokenSource>, error::Error> {
     match project {
-        Project::FromFile(file) => {
-            let ts = credentials_from_json_with_params(file, &config)?;
-            let token = ts.token().await?;
-            Ok(Box::new(ReuseTokenSource::new(ts, token)))
-        }
+        Project::FromFile(file) => create_token_source_from_credentials(file, &config).await,
         Project::FromMetadataServer(_) => {
             let ts = ComputeTokenSource::new(&config.scopes_to_string(","))?;
             let token = ts.token().await?;
