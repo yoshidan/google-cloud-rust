@@ -1887,13 +1887,12 @@ impl StorageClient {
     /// use std::collections::HashMap;
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::Object;
-    /// use google_cloud_storage::http::objects::upload::{UploadObjectRequest, UploadType};
+    /// use google_cloud_storage::http::objects::upload::{Media, UploadObjectRequest, UploadType};
     ///
     /// async fn run_simple(client:Client) {
-    ///     let upload_type = UploadType::Default();
+    ///     let upload_type = UploadType::Simple(Media::new("filename"));
     ///     let result = client.upload_object(&UploadObjectRequest{
     ///         bucket: "bucket".to_string(),
-    ///         name: Some("filename".to_string()),
     ///         ..Default::default()
     ///     }, "hello world".as_bytes(), upload_type, None).await;
     /// }
@@ -1982,13 +1981,11 @@ impl StorageClient {
     ///     let size = source.iter().map(|x| x.len()).sum();
     ///     let chunks: Vec<Result<_, ::std::io::Error>> = source.clone().into_iter().map(|x| Ok(x)).collect();
     ///     let stream = futures_util::stream::iter(chunks);
-    ///     let upload_type = UploadType::Simple(Media {
-    ///         content_length: Some(size),
-    ///         ..Default::Default()
-    ///     });
+    ///     let mut media = Media::nwe("filename");
+    ///     media.content_length = Some(size);
+    ///     let mut upload_type = UploadType::Simple(media);
     ///     let result = client.upload_streamed_object(&UploadObjectRequest{
     ///         bucket: "bucket".to_string(),
-    ///         name: Some("filename".to_string()),
     ///         ..Default::default()
     ///     }, stream, upload_type, None).await;
     /// }
@@ -2938,18 +2935,16 @@ mod test {
                 .unwrap();
         }
 
+        let mut media = Media::new("test1");
+        media.content_type = "text/plain".into();
         let uploaded = client
             .upload_object(
                 &UploadObjectRequest {
                     bucket: bucket_name.to_string(),
-                    name: Some("test1".to_string()),
                     ..Default::default()
                 },
                 vec![1, 2, 3, 4, 5, 6],
-                UploadType::Simple(Media {
-                    content_type: "text/plain".to_string(),
-                    ..Default::default()
-                }),
+                UploadType::Simple(media),
                 None,
             )
             .await
@@ -3036,15 +3031,13 @@ mod test {
         let size = source.iter().map(|x| x.len()).sum();
         let chunks: Vec<Result<_, ::std::io::Error>> = source.clone().into_iter().map(Ok).collect();
         let stream = futures_util::stream::iter(chunks);
-        let upload_type = UploadType::Simple(Media {
-            content_length: Some(size),
-            ..Default::default()
-        });
+        let mut media = Media::new(file_name);
+        media.content_length = Some(size);
+        let upload_type = UploadType::Simple(media);
         let uploaded = client
             .upload_streamed_object(
                 &UploadObjectRequest {
                     bucket: bucket_name.to_string(),
-                    name: Some(file_name.to_string()),
                     predefined_acl: None,
                     ..Default::default()
                 },

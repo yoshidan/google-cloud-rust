@@ -39,11 +39,11 @@ async fn main() -> Result<(), Error> {
     let mut client = Client::new(config);
 
     // Upload the file
+    let upload_type = UploadType::Simple(Media::new("file.png"));
     let uploaded = client.upload_object(&UploadObjectRequest {
         bucket: "bucket".to_string(),
-        name: "file.png".to_string(),
         ..Default::default()
-    }, "hello world".as_bytes(), "application/octet-stream", None).await;
+    }, "hello world".as_bytes(), upload_type, None).await;
 
     // Download the file
     let data = client.download_object(&GetObjectRequest {

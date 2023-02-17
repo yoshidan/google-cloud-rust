@@ -1,4 +1,5 @@
 use crate::http::object_access_controls::{PredefinedObjectAcl, Projection};
+use std::borrow::Cow;
 
 use crate::http::objects::{Encryption, Object};
 use crate::http::{Error, Escape};
@@ -6,29 +7,27 @@ use reqwest::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use reqwest::multipart::{Form, Part};
 use reqwest::{Client, RequestBuilder};
 
+#[derive(Clone, Debug)]
 pub struct Media {
-    pub content_type: String,
+    pub name: Cow<'static, str>,
+    pub content_type: Cow<'static, str>,
     pub content_length: Option<usize>,
 }
 
-impl Default for Media {
-    fn default() -> Self {
+impl Media {
+    pub fn new(name: impl Into<Cow<'static, str>>) -> Self {
         Self {
-            content_type: "application/octet-stream".to_string(),
+            name: name.into(),
+            content_type: "application/octet-stream".into(),
             content_length: None,
         }
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum UploadType {
     Simple(Media),
     Multipart(Box<Object>),
-}
-
-impl Default for UploadType {
-    fn default() -> Self {
-        Self::Simple(Media::default())
-    }
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -38,10 +37,6 @@ pub struct UploadObjectRequest {
     /// Overrides the provided object metadata's bucket value, if any.
     #[serde(skip_serializing)]
     pub bucket: String,
-    /// Name of the object. Not required if the request body contains object metadata
-    /// that includes a name value. Overrides the object metadata's name value, if any.
-    /// For information about how to URL encode object names to be path safe, see Encoding URI path parts.
-    pub name: Option<String>,
     pub generation: Option<i64>,
     /// Makes the operation conditional on whether the object's current generation
     /// matches the given value. Setting to 0 makes the operation succeed only if
@@ -94,6 +89,7 @@ pub(crate) fn build<T: Into<reqwest::Body>>(
     let mut builder = client
         .post(url)
         .query(&req)
+        .query(&[("name", media.name.to_string())])
         .body(body)
         .header(CONTENT_TYPE, media.content_type.to_string());
 
