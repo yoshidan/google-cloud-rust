@@ -89,7 +89,7 @@ pub(crate) fn build<T: Into<reqwest::Body>>(
     let mut builder = client
         .post(url)
         .query(&req)
-        .query(&[("name", media.name.to_string())])
+        .query(&[("name", &media.name)])
         .body(body)
         .header(CONTENT_TYPE, media.content_type.to_string());
 
