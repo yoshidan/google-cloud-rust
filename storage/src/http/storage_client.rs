@@ -2014,7 +2014,7 @@ impl StorageClient {
         &self,
         req: &UploadObjectRequest,
         data: S,
-        upload_type: UploadType,
+        upload_type: &UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error>
     where
