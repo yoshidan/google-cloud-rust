@@ -35,7 +35,7 @@
 //!     let uploaded = client.upload_object(&UploadObjectRequest {
 //!         bucket: "bucket".to_string(),
 //!         ..Default::default()
-//!     }, "hello world".as_bytes(), upload_type, None).await;
+//!     }, "hello world".as_bytes(), &upload_type, None).await;
 //!
 //!     // Download the file
 //!     let data = client.download_object(&GetObjectRequest {

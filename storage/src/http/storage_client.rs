@@ -94,7 +94,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.delete_bucket(&DeleteBucketRequest {
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
@@ -137,7 +137,7 @@ impl StorageClient {
     /// use google_cloud_storage::http::buckets::insert::{BucketCreationConfig, InsertBucketParam, InsertBucketRequest};
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.insert_bucket(&InsertBucketRequest {
     ///         name: "bucket".to_string(),
     ///         param: InsertBucketParam {
@@ -189,7 +189,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.get_bucket(&GetBucketRequest {
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
@@ -221,11 +221,13 @@ impl StorageClient {
     ///
     /// ```
     /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::client::ClientConfig;
     /// use google_cloud_storage::http::buckets::patch::{BucketPatchConfig, PatchBucketRequest};
     ///
     ///
-    /// async fn run() {
-    ///     
+    /// async fn run(config: ClientConfig) {
+    ///     let mut client = Client::new(config);
+    ///
     ///     let result = client.patch_bucket(&PatchBucketRequest {
     ///         bucket: "bucket".to_string(),
     ///         metadata: Some(BucketPatchConfig {
@@ -276,7 +278,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.list_buckets(&ListBucketsRequest{
     ///         project: "project_id".to_string(),
     ///         ..Default::default()
@@ -325,7 +327,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.set_iam_policy(&SetIamPolicyRequest{
     ///         resource: "bucket".to_string(),
     ///         policy: Policy {
@@ -382,7 +384,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.get_iam_policy(&GetIamPolicyRequest{
     ///         resource: "bucket".to_string(),
     ///         ..Default::default()
@@ -430,7 +432,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.test_iam_permissions(&TestIamPermissionsRequest{
     ///         resource: "bucket".to_string(),
     ///         permissions: vec!["storage.buckets.get".to_string()],
@@ -479,7 +481,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.list_default_object_access_controls(&ListDefaultObjectAccessControlsRequest{
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
@@ -527,7 +529,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.get_default_object_access_control(&GetDefaultObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
@@ -577,7 +579,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.insert_default_object_access_control(&InsertDefaultObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         object_access_control: ObjectAccessControlCreationConfig {
@@ -631,7 +633,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.patch_default_object_access_control(&PatchDefaultObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
@@ -683,7 +685,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.delete_default_object_access_control(&DeleteDefaultObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
@@ -731,7 +733,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.list_bucket_access_controls(&ListBucketAccessControlsRequest{
     ///         bucket: "bucket".to_string(),
     ///     }, None).await;
@@ -778,7 +780,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.get_bucket_access_control(&GetBucketAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
@@ -827,7 +829,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.insert_bucket_access_control(&InsertBucketAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         acl: BucketAccessControlCreationConfig {
@@ -880,7 +882,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.patch_bucket_access_control(&PatchBucketAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
@@ -931,7 +933,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.delete_bucket_access_control(&DeleteBucketAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
@@ -979,7 +981,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.list_object_access_controls(&ListObjectAccessControlsRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "filename".to_string(),
@@ -1028,7 +1030,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.get_object_access_control(&GetObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "filename".to_string(),
@@ -1079,7 +1081,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.insert_object_access_control(&InsertObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "filename".to_string(),
@@ -1133,7 +1135,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.patch_object_access_control(&PatchObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "filename".to_string(),
@@ -1188,7 +1190,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.delete_object_access_control(&DeleteObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "filename".to_string(),
@@ -1238,7 +1240,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.list_notifications(&ListNotificationsRequest{
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
@@ -1286,7 +1288,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.get_notification(&GetNotificationRequest{
     ///         bucket: "bucket".to_string(),
     ///         notification: "notification".to_string()
@@ -1335,7 +1337,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.insert_notification(&InsertNotificationRequest {
     ///         bucket: "bucket".to_string(),
     ///         notification: NotificationCreationConfig {
@@ -1387,7 +1389,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.delete_notification(&DeleteNotificationRequest {
     ///         bucket: "bucket".to_string(),
     ///         notification: "notification".to_string()
@@ -1435,7 +1437,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.list_hmac_keys(&ListHmacKeysRequest {
     ///         project_id: "project_id".to_string(),
     ///         ..Default::default()
@@ -1483,7 +1485,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.get_hmac_key(&GetHmacKeyRequest {
     ///         access_id: "access_id".to_string(),
     ///         project_id: "project_id".to_string(),
@@ -1531,7 +1533,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.create_hmac_key(&CreateHmacKeyRequest {
     ///         service_account_email: "service_account_email".to_string(),
     ///         project_id: "project".to_string(),
@@ -1580,7 +1582,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.update_hmac_key(&UpdateHmacKeyRequest{
     ///         access_id: "access_id".to_string(),
     ///         project_id: "project_id".to_string(),
@@ -1632,7 +1634,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.delete_hmac_key(&DeleteHmacKeyRequest{
     ///         access_id: "access_id".to_string(),
     ///         project_id:"project_id".to_string(),
@@ -1680,7 +1682,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.list_objects(&ListObjectsRequest{
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
@@ -1728,7 +1730,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.get_object(&GetObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
@@ -1767,7 +1769,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.download_object(&GetObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
@@ -1827,7 +1829,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.download_streamed_object(&GetObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
@@ -1894,7 +1896,7 @@ impl StorageClient {
     ///     let result = client.upload_object(&UploadObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
-    ///     }, "hello world".as_bytes(), upload_type, None).await;
+    ///     }, "hello world".as_bytes(), &upload_type, None).await;
     /// }
     ///
     /// async fn run_multipart(client:Client) {
@@ -1909,7 +1911,7 @@ impl StorageClient {
     ///     let result = client.upload_object(&UploadObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
-    ///     }, "hello world".as_bytes(), upload_type, None).await;
+    ///     }, "hello world".as_bytes(), &upload_type, None).await;
     /// }
     /// ```
     #[cfg(not(feature = "trace"))]
@@ -1917,7 +1919,7 @@ impl StorageClient {
         &self,
         req: &UploadObjectRequest,
         data: T,
-        upload_type: UploadType,
+        upload_type: &UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
         self._upload_object(req, data, upload_type, cancel).await
@@ -1929,7 +1931,7 @@ impl StorageClient {
         &self,
         req: &UploadObjectRequest,
         data: T,
-        upload_type: UploadType,
+        upload_type: &UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
         self._upload_object(req, data, upload_type, cancel).await
@@ -1940,7 +1942,7 @@ impl StorageClient {
         &self,
         req: &UploadObjectRequest,
         data: T,
-        upload_type: UploadType,
+        upload_type: &UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
         match upload_type {
@@ -1950,7 +1952,7 @@ impl StorageClient {
                         self.v1_upload_endpoint.as_str(),
                         &self.http,
                         req,
-                        &meta,
+                        meta,
                         data,
                     )?;
                     self.send(builder).await
@@ -1960,7 +1962,7 @@ impl StorageClient {
             UploadType::Simple(media) => {
                 let action = async {
                     let builder =
-                        objects::upload::build(self.v1_upload_endpoint.as_str(), &self.http, req, &media, data);
+                        objects::upload::build(self.v1_upload_endpoint.as_str(), &self.http, req, media, data);
                     self.send(builder).await
                 };
                 invoke(cancel, action).await
@@ -1981,13 +1983,13 @@ impl StorageClient {
     ///     let size = source.iter().map(|x| x.len()).sum();
     ///     let chunks: Vec<Result<_, ::std::io::Error>> = source.clone().into_iter().map(|x| Ok(x)).collect();
     ///     let stream = futures_util::stream::iter(chunks);
-    ///     let mut media = Media::nwe("filename");
+    ///     let mut media = Media::new("filename");
     ///     media.content_length = Some(size);
     ///     let mut upload_type = UploadType::Simple(media);
     ///     let result = client.upload_streamed_object(&UploadObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
-    ///     }, stream, upload_type, None).await;
+    ///     }, stream, &upload_type, None).await;
     /// }
     /// ```
     #[cfg(not(feature = "trace"))]
@@ -1995,7 +1997,7 @@ impl StorageClient {
         &self,
         req: &UploadObjectRequest,
         data: S,
-        upload_type: UploadType,
+        upload_type: &UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error>
     where
@@ -2012,7 +2014,7 @@ impl StorageClient {
         &self,
         req: &UploadObjectRequest,
         data: S,
-        upload_type: UploadType,
+        upload_type: &UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error>
     where
@@ -2028,7 +2030,7 @@ impl StorageClient {
         &self,
         req: &UploadObjectRequest,
         data: S,
-        upload_type: UploadType,
+        upload_type: &UploadType,
         cancel: Option<CancellationToken>,
     ) -> Result<Object, Error>
     where
@@ -2050,7 +2052,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.patch_object(&PatchObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
@@ -2099,7 +2101,7 @@ impl StorageClient {
     ///
     ///
     /// async fn run(client:Client) {
-    ///     
+    ///
     ///     let result = client.delete_object(&DeleteObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
@@ -2146,7 +2148,7 @@ impl StorageClient {
     /// async fn run(client:Client) {
     ///     let mut done = false;
     ///     let mut rewrite_token = None;
-    ///     
+    ///
     ///     while !done {
     ///         let result = client.rewrite_object(&RewriteObjectRequest{
     ///             source_bucket: "bucket1".to_string(),
@@ -2848,7 +2850,7 @@ mod test {
                     ..Default::default()
                 },
                 vec![1, 2, 3, 4, 5, 6, 7],
-                UploadType::Multipart(Box::new(Object {
+                &UploadType::Multipart(Box::new(Object {
                     name: "test1_meta".to_string(),
                     content_type: Some("text/plain".to_string()),
                     content_language: Some("ja".to_string()),
@@ -2944,7 +2946,7 @@ mod test {
                     ..Default::default()
                 },
                 vec![1, 2, 3, 4, 5, 6],
-                UploadType::Simple(media),
+                &UploadType::Simple(media),
                 None,
             )
             .await
@@ -3042,7 +3044,7 @@ mod test {
                     ..Default::default()
                 },
                 stream,
-                upload_type,
+                &upload_type,
                 None,
             )
             .await
