@@ -2084,7 +2084,6 @@ impl StorageClient {
 
     /// Uploads the streamed object.
     /// https://cloud.google.com/storage/docs/json_api/v1/objects/insert
-    /// TODO resumable upload
     ///
     /// ```
     /// use google_cloud_storage::client::Client;
