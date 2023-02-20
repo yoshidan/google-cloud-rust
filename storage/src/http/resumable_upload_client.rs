@@ -4,10 +4,12 @@ use reqwest::{Body, Client};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ChunkError {
-    #[error("invalid range first={0} last={1}")]
+    #[error("invalid range: first={0} last={1}")]
     InvalidRange(usize, usize),
     #[error("total object size must not be zero")]
     ZeroTotalObjectSize,
+    #[error("last byte must be less than total object size: last={0} total={1}")]
+    InvalidLastBytes(usize, usize),
 }
 
 #[derive(PartialEq, Debug)]
@@ -57,6 +59,9 @@ impl ChunkSize {
         if let TotalSize::Known(total_size) = total_object_size {
             if total_size == 0 {
                 return Err(ChunkError::ZeroTotalObjectSize);
+            }
+            if last_byte >= total_size {
+                return Err(ChunkError::InvalidLastBytes(last_byte, total_size));
             }
             let chunk_size = last_byte - first_byte + 1;
             if chunk_size % (256 * 1024) != 0 && total_size > last_byte + 1 {
