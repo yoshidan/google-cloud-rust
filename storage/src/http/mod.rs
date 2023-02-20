@@ -17,6 +17,7 @@ use serde::{de, Deserialize, Deserializer};
 use serde_json::Value;
 use std::fmt::Display;
 use std::str::FromStr;
+use std::string::FromUtf8Error;
 pub use tokio_util::sync::CancellationToken;
 
 #[derive(thiserror::Error, Debug)]
@@ -33,6 +34,8 @@ pub enum Error {
     Base64DecodeError(#[from] base64::DecodeError),
     #[error(transparent)]
     Std(#[from] Box<dyn std::error::Error + Send + Sync>),
+    #[error(transparent)]
+    FromUtf8Error(#[from] FromUtf8Error),
 }
 
 impl Error {

@@ -1,19 +1,22 @@
-use crate::http::objects::download::Range;
 use crate::http::Error;
 use reqwest::header::{CONTENT_LENGTH, CONTENT_RANGE};
-use reqwest::Client;
+use reqwest::{Body, Client};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ChunkError {
+    #[error("invalid range first={0} last={1}")]
     InvalidRange(usize, usize),
+    #[error("total object size must not be zero")]
     ZeroTotalObjectSize,
 }
 
+#[derive(PartialEq, Debug)]
 pub enum UploadStatus {
     Ok,
     ResumeIncomplete,
 }
 
+#[derive(Clone, Debug)]
 pub enum TotalSize {
     Unknown,
     Known(usize),
@@ -28,6 +31,7 @@ impl ToString for TotalSize {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct ChunkSize {
     first_byte: usize,
     last_byte: usize,
@@ -47,17 +51,17 @@ impl ToString for ChunkSize {
 
 impl ChunkSize {
     pub fn new(first_byte: usize, last_byte: usize, total_object_size: TotalSize) -> Result<Self, ChunkError> {
-        if let TotalSize(size) = total_object_size {
-            if size == 0 {
-                return Err(ChunkError::ZeroTotalObjectSize);
-            }
-        }
         if first_byte >= last_byte {
             return Err(ChunkError::InvalidRange(first_byte, last_byte));
         }
-        let size = last_byte - first_byte + 1;
-        if size % (256 * 1024) != 0 {
-            tracing::warn!("The chunk size should be multiple of 256KiB. size = {}", size);
+        if let TotalSize::Known(total_size) = total_object_size {
+            if total_size == 0 {
+                return Err(ChunkError::ZeroTotalObjectSize);
+            }
+            let chunk_size = last_byte - first_byte + 1;
+            if chunk_size % (256 * 1024) != 0 && total_size > last_byte + 1 {
+                tracing::warn!("The chunk size should be multiple of 256KiB, unless it's the last chunk that completes the upload. size = {}", chunk_size);
+            }
         }
 
         Ok(Self {
@@ -79,12 +83,16 @@ pub struct ResumableUploadClient {
 }
 
 impl ResumableUploadClient {
+    pub fn url(&self) -> &str {
+        self.session_url.as_str()
+    }
+
     pub fn new(session_url: String, http: Client) -> Self {
         Self { session_url, http }
     }
 
     /// https://cloud.google.com/storage/docs/performing-resumable-uploads#single-chunk-upload
-    pub fn upload_single_chunk<T>(&self, data: T, size: usize) -> Result<(), Error> {
+    pub async fn upload_single_chunk<T: Into<Body>>(&self, data: T, size: usize) -> Result<(), Error> {
         let response = self
             .http
             .put(&self.session_url)
@@ -101,7 +109,7 @@ impl ResumableUploadClient {
 
     /// https://cloud.google.com/storage/docs/performing-resumable-uploads#chunked-upload
     /// https://cloud.google.com/storage/docs/performing-resumable-uploads#resume-upload
-    pub fn upload_multiple_chunk<T>(&self, data: T, size: &ChunkSize) -> Result<UploadStatus, Error> {
+    pub async fn upload_multiple_chunk<T: Into<Body>>(&self, data: T, size: &ChunkSize) -> Result<UploadStatus, Error> {
         let response = self
             .http
             .put(&self.session_url)
@@ -120,10 +128,11 @@ impl ResumableUploadClient {
     }
 
     /// https://cloud.google.com/storage/docs/performing-resumable-uploads#status-check
-    pub fn status(&self, object_size: &TotalSize) -> Result<UploadStatus, Error> {
+    pub async fn status(&self, object_size: &TotalSize) -> Result<UploadStatus, Error> {
         let response = self
             .http
             .put(&self.session_url)
+            .header(CONTENT_LENGTH, 0)
             .header(CONTENT_RANGE, format! {"bytes */{}", object_size.to_string()})
             .send()
             .await?;
@@ -137,8 +146,13 @@ impl ResumableUploadClient {
     }
 
     /// https://cloud.google.com/storage/docs/performing-resumable-uploads#cancel-upload
-    pub fn cancel(&self) -> Result<(), Error> {
-        let response = self.http.delete(&self.session_url).send().await?;
+    pub async fn cancel(&self) -> Result<(), Error> {
+        let response = self
+            .http
+            .delete(&self.session_url)
+            .header(CONTENT_LENGTH, 0)
+            .send()
+            .await?;
         if response.status() == 499 {
             Ok(())
         } else {
