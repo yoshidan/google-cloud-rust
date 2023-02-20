@@ -2008,11 +2008,11 @@ impl StorageClient {
     ///         ..Default::default()
     ///     }, &upload_type, None).await.unwrap();
     ///
-    ///     // The chunk size should be multiple of 256KiB.
     ///     let chunk1_data : Vec<u8>= (0..256 * 1024).map(|i| (i % 256) as u8).collect();
     ///     let chunk2_data : Vec<u8>= (1..256 * 1024 + 50).map(|i| (i % 256) as u8).collect();
     ///     let total_size = TotalSize::Known(chunk1_data.len() + chunk2_data.len());
     ///
+    ///     // The chunk size should be multiple of 256KiB, unless it's the last chunk that completes the upload.
     ///     let chunk1 = ChunkSize::new(0, chunk1_data.len() - 1, total_size.clone()).unwrap();
     ///     let status1 = uploader.upload_multiple_chunk(chunk1_data.clone(), &chunk1).await.unwrap();
     ///     assert_eq!(status1, UploadStatus::ResumeIncomplete);
@@ -3253,9 +3253,11 @@ mod test {
         let file_name = format!("resumable_multiple_chunk{}", time::OffsetDateTime::now_utc().unix_timestamp());
         let (client, _project) = client().await;
 
-        let mut metadata = Object::default();
-        metadata.name = file_name.to_string();
-        metadata.content_type = Some("video/mp4".to_string());
+        let metadata = Object {
+            name: file_name.to_string(),
+            content_type: Some("video/mp4".to_string()),
+            ..Default::default()
+        };
         let upload_type = UploadType::Multipart(Box::new(metadata));
         let uploader = client
             .prepare_resumable_upload(
@@ -3322,9 +3324,11 @@ mod test {
         let file_name = format!("resumable_cancel{}", time::OffsetDateTime::now_utc().unix_timestamp());
         let (client, _project) = client().await;
 
-        let mut metadata = Object::default();
-        metadata.name = file_name.to_string();
-        metadata.content_type = Some("video/mp4".to_string());
+        let metadata = Object {
+            name: file_name.to_string(),
+            content_type: Some("video/mp4".to_string()),
+            ..Default::default()
+        };
         let upload_type = UploadType::Multipart(Box::new(metadata));
         let uploader = client
             .prepare_resumable_upload(
@@ -3354,9 +3358,11 @@ mod test {
         );
         let (client, _project) = client().await;
 
-        let mut metadata = Object::default();
-        metadata.name = file_name.to_string();
-        metadata.content_type = Some("video/mp4".to_string());
+        let metadata = Object {
+            name: file_name.to_string(),
+            content_type: Some("video/mp4".to_string()),
+            ..Default::default()
+        };
         let upload_type = UploadType::Multipart(Box::new(metadata));
         let uploader = client
             .prepare_resumable_upload(
@@ -3376,6 +3382,13 @@ mod test {
         tracing::info!("start upload chunk {}", uploader.url());
         let chunk1 = ChunkSize::new(0, chunk1_data.len() - 1, total_size.clone()).unwrap();
         tracing::info!("upload chunk1 {:?}", chunk1);
+        let status1 = uploader
+            .upload_multiple_chunk(chunk1_data.clone(), &chunk1)
+            .await
+            .unwrap();
+        assert_eq!(status1, UploadStatus::ResumeIncomplete);
+
+        tracing::info!("upload chunk1 resume {:?}", chunk1);
         let status1 = uploader
             .upload_multiple_chunk(chunk1_data.clone(), &chunk1)
             .await
