@@ -1,6 +1,6 @@
 use crate::http::Error;
 use reqwest::header::{CONTENT_LENGTH, CONTENT_RANGE};
-use reqwest::{Body, Client};
+use reqwest::{Body, Client, Response};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ChunkError {
@@ -123,13 +123,7 @@ impl ResumableUploadClient {
             .body(data)
             .send()
             .await?;
-        if response.status().is_success() {
-            Ok(UploadStatus::Ok)
-        } else if response.status() == 308 {
-            Ok(UploadStatus::ResumeIncomplete)
-        } else {
-            Err(Error::from_response(response).await)
-        }
+        Self::map_resume_response(response).await
     }
 
     /// https://cloud.google.com/storage/docs/performing-resumable-uploads#status-check
@@ -141,13 +135,7 @@ impl ResumableUploadClient {
             .header(CONTENT_RANGE, format! {"bytes */{}", object_size.to_string()})
             .send()
             .await?;
-        if response.status().is_success() {
-            Ok(UploadStatus::Ok)
-        } else if response.status() == 308 {
-            Ok(UploadStatus::ResumeIncomplete)
-        } else {
-            Err(Error::from_response(response).await)
-        }
+        Self::map_resume_response(response).await
     }
 
     /// https://cloud.google.com/storage/docs/performing-resumable-uploads#cancel-upload
@@ -160,6 +148,16 @@ impl ResumableUploadClient {
             .await?;
         if response.status() == 499 {
             Ok(())
+        } else {
+            Err(Error::from_response(response).await)
+        }
+    }
+
+    async fn map_resume_response(response: Response) -> Result<UploadStatus, Error> {
+        if response.status().is_success() {
+            Ok(UploadStatus::Ok)
+        } else if response.status() == 308 {
+            Ok(UploadStatus::ResumeIncomplete)
         } else {
             Err(Error::from_response(response).await)
         }
