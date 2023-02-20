@@ -3343,4 +3343,69 @@ mod test {
         let result = cloned.upload_single_chunk(vec![1], 1).await;
         assert!(result.is_err());
     }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn resumable_multiple_chunk_upload_unknown() {
+        let bucket_name = "rust-object-test";
+        let file_name = format!(
+            "resumable_multiple_chunk_unknown{}",
+            time::OffsetDateTime::now_utc().unix_timestamp()
+        );
+        let (client, _project) = client().await;
+
+        let mut metadata = Object::default();
+        metadata.name = file_name.to_string();
+        metadata.content_type = Some("video/mp4".to_string());
+        let upload_type = UploadType::Multipart(Box::new(metadata));
+        let uploader = client
+            .prepare_resumable_upload(
+                &UploadObjectRequest {
+                    bucket: bucket_name.to_string(),
+                    ..Default::default()
+                },
+                &upload_type,
+                None,
+            )
+            .await
+            .unwrap();
+        let mut chunk1_data: Vec<u8> = (0..256 * 1024).map(|i| (i % 256) as u8).collect();
+        let chunk2_data: Vec<u8> = vec![10, 20, 30];
+        let total_size = TotalSize::Unknown;
+
+        tracing::info!("start upload chunk {}", uploader.url());
+        let chunk1 = ChunkSize::new(0, chunk1_data.len() - 1, total_size.clone()).unwrap();
+        tracing::info!("upload chunk1 {:?}", chunk1);
+        let status1 = uploader
+            .upload_multiple_chunk(chunk1_data.clone(), &chunk1)
+            .await
+            .unwrap();
+        assert_eq!(status1, UploadStatus::ResumeIncomplete);
+
+        // total size is required for final chunk.
+        let remaining = chunk1_data.len() + chunk2_data.len();
+        let chunk2 = ChunkSize::new(chunk1_data.len(), remaining - 1, TotalSize::Known(remaining)).unwrap();
+        tracing::info!("upload chunk2 {:?}", chunk2);
+        let status2 = uploader
+            .upload_multiple_chunk(chunk2_data.clone(), &chunk2)
+            .await
+            .unwrap();
+        assert_eq!(status2, UploadStatus::Ok);
+
+        let get_request = &GetObjectRequest {
+            bucket: bucket_name.to_string(),
+            object: file_name.to_string(),
+            ..Default::default()
+        };
+
+        let object = client.get_object(get_request, None).await.unwrap();
+        assert_eq!(object.content_type.unwrap(), "video/mp4");
+
+        let download = client
+            .download_object(get_request, &Range::default(), None)
+            .await
+            .unwrap();
+        chunk1_data.extend(chunk2_data);
+        assert_eq!(chunk1_data, download);
+    }
 }
