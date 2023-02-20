@@ -139,7 +139,7 @@ impl ResumableUploadClient {
     }
 
     /// https://cloud.google.com/storage/docs/performing-resumable-uploads#cancel-upload
-    pub async fn cancel(&self) -> Result<(), Error> {
+    pub async fn cancel(self) -> Result<(), Error> {
         let response = self
             .http
             .delete(&self.session_url)

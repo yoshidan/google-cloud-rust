@@ -3314,4 +3314,33 @@ mod test {
         chunk1_data.extend(chunk2_data);
         assert_eq!(chunk1_data, download);
     }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn resumable_upload_cancel() {
+        let bucket_name = "rust-object-test";
+        let file_name = format!("resumable_cancel{}", time::OffsetDateTime::now_utc().unix_timestamp());
+        let (client, _project) = client().await;
+
+        let mut metadata = Object::default();
+        metadata.name = file_name.to_string();
+        metadata.content_type = Some("video/mp4".to_string());
+        let upload_type = UploadType::Multipart(Box::new(metadata));
+        let uploader = client
+            .prepare_resumable_upload(
+                &UploadObjectRequest {
+                    bucket: bucket_name.to_string(),
+                    ..Default::default()
+                },
+                &upload_type,
+                None,
+            )
+            .await
+            .unwrap();
+        let cloned = uploader.clone();
+        uploader.cancel().await.unwrap();
+
+        let result = cloned.upload_single_chunk(vec![1], 1).await;
+        assert!(result.is_err());
+    }
 }
