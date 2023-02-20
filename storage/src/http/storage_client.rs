@@ -2286,12 +2286,7 @@ impl StorageClient {
 }
 
 async fn map_error(r: Response) -> Error {
-    let status = r.status().as_u16();
-    let text = match r.text().await {
-        Ok(text) => text,
-        Err(e) => format!("{e}"),
-    };
-    Error::Response(status, text)
+    Error::from_response(r)
 }
 
 async fn invoke<S>(
@@ -2838,7 +2833,7 @@ mod test {
 
     #[tokio::test]
     #[serial]
-    pub async fn upload_metadata() {
+    pub async fn metadata() {
         let bucket_name = "rust-object-test";
         let (client, _project) = client().await;
         let mut metadata = HashMap::<String, String>::new();

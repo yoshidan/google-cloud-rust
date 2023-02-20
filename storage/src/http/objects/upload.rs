@@ -125,3 +125,39 @@ pub(crate) fn build_multipart<T: Into<reqwest::Body>>(
         builder
     })
 }
+
+pub(crate) fn build_resumable_session_simple(
+    base_url: &str,
+    client: &Client,
+    req: &UploadObjectRequest,
+    media: &Media,
+) -> RequestBuilder {
+    let url = format!("{}/b/{}/o?uploadType=resumable", base_url, req.bucket.escape(),);
+    let mut builder = client.post(url).query(&req).query(&[("name", &media.name)]);
+    if let Some(content_type) = media.content_type {
+        builder = builder.header("X-Upload-Content-Type", content_type.to_string())
+    }
+    if let Some(len) = media.content_length {
+        builder = builder.header("X-Upload-Content-Length", len)
+    }
+    if let Some(e) = &req.encryption {
+        e.with_headers(builder)
+    } else {
+        builder
+    }
+}
+
+pub(crate) fn build_resumable_session_simple_metadata<T: Into<reqwest::Body>>(
+    base_url: &str,
+    client: &Client,
+    req: &UploadObjectRequest,
+    metadata: &Object,
+) -> RequestBuilder {
+    let url = format!("{}/b/{}/o?uploadType=resumable", base_url, req.bucket.escape(),);
+    let mut builder = client.post(url).query(&req).json(&metadata);
+    if let Some(e) = &req.encryption {
+        e.with_headers(builder)
+    } else {
+        builder
+    }
+}

@@ -7,10 +7,12 @@ pub mod hmac_keys;
 pub mod notifications;
 pub mod object_access_controls;
 pub mod objects;
+pub mod resumable_upload_client;
 pub mod service_account_client;
 pub mod storage_client;
 
 use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
+use reqwest::Response;
 use serde::{de, Deserialize, Deserializer};
 use serde_json::Value;
 use std::fmt::Display;
@@ -31,6 +33,17 @@ pub enum Error {
     Base64DecodeError(#[from] base64::DecodeError),
     #[error(transparent)]
     Std(#[from] Box<dyn std::error::Error + Send + Sync>),
+}
+
+impl Error {
+    pub async fn from_response(r: Response) -> Error {
+        let status = r.status().as_u16();
+        let text = match r.text().await {
+            Ok(text) => text,
+            Err(e) => format!("{e}"),
+        };
+        Error::Response(status, text)
+    }
 }
 
 pub(crate) trait Escape {
