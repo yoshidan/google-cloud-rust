@@ -60,6 +60,8 @@ use reqwest::{Body, Client, RequestBuilder, Response};
 use std::future::Future;
 
 use crate::http::objects::download::Range;
+use crate::http::resumable_upload_client::ResumableUploadClient;
+use reqwest::header::LOCATION;
 use std::sync::Arc;
 
 pub const SCOPES: [&str; 2] = [
@@ -1970,9 +1972,118 @@ impl StorageClient {
         }
     }
 
+    /// Perform resumable uploads
+    /// https://cloud.google.com/storage/docs/performing-resumable-uploads
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::objects::Object;
+    /// use google_cloud_storage::http::objects::upload::{Media, UploadObjectRequest, UploadType};
+    /// use google_cloud_storage::http::resumable_upload_client::{ChunkSize, TotalSize, UploadStatus};
+    ///
+    /// async fn run_simple(client:Client) {
+    ///     let upload_type = UploadType::Simple(Media::new("filename"));
+    ///     let uploader = client.prepare_resumable_upload(&UploadObjectRequest{
+    ///         bucket: "bucket".to_string(),
+    ///         ..Default::default()
+    ///     }, &upload_type, None).await.unwrap();
+    ///
+    ///     // We can also use upload_multiple_chunk.
+    ///     let data = [1,2,3,4,5];
+    ///     let result = uploader.upload_single_chunk(&data, data.len()).await;
+    /// }
+    ///
+    /// async fn run_with_metadata(client:Client) {
+    ///     let mut metadata = HashMap::<String, String>::new();
+    ///     metadata.insert("key1".to_string(), "value1".to_string());
+    ///     let upload_type = UploadType::Multipart(Box::new(Object {
+    ///         name: "test1_meta".to_string(),
+    ///         content_type: Some("text/plain".to_string()),
+    ///         metadata: Some(metadata),
+    ///         ..Default::default()
+    ///     }));
+    ///     let uploader = client.prepare_resumable_upload(&UploadObjectRequest{
+    ///         bucket: "bucket".to_string(),
+    ///         ..Default::default()
+    ///     }, &upload_type, None).await.unwrap();
+    ///
+    ///     let chunk1_data : Vec<u8>= (0..256 * 1024).map(|i| (i % 256) as u8).collect();
+    ///     let chunk2_data : Vec<u8>= (1..256 * 1024 + 50).map(|i| (i % 256) as u8).collect();
+    ///     let total_size = TotalSize::Known(chunk1_data.len() + chunk2_data.len());
+    ///
+    ///     // The chunk size should be multiple of 256KiB, unless it's the last chunk that completes the upload.
+    ///     let chunk1 = ChunkSize::new(0, chunk1_data.len() - 1, total_size.clone()).unwrap();
+    ///     let status1 = uploader.upload_multiple_chunk(chunk1_data.clone(), &chunk1).await.unwrap();
+    ///     assert_eq!(status1, UploadStatus::ResumeIncomplete);
+    ///
+    ///     let chunk2 = ChunkSize::new(chunk1_data.len(), chunk1_data.len() + chunk2_data.len() - 1, total_size.clone()).unwrap();
+    ///     let status2 = uploader.upload_multiple_chunk(chunk2_data.clone(), &chunk2).await.unwrap();
+    ///     assert_eq!(status2, UploadStatus::Ok);
+    /// }
+    /// ```
+    #[cfg(not(feature = "trace"))]
+    pub async fn prepare_resumable_upload(
+        &self,
+        req: &UploadObjectRequest,
+        upload_type: &UploadType,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ResumableUploadClient, Error> {
+        self._prepare_resumable_upload(req, upload_type, cancel).await
+    }
+
+    #[cfg(feature = "trace")]
+    #[tracing::instrument(skip_all)]
+    pub async fn prepare_resumable_upload(
+        &self,
+        req: &UploadObjectRequest,
+        upload_type: &UploadType,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ResumableUploadClient, Error> {
+        self._prepare_resumable_upload(req, upload_type, cancel).await
+    }
+
+    #[inline(always)]
+    async fn _prepare_resumable_upload(
+        &self,
+        req: &UploadObjectRequest,
+        upload_type: &UploadType,
+        cancel: Option<CancellationToken>,
+    ) -> Result<ResumableUploadClient, Error> {
+        match upload_type {
+            UploadType::Multipart(meta) => {
+                let action = async {
+                    let builder = objects::upload::build_resumable_session_metadata(
+                        self.v1_upload_endpoint.as_str(),
+                        &self.http,
+                        req,
+                        meta,
+                    );
+                    self.send_get_url(builder)
+                        .await
+                        .map(|url| ResumableUploadClient::new(url, self.http.clone()))
+                };
+                invoke(cancel, action).await
+            }
+            UploadType::Simple(media) => {
+                let action = async {
+                    let builder = objects::upload::build_resumable_session_simple(
+                        self.v1_upload_endpoint.as_str(),
+                        &self.http,
+                        req,
+                        media,
+                    );
+                    self.send_get_url(builder)
+                        .await
+                        .map(|url| ResumableUploadClient::new(url, self.http.clone()))
+                };
+                invoke(cancel, action).await
+            }
+        }
+    }
+
     /// Uploads the streamed object.
     /// https://cloud.google.com/storage/docs/json_api/v1/objects/insert
-    /// TODO resumable upload
     ///
     /// ```
     /// use google_cloud_storage::client::Client;
@@ -2283,15 +2394,24 @@ impl StorageClient {
             Err(map_error(response).await)
         }
     }
+
+    async fn send_get_url(&self, builder: RequestBuilder) -> Result<String, Error> {
+        let builder = self.with_headers(builder).await?;
+        let response = builder.send().await?;
+        if response.status().is_success() {
+            if let Some(location) = response.headers().get(LOCATION) {
+                Ok(String::from_utf8(location.as_bytes().to_vec()).map_err(Error::FromUtf8Error)?)
+            } else {
+                Err(map_error(response).await)
+            }
+        } else {
+            Err(map_error(response).await)
+        }
+    }
 }
 
 async fn map_error(r: Response) -> Error {
-    let status = r.status().as_u16();
-    let text = match r.text().await {
-        Ok(text) => text,
-        Err(e) => format!("{e}"),
-    };
-    Error::Response(status, text)
+    Error::from_response(r).await
 }
 
 async fn invoke<S>(
@@ -2364,6 +2484,7 @@ mod test {
     use futures_util::StreamExt;
     use serial_test::serial;
 
+    use crate::http::resumable_upload_client::{ChunkSize, TotalSize, UploadStatus};
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_token::TokenSourceProvider;
@@ -2838,7 +2959,7 @@ mod test {
 
     #[tokio::test]
     #[serial]
-    pub async fn upload_metadata() {
+    pub async fn metadata() {
         let bucket_name = "rust-object-test";
         let (client, _project) = client().await;
         let mut metadata = HashMap::<String, String>::new();
@@ -3083,5 +3204,220 @@ mod test {
         assert_eq!("el", String::from_utf8_lossy(downloaded.as_slice()));
         let downloaded = download(Range(None, Some(2))).await;
         assert_eq!("ld", String::from_utf8_lossy(downloaded.as_slice()));
+    }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn resumable_simple_upload() {
+        let bucket_name = "rust-object-test";
+        let file_name = format!("resumable_{}", time::OffsetDateTime::now_utc().unix_timestamp());
+        let (client, _project) = client().await;
+
+        let mut media = Media::new(file_name.clone());
+        media.content_type = "text/plain".into();
+        let upload_type = UploadType::Simple(media);
+        let uploader = client
+            .prepare_resumable_upload(
+                &UploadObjectRequest {
+                    bucket: bucket_name.to_string(),
+                    ..Default::default()
+                },
+                &upload_type,
+                None,
+            )
+            .await
+            .unwrap();
+        let data = vec![1, 2, 3, 4, 5];
+        uploader.upload_single_chunk(data.clone(), 5).await.unwrap();
+
+        let get_request = &GetObjectRequest {
+            bucket: bucket_name.to_string(),
+            object: file_name.to_string(),
+            ..Default::default()
+        };
+        let download = client
+            .download_object(get_request, &Range::default(), None)
+            .await
+            .unwrap();
+        assert_eq!(data, download);
+
+        let object = client.get_object(get_request, None).await.unwrap();
+        assert_eq!(object.content_type.unwrap(), "text/plain");
+    }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn resumable_multiple_chunk_upload() {
+        let bucket_name = "rust-object-test";
+        let file_name = format!("resumable_multiple_chunk{}", time::OffsetDateTime::now_utc().unix_timestamp());
+        let (client, _project) = client().await;
+
+        let metadata = Object {
+            name: file_name.to_string(),
+            content_type: Some("video/mp4".to_string()),
+            ..Default::default()
+        };
+        let upload_type = UploadType::Multipart(Box::new(metadata));
+        let uploader = client
+            .prepare_resumable_upload(
+                &UploadObjectRequest {
+                    bucket: bucket_name.to_string(),
+                    ..Default::default()
+                },
+                &upload_type,
+                None,
+            )
+            .await
+            .unwrap();
+        let mut chunk1_data: Vec<u8> = (0..256 * 1024).map(|i| (i % 256) as u8).collect();
+        let chunk2_data: Vec<u8> = (1..256 * 1024 + 50).map(|i| (i % 256) as u8).collect();
+        let total_size = TotalSize::Known(chunk1_data.len() + chunk2_data.len());
+
+        tracing::info!("start upload chunk {}", uploader.url());
+        let chunk1 = ChunkSize::new(0, chunk1_data.len() - 1, total_size.clone()).unwrap();
+        tracing::info!("upload chunk1 {:?}", chunk1);
+        let status1 = uploader
+            .upload_multiple_chunk(chunk1_data.clone(), &chunk1)
+            .await
+            .unwrap();
+        assert_eq!(status1, UploadStatus::ResumeIncomplete);
+
+        tracing::info!("check status chunk1");
+        let status_check = uploader.status(&total_size).await.unwrap();
+        assert_eq!(status_check, UploadStatus::ResumeIncomplete);
+
+        let chunk2 =
+            ChunkSize::new(chunk1_data.len(), chunk1_data.len() + chunk2_data.len() - 1, total_size.clone()).unwrap();
+        tracing::info!("upload chunk2 {:?}", chunk2);
+        let status2 = uploader
+            .upload_multiple_chunk(chunk2_data.clone(), &chunk2)
+            .await
+            .unwrap();
+        assert_eq!(status2, UploadStatus::Ok);
+
+        tracing::info!("check status chunk2");
+        let status_check2 = uploader.status(&total_size).await.unwrap();
+        assert_eq!(status_check2, UploadStatus::Ok);
+
+        let get_request = &GetObjectRequest {
+            bucket: bucket_name.to_string(),
+            object: file_name.to_string(),
+            ..Default::default()
+        };
+
+        let object = client.get_object(get_request, None).await.unwrap();
+        assert_eq!(object.content_type.unwrap(), "video/mp4");
+
+        let download = client
+            .download_object(get_request, &Range::default(), None)
+            .await
+            .unwrap();
+        chunk1_data.extend(chunk2_data);
+        assert_eq!(chunk1_data, download);
+    }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn resumable_upload_cancel() {
+        let bucket_name = "rust-object-test";
+        let file_name = format!("resumable_cancel{}", time::OffsetDateTime::now_utc().unix_timestamp());
+        let (client, _project) = client().await;
+
+        let metadata = Object {
+            name: file_name.to_string(),
+            content_type: Some("video/mp4".to_string()),
+            ..Default::default()
+        };
+        let upload_type = UploadType::Multipart(Box::new(metadata));
+        let uploader = client
+            .prepare_resumable_upload(
+                &UploadObjectRequest {
+                    bucket: bucket_name.to_string(),
+                    ..Default::default()
+                },
+                &upload_type,
+                None,
+            )
+            .await
+            .unwrap();
+        let cloned = uploader.clone();
+        uploader.cancel().await.unwrap();
+
+        let result = cloned.upload_single_chunk(vec![1], 1).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn resumable_multiple_chunk_upload_unknown() {
+        let bucket_name = "rust-object-test";
+        let file_name = format!(
+            "resumable_multiple_chunk_unknown{}",
+            time::OffsetDateTime::now_utc().unix_timestamp()
+        );
+        let (client, _project) = client().await;
+
+        let metadata = Object {
+            name: file_name.to_string(),
+            content_type: Some("video/mp4".to_string()),
+            ..Default::default()
+        };
+        let upload_type = UploadType::Multipart(Box::new(metadata));
+        let uploader = client
+            .prepare_resumable_upload(
+                &UploadObjectRequest {
+                    bucket: bucket_name.to_string(),
+                    ..Default::default()
+                },
+                &upload_type,
+                None,
+            )
+            .await
+            .unwrap();
+        let mut chunk1_data: Vec<u8> = (0..256 * 1024).map(|i| (i % 256) as u8).collect();
+        let chunk2_data: Vec<u8> = vec![10, 20, 30];
+        let total_size = TotalSize::Unknown;
+
+        tracing::info!("start upload chunk {}", uploader.url());
+        let chunk1 = ChunkSize::new(0, chunk1_data.len() - 1, total_size.clone()).unwrap();
+        tracing::info!("upload chunk1 {:?}", chunk1);
+        let status1 = uploader
+            .upload_multiple_chunk(chunk1_data.clone(), &chunk1)
+            .await
+            .unwrap();
+        assert_eq!(status1, UploadStatus::ResumeIncomplete);
+
+        tracing::info!("upload chunk1 resume {:?}", chunk1);
+        let status1 = uploader
+            .upload_multiple_chunk(chunk1_data.clone(), &chunk1)
+            .await
+            .unwrap();
+        assert_eq!(status1, UploadStatus::ResumeIncomplete);
+
+        // total size is required for final chunk.
+        let remaining = chunk1_data.len() + chunk2_data.len();
+        let chunk2 = ChunkSize::new(chunk1_data.len(), remaining - 1, TotalSize::Known(remaining)).unwrap();
+        tracing::info!("upload chunk2 {:?}", chunk2);
+        let status2 = uploader
+            .upload_multiple_chunk(chunk2_data.clone(), &chunk2)
+            .await
+            .unwrap();
+        assert_eq!(status2, UploadStatus::Ok);
+
+        let get_request = &GetObjectRequest {
+            bucket: bucket_name.to_string(),
+            object: file_name.to_string(),
+            ..Default::default()
+        };
+
+        let object = client.get_object(get_request, None).await.unwrap();
+        assert_eq!(object.content_type.unwrap(), "video/mp4");
+
+        let download = client
+            .download_object(get_request, &Range::default(), None)
+            .await
+            .unwrap();
+        chunk1_data.extend(chunk2_data);
+        assert_eq!(chunk1_data, download);
     }
 }
