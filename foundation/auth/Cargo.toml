@@ -20,7 +20,7 @@ async-trait = "0.1"
 home = "0.5"
 urlencoding = "2.1"
 tokio = { version = "1.20", features = ["fs"]}
-google-cloud-metadata = { version = "0.3.1", path = "../metadata" }
+google-cloud-metadata = { version = "0.3.2", path = "../metadata" }
 google-cloud-token = { version = "0.1.0", path = "../token" }
 base64 = "0.21"
 time = "0.3"
