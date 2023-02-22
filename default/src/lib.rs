@@ -1,3 +1,13 @@
+//! # google-cloud-default
+//!
+//! Google Cloud Platform default configuration for google-cloud-rust.
+//!
+//! ## Quick Start
+//!
+//! * [pubsub](https://github.com/yoshidan/google-cloud-rust/tree/main/pubsub)
+//! * [spanner](https://github.com/yoshidan/google-cloud-rust/tree/main/spanner)
+//! * [storage](https://github.com/yoshidan/google-cloud-rust/tree/main/storage)
+//!
 use google_cloud_auth::error::Error;
 
 use async_trait::async_trait;
