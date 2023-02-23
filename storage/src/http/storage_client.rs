@@ -1972,6 +1972,13 @@ impl StorageClient {
         }
     }
 
+    /// Creates resumable upload from known URL.
+    ///
+    /// Assumes URL is correct, if not, `ResumableUploadClient` is not guaranteed to perform correctly.
+    pub fn get_resumable_upload(&self, url: String) -> ResumableUploadClient {
+        ResumableUploadClient::new(url, self.http.clone())
+    }
+
     /// Perform resumable uploads
     /// https://cloud.google.com/storage/docs/performing-resumable-uploads
     ///
