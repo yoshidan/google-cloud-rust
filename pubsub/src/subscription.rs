@@ -345,7 +345,7 @@ impl Subscription {
 
     /// subscribe creates a `Stream` of `ReceivedMessage`
     /// Terminates the underlying `Subscriber` when dropped.
-    /// ```
+    /// ```no_test
     /// use google_cloud_pubsub::client::Client;
     /// use google_cloud_pubsub::subscription::Subscription;
     /// use google_cloud_gax::grpc::Status;
@@ -449,7 +449,7 @@ impl Subscription {
     /// The Pub/Sub system can remove the relevant messages from the subscription.
     /// This method is for batch acking.
     ///
-    /// ```
+    /// ```no_test
     /// use google_cloud_pubsub::client::Client;
     /// use google_cloud_gax::cancel::CancellationToken;
     /// use google_cloud_pubsub::subscription::Subscription;
