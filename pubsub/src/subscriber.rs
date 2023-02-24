@@ -314,7 +314,7 @@ mod tests {
             PublishRequest {
                 topic: "projects/local-project/topics/test-topic1".to_string(),
                 messages: vec![PubsubMessage {
-                    data: "hoge".as_bytes().to_vec(),
+                    data: "hoge".into(),
                     ..Default::default()
                 }],
             },

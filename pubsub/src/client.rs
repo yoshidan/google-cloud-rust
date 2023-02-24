@@ -259,14 +259,6 @@ mod tests {
         let _ = tracing_subscriber::fmt().try_init();
     }
 
-    fn create_message(data: &[u8], ordering_key: &str) -> PubsubMessage {
-        PubsubMessage {
-            data: data.to_vec(),
-            ordering_key: ordering_key.to_string(),
-            ..Default::default()
-        }
-    }
-
     async fn create_client() -> Client {
         std::env::set_var("PUBSUB_EMULATOR_HOST", "localhost:8681");
 
@@ -333,13 +325,21 @@ mod tests {
         //publish
         let awaiters = if bulk {
             let messages = (0..100)
-                .map(|v| create_message(format!("abc_{v}").as_bytes(), ordering_key))
+                .map(|key| PubsubMessage {
+                    data: format!("abc_{}", key).into(),
+                    ordering_key: ordering_key.to_string(),
+                    ..Default::default()
+                })
                 .collect();
             publisher.publish_bulk(messages).await
         } else {
             let mut awaiters = Vec::with_capacity(100);
-            for v in 0..100 {
-                let message = create_message(format!("abc_{v}").as_bytes(), ordering_key);
+            for key in 0..100 {
+                let message = PubsubMessage {
+                    data: format!("abc_{}", key).into(),
+                    ordering_key: ordering_key.into(),
+                    ..Default::default()
+                };
                 awaiters.push(publisher.publish(message).await);
             }
             awaiters

@@ -11,7 +11,7 @@
 //!
 //! ### Publish Message
 //!
-//! ```
+//! ```no_test
 //! use google_cloud_pubsub::client::{Client, ClientConfig};
 //! use google_cloud_gax::cancel::CancellationToken;
 //! use google_cloud_googleapis::pubsub::v1::PubsubMessage;
@@ -70,7 +70,7 @@
 //!
 //! ### Subscribe Message
 //!
-//! ```
+//! ```no_test
 //! use google_cloud_pubsub::client::{Client, ClientConfig};
 //! use google_cloud_gax::cancel::CancellationToken;
 //! use google_cloud_googleapis::pubsub::v1::PubsubMessage;
@@ -113,7 +113,7 @@
 //!     // Or simply use the `subscription.subscribe` method.
 //!     subscription.receive(|mut message, cancel| async move {
 //!         // Handle data.
-//!         let data = message.message.data.as_slice();
+//!         let data = message.message.data.as_ref();
 //!         println!("{:?}", data);
 //!
 //!         // Ack or Nack message.

@@ -36,7 +36,17 @@ pub mod replica_info {
     /// Indicates the type of replica.  See the [replica types
     /// documentation](<https://cloud.google.com/spanner/docs/replication#replica_types>)
     /// for more details.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum ReplicaType {
         /// Not specified.
@@ -143,7 +153,10 @@ pub struct InstanceConfig {
     /// as the string:  name + "_" + value  would prove problematic if we were to
     /// allow "_" in a future release.
     #[prost(map = "string, string", tag = "8")]
-    pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    pub labels: ::std::collections::HashMap<
+        ::prost::alloc::string::String,
+        ::prost::alloc::string::String,
+    >,
     /// etag is used for optimistic concurrency control as a way
     /// to help prevent simultaneous updates of a instance config from overwriting
     /// each other. It is strongly suggested that systems make use of the etag in
@@ -171,7 +184,17 @@ pub struct InstanceConfig {
 /// Nested message and enum types in `InstanceConfig`.
 pub mod instance_config {
     /// The type of this configuration.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum Type {
         /// Unspecified.
@@ -204,7 +227,17 @@ pub mod instance_config {
         }
     }
     /// Indicates the current state of the instance config.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum State {
         /// Not specified.
@@ -306,7 +339,10 @@ pub struct Instance {
     /// as the string:  name + "_" + value  would prove problematic if we were to
     /// allow "_" in a future release.
     #[prost(map = "string, string", tag = "7")]
-    pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    pub labels: ::std::collections::HashMap<
+        ::prost::alloc::string::String,
+        ::prost::alloc::string::String,
+    >,
     /// Deprecated. This field is not populated.
     #[prost(string, repeated, tag = "8")]
     pub endpoint_uris: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
@@ -320,7 +356,17 @@ pub struct Instance {
 /// Nested message and enum types in `Instance`.
 pub mod instance {
     /// Indicates the current state of the instance.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum State {
         /// Not specified.
@@ -555,7 +601,9 @@ pub struct ListInstanceConfigOperationsResponse {
     /// \[metadata][google.longrunning.Operation.metadata\] field type
     /// `metadata.type_url` describes the type of the metadata.
     #[prost(message, repeated, tag = "1")]
-    pub operations: ::prost::alloc::vec::Vec<super::super::super::super::longrunning::Operation>,
+    pub operations: ::prost::alloc::vec::Vec<
+        super::super::super::super::longrunning::Operation,
+    >,
     /// `next_page_token` can be sent in a subsequent
     /// \[ListInstanceConfigOperations][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigOperations\]
     /// call to fetch more of the matching metadata.
@@ -762,8 +810,8 @@ pub struct UpdateInstanceConfigMetadata {
 /// Generated client implementations.
 pub mod instance_admin_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
-    use tonic::codegen::http::Uri;
     use tonic::codegen::*;
+    use tonic::codegen::http::Uri;
     /// Cloud Spanner Instance Admin API
     ///
     /// The Cloud Spanner Instance Admin API can be used to create, delete,
@@ -815,15 +863,22 @@ pub mod instance_admin_client {
             let inner = tonic::client::Grpc::with_origin(inner, origin);
             Self { inner }
         }
-        pub fn with_interceptor<F>(inner: T, interceptor: F) -> InstanceAdminClient<InterceptedService<T, F>>
+        pub fn with_interceptor<F>(
+            inner: T,
+            interceptor: F,
+        ) -> InstanceAdminClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
                 http::Request<tonic::body::BoxBody>,
-                Response = http::Response<<T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody>,
+                Response = http::Response<
+                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                >,
             >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error: Into<StdError> + Send + Sync,
+            <T as tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+            >>::Error: Into<StdError> + Send + Sync,
         {
             InstanceAdminClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -847,9 +902,15 @@ pub mod instance_admin_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ListInstanceConfigsRequest>,
         ) -> Result<tonic::Response<super::ListInstanceConfigsResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/ListInstanceConfigs",
@@ -861,9 +922,15 @@ pub mod instance_admin_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetInstanceConfigRequest>,
         ) -> Result<tonic::Response<super::InstanceConfig>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/GetInstanceConfig",
@@ -914,10 +981,19 @@ pub mod instance_admin_client {
         pub async fn create_instance_config(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateInstanceConfigRequest>,
-        ) -> Result<tonic::Response<super::super::super::super::super::longrunning::Operation>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+        ) -> Result<
+            tonic::Response<super::super::super::super::super::longrunning::Operation>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/CreateInstanceConfig",
@@ -971,10 +1047,19 @@ pub mod instance_admin_client {
         pub async fn update_instance_config(
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateInstanceConfigRequest>,
-        ) -> Result<tonic::Response<super::super::super::super::super::longrunning::Operation>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+        ) -> Result<
+            tonic::Response<super::super::super::super::super::longrunning::Operation>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/UpdateInstanceConfig",
@@ -993,9 +1078,15 @@ pub mod instance_admin_client {
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteInstanceConfigRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/DeleteInstanceConfig",
@@ -1016,10 +1107,19 @@ pub mod instance_admin_client {
         pub async fn list_instance_config_operations(
             &mut self,
             request: impl tonic::IntoRequest<super::ListInstanceConfigOperationsRequest>,
-        ) -> Result<tonic::Response<super::ListInstanceConfigOperationsResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+        ) -> Result<
+            tonic::Response<super::ListInstanceConfigOperationsResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/ListInstanceConfigOperations",
@@ -1031,12 +1131,19 @@ pub mod instance_admin_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ListInstancesRequest>,
         ) -> Result<tonic::Response<super::ListInstancesResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.spanner.admin.instance.v1.InstanceAdmin/ListInstances");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.admin.instance.v1.InstanceAdmin/ListInstances",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Gets information about a particular instance.
@@ -1044,12 +1151,19 @@ pub mod instance_admin_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetInstanceRequest>,
         ) -> Result<tonic::Response<super::Instance>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.spanner.admin.instance.v1.InstanceAdmin/GetInstance");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.admin.instance.v1.InstanceAdmin/GetInstance",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Creates an instance and begins preparing it to begin serving. The
@@ -1089,13 +1203,23 @@ pub mod instance_admin_client {
         pub async fn create_instance(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateInstanceRequest>,
-        ) -> Result<tonic::Response<super::super::super::super::super::longrunning::Operation>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+        ) -> Result<
+            tonic::Response<super::super::super::super::super::longrunning::Operation>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.spanner.admin.instance.v1.InstanceAdmin/CreateInstance");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.admin.instance.v1.InstanceAdmin/CreateInstance",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Updates an instance, and begins allocating or releasing resources
@@ -1141,13 +1265,23 @@ pub mod instance_admin_client {
         pub async fn update_instance(
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateInstanceRequest>,
-        ) -> Result<tonic::Response<super::super::super::super::super::longrunning::Operation>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+        ) -> Result<
+            tonic::Response<super::super::super::super::super::longrunning::Operation>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.spanner.admin.instance.v1.InstanceAdmin/UpdateInstance");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.admin.instance.v1.InstanceAdmin/UpdateInstance",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Deletes an instance.
@@ -1165,12 +1299,19 @@ pub mod instance_admin_client {
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteInstanceRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.spanner.admin.instance.v1.InstanceAdmin/DeleteInstance");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.admin.instance.v1.InstanceAdmin/DeleteInstance",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Sets the access control policy on an instance resource. Replaces any
@@ -1180,14 +1321,26 @@ pub mod instance_admin_client {
         /// [resource][google.iam.v1.SetIamPolicyRequest.resource].
         pub async fn set_iam_policy(
             &mut self,
-            request: impl tonic::IntoRequest<super::super::super::super::super::iam::v1::SetIamPolicyRequest>,
-        ) -> Result<tonic::Response<super::super::super::super::super::iam::v1::Policy>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            request: impl tonic::IntoRequest<
+                super::super::super::super::super::iam::v1::SetIamPolicyRequest,
+            >,
+        ) -> Result<
+            tonic::Response<super::super::super::super::super::iam::v1::Policy>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.spanner.admin.instance.v1.InstanceAdmin/SetIamPolicy");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.admin.instance.v1.InstanceAdmin/SetIamPolicy",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Gets the access control policy for an instance resource. Returns an empty
@@ -1197,14 +1350,26 @@ pub mod instance_admin_client {
         /// [resource][google.iam.v1.GetIamPolicyRequest.resource].
         pub async fn get_iam_policy(
             &mut self,
-            request: impl tonic::IntoRequest<super::super::super::super::super::iam::v1::GetIamPolicyRequest>,
-        ) -> Result<tonic::Response<super::super::super::super::super::iam::v1::Policy>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            request: impl tonic::IntoRequest<
+                super::super::super::super::super::iam::v1::GetIamPolicyRequest,
+            >,
+        ) -> Result<
+            tonic::Response<super::super::super::super::super::iam::v1::Policy>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.spanner.admin.instance.v1.InstanceAdmin/GetIamPolicy");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.admin.instance.v1.InstanceAdmin/GetIamPolicy",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Returns permissions that the caller has on the specified instance resource.
@@ -1215,14 +1380,24 @@ pub mod instance_admin_client {
         /// empty set of permissions.
         pub async fn test_iam_permissions(
             &mut self,
-            request: impl tonic::IntoRequest<super::super::super::super::super::iam::v1::TestIamPermissionsRequest>,
+            request: impl tonic::IntoRequest<
+                super::super::super::super::super::iam::v1::TestIamPermissionsRequest,
+            >,
         ) -> Result<
-            tonic::Response<super::super::super::super::super::iam::v1::TestIamPermissionsResponse>,
+            tonic::Response<
+                super::super::super::super::super::iam::v1::TestIamPermissionsResponse,
+            >,
             tonic::Status,
         > {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/TestIamPermissions",

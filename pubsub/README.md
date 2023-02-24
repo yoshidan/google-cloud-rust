@@ -122,7 +122,7 @@ google-cloud-default = { version = <version>, features = ["pubsub"] }
      // Or simply use the `subscription.subscribe` method.
      subscription.receive(|mut message, cancel| async move {
          // Handle data.
-         let data = message.message.data.as_slice();
+         let data = message.message.data.as_ref();
          println!("{:?}", data);
 
          // Ack or Nack message.
