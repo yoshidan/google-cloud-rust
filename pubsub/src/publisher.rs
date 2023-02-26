@@ -1,16 +1,15 @@
-use async_channel::Receiver;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
+use async_channel::Receiver;
 use tokio::select;
-use tokio::sync::Mutex;
-
-use google_cloud_gax::cancel::CancellationToken;
 use tokio::sync::oneshot;
+use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 
+use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};

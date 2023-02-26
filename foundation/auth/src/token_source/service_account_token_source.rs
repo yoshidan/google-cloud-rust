@@ -1,13 +1,14 @@
 use std::fmt::Debug;
 
+use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
+
 use crate::credentials;
 use crate::error::Error;
 use crate::misc::UnwrapOrEmpty;
 use crate::token::{Token, TOKEN_URL};
 use crate::token_source::{default_http_client, InternalToken, TokenSource};
-use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-use time::OffsetDateTime;
 
 #[derive(Clone, Serialize)]
 struct Claims<'a> {

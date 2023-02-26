@@ -1,10 +1,11 @@
+use async_trait::async_trait;
+
 use crate::credentials;
 use crate::error::Error;
 use crate::misc::{UnwrapOrEmpty, EMPTY};
 use crate::token::{Token, TOKEN_URL};
 use crate::token_source::TokenSource;
 use crate::token_source::{default_http_client, InternalToken};
-use async_trait::async_trait;
 
 #[allow(dead_code)]
 #[derive(Debug)]

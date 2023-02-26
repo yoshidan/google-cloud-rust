@@ -8,9 +8,9 @@
 //! * [spanner](https://github.com/yoshidan/google-cloud-rust/tree/main/spanner)
 //! * [storage](https://github.com/yoshidan/google-cloud-rust/tree/main/storage)
 //!
-use google_cloud_auth::error::Error;
-
 use async_trait::async_trait;
+
+use google_cloud_auth::error::Error;
 
 #[async_trait]
 pub trait WithAuthExt {
@@ -87,8 +87,9 @@ impl WithAuthExt for google_cloud_storage::client::ClientConfig {
 
 #[cfg(test)]
 mod test {
-    use crate::WithAuthExt;
     use google_cloud_gax::conn::Environment;
+
+    use crate::WithAuthExt;
 
     #[tokio::test]
     async fn test_spanner() {

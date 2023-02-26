@@ -167,14 +167,15 @@
 //! }
 //! ```
 
+use proc_macro::TokenStream;
+
+use quote::{quote, ToTokens};
+use syn::{parse_macro_input, ItemStruct};
+
 mod column;
 mod query;
 mod symbol;
 mod table;
-
-use proc_macro::TokenStream;
-use quote::{quote, ToTokens};
-use syn::{parse_macro_input, ItemStruct};
 
 #[proc_macro_derive(Table, attributes(spanner))]
 pub fn table(input: TokenStream) -> TokenStream {

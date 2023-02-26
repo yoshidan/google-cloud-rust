@@ -1,16 +1,15 @@
+use std::future::Future;
+use std::iter::Take;
+use std::time::Duration;
+
+use tokio::select;
 pub use tokio_retry::strategy::ExponentialBackoff;
+use tokio_retry::Action;
 pub use tokio_retry::Condition;
+use tokio_retry::RetryIf;
 
 use crate::cancel::CancellationToken;
 use crate::grpc::{Code, Status};
-use std::future::Future;
-use std::iter::Take;
-
-use std::time::Duration;
-use tokio::select;
-
-use tokio_retry::Action;
-use tokio_retry::RetryIf;
 
 pub trait TryAs<T> {
     fn try_as(&self) -> Option<&T>;

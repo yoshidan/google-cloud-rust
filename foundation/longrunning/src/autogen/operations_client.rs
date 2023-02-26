@@ -1,3 +1,7 @@
+use std::time::Duration;
+
+use tonic::Response;
+
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::{Channel, Error};
 use google_cloud_gax::create_request;
@@ -7,8 +11,6 @@ use google_cloud_googleapis::longrunning::operations_client::OperationsClient as
 use google_cloud_googleapis::longrunning::{
     CancelOperationRequest, DeleteOperationRequest, GetOperationRequest, Operation, WaitOperationRequest,
 };
-use std::time::Duration;
-use tonic::Response;
 
 pub fn default_retry_setting() -> RetrySetting {
     RetrySetting {

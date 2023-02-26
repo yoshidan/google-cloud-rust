@@ -1,6 +1,6 @@
-use google_cloud_gax::cancel::CancellationToken;
 use std::time::Duration;
 
+use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Channel;
 use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::{Code, Response, Status, Streaming};

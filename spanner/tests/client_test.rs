@@ -1,19 +1,18 @@
-use google_cloud_spanner::client::{Client, ClientConfig, Error};
+use serial_test::serial;
+use time::OffsetDateTime;
 
-use google_cloud_spanner::statement::Statement;
-
-mod common;
 use common::*;
-use google_cloud_spanner::key::Key;
-
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::TryAs;
+use google_cloud_spanner::client::{Client, ClientConfig, Error};
+use google_cloud_spanner::key::Key;
 use google_cloud_spanner::retry::TransactionRetry;
 use google_cloud_spanner::row::Row;
 use google_cloud_spanner::session::SessionError;
+use google_cloud_spanner::statement::Statement;
 use google_cloud_spanner::value::Timestamp;
-use serial_test::serial;
-use time::OffsetDateTime;
+
+mod common;
 
 const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 

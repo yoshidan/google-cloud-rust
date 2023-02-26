@@ -1,25 +1,24 @@
-use google_cloud_gax::retry::{invoke_fn, TryAs};
-use google_cloud_googleapis::spanner::v1::{commit_request, transaction_options, Mutation, TransactionOptions};
 use std::env::var;
 use std::fmt::Debug;
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
+
+use google_cloud_gax::cancel::CancellationToken;
+use google_cloud_gax::conn::Environment;
+use google_cloud_gax::grpc::{Code, Status};
+use google_cloud_gax::retry::{invoke_fn, TryAs};
+use google_cloud_googleapis::spanner::v1::{commit_request, transaction_options, Mutation, TransactionOptions};
+use google_cloud_token::NopeTokenSourceProvider;
 
 use crate::apiv1::conn_pool::{ConnectionManager, SPANNER};
+use crate::retry::TransactionRetrySetting;
 use crate::session::{ManagedSession, SessionConfig, SessionError, SessionManager};
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions};
 use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
 use crate::value::{Timestamp, TimestampBound};
-
-use crate::retry::TransactionRetrySetting;
-
-use google_cloud_gax::cancel::CancellationToken;
-use google_cloud_gax::conn::Environment;
-use google_cloud_gax::grpc::{Code, Status};
-use google_cloud_token::NopeTokenSourceProvider;
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::Arc;
 
 #[derive(Clone, Default)]
 pub struct PartitionedUpdateOption {

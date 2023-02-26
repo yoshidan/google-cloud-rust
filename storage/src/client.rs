@@ -1,13 +1,12 @@
-use crate::http::storage_client::StorageClient;
-
-use crate::http::service_account_client::ServiceAccountClient;
+use std::ops::Deref;
 
 use ring::{rand, signature};
 use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey};
-use std::ops::Deref;
 
 use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
 
+use crate::http::service_account_client::ServiceAccountClient;
+use crate::http::storage_client::StorageClient;
 use crate::sign::SignBy::PrivateKey;
 use crate::sign::{create_signed_buffer, SignBy, SignedURLError, SignedURLOptions};
 
@@ -174,21 +173,22 @@ impl Client {
 
 #[cfg(test)]
 mod test {
-    use crate::client::{Client, ClientConfig};
+    use std::collections::HashMap;
 
+    use serial_test::serial;
+    use time::OffsetDateTime;
+
+    use google_cloud_auth::project::Config;
+    use google_cloud_auth::token::DefaultTokenSourceProvider;
+
+    use crate::client::{Client, ClientConfig};
     use crate::http::buckets::delete::DeleteBucketRequest;
     use crate::http::buckets::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
     use crate::http::buckets::insert::{
         BucketCreationConfig, InsertBucketParam, InsertBucketRequest, RetentionPolicyCreationConfig,
     };
-    use crate::http::buckets::{lifecycle, Billing, Cors, IamConfiguration, Lifecycle, Website};
-    use google_cloud_auth::project::Config;
-    use google_cloud_auth::token::DefaultTokenSourceProvider;
-    use serial_test::serial;
-    use std::collections::HashMap;
-    use time::OffsetDateTime;
-
     use crate::http::buckets::list::ListBucketsRequest;
+    use crate::http::buckets::{lifecycle, Billing, Cors, IamConfiguration, Lifecycle, Website};
     use crate::http::storage_client::SCOPES;
     use crate::sign::{SignBy, SignedURLMethod, SignedURLOptions};
 

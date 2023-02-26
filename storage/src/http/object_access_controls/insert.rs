@@ -1,5 +1,6 @@
-use crate::http::object_access_controls::ObjectACLRole;
 use reqwest::{Client, RequestBuilder};
+
+use crate::http::object_access_controls::ObjectACLRole;
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]

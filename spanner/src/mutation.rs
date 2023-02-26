@@ -1,9 +1,10 @@
 use prost_types::{ListValue, Value};
 
-use crate::key::KeySet;
-use crate::statement::{ToKind, ToStruct};
 use google_cloud_googleapis::spanner::v1::mutation::{Delete, Operation, Write};
 use google_cloud_googleapis::spanner::v1::Mutation;
+
+use crate::key::KeySet;
+use crate::statement::{ToKind, ToStruct};
 
 fn write(table: &str, columns: &[&str], values: &[&dyn ToKind]) -> Write {
     let values = values
@@ -178,13 +179,14 @@ pub fn delete(table: &str, key_set: impl Into<KeySet>) -> Mutation {
 
 #[cfg(test)]
 mod tests {
+    use prost_types::value::Kind;
+
+    use google_cloud_googleapis::spanner::*;
+
     use crate::key::*;
     use crate::mutation::*;
     use crate::statement::{Kinds, ToKind, Types};
     use crate::value::CommitTimestamp;
-
-    use google_cloud_googleapis::spanner::*;
-    use prost_types::value::Kind;
 
     struct TestStruct {
         pub struct_field: String,

@@ -1,18 +1,19 @@
 use std::collections::{BTreeMap, HashMap};
+use std::num::ParseIntError;
 use std::sync::Arc;
 
+use base64::prelude::*;
+use base64::DecodeError;
 use prost_types::value::Kind;
 use prost_types::{value, Value};
 use time::format_description::well_known::Rfc3339;
 use time::macros::format_description;
 use time::{Date, OffsetDateTime};
 
-use crate::value::{CommitTimestamp, SpannerNumeric};
-use base64::prelude::*;
-use base64::DecodeError;
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::StructType;
-use std::num::ParseIntError;
+
+use crate::value::{CommitTimestamp, SpannerNumeric};
 
 #[derive(Clone)]
 pub struct Row {
@@ -311,14 +312,17 @@ pub fn kind_to_error<'a, T>(v: &'a value::Kind, field: &'a Field) -> Result<T, E
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    use prost_types::Value;
+    use time::OffsetDateTime;
+
+    use google_cloud_googleapis::spanner::v1::struct_type::Field;
+
     use crate::row::{Error, Row, Struct as RowStruct, TryFromStruct};
     use crate::statement::{Kinds, ToKind, ToStruct, Types};
     use crate::value::CommitTimestamp;
-    use google_cloud_googleapis::spanner::v1::struct_type::Field;
-    use prost_types::Value;
-    use std::collections::HashMap;
-    use std::sync::Arc;
-    use time::OffsetDateTime;
 
     struct TestStruct {
         pub struct_field: String,

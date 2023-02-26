@@ -1,7 +1,8 @@
+use reqwest::{Client, RequestBuilder};
+
 use crate::http::object_access_controls::Projection;
 use crate::http::objects::Object;
 use crate::http::Escape;
-use reqwest::{Client, RequestBuilder};
 
 /// Request message for GetNotification.
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]

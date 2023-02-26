@@ -1,7 +1,9 @@
+use std::collections::HashMap;
+
+use reqwest::{Client, RequestBuilder};
+
 use crate::http::notifications::{EventType, PayloadFormat};
 use crate::http::Escape;
-use reqwest::{Client, RequestBuilder};
-use std::collections::HashMap;
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default, Debug)]
 pub struct NotificationCreationConfig {

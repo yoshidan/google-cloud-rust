@@ -2,13 +2,9 @@ use std::ops::Deref;
 use std::ops::DerefMut;
 use std::sync::atomic::{AtomicI64, Ordering};
 
-use google_cloud_gax::cancel::CancellationToken;
 use prost_types::Struct;
 
-use crate::session::ManagedSession;
-use crate::statement::Statement;
-use crate::transaction::{CallOptions, QueryOptions, Transaction};
-use crate::value::Timestamp;
+use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::{RetrySetting, TryAs};
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::TransactionId;
@@ -17,6 +13,11 @@ use google_cloud_googleapis::spanner::v1::{
     BeginTransactionRequest, CommitRequest, CommitResponse, ExecuteBatchDmlRequest, ExecuteSqlRequest, Mutation,
     ResultSetStats, RollbackRequest, TransactionOptions, TransactionSelector,
 };
+
+use crate::session::ManagedSession;
+use crate::statement::Statement;
+use crate::transaction::{CallOptions, QueryOptions, Transaction};
+use crate::value::Timestamp;
 
 #[derive(Clone, Default)]
 pub struct CommitOptions {

@@ -1,4 +1,5 @@
-use crate::apiv1::conn_pool::ConnectionManager;
+use std::sync::Arc;
+
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Channel;
 use google_cloud_gax::create_request;
@@ -10,7 +11,8 @@ use google_cloud_googleapis::pubsub::v1::{
     CreateSchemaRequest, DeleteSchemaRequest, GetSchemaRequest, ListSchemasRequest, Schema, ValidateMessageRequest,
     ValidateMessageResponse, ValidateSchemaRequest, ValidateSchemaResponse,
 };
-use std::sync::Arc;
+
+use crate::apiv1::conn_pool::ConnectionManager;
 
 #[derive(Clone, Debug)]
 pub(crate) struct SchemaClient {

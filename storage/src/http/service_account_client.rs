@@ -1,13 +1,12 @@
 use std::collections::HashMap;
-
-use crate::http::Error;
-
-use google_cloud_token::TokenSource;
+use std::sync::Arc;
 
 use base64::prelude::*;
 use reqwest::Client;
 
-use std::sync::Arc;
+use google_cloud_token::TokenSource;
+
+use crate::http::Error;
 
 pub struct ServiceAccountClient {
     ts: Arc<dyn TokenSource>,
@@ -59,12 +58,13 @@ impl ServiceAccountClient {
 
 #[cfg(test)]
 mod test {
-    use crate::http::service_account_client::ServiceAccountClient;
     use serial_test::serial;
 
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_token::TokenSourceProvider;
+
+    use crate::http::service_account_client::ServiceAccountClient;
 
     #[ctor::ctor]
     fn init() {

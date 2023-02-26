@@ -1,7 +1,8 @@
+use async_trait::async_trait;
+
 use crate::error::Error;
 use crate::token::Token;
 use crate::token_source::TokenSource;
-use async_trait::async_trait;
 
 #[derive(Debug)]
 pub struct ReuseTokenSource {
@@ -54,17 +55,17 @@ impl ReuseTokenSource {
 
 #[cfg(test)]
 mod test {
+    use std::fmt::Debug;
+    use std::sync::Arc;
+
+    use async_trait::async_trait;
+    use time::OffsetDateTime;
+    use tracing_subscriber::filter::LevelFilter;
+
     use crate::error::Error;
     use crate::token::Token;
     use crate::token_source::reuse_token_source::ReuseTokenSource;
     use crate::token_source::TokenSource;
-    use async_trait::async_trait;
-    use std::fmt::Debug;
-    use time::OffsetDateTime;
-
-    use std::sync::Arc;
-
-    use tracing_subscriber::filter::LevelFilter;
 
     #[derive(Debug)]
     struct EmptyTokenSource {

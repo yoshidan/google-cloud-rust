@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use crate::apiv1::default_retry_setting;
+use tokio::select;
+use tokio::task::JoinHandle;
+use tokio::time::sleep;
+
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::{Code, Status, Streaming};
 use google_cloud_gax::retry::RetrySetting;
@@ -8,10 +11,8 @@ use google_cloud_googleapis::pubsub::v1::{
     AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage, ReceivedMessage as InternalReceivedMessage,
     StreamingPullResponse,
 };
-use tokio::select;
-use tokio::task::JoinHandle;
-use tokio::time::sleep;
 
+use crate::apiv1::default_retry_setting;
 use crate::apiv1::subscriber_client::{create_empty_streaming_pull_request, SubscriberClient};
 
 pub struct ReceivedMessage {
@@ -286,13 +287,15 @@ pub(crate) async fn ack(
 
 #[cfg(test)]
 mod tests {
+    use serial_test::serial;
+
+    use google_cloud_gax::conn::Environment;
+    use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage, PullRequest};
+
     use crate::apiv1::conn_pool::ConnectionManager;
     use crate::apiv1::publisher_client::PublisherClient;
     use crate::apiv1::subscriber_client::SubscriberClient;
     use crate::subscriber::handle_message;
-    use google_cloud_gax::conn::Environment;
-    use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage, PullRequest};
-    use serial_test::serial;
 
     #[ctor::ctor]
     fn init() {

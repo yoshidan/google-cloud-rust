@@ -1,14 +1,12 @@
-use google_cloud_spanner::key::Key;
+use serial_test::serial;
+use time::OffsetDateTime;
 
+use common::*;
+use google_cloud_spanner::key::Key;
+use google_cloud_spanner::row::Row;
 use google_cloud_spanner::statement::Statement;
 
-use serial_test::serial;
-
 mod common;
-use common::*;
-
-use google_cloud_spanner::row::Row;
-use time::OffsetDateTime;
 
 #[ctor::ctor]
 fn init() {

@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use crate::apiv1::conn_pool::ConnectionManager;
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Channel;
 use google_cloud_gax::create_request;
@@ -13,6 +12,8 @@ use google_cloud_googleapis::pubsub::v1::{
     ListTopicSnapshotsRequest, ListTopicSubscriptionsRequest, ListTopicsRequest, PublishRequest, PublishResponse,
     Topic, UpdateTopicRequest,
 };
+
+use crate::apiv1::conn_pool::ConnectionManager;
 
 #[derive(Clone, Debug)]
 pub(crate) struct PublisherClient {

@@ -1,7 +1,8 @@
+use reqwest::{Client, RequestBuilder};
+
 use crate::http::object_access_controls::PredefinedObjectAcl;
 use crate::http::objects::{Encryption, Object, SourceObjects};
 use crate::http::Escape;
-use reqwest::{Client, RequestBuilder};
 
 /// Request message for ComposeObject.
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]

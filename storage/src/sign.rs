@@ -1,21 +1,20 @@
-use crate::http;
-
-use crate::sign::SignedURLError::InvalidOption;
+use std::collections::HashMap;
+use std::fmt::{Debug, Formatter};
+use std::time::Duration;
 
 use base64::prelude::*;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use sha2::{Digest, Sha256};
-use std::collections::HashMap;
-use std::fmt::{Debug, Formatter};
 use time::format_description::well_known::iso8601::{EncodedConfig, TimePrecision};
 use time::format_description::well_known::{self, Iso8601};
 use time::macros::format_description;
 use time::OffsetDateTime;
-
-use std::time::Duration;
 use url;
 use url::{ParseError, Url};
+
+use crate::http;
+use crate::sign::SignedURLError::InvalidOption;
 
 static SPACE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r" +").unwrap());
 static TAB_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"[\t]+").unwrap());
@@ -354,12 +353,14 @@ fn validate_options(opts: &SignedURLOptions, _now: &OffsetDateTime) -> Result<()
 
 #[cfg(test)]
 mod test {
-    use crate::sign::{create_signed_buffer, SignBy, SignedURLOptions};
-
-    use google_cloud_auth::credentials::CredentialsFile;
-    use serial_test::serial;
     use std::collections::HashMap;
     use std::time::Duration;
+
+    use serial_test::serial;
+
+    use google_cloud_auth::credentials::CredentialsFile;
+
+    use crate::sign::{create_signed_buffer, SignBy, SignedURLOptions};
 
     #[ctor::ctor]
     fn init() {

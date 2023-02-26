@@ -2,11 +2,13 @@ use std::ops::{Deref, DerefMut};
 use std::sync::atomic::AtomicI64;
 use std::time::SystemTime;
 
+use time::OffsetDateTime;
+
+use google_cloud_gax::grpc::Status;
 use google_cloud_googleapis::spanner::v1::{
     transaction_options, transaction_selector, BeginTransactionRequest, ExecuteSqlRequest, PartitionOptions,
     PartitionQueryRequest, PartitionReadRequest, ReadRequest, TransactionOptions, TransactionSelector,
 };
-use time::OffsetDateTime;
 
 use crate::key::KeySet;
 use crate::reader::{Reader, RowIterator, StatementReader, TableReader};
@@ -14,7 +16,6 @@ use crate::session::ManagedSession;
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, ReadOptions, Transaction};
 use crate::value::TimestampBound;
-use google_cloud_gax::grpc::Status;
 
 /// ReadOnlyTransaction provides a snapshot transaction with guaranteed
 /// consistency across reads, but does not allow writes.  Read-only transactions

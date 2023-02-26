@@ -1,6 +1,7 @@
+use reqwest::{Client, RequestBuilder};
+
 use crate::http::channels::Channel;
 use crate::http::Escape;
-use reqwest::{Client, RequestBuilder};
 
 /// Request message for ListChannels.
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
