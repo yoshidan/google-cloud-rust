@@ -1,6 +1,7 @@
+use reqwest::{Client, RequestBuilder};
+
 use crate::http::bucket_access_controls::BucketACLRole;
 use crate::http::Escape;
-use reqwest::{Client, RequestBuilder};
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

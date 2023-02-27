@@ -1,5 +1,5 @@
-use google_cloud_gax::conn::Channel;
 use google_cloud_gax::conn::{ConnectionManager as GRPCConnectionManager, Error};
+use google_cloud_gax::conn::Channel;
 
 const AUDIENCE: &str = "https://storage.googleapis.com/";
 const STORAGE: &str = "storage.googleapis.com";

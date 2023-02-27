@@ -2,20 +2,20 @@ pub mod database_admin_client;
 
 #[cfg(test)]
 mod tests {
-    use crate::admin::database::database_admin_client::DatabaseAdminClient;
-    use google_cloud_googleapis::spanner::admin::database::v1::database_admin_client::DatabaseAdminClient as InternalDatabaseAdminClient;
+    use serial_test::serial;
+    use time::OffsetDateTime;
 
+    use google_cloud_gax::conn::{ConnectionManager, Environment};
     use google_cloud_googleapis::spanner::admin::database::v1::database::State;
+    use google_cloud_googleapis::spanner::admin::database::v1::database_admin_client::DatabaseAdminClient as InternalDatabaseAdminClient;
     use google_cloud_googleapis::spanner::admin::database::v1::{
         CreateDatabaseRequest, Database, DatabaseDialect, DropDatabaseRequest, GetDatabaseDdlRequest,
         GetDatabaseRequest, ListDatabasesRequest, UpdateDatabaseDdlRequest,
     };
-
-    use crate::apiv1::conn_pool::{AUDIENCE, SPANNER};
-    use google_cloud_gax::conn::{ConnectionManager, Environment};
     use google_cloud_longrunning::autogen::operations_client::OperationsClient;
-    use serial_test::serial;
-    use time::OffsetDateTime;
+
+    use crate::admin::database::database_admin_client::DatabaseAdminClient;
+    use crate::apiv1::conn_pool::{AUDIENCE, SPANNER};
 
     async fn new_client() -> DatabaseAdminClient {
         let conn_pool =

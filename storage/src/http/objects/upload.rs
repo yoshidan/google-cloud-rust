@@ -1,11 +1,12 @@
-use crate::http::object_access_controls::{PredefinedObjectAcl, Projection};
 use std::borrow::Cow;
 
-use crate::http::objects::{Encryption, Object};
-use crate::http::{Error, Escape};
 use reqwest::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use reqwest::multipart::{Form, Part};
 use reqwest::{Client, RequestBuilder};
+
+use crate::http::object_access_controls::{PredefinedObjectAcl, Projection};
+use crate::http::objects::{Encryption, Object};
+use crate::http::{Error, Escape};
 
 #[derive(Clone, Debug)]
 pub struct Media {

@@ -1,7 +1,7 @@
-use crate::http::objects::get::GetObjectRequest;
-
-use crate::http::Escape;
 use reqwest::{Client, RequestBuilder};
+
+use crate::http::objects::get::GetObjectRequest;
+use crate::http::Escape;
 
 #[derive(Default)]
 pub struct Range(pub Option<u64>, pub Option<u64>);

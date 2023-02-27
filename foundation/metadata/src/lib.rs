@@ -1,8 +1,7 @@
-use reqwest::header::{HeaderValue, USER_AGENT};
-
 use std::string;
 use std::time::Duration;
 
+use reqwest::header::{HeaderValue, USER_AGENT};
 use tokio::net::lookup_host;
 use tokio::sync::OnceCell;
 

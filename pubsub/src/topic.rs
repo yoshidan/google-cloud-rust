@@ -1,20 +1,20 @@
 use std::collections::HashMap;
-
-use google_cloud_gax::cancel::CancellationToken;
-use prost_types::DurationError;
 use std::time::Duration;
 
+use prost_types::DurationError;
+
+use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::RetrySetting;
+use google_cloud_googleapis::pubsub::v1::{
+    DeleteTopicRequest, GetTopicRequest, ListTopicSubscriptionsRequest, MessageStoragePolicy, SchemaSettings,
+    Topic as InternalTopic,
+};
 
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
 use crate::publisher::{Publisher, PublisherConfig};
 use crate::subscription::Subscription;
-use google_cloud_googleapis::pubsub::v1::{
-    DeleteTopicRequest, GetTopicRequest, ListTopicSubscriptionsRequest, MessageStoragePolicy, SchemaSettings,
-    Topic as InternalTopic,
-};
 
 pub struct TopicConfig {
     pub labels: HashMap<String, String>,
@@ -142,21 +142,23 @@ impl Topic {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
+    use serial_test::serial;
+    use tokio::task::JoinHandle;
+    use tokio::time::sleep;
+    use uuid::Uuid;
+
+    use google_cloud_gax::cancel::CancellationToken;
+    use google_cloud_gax::conn::Environment;
+    use google_cloud_gax::grpc::{Code, Status};
+    use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 
     use crate::apiv1::conn_pool::ConnectionManager;
     use crate::apiv1::publisher_client::PublisherClient;
     use crate::apiv1::subscriber_client::SubscriberClient;
     use crate::publisher::{Publisher, PublisherConfig};
     use crate::topic::Topic;
-    use google_cloud_gax::cancel::CancellationToken;
-    use google_cloud_gax::conn::Environment;
-    use google_cloud_gax::grpc::{Code, Status};
-    use google_cloud_googleapis::pubsub::v1::PubsubMessage;
-    use serial_test::serial;
-    use std::time::Duration;
-    use tokio::task::JoinHandle;
-    use tokio::time::sleep;
-    use uuid::Uuid;
 
     #[ctor::ctor]
     fn init() {

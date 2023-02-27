@@ -1,10 +1,12 @@
+use async_trait::async_trait;
+use urlencoding::encode;
+
+use google_cloud_metadata::{METADATA_FLAVOR_KEY, METADATA_GOOGLE, METADATA_HOST_ENV, METADATA_IP};
+
 use crate::error::Error;
 use crate::token::Token;
 use crate::token_source::InternalToken;
 use crate::token_source::{default_http_client, TokenSource};
-use async_trait::async_trait;
-use google_cloud_metadata::{METADATA_FLAVOR_KEY, METADATA_GOOGLE, METADATA_HOST_ENV, METADATA_IP};
-use urlencoding::encode;
 
 #[allow(dead_code)]
 #[derive(Debug)]

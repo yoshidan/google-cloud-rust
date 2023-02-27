@@ -1,6 +1,7 @@
+use reqwest::{Client, RequestBuilder};
+
 use crate::http::hmac_keys::HmacKeyMetadata;
 use crate::http::Escape;
-use reqwest::{Client, RequestBuilder};
 
 /// Request object to update an HMAC key state.
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]

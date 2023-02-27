@@ -2,22 +2,22 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use std::time::{Duration, SystemTime};
+
+use prost_types::{DurationError, FieldMask};
 
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::codegen::futures_core::Stream;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::seek_request::Target;
-use prost_types::{DurationError, FieldMask};
-use std::time::{Duration, SystemTime};
-
-use crate::apiv1::subscriber_client::SubscriberClient;
 use google_cloud_googleapis::pubsub::v1::{
     BigQueryConfig, CreateSnapshotRequest, DeadLetterPolicy, DeleteSnapshotRequest, DeleteSubscriptionRequest,
     ExpirationPolicy, GetSnapshotRequest, GetSubscriptionRequest, PullRequest, PushConfig, RetryPolicy, SeekRequest,
     Snapshot, Subscription as InternalSubscription, UpdateSubscriptionRequest,
 };
 
+use crate::apiv1::subscriber_client::SubscriberClient;
 use crate::subscriber::{ack, ReceivedMessage, Subscriber, SubscriberConfig};
 
 #[derive(Default)]
@@ -586,25 +586,26 @@ impl Subscription {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+    use std::sync::atomic::AtomicU32;
+    use std::sync::atomic::Ordering::SeqCst;
+    use std::sync::{Arc, Mutex};
+    use std::time::Duration;
+
+    use futures_util::StreamExt;
+    use serial_test::serial;
+    use uuid::Uuid;
+
+    use google_cloud_gax::cancel::CancellationToken;
+    use google_cloud_gax::conn::Environment;
+    use google_cloud_gax::grpc::Code;
+    use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
+
     use crate::apiv1::conn_pool::ConnectionManager;
     use crate::apiv1::publisher_client::PublisherClient;
     use crate::apiv1::subscriber_client::SubscriberClient;
     use crate::subscriber::ReceivedMessage;
     use crate::subscription::{SeekTo, Subscription, SubscriptionConfig, SubscriptionConfigToUpdate};
-    use google_cloud_gax::cancel::CancellationToken;
-    use google_cloud_gax::grpc::Code;
-    use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
-
-    use serial_test::serial;
-    use std::collections::HashMap;
-    use std::sync::atomic::AtomicU32;
-    use std::sync::atomic::Ordering::SeqCst;
-    use std::sync::{Arc, Mutex};
-
-    use futures_util::StreamExt;
-    use google_cloud_gax::conn::Environment;
-    use std::time::Duration;
-    use uuid::Uuid;
 
     const PROJECT_NAME: &str = "local-project";
     const EMULATOR: &str = "localhost:8681";

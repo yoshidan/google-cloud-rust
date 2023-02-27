@@ -1,18 +1,19 @@
 use std::fmt::Debug;
-use std::sync::atomic::{AtomicUsize, Ordering};
-
-use google_cloud_token::{TokenSource, TokenSourceProvider};
-use http::header::AUTHORIZATION;
-use http::{HeaderValue, Request};
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+
+use http::header::AUTHORIZATION;
+use http::{HeaderValue, Request};
 use tonic::body::BoxBody;
 use tonic::transport::{Channel as TonicChannel, ClientTlsConfig, Endpoint};
 use tonic::{Code, Status};
 use tower::filter::{AsyncFilter, AsyncFilterLayer, AsyncPredicate};
 use tower::util::Either;
 use tower::{BoxError, ServiceBuilder};
+
+use google_cloud_token::{TokenSource, TokenSourceProvider};
 
 pub type Channel = Either<AsyncFilter<TonicChannel, AsyncAuthInterceptor>, TonicChannel>;
 
@@ -162,9 +163,10 @@ impl ConnectionManager {
 
 #[cfg(test)]
 mod test {
-    use crate::conn::AtomicRing;
     use std::collections::HashSet;
     use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use crate::conn::AtomicRing;
 
     #[test]
     fn test_atomic_ring() {

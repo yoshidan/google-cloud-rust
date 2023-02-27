@@ -1,7 +1,8 @@
-use crate::error::Error;
 use base64::prelude::*;
 use serde::Deserialize;
 use tokio::fs;
+
+use crate::error::Error;
 
 const CREDENTIALS_FILE: &str = "application_default_credentials.json";
 

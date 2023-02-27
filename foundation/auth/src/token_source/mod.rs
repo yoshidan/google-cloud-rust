@@ -1,14 +1,16 @@
+use std::fmt::Debug;
+use std::time::Duration;
+
+use async_trait::async_trait;
+use serde::Deserialize;
+
+use crate::error::Error;
+use crate::token::Token;
+
 pub mod authorized_user_token_source;
 pub mod compute_token_source;
 pub mod reuse_token_source;
 pub mod service_account_token_source;
-
-use crate::error::Error;
-use crate::token::Token;
-use async_trait::async_trait;
-use serde::Deserialize;
-use std::fmt::Debug;
-use std::time::Duration;
 
 #[async_trait]
 pub trait TokenSource: Send + Sync + Debug {
@@ -46,7 +48,6 @@ impl InternalToken {
 mod tests {
     use crate::credentials::CredentialsFile;
     use crate::error::Error;
-
     use crate::token_source::service_account_token_source::{
         OAuth2ServiceAccountTokenSource, ServiceAccountTokenSource,
     };

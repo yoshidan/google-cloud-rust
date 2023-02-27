@@ -284,15 +284,18 @@ impl<'a> AsyncIterator for RowIterator<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::VecDeque;
+    use std::sync::Arc;
+
+    use prost_types::value::Kind;
+    use prost_types::Value;
+
+    use google_cloud_googleapis::spanner::v1::struct_type::Field;
+    use google_cloud_googleapis::spanner::v1::{ResultSetMetadata, StructType};
+
     use crate::reader::ResultSet;
     use crate::row::{Row, TryFromValue};
     use crate::statement::ToKind;
-    use google_cloud_googleapis::spanner::v1::struct_type::Field;
-    use google_cloud_googleapis::spanner::v1::{ResultSetMetadata, StructType};
-    use prost_types::value::Kind;
-    use prost_types::Value;
-    use std::collections::VecDeque;
-    use std::sync::Arc;
 
     fn empty_rs() -> ResultSet {
         ResultSet {

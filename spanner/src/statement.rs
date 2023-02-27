@@ -1,15 +1,15 @@
 use std::collections::{BTreeMap, HashMap};
 
+use base64::prelude::*;
 use prost_types::value::Kind;
 use prost_types::value::Kind::StringValue;
 use prost_types::{value, ListValue, Struct, Value};
-
-use base64::prelude::*;
-use google_cloud_googleapis::spanner::v1::struct_type::Field;
-use google_cloud_googleapis::spanner::v1::{StructType, Type, TypeAnnotationCode, TypeCode};
 use time::format_description::well_known::Rfc3339;
 use time::macros::format_description;
 use time::{Date, OffsetDateTime};
+
+use google_cloud_googleapis::spanner::v1::struct_type::Field;
+use google_cloud_googleapis::spanner::v1::{StructType, Type, TypeAnnotationCode, TypeCode};
 
 use crate::value::{CommitTimestamp, SpannerNumeric};
 

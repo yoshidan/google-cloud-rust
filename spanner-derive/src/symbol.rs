@@ -1,5 +1,6 @@
 use std::fmt;
 use std::fmt::Display;
+
 use syn::{Ident, Path};
 
 #[derive(Copy, Clone)]

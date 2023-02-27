@@ -1,10 +1,11 @@
+use std::collections::HashMap;
+
+use reqwest::{Client, RequestBuilder};
+
 use crate::http::bucket_access_controls::{BucketAccessControl, PredefinedBucketAcl};
 use crate::http::buckets::{Billing, Cors, Encryption, IamConfiguration, Lifecycle, Logging, Versioning, Website};
 use crate::http::object_access_controls::insert::ObjectAccessControlCreationConfig;
 use crate::http::object_access_controls::{PredefinedObjectAcl, Projection};
-
-use reqwest::{Client, RequestBuilder};
-use std::collections::HashMap;
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]

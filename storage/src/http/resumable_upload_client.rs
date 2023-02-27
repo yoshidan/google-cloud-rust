@@ -1,6 +1,7 @@
-use crate::http::Error;
 use reqwest::header::{CONTENT_LENGTH, CONTENT_RANGE};
 use reqwest::{Body, Client, Response};
+
+use crate::http::Error;
 
 #[derive(thiserror::Error, Debug)]
 pub enum ChunkError {

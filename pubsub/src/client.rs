@@ -1,11 +1,6 @@
-use crate::apiv1::conn_pool::{ConnectionManager, PUBSUB};
-use crate::apiv1::publisher_client::PublisherClient;
-use crate::apiv1::subscriber_client::SubscriberClient;
-use google_cloud_gax::cancel::CancellationToken;
 use std::env::var;
 
-use crate::subscription::{Subscription, SubscriptionConfig};
-use crate::topic::{Topic, TopicConfig};
+use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
@@ -13,6 +8,12 @@ use google_cloud_googleapis::pubsub::v1::{
     DetachSubscriptionRequest, ListSnapshotsRequest, ListSubscriptionsRequest, ListTopicsRequest, Snapshot,
 };
 use google_cloud_token::NopeTokenSourceProvider;
+
+use crate::apiv1::conn_pool::{ConnectionManager, PUBSUB};
+use crate::apiv1::publisher_client::PublisherClient;
+use crate::apiv1::subscriber_client::SubscriberClient;
+use crate::subscription::{Subscription, SubscriptionConfig};
+use crate::topic::{Topic, TopicConfig};
 
 #[derive(Debug)]
 pub struct ClientConfig {
@@ -241,16 +242,17 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use google_cloud_googleapis::pubsub::v1::PubsubMessage;
-    use serial_test::serial;
     use std::collections::HashMap;
     use std::thread;
     use std::time::Duration;
 
-    use crate::client::Client;
-    use google_cloud_gax::cancel::CancellationToken;
+    use serial_test::serial;
     use uuid::Uuid;
 
+    use google_cloud_gax::cancel::CancellationToken;
+    use google_cloud_googleapis::pubsub::v1::PubsubMessage;
+
+    use crate::client::Client;
     use crate::subscriber::SubscriberConfig;
     use crate::subscription::{ReceiveConfig, SubscriptionConfig};
 

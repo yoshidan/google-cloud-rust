@@ -2,20 +2,20 @@ pub mod instance_admin_client;
 
 #[cfg(test)]
 mod tests {
-    use crate::admin::instance::instance_admin_client::InstanceAdminClient;
-    use google_cloud_googleapis::spanner::admin::instance::v1::instance_admin_client::InstanceAdminClient as InternalInstanceAdminClient;
+    use serial_test::serial;
+    use time::OffsetDateTime;
 
+    use google_cloud_gax::conn::{ConnectionManager, Environment};
     use google_cloud_googleapis::spanner::admin::instance::v1::instance::State;
+    use google_cloud_googleapis::spanner::admin::instance::v1::instance_admin_client::InstanceAdminClient as InternalInstanceAdminClient;
     use google_cloud_googleapis::spanner::admin::instance::v1::{
         CreateInstanceRequest, DeleteInstanceRequest, GetInstanceConfigRequest, GetInstanceRequest, Instance,
         ListInstanceConfigsRequest, ListInstancesRequest,
     };
-
-    use crate::apiv1::conn_pool::{AUDIENCE, SPANNER};
-    use google_cloud_gax::conn::{ConnectionManager, Environment};
     use google_cloud_longrunning::autogen::operations_client::OperationsClient;
-    use serial_test::serial;
-    use time::OffsetDateTime;
+
+    use crate::admin::instance::instance_admin_client::InstanceAdminClient;
+    use crate::apiv1::conn_pool::{AUDIENCE, SPANNER};
 
     async fn new_client() -> InstanceAdminClient {
         let conn_pool =

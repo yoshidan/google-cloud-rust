@@ -1,3 +1,12 @@
+use std::future::Future;
+use std::sync::Arc;
+
+use futures_util::{Stream, TryStream};
+use reqwest::header::LOCATION;
+use reqwest::{Body, Client, RequestBuilder, Response};
+
+use google_cloud_token::TokenSource;
+
 use crate::http::bucket_access_controls::delete::DeleteBucketAccessControlRequest;
 use crate::http::bucket_access_controls::get::GetBucketAccessControlRequest;
 use crate::http::bucket_access_controls::insert::InsertBucketAccessControlRequest;
@@ -9,12 +18,10 @@ use crate::http::buckets::get::GetBucketRequest;
 use crate::http::buckets::get_iam_policy::GetIamPolicyRequest;
 use crate::http::buckets::insert::InsertBucketRequest;
 use crate::http::buckets::list::{ListBucketsRequest, ListBucketsResponse};
-
 use crate::http::buckets::patch::PatchBucketRequest;
 use crate::http::buckets::set_iam_policy::SetIamPolicyRequest;
 use crate::http::buckets::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
 use crate::http::buckets::{Bucket, Policy};
-
 use crate::http::default_object_access_controls::delete::DeleteDefaultObjectAccessControlRequest;
 use crate::http::default_object_access_controls::get::GetDefaultObjectAccessControlRequest;
 use crate::http::default_object_access_controls::insert::InsertDefaultObjectAccessControlRequest;
@@ -41,28 +48,18 @@ use crate::http::object_access_controls::patch::PatchObjectAccessControlRequest;
 use crate::http::object_access_controls::ObjectAccessControl;
 use crate::http::objects::compose::ComposeObjectRequest;
 use crate::http::objects::delete::DeleteObjectRequest;
+use crate::http::objects::download::Range;
 use crate::http::objects::get::GetObjectRequest;
 use crate::http::objects::list::{ListObjectsRequest, ListObjectsResponse};
 use crate::http::objects::patch::PatchObjectRequest;
 use crate::http::objects::rewrite::{RewriteObjectRequest, RewriteObjectResponse};
 use crate::http::objects::upload::{UploadObjectRequest, UploadType};
-
 use crate::http::objects::Object;
+use crate::http::resumable_upload_client::ResumableUploadClient;
 use crate::http::{
     bucket_access_controls, buckets, default_object_access_controls, hmac_keys, notifications, object_access_controls,
     objects, CancellationToken, Error,
 };
-use futures_util::{Stream, TryStream};
-use google_cloud_token::TokenSource;
-
-use reqwest::{Body, Client, RequestBuilder, Response};
-
-use std::future::Future;
-
-use crate::http::objects::download::Range;
-use crate::http::resumable_upload_client::ResumableUploadClient;
-use reqwest::header::LOCATION;
-use std::sync::Arc;
 
 pub const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
@@ -2438,6 +2435,16 @@ async fn invoke<S>(
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashMap;
+
+    use bytes::Buf;
+    use futures_util::StreamExt;
+    use serial_test::serial;
+
+    use google_cloud_auth::project::Config;
+    use google_cloud_auth::token::DefaultTokenSourceProvider;
+    use google_cloud_token::TokenSourceProvider;
+
     use crate::http::bucket_access_controls::delete::DeleteBucketAccessControlRequest;
     use crate::http::bucket_access_controls::get::GetBucketAccessControlRequest;
     use crate::http::bucket_access_controls::insert::{
@@ -2468,6 +2475,7 @@ mod test {
     use crate::http::notifications::get::GetNotificationRequest;
     use crate::http::notifications::insert::{InsertNotificationRequest, NotificationCreationConfig};
     use crate::http::notifications::list::ListNotificationsRequest;
+    use crate::http::notifications::EventType;
     use crate::http::object_access_controls::delete::DeleteObjectAccessControlRequest;
     use crate::http::object_access_controls::get::GetObjectAccessControlRequest;
     use crate::http::object_access_controls::insert::{
@@ -2477,24 +2485,14 @@ mod test {
     use crate::http::object_access_controls::ObjectACLRole;
     use crate::http::objects::compose::{ComposeObjectRequest, ComposingTargets};
     use crate::http::objects::delete::DeleteObjectRequest;
+    use crate::http::objects::download::Range;
     use crate::http::objects::get::GetObjectRequest;
     use crate::http::objects::list::ListObjectsRequest;
     use crate::http::objects::rewrite::RewriteObjectRequest;
     use crate::http::objects::upload::{Media, UploadObjectRequest, UploadType};
-    use std::collections::HashMap;
-
-    use crate::http::notifications::EventType;
-    use crate::http::objects::download::Range;
     use crate::http::objects::{Object, SourceObjects};
-    use crate::http::storage_client::{StorageClient, SCOPES};
-    use bytes::Buf;
-    use futures_util::StreamExt;
-    use serial_test::serial;
-
     use crate::http::resumable_upload_client::{ChunkSize, TotalSize, UploadStatus};
-    use google_cloud_auth::project::Config;
-    use google_cloud_auth::token::DefaultTokenSourceProvider;
-    use google_cloud_token::TokenSourceProvider;
+    use crate::http::storage_client::{StorageClient, SCOPES};
 
     #[ctor::ctor]
     fn init() {

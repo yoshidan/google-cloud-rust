@@ -306,10 +306,11 @@ impl From<Vec<Key>> for KeySet {
 
 #[cfg(test)]
 mod tests {
-    use crate::key::*;
+    use prost_types::value::Kind;
 
     use google_cloud_googleapis::spanner::*;
-    use prost_types::value::Kind;
+
+    use crate::key::*;
 
     #[test]
     fn test_key_new() {

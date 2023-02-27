@@ -1,18 +1,13 @@
 use async_stream;
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Channel;
-use std::sync::Arc;
-use std::time::Duration;
-
-use crate::grpc::conn_pool::ConnectionManager;
 use google_cloud_gax::grpc::{Code, IntoRequest, IntoStreamingRequest, Response, Status, Streaming};
 use google_cloud_gax::retry::{invoke, invoke_fn, RetrySetting};
-use google_cloud_googleapis::iam::v1::Policy;
 use google_cloud_googleapis::iam::v1::{
     GetIamPolicyRequest, SetIamPolicyRequest, TestIamPermissionsRequest, TestIamPermissionsResponse,
 };
+use google_cloud_googleapis::iam::v1::Policy;
 use google_cloud_googleapis::storage::v2 as internal;
-use google_cloud_googleapis::storage::v2::storage_client::StorageClient as InternalStorageClient;
 use google_cloud_googleapis::storage::v2::{
     Bucket, ComposeObjectRequest, CreateBucketRequest, CreateHmacKeyRequest, CreateHmacKeyResponse,
     CreateNotificationRequest, DeleteBucketRequest, DeleteHmacKeyRequest, DeleteNotificationRequest,
@@ -23,6 +18,11 @@ use google_cloud_googleapis::storage::v2::{
     ServiceAccount, StartResumableWriteRequest, StartResumableWriteResponse, UpdateBucketRequest, UpdateHmacKeyRequest,
     UpdateObjectRequest, WriteObjectRequest, WriteObjectResponse,
 };
+use google_cloud_googleapis::storage::v2::storage_client::StorageClient as InternalStorageClient;
+use std::sync::Arc;
+use std::time::Duration;
+
+use crate::grpc::conn_pool::ConnectionManager;
 
 fn default_setting() -> RetrySetting {
     RetrySetting {

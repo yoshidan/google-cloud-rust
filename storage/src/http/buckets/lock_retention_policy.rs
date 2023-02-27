@@ -1,6 +1,6 @@
-use crate::http::Escape;
-
 use reqwest::{Client, RequestBuilder};
+
+use crate::http::Escape;
 
 /// Request message for LockRetentionPolicy.
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]

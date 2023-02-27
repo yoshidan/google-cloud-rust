@@ -1,10 +1,10 @@
+use std::env::var;
+use std::time::Duration;
+
 use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::Code;
 use google_cloud_gax::retry::RetrySetting;
-use std::env::var;
-
 use google_cloud_token::NopeTokenSourceProvider;
-use std::time::Duration;
 
 pub mod client;
 pub mod database;

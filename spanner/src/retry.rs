@@ -121,10 +121,11 @@ impl Default for TransactionRetrySetting {
 
 #[cfg(test)]
 mod tests {
-    use crate::client::Error;
-    use crate::retry::TransactionRetrySetting;
     use google_cloud_gax::grpc::{Code, Status};
     use google_cloud_gax::retry::{Condition, Retry};
+
+    use crate::client::Error;
+    use crate::retry::TransactionRetrySetting;
 
     #[test]
     fn test_transaction_condition() {

@@ -7,19 +7,18 @@ use std::time::{Duration, Instant};
 use parking_lot::{Mutex, RwLock};
 use thiserror;
 use tokio::select;
-
-use google_cloud_googleapis::spanner::v1::{BatchCreateSessionsRequest, DeleteSessionRequest, Session};
-
-use crate::apiv1::conn_pool::ConnectionManager;
-use crate::apiv1::spanner_client::{ping_query_request, Client};
-
-use google_cloud_gax::cancel::CancellationToken;
-use google_cloud_gax::grpc::{Code, Status};
-use google_cloud_gax::retry::TryAs;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, timeout};
+
+use google_cloud_gax::cancel::CancellationToken;
+use google_cloud_gax::grpc::{Code, Status};
+use google_cloud_gax::retry::TryAs;
+use google_cloud_googleapis::spanner::v1::{BatchCreateSessionsRequest, DeleteSessionRequest, Session};
+
+use crate::apiv1::conn_pool::ConnectionManager;
+use crate::apiv1::spanner_client::{ping_query_request, Client};
 
 /// Session
 pub struct SessionHandle {
@@ -633,18 +632,20 @@ async fn batch_create_session(
 
 #[cfg(test)]
 mod tests {
-    use crate::apiv1::conn_pool::ConnectionManager;
-    use crate::session::{batch_create_sessions, health_check, SessionConfig, SessionError, SessionManager};
+    use std::sync::atomic::{AtomicI64, Ordering};
+    use std::sync::Arc;
+    use std::time::{Duration, Instant};
+
+    use parking_lot::RwLock;
     use serial_test::serial;
+    use tokio::time::sleep;
 
     use google_cloud_gax::cancel::CancellationToken;
     use google_cloud_gax::conn::Environment;
     use google_cloud_googleapis::spanner::v1::ExecuteSqlRequest;
-    use parking_lot::RwLock;
-    use std::sync::atomic::{AtomicI64, Ordering};
-    use std::sync::Arc;
-    use std::time::{Duration, Instant};
-    use tokio::time::sleep;
+
+    use crate::apiv1::conn_pool::ConnectionManager;
+    use crate::session::{batch_create_sessions, health_check, SessionConfig, SessionError, SessionManager};
 
     pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 

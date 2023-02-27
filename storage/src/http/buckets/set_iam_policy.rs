@@ -1,8 +1,7 @@
-use crate::http::buckets::Policy;
-
-use crate::http::Escape;
-
 use reqwest::{Client, RequestBuilder};
+
+use crate::http::buckets::Policy;
+use crate::http::Escape;
 
 /// Request message for `SetIamPolicy` method.
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default, Debug)]

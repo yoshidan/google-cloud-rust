@@ -1,4 +1,3 @@
-use crate::symbol::{COLUMN, COLUMN_NAME, COMMIT_TIMESTAMP};
 use convert_case::{Case, Casing};
 use syn::ext::IdentExt;
 use syn::spanned::Spanned;
@@ -6,6 +5,8 @@ use syn::Lit::Str;
 use syn::Meta::{List, NameValue, Path};
 use syn::NestedMeta::Meta;
 use syn::{Error, Field};
+
+use crate::symbol::{COLUMN, COLUMN_NAME, COMMIT_TIMESTAMP};
 
 pub(crate) struct Column<'a> {
     field: &'a Field,

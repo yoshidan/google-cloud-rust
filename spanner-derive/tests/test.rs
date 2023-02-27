@@ -1,12 +1,13 @@
+use serde::{Deserialize, Serialize};
+use serial_test::serial;
+use time::{Date, OffsetDateTime};
+
 use google_cloud_spanner::client::{Client, ClientConfig, Error};
 use google_cloud_spanner::mutation::insert_struct;
 use google_cloud_spanner::reader::AsyncIterator;
 use google_cloud_spanner::statement::Statement;
 use google_cloud_spanner::value::SpannerNumeric;
 use google_cloud_spanner_derive::{Query, Table};
-use serde::{Deserialize, Serialize};
-use serial_test::serial;
-use time::{Date, OffsetDateTime};
 
 #[derive(Table, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UserCharacter {

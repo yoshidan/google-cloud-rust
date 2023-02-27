@@ -1,7 +1,7 @@
+use reqwest::{Client, RequestBuilder};
+
 use crate::http::buckets::Bucket;
 use crate::http::object_access_controls::Projection;
-
-use reqwest::{Client, RequestBuilder};
 
 /// Request message for DeleteBucket.
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]

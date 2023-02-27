@@ -1,11 +1,13 @@
-use crate::autogen::operations_client::{default_retry_setting, OperationsClient};
+use std::marker::PhantomData;
+
 use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::{invoke_fn, RetrySetting};
 use google_cloud_googleapis::longrunning::{
     operation, CancelOperationRequest, DeleteOperationRequest, GetOperationRequest, Operation as InternalOperation,
 };
-use std::marker::PhantomData;
+
+use crate::autogen::operations_client::{default_retry_setting, OperationsClient};
 
 pub struct Operation<T: prost::Message + Default> {
     inner: InternalOperation,

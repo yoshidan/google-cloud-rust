@@ -1,15 +1,15 @@
-use google_cloud_spanner::key::Key;
+use std::collections::HashMap;
 
-use google_cloud_spanner::row::Row;
-use google_cloud_spanner::statement::Statement;
-use google_cloud_spanner::transaction_ro::ReadOnlyTransaction;
 use serial_test::serial;
 use time::OffsetDateTime;
 
-mod common;
 use common::*;
+use google_cloud_spanner::key::Key;
+use google_cloud_spanner::row::Row;
+use google_cloud_spanner::statement::Statement;
+use google_cloud_spanner::transaction_ro::ReadOnlyTransaction;
 
-use std::collections::HashMap;
+mod common;
 
 #[ctor::ctor]
 fn init() {
