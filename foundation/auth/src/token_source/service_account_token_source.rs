@@ -21,10 +21,10 @@ struct Claims<'a> {
 }
 
 impl Claims<'_> {
-    fn token(&self, pk: &jwt::EncodingKey, pk_id: &str) -> Result<String, Error> {
-        let mut header = jwt::Header::new(jwt::Algorithm::RS256);
+    fn token(&self, pk: &jsonwebtoken::EncodingKey, pk_id: &str) -> Result<String, Error> {
+        let mut header = jsonwebtoken::Header::new(jsonwebtoken::Algorithm::RS256);
         header.kid = Some(pk_id.to_string());
-        let v = jwt::encode(&header, self, pk)?;
+        let v = jsonwebtoken::encode(&header, self, pk)?;
         Ok(v)
     }
 }
@@ -35,7 +35,7 @@ impl Claims<'_> {
 #[allow(dead_code)]
 pub struct ServiceAccountTokenSource {
     email: String,
-    pk: jwt::EncodingKey,
+    pk: jsonwebtoken::EncodingKey,
     pk_id: String,
     audience: String,
 }
@@ -101,7 +101,7 @@ struct OAuth2Token {
 //jwt implements the OAuth 2.0 JSON Web Token flow
 pub struct OAuth2ServiceAccountTokenSource {
     pub email: String,
-    pub pk: jwt::EncodingKey,
+    pub pk: jsonwebtoken::EncodingKey,
     pub pk_id: String,
     pub scopes: String,
     pub token_url: String,
