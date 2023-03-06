@@ -1304,7 +1304,7 @@ impl StorageClient {
     ///
     ///     // We can also use upload_multiple_chunk.
     ///     let data = [1,2,3,4,5];
-    ///     let result = uploader.upload_single_chunk(&data, data.len()).await;
+    ///     let result = uploader.upload_single_chunk(Vec::from(data), data.len()).await;
     /// }
     ///
     /// async fn run_with_metadata(client:Client) {
