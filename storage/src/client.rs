@@ -91,29 +91,13 @@ impl Client {
     ///     }).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn signed_url(
         &self,
         bucket: &str,
         object: &str,
         opts: SignedURLOptions,
     ) -> Result<String, SignedURLError> {
-        self._signed_url(bucket, object, opts).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn signed_url(
-        &self,
-        bucket: &str,
-        object: &str,
-        opts: SignedURLOptions,
-    ) -> Result<String, SignedURLError> {
-        self._signed_url(bucket, object, opts).await
-    }
-
-    #[inline(always)]
-    async fn _signed_url(&self, bucket: &str, object: &str, opts: SignedURLOptions) -> Result<String, SignedURLError> {
         let mut opts = opts;
         if opts.google_access_id.is_empty() {
             opts.google_access_id = self

@@ -100,27 +100,12 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn delete_bucket(
         &self,
         req: &DeleteBucketRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
-        self._delete_bucket(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn delete_bucket(
-        &self,
-        req: &DeleteBucketRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<(), Error> {
-        self._delete_bucket(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _delete_bucket(&self, req: &DeleteBucketRequest, cancel: Option<CancellationToken>) -> Result<(), Error> {
         let action = async {
             let builder = buckets::delete::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send_get_empty(builder).await
@@ -147,27 +132,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn insert_bucket(
-        &self,
-        req: &InsertBucketRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Bucket, Error> {
-        self._insert_bucket(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn insert_bucket(
-        &self,
-        req: &InsertBucketRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Bucket, Error> {
-        self._insert_bucket(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _insert_bucket(
         &self,
         req: &InsertBucketRequest,
         cancel: Option<CancellationToken>,
@@ -195,19 +161,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_bucket(&self, req: &GetBucketRequest, cancel: Option<CancellationToken>) -> Result<Bucket, Error> {
-        self._get_bucket(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn get_bucket(&self, req: &GetBucketRequest, cancel: Option<CancellationToken>) -> Result<Bucket, Error> {
-        self._get_bucket(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _get_bucket(&self, req: &GetBucketRequest, cancel: Option<CancellationToken>) -> Result<Bucket, Error> {
         let action = async {
             let builder = buckets::get::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
@@ -236,27 +191,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn patch_bucket(
-        &self,
-        req: &PatchBucketRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Bucket, Error> {
-        self._patch_bucket(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn patch_bucket(
-        &self,
-        req: &PatchBucketRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Bucket, Error> {
-        self._patch_bucket(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _patch_bucket(
         &self,
         req: &PatchBucketRequest,
         cancel: Option<CancellationToken>,
@@ -284,27 +220,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list_buckets(
-        &self,
-        req: &ListBucketsRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ListBucketsResponse, Error> {
-        self._list_buckets(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn list_buckets(
-        &self,
-        req: &ListBucketsRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ListBucketsResponse, Error> {
-        self._list_buckets(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _list_buckets(
         &self,
         req: &ListBucketsRequest,
         cancel: Option<CancellationToken>,
@@ -341,27 +258,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn set_iam_policy(
-        &self,
-        req: &SetIamPolicyRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Policy, Error> {
-        self._set_iam_policy(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn set_iam_policy(
-        &self,
-        req: &SetIamPolicyRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Policy, Error> {
-        self._set_iam_policy(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _set_iam_policy(
         &self,
         req: &SetIamPolicyRequest,
         cancel: Option<CancellationToken>,
@@ -390,27 +288,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_iam_policy(
-        &self,
-        req: &GetIamPolicyRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Policy, Error> {
-        self._get_iam_policy(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn get_iam_policy(
-        &self,
-        req: &GetIamPolicyRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Policy, Error> {
-        self._get_iam_policy(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _get_iam_policy(
         &self,
         req: &GetIamPolicyRequest,
         cancel: Option<CancellationToken>,
@@ -438,27 +317,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn test_iam_permissions(
-        &self,
-        req: &TestIamPermissionsRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<TestIamPermissionsResponse, Error> {
-        self._test_iam_permissions(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn test_iam_permissions(
-        &self,
-        req: &TestIamPermissionsRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<TestIamPermissionsResponse, Error> {
-        self._test_iam_permissions(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _test_iam_permissions(
         &self,
         req: &TestIamPermissionsRequest,
         cancel: Option<CancellationToken>,
@@ -487,27 +347,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list_default_object_access_controls(
-        &self,
-        req: &ListDefaultObjectAccessControlsRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ListDefaultObjectAccessControlsResponse, Error> {
-        self._list_default_object_access_controls(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn list_default_object_access_controls(
-        &self,
-        req: &ListDefaultObjectAccessControlsRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ListDefaultObjectAccessControlsResponse, Error> {
-        self._list_default_object_access_controls(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _list_default_object_access_controls(
         &self,
         req: &ListDefaultObjectAccessControlsRequest,
         cancel: Option<CancellationToken>,
@@ -535,27 +376,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_default_object_access_control(
-        &self,
-        req: &GetDefaultObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ObjectAccessControl, Error> {
-        self._get_default_object_access_control(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn get_default_object_access_control(
-        &self,
-        req: &GetDefaultObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ObjectAccessControl, Error> {
-        self._get_default_object_access_control(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _get_default_object_access_control(
         &self,
         req: &GetDefaultObjectAccessControlRequest,
         cancel: Option<CancellationToken>,
@@ -588,27 +410,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn insert_default_object_access_control(
-        &self,
-        req: &InsertDefaultObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ObjectAccessControl, Error> {
-        self._insert_default_object_access_control(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn insert_default_object_access_control(
-        &self,
-        req: &InsertDefaultObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ObjectAccessControl, Error> {
-        self._insert_default_object_access_control(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _insert_default_object_access_control(
         &self,
         req: &InsertDefaultObjectAccessControlRequest,
         cancel: Option<CancellationToken>,
@@ -643,27 +446,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn patch_default_object_access_control(
-        &self,
-        req: &PatchDefaultObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ObjectAccessControl, Error> {
-        self._patch_default_object_access_control(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn patch_default_object_access_control(
-        &self,
-        req: &PatchDefaultObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ObjectAccessControl, Error> {
-        self._patch_default_object_access_control(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _patch_default_object_access_control(
         &self,
         req: &PatchDefaultObjectAccessControlRequest,
         cancel: Option<CancellationToken>,
@@ -691,27 +475,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn delete_default_object_access_control(
-        &self,
-        req: &DeleteDefaultObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<(), Error> {
-        self._delete_default_object_access_control(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn delete_default_object_access_control(
-        &self,
-        req: &DeleteDefaultObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<(), Error> {
-        self._delete_default_object_access_control(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _delete_default_object_access_control(
         &self,
         req: &DeleteDefaultObjectAccessControlRequest,
         cancel: Option<CancellationToken>,
@@ -738,27 +503,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list_bucket_access_controls(
-        &self,
-        req: &ListBucketAccessControlsRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ListBucketAccessControlsResponse, Error> {
-        self._list_bucket_access_controls(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn list_bucket_access_controls(
-        &self,
-        req: &ListBucketAccessControlsRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ListBucketAccessControlsResponse, Error> {
-        self._list_bucket_access_controls(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _list_bucket_access_controls(
         &self,
         req: &ListBucketAccessControlsRequest,
         cancel: Option<CancellationToken>,
@@ -786,27 +532,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_bucket_access_control(
-        &self,
-        req: &GetBucketAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<BucketAccessControl, Error> {
-        self._get_bucket_access_control(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn get_bucket_access_control(
-        &self,
-        req: &GetBucketAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<BucketAccessControl, Error> {
-        self._get_bucket_access_control(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _get_bucket_access_control(
         &self,
         req: &GetBucketAccessControlRequest,
         cancel: Option<CancellationToken>,
@@ -838,27 +565,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn insert_bucket_access_control(
-        &self,
-        req: &InsertBucketAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<BucketAccessControl, Error> {
-        self._insert_bucket_access_control(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn insert_bucket_access_control(
-        &self,
-        req: &InsertBucketAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<BucketAccessControl, Error> {
-        self._insert_bucket_access_control(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _insert_bucket_access_control(
         &self,
         req: &InsertBucketAccessControlRequest,
         cancel: Option<CancellationToken>,
@@ -892,27 +600,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn patch_bucket_access_control(
-        &self,
-        req: &PatchBucketAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<BucketAccessControl, Error> {
-        self._patch_bucket_access_control(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn patch_bucket_access_control(
-        &self,
-        req: &PatchBucketAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<BucketAccessControl, Error> {
-        self._patch_bucket_access_control(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _patch_bucket_access_control(
         &self,
         req: &PatchBucketAccessControlRequest,
         cancel: Option<CancellationToken>,
@@ -939,27 +628,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn delete_bucket_access_control(
-        &self,
-        req: &DeleteBucketAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<(), Error> {
-        self._delete_bucket_access_control(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn delete_bucket_access_control(
-        &self,
-        req: &DeleteBucketAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<(), Error> {
-        self._delete_bucket_access_control(req, cancel).await
-    }
-
-    #[inline(always)]
-    pub async fn _delete_bucket_access_control(
         &self,
         req: &DeleteBucketAccessControlRequest,
         cancel: Option<CancellationToken>,
@@ -988,27 +658,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list_object_access_controls(
-        &self,
-        req: &ListObjectAccessControlsRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ListBucketAccessControlsResponse, Error> {
-        self._list_object_access_controls(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn list_object_access_controls(
-        &self,
-        req: &ListObjectAccessControlsRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ListBucketAccessControlsResponse, Error> {
-        self._list_object_access_controls(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _list_object_access_controls(
         &self,
         req: &ListObjectAccessControlsRequest,
         cancel: Option<CancellationToken>,
@@ -1038,27 +689,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_object_access_control(
-        &self,
-        req: &GetObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ObjectAccessControl, Error> {
-        self._get_object_access_control(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn get_object_access_control(
-        &self,
-        req: &GetObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ObjectAccessControl, Error> {
-        self._get_object_access_control(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _get_object_access_control(
         &self,
         req: &GetObjectAccessControlRequest,
         cancel: Option<CancellationToken>,
@@ -1092,27 +724,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn insert_object_access_control(
-        &self,
-        req: &InsertObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ObjectAccessControl, Error> {
-        self._insert_object_access_control(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn insert_object_access_control(
-        &self,
-        req: &InsertObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ObjectAccessControl, Error> {
-        self._insert_object_access_control(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _insert_object_access_control(
         &self,
         req: &InsertObjectAccessControlRequest,
         cancel: Option<CancellationToken>,
@@ -1147,27 +760,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn patch_object_access_control(
-        &self,
-        req: &PatchObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ObjectAccessControl, Error> {
-        self._patch_object_access_control(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn patch_object_access_control(
-        &self,
-        req: &PatchObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ObjectAccessControl, Error> {
-        self._patch_object_access_control(req, cancel).await
-    }
-
-    #[inline(always)]
-    pub async fn _patch_object_access_control(
         &self,
         req: &PatchObjectAccessControlRequest,
         cancel: Option<CancellationToken>,
@@ -1198,27 +792,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn delete_object_access_control(
-        &self,
-        req: &DeleteObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<(), Error> {
-        self._delete_object_access_control(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn delete_object_access_control(
-        &self,
-        req: &DeleteObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<(), Error> {
-        self._delete_object_access_control(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _delete_object_access_control(
         &self,
         req: &DeleteObjectAccessControlRequest,
         cancel: Option<CancellationToken>,
@@ -1246,27 +821,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list_notifications(
-        &self,
-        req: &ListNotificationsRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ListNotificationsResponse, Error> {
-        self._list_notifications(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn list_notifications(
-        &self,
-        req: &ListNotificationsRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ListNotificationsResponse, Error> {
-        self._list_notifications(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _list_notifications(
         &self,
         req: &ListNotificationsRequest,
         cancel: Option<CancellationToken>,
@@ -1294,27 +850,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_notification(
-        &self,
-        req: &GetNotificationRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Notification, Error> {
-        self._get_notification(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn get_notification(
-        &self,
-        req: &GetNotificationRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Notification, Error> {
-        self._get_notification(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _get_notification(
         &self,
         req: &GetNotificationRequest,
         cancel: Option<CancellationToken>,
@@ -1347,27 +884,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn insert_notification(
-        &self,
-        req: &InsertNotificationRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Notification, Error> {
-        self._insert_notification(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn insert_notification(
-        &self,
-        req: &InsertNotificationRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Notification, Error> {
-        self._insert_notification(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _insert_notification(
         &self,
         req: &InsertNotificationRequest,
         cancel: Option<CancellationToken>,
@@ -1395,27 +913,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn delete_notification(
-        &self,
-        req: &DeleteNotificationRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<(), Error> {
-        self._delete_notification(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn delete_notification(
-        &self,
-        req: &DeleteNotificationRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<(), Error> {
-        self._delete_notification(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _delete_notification(
         &self,
         req: &DeleteNotificationRequest,
         cancel: Option<CancellationToken>,
@@ -1443,27 +942,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list_hmac_keys(
-        &self,
-        req: &ListHmacKeysRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ListHmacKeysResponse, Error> {
-        self._list_hmac_keys(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn list_hmac_keys(
-        &self,
-        req: &ListHmacKeysRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ListHmacKeysResponse, Error> {
-        self._list_hmac_keys(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _list_hmac_keys(
         &self,
         req: &ListHmacKeysRequest,
         cancel: Option<CancellationToken>,
@@ -1491,27 +971,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_hmac_key(
-        &self,
-        req: &GetHmacKeyRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<HmacKeyMetadata, Error> {
-        self._get_hmac_key(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn get_hmac_key(
-        &self,
-        req: &GetHmacKeyRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<HmacKeyMetadata, Error> {
-        self._get_hmac_key(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _get_hmac_key(
         &self,
         req: &GetHmacKeyRequest,
         cancel: Option<CancellationToken>,
@@ -1539,27 +1000,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn create_hmac_key(
-        &self,
-        req: &CreateHmacKeyRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<CreateHmacKeyResponse, Error> {
-        self._create_hmac_key(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn create_hmac_key(
-        &self,
-        req: &CreateHmacKeyRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<CreateHmacKeyResponse, Error> {
-        self._create_hmac_key(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _create_hmac_key(
         &self,
         req: &CreateHmacKeyRequest,
         cancel: Option<CancellationToken>,
@@ -1592,27 +1034,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn update_hmac_key(
-        &self,
-        req: &UpdateHmacKeyRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<HmacKeyMetadata, Error> {
-        self._update_hmac_key(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn update_hmac_key(
-        &self,
-        req: &UpdateHmacKeyRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<HmacKeyMetadata, Error> {
-        self._update_hmac_key(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _update_hmac_key(
         &self,
         req: &UpdateHmacKeyRequest,
         cancel: Option<CancellationToken>,
@@ -1640,27 +1063,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn delete_hmac_key(
-        &self,
-        req: &DeleteHmacKeyRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<(), Error> {
-        self._delete_hmac_key(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn delete_hmac_key(
-        &self,
-        req: &DeleteHmacKeyRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<(), Error> {
-        self._delete_hmac_key(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _delete_hmac_key(
         &self,
         req: &DeleteHmacKeyRequest,
         cancel: Option<CancellationToken>,
@@ -1688,27 +1092,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list_objects(
-        &self,
-        req: &ListObjectsRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ListObjectsResponse, Error> {
-        self._list_objects(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn list_objects(
-        &self,
-        req: &ListObjectsRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ListObjectsResponse, Error> {
-        self._list_objects(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _list_objects(
         &self,
         req: &ListObjectsRequest,
         cancel: Option<CancellationToken>,
@@ -1737,19 +1122,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_object(&self, req: &GetObjectRequest, cancel: Option<CancellationToken>) -> Result<Object, Error> {
-        self._get_object(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn get_object(&self, req: &GetObjectRequest, cancel: Option<CancellationToken>) -> Result<Object, Error> {
-        self._get_object(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _get_object(&self, req: &GetObjectRequest, cancel: Option<CancellationToken>) -> Result<Object, Error> {
         let action = async {
             let builder = objects::get::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send(builder).await
@@ -1776,29 +1150,8 @@ impl StorageClient {
     ///     }, &Range::default(), None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn download_object(
-        &self,
-        req: &GetObjectRequest,
-        range: &Range,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Vec<u8>, Error> {
-        self._download_object(req, range, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn download_object(
-        &self,
-        req: &GetObjectRequest,
-        range: &Range,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Vec<u8>, Error> {
-        self._download_object(req, range, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _download_object(
         &self,
         req: &GetObjectRequest,
         range: &Range,
@@ -1840,29 +1193,8 @@ impl StorageClient {
     ///     //  }
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn download_streamed_object(
-        &self,
-        req: &GetObjectRequest,
-        range: &Range,
-        cancel: Option<CancellationToken>,
-    ) -> Result<impl Stream<Item = reqwest::Result<bytes::Bytes>>, Error> {
-        self._download_streamed_object(req, range, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn download_streamed_object(
-        &self,
-        req: &GetObjectRequest,
-        range: &Range,
-        cancel: Option<CancellationToken>,
-    ) -> Result<impl Stream<Item = reqwest::Result<bytes::Bytes>>, Error> {
-        self._download_streamed_object(req, range, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _download_streamed_object(
         &self,
         req: &GetObjectRequest,
         range: &Range,
@@ -1913,31 +1245,8 @@ impl StorageClient {
     ///     }, "hello world".as_bytes(), &upload_type, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn upload_object<T: Into<Body>>(
-        &self,
-        req: &UploadObjectRequest,
-        data: T,
-        upload_type: &UploadType,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Object, Error> {
-        self._upload_object(req, data, upload_type, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn upload_object<T: Into<Body>>(
-        &self,
-        req: &UploadObjectRequest,
-        data: T,
-        upload_type: &UploadType,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Object, Error> {
-        self._upload_object(req, data, upload_type, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _upload_object<T: Into<Body>>(
         &self,
         req: &UploadObjectRequest,
         data: T,
@@ -2026,29 +1335,8 @@ impl StorageClient {
     ///     assert_eq!(status2, UploadStatus::Ok);
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn prepare_resumable_upload(
-        &self,
-        req: &UploadObjectRequest,
-        upload_type: &UploadType,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ResumableUploadClient, Error> {
-        self._prepare_resumable_upload(req, upload_type, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn prepare_resumable_upload(
-        &self,
-        req: &UploadObjectRequest,
-        upload_type: &UploadType,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ResumableUploadClient, Error> {
-        self._prepare_resumable_upload(req, upload_type, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _prepare_resumable_upload(
         &self,
         req: &UploadObjectRequest,
         upload_type: &UploadType,
@@ -2107,41 +1395,8 @@ impl StorageClient {
     ///     }, stream, &upload_type, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn upload_streamed_object<S>(
-        &self,
-        req: &UploadObjectRequest,
-        data: S,
-        upload_type: &UploadType,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Object, Error>
-    where
-        S: TryStream + Send + Sync + 'static,
-        S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
-        bytes::Bytes: From<S::Ok>,
-    {
-        self._upload_streamed_object(req, data, upload_type, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn upload_streamed_object<S>(
-        &self,
-        req: &UploadObjectRequest,
-        data: S,
-        upload_type: &UploadType,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Object, Error>
-    where
-        S: TryStream + Send + Sync + 'static,
-        S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
-        bytes::Bytes: From<S::Ok>,
-    {
-        self._upload_streamed_object(req, data, upload_type, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _upload_streamed_object<S>(
         &self,
         req: &UploadObjectRequest,
         data: S,
@@ -2154,7 +1409,7 @@ impl StorageClient {
         bytes::Bytes: From<S::Ok>,
     {
         //TODO resumable upload
-        self._upload_object(req, Body::wrap_stream(data), upload_type, cancel)
+        self.upload_object(req, Body::wrap_stream(data), upload_type, cancel)
             .await
     }
 
@@ -2175,27 +1430,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn patch_object(
-        &self,
-        req: &PatchObjectRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Object, Error> {
-        self._patch_object(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn patch_object(
-        &self,
-        req: &PatchObjectRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Object, Error> {
-        self._patch_object(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _patch_object(
         &self,
         req: &PatchObjectRequest,
         cancel: Option<CancellationToken>,
@@ -2224,27 +1460,12 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn delete_object(
         &self,
         req: &DeleteObjectRequest,
         cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
-        self._delete_object(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn delete_object(
-        &self,
-        req: &DeleteObjectRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<(), Error> {
-        self._delete_object(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _delete_object(&self, req: &DeleteObjectRequest, cancel: Option<CancellationToken>) -> Result<(), Error> {
         let action = async {
             let builder = objects::delete::build(self.v1_endpoint.as_str(), &self.http, req);
             self.send_get_empty(builder).await
@@ -2279,27 +1500,8 @@ impl StorageClient {
     ///     }
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn rewrite_object(
-        &self,
-        req: &RewriteObjectRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<RewriteObjectResponse, Error> {
-        self._rewrite_object(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn rewrite_object(
-        &self,
-        req: &RewriteObjectRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<RewriteObjectResponse, Error> {
-        self._rewrite_object(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _rewrite_object(
         &self,
         req: &RewriteObjectRequest,
         cancel: Option<CancellationToken>,
@@ -2337,27 +1539,8 @@ impl StorageClient {
     ///     }, None).await;
     /// }
     /// ```
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn compose_object(
-        &self,
-        req: &ComposeObjectRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Object, Error> {
-        self._compose_object(req, cancel).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn compose_object(
-        &self,
-        req: &ComposeObjectRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Object, Error> {
-        self._compose_object(req, cancel).await
-    }
-
-    #[inline(always)]
-    async fn _compose_object(
         &self,
         req: &ComposeObjectRequest,
         cancel: Option<CancellationToken>,

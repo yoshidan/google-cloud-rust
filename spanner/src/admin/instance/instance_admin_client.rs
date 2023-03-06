@@ -28,29 +28,8 @@ impl InstanceAdminClient {
     }
 
     /// list_instance_configs lists the supported instance configurations for a given project.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list_instance_configs(
-        &self,
-        req: ListInstanceConfigsRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Vec<InstanceConfig>, Status> {
-        self._list_instance_configs(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn list_instance_configs(
-        &self,
-        req: ListInstanceConfigsRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Vec<InstanceConfig>, Status> {
-        self._list_instance_configs(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _list_instance_configs(
         &self,
         mut req: ListInstanceConfigsRequest,
         cancel: Option<CancellationToken>,
@@ -79,29 +58,8 @@ impl InstanceAdminClient {
     }
 
     /// get_instance_config gets information about a particular instance configuration.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_instance_config(
-        &self,
-        req: GetInstanceConfigRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<InstanceConfig, Status> {
-        self._get_instance_config(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn get_instance_config(
-        &self,
-        req: GetInstanceConfigRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<InstanceConfig, Status> {
-        self._get_instance_config(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _get_instance_config(
         &self,
         req: GetInstanceConfigRequest,
         cancel: Option<CancellationToken>,
@@ -121,29 +79,8 @@ impl InstanceAdminClient {
     }
 
     /// list_instances lists all instances in the given project.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list_instances(
-        &self,
-        req: ListInstancesRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Vec<Instance>, Status> {
-        self._list_instances(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn list_instances(
-        &self,
-        req: ListInstancesRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Vec<Instance>, Status> {
-        self._list_instances(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _list_instances(
         &self,
         mut req: ListInstancesRequest,
         cancel: Option<CancellationToken>,
@@ -168,29 +105,8 @@ impl InstanceAdminClient {
     }
 
     /// gets information about a particular instance.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_instance(
-        &self,
-        req: GetInstanceRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Instance>, Status> {
-        self._get_instance(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn get_instance(
-        &self,
-        req: GetInstanceRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Instance>, Status> {
-        self._get_instance(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _get_instance(
         &self,
         req: GetInstanceRequest,
         cancel: Option<CancellationToken>,
@@ -244,29 +160,8 @@ impl InstanceAdminClient {
     /// CreateInstanceMetadata.
     /// The response field type is
     /// Instance, if successful.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn create_instance(
-        &self,
-        req: CreateInstanceRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Operation<Instance>, Status> {
-        self._create_instance(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn create_instance(
-        &self,
-        req: CreateInstanceRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Operation<Instance>, Status> {
-        self._create_instance(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _create_instance(
         &self,
         req: CreateInstanceRequest,
         cancel: Option<CancellationToken>,
@@ -327,29 +222,8 @@ impl InstanceAdminClient {
     ///
     /// Authorization requires spanner.instances.update permission on
     /// resource [name][google.spanner.admin.instance.v1.Instance.name (at http://google.spanner.admin.instance.v1.Instance.name)].
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn update_instance(
-        &self,
-        req: UpdateInstanceRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Operation<Instance>, Status> {
-        self._update_instance(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn update_instance(
-        &self,
-        req: UpdateInstanceRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Operation<Instance>, Status> {
-        self._update_instance(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _update_instance(
         &self,
         req: UpdateInstanceRequest,
         cancel: Option<CancellationToken>,
@@ -377,29 +251,8 @@ impl InstanceAdminClient {
     ///   The instance and all of its databases immediately and
     ///   irrevocably disappear from the API. All data in the databases
     ///   is permanently deleted.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn delete_instance(
-        &self,
-        req: DeleteInstanceRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<()>, Status> {
-        self._delete_instance(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn delete_instance(
-        &self,
-        req: DeleteInstanceRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<()>, Status> {
-        self._delete_instance(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _delete_instance(
         &self,
         req: DeleteInstanceRequest,
         cancel: Option<CancellationToken>,
@@ -418,29 +271,8 @@ impl InstanceAdminClient {
     /// existing policy.
     ///
     /// Authorization requires spanner.instances.setIamPolicy on resource.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn set_iam_policy(
-        &self,
-        req: SetIamPolicyRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Policy>, Status> {
-        self._set_iam_policy(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn set_iam_policy(
-        &self,
-        req: SetIamPolicyRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Policy>, Status> {
-        self._set_iam_policy(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _set_iam_policy(
         &self,
         req: SetIamPolicyRequest,
         cancel: Option<CancellationToken>,
@@ -459,29 +291,8 @@ impl InstanceAdminClient {
     /// existing policy.
     ///
     /// Authorization requires spanner.instances.setIamPolicy on resource.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_iam_policy(
-        &self,
-        req: GetIamPolicyRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Policy>, Status> {
-        self._get_iam_policy(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn get_iam_policy(
-        &self,
-        req: GetIamPolicyRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Policy>, Status> {
-        self._get_iam_policy(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _get_iam_policy(
         &self,
         req: GetIamPolicyRequest,
         cancel: Option<CancellationToken>,
@@ -502,29 +313,8 @@ impl InstanceAdminClient {
     /// result in a NOT_FOUND error if the user has spanner.instances.list
     /// permission on the containing Google Cloud Project. Otherwise returns an
     /// empty set of permissions.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn test_iam_permissions(
-        &self,
-        req: TestIamPermissionsRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<TestIamPermissionsResponse>, Status> {
-        self._test_iam_permissions(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn test_iam_permissions(
-        &self,
-        req: TestIamPermissionsRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<TestIamPermissionsResponse>, Status> {
-        self._test_iam_permissions(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _test_iam_permissions(
         &self,
         req: TestIamPermissionsRequest,
         cancel: Option<CancellationToken>,
