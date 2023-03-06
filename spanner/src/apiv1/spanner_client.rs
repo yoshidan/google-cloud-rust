@@ -70,29 +70,8 @@ impl Client {
     ///
     /// Idle sessions can be kept alive by sending a trivial SQL query
     /// periodically, e.g., "SELECT 1".
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn create_session(
-        &mut self,
-        req: CreateSessionRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Session>, Status> {
-        self._create_session(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn create_session(
-        &mut self,
-        req: CreateSessionRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Session>, Status> {
-        self._create_session(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _create_session(
         &mut self,
         req: CreateSessionRequest,
         cancel: Option<CancellationToken>,
@@ -119,29 +98,8 @@ impl Client {
     ///
     /// This API can be used to initialize a session cache on the clients.
     /// See https:///goo.gl/TgSFN2 (at https:///goo.gl/TgSFN2) for best practices on session cache management.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn batch_create_sessions(
-        &mut self,
-        req: BatchCreateSessionsRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<BatchCreateSessionsResponse>, Status> {
-        self._batch_create_sessions(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn batch_create_sessions(
-        &mut self,
-        req: BatchCreateSessionsRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<BatchCreateSessionsResponse>, Status> {
-        self._batch_create_sessions(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _batch_create_sessions(
         &mut self,
         req: BatchCreateSessionsRequest,
         cancel: Option<CancellationToken>,
@@ -166,29 +124,8 @@ impl Client {
 
     /// get_session gets a session. Returns NOT_FOUND if the session does not exist.
     /// This is mainly useful for determining whether a session is still alive.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_session(
-        &mut self,
-        req: GetSessionRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Session>, Status> {
-        self._get_session(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn get_session(
-        &mut self,
-        req: GetSessionRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Session>, Status> {
-        self._get_session(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _get_session(
         &mut self,
         req: GetSessionRequest,
         cancel: Option<CancellationToken>,
@@ -212,29 +149,8 @@ impl Client {
     }
 
     /// list_sessions lists all sessions in a given database.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list_sessions(
-        &mut self,
-        req: ListSessionsRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<ListSessionsResponse>, Status> {
-        self._list_sessions(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn list_sessions(
-        &mut self,
-        req: ListSessionsRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<ListSessionsResponse>, Status> {
-        self._list_sessions(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _list_sessions(
         &mut self,
         req: ListSessionsRequest,
         cancel: Option<CancellationToken>,
@@ -260,29 +176,8 @@ impl Client {
     /// delete_session ends a session, releasing server resources associated with it. This will
     /// asynchronously trigger cancellation of any operations that are running with
     /// this session.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn delete_session(
-        &mut self,
-        req: DeleteSessionRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<()>, Status> {
-        self._delete_session(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn delete_session(
-        &mut self,
-        req: DeleteSessionRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<()>, Status> {
-        self._delete_session(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _delete_session(
         &mut self,
         req: DeleteSessionRequest,
         cancel: Option<CancellationToken>,
@@ -316,29 +211,8 @@ impl Client {
     ///
     /// Larger result sets can be fetched in streaming fashion by calling
     /// ExecuteStreamingSql instead.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn execute_sql(
-        &mut self,
-        req: ExecuteSqlRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<ResultSet>, Status> {
-        self._execute_sql(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn execute_sql(
-        &mut self,
-        req: ExecuteSqlRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<ResultSet>, Status> {
-        self._execute_sql(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _execute_sql(
         &mut self,
         req: ExecuteSqlRequest,
         cancel: Option<CancellationToken>,
@@ -366,29 +240,8 @@ impl Client {
     /// is no limit on the size of the returned result set. However, no
     /// individual row in the result set can exceed 100 MiB, and no
     /// column value can exceed 10 MiB.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn execute_streaming_sql(
-        &mut self,
-        req: ExecuteSqlRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
-        self._execute_streaming_sql(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn execute_streaming_sql(
-        &mut self,
-        req: ExecuteSqlRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
-        self._execute_streaming_sql(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _execute_streaming_sql(
         &mut self,
         req: ExecuteSqlRequest,
         cancel: Option<CancellationToken>,
@@ -422,29 +275,8 @@ impl Client {
     ///
     /// Execution stops after the first failed statement; the remaining statements
     /// are not executed.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn execute_batch_dml(
-        &mut self,
-        req: ExecuteBatchDmlRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<ExecuteBatchDmlResponse>, Status> {
-        self._execute_batch_dml(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn execute_batch_dml(
-        &mut self,
-        req: ExecuteBatchDmlRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<ExecuteBatchDmlResponse>, Status> {
-        self._execute_batch_dml(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _execute_batch_dml(
         &mut self,
         req: ExecuteBatchDmlRequest,
         cancel: Option<CancellationToken>,
@@ -491,29 +323,8 @@ impl Client {
     ///
     /// Larger result sets can be yielded in streaming fashion by calling
     /// StreamingRead instead.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn read(
-        &mut self,
-        req: ReadRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<ResultSet>, Status> {
-        self._read(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn read(
-        &mut self,
-        req: ReadRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<ResultSet>, Status> {
-        self._read(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _read(
         &mut self,
         req: ReadRequest,
         cancel: Option<CancellationToken>,
@@ -538,29 +349,8 @@ impl Client {
     /// size of the returned result set. However, no individual row in
     /// the result set can exceed 100 MiB, and no column value can exceed
     /// 10 MiB.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn streaming_read(
-        &mut self,
-        req: ReadRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
-        self._streaming_read(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn streaming_read(
-        &mut self,
-        req: ReadRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
-        self._streaming_read(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _streaming_read(
         &mut self,
         req: ReadRequest,
         cancel: Option<CancellationToken>,
@@ -587,29 +377,8 @@ impl Client {
     /// Read, ExecuteSql and
     /// Commit can begin a new transaction as a
     /// side-effect.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn begin_transaction(
-        &mut self,
-        req: BeginTransactionRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Transaction>, Status> {
-        self._begin_transaction(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn begin_transaction(
-        &mut self,
-        req: BeginTransactionRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Transaction>, Status> {
-        self._begin_transaction(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _begin_transaction(
         &mut self,
         req: BeginTransactionRequest,
         cancel: Option<CancellationToken>,
@@ -646,29 +415,8 @@ impl Client {
     /// At that point, Cloud Spanner has lost track of the transaction outcome and
     /// we recommend that you perform another read from the database to see the
     /// state of things as they are now.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn commit(
-        &mut self,
-        req: CommitRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<CommitResponse>, Status> {
-        self._commit(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn commit(
-        &mut self,
-        req: CommitRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<CommitResponse>, Status> {
-        self._commit(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _commit(
         &mut self,
         req: CommitRequest,
         cancel: Option<CancellationToken>,
@@ -696,29 +444,8 @@ impl Client {
     /// Rollback returns OK if it successfully aborts the transaction, the
     /// transaction was already aborted, or the transaction is not
     /// found. Rollback never returns ABORTED.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn rollback(
-        &mut self,
-        req: RollbackRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<()>, Status> {
-        self._rollback(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn rollback(
-        &mut self,
-        req: RollbackRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<()>, Status> {
-        self._rollback(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _rollback(
         &mut self,
         req: RollbackRequest,
         cancel: Option<CancellationToken>,
@@ -749,29 +476,8 @@ impl Client {
     /// is deleted, is idle for too long, begins a new transaction, or becomes too
     /// old.  When any of these happen, it is not possible to resume the query, and
     /// the whole operation must be restarted from the beginning.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn partition_query(
-        &mut self,
-        req: PartitionQueryRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<PartitionResponse>, Status> {
-        self._partition_query(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn partition_query(
-        &mut self,
-        req: PartitionQueryRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<PartitionResponse>, Status> {
-        self._partition_query(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _partition_query(
         &mut self,
         req: PartitionQueryRequest,
         cancel: Option<CancellationToken>,
@@ -807,29 +513,8 @@ impl Client {
     /// is deleted, is idle for too long, begins a new transaction, or becomes too
     /// old.  When any of these happen, it is not possible to resume the read, and
     /// the whole operation must be restarted from the beginning.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn partition_read(
-        &mut self,
-        req: PartitionReadRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<PartitionResponse>, Status> {
-        self._partition_read(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn partition_read(
-        &mut self,
-        req: PartitionReadRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<PartitionResponse>, Status> {
-        self._partition_read(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _partition_read(
         &mut self,
         req: PartitionReadRequest,
         cancel: Option<CancellationToken>,

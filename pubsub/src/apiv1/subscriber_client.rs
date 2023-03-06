@@ -58,29 +58,8 @@ impl SubscriberClient {
     /// (https://cloud.google.com/pubsub/docs/admin#resource_names (at https://cloud.google.com/pubsub/docs/admin#resource_names)). The generated
     /// name is populated in the returned Subscription object. Note that for REST
     /// API requests, you must specify a name in the request.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn create_subscription(
-        &self,
-        req: Subscription,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Subscription>, Status> {
-        self._create_subscription(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn create_subscription(
-        &self,
-        req: Subscription,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Subscription>, Status> {
-        self._create_subscription(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _create_subscription(
         &self,
         req: Subscription,
         cancel: Option<CancellationToken>,
@@ -97,29 +76,8 @@ impl SubscriberClient {
 
     /// updateSubscription updates an existing subscription. Note that certain properties of a
     /// subscription, such as its topic, are not modifiable.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn update_subscription(
-        &self,
-        req: UpdateSubscriptionRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Subscription>, Status> {
-        self._update_subscription(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn update_subscription(
-        &self,
-        req: UpdateSubscriptionRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Subscription>, Status> {
-        self._update_subscription(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _update_subscription(
         &self,
         req: UpdateSubscriptionRequest,
         cancel: Option<CancellationToken>,
@@ -138,29 +96,8 @@ impl SubscriberClient {
     }
 
     /// get_subscription gets the configuration details of a subscription.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_subscription(
-        &self,
-        req: GetSubscriptionRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Subscription>, Status> {
-        self._get_subscription(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn get_subscription(
-        &self,
-        req: GetSubscriptionRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Subscription>, Status> {
-        self._get_subscription(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _get_subscription(
         &self,
         req: GetSubscriptionRequest,
         cancel: Option<CancellationToken>,
@@ -176,29 +113,8 @@ impl SubscriberClient {
     }
 
     /// list_subscriptions lists matching subscriptions.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list_subscriptions(
-        &self,
-        req: ListSubscriptionsRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Vec<Subscription>, Status> {
-        self._list_subscriptions(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn list_subscriptions(
-        &self,
-        req: ListSubscriptionsRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Vec<Subscription>, Status> {
-        self._list_subscriptions(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _list_subscriptions(
         &self,
         mut req: ListSubscriptionsRequest,
         cancel: Option<CancellationToken>,
@@ -227,29 +143,8 @@ impl SubscriberClient {
     /// NOT_FOUND. After a subscription is deleted, a new one may be created with
     /// the same name, but the new one has no association with the old
     /// subscription or its topic unless the same topic is specified.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn delete_subscription(
-        &self,
-        req: DeleteSubscriptionRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<()>, Status> {
-        self._delete_subscription(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn delete_subscription(
-        &self,
-        req: DeleteSubscriptionRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<()>, Status> {
-        self._delete_subscription(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _delete_subscription(
         &self,
         req: DeleteSubscriptionRequest,
         cancel: Option<CancellationToken>,
@@ -269,29 +164,8 @@ impl SubscriberClient {
     /// subscriber, or to make the message available for redelivery if the
     /// processing was interrupted. Note that this does not modify the
     /// subscription-level ackDeadlineSeconds used for subsequent messages.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn modify_ack_deadline(
-        &self,
-        req: ModifyAckDeadlineRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<()>, Status> {
-        self._modify_ack_deadline(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn modify_ack_deadline(
-        &self,
-        req: ModifyAckDeadlineRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<()>, Status> {
-        self._modify_ack_deadline(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _modify_ack_deadline(
         &self,
         req: ModifyAckDeadlineRequest,
         cancel: Option<CancellationToken>,
@@ -313,29 +187,8 @@ impl SubscriberClient {
     /// Acknowledging a message whose ack deadline has expired may succeed,
     /// but such a message may be redelivered later. Acknowledging a message more
     /// than once will not result in an error.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn acknowledge(
-        &self,
-        req: AcknowledgeRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<()>, Status> {
-        self._acknowledge(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn acknowledge(
-        &self,
-        req: AcknowledgeRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<()>, Status> {
-        self._acknowledge(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _acknowledge(
         &self,
         req: AcknowledgeRequest,
         cancel: Option<CancellationToken>,
@@ -353,29 +206,8 @@ impl SubscriberClient {
     /// pull pulls messages from the server. The server may return UNAVAILABLE if
     /// there are too many concurrent pull requests pending for the given
     /// subscription.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn pull(
-        &self,
-        req: PullRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<PullResponse>, Status> {
-        self._pull(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn pull(
-        &self,
-        req: PullRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<PullResponse>, Status> {
-        self._pull(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _pull(
         &self,
         req: PullRequest,
         cancel: Option<CancellationToken>,
@@ -397,31 +229,8 @@ impl SubscriberClient {
     /// reassign server-side resources, in which case, the client should
     /// re-establish the stream. Flow control can be achieved by configuring the
     /// underlying RPC channel.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn streaming_pull(
-        &self,
-        req: StreamingPullRequest,
-        cancel: Option<CancellationToken>,
-        ping_receiver: async_channel::Receiver<bool>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Streaming<StreamingPullResponse>>, Status> {
-        self._streaming_pull(req, cancel, ping_receiver, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn streaming_pull(
-        &self,
-        req: StreamingPullRequest,
-        cancel: Option<CancellationToken>,
-        ping_receiver: async_channel::Receiver<bool>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Streaming<StreamingPullResponse>>, Status> {
-        self._streaming_pull(req, cancel, ping_receiver, retry).await
-    }
-
-    #[inline(always)]
-    async fn _streaming_pull(
         &self,
         req: StreamingPullRequest,
         cancel: Option<CancellationToken>,
@@ -458,29 +267,8 @@ impl SubscriberClient {
     /// an empty PushConfig) or vice versa, or change the endpoint URL and other
     /// attributes of a push subscription. Messages will accumulate for delivery
     /// continuously through the call regardless of changes to the PushConfig.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn modify_push_config(
-        &self,
-        req: ModifyPushConfigRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<()>, Status> {
-        self._modify_push_config(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn modify_push_config(
-        &self,
-        req: ModifyPushConfigRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<()>, Status> {
-        self._modify_push_config(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _modify_push_config(
         &self,
         req: ModifyPushConfigRequest,
         cancel: Option<CancellationToken>,
@@ -500,29 +288,8 @@ impl SubscriberClient {
     /// operations, which allow you to manage message acknowledgments in bulk. That
     /// is, you can set the acknowledgment state of messages in an existing
     /// subscription to the state captured by a snapshot
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_snapshot(
-        &self,
-        req: GetSnapshotRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Snapshot>, Status> {
-        self._get_snapshot(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn get_snapshot(
-        &self,
-        req: GetSnapshotRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Snapshot>, Status> {
-        self._get_snapshot(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _get_snapshot(
         &self,
         req: GetSnapshotRequest,
         cancel: Option<CancellationToken>,
@@ -541,29 +308,8 @@ impl SubscriberClient {
     /// allow you to manage message acknowledgments in bulk. That is, you can set
     /// the acknowledgment state of messages in an existing subscription to the
     /// state captured by a snapshot.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list_snapshots(
-        &self,
-        req: ListSnapshotsRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Vec<Snapshot>, Status> {
-        self._list_snapshots(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn list_snapshots(
-        &self,
-        req: ListSnapshotsRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Vec<Snapshot>, Status> {
-        self._list_snapshots(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _list_snapshots(
         &self,
         mut req: ListSnapshotsRequest,
         cancel: Option<CancellationToken>,
@@ -603,29 +349,8 @@ impl SubscriberClient {
     /// (https://cloud.google.com/pubsub/docs/admin#resource_names (at https://cloud.google.com/pubsub/docs/admin#resource_names)). The
     /// generated name is populated in the returned Snapshot object. Note that for
     /// REST API requests, you must specify a name in the request.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn create_snapshot(
-        &self,
-        req: CreateSnapshotRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Snapshot>, Status> {
-        self._create_snapshot(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn create_snapshot(
-        &self,
-        req: CreateSnapshotRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Snapshot>, Status> {
-        self._create_snapshot(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _create_snapshot(
         &self,
         req: CreateSnapshotRequest,
         cancel: Option<CancellationToken>,
@@ -646,29 +371,8 @@ impl SubscriberClient {
     /// you to manage message acknowledgments in bulk. That is, you can set the
     /// acknowledgment state of messages in an existing subscription to the state
     /// captured by a snapshot.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn update_snapshot(
-        &self,
-        req: UpdateSnapshotRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Snapshot>, Status> {
-        self._update_snapshot(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn update_snapshot(
-        &self,
-        req: UpdateSnapshotRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Snapshot>, Status> {
-        self._update_snapshot(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _update_snapshot(
         &self,
         req: UpdateSnapshotRequest,
         cancel: Option<CancellationToken>,
@@ -695,29 +399,8 @@ impl SubscriberClient {
     /// are immediately dropped. After a snapshot is deleted, a new one may be
     /// created with the same name, but the new one has no association with the old
     /// snapshot or its subscription, unless the same subscription is specified.
-    #[cfg(not(feature = "trace"))]
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn delete_snapshot(
-        &self,
-        req: DeleteSnapshotRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<()>, Status> {
-        self._delete_snapshot(req, cancel, retry).await
-    }
-
-    #[cfg(feature = "trace")]
-    #[tracing::instrument(skip_all)]
-    pub async fn delete_snapshot(
-        &self,
-        req: DeleteSnapshotRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<()>, Status> {
-        self._delete_snapshot(req, cancel, retry).await
-    }
-
-    #[inline(always)]
-    async fn _delete_snapshot(
         &self,
         req: DeleteSnapshotRequest,
         cancel: Option<CancellationToken>,
