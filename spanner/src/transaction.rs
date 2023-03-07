@@ -3,7 +3,6 @@ use std::sync::atomic::AtomicI64;
 
 use prost_types::Struct;
 
-use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::spanner::v1::request_options::Priority;

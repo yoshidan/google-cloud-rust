@@ -4,7 +4,7 @@ use google_cloud_gax::conn::Channel;
 use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::{Code, Response, Status, Streaming};
 use google_cloud_gax::retry::{invoke_fn, RetrySetting};
-use google_cloud_googleapis::spanner::v1 as internal;
+
 use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
 use google_cloud_googleapis::spanner::v1::{
     BatchCreateSessionsRequest, BatchCreateSessionsResponse, BeginTransactionRequest, CommitRequest, CommitResponse,

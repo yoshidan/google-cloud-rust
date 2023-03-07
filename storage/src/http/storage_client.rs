@@ -1,4 +1,3 @@
-use std::future::Future;
 use std::sync::Arc;
 
 use futures_util::{Stream, TryStream};

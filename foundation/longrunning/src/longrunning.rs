@@ -81,7 +81,7 @@ impl<T: prost::Message + Default> Operation<T> {
         invoke_fn(
             Some(settings),
             |me| async {
-                let poll_result: Option<T> = match me.poll(None).await {
+                let poll_result: Option<T> = match me.poll().await {
                     Ok(s) => s,
                     Err(e) => return Err((e, me)),
                 };
@@ -118,6 +118,6 @@ impl<T: prost::Message + Default> Operation<T> {
         let req = DeleteOperationRequest {
             name: self.name().to_string(),
         };
-        self.client.delete_operation(req, cancel, None).await.map(|_x| ())
+        self.client.delete_operation(req, None).await.map(|_x| ())
     }
 }

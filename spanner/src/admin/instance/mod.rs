@@ -47,7 +47,7 @@ mod tests {
             }),
         };
 
-        let creation_result = match client.create_instance(request, None, None).await {
+        let creation_result = match client.create_instance(request, None).await {
             Ok(mut res) => res.wait(None).await,
             Err(err) => panic!("err: {err:?}"),
         };
@@ -74,7 +74,7 @@ mod tests {
             field_mask: None,
         };
 
-        match client.get_instance(request, None, None).await {
+        match client.get_instance(request, None).await {
             Ok(res) => {
                 let instance = res.into_inner();
                 assert_eq!(instance.name, name);
@@ -91,7 +91,7 @@ mod tests {
         let request = DeleteInstanceRequest {
             name: instance.name.to_string(),
         };
-        let _ = client.delete_instance(request, None, None).await.unwrap();
+        let _ = client.delete_instance(request, None).await.unwrap();
     }
 
     #[tokio::test]
@@ -105,7 +105,7 @@ mod tests {
             filter: "".to_string(),
         };
 
-        match client.list_instances(request, None, None).await {
+        match client.list_instances(request, None).await {
             Ok(res) => {
                 println!("size = {}", res.len());
                 assert!(!res.is_empty());
@@ -124,7 +124,7 @@ mod tests {
             page_token: "".to_string(),
         };
 
-        match client.list_instance_configs(request, None, None).await {
+        match client.list_instance_configs(request, None).await {
             Ok(res) => {
                 println!("size = {}", res.len());
                 assert!(!res.is_empty());
@@ -140,7 +140,7 @@ mod tests {
         let name = "projects/local-project/instanceConfigs/emulator-config".to_string();
         let request = GetInstanceConfigRequest { name: name.clone() };
 
-        match client.get_instance_config(request, None, None).await {
+        match client.get_instance_config(request, None).await {
             Ok(res) => {
                 let instance = res;
                 assert_eq!(instance.name, name);

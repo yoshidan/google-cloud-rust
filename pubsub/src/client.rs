@@ -1,6 +1,5 @@
 use std::env::var;
 
-use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
@@ -227,10 +226,10 @@ mod tests {
     use std::thread;
     use std::time::Duration;
 
+    use google_cloud_gax::cancel::CancellationToken;
     use serial_test::serial;
     use uuid::Uuid;
 
-    use google_cloud_gax::cancel::CancellationToken;
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 
     use crate::client::Client;
@@ -256,7 +255,6 @@ mod tests {
         let uuid = Uuid::new_v4().hyphenated().to_string();
         let topic_id = &format!("t{}", &uuid);
         let subscription_id = &format!("s{}", &uuid);
-        let ctx = Some(CancellationToken::new());
         let topic = client.create_topic(topic_id.as_str(), None, None).await.unwrap();
         let publisher = topic.new_publisher(None);
         let config = SubscriptionConfig {
@@ -306,7 +304,7 @@ mod tests {
         let awaiters = if bulk {
             let messages = (0..100)
                 .map(|key| PubsubMessage {
-                    data: format!("abc_{}", key).into(),
+                    data: format!("abc_{key}").into(),
                     ordering_key: ordering_key.to_string(),
                     ..Default::default()
                 })
@@ -316,7 +314,7 @@ mod tests {
             let mut awaiters = Vec::with_capacity(100);
             for key in 0..100 {
                 let message = PubsubMessage {
-                    data: format!("abc_{}", key).into(),
+                    data: format!("abc_{key}").into(),
                     ordering_key: ordering_key.into(),
                     ..Default::default()
                 };
@@ -324,9 +322,8 @@ mod tests {
             }
             awaiters
         };
-        let ctx = CancellationToken::new();
         for v in awaiters {
-            tracing::info!("sent message_id = {}", v.get(Some(ctx.clone())).await.unwrap());
+            tracing::info!("sent message_id = {}", v.get().await.unwrap());
         }
 
         tokio::time::sleep(std::time::Duration::from_secs(3)).await;
@@ -381,7 +378,6 @@ mod tests {
         let topic_id = &format!("t{}", &uuid);
         let subscription_id = &format!("s{}", &uuid);
         let snapshot_id = &format!("snap{}", &uuid);
-        let ctx = Some(CancellationToken::new());
         let topics = client.get_topics(None).await.unwrap();
         let subs = client.get_subscriptions(None).await.unwrap();
         let snapshots = client.get_snapshots(None).await.unwrap();

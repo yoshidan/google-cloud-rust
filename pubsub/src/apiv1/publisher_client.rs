@@ -60,7 +60,7 @@ impl PublisherClient {
             let request = create_request(format!("name={name}"), req.clone());
             client.update_topic(request).await
         };
-        invoke(cancel, action).await
+        invoke(retry, action).await
     }
 
     /// publish adds one or more messages to the topic. Returns NOT_FOUND if the topic does not exist.

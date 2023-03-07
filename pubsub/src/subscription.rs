@@ -558,7 +558,6 @@ mod tests {
 
     use google_cloud_gax::cancel::CancellationToken;
     use google_cloud_gax::conn::Environment;
-    use google_cloud_gax::grpc::Code;
     use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
 
     use crate::apiv1::conn_pool::ConnectionManager;

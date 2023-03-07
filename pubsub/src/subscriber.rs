@@ -98,6 +98,7 @@ impl Subscriber {
         // ping request
         let subscription_clone = subscription.to_string();
 
+        let cancel_receiver = ctx.clone();
         let pinger = tokio::spawn(async move {
             loop {
                 select! {
