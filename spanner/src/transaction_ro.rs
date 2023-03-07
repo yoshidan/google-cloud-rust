@@ -80,10 +80,7 @@ impl ReadOnlyTransaction {
             request_options: Transaction::create_request_options(options.priority),
         };
 
-        let result = session
-            .spanner_client
-            .begin_transaction(request, options.cancel, options.retry)
-            .await;
+        let result = session.spanner_client.begin_transaction(request, options.retry).await;
         match session.invalidate_if_needed(result).await {
             Ok(response) => {
                 let tx = response.into_inner();
@@ -182,7 +179,7 @@ impl BatchReadOnlyTransaction {
         let result = match self
             .as_mut_session()
             .spanner_client
-            .partition_read(request, ro.call_options.cancel, ro.call_options.retry)
+            .partition_read(request, ro.call_options.retry)
             .await
         {
             Ok(r) => Ok(r
@@ -237,7 +234,7 @@ impl BatchReadOnlyTransaction {
         let result = match self
             .as_mut_session()
             .spanner_client
-            .partition_query(request.clone(), qo.call_options.cancel.clone(), qo.call_options.retry.clone())
+            .partition_query(request.clone(), qo.call_options.retry.clone())
             .await
         {
             Ok(r) => Ok(r

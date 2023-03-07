@@ -205,14 +205,11 @@ mod test {
         let prefix = Some("rust-bucket-test".to_string());
         let (client, project) = create_client().await;
         let result = client
-            .list_buckets(
-                &ListBucketsRequest {
-                    project,
-                    prefix,
-                    ..Default::default()
-                },
-                None,
-            )
+            .list_buckets(&ListBucketsRequest {
+                project,
+                prefix,
+                ..Default::default()
+            })
             .await
             .unwrap();
         assert_eq!(result.items.len(), 1);
@@ -276,15 +273,12 @@ mod test {
             },
             bucket: config,
         };
-        let result = client.insert_bucket(&req, None).await.unwrap();
+        let result = client.insert_bucket(&req).await.unwrap();
         client
-            .delete_bucket(
-                &DeleteBucketRequest {
-                    bucket: result.name.to_string(),
-                    ..Default::default()
-                },
-                None,
-            )
+            .delete_bucket(&DeleteBucketRequest {
+                bucket: result.name.to_string(),
+                ..Default::default()
+            })
             .await
             .unwrap();
         assert_eq!(result.name, bucket_name);

@@ -48,7 +48,7 @@ mod tests {
         };
 
         let creation_result = match client.create_instance(request, None, None).await {
-            Ok(mut res) => res.wait(None, None).await,
+            Ok(mut res) => res.wait(None).await,
             Err(err) => panic!("err: {err:?}"),
         };
         match creation_result {

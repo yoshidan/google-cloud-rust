@@ -23,7 +23,6 @@ pub struct CallOptions {
     /// Priority is the RPC priority to use for the read operation.
     pub priority: Option<Priority>,
     pub retry: Option<RetrySetting>,
-    pub cancel: Option<CancellationToken>,
 }
 
 #[derive(Clone)]

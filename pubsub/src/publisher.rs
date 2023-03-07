@@ -9,7 +9,6 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 
-use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
@@ -57,18 +56,8 @@ impl Awaiter {
     pub(crate) fn new(consumer: oneshot::Receiver<Result<String, Status>>) -> Self {
         Self { consumer }
     }
-    pub async fn get(self, cancel: Option<CancellationToken>) -> Result<String, Status> {
-        let onetime = self.consumer;
-        let awaited = match cancel {
-            Some(cancel) => {
-                select! {
-                    _ = cancel.cancelled() => return Err(Status::cancelled("cancelled")),
-                    v = onetime => v
-                }
-            }
-            None => onetime.await,
-        };
-        match awaited {
+    pub async fn get(self) -> Result<String, Status> {
+        match self.consumer.await {
             Ok(v) => v,
             Err(_e) => Err(Status::cancelled("closed")),
         }
@@ -122,7 +111,6 @@ impl Publisher {
     pub async fn publish_immediately(
         &self,
         messages: Vec<PubsubMessage>,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Vec<String>, Status> {
         self.pubc
@@ -131,7 +119,6 @@ impl Publisher {
                     topic: self.fqtn.clone(),
                     messages,
                 },
-                cancel,
                 retry,
             )
             .await
@@ -293,7 +280,7 @@ impl Tasks {
             messages: data,
         };
         let result = client
-            .publish(req, None, retry_setting)
+            .publish(req, retry_setting)
             .await
             .map(|v| v.into_inner().message_ids);
 

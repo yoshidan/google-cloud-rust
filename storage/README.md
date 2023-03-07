@@ -43,14 +43,14 @@ async fn main() -> Result<(), Error> {
     let uploaded = client.upload_object(&UploadObjectRequest {
         bucket: "bucket".to_string(),
         ..Default::default()
-    }, "hello world".as_bytes(), upload_type, None).await;
+    }, "hello world".as_bytes(), upload_type).await;
 
     // Download the file
     let data = client.download_object(&GetObjectRequest {
         bucket: "bucket".to_string(),
         object: "file.png".to_string(),
         ..Default::default()
-   }, &Range::default(), None).await;
+   }, &Range::default()).await;
 
     // Create signed url.
     let url_for_download = client.signed_url("bucket", "foo.txt", SignedURLOptions::default());

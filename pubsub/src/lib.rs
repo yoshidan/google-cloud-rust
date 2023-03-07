@@ -11,7 +11,7 @@
 //!
 //! ### Publish Message
 //!
-//! ```no_test
+//! ```
 //! use google_cloud_pubsub::client::{Client, ClientConfig};
 //! use google_cloud_gax::cancel::CancellationToken;
 //! use google_cloud_googleapis::pubsub::v1::PubsubMessage;
@@ -31,8 +31,8 @@
 //!
 //!     // Create topic.
 //!     let topic = client.topic("test-topic");
-//!     if !topic.exists(None, None).await? {
-//!         topic.create(None, None, None).await?;
+//!     if !topic.exists(None).await? {
+//!         topic.create(None, None).await?;
 //!     }
 //!
 //!     // Start publisher.
@@ -51,7 +51,7 @@
 //!             let mut awaiter = publisher.publish(msg).await;
 //!
 //!             // The get method blocks until a server-generated ID or an error is returned for the published message.
-//!             awaiter.get(None).await
+//!             awaiter.get().await
 //!         })
 //!     }).collect();
 //!
@@ -70,7 +70,7 @@
 //!
 //! ### Subscribe Message
 //!
-//! ```no_test
+//! ```
 //! use google_cloud_pubsub::client::{Client, ClientConfig};
 //! use google_cloud_gax::cancel::CancellationToken;
 //! use google_cloud_googleapis::pubsub::v1::PubsubMessage;
@@ -97,7 +97,7 @@
 //!
 //!     // Create subscription
 //!     let subscription = client.subscription("test-subscription");
-//!     if !subscription.exists(None, None).await? {
+//!     if !subscription.exists(None).await? {
 //!         subscription.create(topic.fully_qualified_name(), config, None, None).await?;
 //!     }
 //!     // Token for cancel.
@@ -121,7 +121,7 @@
 //!     }, cancel.clone(), None).await;
 //!
 //!     // Delete subscription if needed.
-//!     subscription.delete(None, None).await;
+//!     subscription.delete(None).await;
 //!
 //!     Ok(())
 //! }

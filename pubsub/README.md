@@ -39,8 +39,8 @@ google-cloud-default = { version = <version>, features = ["pubsub"] }
 
      // Create topic.
      let topic = client.topic("test-topic");
-     if !topic.exists(None, None).await? {
-         topic.create(None, None, None).await?;
+     if !topic.exists(None).await? {
+         topic.create(None, None).await?;
      }
 
      // Start publisher.
@@ -59,7 +59,7 @@ google-cloud-default = { version = <version>, features = ["pubsub"] }
              let mut awaiter = publisher.publish(msg).await;
              
              // The get method blocks until a server-generated ID or an error is returned for the published message.
-             awaiter.get(None).await
+             awaiter.get().await
          })
      }).collect();
 
@@ -106,8 +106,8 @@ google-cloud-default = { version = <version>, features = ["pubsub"] }
      // If subscription name does not contain a "/", then the project is taken from client above. Otherwise, the
      // name will be treated as a fully qualified resource name
      let subscription = client.subscription("test-subscription");
-     if !subscription.exists(None, None).await? {
-         subscription.create(topic.fully_qualified_name(), config, None, None).await?;
+     if !subscription.exists(None).await? {
+         subscription.create(topic.fully_qualified_name(), config, None).await?;
      }
      // Token for cancel.
      let cancel = CancellationToken::new();
@@ -130,7 +130,7 @@ google-cloud-default = { version = <version>, features = ["pubsub"] }
      }, cancel.clone(), None).await;
 
      // Delete subscription if needed.
-     subscription.delete(None, None).await;
+     subscription.delete(None).await;
 
      Ok(())
  }

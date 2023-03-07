@@ -1,6 +1,5 @@
 use std::time::Duration;
 
-use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Channel;
 use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::{Code, Response, Status, Streaming};
@@ -14,8 +13,8 @@ use google_cloud_googleapis::spanner::v1::{
     PartitionReadRequest, PartitionResponse, ReadRequest, ResultSet, RollbackRequest, Session, Transaction,
 };
 
-pub(crate) fn ping_query_request(session_name: impl Into<String>) -> internal::ExecuteSqlRequest {
-    internal::ExecuteSqlRequest {
+pub(crate) fn ping_query_request(session_name: impl Into<String>) -> ExecuteSqlRequest {
+    ExecuteSqlRequest {
         session: session_name.into(),
         transaction: None,
         sql: "SELECT 1".to_string(),
@@ -74,13 +73,11 @@ impl Client {
     pub async fn create_session(
         &mut self,
         req: CreateSessionRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Session>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let database = &req.database;
         invoke_fn(
-            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("database={database}"), req.clone());
@@ -102,13 +99,11 @@ impl Client {
     pub async fn batch_create_sessions(
         &mut self,
         req: BatchCreateSessionsRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<BatchCreateSessionsResponse>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let database = &req.database;
         invoke_fn(
-            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("database={database}"), req.clone());
@@ -128,13 +123,11 @@ impl Client {
     pub async fn get_session(
         &mut self,
         req: GetSessionRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Session>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let name = &req.name;
         invoke_fn(
-            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("name={name}"), req.clone());
@@ -153,13 +146,11 @@ impl Client {
     pub async fn list_sessions(
         &mut self,
         req: ListSessionsRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<ListSessionsResponse>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let database = &req.database;
         invoke_fn(
-            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("database={database}"), req.clone());
@@ -180,13 +171,11 @@ impl Client {
     pub async fn delete_session(
         &mut self,
         req: DeleteSessionRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let name = &req.name;
         invoke_fn(
-            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("name={name}"), req.clone());
@@ -215,13 +204,11 @@ impl Client {
     pub async fn execute_sql(
         &mut self,
         req: ExecuteSqlRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<ResultSet>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         invoke_fn(
-            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={session}"), req.clone());
@@ -244,13 +231,11 @@ impl Client {
     pub async fn execute_streaming_sql(
         &mut self,
         req: ExecuteSqlRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         invoke_fn(
-            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={session}"), req.clone());
@@ -279,13 +264,11 @@ impl Client {
     pub async fn execute_batch_dml(
         &mut self,
         req: ExecuteBatchDmlRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<ExecuteBatchDmlResponse>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         invoke_fn(
-            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={session}"), req.clone());
@@ -324,16 +307,10 @@ impl Client {
     /// Larger result sets can be yielded in streaming fashion by calling
     /// StreamingRead instead.
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn read(
-        &mut self,
-        req: ReadRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<ResultSet>, Status> {
+    pub async fn read(&mut self, req: ReadRequest, retry: Option<RetrySetting>) -> Result<Response<ResultSet>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         invoke_fn(
-            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={session}"), req.clone());
@@ -353,13 +330,11 @@ impl Client {
     pub async fn streaming_read(
         &mut self,
         req: ReadRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         invoke_fn(
-            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={session}"), req.clone());
@@ -381,13 +356,11 @@ impl Client {
     pub async fn begin_transaction(
         &mut self,
         req: BeginTransactionRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Transaction>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         invoke_fn(
-            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={session}"), req.clone());
@@ -419,13 +392,11 @@ impl Client {
     pub async fn commit(
         &mut self,
         req: CommitRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<CommitResponse>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         invoke_fn(
-            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={session}"), req.clone());
@@ -448,13 +419,11 @@ impl Client {
     pub async fn rollback(
         &mut self,
         req: RollbackRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         invoke_fn(
-            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={session}"), req.clone());
@@ -480,13 +449,11 @@ impl Client {
     pub async fn partition_query(
         &mut self,
         req: PartitionQueryRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<PartitionResponse>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         invoke_fn(
-            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={session}"), req.clone());
@@ -517,13 +484,11 @@ impl Client {
     pub async fn partition_read(
         &mut self,
         req: PartitionReadRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<PartitionResponse>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
         invoke_fn(
-            cancel,
             Some(setting),
             |spanner_client| async {
                 let request = create_request(format!("session={session}"), req.clone());

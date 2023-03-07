@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Channel;
 use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::Response;
@@ -34,7 +33,6 @@ impl SchemaClient {
     pub async fn create_schema(
         &self,
         req: CreateSchemaRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Schema>, Status> {
         let parent = &req.parent;
@@ -43,14 +41,13 @@ impl SchemaClient {
             let request = create_request(format!("parent={parent}"), req.clone());
             client.create_schema(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// get_schema gets a schema.
     pub async fn get_schema(
         &self,
         req: GetSchemaRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Schema>, Status> {
         let name = &req.name;
@@ -59,14 +56,13 @@ impl SchemaClient {
             let request = create_request(format!("name={name}"), req.clone());
             client.get_schema(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// list_schemas lists matching topics.
     pub async fn list_schemas(
         &self,
         mut req: ListSchemasRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Vec<Schema>, Status> {
         let project = &req.parent;
@@ -78,7 +74,7 @@ impl SchemaClient {
                 let request = create_request(format!("project={project}"), req.clone());
                 client.list_schemas(request).await.map(|d| d.into_inner())
             };
-            let response = invoke(cancel.clone(), retry.clone(), action).await?;
+            let response = invoke(retry.clone(), action).await?;
             all.extend(response.schemas.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -91,7 +87,6 @@ impl SchemaClient {
     pub async fn delete_schema(
         &self,
         req: DeleteSchemaRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
         let name = &req.name;
@@ -100,14 +95,13 @@ impl SchemaClient {
             let request = create_request(format!("name={name}"), req.clone());
             client.delete_schema(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// validate_schema deletes a schema.
     pub async fn validate_schema(
         &self,
         req: ValidateSchemaRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<ValidateSchemaResponse>, Status> {
         let parent = &req.parent;
@@ -116,14 +110,13 @@ impl SchemaClient {
             let request = create_request(format!("parent={parent}"), req.clone());
             client.validate_schema(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// validate_message validates a message against a schema.
     pub async fn validate_message(
         &self,
         req: ValidateMessageRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<ValidateMessageResponse>, Status> {
         let parent = &req.parent;
@@ -132,6 +125,6 @@ impl SchemaClient {
             let request = create_request(format!("parent={parent}"), req.clone());
             client.validate_message(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 }

@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Channel;
 use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::Response;
@@ -34,19 +33,14 @@ impl PublisherClient {
 
     /// create_topic creates the given topic with the given name. See the [resource name rules]
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn create_topic(
-        &self,
-        req: Topic,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<Topic>, Status> {
+    pub async fn create_topic(&self, req: Topic, retry: Option<RetrySetting>) -> Result<Response<Topic>, Status> {
         let name = &req.name;
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={name}"), req.clone());
             client.create_topic(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// update_topic updates an existing topic. Note that certain properties of a
@@ -55,7 +49,6 @@ impl PublisherClient {
     pub async fn update_topic(
         &self,
         req: UpdateTopicRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Topic>, Status> {
         let name = match &req.topic {
@@ -67,7 +60,7 @@ impl PublisherClient {
             let request = create_request(format!("name={name}"), req.clone());
             client.update_topic(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(cancel, action).await
     }
 
     /// publish adds one or more messages to the topic. Returns NOT_FOUND if the topic does not exist.
@@ -75,7 +68,6 @@ impl PublisherClient {
     pub async fn publish(
         &self,
         req: PublishRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<PublishResponse>, Status> {
         let setting = match retry {
@@ -99,7 +91,7 @@ impl PublisherClient {
             let request = create_request(format!("name={name}"), req.clone());
             client.publish(request).await
         };
-        invoke(cancel, Some(setting), action).await
+        invoke(Some(setting), action).await
     }
 
     /// get_topic gets the configuration of a topic.
@@ -107,7 +99,6 @@ impl PublisherClient {
     pub async fn get_topic(
         &self,
         req: GetTopicRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Topic>, Status> {
         let topic = &req.topic;
@@ -116,7 +107,7 @@ impl PublisherClient {
             let request = create_request(format!("topic={topic}"), req.clone());
             client.get_topic(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// list_topics lists matching topics.
@@ -124,7 +115,6 @@ impl PublisherClient {
     pub async fn list_topics(
         &self,
         mut req: ListTopicsRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Vec<Topic>, Status> {
         let project = &req.project;
@@ -136,7 +126,7 @@ impl PublisherClient {
                 let request = create_request(format!("project={project}"), req.clone());
                 client.list_topics(request).await.map(|d| d.into_inner())
             };
-            let response = invoke(cancel.clone(), retry.clone(), action).await?;
+            let response = invoke(retry.clone(), action).await?;
             all.extend(response.topics.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -150,7 +140,6 @@ impl PublisherClient {
     pub async fn list_topic_subscriptions(
         &self,
         mut req: ListTopicSubscriptionsRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Vec<String>, Status> {
         let topic = &req.topic;
@@ -162,7 +151,7 @@ impl PublisherClient {
                 let request = create_request(format!("topic={topic}"), req.clone());
                 client.list_topic_subscriptions(request).await.map(|d| d.into_inner())
             };
-            let response = invoke(cancel.clone(), retry.clone(), action).await?;
+            let response = invoke(retry.clone(), action).await?;
             all.extend(response.subscriptions.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -180,7 +169,6 @@ impl PublisherClient {
     pub async fn list_topic_snapshots(
         &self,
         mut req: ListTopicSnapshotsRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Vec<String>, Status> {
         let topic = &req.topic;
@@ -192,7 +180,7 @@ impl PublisherClient {
                 let request = create_request(format!("topic={topic}"), req.clone());
                 client.list_topic_snapshots(request).await.map(|d| d.into_inner())
             };
-            let response = invoke(cancel.clone(), retry.clone(), action).await?;
+            let response = invoke(retry.clone(), action).await?;
             all.extend(response.snapshots.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -210,7 +198,6 @@ impl PublisherClient {
     pub async fn delete_topic(
         &self,
         req: DeleteTopicRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
         let topic = &req.topic;
@@ -219,7 +206,7 @@ impl PublisherClient {
             let request = create_request(format!("topic={topic}"), req.clone());
             client.delete_topic(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// detach_subscription detaches a subscription from this topic. All messages retained in the
@@ -230,7 +217,6 @@ impl PublisherClient {
     pub async fn detach_subscription(
         &self,
         req: DetachSubscriptionRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<DetachSubscriptionResponse>, Status> {
         let subscription = &req.subscription;
@@ -239,6 +225,6 @@ impl PublisherClient {
             let request = create_request(format!("subscription={subscription}"), req.clone());
             client.detach_subscription(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 }

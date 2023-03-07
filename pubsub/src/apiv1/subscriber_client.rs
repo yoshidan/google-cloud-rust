@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Channel;
 use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::Status;
@@ -62,7 +61,6 @@ impl SubscriberClient {
     pub async fn create_subscription(
         &self,
         req: Subscription,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Subscription>, Status> {
         let name = &req.name;
@@ -71,7 +69,7 @@ impl SubscriberClient {
             let request = create_request(format!("name={name}"), req.clone());
             client.create_subscription(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// updateSubscription updates an existing subscription. Note that certain properties of a
@@ -80,7 +78,6 @@ impl SubscriberClient {
     pub async fn update_subscription(
         &self,
         req: UpdateSubscriptionRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Subscription>, Status> {
         let name = match &req.subscription {
@@ -92,7 +89,7 @@ impl SubscriberClient {
             let request = create_request(format!("subscription.name={name}"), req.clone());
             client.update_subscription(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// get_subscription gets the configuration details of a subscription.
@@ -100,7 +97,6 @@ impl SubscriberClient {
     pub async fn get_subscription(
         &self,
         req: GetSubscriptionRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Subscription>, Status> {
         let subscription = &req.subscription;
@@ -109,7 +105,7 @@ impl SubscriberClient {
             let request = create_request(format!("subscription={subscription}"), req.clone());
             client.get_subscription(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// list_subscriptions lists matching subscriptions.
@@ -117,7 +113,6 @@ impl SubscriberClient {
     pub async fn list_subscriptions(
         &self,
         mut req: ListSubscriptionsRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Vec<Subscription>, Status> {
         let project = &req.project;
@@ -129,7 +124,7 @@ impl SubscriberClient {
                 let request = create_request(format!("project={project}"), req.clone());
                 client.list_subscriptions(request).await.map(|d| d.into_inner())
             };
-            let response: ListSubscriptionsResponse = invoke(cancel.clone(), retry.clone(), action).await?;
+            let response: ListSubscriptionsResponse = invoke(retry.clone(), action).await?;
             all.extend(response.subscriptions.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -147,7 +142,6 @@ impl SubscriberClient {
     pub async fn delete_subscription(
         &self,
         req: DeleteSubscriptionRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
         let subscription = &req.subscription;
@@ -156,7 +150,7 @@ impl SubscriberClient {
             let request = create_request(format!("subscription={subscription}"), req.clone());
             client.delete_subscription(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// ModifyAckDeadline modifies the ack deadline for a specific message. This method is useful
@@ -168,7 +162,6 @@ impl SubscriberClient {
     pub async fn modify_ack_deadline(
         &self,
         req: ModifyAckDeadlineRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
         let subscription = &req.subscription;
@@ -177,7 +170,7 @@ impl SubscriberClient {
             let request = create_request(format!("subscription={subscription}"), req.clone());
             client.modify_ack_deadline(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// acknowledge acknowledges the messages associated with the ack_ids in the
@@ -191,7 +184,6 @@ impl SubscriberClient {
     pub async fn acknowledge(
         &self,
         req: AcknowledgeRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
         let subscription = &req.subscription;
@@ -200,26 +192,21 @@ impl SubscriberClient {
             let request = create_request(format!("subscription={subscription}"), req.clone());
             client.acknowledge(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// pull pulls messages from the server. The server may return UNAVAILABLE if
     /// there are too many concurrent pull requests pending for the given
     /// subscription.
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn pull(
-        &self,
-        req: PullRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<PullResponse>, Status> {
+    pub async fn pull(&self, req: PullRequest, retry: Option<RetrySetting>) -> Result<Response<PullResponse>, Status> {
         let subscription = &req.subscription;
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription={subscription}"), req.clone());
             client.pull(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// streaming_pull establishes a stream with the server, which sends messages down to the
@@ -233,7 +220,6 @@ impl SubscriberClient {
     pub async fn streaming_pull(
         &self,
         req: StreamingPullRequest,
-        cancel: Option<CancellationToken>,
         ping_receiver: async_channel::Receiver<bool>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Streaming<StreamingPullResponse>>, Status> {
@@ -258,7 +244,7 @@ impl SubscriberClient {
             );
             client.streaming_pull(v).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// modify_push_config modifies the PushConfig for a specified subscription.
@@ -271,7 +257,6 @@ impl SubscriberClient {
     pub async fn modify_push_config(
         &self,
         req: ModifyPushConfigRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
         let subscription = &req.subscription;
@@ -280,7 +265,7 @@ impl SubscriberClient {
             let request = create_request(format!("subscription={subscription}"), req.clone());
             client.modify_push_config(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// get_snapshot gets the configuration details of a snapshot. Snapshots are used in
@@ -292,7 +277,6 @@ impl SubscriberClient {
     pub async fn get_snapshot(
         &self,
         req: GetSnapshotRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Snapshot>, Status> {
         let snapshot = &req.snapshot;
@@ -301,7 +285,7 @@ impl SubscriberClient {
             let request = create_request(format!("snapshot={snapshot}"), req.clone());
             client.get_snapshot(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// list_snapshots lists the existing snapshots. Snapshots are used in Seek (at https://cloud.google.com/pubsub/docs/replay-overview) operations, which
@@ -312,7 +296,6 @@ impl SubscriberClient {
     pub async fn list_snapshots(
         &self,
         mut req: ListSnapshotsRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Vec<Snapshot>, Status> {
         let project = &req.project;
@@ -324,7 +307,7 @@ impl SubscriberClient {
                 let request = create_request(format!("project={project}"), req.clone());
                 client.list_snapshots(request).await.map(|d| d.into_inner())
             };
-            let response: ListSnapshotsResponse = invoke(cancel.clone(), retry.clone(), action).await?;
+            let response: ListSnapshotsResponse = invoke(retry.clone(), action).await?;
             all.extend(response.snapshots.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all);
@@ -353,7 +336,6 @@ impl SubscriberClient {
     pub async fn create_snapshot(
         &self,
         req: CreateSnapshotRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Snapshot>, Status> {
         let name = &req.name;
@@ -362,7 +344,7 @@ impl SubscriberClient {
             let request = create_request(format!("name={name}"), req.clone());
             client.create_snapshot(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// update_snapshot updates an existing snapshot. Snapshots are used in
@@ -375,7 +357,6 @@ impl SubscriberClient {
     pub async fn update_snapshot(
         &self,
         req: UpdateSnapshotRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Snapshot>, Status> {
         let name = match &req.snapshot {
@@ -387,7 +368,7 @@ impl SubscriberClient {
             let request = create_request(format!("snapshot.name={name}"), req.clone());
             client.update_snapshot(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// delete_snapshot removes an existing snapshot. Snapshots are used in [Seek]
@@ -403,7 +384,6 @@ impl SubscriberClient {
     pub async fn delete_snapshot(
         &self,
         req: DeleteSnapshotRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
         let name = &req.snapshot;
@@ -412,23 +392,18 @@ impl SubscriberClient {
             let request = create_request(format!("snapshot={name}"), req.clone());
             client.delete_snapshot(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     // seek [seeks](https://cloud.google.com/pubsub/docs/replay-overview) a subscription to
     // a point back in time (with a TimeStamp) or to a saved snapshot.
-    pub async fn seek(
-        &self,
-        req: SeekRequest,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Response<SeekResponse>, Status> {
+    pub async fn seek(&self, req: SeekRequest, retry: Option<RetrySetting>) -> Result<Response<SeekResponse>, Status> {
         let action = || async {
             let mut client = self.client();
             let subscription = req.subscription.clone();
             let request = create_request(format!("subscription={subscription}"), req.clone());
             client.seek(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 }

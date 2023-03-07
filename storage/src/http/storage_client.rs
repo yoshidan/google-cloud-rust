@@ -58,7 +58,7 @@ use crate::http::objects::Object;
 use crate::http::resumable_upload_client::ResumableUploadClient;
 use crate::http::{
     bucket_access_controls, buckets, default_object_access_controls, hmac_keys, notifications, object_access_controls,
-    objects, CancellationToken, Error,
+    objects, Error,
 };
 
 pub const SCOPES: [&str; 2] = [
@@ -91,26 +91,17 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::buckets::delete::DeleteBucketRequest;
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.delete_bucket(&DeleteBucketRequest {
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn delete_bucket(
-        &self,
-        req: &DeleteBucketRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<(), Error> {
-        let action = async {
-            let builder = buckets::delete::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send_get_empty(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn delete_bucket(&self, req: &DeleteBucketRequest) -> Result<(), Error> {
+        let builder = buckets::delete::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send_get_empty(builder).await
     }
 
     /// Inserts the bucket.
@@ -121,7 +112,6 @@ impl StorageClient {
     /// use google_cloud_storage::http::buckets::insert::{BucketCreationConfig, InsertBucketParam, InsertBucketRequest};
     ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.insert_bucket(&InsertBucketRequest {
     ///         name: "bucket".to_string(),
     ///         param: InsertBucketParam {
@@ -129,20 +119,13 @@ impl StorageClient {
     ///             ..Default::default()
     ///         },
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn insert_bucket(
-        &self,
-        req: &InsertBucketRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Bucket, Error> {
-        let action = async {
-            let builder = buckets::insert::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn insert_bucket(&self, req: &InsertBucketRequest) -> Result<Bucket, Error> {
+        let builder = buckets::insert::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Gets the bucket.
@@ -152,22 +135,17 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::buckets::get::GetBucketRequest;
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.get_bucket(&GetBucketRequest {
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn get_bucket(&self, req: &GetBucketRequest, cancel: Option<CancellationToken>) -> Result<Bucket, Error> {
-        let action = async {
-            let builder = buckets::get::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn get_bucket(&self, req: &GetBucketRequest) -> Result<Bucket, Error> {
+        let builder = buckets::get::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Patches the bucket.
@@ -178,30 +156,22 @@ impl StorageClient {
     /// use google_cloud_storage::client::ClientConfig;
     /// use google_cloud_storage::http::buckets::patch::{BucketPatchConfig, PatchBucketRequest};
     ///
-    ///
     /// async fn run(config: ClientConfig) {
     ///     let mut client = Client::new(config);
     ///
     ///     let result = client.patch_bucket(&PatchBucketRequest {
     ///         bucket: "bucket".to_string(),
     ///         metadata: Some(BucketPatchConfig {
-    ///         ..Default::default()
+    ///             ..Default::default()
     ///         }),
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn patch_bucket(
-        &self,
-        req: &PatchBucketRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Bucket, Error> {
-        let action = async {
-            let builder = buckets::patch::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn patch_bucket(&self, req: &PatchBucketRequest) -> Result<Bucket, Error> {
+        let builder = buckets::patch::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Lists the bucket.
@@ -211,26 +181,17 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::buckets::list::ListBucketsRequest;
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.list_buckets(&ListBucketsRequest{
     ///         project: "project_id".to_string(),
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn list_buckets(
-        &self,
-        req: &ListBucketsRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ListBucketsResponse, Error> {
-        let action = async {
-            let builder = buckets::list::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn list_buckets(&self, req: &ListBucketsRequest) -> Result<ListBucketsResponse, Error> {
+        let builder = buckets::list::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Sets the iam policy.
@@ -241,9 +202,7 @@ impl StorageClient {
     /// use google_cloud_storage::http::buckets::{Binding, Policy};
     /// use google_cloud_storage::http::buckets::set_iam_policy::SetIamPolicyRequest;
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.set_iam_policy(&SetIamPolicyRequest{
     ///         resource: "bucket".to_string(),
     ///         policy: Policy {
@@ -255,20 +214,13 @@ impl StorageClient {
     ///             ..Default::default()
     ///         },
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn set_iam_policy(
-        &self,
-        req: &SetIamPolicyRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Policy, Error> {
-        let action = async {
-            let builder = buckets::set_iam_policy::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn set_iam_policy(&self, req: &SetIamPolicyRequest) -> Result<Policy, Error> {
+        let builder = buckets::set_iam_policy::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Gets the iam policy.
@@ -279,26 +231,17 @@ impl StorageClient {
     /// use google_cloud_storage::http::buckets::get_iam_policy::GetIamPolicyRequest;
     /// use google_cloud_storage::http::buckets::list::ListBucketsRequest;
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.get_iam_policy(&GetIamPolicyRequest{
     ///         resource: "bucket".to_string(),
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn get_iam_policy(
-        &self,
-        req: &GetIamPolicyRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Policy, Error> {
-        let action = async {
-            let builder = buckets::get_iam_policy::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn get_iam_policy(&self, req: &GetIamPolicyRequest) -> Result<Policy, Error> {
+        let builder = buckets::get_iam_policy::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Tests the iam permissions.
@@ -308,26 +251,20 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::buckets::test_iam_permissions::TestIamPermissionsRequest;
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.test_iam_permissions(&TestIamPermissionsRequest{
     ///         resource: "bucket".to_string(),
     ///         permissions: vec!["storage.buckets.get".to_string()],
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn test_iam_permissions(
         &self,
         req: &TestIamPermissionsRequest,
-        cancel: Option<CancellationToken>,
     ) -> Result<TestIamPermissionsResponse, Error> {
-        let action = async {
-            let builder = buckets::test_iam_permissions::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+        let builder = buckets::test_iam_permissions::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Lists the default object ACL.
@@ -338,26 +275,20 @@ impl StorageClient {
     /// use google_cloud_storage::http::buckets::test_iam_permissions::TestIamPermissionsRequest;
     /// use google_cloud_storage::http::default_object_access_controls::list::ListDefaultObjectAccessControlsRequest;
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.list_default_object_access_controls(&ListDefaultObjectAccessControlsRequest{
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list_default_object_access_controls(
         &self,
         req: &ListDefaultObjectAccessControlsRequest,
-        cancel: Option<CancellationToken>,
     ) -> Result<ListDefaultObjectAccessControlsResponse, Error> {
-        let action = async {
-            let builder = default_object_access_controls::list::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+        let builder = default_object_access_controls::list::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Gets the default object ACL.
@@ -367,26 +298,20 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::default_object_access_controls::get::GetDefaultObjectAccessControlRequest;
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.get_default_object_access_control(&GetDefaultObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_default_object_access_control(
         &self,
         req: &GetDefaultObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
-        let action = async {
-            let builder = default_object_access_controls::get::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+        let builder = default_object_access_controls::get::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Inserts the default object ACL.
@@ -398,29 +323,23 @@ impl StorageClient {
     /// use google_cloud_storage::http::object_access_controls::insert::ObjectAccessControlCreationConfig;
     /// use google_cloud_storage::http::object_access_controls::ObjectACLRole;
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.insert_default_object_access_control(&InsertDefaultObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         object_access_control: ObjectAccessControlCreationConfig {
     ///             entity: "allAuthenticatedUsers".to_string(),
     ///             role: ObjectACLRole::READER
     ///         } ,
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn insert_default_object_access_control(
         &self,
         req: &InsertDefaultObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
-        let action = async {
-            let builder = default_object_access_controls::insert::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+        let builder = default_object_access_controls::insert::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Patches the default object ACL.
@@ -433,9 +352,7 @@ impl StorageClient {
     /// use google_cloud_storage::http::object_access_controls::{ObjectAccessControl, ObjectACLRole};
     /// use google_cloud_storage::http::object_access_controls::patch::PatchObjectAccessControlRequest;
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.patch_default_object_access_control(&PatchDefaultObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
@@ -443,20 +360,16 @@ impl StorageClient {
     ///             role: ObjectACLRole::READER,
     ///             ..Default::default()
     ///         },
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn patch_default_object_access_control(
         &self,
         req: &PatchDefaultObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
-        let action = async {
-            let builder = default_object_access_controls::patch::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+        let builder = default_object_access_controls::patch::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Deletes the default object ACL.
@@ -466,26 +379,20 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::default_object_access_controls::delete::DeleteDefaultObjectAccessControlRequest;
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.delete_default_object_access_control(&DeleteDefaultObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn delete_default_object_access_control(
         &self,
         req: &DeleteDefaultObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
     ) -> Result<(), Error> {
-        let action = async {
-            let builder = default_object_access_controls::delete::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send_get_empty(builder).await
-        };
-        invoke(cancel, action).await
+        let builder = default_object_access_controls::delete::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send_get_empty(builder).await
     }
 
     /// Lists the bucket ACL.
@@ -495,25 +402,19 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::bucket_access_controls::list::ListBucketAccessControlsRequest;
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.list_bucket_access_controls(&ListBucketAccessControlsRequest{
     ///         bucket: "bucket".to_string(),
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list_bucket_access_controls(
         &self,
         req: &ListBucketAccessControlsRequest,
-        cancel: Option<CancellationToken>,
     ) -> Result<ListBucketAccessControlsResponse, Error> {
-        let action = async {
-            let builder = bucket_access_controls::list::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+        let builder = bucket_access_controls::list::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Gets the bucket ACL.
@@ -523,26 +424,20 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::bucket_access_controls::get::GetBucketAccessControlRequest;
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.get_bucket_access_control(&GetBucketAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_bucket_access_control(
         &self,
         req: &GetBucketAccessControlRequest,
-        cancel: Option<CancellationToken>,
     ) -> Result<BucketAccessControl, Error> {
-        let action = async {
-            let builder = bucket_access_controls::get::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+        let builder = bucket_access_controls::get::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Inserts the bucket ACL.
@@ -553,29 +448,23 @@ impl StorageClient {
     /// use google_cloud_storage::http::bucket_access_controls::BucketACLRole;
     /// use google_cloud_storage::http::bucket_access_controls::insert::{BucketAccessControlCreationConfig, InsertBucketAccessControlRequest};
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.insert_bucket_access_control(&InsertBucketAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         acl: BucketAccessControlCreationConfig {
     ///             entity: "allAuthenticatedUsers".to_string(),
     ///             role: BucketACLRole::READER
     ///         }
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn insert_bucket_access_control(
         &self,
         req: &InsertBucketAccessControlRequest,
-        cancel: Option<CancellationToken>,
     ) -> Result<BucketAccessControl, Error> {
-        let action = async {
-            let builder = bucket_access_controls::insert::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+        let builder = bucket_access_controls::insert::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Patches the bucket ACL.
@@ -587,9 +476,7 @@ impl StorageClient {
     /// use google_cloud_storage::http::bucket_access_controls::BucketACLRole;
     /// use google_cloud_storage::http::bucket_access_controls::patch::PatchBucketAccessControlRequest;
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.patch_bucket_access_control(&PatchBucketAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
@@ -597,20 +484,16 @@ impl StorageClient {
     ///             role: BucketACLRole::READER,
     ///             ..Default::default()
     ///         }
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn patch_bucket_access_control(
         &self,
         req: &PatchBucketAccessControlRequest,
-        cancel: Option<CancellationToken>,
     ) -> Result<BucketAccessControl, Error> {
-        let action = async {
-            let builder = bucket_access_controls::patch::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+        let builder = bucket_access_controls::patch::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Deletes the bucket ACL.
@@ -619,26 +502,17 @@ impl StorageClient {
     /// use google_cloud_storage::http::bucket_access_controls::BucketAccessControl;
     /// use google_cloud_storage::http::bucket_access_controls::delete::DeleteBucketAccessControlRequest;
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.delete_bucket_access_control(&DeleteBucketAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn delete_bucket_access_control(
-        &self,
-        req: &DeleteBucketAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<(), Error> {
-        let action = async {
-            let builder = bucket_access_controls::delete::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send_get_empty(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn delete_bucket_access_control(&self, req: &DeleteBucketAccessControlRequest) -> Result<(), Error> {
+        let builder = bucket_access_controls::delete::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send_get_empty(builder).await
     }
 
     /// Lists the object ACL.
@@ -648,27 +522,21 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::object_access_controls::list::ListObjectAccessControlsRequest;
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.list_object_access_controls(&ListObjectAccessControlsRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "filename".to_string(),
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list_object_access_controls(
         &self,
         req: &ListObjectAccessControlsRequest,
-        cancel: Option<CancellationToken>,
     ) -> Result<ListBucketAccessControlsResponse, Error> {
-        let action = async {
-            let builder = object_access_controls::list::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+        let builder = object_access_controls::list::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Gets the object ACL.
@@ -686,20 +554,16 @@ impl StorageClient {
     ///         object: "filename".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_object_access_control(
         &self,
         req: &GetObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
-        let action = async {
-            let builder = object_access_controls::get::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+        let builder = object_access_controls::get::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Inserts the object ACL.
@@ -721,20 +585,16 @@ impl StorageClient {
     ///             role: ObjectACLRole::READER
     ///         },
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn insert_object_access_control(
         &self,
         req: &InsertObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
-        let action = async {
-            let builder = object_access_controls::insert::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+        let builder = object_access_controls::insert::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Patches the bucket ACL.
@@ -757,20 +617,16 @@ impl StorageClient {
     ///             ..Default::default()
     ///         },
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn patch_object_access_control(
         &self,
         req: &PatchObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
     ) -> Result<ObjectAccessControl, Error> {
-        let action = async {
-            let builder = object_access_controls::patch::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+        let builder = object_access_controls::patch::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Deletes the bucket ACL.
@@ -781,28 +637,19 @@ impl StorageClient {
     /// use google_cloud_storage::http::object_access_controls::{ObjectAccessControl, ObjectACLRole};
     /// use google_cloud_storage::http::object_access_controls::delete::DeleteObjectAccessControlRequest;
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.delete_object_access_control(&DeleteObjectAccessControlRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "filename".to_string(),
     ///         entity: "allAuthenticatedUsers".to_string(),
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn delete_object_access_control(
-        &self,
-        req: &DeleteObjectAccessControlRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<(), Error> {
-        let action = async {
-            let builder = object_access_controls::delete::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send_get_empty(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn delete_object_access_control(&self, req: &DeleteObjectAccessControlRequest) -> Result<(), Error> {
+        let builder = object_access_controls::delete::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send_get_empty(builder).await
     }
 
     /// Lists the notification.
@@ -812,26 +659,17 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::notifications::list::ListNotificationsRequest;
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.list_notifications(&ListNotificationsRequest{
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn list_notifications(
-        &self,
-        req: &ListNotificationsRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ListNotificationsResponse, Error> {
-        let action = async {
-            let builder = notifications::list::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn list_notifications(&self, req: &ListNotificationsRequest) -> Result<ListNotificationsResponse, Error> {
+        let builder = notifications::list::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Gets the notification.
@@ -847,20 +685,13 @@ impl StorageClient {
     ///     let result = client.get_notification(&GetNotificationRequest{
     ///         bucket: "bucket".to_string(),
     ///         notification: "notification".to_string()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn get_notification(
-        &self,
-        req: &GetNotificationRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Notification, Error> {
-        let action = async {
-            let builder = notifications::get::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn get_notification(&self, req: &GetNotificationRequest) -> Result<Notification, Error> {
+        let builder = notifications::get::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Inserts the notification.
@@ -881,20 +712,13 @@ impl StorageClient {
     ///             event_types: Some(vec![EventType::ObjectMetadataUpdate, EventType::ObjectDelete]),
     ///             ..Default::default()
     ///         }
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn insert_notification(
-        &self,
-        req: &InsertNotificationRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Notification, Error> {
-        let action = async {
-            let builder = notifications::insert::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn insert_notification(&self, req: &InsertNotificationRequest) -> Result<Notification, Error> {
+        let builder = notifications::insert::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Deletes the notification.
@@ -910,20 +734,13 @@ impl StorageClient {
     ///     let result = client.delete_notification(&DeleteNotificationRequest {
     ///         bucket: "bucket".to_string(),
     ///         notification: "notification".to_string()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn delete_notification(
-        &self,
-        req: &DeleteNotificationRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<(), Error> {
-        let action = async {
-            let builder = notifications::delete::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send_get_empty(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn delete_notification(&self, req: &DeleteNotificationRequest) -> Result<(), Error> {
+        let builder = notifications::delete::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send_get_empty(builder).await
     }
 
     /// Lists the hmac keys.
@@ -939,20 +756,13 @@ impl StorageClient {
     ///     let result = client.list_hmac_keys(&ListHmacKeysRequest {
     ///         project_id: "project_id".to_string(),
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn list_hmac_keys(
-        &self,
-        req: &ListHmacKeysRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ListHmacKeysResponse, Error> {
-        let action = async {
-            let builder = hmac_keys::list::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn list_hmac_keys(&self, req: &ListHmacKeysRequest) -> Result<ListHmacKeysResponse, Error> {
+        let builder = hmac_keys::list::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Gets the hmac keys.
@@ -968,20 +778,13 @@ impl StorageClient {
     ///     let result = client.get_hmac_key(&GetHmacKeyRequest {
     ///         access_id: "access_id".to_string(),
     ///         project_id: "project_id".to_string(),
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn get_hmac_key(
-        &self,
-        req: &GetHmacKeyRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<HmacKeyMetadata, Error> {
-        let action = async {
-            let builder = hmac_keys::get::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn get_hmac_key(&self, req: &GetHmacKeyRequest) -> Result<HmacKeyMetadata, Error> {
+        let builder = hmac_keys::get::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Creates the hmac key.
@@ -997,20 +800,13 @@ impl StorageClient {
     ///     let result = client.create_hmac_key(&CreateHmacKeyRequest {
     ///         service_account_email: "service_account_email".to_string(),
     ///         project_id: "project".to_string(),
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn create_hmac_key(
-        &self,
-        req: &CreateHmacKeyRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<CreateHmacKeyResponse, Error> {
-        let action = async {
-            let builder = hmac_keys::create::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn create_hmac_key(&self, req: &CreateHmacKeyRequest) -> Result<CreateHmacKeyResponse, Error> {
+        let builder = hmac_keys::create::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Updates the hmac key.
@@ -1031,20 +827,13 @@ impl StorageClient {
     ///             state: "INACTIVE".to_string(),
     ///             ..Default::default()
     ///         },
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn update_hmac_key(
-        &self,
-        req: &UpdateHmacKeyRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<HmacKeyMetadata, Error> {
-        let action = async {
-            let builder = hmac_keys::update::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn update_hmac_key(&self, req: &UpdateHmacKeyRequest) -> Result<HmacKeyMetadata, Error> {
+        let builder = hmac_keys::update::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Deletes the hmac key.
@@ -1060,20 +849,13 @@ impl StorageClient {
     ///     let result = client.delete_hmac_key(&DeleteHmacKeyRequest{
     ///         access_id: "access_id".to_string(),
     ///         project_id:"project_id".to_string(),
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn delete_hmac_key(
-        &self,
-        req: &DeleteHmacKeyRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<(), Error> {
-        let action = async {
-            let builder = hmac_keys::delete::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send_get_empty(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn delete_hmac_key(&self, req: &DeleteHmacKeyRequest) -> Result<(), Error> {
+        let builder = hmac_keys::delete::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send_get_empty(builder).await
     }
 
     /// Lists the objects.
@@ -1089,20 +871,13 @@ impl StorageClient {
     ///     let result = client.list_objects(&ListObjectsRequest{
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn list_objects(
-        &self,
-        req: &ListObjectsRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<ListObjectsResponse, Error> {
-        let action = async {
-            let builder = objects::list::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn list_objects(&self, req: &ListObjectsRequest) -> Result<ListObjectsResponse, Error> {
+        let builder = objects::list::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Gets the object.
@@ -1112,23 +887,18 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::get::GetObjectRequest;
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.get_object(&GetObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn get_object(&self, req: &GetObjectRequest, cancel: Option<CancellationToken>) -> Result<Object, Error> {
-        let action = async {
-            let builder = objects::get::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn get_object(&self, req: &GetObjectRequest) -> Result<Object, Error> {
+        let builder = objects::get::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Download the object.
@@ -1147,27 +917,19 @@ impl StorageClient {
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
     ///         ..Default::default()
-    ///     }, &Range::default(), None).await;
+    ///     }, &Range::default()).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn download_object(
-        &self,
-        req: &GetObjectRequest,
-        range: &Range,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Vec<u8>, Error> {
-        let action = async {
-            let builder = objects::download::build(self.v1_endpoint.as_str(), &self.http, req, range);
-            let request = self.with_headers(builder).await?;
-            let response = request.send().await?;
-            if response.status().is_success() {
-                Ok(response.bytes().await?.to_vec())
-            } else {
-                Err(map_error(response).await)
-            }
-        };
-        invoke(cancel, action).await
+    pub async fn download_object(&self, req: &GetObjectRequest, range: &Range) -> Result<Vec<u8>, Error> {
+        let builder = objects::download::build(self.v1_endpoint.as_str(), &self.http, req, range);
+        let request = self.with_headers(builder).await?;
+        let response = request.send().await?;
+        if response.status().is_success() {
+            Ok(response.bytes().await?.to_vec())
+        } else {
+            Err(map_error(response).await)
+        }
     }
 
     /// Download the object.
@@ -1179,14 +941,12 @@ impl StorageClient {
     /// use google_cloud_storage::http::objects::get::GetObjectRequest;
     /// use google_cloud_storage::http::objects::download::Range;
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.download_streamed_object(&GetObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
     ///         ..Default::default()
-    ///     }, &Range::default(), None).await;
+    ///     }, &Range::default()).await;
     ///
     ///     //  while let Some(v) = downloaded.next().await? {
     ///     //      let d: bytes::Bytes = v.unwrap();
@@ -1198,19 +958,15 @@ impl StorageClient {
         &self,
         req: &GetObjectRequest,
         range: &Range,
-        cancel: Option<CancellationToken>,
     ) -> Result<impl Stream<Item = reqwest::Result<bytes::Bytes>>, Error> {
-        let action = async {
-            let builder = objects::download::build(self.v1_endpoint.as_str(), &self.http, req, range);
-            let request = self.with_headers(builder).await?;
-            let response = request.send().await?;
-            if response.status().is_success() {
-                Ok(response.bytes_stream())
-            } else {
-                Err(map_error(response).await)
-            }
-        };
-        invoke(cancel, action).await
+        let builder = objects::download::build(self.v1_endpoint.as_str(), &self.http, req, range);
+        let request = self.with_headers(builder).await?;
+        let response = request.send().await?;
+        if response.status().is_success() {
+            Ok(response.bytes_stream())
+        } else {
+            Err(map_error(response).await)
+        }
     }
 
     /// Uploads the object.
@@ -1227,7 +983,7 @@ impl StorageClient {
     ///     let result = client.upload_object(&UploadObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
-    ///     }, "hello world".as_bytes(), &upload_type, None).await;
+    ///     }, "hello world".as_bytes(), &upload_type).await;
     /// }
     ///
     /// async fn run_multipart(client:Client) {
@@ -1242,7 +998,7 @@ impl StorageClient {
     ///     let result = client.upload_object(&UploadObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
-    ///     }, "hello world".as_bytes(), &upload_type, None).await;
+    ///     }, "hello world".as_bytes(), &upload_type).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
@@ -1251,29 +1007,16 @@ impl StorageClient {
         req: &UploadObjectRequest,
         data: T,
         upload_type: &UploadType,
-        cancel: Option<CancellationToken>,
     ) -> Result<Object, Error> {
         match upload_type {
             UploadType::Multipart(meta) => {
-                let action = async {
-                    let builder = objects::upload::build_multipart(
-                        self.v1_upload_endpoint.as_str(),
-                        &self.http,
-                        req,
-                        meta,
-                        data,
-                    )?;
-                    self.send(builder).await
-                };
-                invoke(cancel, action).await
+                let builder =
+                    objects::upload::build_multipart(self.v1_upload_endpoint.as_str(), &self.http, req, meta, data)?;
+                self.send(builder).await
             }
             UploadType::Simple(media) => {
-                let action = async {
-                    let builder =
-                        objects::upload::build(self.v1_upload_endpoint.as_str(), &self.http, req, media, data);
-                    self.send(builder).await
-                };
-                invoke(cancel, action).await
+                let builder = objects::upload::build(self.v1_upload_endpoint.as_str(), &self.http, req, media, data);
+                self.send(builder).await
             }
         }
     }
@@ -1300,7 +1043,7 @@ impl StorageClient {
     ///     let uploader = client.prepare_resumable_upload(&UploadObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
-    ///     }, &upload_type, None).await.unwrap();
+    ///     }, &upload_type).await.unwrap();
     ///
     ///     // We can also use upload_multiple_chunk.
     ///     let data = [1,2,3,4,5];
@@ -1319,7 +1062,7 @@ impl StorageClient {
     ///     let uploader = client.prepare_resumable_upload(&UploadObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
-    ///     }, &upload_type, None).await.unwrap();
+    ///     }, &upload_type).await.unwrap();
     ///
     ///     let chunk1_data : Vec<u8>= (0..256 * 1024).map(|i| (i % 256) as u8).collect();
     ///     let chunk2_data : Vec<u8>= (1..256 * 1024 + 50).map(|i| (i % 256) as u8).collect();
@@ -1340,36 +1083,29 @@ impl StorageClient {
         &self,
         req: &UploadObjectRequest,
         upload_type: &UploadType,
-        cancel: Option<CancellationToken>,
     ) -> Result<ResumableUploadClient, Error> {
         match upload_type {
             UploadType::Multipart(meta) => {
-                let action = async {
-                    let builder = objects::upload::build_resumable_session_metadata(
-                        self.v1_upload_endpoint.as_str(),
-                        &self.http,
-                        req,
-                        meta,
-                    );
-                    self.send_get_url(builder)
-                        .await
-                        .map(|url| ResumableUploadClient::new(url, self.http.clone()))
-                };
-                invoke(cancel, action).await
+                let builder = objects::upload::build_resumable_session_metadata(
+                    self.v1_upload_endpoint.as_str(),
+                    &self.http,
+                    req,
+                    meta,
+                );
+                self.send_get_url(builder)
+                    .await
+                    .map(|url| ResumableUploadClient::new(url, self.http.clone()))
             }
             UploadType::Simple(media) => {
-                let action = async {
-                    let builder = objects::upload::build_resumable_session_simple(
-                        self.v1_upload_endpoint.as_str(),
-                        &self.http,
-                        req,
-                        media,
-                    );
-                    self.send_get_url(builder)
-                        .await
-                        .map(|url| ResumableUploadClient::new(url, self.http.clone()))
-                };
-                invoke(cancel, action).await
+                let builder = objects::upload::build_resumable_session_simple(
+                    self.v1_upload_endpoint.as_str(),
+                    &self.http,
+                    req,
+                    media,
+                );
+                self.send_get_url(builder)
+                    .await
+                    .map(|url| ResumableUploadClient::new(url, self.http.clone()))
             }
         }
     }
@@ -1392,7 +1128,7 @@ impl StorageClient {
     ///     let result = client.upload_streamed_object(&UploadObjectRequest{
     ///         bucket: "bucket".to_string(),
     ///         ..Default::default()
-    ///     }, stream, &upload_type, None).await;
+    ///     }, stream, &upload_type).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
@@ -1401,7 +1137,6 @@ impl StorageClient {
         req: &UploadObjectRequest,
         data: S,
         upload_type: &UploadType,
-        cancel: Option<CancellationToken>,
     ) -> Result<Object, Error>
     where
         S: TryStream + Send + Sync + 'static,
@@ -1409,8 +1144,7 @@ impl StorageClient {
         bytes::Bytes: From<S::Ok>,
     {
         //TODO resumable upload
-        self.upload_object(req, Body::wrap_stream(data), upload_type, cancel)
-            .await
+        self.upload_object(req, Body::wrap_stream(data), upload_type).await
     }
 
     /// Patches the object.
@@ -1427,20 +1161,13 @@ impl StorageClient {
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn patch_object(
-        &self,
-        req: &PatchObjectRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Object, Error> {
-        let action = async {
-            let builder = objects::patch::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn patch_object(&self, req: &PatchObjectRequest) -> Result<Object, Error> {
+        let builder = objects::patch::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Deletes the object.
@@ -1457,20 +1184,13 @@ impl StorageClient {
     ///         bucket: "bucket".to_string(),
     ///         object: "object".to_string(),
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn delete_object(
-        &self,
-        req: &DeleteObjectRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<(), Error> {
-        let action = async {
-            let builder = objects::delete::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send_get_empty(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn delete_object(&self, req: &DeleteObjectRequest) -> Result<(), Error> {
+        let builder = objects::delete::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send_get_empty(builder).await
     }
 
     /// Rewrites the object.
@@ -1493,7 +1213,7 @@ impl StorageClient {
     ///             destination_object: "object1".to_string(),
     ///             rewrite_token: rewrite_token.clone(),
     ///             ..Default::default()
-    ///         }, None).await.unwrap();
+    ///         }).await.unwrap();
     ///
     ///         done = result.done;
     ///         rewrite_token = result.rewrite_token;
@@ -1501,16 +1221,9 @@ impl StorageClient {
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn rewrite_object(
-        &self,
-        req: &RewriteObjectRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<RewriteObjectResponse, Error> {
-        let action = async {
-            let builder = objects::rewrite::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn rewrite_object(&self, req: &RewriteObjectRequest) -> Result<RewriteObjectResponse, Error> {
+        let builder = objects::rewrite::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     /// Composes the object.
@@ -1522,9 +1235,7 @@ impl StorageClient {
     /// use google_cloud_storage::http::objects::rewrite::RewriteObjectRequest;
     /// use google_cloud_storage::http::objects::SourceObjects;
     ///
-    ///
     /// async fn run(client:Client) {
-    ///
     ///     let result = client.compose_object(&ComposeObjectRequest{
     ///         bucket: "bucket1".to_string(),
     ///         destination_object: "object1".to_string(),
@@ -1536,20 +1247,13 @@ impl StorageClient {
     ///             ..Default::default()
     ///         },
     ///         ..Default::default()
-    ///     }, None).await;
+    ///     }).await;
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn compose_object(
-        &self,
-        req: &ComposeObjectRequest,
-        cancel: Option<CancellationToken>,
-    ) -> Result<Object, Error> {
-        let action = async {
-            let builder = objects::compose::build(self.v1_endpoint.as_str(), &self.http, req);
-            self.send(builder).await
-        };
-        invoke(cancel, action).await
+    pub async fn compose_object(&self, req: &ComposeObjectRequest) -> Result<Object, Error> {
+        let builder = objects::compose::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
     }
 
     async fn with_headers(&self, builder: RequestBuilder) -> Result<RequestBuilder, Error> {
@@ -1599,21 +1303,6 @@ impl StorageClient {
 
 async fn map_error(r: Response) -> Error {
     Error::from_response(r).await
-}
-
-async fn invoke<S>(
-    cancel: Option<CancellationToken>,
-    action: impl Future<Output = Result<S, Error>>,
-) -> Result<S, Error> {
-    match cancel {
-        Some(cancel) => {
-            tokio::select! {
-                _ = cancel.cancelled() => Err(Error::Cancelled),
-                v = action => v
-            }
-        }
-        None => action.await,
-    }
 }
 
 #[cfg(test)]
@@ -1700,16 +1389,13 @@ mod test {
     pub async fn list_buckets() {
         let (client, project) = client().await;
         let buckets = client
-            .list_buckets(
-                &ListBucketsRequest {
-                    project,
-                    max_results: None,
-                    page_token: None,
-                    prefix: Some("rust-iam-test".to_string()),
-                    projection: None,
-                },
-                None,
-            )
+            .list_buckets(&ListBucketsRequest {
+                project,
+                max_results: None,
+                page_token: None,
+                prefix: Some("rust-iam-test".to_string()),
+                projection: None,
+            })
             .await
             .unwrap();
         assert_eq!(1, buckets.items.len());
@@ -1721,52 +1407,43 @@ mod test {
         let (client, project) = client().await;
         let name = format!("rust-test-insert-{}", time::OffsetDateTime::now_utc().unix_timestamp());
         let bucket = client
-            .insert_bucket(
-                &InsertBucketRequest {
-                    name,
-                    param: InsertBucketParam {
-                        project,
-                        ..Default::default()
-                    },
-                    bucket: BucketCreationConfig {
-                        location: "ASIA-NORTHEAST1".to_string(),
-                        storage_class: Some("STANDARD".to_string()),
-                        ..Default::default()
-                    },
+            .insert_bucket(&InsertBucketRequest {
+                name,
+                param: InsertBucketParam {
+                    project,
+                    ..Default::default()
                 },
-                None,
-            )
+                bucket: BucketCreationConfig {
+                    location: "ASIA-NORTHEAST1".to_string(),
+                    storage_class: Some("STANDARD".to_string()),
+                    ..Default::default()
+                },
+            })
             .await
             .unwrap();
 
         let found = client
-            .get_bucket(
-                &GetBucketRequest {
-                    bucket: bucket.name.to_string(),
-                    ..Default::default()
-                },
-                None,
-            )
+            .get_bucket(&GetBucketRequest {
+                bucket: bucket.name.to_string(),
+                ..Default::default()
+            })
             .await
             .unwrap();
 
         assert_eq!(found.location.as_str(), "ASIA-NORTHEAST1");
 
         let patched = client
-            .patch_bucket(
-                &PatchBucketRequest {
-                    bucket: bucket.name.to_string(),
-                    metadata: Some(BucketPatchConfig {
-                        default_object_acl: Some(vec![ObjectAccessControlCreationConfig {
-                            entity: "allAuthenticatedUsers".to_string(),
-                            role: ObjectACLRole::READER,
-                        }]),
-                        ..Default::default()
-                    }),
+            .patch_bucket(&PatchBucketRequest {
+                bucket: bucket.name.to_string(),
+                metadata: Some(BucketPatchConfig {
+                    default_object_acl: Some(vec![ObjectAccessControlCreationConfig {
+                        entity: "allAuthenticatedUsers".to_string(),
+                        role: ObjectACLRole::READER,
+                    }]),
                     ..Default::default()
-                },
-                None,
-            )
+                }),
+                ..Default::default()
+            })
             .await
             .unwrap();
 
@@ -1778,13 +1455,10 @@ mod test {
         assert_eq!(found.location.as_str(), patched.location.as_str());
 
         client
-            .delete_bucket(
-                &DeleteBucketRequest {
-                    bucket: bucket.name,
-                    param: Default::default(),
-                },
-                None,
-            )
+            .delete_bucket(&DeleteBucketRequest {
+                bucket: bucket.name,
+                param: Default::default(),
+            })
             .await
             .unwrap();
     }
@@ -1795,13 +1469,10 @@ mod test {
         let bucket_name = "rust-iam-test";
         let (client, _project) = client().await;
         let mut policy = client
-            .get_iam_policy(
-                &GetIamPolicyRequest {
-                    resource: bucket_name.to_string(),
-                    options_requested_policy_version: None,
-                },
-                None,
-            )
+            .get_iam_policy(&GetIamPolicyRequest {
+                resource: bucket_name.to_string(),
+                options_requested_policy_version: None,
+            })
             .await
             .unwrap();
         policy.bindings.push(Binding {
@@ -1811,26 +1482,20 @@ mod test {
         });
 
         let mut result = client
-            .set_iam_policy(
-                &SetIamPolicyRequest {
-                    resource: bucket_name.to_string(),
-                    policy,
-                },
-                None,
-            )
+            .set_iam_policy(&SetIamPolicyRequest {
+                resource: bucket_name.to_string(),
+                policy,
+            })
             .await
             .unwrap();
         assert_eq!(result.bindings.len(), 5);
         assert_eq!(result.bindings.pop().unwrap().role, "roles/storage.objectViewer");
 
         let permissions = client
-            .test_iam_permissions(
-                &TestIamPermissionsRequest {
-                    resource: bucket_name.to_string(),
-                    permissions: vec!["storage.buckets.get".to_string()],
-                },
-                None,
-            )
+            .test_iam_permissions(&TestIamPermissionsRequest {
+                resource: bucket_name.to_string(),
+                permissions: vec!["storage.buckets.get".to_string()],
+            })
             .await
             .unwrap();
         assert_eq!(permissions.permissions[0], "storage.buckets.get");
@@ -1843,51 +1508,39 @@ mod test {
         let (client, _project) = client().await;
 
         client
-            .delete_default_object_access_control(
-                &DeleteDefaultObjectAccessControlRequest {
-                    bucket: bucket_name.to_string(),
-                    entity: "allAuthenticatedUsers".to_string(),
-                },
-                None,
-            )
+            .delete_default_object_access_control(&DeleteDefaultObjectAccessControlRequest {
+                bucket: bucket_name.to_string(),
+                entity: "allAuthenticatedUsers".to_string(),
+            })
             .await
             .unwrap();
 
         let _post = client
-            .insert_default_object_access_control(
-                &InsertDefaultObjectAccessControlRequest {
-                    bucket: bucket_name.to_string(),
-                    object_access_control: ObjectAccessControlCreationConfig {
-                        entity: "allAuthenticatedUsers".to_string(),
-                        role: ObjectACLRole::READER,
-                    },
+            .insert_default_object_access_control(&InsertDefaultObjectAccessControlRequest {
+                bucket: bucket_name.to_string(),
+                object_access_control: ObjectAccessControlCreationConfig {
+                    entity: "allAuthenticatedUsers".to_string(),
+                    role: ObjectACLRole::READER,
                 },
-                None,
-            )
+            })
             .await
             .unwrap();
 
         let found = client
-            .get_default_object_access_control(
-                &GetDefaultObjectAccessControlRequest {
-                    bucket: bucket_name.to_string(),
-                    entity: "allAuthenticatedUsers".to_string(),
-                },
-                None,
-            )
+            .get_default_object_access_control(&GetDefaultObjectAccessControlRequest {
+                bucket: bucket_name.to_string(),
+                entity: "allAuthenticatedUsers".to_string(),
+            })
             .await
             .unwrap();
         assert_eq!(found.entity, "allAuthenticatedUsers");
         assert_eq!(found.role, ObjectACLRole::READER);
 
         let acls = client
-            .list_default_object_access_controls(
-                &ListDefaultObjectAccessControlsRequest {
-                    bucket: bucket_name.to_string(),
-                    ..Default::default()
-                },
-                None,
-            )
+            .list_default_object_access_controls(&ListDefaultObjectAccessControlsRequest {
+                bucket: bucket_name.to_string(),
+                ..Default::default()
+            })
             .await
             .unwrap();
         assert!(acls.items.is_some());
@@ -1901,51 +1554,39 @@ mod test {
         let (client, _project) = client().await;
 
         let _post = client
-            .insert_bucket_access_control(
-                &InsertBucketAccessControlRequest {
-                    bucket: bucket_name.to_string(),
-                    acl: BucketAccessControlCreationConfig {
-                        entity: "allAuthenticatedUsers".to_string(),
-                        role: BucketACLRole::READER,
-                    },
+            .insert_bucket_access_control(&InsertBucketAccessControlRequest {
+                bucket: bucket_name.to_string(),
+                acl: BucketAccessControlCreationConfig {
+                    entity: "allAuthenticatedUsers".to_string(),
+                    role: BucketACLRole::READER,
                 },
-                None,
-            )
+            })
             .await
             .unwrap();
 
         let found = client
-            .get_bucket_access_control(
-                &GetBucketAccessControlRequest {
-                    bucket: bucket_name.to_string(),
-                    entity: "allAuthenticatedUsers".to_string(),
-                },
-                None,
-            )
+            .get_bucket_access_control(&GetBucketAccessControlRequest {
+                bucket: bucket_name.to_string(),
+                entity: "allAuthenticatedUsers".to_string(),
+            })
             .await
             .unwrap();
         assert_eq!(found.entity, "allAuthenticatedUsers");
         assert_eq!(found.role, BucketACLRole::READER);
 
         let acls = client
-            .list_bucket_access_controls(
-                &ListBucketAccessControlsRequest {
-                    bucket: bucket_name.to_string(),
-                },
-                None,
-            )
+            .list_bucket_access_controls(&ListBucketAccessControlsRequest {
+                bucket: bucket_name.to_string(),
+            })
             .await
             .unwrap();
         assert_eq!(5, acls.items.len());
 
         client
-            .delete_bucket_access_control(
-                &DeleteBucketAccessControlRequest {
-                    bucket: bucket_name.to_string(),
-                    entity: "allAuthenticatedUsers".to_string(),
-                },
-                None,
-            )
+            .delete_bucket_access_control(&DeleteBucketAccessControlRequest {
+                bucket: bucket_name.to_string(),
+                entity: "allAuthenticatedUsers".to_string(),
+            })
             .await
             .unwrap();
     }
@@ -1958,59 +1599,47 @@ mod test {
         let (client, _project) = client().await;
 
         let _post = client
-            .insert_object_access_control(
-                &InsertObjectAccessControlRequest {
-                    bucket: bucket_name.to_string(),
-                    object: object_name.to_string(),
-                    generation: None,
-                    acl: ObjectAccessControlCreationConfig {
-                        entity: "allAuthenticatedUsers".to_string(),
-                        role: ObjectACLRole::READER,
-                    },
+            .insert_object_access_control(&InsertObjectAccessControlRequest {
+                bucket: bucket_name.to_string(),
+                object: object_name.to_string(),
+                generation: None,
+                acl: ObjectAccessControlCreationConfig {
+                    entity: "allAuthenticatedUsers".to_string(),
+                    role: ObjectACLRole::READER,
                 },
-                None,
-            )
+            })
             .await
             .unwrap();
 
         let found = client
-            .get_object_access_control(
-                &GetObjectAccessControlRequest {
-                    bucket: bucket_name.to_string(),
-                    entity: "allAuthenticatedUsers".to_string(),
-                    object: object_name.to_string(),
-                    generation: None,
-                },
-                None,
-            )
+            .get_object_access_control(&GetObjectAccessControlRequest {
+                bucket: bucket_name.to_string(),
+                entity: "allAuthenticatedUsers".to_string(),
+                object: object_name.to_string(),
+                generation: None,
+            })
             .await
             .unwrap();
         assert_eq!(found.entity, "allAuthenticatedUsers");
         assert_eq!(found.role, ObjectACLRole::READER);
 
         let acls = client
-            .list_object_access_controls(
-                &ListObjectAccessControlsRequest {
-                    bucket: bucket_name.to_string(),
-                    object: object_name.to_string(),
-                    generation: None,
-                },
-                None,
-            )
+            .list_object_access_controls(&ListObjectAccessControlsRequest {
+                bucket: bucket_name.to_string(),
+                object: object_name.to_string(),
+                generation: None,
+            })
             .await
             .unwrap();
         assert_eq!(2, acls.items.len());
 
         client
-            .delete_object_access_control(
-                &DeleteObjectAccessControlRequest {
-                    bucket: bucket_name.to_string(),
-                    object: object_name.to_string(),
-                    entity: "allAuthenticatedUsers".to_string(),
-                    generation: None,
-                },
-                None,
-            )
+            .delete_object_access_control(&DeleteObjectAccessControlRequest {
+                bucket: bucket_name.to_string(),
+                object: object_name.to_string(),
+                entity: "allAuthenticatedUsers".to_string(),
+                generation: None,
+            })
             .await
             .unwrap();
     }
@@ -2022,52 +1651,40 @@ mod test {
         let (client, project) = client().await;
 
         let notifications = client
-            .list_notifications(
-                &ListNotificationsRequest {
-                    bucket: bucket_name.to_string(),
-                },
-                None,
-            )
+            .list_notifications(&ListNotificationsRequest {
+                bucket: bucket_name.to_string(),
+            })
             .await
             .unwrap();
 
         for n in notifications.items.unwrap_or_default() {
             client
-                .delete_notification(
-                    &DeleteNotificationRequest {
-                        bucket: bucket_name.to_string(),
-                        notification: n.id.to_string(),
-                    },
-                    None,
-                )
+                .delete_notification(&DeleteNotificationRequest {
+                    bucket: bucket_name.to_string(),
+                    notification: n.id.to_string(),
+                })
                 .await
                 .unwrap();
         }
 
         let post = client
-            .insert_notification(
-                &InsertNotificationRequest {
-                    bucket: bucket_name.to_string(),
-                    notification: NotificationCreationConfig {
-                        topic: format!("projects/{project}/topics/{bucket_name}"),
-                        event_types: Some(vec![EventType::ObjectMetadataUpdate, EventType::ObjectDelete]),
-                        object_name_prefix: Some("notification-test".to_string()),
-                        ..Default::default()
-                    },
+            .insert_notification(&InsertNotificationRequest {
+                bucket: bucket_name.to_string(),
+                notification: NotificationCreationConfig {
+                    topic: format!("projects/{project}/topics/{bucket_name}"),
+                    event_types: Some(vec![EventType::ObjectMetadataUpdate, EventType::ObjectDelete]),
+                    object_name_prefix: Some("notification-test".to_string()),
+                    ..Default::default()
                 },
-                None,
-            )
+            })
             .await
             .unwrap();
 
         let found = client
-            .get_notification(
-                &GetNotificationRequest {
-                    bucket: bucket_name.to_string(),
-                    notification: post.id.to_string(),
-                },
-                None,
-            )
+            .get_notification(&GetNotificationRequest {
+                bucket: bucket_name.to_string(),
+                notification: post.id.to_string(),
+            })
             .await
             .unwrap();
         assert_eq!(found.id, post.id);
@@ -2081,65 +1698,50 @@ mod test {
         let (client, project_id) = client().await;
 
         let post = client
-            .create_hmac_key(
-                &CreateHmacKeyRequest {
-                    project_id: project_id.clone(),
-                    service_account_email: format!("spanner@{project_id}.iam.gserviceaccount.com"),
-                },
-                None,
-            )
+            .create_hmac_key(&CreateHmacKeyRequest {
+                project_id: project_id.clone(),
+                service_account_email: format!("spanner@{project_id}.iam.gserviceaccount.com"),
+            })
             .await
             .unwrap();
 
         let found = client
-            .get_hmac_key(
-                &GetHmacKeyRequest {
-                    access_id: post.metadata.access_id.to_string(),
-                    project_id: project_id.clone(),
-                },
-                None,
-            )
+            .get_hmac_key(&GetHmacKeyRequest {
+                access_id: post.metadata.access_id.to_string(),
+                project_id: project_id.clone(),
+            })
             .await
             .unwrap();
         assert_eq!(found.id, post.metadata.id);
         assert_eq!(found.state, "ACTIVE");
 
         let keys = client
-            .list_hmac_keys(
-                &ListHmacKeysRequest {
-                    project_id: project_id.clone(),
-                    ..Default::default()
-                },
-                None,
-            )
+            .list_hmac_keys(&ListHmacKeysRequest {
+                project_id: project_id.clone(),
+                ..Default::default()
+            })
             .await
             .unwrap();
 
         for n in keys.items.unwrap_or_default() {
             let result = client
-                .update_hmac_key(
-                    &UpdateHmacKeyRequest {
-                        access_id: n.access_id.to_string(),
-                        project_id: n.project_id.to_string(),
-                        metadata: HmacKeyMetadata {
-                            state: "INACTIVE".to_string(),
-                            ..n.clone()
-                        },
+                .update_hmac_key(&UpdateHmacKeyRequest {
+                    access_id: n.access_id.to_string(),
+                    project_id: n.project_id.to_string(),
+                    metadata: HmacKeyMetadata {
+                        state: "INACTIVE".to_string(),
+                        ..n.clone()
                     },
-                    None,
-                )
+                })
                 .await
                 .unwrap();
             assert_eq!(result.state, "INACTIVE");
 
             client
-                .delete_hmac_key(
-                    &DeleteHmacKeyRequest {
-                        access_id: n.access_id.to_string(),
-                        project_id: n.project_id.to_string(),
-                    },
-                    None,
-                )
+                .delete_hmac_key(&DeleteHmacKeyRequest {
+                    access_id: n.access_id.to_string(),
+                    project_id: n.project_id.to_string(),
+                })
                 .await
                 .unwrap();
         }
@@ -2166,7 +1768,6 @@ mod test {
                     metadata: Some(metadata),
                     ..Default::default()
                 })),
-                None,
             )
             .await
             .unwrap();
@@ -2187,7 +1788,6 @@ mod test {
                             ..Default::default()
                         },
                         &range,
-                        None,
                     )
                     .await
                     .unwrap()
@@ -2195,14 +1795,11 @@ mod test {
         };
 
         let object = client
-            .get_object(
-                &GetObjectRequest {
-                    bucket: uploaded.bucket.clone(),
-                    object: uploaded.name.clone(),
-                    ..Default::default()
-                },
-                None,
-            )
+            .get_object(&GetObjectRequest {
+                bucket: uploaded.bucket.clone(),
+                object: uploaded.name.clone(),
+                ..Default::default()
+            })
             .await
             .unwrap();
 
@@ -2221,27 +1818,21 @@ mod test {
         let (client, _project) = client().await;
 
         let objects = client
-            .list_objects(
-                &ListObjectsRequest {
-                    bucket: bucket_name.to_string(),
-                    ..Default::default()
-                },
-                None,
-            )
+            .list_objects(&ListObjectsRequest {
+                bucket: bucket_name.to_string(),
+                ..Default::default()
+            })
             .await
             .unwrap()
             .items
             .unwrap_or_default();
         for o in objects {
             client
-                .delete_object(
-                    &DeleteObjectRequest {
-                        bucket: o.bucket.to_string(),
-                        object: o.name.to_string(),
-                        ..Default::default()
-                    },
-                    None,
-                )
+                .delete_object(&DeleteObjectRequest {
+                    bucket: o.bucket.to_string(),
+                    object: o.name.to_string(),
+                    ..Default::default()
+                })
                 .await
                 .unwrap();
         }
@@ -2256,7 +1847,6 @@ mod test {
                 },
                 vec![1, 2, 3, 4, 5, 6],
                 &UploadType::Simple(media),
-                None,
             )
             .await
             .unwrap();
@@ -2276,7 +1866,6 @@ mod test {
                             ..Default::default()
                         },
                         &range,
-                        None,
                     )
                     .await
                     .unwrap()
@@ -2293,39 +1882,33 @@ mod test {
         assert_eq!(downloaded, vec![5, 6]);
 
         let _rewrited = client
-            .rewrite_object(
-                &RewriteObjectRequest {
-                    destination_bucket: bucket_name.to_string(),
-                    destination_object: format!("{}_rewrite", uploaded.name),
-                    source_bucket: bucket_name.to_string(),
-                    source_object: uploaded.name.to_string(),
-                    ..Default::default()
-                },
-                None,
-            )
+            .rewrite_object(&RewriteObjectRequest {
+                destination_bucket: bucket_name.to_string(),
+                destination_object: format!("{}_rewrite", uploaded.name),
+                source_bucket: bucket_name.to_string(),
+                source_object: uploaded.name.to_string(),
+                ..Default::default()
+            })
             .await
             .unwrap();
 
         let _composed = client
-            .compose_object(
-                &ComposeObjectRequest {
-                    bucket: bucket_name.to_string(),
-                    destination_object: format!("{}_composed", uploaded.name),
-                    destination_predefined_acl: None,
-                    composing_targets: ComposingTargets {
-                        destination: Some(Object {
-                            content_type: Some("image/jpeg".to_string()),
-                            ..Default::default()
-                        }),
-                        source_objects: vec![SourceObjects {
-                            name: format!("{}_rewrite", uploaded.name),
-                            ..Default::default()
-                        }],
-                    },
-                    ..Default::default()
+            .compose_object(&ComposeObjectRequest {
+                bucket: bucket_name.to_string(),
+                destination_object: format!("{}_composed", uploaded.name),
+                destination_predefined_acl: None,
+                composing_targets: ComposingTargets {
+                    destination: Some(Object {
+                        content_type: Some("image/jpeg".to_string()),
+                        ..Default::default()
+                    }),
+                    source_objects: vec![SourceObjects {
+                        name: format!("{}_rewrite", uploaded.name),
+                        ..Default::default()
+                    }],
                 },
-                None,
-            )
+                ..Default::default()
+            })
             .await
             .unwrap();
     }
@@ -2354,7 +1937,6 @@ mod test {
                 },
                 stream,
                 &upload_type,
-                None,
             )
             .await
             .unwrap();
@@ -2372,7 +1954,6 @@ mod test {
                             ..Default::default()
                         },
                         &range,
-                        None,
                     )
                     .await
                     .unwrap();
@@ -2411,7 +1992,6 @@ mod test {
                     ..Default::default()
                 },
                 &upload_type,
-                None,
             )
             .await
             .unwrap();
@@ -2423,13 +2003,10 @@ mod test {
             object: file_name.to_string(),
             ..Default::default()
         };
-        let download = client
-            .download_object(get_request, &Range::default(), None)
-            .await
-            .unwrap();
+        let download = client.download_object(get_request, &Range::default()).await.unwrap();
         assert_eq!(data, download);
 
-        let object = client.get_object(get_request, None).await.unwrap();
+        let object = client.get_object(get_request).await.unwrap();
         assert_eq!(object.content_type.unwrap(), "text/plain");
     }
 
@@ -2453,7 +2030,6 @@ mod test {
                     ..Default::default()
                 },
                 &upload_type,
-                None,
             )
             .await
             .unwrap();
@@ -2493,13 +2069,10 @@ mod test {
             ..Default::default()
         };
 
-        let object = client.get_object(get_request, None).await.unwrap();
+        let object = client.get_object(get_request).await.unwrap();
         assert_eq!(object.content_type.unwrap(), "video/mp4");
 
-        let download = client
-            .download_object(get_request, &Range::default(), None)
-            .await
-            .unwrap();
+        let download = client.download_object(get_request, &Range::default()).await.unwrap();
         chunk1_data.extend(chunk2_data);
         assert_eq!(chunk1_data, download);
     }
@@ -2524,7 +2097,6 @@ mod test {
                     ..Default::default()
                 },
                 &upload_type,
-                None,
             )
             .await
             .unwrap();
@@ -2558,7 +2130,6 @@ mod test {
                     ..Default::default()
                 },
                 &upload_type,
-                None,
             )
             .await
             .unwrap();
@@ -2598,13 +2169,10 @@ mod test {
             ..Default::default()
         };
 
-        let object = client.get_object(get_request, None).await.unwrap();
+        let object = client.get_object(get_request).await.unwrap();
         assert_eq!(object.content_type.unwrap(), "video/mp4");
 
-        let download = client
-            .download_object(get_request, &Range::default(), None)
-            .await
-            .unwrap();
+        let download = client.download_object(get_request, &Range::default()).await.unwrap();
         chunk1_data.extend(chunk2_data);
         assert_eq!(chunk1_data, download);
     }
