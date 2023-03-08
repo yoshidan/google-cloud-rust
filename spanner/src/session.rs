@@ -11,8 +11,8 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, timeout};
+use tokio_util::sync::CancellationToken;
 
-use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::TryAs;
 use google_cloud_googleapis::spanner::v1::{BatchCreateSessionsRequest, DeleteSessionRequest, Session};
@@ -636,8 +636,8 @@ mod tests {
     use parking_lot::RwLock;
     use serial_test::serial;
     use tokio::time::sleep;
+    use tokio_util::sync::CancellationToken;
 
-    use google_cloud_gax::cancel::CancellationToken;
     use google_cloud_gax::conn::Environment;
     use google_cloud_googleapis::spanner::v1::ExecuteSqlRequest;
 

@@ -1,4 +1,3 @@
-pub mod cancel;
 pub mod conn;
 pub mod grpc;
 pub mod retry;

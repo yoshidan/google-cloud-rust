@@ -226,8 +226,8 @@ mod tests {
     use std::thread;
     use std::time::Duration;
 
-    use google_cloud_gax::cancel::CancellationToken;
     use serial_test::serial;
+    use tokio_util::sync::CancellationToken;
     use uuid::Uuid;
 
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;

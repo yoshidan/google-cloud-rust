@@ -17,5 +17,4 @@ thiserror = "1.0"
 tower = { version = "0.4", features = ["filter"] }
 http = "0.2"
 google-cloud-token = { version = "0.1.0", path = "../token" }
-tokio-util = "0.7"
 tokio-retry = "0.3"

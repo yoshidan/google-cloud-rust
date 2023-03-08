@@ -22,12 +22,12 @@ google-cloud-default = { version = <version>, features = ["pubsub"] }
 
 ```rust
  use google_cloud_pubsub::client::Client;
- use google_cloud_gax::cancel::CancellationToken;
  use google_cloud_googleapis::pubsub::v1::PubsubMessage;
  use google_cloud_pubsub::topic::TopicConfig;
  use google_cloud_pubsub::subscription::SubscriptionConfig;
  use google_cloud_gax::grpc::Status;
  use tokio::task::JoinHandle;
+ use tokio_util::sync::CancellationToken;
  use google_cloud_default::WithAuthExt;
 
  #[tokio::main]
@@ -80,11 +80,11 @@ google-cloud-default = { version = <version>, features = ["pubsub"] }
 
 ```rust
  use google_cloud_pubsub::client::Client;
- use google_cloud_gax::cancel::CancellationToken;
  use google_cloud_googleapis::pubsub::v1::PubsubMessage;
  use google_cloud_pubsub::subscription::SubscriptionConfig;
  use google_cloud_gax::grpc::Status;
  use std::time::Duration;
+ use tokio_util::sync::CancellationToken;
  use google_cloud_default::WithAuthExt;
 
  #[tokio::main]

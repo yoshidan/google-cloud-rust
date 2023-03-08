@@ -5,8 +5,8 @@ use std::task::{Context, Poll};
 use std::time::{Duration, SystemTime};
 
 use prost_types::{DurationError, FieldMask};
+use tokio_util::sync::CancellationToken;
 
-use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::codegen::futures_core::Stream;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::RetrySetting;
@@ -427,10 +427,10 @@ impl Subscription {
     ///
     /// ```
     /// use google_cloud_pubsub::client::Client;
-    /// use google_cloud_gax::cancel::CancellationToken;
     /// use google_cloud_pubsub::subscription::Subscription;
     /// use google_cloud_gax::grpc::Status;
     /// use std::time::Duration;
+    /// use tokio_util::sync::CancellationToken;;
     ///
     /// #[tokio::main]
     /// async fn run(client: Client) -> Result<(), Status> {
@@ -554,9 +554,9 @@ mod tests {
 
     use futures_util::StreamExt;
     use serial_test::serial;
+    use tokio_util::sync::CancellationToken;
     use uuid::Uuid;
 
-    use google_cloud_gax::cancel::CancellationToken;
     use google_cloud_gax::conn::Environment;
     use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
 

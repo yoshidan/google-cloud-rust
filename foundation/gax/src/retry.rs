@@ -126,9 +126,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::retry::{invoke, RetrySetting};
     use std::sync::{Arc, Mutex};
+
     use tonic::{Code, Status};
+
+    use crate::retry::{invoke, RetrySetting};
 
     #[tokio::test]
     async fn test_retry() {
