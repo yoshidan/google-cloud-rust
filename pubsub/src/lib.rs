@@ -98,7 +98,7 @@
 //!     // Create subscription
 //!     let subscription = client.subscription("test-subscription");
 //!     if !subscription.exists(None).await? {
-//!         subscription.create(topic.fully_qualified_name(), config, None, None).await?;
+//!         subscription.create(topic.fully_qualified_name(), config, None).await?;
 //!     }
 //!     // Token for cancel.
 //!     let cancel = CancellationToken::new();
