@@ -416,7 +416,7 @@ impl Client {
     ///
     /// #[tokio::main]
     /// async fn run(client: Client) ->  Result<(Option<Timestamp>,()), Error>{
-    ///     client.read_write_transaction(|tx, _| {
+    ///     client.read_write_transaction(|tx| {
     ///         Box::pin(async move {
     ///             // The transaction function will be called again if the error code
     ///             // of this error is Aborted. The backend may automatically abort
