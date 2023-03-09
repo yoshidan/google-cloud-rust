@@ -11,8 +11,8 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, timeout};
+use tokio_util::sync::CancellationToken;
 
-use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::TryAs;
 use google_cloud_googleapis::spanner::v1::{BatchCreateSessionsRequest, DeleteSessionRequest, Session};
@@ -65,7 +65,7 @@ impl SessionHandle {
         let request = DeleteSessionRequest {
             name: session_name.to_string(),
         };
-        match self.spanner_client.delete_session(request, None, None).await {
+        match self.spanner_client.delete_session(request, None).await {
             Ok(_) => self.deleted = true,
             Err(e) => tracing::error!("failed to delete session {}, {:?}", session_name, e),
         };
@@ -573,7 +573,7 @@ async fn health_check(
         };
 
         let request = ping_query_request(s.session.name.clone());
-        match s.spanner_client.execute_sql(request, None, None).await {
+        match s.spanner_client.execute_sql(request, None).await {
             Ok(_) => {
                 s.last_checked_at = now;
                 s.last_pong_at = now;
@@ -617,10 +617,7 @@ async fn batch_create_session(
     };
 
     tracing::debug!("spawn session creation request : session_count = {}", session_count);
-    let response = spanner_client
-        .batch_create_sessions(request, None, None)
-        .await?
-        .into_inner();
+    let response = spanner_client.batch_create_sessions(request, None).await?.into_inner();
 
     let now = Instant::now();
     Ok(response
@@ -639,8 +636,8 @@ mod tests {
     use parking_lot::RwLock;
     use serial_test::serial;
     use tokio::time::sleep;
+    use tokio_util::sync::CancellationToken;
 
-    use google_cloud_gax::cancel::CancellationToken;
     use google_cloud_gax::conn::Environment;
     use google_cloud_googleapis::spanner::v1::ExecuteSqlRequest;
 
@@ -1065,7 +1062,6 @@ mod tests {
                                 query_options: None,
                                 request_options: None,
                             },
-                            None,
                             None,
                         )
                         .await;

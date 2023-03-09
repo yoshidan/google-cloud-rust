@@ -2,7 +2,6 @@ use std::time::Duration;
 
 use tonic::Response;
 
-use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::{Channel, Error};
 use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::{Code, Status};
@@ -39,7 +38,6 @@ impl OperationsClient {
     pub async fn get_operation(
         &self,
         req: GetOperationRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Operation>, Status> {
         let setting = retry.unwrap_or_else(default_retry_setting);
@@ -48,7 +46,7 @@ impl OperationsClient {
             let request = create_request(format!("name={name}"), req.clone());
             self.inner.clone().get_operation(request).await
         };
-        invoke(cancel, Some(setting), action).await
+        invoke(Some(setting), action).await
     }
 
     /// DeleteOperation deletes a long-running operation. This method indicates that the client is
@@ -58,7 +56,6 @@ impl OperationsClient {
     pub async fn delete_operation(
         &self,
         req: DeleteOperationRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
         let setting = retry.unwrap_or_else(default_retry_setting);
@@ -67,7 +64,7 @@ impl OperationsClient {
             let request = create_request(format!("name={name}"), req.clone());
             self.inner.clone().delete_operation(request).await
         };
-        invoke(cancel, Some(setting), action).await
+        invoke(Some(setting), action).await
     }
 
     /// CancelOperation starts asynchronous cancellation on a long-running operation.  The server
@@ -83,7 +80,6 @@ impl OperationsClient {
     pub async fn cancel_operation(
         &self,
         req: CancelOperationRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
         let setting = retry.unwrap_or_else(default_retry_setting);
@@ -92,7 +88,7 @@ impl OperationsClient {
             let request = create_request(format!("name={name}"), req.clone());
             self.inner.clone().cancel_operation(request).await
         };
-        invoke(cancel, Some(setting), action).await
+        invoke(Some(setting), action).await
     }
 
     /// WaitOperation waits until the specified long-running operation is done or reaches at most
@@ -107,7 +103,6 @@ impl OperationsClient {
     pub async fn wait_operation(
         &self,
         req: WaitOperationRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Operation>, Status> {
         let setting = retry.unwrap_or_else(default_retry_setting);
@@ -115,6 +110,6 @@ impl OperationsClient {
             let request = create_request("".to_string(), req.clone());
             self.inner.clone().wait_operation(request).await
         };
-        invoke(cancel, Some(setting), action).await
+        invoke(Some(setting), action).await
     }
 }

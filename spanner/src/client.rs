@@ -4,7 +4,6 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::{invoke_fn, TryAs};
@@ -283,7 +282,6 @@ impl Client {
 
         // reuse session
         invoke_fn(
-            options.begin_options.cancel.clone(),
             Some(ro),
             |session| async {
                 let mut tx =
@@ -337,7 +335,6 @@ impl Client {
         let mut session = self.get_session().await?;
 
         invoke_fn(
-            options.call_options.cancel.clone(),
             Some(ro),
             |session| async {
                 let tx = commit_request::Transaction::SingleUseTransaction(TransactionOptions {
@@ -381,7 +378,7 @@ impl Client {
     ) -> Result<Option<Timestamp>, Error> {
         let result: Result<(Option<Timestamp>, ()), Error> = self
             .read_write_transaction_sync_with_option(
-                |tx, _cancel| {
+                |tx| {
                     tx.buffer_write(ms.to_vec());
                     Ok(())
                 },
@@ -419,7 +416,7 @@ impl Client {
     ///
     /// #[tokio::main]
     /// async fn run(client: Client) ->  Result<(Option<Timestamp>,()), Error>{
-    ///     client.read_write_transaction(|tx, _| {
+    ///     client.read_write_transaction(|tx| {
     ///         Box::pin(async move {
     ///             // The transaction function will be called again if the error code
     ///             // of this error is Aborted. The backend may automatically abort
@@ -444,10 +441,7 @@ impl Client {
     pub async fn read_write_transaction<'a, T, E, F>(&self, f: F) -> Result<(Option<Timestamp>, T), E>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
-        F: for<'tx> Fn(
-            &'tx mut ReadWriteTransaction,
-            Option<CancellationToken>,
-        ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'tx>>,
+        F: for<'tx> Fn(&'tx mut ReadWriteTransaction) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'tx>>,
     {
         self.read_write_transaction_with_option(f, ReadWriteTransactionOption::default())
             .await
@@ -478,24 +472,18 @@ impl Client {
     ) -> Result<(Option<Timestamp>, T), E>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
-        F: for<'tx> Fn(
-            &'tx mut ReadWriteTransaction,
-            Option<CancellationToken>,
-        ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'tx>>,
+        F: for<'tx> Fn(&'tx mut ReadWriteTransaction) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'tx>>,
     {
         let (bo, co) = Client::split_read_write_transaction_option(options);
 
         let ro = TransactionRetrySetting::default();
         let session = Some(self.get_session().await?);
-        let cancel = bo.cancel.clone();
         // must reuse session
         invoke_fn(
-            cancel.clone(),
             Some(ro),
             |session| async {
-                let cancel = cancel.clone().map(|v| v.child_token());
                 let mut tx = self.create_read_write_transaction::<E>(session, bo.clone()).await?;
-                let result = f(&mut tx, cancel).await;
+                let result = f(&mut tx).await;
                 tx.finish(result, Some(co.clone())).await
             },
             session,
@@ -559,7 +547,7 @@ impl Client {
 
     async fn read_write_transaction_sync_with_option<T, E>(
         &self,
-        f: impl Fn(&mut ReadWriteTransaction, Option<CancellationToken>) -> Result<T, E>,
+        f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,
         options: ReadWriteTransactionOption,
     ) -> Result<(Option<Timestamp>, T), E>
     where
@@ -571,14 +559,11 @@ impl Client {
         let session = Some(self.get_session().await?);
 
         // reuse session
-        let cancel = bo.cancel.clone();
         invoke_fn(
-            cancel.clone(),
             Some(ro),
             |session| async {
-                let cancel = cancel.clone().map(|v| v.child_token());
                 let mut tx = self.create_read_write_transaction::<E>(session, bo.clone()).await?;
-                let result = f(&mut tx, cancel);
+                let result = f(&mut tx);
                 tx.finish(result, Some(co.clone())).await
             },
             session,

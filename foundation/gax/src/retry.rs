@@ -2,13 +2,10 @@ use std::future::Future;
 use std::iter::Take;
 use std::time::Duration;
 
-use tokio::select;
 pub use tokio_retry::strategy::ExponentialBackoff;
-use tokio_retry::Action;
 pub use tokio_retry::Condition;
-use tokio_retry::RetryIf;
+use tokio_retry::{Action, RetryIf};
 
-use crate::cancel::CancellationToken;
 use crate::grpc::{Code, Status};
 
 pub trait TryAs<T> {
@@ -63,7 +60,7 @@ pub struct RetrySetting {
 
 impl Retry<Status, CodeCondition> for RetrySetting {
     fn strategy(&self) -> Take<ExponentialBackoff> {
-        let mut st = tokio_retry::strategy::ExponentialBackoff::from_millis(self.from_millis);
+        let mut st = ExponentialBackoff::from_millis(self.from_millis);
         if let Some(max_delay) = self.max_delay {
             st = st.max_delay(max_delay);
         }
@@ -87,7 +84,7 @@ impl Default for RetrySetting {
     }
 }
 
-pub async fn invoke<A, R, RT, C, E>(cancel: Option<CancellationToken>, retry: Option<RT>, action: A) -> Result<R, E>
+pub async fn invoke<A, R, RT, C, E>(retry: Option<RT>, action: A) -> Result<R, E>
 where
     E: TryAs<Status> + From<Status>,
     A: Action<Item = R, Error = E>,
@@ -95,61 +92,59 @@ where
     RT: Retry<E, C> + Default,
 {
     let retry = retry.unwrap_or_default();
-    match cancel {
-        Some(cancel) => {
-            select! {
-                _ = cancel.cancelled() => Err(Status::cancelled("client cancel").into()),
-                v = RetryIf::spawn(retry.strategy(), action, retry.condition()) => v
-            }
-        }
-        None => RetryIf::spawn(retry.strategy(), action, retry.condition()).await,
-    }
+    RetryIf::spawn(retry.strategy(), action, retry.condition()).await
 }
 /// Repeats retries when the specified error is detected.
 /// The argument specified by 'v' can be reused for each retry.
-pub async fn invoke_fn<R, V, A, RT, C, E>(
-    cancel: Option<CancellationToken>,
-    retry: Option<RT>,
-    mut f: impl FnMut(V) -> A,
-    mut v: V,
-) -> Result<R, E>
+pub async fn invoke_fn<R, V, A, RT, C, E>(retry: Option<RT>, mut f: impl FnMut(V) -> A, mut v: V) -> Result<R, E>
 where
     E: TryAs<Status> + From<Status>,
     A: Future<Output = Result<R, (E, V)>>,
     C: Condition<E>,
     RT: Retry<E, C> + Default,
 {
-    let fn_loop = async {
-        let retry = retry.unwrap_or_default();
-        let mut strategy = retry.strategy();
-        loop {
-            let result = f(v).await;
-            let status = match result {
-                Ok(s) => return Ok(s),
-                Err(e) => {
-                    v = e.1;
-                    e.0
-                }
-            };
-            if retry.condition().should_retry(&status) {
-                let duration = match strategy.next() {
-                    None => return Err(status),
-                    Some(s) => s,
-                };
-                tokio::time::sleep(duration).await;
-                tracing::trace!("retry fn");
-            } else {
-                return Err(status);
+    let retry = retry.unwrap_or_default();
+    let mut strategy = retry.strategy();
+    loop {
+        let result = f(v).await;
+        let status = match result {
+            Ok(s) => return Ok(s),
+            Err(e) => {
+                v = e.1;
+                e.0
             }
+        };
+        if retry.condition().should_retry(&status) {
+            let duration = strategy.next().ok_or(status)?;
+            tokio::time::sleep(duration).await;
+            tracing::trace!("retry fn");
+        } else {
+            return Err(status);
         }
-    };
-    match cancel {
-        Some(cancel) => {
-            select! {
-                _ = cancel.cancelled() => Err(Status::cancelled("client cancel").into()),
-                v = fn_loop => v
-            }
-        }
-        None => fn_loop.await,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::{Arc, Mutex};
+
+    use tonic::{Code, Status};
+
+    use crate::retry::{invoke, RetrySetting};
+
+    #[tokio::test]
+    async fn test_retry() {
+        let retry = RetrySetting::default();
+        let counter = Arc::new(Mutex::new(0));
+        let action = || async {
+            let mut lock = counter.lock().unwrap();
+            *lock += 1;
+            let result: Result<i32, Status> = Err(Status::new(Code::Aborted, "error"));
+            result
+        };
+        let actual = invoke(Some(retry), action).await.unwrap_err();
+        let expected = Status::new(Code::Aborted, "error");
+        assert_eq!(actual.code(), expected.code());
+        assert_eq!(*counter.lock().unwrap(), 6);
     }
 }

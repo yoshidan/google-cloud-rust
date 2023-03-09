@@ -37,8 +37,8 @@ mod tests {
             database_dialect: DatabaseDialect::GoogleStandardSql.into(),
         };
 
-        let creation_result = match client.create_database(request, None, None).await {
-            Ok(mut res) => res.wait(None, None).await,
+        let creation_result = match client.create_database(request, None).await {
+            Ok(mut res) => res.wait(None).await,
             Err(err) => panic!("err: {err:?}"),
         };
         match creation_result {
@@ -61,7 +61,7 @@ mod tests {
         let name = "projects/local-project/instances/test-instance/databases/local-database".to_string();
         let request = GetDatabaseRequest { name: name.clone() };
 
-        match client.get_database(request, None, None).await {
+        match client.get_database(request, None).await {
             Ok(res) => {
                 let db = res.into_inner();
                 assert_eq!(db.name, name);
@@ -78,7 +78,7 @@ mod tests {
         let request = DropDatabaseRequest {
             database: database.name.to_string(),
         };
-        let _ = client.drop_database(request, None, None).await.unwrap();
+        let _ = client.drop_database(request, None).await.unwrap();
     }
 
     #[tokio::test]
@@ -91,7 +91,7 @@ mod tests {
             page_token: "".to_string(),
         };
 
-        match client.list_databases(request, None, None).await {
+        match client.list_databases(request, None).await {
             Ok(res) => {
                 println!("size = {}", res.len());
                 assert!(!res.is_empty());
@@ -109,7 +109,7 @@ mod tests {
             database: database.name.to_string(),
         };
 
-        match client.get_database_ddl(request, None, None).await {
+        match client.get_database_ddl(request, None).await {
             Ok(res) => {
                 assert_eq!(res.into_inner().statements.len(), 1);
             }
@@ -128,8 +128,8 @@ mod tests {
             operation_id: "".to_string(),
         };
 
-        let update_result = match client.update_database_ddl(request, None, None).await {
-            Ok(mut res) => res.wait(None, None).await,
+        let update_result = match client.update_database_ddl(request, None).await {
+            Ok(mut res) => res.wait(None).await,
             Err(err) => panic!("err: {err:?}"),
         };
         let _ = update_result.unwrap();

@@ -4,7 +4,6 @@ use std::sync::atomic::{AtomicI64, Ordering};
 
 use prost_types::Struct;
 
-use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::{RetrySetting, TryAs};
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::TransactionId;
@@ -134,10 +133,7 @@ impl ReadWriteTransaction {
             options: Some(TransactionOptions { mode: Some(mode) }),
             request_options: Transaction::create_request_options(options.priority),
         };
-        let result = session
-            .spanner_client
-            .begin_transaction(request, options.cancel, options.retry)
-            .await;
+        let result = session.spanner_client.begin_transaction(request, options.retry).await;
         let response = match session.invalidate_if_needed(result).await {
             Ok(response) => response,
             Err(err) => {
@@ -184,7 +180,7 @@ impl ReadWriteTransaction {
         let session = self.as_mut_session();
         let result = session
             .spanner_client
-            .execute_sql(request, options.call_options.cancel, options.call_options.retry)
+            .execute_sql(request, options.call_options.retry)
             .await;
         let response = session.invalidate_if_needed(result).await?;
         Ok(extract_row_count(response.into_inner().stats))
@@ -217,7 +213,7 @@ impl ReadWriteTransaction {
         let session = self.as_mut_session();
         let result = session
             .spanner_client
-            .execute_batch_dml(request, options.call_options.cancel, options.call_options.retry)
+            .execute_batch_dml(request, options.call_options.retry)
             .await;
         let response = session.invalidate_if_needed(result).await?;
         Ok(response
@@ -249,7 +245,7 @@ impl ReadWriteTransaction {
                         return Err(err);
                     }
                 }
-                let _ = self.rollback(opt.call_options.cancel, opt.call_options.retry).await;
+                let _ = self.rollback(opt.call_options.retry).await;
                 Err(err)
             }
         }
@@ -284,14 +280,14 @@ impl ReadWriteTransaction {
                 let status = match err.try_as() {
                     Some(status) => status,
                     None => {
-                        let _ = self.rollback(opt.call_options.cancel, opt.call_options.retry).await;
+                        let _ = self.rollback(opt.call_options.retry).await;
                         return Err((err, self.take_session()));
                     }
                 };
                 match status.code() {
                     Code::Aborted => Err((err, self.take_session())),
                     _ => {
-                        let _ = self.rollback(opt.call_options.cancel, opt.call_options.retry).await;
+                        let _ = self.rollback(opt.call_options.retry).await;
                         return Err((err, self.take_session()));
                     }
                 }
@@ -306,17 +302,13 @@ impl ReadWriteTransaction {
         commit(session, mutations, TransactionId(tx_id), options).await
     }
 
-    pub(crate) async fn rollback(
-        &mut self,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<(), Status> {
+    pub(crate) async fn rollback(&mut self, retry: Option<RetrySetting>) -> Result<(), Status> {
         let request = RollbackRequest {
             transaction_id: self.tx_id.clone(),
             session: self.get_session_name(),
         };
         let session = self.as_mut_session();
-        let result = session.spanner_client.rollback(request, cancel, retry).await;
+        let result = session.spanner_client.rollback(request, retry).await;
         session.invalidate_if_needed(result).await?.into_inner();
         Ok(())
     }
@@ -337,7 +329,7 @@ pub(crate) async fn commit(
     };
     let result = session
         .spanner_client
-        .commit(request, commit_options.call_options.cancel, commit_options.call_options.retry)
+        .commit(request, commit_options.call_options.retry)
         .await;
     let response = session.invalidate_if_needed(result).await;
     match response {

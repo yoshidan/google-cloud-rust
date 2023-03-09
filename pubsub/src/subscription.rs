@@ -5,8 +5,8 @@ use std::task::{Context, Poll};
 use std::time::{Duration, SystemTime};
 
 use prost_types::{DurationError, FieldMask};
+use tokio_util::sync::CancellationToken;
 
-use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::codegen::futures_core::Stream;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::RetrySetting;
@@ -170,13 +170,7 @@ impl Subscription {
     }
 
     /// create creates the subscription.
-    pub async fn create(
-        &self,
-        fqtn: &str,
-        cfg: SubscriptionConfig,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<(), Status> {
+    pub async fn create(&self, fqtn: &str, cfg: SubscriptionConfig, retry: Option<RetrySetting>) -> Result<(), Status> {
         self.subc
             .create_subscription(
                 InternalSubscription {
@@ -206,7 +200,6 @@ impl Subscription {
                     enable_exactly_once_delivery: cfg.enable_exactly_once_delivery,
                     state: cfg.state,
                 },
-                cancel,
                 retry,
             )
             .await
@@ -214,22 +207,19 @@ impl Subscription {
     }
 
     /// delete deletes the subscription.
-    pub async fn delete(&self, cancel: Option<CancellationToken>, retry: Option<RetrySetting>) -> Result<(), Status> {
+    pub async fn delete(&self, retry: Option<RetrySetting>) -> Result<(), Status> {
         let req = DeleteSubscriptionRequest {
             subscription: self.fqsn.to_string(),
         };
-        self.subc
-            .delete_subscription(req, cancel, retry)
-            .await
-            .map(|v| v.into_inner())
+        self.subc.delete_subscription(req, retry).await.map(|v| v.into_inner())
     }
 
     /// exists reports whether the subscription exists on the server.
-    pub async fn exists(&self, cancel: Option<CancellationToken>, retry: Option<RetrySetting>) -> Result<bool, Status> {
+    pub async fn exists(&self, retry: Option<RetrySetting>) -> Result<bool, Status> {
         let req = GetSubscriptionRequest {
             subscription: self.fqsn.to_string(),
         };
-        match self.subc.get_subscription(req, cancel, retry).await {
+        match self.subc.get_subscription(req, retry).await {
             Ok(_) => Ok(true),
             Err(e) => {
                 if e.code() == Code::NotFound {
@@ -242,15 +232,11 @@ impl Subscription {
     }
 
     /// config fetches the current configuration for the subscription.
-    pub async fn config(
-        &self,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<(String, SubscriptionConfig), Status> {
+    pub async fn config(&self, retry: Option<RetrySetting>) -> Result<(String, SubscriptionConfig), Status> {
         let req = GetSubscriptionRequest {
             subscription: self.fqsn.to_string(),
         };
-        self.subc.get_subscription(req, cancel, retry).await.map(|v| {
+        self.subc.get_subscription(req, retry).await.map(|v| {
             let inner = v.into_inner();
             (inner.topic.to_string(), inner.into())
         })
@@ -261,17 +247,12 @@ impl Subscription {
     pub async fn update(
         &self,
         updating: SubscriptionConfigToUpdate,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<(String, SubscriptionConfig), Status> {
         let req = GetSubscriptionRequest {
             subscription: self.fqsn.to_string(),
         };
-        let mut config = self
-            .subc
-            .get_subscription(req, cancel.clone(), retry.clone())
-            .await?
-            .into_inner();
+        let mut config = self.subc.get_subscription(req, retry.clone()).await?.into_inner();
 
         let mut paths = vec![];
         if updating.push_config.is_some() {
@@ -315,7 +296,7 @@ impl Subscription {
             subscription: Some(config),
             update_mask: Some(FieldMask { paths }),
         };
-        self.subc.update_subscription(update_req, cancel, retry).await.map(|v| {
+        self.subc.update_subscription(update_req, retry).await.map(|v| {
             let inner = v.into_inner();
             (inner.topic.to_string(), inner.into())
         })
@@ -323,19 +304,14 @@ impl Subscription {
 
     /// pull get message synchronously.
     /// It blocks until at least one message is available.
-    pub async fn pull(
-        &self,
-        max_messages: i32,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Vec<ReceivedMessage>, Status> {
+    pub async fn pull(&self, max_messages: i32, retry: Option<RetrySetting>) -> Result<Vec<ReceivedMessage>, Status> {
         #[allow(deprecated)]
         let req = PullRequest {
             subscription: self.fqsn.clone(),
             return_immediately: false,
             max_messages,
         };
-        let messages = self.subc.pull(req, cancel, retry).await?.into_inner().received_messages;
+        let messages = self.subc.pull(req, retry).await?.into_inner().received_messages;
         Ok(messages
             .into_iter()
             .filter(|m| m.message.is_some())
@@ -386,7 +362,7 @@ impl Subscription {
         let mut senders = Vec::with_capacity(receivers.len());
 
         if self
-            .config(Some(cancel.clone()), op.subscriber_config.retry_setting.clone())
+            .config(op.subscriber_config.retry_setting.clone())
             .await?
             .1
             .enable_message_ordering
@@ -449,12 +425,12 @@ impl Subscription {
     /// The Pub/Sub system can remove the relevant messages from the subscription.
     /// This method is for batch acking.
     ///
-    /// ```no_test
+    /// ```
     /// use google_cloud_pubsub::client::Client;
-    /// use google_cloud_gax::cancel::CancellationToken;
     /// use google_cloud_pubsub::subscription::Subscription;
     /// use google_cloud_gax::grpc::Status;
     /// use std::time::Duration;
+    /// use tokio_util::sync::CancellationToken;;
     ///
     /// #[tokio::main]
     /// async fn run(client: Client) -> Result<(), Status> {
@@ -512,12 +488,7 @@ impl Subscription {
     }
 
     /// seek seeks the subscription a past timestamp or a saved snapshot.
-    pub async fn seek(
-        &self,
-        to: SeekTo,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<(), Status> {
+    pub async fn seek(&self, to: SeekTo, retry: Option<RetrySetting>) -> Result<(), Status> {
         let to = match to {
             SeekTo::Timestamp(t) => SeekTo::Timestamp(t),
             SeekTo::Snapshot(name) => SeekTo::Snapshot(self.fully_qualified_snapshot_name(name.as_str())),
@@ -528,21 +499,16 @@ impl Subscription {
             target: Some(to.into()),
         };
 
-        let _ = self.subc.seek(req, cancel, retry).await?;
+        let _ = self.subc.seek(req, retry).await?;
         Ok(())
     }
 
     /// get_snapshot fetches an existing pubsub snapshot.
-    pub async fn get_snapshot(
-        &self,
-        name: &str,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Snapshot, Status> {
+    pub async fn get_snapshot(&self, name: &str, retry: Option<RetrySetting>) -> Result<Snapshot, Status> {
         let req = GetSnapshotRequest {
             snapshot: self.fully_qualified_snapshot_name(name),
         };
-        Ok(self.subc.get_snapshot(req, cancel, retry).await?.into_inner())
+        Ok(self.subc.get_snapshot(req, retry).await?.into_inner())
     }
 
     /// create_snapshot creates a new pubsub snapshot from the subscription's state at the time of calling.
@@ -558,7 +524,6 @@ impl Subscription {
         &self,
         name: &str,
         labels: HashMap<String, String>,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Snapshot, Status> {
         let req = CreateSnapshotRequest {
@@ -566,20 +531,15 @@ impl Subscription {
             labels,
             subscription: self.fqsn.to_owned(),
         };
-        Ok(self.subc.create_snapshot(req, cancel, retry).await?.into_inner())
+        Ok(self.subc.create_snapshot(req, retry).await?.into_inner())
     }
 
     /// delete_snapshot deletes an existing pubsub snapshot.
-    pub async fn delete_snapshot(
-        &self,
-        name: &str,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<(), Status> {
+    pub async fn delete_snapshot(&self, name: &str, retry: Option<RetrySetting>) -> Result<(), Status> {
         let req = DeleteSnapshotRequest {
             snapshot: self.fully_qualified_snapshot_name(name),
         };
-        let _ = self.subc.delete_snapshot(req, cancel, retry).await?;
+        let _ = self.subc.delete_snapshot(req, retry).await?;
         Ok(())
     }
 }
@@ -594,11 +554,10 @@ mod tests {
 
     use futures_util::StreamExt;
     use serial_test::serial;
+    use tokio_util::sync::CancellationToken;
     use uuid::Uuid;
 
-    use google_cloud_gax::cancel::CancellationToken;
     use google_cloud_gax::conn::Environment;
-    use google_cloud_gax::grpc::Code;
     use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
 
     use crate::apiv1::conn_pool::ConnectionManager;
@@ -624,17 +583,13 @@ mod tests {
         let uuid = Uuid::new_v4().hyphenated().to_string();
         let subscription_name = format!("projects/{}/subscriptions/s{}", PROJECT_NAME, &uuid);
         let topic_name = format!("projects/{PROJECT_NAME}/topics/test-topic1");
-        let cancel = CancellationToken::new();
         let subscription = Subscription::new(subscription_name, client);
         let config = SubscriptionConfig {
             enable_exactly_once_delivery,
             ..Default::default()
         };
-        if !subscription.exists(Some(cancel.clone()), None).await.unwrap() {
-            subscription
-                .create(topic_name.as_str(), config, Some(cancel), None)
-                .await
-                .unwrap();
+        if !subscription.exists(None).await.unwrap() {
+            subscription.create(topic_name.as_str(), config, None).await.unwrap();
         }
         subscription
     }
@@ -653,22 +608,21 @@ mod tests {
             topic: format!("projects/{PROJECT_NAME}/topics/test-topic1"),
             messages: vec![msg],
         };
-        let _ = pubc.publish(req, Some(CancellationToken::new()), None).await;
+        let _ = pubc.publish(req, None).await;
     }
 
     async fn test_subscription(enable_exactly_once_delivery: bool) {
         let subscription = create_subscription(enable_exactly_once_delivery).await;
 
         let topic_name = format!("projects/{PROJECT_NAME}/topics/test-topic1");
-        let cancel = CancellationToken::new();
-        let config = subscription.config(Some(cancel.clone()), None).await.unwrap();
+        let config = subscription.config(None).await.unwrap();
         assert_eq!(config.0, topic_name);
 
         let updating = SubscriptionConfigToUpdate {
             ack_deadline_seconds: Some(100),
             ..Default::default()
         };
-        let new_config = subscription.update(updating, Some(cancel.clone()), None).await.unwrap();
+        let new_config = subscription.update(updating, None).await.unwrap();
         assert_eq!(new_config.0, topic_name);
         assert_eq!(new_config.1.ack_deadline_seconds, 100);
 
@@ -685,8 +639,8 @@ mod tests {
                     None,
                 )
                 .await;
-            subscription.delete(Some(cancel.clone()), None).await.unwrap();
-            assert!(!subscription.exists(Some(cancel.clone()), None).await.unwrap())
+            subscription.delete(None).await.unwrap();
+            assert!(!subscription.exists(None).await.unwrap())
         });
         tokio::time::sleep(Duration::from_secs(3)).await;
         receiver_ctx.cancel();
@@ -700,33 +654,12 @@ mod tests {
         publish().await;
         publish().await;
         publish().await;
-        let messages = subscription.pull(2, None, None).await.unwrap();
+        let messages = subscription.pull(2, None).await.unwrap();
         assert_eq!(messages.len(), 2);
         for m in messages {
             m.ack().await.unwrap();
         }
-        subscription.delete(None, None).await.unwrap();
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
-    async fn test_pull_cancel() {
-        let subscription = create_subscription(false).await;
-        let cancel = CancellationToken::new();
-        let cancel2 = cancel.clone();
-        let j = tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_secs(5)).await;
-            tracing::info!("cancelled");
-            cancel2.clone().cancel();
-        });
-        let messages = subscription.pull(2, Some(cancel), None).await;
-        match messages {
-            Ok(_v) => panic!("must error"),
-            Err(e) => {
-                assert_eq!(e.code(), Code::Cancelled);
-            }
-        }
-        let _ = j.await;
+        subscription.delete(None).await.unwrap();
     }
 
     #[tokio::test]
@@ -869,7 +802,6 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_snapshots() {
-        let ctx = CancellationToken::new();
         let subscription = create_subscription(false).await;
 
         let snapshot_name = format!("snapshot-{}", rand::random::<u64>());
@@ -878,13 +810,11 @@ mod tests {
         let expected_fq_snap_name = format!("projects/{PROJECT_NAME}/snapshots/{snapshot_name}");
 
         // cleanup; TODO: remove?
-        let _response = subscription
-            .delete_snapshot(snapshot_name.as_str(), Some(ctx.clone()), None)
-            .await;
+        let _response = subscription.delete_snapshot(snapshot_name.as_str(), None).await;
 
         // create
         let created_snapshot = subscription
-            .create_snapshot(snapshot_name.as_str(), labels.clone(), Some(ctx.clone()), None)
+            .create_snapshot(snapshot_name.as_str(), labels.clone(), None)
             .await
             .unwrap();
 
@@ -892,25 +822,22 @@ mod tests {
         // NOTE: we don't assert the labels due to lack of label support in the pubsub emulator.
 
         // get
-        let retrieved_snapshot = subscription
-            .get_snapshot(snapshot_name.as_str(), Some(ctx.clone()), None)
-            .await
-            .unwrap();
+        let retrieved_snapshot = subscription.get_snapshot(snapshot_name.as_str(), None).await.unwrap();
         assert_eq!(created_snapshot, retrieved_snapshot);
 
         // delete
         subscription
-            .delete_snapshot(snapshot_name.as_str(), Some(ctx.clone()), None)
+            .delete_snapshot(snapshot_name.as_str(), None)
             .await
             .unwrap();
 
         let _deleted_snapshot_status = subscription
-            .get_snapshot(snapshot_name.as_str(), None, None)
+            .get_snapshot(snapshot_name.as_str(), None)
             .await
             .expect_err("snapshot should have been deleted");
 
         let _delete_again = subscription
-            .delete_snapshot(snapshot_name.as_str(), None, None)
+            .delete_snapshot(snapshot_name.as_str(), None)
             .await
             .expect_err("snapshot should already be deleted");
     }
@@ -929,39 +856,39 @@ mod tests {
 
         // publish and receive a message
         publish().await;
-        let messages = subscription.pull(100, None, None).await.unwrap();
+        let messages = subscription.pull(100, None).await.unwrap();
         ack_all(&messages).await;
         assert_eq!(messages.len(), 1);
 
         // snapshot at received = 1
         let _snapshot = subscription
-            .create_snapshot(snapshot_name.as_str(), HashMap::new(), None, None)
+            .create_snapshot(snapshot_name.as_str(), HashMap::new(), None)
             .await
             .unwrap();
 
         // publish and receive another message
         publish().await;
-        let messages = subscription.pull(100, None, None).await.unwrap();
+        let messages = subscription.pull(100, None).await.unwrap();
         assert_eq!(messages.len(), 1);
         ack_all(&messages).await;
 
         // rewind to snapshot at received = 1
         subscription
-            .seek(SeekTo::Snapshot(snapshot_name.clone()), None, None)
+            .seek(SeekTo::Snapshot(snapshot_name.clone()), None)
             .await
             .unwrap();
 
         // assert we receive the 1 message we should receive again
-        let messages = subscription.pull(100, None, None).await.unwrap();
+        let messages = subscription.pull(100, None).await.unwrap();
         assert_eq!(messages.len(), 1);
         ack_all(&messages).await;
 
         // cleanup
         subscription
-            .delete_snapshot(snapshot_name.as_str(), None, None)
+            .delete_snapshot(snapshot_name.as_str(), None)
             .await
             .unwrap();
-        subscription.delete(None, None).await.unwrap();
+        subscription.delete(None).await.unwrap();
     }
 
     #[tokio::test]
@@ -978,14 +905,13 @@ mod tests {
                     ..Default::default()
                 },
                 None,
-                None,
             )
             .await
             .unwrap();
 
         // publish and receive a message
         publish().await;
-        let messages = subscription.pull(100, None, None).await.unwrap();
+        let messages = subscription.pull(100, None).await.unwrap();
         ack_all(&messages).await;
         assert_eq!(messages.len(), 1);
 
@@ -993,23 +919,19 @@ mod tests {
 
         // rewind to a timestamp where message was just published
         subscription
-            .seek(
-                SeekTo::Timestamp(message_publish_time.to_owned().try_into().unwrap()),
-                None,
-                None,
-            )
+            .seek(SeekTo::Timestamp(message_publish_time.to_owned().try_into().unwrap()), None)
             .await
             .unwrap();
 
         // consume -- should receive the first message again
-        let messages = subscription.pull(100, None, None).await.unwrap();
+        let messages = subscription.pull(100, None).await.unwrap();
         ack_all(&messages).await;
         assert_eq!(messages.len(), 1);
         let seek_message_publish_time = messages.get(0).unwrap().message.publish_time.to_owned().unwrap();
         assert_eq!(seek_message_publish_time, message_publish_time);
 
         // cleanup
-        subscription.delete(None, None).await.unwrap();
+        subscription.delete(None).await.unwrap();
     }
 
     #[tokio::test]

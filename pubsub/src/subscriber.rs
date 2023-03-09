@@ -3,8 +3,8 @@ use std::time::Duration;
 use tokio::select;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
+use tokio_util::sync::CancellationToken;
 
-use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::grpc::{Code, Status, Streaming};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::{
@@ -93,16 +93,16 @@ impl Subscriber {
     ) -> Self {
         let config = opt.unwrap_or_default();
 
-        let cancel_receiver = ctx.clone();
         let (ping_sender, ping_receiver) = async_channel::unbounded();
 
         // ping request
         let subscription_clone = subscription.to_string();
 
+        let cancel_receiver = ctx.clone();
         let pinger = tokio::spawn(async move {
             loop {
                 select! {
-                    _ = cancel_receiver.cancelled() => {
+                    _ = ctx.cancelled() => {
                         ping_sender.close();
                         break;
                     }
@@ -114,7 +114,6 @@ impl Subscriber {
             tracing::trace!("stop pinger : {}", subscription_clone);
         });
 
-        let cancel_receiver = ctx;
         let inner = tokio::spawn(async move {
             tracing::trace!("start subscriber: {}", subscription);
             let retryable_codes = match &config.retry_setting {
@@ -129,12 +128,7 @@ impl Subscriber {
                 request.max_outstanding_bytes = config.max_outstanding_bytes;
 
                 let response = client
-                    .streaming_pull(
-                        request,
-                        Some(cancel_receiver.clone()),
-                        ping_receiver.clone(),
-                        config.retry_setting.clone(),
-                    )
+                    .streaming_pull(request, ping_receiver.clone(), config.retry_setting.clone())
                     .await;
 
                 let stream = match response {
@@ -265,7 +259,7 @@ async fn nack(subscriber_client: &SubscriberClient, subscription: String, ack_id
         ack_ids,
     };
     subscriber_client
-        .modify_ack_deadline(req, None, None)
+        .modify_ack_deadline(req, None)
         .await
         .map(|e| e.into_inner())
 }
@@ -279,10 +273,7 @@ pub(crate) async fn ack(
         return Ok(());
     }
     let req = AcknowledgeRequest { subscription, ack_ids };
-    subscriber_client
-        .acknowledge(req, None, None)
-        .await
-        .map(|e| e.into_inner())
+    subscriber_client.acknowledge(req, None).await.map(|e| e.into_inner())
 }
 
 #[cfg(test)]
@@ -322,7 +313,6 @@ mod tests {
                 }],
             },
             None,
-            None,
         )
         .await
         .unwrap();
@@ -335,7 +325,6 @@ mod tests {
                     max_messages: 1,
                     ..Default::default()
                 },
-                None,
                 None,
             )
             .await

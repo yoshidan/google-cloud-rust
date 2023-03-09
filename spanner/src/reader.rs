@@ -44,9 +44,7 @@ impl Reader for StatementReader {
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
         let option = option.unwrap_or_default();
         let client = &mut session.spanner_client;
-        let result = client
-            .execute_streaming_sql(self.request.clone(), option.cancel, option.retry)
-            .await;
+        let result = client.execute_streaming_sql(self.request.clone(), option.retry).await;
         return session.invalidate_if_needed(result).await;
     }
 
@@ -72,9 +70,7 @@ impl Reader for TableReader {
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
         let option = option.unwrap_or_default();
         let client = &mut session.spanner_client;
-        let result = client
-            .streaming_read(self.request.clone(), option.cancel, option.retry)
-            .await;
+        let result = client.streaming_read(self.request.clone(), option.retry).await;
         return session.invalidate_if_needed(result).await;
     }
 

@@ -1,4 +1,3 @@
-use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Channel;
 use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::{Response, Status};
@@ -35,7 +34,6 @@ impl DatabaseAdminClient {
     pub async fn list_databases(
         &self,
         mut req: ListDatabasesRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Vec<Database>, Status> {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
@@ -47,7 +45,7 @@ impl DatabaseAdminClient {
                 let request = create_request(format!("parent={parent}"), req.clone());
                 self.inner.clone().list_databases(request).await.map(|d| d.into_inner())
             };
-            let response = invoke(cancel.clone(), retry.clone(), action).await?;
+            let response = invoke(retry.clone(), action).await?;
             all_databases.extend(response.databases.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all_databases);
@@ -65,7 +63,6 @@ impl DatabaseAdminClient {
     pub async fn create_database(
         &self,
         req: CreateDatabaseRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Operation<Database>, Status> {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
@@ -74,7 +71,7 @@ impl DatabaseAdminClient {
             let request = create_request(format!("parent={parent}"), req.clone());
             self.inner.clone().create_database(request).await
         };
-        invoke(cancel, retry, action)
+        invoke(retry, action)
             .await
             .map(|d| Operation::new(self.lro_client.clone(), d.into_inner()))
     }
@@ -84,7 +81,6 @@ impl DatabaseAdminClient {
     pub async fn get_database(
         &self,
         req: GetDatabaseRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Database>, Status> {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
@@ -93,7 +89,7 @@ impl DatabaseAdminClient {
             let request = create_request(format!("name={name}"), req.clone());
             self.inner.clone().get_database(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// update_database_ddl updates the schema of a Cloud Spanner database by
@@ -108,7 +104,6 @@ impl DatabaseAdminClient {
     pub async fn update_database_ddl(
         &self,
         req: UpdateDatabaseDdlRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Operation<()>, Status> {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
@@ -117,7 +112,7 @@ impl DatabaseAdminClient {
             let request = create_request(format!("database={database}"), req.clone());
             self.inner.clone().update_database_ddl(request).await
         };
-        invoke(cancel, retry, action)
+        invoke(retry, action)
             .await
             .map(|d| Operation::new(self.lro_client.clone(), d.into_inner()))
     }
@@ -129,7 +124,6 @@ impl DatabaseAdminClient {
     pub async fn drop_database(
         &self,
         req: DropDatabaseRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
@@ -138,7 +132,7 @@ impl DatabaseAdminClient {
             let request = create_request(format!("database={database}"), req.clone());
             self.inner.clone().drop_database(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// get_database_ddl returns the schema of a Cloud Spanner database as a list of formatted
@@ -148,7 +142,6 @@ impl DatabaseAdminClient {
     pub async fn get_database_ddl(
         &self,
         req: GetDatabaseDdlRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<GetDatabaseDdlResponse>, Status> {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
@@ -157,7 +150,7 @@ impl DatabaseAdminClient {
             let request = create_request(format!("database={database}"), req.clone());
             self.inner.clone().get_database_ddl(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// set_iam_policy sets the access control policy on a database or backup resource.
@@ -171,7 +164,6 @@ impl DatabaseAdminClient {
     pub async fn set_iam_policy(
         &self,
         req: SetIamPolicyRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Policy>, Status> {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
@@ -180,7 +172,7 @@ impl DatabaseAdminClient {
             let request = create_request(format!("resource={resource}"), req.clone());
             self.inner.clone().set_iam_policy(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// get_iam_policy gets the access control policy for a database or backup resource.
@@ -195,7 +187,6 @@ impl DatabaseAdminClient {
     pub async fn get_iam_policy(
         &self,
         req: GetIamPolicyRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Policy>, Status> {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
@@ -204,7 +195,7 @@ impl DatabaseAdminClient {
             let request = create_request(format!("resource={resource}"), req.clone());
             self.inner.clone().get_iam_policy(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// test_iam_permissions returns permissions that the caller has on the specified database or backup
@@ -221,7 +212,6 @@ impl DatabaseAdminClient {
     pub async fn test_iam_permissions(
         &self,
         req: TestIamPermissionsRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<TestIamPermissionsResponse>, Status> {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
@@ -230,7 +220,7 @@ impl DatabaseAdminClient {
             let request = create_request(format!("resource={resource}"), req.clone());
             self.inner.clone().test_iam_permissions(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// create_backup starts creating a new Cloud Spanner Backup.
@@ -249,7 +239,6 @@ impl DatabaseAdminClient {
     pub async fn create_backup(
         &self,
         req: CreateBackupRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Operation<Backup>, Status> {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
@@ -258,7 +247,7 @@ impl DatabaseAdminClient {
             let request = create_request(format!("parent={parent}"), req.clone());
             self.inner.clone().create_backup(request).await
         };
-        invoke(cancel, retry, action)
+        invoke(retry, action)
             .await
             .map(|d| Operation::new(self.lro_client.clone(), d.into_inner()))
     }
@@ -268,7 +257,6 @@ impl DatabaseAdminClient {
     pub async fn get_backup(
         &self,
         req: GetBackupRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Backup>, Status> {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
@@ -277,7 +265,7 @@ impl DatabaseAdminClient {
             let request = create_request(format!("name={name}"), req.clone());
             self.inner.clone().get_backup(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// update_backup updates a pending or completed Backup.
@@ -285,7 +273,6 @@ impl DatabaseAdminClient {
     pub async fn update_backup(
         &self,
         req: UpdateBackupRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Backup>, Status> {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
@@ -294,7 +281,7 @@ impl DatabaseAdminClient {
             let request = create_request(format!("backup.name={name}"), req.clone());
             self.inner.clone().update_backup(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// delete_backup deletes a pending or completed Backup.
@@ -302,7 +289,6 @@ impl DatabaseAdminClient {
     pub async fn delete_backup(
         &self,
         req: DeleteBackupRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
@@ -311,7 +297,7 @@ impl DatabaseAdminClient {
             let request = create_request(format!("name={name}"), req.clone());
             self.inner.clone().delete_backup(request).await
         };
-        invoke(cancel, retry, action).await
+        invoke(retry, action).await
     }
 
     /// list_backups lists completed and pending backups.
@@ -321,7 +307,6 @@ impl DatabaseAdminClient {
     pub async fn list_backups(
         &self,
         mut req: ListBackupsRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Vec<Backup>, Status> {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
@@ -333,7 +318,7 @@ impl DatabaseAdminClient {
                 let request = create_request(format!("parent={parent}"), req.clone());
                 self.inner.clone().list_backups(request).await.map(|d| d.into_inner())
             };
-            let response = invoke(cancel.clone(), retry.clone(), action).await?;
+            let response = invoke(retry.clone(), action).await?;
             all_backups.extend(response.backups.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all_backups);
@@ -363,7 +348,6 @@ impl DatabaseAdminClient {
     pub async fn restore_database(
         &self,
         req: RestoreDatabaseRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Operation<Database>, Status> {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
@@ -372,7 +356,7 @@ impl DatabaseAdminClient {
             let request = create_request(format!("parent={parent}"), req.clone());
             self.inner.clone().restore_database(request).await
         };
-        invoke(cancel, retry, action)
+        invoke(retry, action)
             .await
             .map(|d| Operation::new(self.lro_client.clone(), d.into_inner()))
     }
@@ -391,7 +375,6 @@ impl DatabaseAdminClient {
     pub async fn list_backup_operations(
         &self,
         mut req: ListBackupOperationsRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Vec<InternalOperation>, Status> {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
@@ -407,7 +390,7 @@ impl DatabaseAdminClient {
                     .await
                     .map(|d| d.into_inner())
             };
-            let response = invoke(cancel.clone(), retry.clone(), action).await?;
+            let response = invoke(retry.clone(), action).await?;
             all_operations.extend(response.operations.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all_operations);
@@ -428,7 +411,6 @@ impl DatabaseAdminClient {
     pub async fn list_database_operations(
         &self,
         mut req: ListDatabaseOperationsRequest,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Vec<InternalOperation>, Status> {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
@@ -444,7 +426,7 @@ impl DatabaseAdminClient {
                     .await
                     .map(|d| d.into_inner())
             };
-            let response = invoke(cancel.clone(), retry.clone(), action).await?;
+            let response = invoke(retry.clone(), action).await?;
             all_operations.extend(response.operations.into_iter());
             if response.next_page_token.is_empty() {
                 return Ok(all_operations);

@@ -1,6 +1,5 @@
 use std::env::var;
 
-use google_cloud_gax::cancel::CancellationToken;
 use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
@@ -106,28 +105,23 @@ impl Client {
         id: &str,
         topic_id: &str,
         cfg: SubscriptionConfig,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Subscription, Status> {
         let subscription = self.subscription(id);
         subscription
-            .create(self.fully_qualified_topic_name(topic_id).as_str(), cfg, cancel, retry)
+            .create(self.fully_qualified_topic_name(topic_id).as_str(), cfg, retry)
             .await
             .map(|_v| subscription)
     }
 
     /// subscriptions returns an iterator which returns all of the subscriptions for the client's project.
-    pub async fn get_subscriptions(
-        &self,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Vec<Subscription>, Status> {
+    pub async fn get_subscriptions(&self, retry: Option<RetrySetting>) -> Result<Vec<Subscription>, Status> {
         let req = ListSubscriptionsRequest {
             project: self.fully_qualified_project_name(),
             page_size: 0,
             page_token: "".to_string(),
         };
-        self.subc.list_subscriptions(req, cancel, retry).await.map(|v| {
+        self.subc.list_subscriptions(req, retry).await.map(|v| {
             v.into_iter()
                 .map(|x| Subscription::new(x.name, self.subc.clone()))
                 .collect()
@@ -143,16 +137,11 @@ impl Client {
     /// retained in the subscription are dropped. Subsequent `Pull` and `StreamingPull`
     /// requests will return FAILED_PRECONDITION. If the subscription is a push
     /// subscription, pushes to the endpoint will stop.
-    pub async fn detach_subscription(
-        &self,
-        fqsn: &str,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<(), Status> {
+    pub async fn detach_subscription(&self, fqsn: &str, retry: Option<RetrySetting>) -> Result<(), Status> {
         let req = DetachSubscriptionRequest {
             subscription: fqsn.to_string(),
         };
-        self.pubc.detach_subscription(req, cancel, retry).await.map(|_v| ())
+        self.pubc.detach_subscription(req, retry).await.map(|_v| ())
     }
 
     /// create_topic creates a new topic.
@@ -168,26 +157,21 @@ impl Client {
         &self,
         id: &str,
         cfg: Option<TopicConfig>,
-        cancel: Option<CancellationToken>,
         retry: Option<RetrySetting>,
     ) -> Result<Topic, Status> {
         let topic = self.topic(id);
-        topic.create(cfg, cancel, retry).await.map(|_v| topic)
+        topic.create(cfg, retry).await.map(|_v| topic)
     }
 
     /// topics returns an iterator which returns all of the topics for the client's project.
-    pub async fn get_topics(
-        &self,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Vec<String>, Status> {
+    pub async fn get_topics(&self, retry: Option<RetrySetting>) -> Result<Vec<String>, Status> {
         let req = ListTopicsRequest {
             project: self.fully_qualified_project_name(),
             page_size: 0,
             page_token: "".to_string(),
         };
         self.pubc
-            .list_topics(req, cancel, retry)
+            .list_topics(req, retry)
             .await
             .map(|v| v.into_iter().map(|x| x.name).collect())
     }
@@ -206,17 +190,13 @@ impl Client {
     /// allow you to manage message acknowledgments in bulk. That is, you can set
     /// the acknowledgment state of messages in an existing subscription to the
     /// state captured by a snapshot.
-    pub async fn get_snapshots(
-        &self,
-        cancel: Option<CancellationToken>,
-        retry: Option<RetrySetting>,
-    ) -> Result<Vec<Snapshot>, Status> {
+    pub async fn get_snapshots(&self, retry: Option<RetrySetting>) -> Result<Vec<Snapshot>, Status> {
         let req = ListSnapshotsRequest {
             project: self.fully_qualified_project_name(),
             page_size: 0,
             page_token: "".to_string(),
         };
-        self.subc.list_snapshots(req, cancel, retry).await
+        self.subc.list_snapshots(req, retry).await
     }
 
     pub fn fully_qualified_topic_name(&self, id: &str) -> String {
@@ -247,9 +227,9 @@ mod tests {
     use std::time::Duration;
 
     use serial_test::serial;
+    use tokio_util::sync::CancellationToken;
     use uuid::Uuid;
 
-    use google_cloud_gax::cancel::CancellationToken;
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 
     use crate::client::Client;
@@ -275,18 +255,14 @@ mod tests {
         let uuid = Uuid::new_v4().hyphenated().to_string();
         let topic_id = &format!("t{}", &uuid);
         let subscription_id = &format!("s{}", &uuid);
-        let ctx = Some(CancellationToken::new());
-        let topic = client
-            .create_topic(topic_id.as_str(), None, ctx.clone(), None)
-            .await
-            .unwrap();
+        let topic = client.create_topic(topic_id.as_str(), None, None).await.unwrap();
         let publisher = topic.new_publisher(None);
         let config = SubscriptionConfig {
             enable_message_ordering: !ordering_key.is_empty(),
             ..Default::default()
         };
         let subscription = client
-            .create_subscription(subscription_id.as_str(), topic_id.as_str(), config, ctx.clone(), None)
+            .create_subscription(subscription_id.as_str(), topic_id.as_str(), config, None)
             .await
             .unwrap();
 
@@ -328,7 +304,7 @@ mod tests {
         let awaiters = if bulk {
             let messages = (0..100)
                 .map(|key| PubsubMessage {
-                    data: format!("abc_{}", key).into(),
+                    data: format!("abc_{key}").into(),
                     ordering_key: ordering_key.to_string(),
                     ..Default::default()
                 })
@@ -338,7 +314,7 @@ mod tests {
             let mut awaiters = Vec::with_capacity(100);
             for key in 0..100 {
                 let message = PubsubMessage {
-                    data: format!("abc_{}", key).into(),
+                    data: format!("abc_{key}").into(),
                     ordering_key: ordering_key.into(),
                     ..Default::default()
                 };
@@ -346,9 +322,8 @@ mod tests {
             }
             awaiters
         };
-        let ctx = CancellationToken::new();
         for v in awaiters {
-            tracing::info!("sent message_id = {}", v.get(Some(ctx.clone())).await.unwrap());
+            tracing::info!("sent message_id = {}", v.get().await.unwrap());
         }
 
         tokio::time::sleep(std::time::Duration::from_secs(3)).await;
@@ -403,33 +378,23 @@ mod tests {
         let topic_id = &format!("t{}", &uuid);
         let subscription_id = &format!("s{}", &uuid);
         let snapshot_id = &format!("snap{}", &uuid);
-        let ctx = Some(CancellationToken::new());
-        let topics = client.get_topics(ctx.clone(), None).await.unwrap();
-        let subs = client.get_subscriptions(ctx.clone(), None).await.unwrap();
-        let snapshots = client.get_snapshots(ctx.clone(), None).await.unwrap();
-        let _topic = client
-            .create_topic(topic_id.as_str(), None, ctx.clone(), None)
-            .await
-            .unwrap();
+        let topics = client.get_topics(None).await.unwrap();
+        let subs = client.get_subscriptions(None).await.unwrap();
+        let snapshots = client.get_snapshots(None).await.unwrap();
+        let _topic = client.create_topic(topic_id.as_str(), None, None).await.unwrap();
         let subscription = client
-            .create_subscription(
-                subscription_id.as_str(),
-                topic_id.as_str(),
-                SubscriptionConfig::default(),
-                ctx.clone(),
-                None,
-            )
+            .create_subscription(subscription_id.as_str(), topic_id.as_str(), SubscriptionConfig::default(), None)
             .await
             .unwrap();
 
         let _ = subscription
-            .create_snapshot(snapshot_id, HashMap::default(), ctx.clone(), None)
+            .create_snapshot(snapshot_id, HashMap::default(), None)
             .await
             .unwrap();
 
-        let topics_after = client.get_topics(ctx.clone(), None).await.unwrap();
-        let subs_after = client.get_subscriptions(ctx.clone(), None).await.unwrap();
-        let snapshots_after = client.get_snapshots(ctx.clone(), None).await.unwrap();
+        let topics_after = client.get_topics(None).await.unwrap();
+        let subs_after = client.get_subscriptions(None).await.unwrap();
+        let snapshots_after = client.get_snapshots(None).await.unwrap();
         assert_eq!(1, topics_after.len() - topics.len());
         assert_eq!(1, subs_after.len() - subs.len());
         assert_eq!(1, snapshots_after.len() - snapshots.len());
