@@ -1065,14 +1065,16 @@ impl StorageClient {
     ///
     ///     let chunk1_data : Vec<u8>= (0..256 * 1024).map(|i| (i % 256) as u8).collect();
     ///     let chunk2_data : Vec<u8>= (1..256 * 1024 + 50).map(|i| (i % 256) as u8).collect();
-    ///     let total_size = TotalSize::Known(chunk1_data.len() + chunk2_data.len());
+    ///     let chunk1_size = chunk1_data.len() as u64;
+    ///     let chunk2_size = chunk2_data.len() as u64;
+    ///     let total_size = TotalSize::Known(chunk1_size + chunk2_size);
     ///
     ///     // The chunk size should be multiple of 256KiB, unless it's the last chunk that completes the upload.
-    ///     let chunk1 = ChunkSize::new(0, chunk1_data.len() - 1, total_size.clone()).unwrap();
+    ///     let chunk1 = ChunkSize::new(0, chunk1_size - 1, total_size.clone()).unwrap();
     ///     let status1 = uploader.upload_multiple_chunk(chunk1_data.clone(), &chunk1).await.unwrap();
     ///     assert_eq!(status1, UploadStatus::ResumeIncomplete);
     ///
-    ///     let chunk2 = ChunkSize::new(chunk1_data.len(), chunk1_data.len() + chunk2_data.len() - 1, total_size.clone()).unwrap();
+    ///     let chunk2 = ChunkSize::new(chunk1_size, chunk1_size + chunk2_size - 1, total_size.clone()).unwrap();
     ///     let status2 = uploader.upload_multiple_chunk(chunk2_data.clone(), &chunk2).await.unwrap();
     ///     assert_eq!(status2, UploadStatus::Ok);
     /// }
@@ -1118,7 +1120,7 @@ impl StorageClient {
     ///
     /// async fn run(client:Client) {
     ///     let source = vec!["hello", " ", "world"];
-    ///     let size = source.iter().map(|x| x.len()).sum();
+    ///     let size = source.iter().map(|x| x.len() as u64).sum();
     ///     let chunks: Vec<Result<_, ::std::io::Error>> = source.clone().into_iter().map(|x| Ok(x)).collect();
     ///     let stream = futures_util::stream::iter(chunks);
     ///     let mut media = Media::new("filename");
@@ -1921,7 +1923,7 @@ mod test {
 
         // let stream= reqwest::Client::default().get("https://avatars.githubusercontent.com/u/958174?s=96&v=4").send().await.unwrap().bytes_stream();
         let source = vec!["hello", " ", "world"];
-        let size = source.iter().map(|x| x.len()).sum();
+        let size = source.iter().map(|x| x.len() as u64).sum();
         let chunks: Vec<Result<_, ::std::io::Error>> = source.clone().into_iter().map(Ok).collect();
         let stream = futures_util::stream::iter(chunks);
         let mut media = Media::new(file_name);
@@ -2034,10 +2036,10 @@ mod test {
             .unwrap();
         let mut chunk1_data: Vec<u8> = (0..256 * 1024).map(|i| (i % 256) as u8).collect();
         let chunk2_data: Vec<u8> = (1..256 * 1024 + 50).map(|i| (i % 256) as u8).collect();
-        let total_size = TotalSize::Known(chunk1_data.len() + chunk2_data.len());
+        let total_size = TotalSize::Known(chunk1_data.len() as u64 + chunk2_data.len() as u64);
 
         tracing::info!("start upload chunk {}", uploader.url());
-        let chunk1 = ChunkSize::new(0, chunk1_data.len() - 1, total_size.clone()).unwrap();
+        let chunk1 = ChunkSize::new(0, chunk1_data.len() as u64 - 1 , total_size.clone()).unwrap();
         tracing::info!("upload chunk1 {:?}", chunk1);
         let status1 = uploader
             .upload_multiple_chunk(chunk1_data.clone(), &chunk1)
@@ -2050,7 +2052,7 @@ mod test {
         assert_eq!(status_check, UploadStatus::ResumeIncomplete);
 
         let chunk2 =
-            ChunkSize::new(chunk1_data.len(), chunk1_data.len() + chunk2_data.len() - 1, total_size.clone()).unwrap();
+            ChunkSize::new(chunk1_data.len() as u64, chunk1_data.len() as u64 + chunk2_data.len() as u64 - 1, total_size.clone()).unwrap();
         tracing::info!("upload chunk2 {:?}", chunk2);
         let status2 = uploader
             .upload_multiple_chunk(chunk2_data.clone(), &chunk2)
@@ -2137,7 +2139,7 @@ mod test {
         let total_size = TotalSize::Unknown;
 
         tracing::info!("start upload chunk {}", uploader.url());
-        let chunk1 = ChunkSize::new(0, chunk1_data.len() - 1, total_size.clone()).unwrap();
+        let chunk1 = ChunkSize::new(0, chunk1_data.len() as u64 - 1, total_size.clone()).unwrap();
         tracing::info!("upload chunk1 {:?}", chunk1);
         let status1 = uploader
             .upload_multiple_chunk(chunk1_data.clone(), &chunk1)
@@ -2153,8 +2155,8 @@ mod test {
         assert_eq!(status1, UploadStatus::ResumeIncomplete);
 
         // total size is required for final chunk.
-        let remaining = chunk1_data.len() + chunk2_data.len();
-        let chunk2 = ChunkSize::new(chunk1_data.len(), remaining - 1, TotalSize::Known(remaining)).unwrap();
+        let remaining = chunk1_data.len() as u64 + chunk2_data.len() as u64;
+        let chunk2 = ChunkSize::new(chunk1_data.len() as u64, remaining - 1, TotalSize::Known(remaining)).unwrap();
         tracing::info!("upload chunk2 {:?}", chunk2);
         let status2 = uploader
             .upload_multiple_chunk(chunk2_data.clone(), &chunk2)

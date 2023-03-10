@@ -12,7 +12,7 @@ use crate::http::{Error, Escape};
 pub struct Media {
     pub name: Cow<'static, str>,
     pub content_type: Cow<'static, str>,
-    pub content_length: Option<usize>,
+    pub content_length: Option<u64>,
 }
 
 impl Media {
