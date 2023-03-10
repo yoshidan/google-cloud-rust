@@ -174,7 +174,6 @@ mod tests {
 
     async fn publish(publisher: Publisher) -> Vec<JoinHandle<Result<String, Status>>> {
         (0..10)
-            .into_iter()
             .map(|_i| {
                 let publisher = publisher.clone();
                 tokio::spawn(async move {
