@@ -300,7 +300,7 @@ fn v4_sanitize_headers(hdrs: &[String]) -> Vec<String> {
     let mut sanitized = HashMap::<String, Vec<String>>::new();
     for hdr in hdrs {
         let trimmed = hdr.trim().to_string();
-        let split: Vec<&str> = trimmed.split(':').into_iter().collect();
+        let split: Vec<&str> = trimmed.split(':').collect();
         if split.len() < 2 {
             continue;
         }

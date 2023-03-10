@@ -6,11 +6,11 @@ use crate::http::Error;
 #[derive(thiserror::Error, Debug)]
 pub enum ChunkError {
     #[error("invalid range: first={0} last={1}")]
-    InvalidRange(usize, usize),
+    InvalidRange(u64, u64),
     #[error("total object size must not be zero")]
     ZeroTotalObjectSize,
     #[error("last byte must be less than total object size: last={0} total={1}")]
-    InvalidLastBytes(usize, usize),
+    InvalidLastBytes(u64, u64),
 }
 
 #[derive(PartialEq, Debug)]
@@ -22,7 +22,7 @@ pub enum UploadStatus {
 #[derive(Clone, Debug)]
 pub enum TotalSize {
     Unknown,
-    Known(usize),
+    Known(u64),
 }
 
 impl ToString for TotalSize {
@@ -36,8 +36,8 @@ impl ToString for TotalSize {
 
 #[derive(Clone, Debug)]
 pub struct ChunkSize {
-    first_byte: usize,
-    last_byte: usize,
+    first_byte: u64,
+    last_byte: u64,
     total_object_size: TotalSize,
 }
 
@@ -53,7 +53,7 @@ impl ToString for ChunkSize {
 }
 
 impl ChunkSize {
-    pub fn new(first_byte: usize, last_byte: usize, total_object_size: TotalSize) -> Result<Self, ChunkError> {
+    pub fn new(first_byte: u64, last_byte: u64, total_object_size: TotalSize) -> Result<Self, ChunkError> {
         if first_byte >= last_byte {
             return Err(ChunkError::InvalidRange(first_byte, last_byte));
         }
@@ -77,7 +77,7 @@ impl ChunkSize {
         })
     }
 
-    pub fn size(&self) -> usize {
+    pub fn size(&self) -> u64 {
         self.last_byte - self.first_byte + 1
     }
 }
