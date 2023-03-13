@@ -1,12 +1,10 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
-use base64::prelude::*;
 use reqwest::Client;
 
 use google_cloud_token::TokenSource;
 
-use crate::http::Error;
+use crate::http::{check_response_status, Error};
 
 pub struct ServiceAccountClient {
     ts: Arc<dyn TokenSource>,
@@ -22,28 +20,33 @@ impl ServiceAccountClient {
     }
 
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn sign_blob(&self, name: &str, data: &[u8]) -> Result<Vec<u8>, Error> {
+    pub async fn sign_blob(&self, name: &str, payload: &[u8]) -> Result<Vec<u8>, Error> {
         let url = format!("{}/{}:signBlob", self.v1_endpoint, name);
-        let json_request = format!(r#"{{"payload": "{}"}}"#, BASE64_STANDARD.encode(data));
-        let token = self.ts.token().await?;
+        let request = SignBlobRequest { payload };
+        let token = self.ts.token().await.map_err(Error::TokenSource)?;
         let request = Client::default()
             .post(url)
-            .body(json_request)
+            .json(&request)
             .header("X-Goog-Api-Client", "rust")
             .header(reqwest::header::USER_AGENT, "google-cloud-storage")
             .header(reqwest::header::AUTHORIZATION, token);
         let response = request.send().await?;
-        let status = response.status();
-        if status.is_success() {
-            let body = response.json::<HashMap<String, String>>().await?;
-            match body.get("signedBlob") {
-                Some(v) => Ok(BASE64_STANDARD.decode(v)?),
-                None => Err(Error::Response(status.as_u16(), "no signedBlob found".to_string())),
-            }
-        } else {
-            Err(Error::Response(status.as_u16(), response.text().await?))
-        }
+        let response = check_response_status(response).await?;
+        Ok(response.json::<SignBlobResponse>().await?.signed_block)
     }
+}
+
+#[derive(serde::Serialize)]
+struct SignBlobRequest<'a> {
+    #[serde(with = "super::base64")]
+    payload: &'a [u8],
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SignBlobResponse {
+    #[serde(with = "super::base64")]
+    signed_block: Vec<u8>,
 }
 
 #[cfg(test)]

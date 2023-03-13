@@ -1,6 +1,5 @@
 use std::fmt::Display;
 use std::str::FromStr;
-use std::string::FromUtf8Error;
 
 use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
 use reqwest::Response;
@@ -12,6 +11,7 @@ pub mod bucket_access_controls;
 pub mod buckets;
 pub mod channels;
 pub mod default_object_access_controls;
+pub mod error;
 pub mod hmac_keys;
 pub mod notifications;
 pub mod object_access_controls;
@@ -22,31 +22,33 @@ pub mod storage_client;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("http error status={0} message={1}")]
-    Response(u16, String),
+    /// An error returned from the Google Cloud Storage service.
+    #[error(transparent)]
+    Response(#[from] error::ErrorResponse),
+
+    /// An error from the HTTP client.
     #[error(transparent)]
     HttpClient(#[from] reqwest::Error),
-    #[error(transparent)]
-    Json(#[from] serde_json::Error),
-    #[error("operation cancelled")]
-    Cancelled,
-    #[error(transparent)]
-    Base64DecodeError(#[from] base64::DecodeError),
-    #[error(transparent)]
-    Std(#[from] Box<dyn std::error::Error + Send + Sync>),
-    #[error(transparent)]
-    FromUtf8Error(#[from] FromUtf8Error),
+
+    /// An error from a token source.
+    #[error("token source failed: {0}")]
+    TokenSource(Box<dyn std::error::Error + Send + Sync>),
 }
 
-impl Error {
-    pub async fn from_response(r: Response) -> Error {
-        let status = r.status().as_u16();
-        let text = match r.text().await {
-            Ok(text) => text,
-            Err(e) => format!("{e}"),
-        };
-        Error::Response(status, text)
-    }
+/// Checks whether an HTTP response is successful and returns it, or returns an error.
+pub(crate) async fn check_response_status(response: Response) -> Result<Response, Error> {
+    // Check the status code, returning the response if it is not an error.
+    let error = match response.error_for_status_ref() {
+        Ok(_) => return Ok(response),
+        Err(error) => error,
+    };
+
+    // try to extract a response error, falling back to the status error if it can not be parsed.
+    Err(response
+        .json::<error::ErrorWrapper>()
+        .await
+        .map(|wrapper| Error::Response(wrapper.error))
+        .unwrap_or(Error::HttpClient(error)))
 }
 
 pub(crate) trait Escape {
@@ -88,4 +90,27 @@ where
 
 pub fn is_i64_zero(num: &i64) -> bool {
     *num == 0
+}
+
+/// Provides serialization and deserialization for base64 encoded fields.
+mod base64 {
+    use base64::prelude::*;
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    pub fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        T: AsRef<[u8]>,
+        S: Serializer,
+    {
+        BASE64_STANDARD.encode(value.as_ref()).serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        BASE64_STANDARD
+            .decode(String::deserialize(deserializer)?)
+            .map_err(serde::de::Error::custom)
+    }
 }
