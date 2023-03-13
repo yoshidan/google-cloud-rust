@@ -32,7 +32,7 @@ impl ServiceAccountClient {
             .header(reqwest::header::AUTHORIZATION, token);
         let response = request.send().await?;
         let response = check_response_status(response).await?;
-        Ok(response.json::<SignBlobResponse>().await?.signed_block)
+        Ok(response.json::<SignBlobResponse>().await?.signed_blob)
     }
 }
 
@@ -46,7 +46,7 @@ struct SignBlobRequest<'a> {
 #[serde(rename_all = "camelCase")]
 struct SignBlobResponse {
     #[serde(with = "super::base64")]
-    signed_block: Vec<u8>,
+    signed_blob: Vec<u8>,
 }
 
 #[cfg(test)]
