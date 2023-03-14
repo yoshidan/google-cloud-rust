@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use futures_util::{Stream, TryStream};
+use futures_util::{Stream, TryStream, TryStreamExt};
 use reqwest::header::LOCATION;
-use reqwest::{Body, Client, RequestBuilder, Response};
+use reqwest::{Body, Client, RequestBuilder};
 
 use google_cloud_token::TokenSource;
 
@@ -56,8 +56,8 @@ use crate::http::objects::upload::{UploadObjectRequest, UploadType};
 use crate::http::objects::Object;
 use crate::http::resumable_upload_client::ResumableUploadClient;
 use crate::http::{
-    bucket_access_controls, buckets, default_object_access_controls, hmac_keys, notifications, object_access_controls,
-    objects, Error,
+    bucket_access_controls, buckets, check_response_status, default_object_access_controls, hmac_keys, notifications,
+    object_access_controls, objects, Error,
 };
 
 pub const SCOPES: [&str; 2] = [
@@ -924,11 +924,8 @@ impl StorageClient {
         let builder = objects::download::build(self.v1_endpoint.as_str(), &self.http, req, range);
         let request = self.with_headers(builder).await?;
         let response = request.send().await?;
-        if response.status().is_success() {
-            Ok(response.bytes().await?.to_vec())
-        } else {
-            Err(map_error(response).await)
-        }
+        let response = check_response_status(response).await?;
+        Ok(response.bytes().await?.to_vec())
     }
 
     /// Download the object.
@@ -957,15 +954,12 @@ impl StorageClient {
         &self,
         req: &GetObjectRequest,
         range: &Range,
-    ) -> Result<impl Stream<Item = reqwest::Result<bytes::Bytes>>, Error> {
+    ) -> Result<impl Stream<Item = Result<bytes::Bytes, Error>>, Error> {
         let builder = objects::download::build(self.v1_endpoint.as_str(), &self.http, req, range);
         let request = self.with_headers(builder).await?;
         let response = request.send().await?;
-        if response.status().is_success() {
-            Ok(response.bytes_stream())
-        } else {
-            Err(map_error(response).await)
-        }
+        let response = check_response_status(response).await?;
+        Ok(response.bytes_stream().map_err(Error::from))
     }
 
     /// Uploads the object.
@@ -1035,7 +1029,7 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::Object;
     /// use google_cloud_storage::http::objects::upload::{Media, UploadObjectRequest, UploadType};
-    /// use google_cloud_storage::http::resumable_upload_client::{ChunkSize, TotalSize, UploadStatus};
+    /// use google_cloud_storage::http::resumable_upload_client::{ChunkSize, UploadStatus};
     ///
     /// async fn run_simple(client:Client) {
     ///     let upload_type = UploadType::Simple(Media::new("filename"));
@@ -1067,14 +1061,14 @@ impl StorageClient {
     ///     let chunk2_data : Vec<u8>= (1..256 * 1024 + 50).map(|i| (i % 256) as u8).collect();
     ///     let chunk1_size = chunk1_data.len() as u64;
     ///     let chunk2_size = chunk2_data.len() as u64;
-    ///     let total_size = TotalSize::Known(chunk1_size + chunk2_size);
+    ///     let total_size = Some(chunk1_size + chunk2_size);
     ///
     ///     // The chunk size should be multiple of 256KiB, unless it's the last chunk that completes the upload.
-    ///     let chunk1 = ChunkSize::new(0, chunk1_size - 1, total_size.clone()).unwrap();
+    ///     let chunk1 = ChunkSize::new(0, chunk1_size - 1, total_size.clone());
     ///     let status1 = uploader.upload_multiple_chunk(chunk1_data.clone(), &chunk1).await.unwrap();
     ///     assert_eq!(status1, UploadStatus::ResumeIncomplete);
     ///
-    ///     let chunk2 = ChunkSize::new(chunk1_size, chunk1_size + chunk2_size - 1, total_size.clone()).unwrap();
+    ///     let chunk2 = ChunkSize::new(chunk1_size, chunk1_size + chunk2_size - 1, total_size.clone());
     ///     let status2 = uploader.upload_multiple_chunk(chunk2_data.clone(), &chunk2).await.unwrap();
     ///     assert_eq!(status2, UploadStatus::Ok);
     /// }
@@ -1085,30 +1079,23 @@ impl StorageClient {
         req: &UploadObjectRequest,
         upload_type: &UploadType,
     ) -> Result<ResumableUploadClient, Error> {
-        match upload_type {
-            UploadType::Multipart(meta) => {
-                let builder = objects::upload::build_resumable_session_metadata(
-                    self.v1_upload_endpoint.as_str(),
-                    &self.http,
-                    req,
-                    meta,
-                );
-                self.send_get_url(builder)
-                    .await
-                    .map(|url| ResumableUploadClient::new(url, self.http.clone()))
-            }
-            UploadType::Simple(media) => {
-                let builder = objects::upload::build_resumable_session_simple(
-                    self.v1_upload_endpoint.as_str(),
-                    &self.http,
-                    req,
-                    media,
-                );
-                self.send_get_url(builder)
-                    .await
-                    .map(|url| ResumableUploadClient::new(url, self.http.clone()))
-            }
-        }
+        let request = match upload_type {
+            UploadType::Multipart(meta) => objects::upload::build_resumable_session_metadata(
+                self.v1_upload_endpoint.as_str(),
+                &self.http,
+                req,
+                meta,
+            ),
+            UploadType::Simple(media) => objects::upload::build_resumable_session_simple(
+                self.v1_upload_endpoint.as_str(),
+                &self.http,
+                req,
+                media,
+            ),
+        };
+        self.send_get_url(request)
+            .await
+            .map(|url| ResumableUploadClient::new(url, self.http.clone()))
     }
 
     /// Uploads the streamed object.
@@ -1258,52 +1245,36 @@ impl StorageClient {
     }
 
     async fn with_headers(&self, builder: RequestBuilder) -> Result<RequestBuilder, Error> {
-        let token = self.ts.token().await?;
+        let token = self.ts.token().await.map_err(Error::TokenSource)?;
         Ok(builder
             .header("X-Goog-Api-Client", "rust")
             .header(reqwest::header::USER_AGENT, "google-cloud-storage")
             .header(reqwest::header::AUTHORIZATION, token))
     }
 
-    async fn send<T: for<'de> serde::Deserialize<'de>>(&self, builder: RequestBuilder) -> Result<T, Error> {
+    async fn send<T>(&self, builder: RequestBuilder) -> Result<T, Error>
+    where
+        T: serde::de::DeserializeOwned,
+    {
         let request = self.with_headers(builder).await?;
         let response = request.send().await?;
-        if response.status().is_success() {
-            let full = response.bytes().await?;
-            tracing::trace!("response={:?}", &full);
-            Ok(serde_json::from_slice(&full)?)
-        } else {
-            Err(map_error(response).await)
-        }
+        let response = check_response_status(response).await?;
+        Ok(response.json().await?)
     }
 
     async fn send_get_empty(&self, builder: RequestBuilder) -> Result<(), Error> {
         let builder = self.with_headers(builder).await?;
         let response = builder.send().await?;
-        if response.status().is_success() {
-            Ok(())
-        } else {
-            Err(map_error(response).await)
-        }
+        check_response_status(response).await?;
+        Ok(())
     }
 
     async fn send_get_url(&self, builder: RequestBuilder) -> Result<String, Error> {
         let builder = self.with_headers(builder).await?;
         let response = builder.send().await?;
-        if response.status().is_success() {
-            if let Some(location) = response.headers().get(LOCATION) {
-                Ok(String::from_utf8(location.as_bytes().to_vec()).map_err(Error::FromUtf8Error)?)
-            } else {
-                Err(map_error(response).await)
-            }
-        } else {
-            Err(map_error(response).await)
-        }
+        let response = check_response_status(response).await?;
+        Ok(String::from_utf8_lossy(response.headers()[LOCATION].as_bytes()).into_owned())
     }
-}
-
-async fn map_error(r: Response) -> Error {
-    Error::from_response(r).await
 }
 
 #[cfg(test)]
@@ -1364,7 +1335,7 @@ mod test {
     use crate::http::objects::rewrite::RewriteObjectRequest;
     use crate::http::objects::upload::{Media, UploadObjectRequest, UploadType};
     use crate::http::objects::{Object, SourceObjects};
-    use crate::http::resumable_upload_client::{ChunkSize, TotalSize, UploadStatus};
+    use crate::http::resumable_upload_client::{ChunkSize, UploadStatus};
     use crate::http::storage_client::{StorageClient, SCOPES};
 
     #[ctor::ctor]
@@ -2036,10 +2007,10 @@ mod test {
             .unwrap();
         let mut chunk1_data: Vec<u8> = (0..256 * 1024).map(|i| (i % 256) as u8).collect();
         let chunk2_data: Vec<u8> = (1..256 * 1024 + 50).map(|i| (i % 256) as u8).collect();
-        let total_size = TotalSize::Known(chunk1_data.len() as u64 + chunk2_data.len() as u64);
+        let total_size = Some(chunk1_data.len() as u64 + chunk2_data.len() as u64);
 
         tracing::info!("start upload chunk {}", uploader.url());
-        let chunk1 = ChunkSize::new(0, chunk1_data.len() as u64 - 1, total_size.clone()).unwrap();
+        let chunk1 = ChunkSize::new(0, chunk1_data.len() as u64 - 1, total_size.clone());
         tracing::info!("upload chunk1 {:?}", chunk1);
         let status1 = uploader
             .upload_multiple_chunk(chunk1_data.clone(), &chunk1)
@@ -2048,15 +2019,14 @@ mod test {
         assert_eq!(status1, UploadStatus::ResumeIncomplete);
 
         tracing::info!("check status chunk1");
-        let status_check = uploader.status(&total_size).await.unwrap();
+        let status_check = uploader.status(total_size).await.unwrap();
         assert_eq!(status_check, UploadStatus::ResumeIncomplete);
 
         let chunk2 = ChunkSize::new(
             chunk1_data.len() as u64,
             chunk1_data.len() as u64 + chunk2_data.len() as u64 - 1,
             total_size.clone(),
-        )
-        .unwrap();
+        );
         tracing::info!("upload chunk2 {:?}", chunk2);
         let status2 = uploader
             .upload_multiple_chunk(chunk2_data.clone(), &chunk2)
@@ -2065,7 +2035,7 @@ mod test {
         assert_eq!(status2, UploadStatus::Ok);
 
         tracing::info!("check status chunk2");
-        let status_check2 = uploader.status(&total_size).await.unwrap();
+        let status_check2 = uploader.status(total_size).await.unwrap();
         assert_eq!(status_check2, UploadStatus::Ok);
 
         let get_request = &GetObjectRequest {
@@ -2140,10 +2110,10 @@ mod test {
             .unwrap();
         let mut chunk1_data: Vec<u8> = (0..256 * 1024).map(|i| (i % 256) as u8).collect();
         let chunk2_data: Vec<u8> = vec![10, 20, 30];
-        let total_size = TotalSize::Unknown;
+        let total_size = None;
 
         tracing::info!("start upload chunk {}", uploader.url());
-        let chunk1 = ChunkSize::new(0, chunk1_data.len() as u64 - 1, total_size.clone()).unwrap();
+        let chunk1 = ChunkSize::new(0, chunk1_data.len() as u64 - 1, total_size.clone());
         tracing::info!("upload chunk1 {:?}", chunk1);
         let status1 = uploader
             .upload_multiple_chunk(chunk1_data.clone(), &chunk1)
@@ -2160,7 +2130,7 @@ mod test {
 
         // total size is required for final chunk.
         let remaining = chunk1_data.len() as u64 + chunk2_data.len() as u64;
-        let chunk2 = ChunkSize::new(chunk1_data.len() as u64, remaining - 1, TotalSize::Known(remaining)).unwrap();
+        let chunk2 = ChunkSize::new(chunk1_data.len() as u64, remaining - 1, Some(remaining));
         tracing::info!("upload chunk2 {:?}", chunk2);
         let status2 = uploader
             .upload_multiple_chunk(chunk2_data.clone(), &chunk2)

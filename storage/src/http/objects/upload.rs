@@ -113,7 +113,8 @@ pub(crate) fn build_multipart<T: Into<reqwest::Body>>(
 ) -> Result<RequestBuilder, Error> {
     let url = format!("{}/b/{}/o?uploadType=multipart", base_url, req.bucket.escape(),);
     let form = Form::new();
-    let metadata_part = Part::text(serde_json::to_string(metadata)?).mime_str("application/json; charset=UTF-8")?;
+    let metadata_part = Part::text(serde_json::to_string(metadata).expect("object serialize failed"))
+        .mime_str("application/json; charset=UTF-8")?;
     let data_part = Part::stream(body);
     let form = form.part("metadata", metadata_part).part("data", data_part);
 

@@ -1,7 +1,9 @@
+use std::fmt;
+
 use reqwest::header::{CONTENT_LENGTH, CONTENT_RANGE};
 use reqwest::{Body, Client, Response};
 
-use crate::http::Error;
+use crate::http::{check_response_status, Error};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ChunkError {
@@ -20,65 +22,42 @@ pub enum UploadStatus {
 }
 
 #[derive(Clone, Debug)]
-pub enum TotalSize {
-    Unknown,
-    Known(u64),
-}
-
-impl ToString for TotalSize {
-    fn to_string(&self) -> String {
-        match self {
-            TotalSize::Unknown => "*".to_string(),
-            TotalSize::Known(size) => size.to_string(),
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
 pub struct ChunkSize {
     first_byte: u64,
     last_byte: u64,
-    total_object_size: TotalSize,
+    total_object_size: Option<u64>,
 }
 
-impl ToString for ChunkSize {
-    fn to_string(&self) -> String {
-        format!(
-            "bytes {}-{}/{}",
-            self.first_byte,
-            self.last_byte,
-            self.total_object_size.to_string()
-        )
+impl fmt::Display for ChunkSize {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.first_byte == self.last_byte {
+            write!(f, "bytes */")?;
+        } else {
+            write!(f, "bytes {}-{}/", self.first_byte, self.last_byte)?;
+        }
+
+        match self.total_object_size {
+            Some(total_object_size) => write!(f, "{total_object_size}"),
+            None => write!(f, "*"),
+        }
     }
 }
 
 impl ChunkSize {
-    pub fn new(first_byte: u64, last_byte: u64, total_object_size: TotalSize) -> Result<Self, ChunkError> {
-        if first_byte >= last_byte {
-            return Err(ChunkError::InvalidRange(first_byte, last_byte));
-        }
-        if let TotalSize::Known(total_size) = total_object_size {
-            if total_size == 0 {
-                return Err(ChunkError::ZeroTotalObjectSize);
-            }
-            if last_byte >= total_size {
-                return Err(ChunkError::InvalidLastBytes(last_byte, total_size));
-            }
-            let chunk_size = last_byte - first_byte + 1;
-            if chunk_size % (256 * 1024) != 0 && total_size > last_byte + 1 {
-                tracing::warn!("The chunk size should be multiple of 256KiB, unless it's the last chunk that completes the upload. size = {}", chunk_size);
-            }
-        }
-
-        Ok(Self {
+    pub fn new(first_byte: u64, last_byte: u64, total_object_size: Option<u64>) -> ChunkSize {
+        Self {
             first_byte,
             last_byte,
             total_object_size,
-        })
+        }
     }
 
     pub fn size(&self) -> u64 {
-        self.last_byte - self.first_byte + 1
+        if self.first_byte == self.last_byte {
+            0
+        } else {
+            self.last_byte - self.first_byte + 1
+        }
     }
 }
 
@@ -106,11 +85,8 @@ impl ResumableUploadClient {
             .body(data)
             .send()
             .await?;
-        if response.status().is_success() {
-            Ok(())
-        } else {
-            Err(Error::from_response(response).await)
-        }
+        check_response_status(response).await?;
+        Ok(())
     }
 
     /// https://cloud.google.com/storage/docs/performing-resumable-uploads#chunked-upload
@@ -128,15 +104,8 @@ impl ResumableUploadClient {
     }
 
     /// https://cloud.google.com/storage/docs/performing-resumable-uploads#status-check
-    pub async fn status(&self, object_size: &TotalSize) -> Result<UploadStatus, Error> {
-        let response = self
-            .http
-            .put(&self.session_url)
-            .header(CONTENT_LENGTH, 0)
-            .header(CONTENT_RANGE, format! {"bytes */{}", object_size.to_string()})
-            .send()
-            .await?;
-        Self::map_resume_response(response).await
+    pub async fn status(&self, object_size: Option<u64>) -> Result<UploadStatus, Error> {
+        self.upload_multiple_chunk("", &ChunkSize::new(0, 0, object_size)).await
     }
 
     /// https://cloud.google.com/storage/docs/performing-resumable-uploads#cancel-upload
@@ -150,17 +119,17 @@ impl ResumableUploadClient {
         if response.status() == 499 {
             Ok(())
         } else {
-            Err(Error::from_response(response).await)
+            check_response_status(response).await?;
+            Ok(())
         }
     }
 
     async fn map_resume_response(response: Response) -> Result<UploadStatus, Error> {
-        if response.status().is_success() {
-            Ok(UploadStatus::Ok)
-        } else if response.status() == 308 {
+        if response.status() == 308 {
             Ok(UploadStatus::ResumeIncomplete)
         } else {
-            Err(Error::from_response(response).await)
+            check_response_status(response).await?;
+            Ok(UploadStatus::Ok)
         }
     }
 }
