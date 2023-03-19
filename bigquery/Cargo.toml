@@ -12,3 +12,23 @@ documentation = "https://docs.rs/google-cloud-bigquery/latest/google_cloud_bigqu
 
 [dependencies]
 google-cloud-token = { version = "0.1.0", path = "../foundation/token" }
+thiserror = "1.0"
+tracing = "0.1"
+reqwest = { version = "0.11", features = ["json", "stream", "multipart"], default-features = false }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version="1.20", features=["macros"] }
+
+[dev-dependencies]
+tokio = { version="1.20", features=["rt-multi-thread"] }
+serial_test = "0.9"
+tracing-subscriber = "0.3.11"
+ctor = "0.1.22"
+tokio-util =  {version ="0.7", features = ["codec"] }
+google-cloud-auth = { path = "../foundation/auth" }
+
+[features]
+default = ["default-tls"]
+default-tls = ["reqwest/default-tls"]
+rustls-tls = ["reqwest/rustls-tls"]
+trace = []
