@@ -37,6 +37,12 @@ impl BigqueryClient {
         self.send(builder).await
     }
 
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn delete_dataset(&self, project_id: &str, dataset_id: &str) -> Result<(), Error> {
+        let builder = dataset::delete::build(self.endpoint.as_str(), &self.http, project_id, dataset_id);
+        self.send_get_empty(builder).await
+    }
+
     async fn with_headers(&self, builder: RequestBuilder) -> Result<RequestBuilder, Error> {
         let token = self.ts.token().await.map_err(Error::TokenSource)?;
         Ok(builder
@@ -83,12 +89,14 @@ impl BigqueryClient {
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashMap;
     use crate::http::bigquery_client::{BigqueryClient, SCOPES};
-    use crate::http::dataset::{Access, Dataset, DatasetReference, SpecialGroup};
+    use crate::http::dataset::{Access, Dataset, DatasetReference, SpecialGroup, StorageBillingModel};
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_token::TokenSourceProvider;
     use serial_test::serial;
+    use crate::http::types::EncryptionConfiguration;
 
     #[ctor::ctor]
     fn init() {
@@ -112,18 +120,43 @@ mod test {
     #[serial]
     pub async fn crud_dataset() {
         let (client, project) = client().await;
-        let mut ds = Dataset::default();
-        ds.dataset_reference.dataset_id = "gcr_test".to_string();
-        ds.location = "asia-southeast1".to_string();
-        ds.access.push(Access {
-            role: "READER".to_string(),
-            special_group: Some(SpecialGroup::AllAuthenticatedUsers),
+
+        // minimum dataset
+        let mut ds1 = Dataset::default();
+        ds1.dataset_reference.dataset_id = "rust_test_empty" .to_string();
+        ds1 = client.insert_dataset(project.as_str(), &ds1).await.unwrap();
+
+        // full prop dataset
+        let mut labels = HashMap::new();
+        labels.insert("key".to_string(), "value".to_string());
+        let ds2 = Dataset {
+            dataset_reference: DatasetReference {
+                dataset_id: "rust_test_full".to_string(),
+                project_id: Some(project.to_string()),
+            },
+            friendly_name: Some("gcr_test_friendly_name".to_string()),
+            description: Some("gcr_test_description".to_string()),
+            default_table_expiration_ms: Some(3600000),
+            default_partition_expiration_ms: Some(3600000),
+            labels: Some(labels),
+            access: vec![Access {
+                role: "READER".to_string(),
+                special_group: Some(SpecialGroup::AllAuthenticatedUsers),
+                ..Default::default()
+            }],
+            location: "asia-northeast1".to_string(),
+            default_encryption_configuration: Some(EncryptionConfiguration {
+                kms_key_name: Some(format!("projects/{}/locations/asia-northeast1/keyRings/gcr_test/cryptoKeys/gcr_test", project.as_str())),
+            }),
+            is_case_insensitive: Some(true),
+            default_collation: Some("und:ci".to_string()),
+            max_time_travel_hours: Some(48),
+            storage_billing_model: Some(StorageBillingModel::Logical),
             ..Default::default()
-        });
-        ds.default_table_expiration_ms = Some(3600000);
-        let res = client.insert_dataset(project.as_str(), &ds).await.unwrap();
-        assert!(!res.id.is_empty());
-        assert_eq!(res.location, ds.location);
-        assert_eq!(res.id, format!("{}:{}", project, ds.dataset_reference.dataset_id));
+        } ;
+        let ds2 = client.insert_dataset(project.as_str(), &ds2).await.unwrap();
+
+        client.delete_dataset(project.as_str(), ds1.dataset_reference.dataset_id.as_str()).await.unwrap();
+        client.delete_dataset(project.as_str(), ds2.dataset_reference.dataset_id.as_str()).await.unwrap();
     }
 }

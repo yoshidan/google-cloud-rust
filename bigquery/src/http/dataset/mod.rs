@@ -1,4 +1,5 @@
 pub mod insert;
+pub mod delete;
 
 use crate::http::routine::RoutineReference;
 use crate::http::table::TableReference;
