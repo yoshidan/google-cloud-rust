@@ -1,8 +1,8 @@
-pub(crate) mod delete;
-pub(crate) mod get;
-pub(crate) mod insert;
-pub(crate) mod list;
-pub(crate) mod patch;
+pub mod delete;
+pub mod get;
+pub mod insert;
+pub mod list;
+pub mod patch;
 
 use crate::http::routine::RoutineReference;
 use crate::http::table::TableReference;

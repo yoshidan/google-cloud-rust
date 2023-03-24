@@ -1,10 +1,11 @@
-use crate::http::dataset;
+use crate::http::{dataset, table};
 use crate::http::dataset::list::{DatasetOverview, ListDatasetsRequest, ListDatasetsResponse};
 use crate::http::dataset::Dataset;
 use crate::http::error::{Error, ErrorWrapper};
 use google_cloud_token::TokenSource;
 use reqwest::{Client, RequestBuilder, Response};
 use std::sync::Arc;
+use crate::http::table::Table;
 
 pub const SCOPES: [&str; 7] = [
     "https://www.googleapis.com/auth/bigquery",
@@ -33,7 +34,7 @@ impl BigqueryClient {
     }
 
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn insert_dataset(&self, metadata: &Dataset) -> Result<Dataset, Error> {
+    pub async fn create_dataset(&self, metadata: &Dataset) -> Result<Dataset, Error> {
         let builder = dataset::insert::build(self.endpoint.as_str(), &self.http, metadata);
         self.send(builder).await
     }
@@ -74,6 +75,12 @@ impl BigqueryClient {
             page_token = response.next_page_token;
         }
         Ok(datasets)
+    }
+
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn create_table(&self, metadata: &Table) -> Result<Table, Error> {
+        let builder = table::insert::build(self.endpoint.as_str(), &self.http, metadata);
+        self.send(builder).await
     }
 
     async fn with_headers(&self, builder: RequestBuilder) -> Result<RequestBuilder, Error> {
@@ -132,6 +139,7 @@ mod test {
     use google_cloud_token::TokenSourceProvider;
     use serial_test::serial;
     use std::collections::HashMap;
+    use crate::http::table::{RoundingMode, Table, TableFieldMode, TableFieldSchema, TableSchema, ViewDefinition};
 
     #[ctor::ctor]
     fn init() {
@@ -160,7 +168,7 @@ mod test {
         let mut ds1 = Dataset::default();
         ds1.dataset_reference.dataset_id = "rust_test_empty".to_string();
         ds1.dataset_reference.project_id = project.clone();
-        ds1 = client.insert_dataset(&ds1).await.unwrap();
+        ds1 = client.create_dataset(&ds1).await.unwrap();
 
         // full prop dataset
         let mut labels = HashMap::new();
@@ -193,7 +201,7 @@ mod test {
             storage_billing_model: Some(StorageBillingModel::Logical),
             ..Default::default()
         };
-        let ds2 = client.insert_dataset(&ds2).await.unwrap();
+        let ds2 = client.create_dataset(&ds2).await.unwrap();
 
         // test get
         let mut res1 = client
@@ -250,5 +258,56 @@ mod test {
             .delete_dataset(project.as_str(), ds2.dataset_reference.dataset_id.as_str())
             .await
             .unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn crud_table() {
+        let (client, project) = client().await;
+
+        // empty
+        let mut table1 = Table::default();
+        table1.table_reference.dataset_id = "rust_test_table".to_string();
+        table1.table_reference.project_id = project.to_string();
+        table1.table_reference.table_id = "table1".to_string();
+        table1.schema = Some(TableSchema {
+            fields: vec![
+                TableFieldSchema {
+                    name: "col1".to_string(),
+                    data_type: "STRING".to_string(),
+                    description: Some("column1".to_string()),
+                    max_length: Some(32),
+                    ..Default::default()
+                },
+                TableFieldSchema {
+                    name: "col2".to_string(),
+                    data_type: "NUMERIC".to_string(),
+                    description: Some("column2".to_string()),
+                    precision: Some(10),
+                    rounding_mode: Some(RoundingMode::RoundHalfEven),
+                    scale: Some(2),
+                    ..Default::default()
+                },
+                TableFieldSchema {
+                    name: "col3".to_string(),
+                    data_type: "TIMESTAMP".to_string(),
+                    mode: Some(TableFieldMode::Required),
+                    default_value_expression: Some("CURRENT_TIMESTAMP".to_string()),
+                    ..Default::default()
+                }
+            ]
+        });
+        let table1 = client.create_table(&table1).await.unwrap();
+
+        let mut view = Table::default();
+        view.table_reference.dataset_id = table1.table_reference.dataset_id.to_string();
+        view.table_reference.project_id = table1.table_reference.project_id.to_string();
+        view.table_reference.table_id = "view1".to_string();
+        view.view = Some(ViewDefinition {
+            query: "SELECT col1 FROM rust_test_table.table1".to_string(),
+            ..Default::default()
+        });
+        let view= client.create_table(&view).await.unwrap();
+
     }
 }
