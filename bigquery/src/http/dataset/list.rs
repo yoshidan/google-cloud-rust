@@ -1,4 +1,4 @@
-use crate::http::dataset::{Dataset, DatasetReference};
+use crate::http::dataset::DatasetReference;
 use reqwest::{Client, RequestBuilder};
 use std::collections::HashMap;
 

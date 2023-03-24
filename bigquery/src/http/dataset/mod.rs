@@ -53,8 +53,8 @@ pub struct DatasetReference {
     /// The ID must contain only letters (a-z, A-Z), numbers (0-9), or underscores (_).
     /// The maximum length is 1,024 characters.
     pub dataset_id: String,
-    /// Optional. The ID of the project containing this dataset.
-    pub project_id: Option<String>,
+    /// The ID of the project containing this dataset.
+    pub project_id: String,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]

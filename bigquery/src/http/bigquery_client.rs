@@ -33,8 +33,14 @@ impl BigqueryClient {
     }
 
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn insert_dataset(&self, project_id: &str, metadata: &Dataset) -> Result<Dataset, Error> {
-        let builder = dataset::insert::build(self.endpoint.as_str(), &self.http, project_id, metadata);
+    pub async fn insert_dataset(&self, metadata: &Dataset) -> Result<Dataset, Error> {
+        let builder = dataset::insert::build(self.endpoint.as_str(), &self.http, metadata);
+        self.send(builder).await
+    }
+
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn update_dataset(&self, metadata: &Dataset) -> Result<Dataset, Error> {
+        let builder = dataset::patch::build(self.endpoint.as_str(), &self.http, metadata);
         self.send(builder).await
     }
 
@@ -153,7 +159,8 @@ mod test {
         // minimum dataset
         let mut ds1 = Dataset::default();
         ds1.dataset_reference.dataset_id = "rust_test_empty".to_string();
-        ds1 = client.insert_dataset(project.as_str(), &ds1).await.unwrap();
+        ds1.dataset_reference.project_id = project.clone();
+        ds1 = client.insert_dataset(&ds1).await.unwrap();
 
         // full prop dataset
         let mut labels = HashMap::new();
@@ -161,7 +168,7 @@ mod test {
         let ds2 = Dataset {
             dataset_reference: DatasetReference {
                 dataset_id: "rust_test_full".to_string(),
-                project_id: Some(project.to_string()),
+                project_id: project.to_string(),
             },
             friendly_name: Some("gcr_test_friendly_name".to_string()),
             description: Some("gcr_test_description".to_string()),
@@ -186,10 +193,10 @@ mod test {
             storage_billing_model: Some(StorageBillingModel::Logical),
             ..Default::default()
         };
-        let ds2 = client.insert_dataset(project.as_str(), &ds2).await.unwrap();
+        let ds2 = client.insert_dataset(&ds2).await.unwrap();
 
         // test get
-        let res1 = client
+        let mut res1 = client
             .get_dataset(project.as_str(), &ds1.dataset_reference.dataset_id)
             .await
             .unwrap();
@@ -199,6 +206,10 @@ mod test {
             .unwrap();
         assert_eq!(ds1, res1);
         assert_eq!(ds2, res2);
+
+        // test update
+        res1.description = Some("rust_test_empty_updated".to_string());
+        client.update_dataset(&res1).await.unwrap();
 
         // test list
         let result = client.list_datasets(project.as_str(), None).await.unwrap();

@@ -1,4 +1,3 @@
-use crate::http::dataset::Dataset;
 use reqwest::{Client, RequestBuilder};
 
 pub fn build(base_url: &str, client: &Client, project_id: &str, dataset_id: &str) -> RequestBuilder {
