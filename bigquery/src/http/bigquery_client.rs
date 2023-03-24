@@ -1,11 +1,11 @@
-use crate::http::{dataset, table};
 use crate::http::dataset::list::{DatasetOverview, ListDatasetsRequest, ListDatasetsResponse};
 use crate::http::dataset::Dataset;
 use crate::http::error::{Error, ErrorWrapper};
+use crate::http::table::Table;
+use crate::http::{dataset, table};
 use google_cloud_token::TokenSource;
 use reqwest::{Client, RequestBuilder, Response};
 use std::sync::Arc;
-use crate::http::table::Table;
 
 pub const SCOPES: [&str; 7] = [
     "https://www.googleapis.com/auth/bigquery",
@@ -139,13 +139,16 @@ mod test {
     use crate::http::bigquery_client::{BigqueryClient, SCOPES};
     use crate::http::dataset::list::ListDatasetsRequest;
     use crate::http::dataset::{Access, Dataset, DatasetReference, SpecialGroup, StorageBillingModel};
+    use crate::http::table::{
+        Clustering, MaterializedViewDefinition, PartitionRange, RangePartitioning, RoundingMode, Table, TableFieldMode,
+        TableFieldSchema, TableFieldType, TableSchema, TimePartitionType, TimePartitioning, ViewDefinition,
+    };
     use crate::http::types::EncryptionConfiguration;
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_token::TokenSourceProvider;
     use serial_test::serial;
     use std::collections::HashMap;
-    use crate::http::table::{MaterializedViewDefinition, RoundingMode, Table, TableFieldMode, TableFieldSchema, TableSchema, ViewDefinition};
 
     #[ctor::ctor]
     fn init() {
@@ -280,14 +283,14 @@ mod test {
             fields: vec![
                 TableFieldSchema {
                     name: "col1".to_string(),
-                    data_type: "STRING".to_string(),
+                    data_type: TableFieldType::String,
                     description: Some("column1".to_string()),
                     max_length: Some(32),
                     ..Default::default()
                 },
                 TableFieldSchema {
                     name: "col2".to_string(),
-                    data_type: "NUMERIC".to_string(),
+                    data_type: TableFieldType::Numeric,
                     description: Some("column2".to_string()),
                     precision: Some(10),
                     rounding_mode: Some(RoundingMode::RoundHalfEven),
@@ -296,12 +299,23 @@ mod test {
                 },
                 TableFieldSchema {
                     name: "col3".to_string(),
-                    data_type: "TIMESTAMP".to_string(),
+                    data_type: TableFieldType::Timestamp,
                     mode: Some(TableFieldMode::Required),
                     default_value_expression: Some("CURRENT_TIMESTAMP".to_string()),
                     ..Default::default()
-                }
-            ]
+                },
+                TableFieldSchema {
+                    name: "col4".to_string(),
+                    data_type: TableFieldType::Int64,
+                    mode: Some(TableFieldMode::Repeated),
+                    ..Default::default()
+                },
+                TableFieldSchema {
+                    name: "col5".to_string(),
+                    data_type: TableFieldType::Int64,
+                    ..Default::default()
+                },
+            ],
         });
         let table1 = client.create_table(&table1).await.unwrap();
 
@@ -313,14 +327,40 @@ mod test {
             query: "SELECT col1 FROM rust_test_table.table1".to_string(),
             ..Default::default()
         });
-        let view= client.create_table(&view).await.unwrap();
+        let view = client.create_table(&view).await.unwrap();
+
+        // range partition
+        let mut table2 = table1.clone();
+        table2.table_reference.table_id = "range_partition".to_string();
+        table2.range_partitioning = Some(RangePartitioning {
+            field: "col5".to_string(),
+            range: PartitionRange {
+                start: "1".to_string(),
+                end: "10000".to_string(),
+                interval: "1".to_string(),
+            },
+        });
+        let table2 = client.create_table(&table2).await.unwrap();
+
+        // time partition
+        let mut table3 = table1.clone();
+        table3.table_reference.table_id = "time_partition".to_string();
+        table3.time_partitioning = Some(TimePartitioning {
+            partition_type: TimePartitionType::Day,
+            expiration_ms: Some(3600000),
+            field: Some("col3".to_string()),
+        });
+        table3.clustering = Some(Clustering {
+            fields: vec!["col1".to_string(), "col5".to_string()],
+        });
+        let table3 = client.create_table(&table3).await.unwrap();
 
         // materialized view
         let mut mv = Table::default();
         mv.table_reference.dataset_id = table1.table_reference.dataset_id.to_string();
         mv.table_reference.project_id = table1.table_reference.project_id.to_string();
         mv.table_reference.table_id = "materialized_view1".to_string();
-        mv.materialized_view = Some(MaterializedViewDefinition{
+        mv.materialized_view = Some(MaterializedViewDefinition {
             query: "SELECT col2 FROM rust_test_table.table1".to_string(),
             refresh_interval_ms: Some(3600000),
             ..Default::default()
@@ -329,10 +369,29 @@ mod test {
 
         // delete
         let ref1 = &table1.table_reference;
-        client.delete_table(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str()).await.unwrap();
-        let refv= &view.table_reference;
-        client.delete_table(refv.project_id.as_str(), refv.dataset_id.as_str(), refv.table_id.as_str()).await.unwrap();
-        let refmv= &mv.table_reference;
-        client.delete_table(refmv.project_id.as_str(), refmv.dataset_id.as_str(), refmv.table_id.as_str()).await.unwrap();
+        client
+            .delete_table(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str())
+            .await
+            .unwrap();
+        let refv = &view.table_reference;
+        client
+            .delete_table(refv.project_id.as_str(), refv.dataset_id.as_str(), refv.table_id.as_str())
+            .await
+            .unwrap();
+        let refmv = &mv.table_reference;
+        client
+            .delete_table(refmv.project_id.as_str(), refmv.dataset_id.as_str(), refmv.table_id.as_str())
+            .await
+            .unwrap();
+        let ref2 = &table2.table_reference;
+        client
+            .delete_table(ref2.project_id.as_str(), ref2.dataset_id.as_str(), ref2.table_id.as_str())
+            .await
+            .unwrap();
+        let ref3 = &table3.table_reference;
+        client
+            .delete_table(ref3.project_id.as_str(), ref3.dataset_id.as_str(), ref3.table_id.as_str())
+            .await
+            .unwrap();
     }
 }

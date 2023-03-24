@@ -1,8 +1,8 @@
-pub mod insert;
 pub mod delete;
+pub mod insert;
 
-use std::io::Bytes;
 use crate::http::types::EncryptionConfiguration;
+use std::io::Bytes;
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
@@ -88,7 +88,7 @@ pub struct BigtableOptions {
     /// Optional. If field is true, then the rowkey column families will be read and converted to string.
     /// Otherwise they are read with BYTES type values and users need to manually cast them with CAST if necessary.
     /// The default value is false.
-    pub read_rowkey_as_string: Option<bool>
+    pub read_rowkey_as_string: Option<bool>,
 }
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
@@ -111,7 +111,7 @@ pub struct BigtableColumnFamily {
     pub columns: Option<Vec<BigtableColumn>>,
     /// Optional. If this is set only the latest version of value are exposed for all columns in this column family.
     /// This can be overridden for a specific column by listing that column in 'columns' and specifying a different setting for that column.
-    pub only_read_latest: Option<bool>
+    pub only_read_latest: Option<bool>,
 }
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
@@ -137,7 +137,7 @@ pub struct BigtableColumn {
     /// Optional. If this is set, only the latest version of value in this column are exposed.
     /// 'onlyReadLatest' can also be set at the column family level.
     /// However, the setting at this level takes precedence if 'onlyReadLatest' is set at both levels.
-    pub only_read_latest: Option<bool>
+    pub only_read_latest: Option<bool>,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -158,7 +158,7 @@ pub struct GoogleSheetsOptions {
     pub skip_leading_rows: Option<i64>,
     /// Optional. Range of a sheet to query from. Only used when non-empty.
     /// Typical format: sheet_name!top_left_cell_id:bottom_right_cell_id For example: sheet1!A1:B20
-    pub range: Option<String>
+    pub range: Option<String>,
 }
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
@@ -198,7 +198,7 @@ pub struct HivePartitioningOptions {
     /// this field is populated with the hive partition keys in the order they were inferred.
     /// The types of the partition keys can be deduced by checking the table schema (which will include the partition keys). Not every API will populate this field in the output.
     /// For example, Tables.Get will populate it, but Tables.List will not contain this field.
-    pub fields: Vec<String>
+    pub fields: Vec<String>,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -210,7 +210,7 @@ pub enum DecimalTargetType {
     /// Decimal values could be converted to BIGNUMERIC type.
     Bignumeric,
     /// Decimal values could be converted to STRING type.
-    String
+    String,
 }
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
@@ -219,7 +219,7 @@ pub struct AvroOptions {
     /// indicates whether to interpret logical types as the corresponding BigQuery data type
     /// (for example, TIMESTAMP),
     /// instead of using the raw type (for example, INTEGER).
-    pub use_avro_logical_types: Option<bool>
+    pub use_avro_logical_types: Option<bool>,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -228,7 +228,7 @@ pub struct ParquetOptions {
     /// Optional. Indicates whether to infer Parquet ENUM logical type as STRING instead of BYTES by default.
     pub enum_as_string: Option<bool>,
     /// Optional. Indicates whether to use schema inference specifically for Parquet LIST logical type.
-    pub enable_list_interface: Option<bool>
+    pub enable_list_interface: Option<bool>,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -238,7 +238,7 @@ pub enum ObjectMetadata {
     #[default]
     ObjectMetadataUnspecified,
     /// Directory listing of objects.
-    Simple
+    Simple,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -252,7 +252,7 @@ pub enum MetadataCacheMode {
     Automatic,
     /// Set this mode to enable triggering manual refresh of the metadata cache from external source.
     /// Queries will use the latest manually triggered cache version within the table's maxStaleness interval.
-    Manual
+    Manual,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -266,7 +266,7 @@ pub struct Streamingbuffer {
     /// in milliseconds since the epoch, if the streaming buffer is available.
     #[serde(deserialize_with = "crate::http::from_str_option")]
     #[serde(default)]
-    pub oldest_entry_time: Option<u64>
+    pub oldest_entry_time: Option<u64>,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -277,7 +277,7 @@ pub struct SnapshotDefinition {
     /// Required. The time at which the base table was snapshot.
     /// This value is reported in the JSON response using RFC3339 format.
     #[serde(default, with = "time::serde::rfc3339::option")]
-    pub snapshot_time: Option<time::OffsetDateTime>
+    pub snapshot_time: Option<time::OffsetDateTime>,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -288,7 +288,7 @@ pub struct CloneDefinition {
     /// Required. The time at which the base table was snapshot.
     /// This value is reported in the JSON response using RFC3339 format.
     #[serde(default, with = "time::serde::rfc3339::option")]
-    pub clone_time: Option<time::OffsetDateTime>
+    pub clone_time: Option<time::OffsetDateTime>,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -298,7 +298,7 @@ pub struct UserDefinedFunctionResource {
     pub resource_uri: Option<String>,
     /// [Pick one] An inline resource that contains code for a user-defined function (UDF).
     /// Providing a inline code resource is equivalent to providing a URI for a file containing the same code.
-    pub inline_code: Option<String>
+    pub inline_code: Option<String>,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -307,17 +307,17 @@ pub struct ViewDefinition {
     /// Required. A query that BigQuery executes when the view is referenced.
     pub query: String,
     /// Describes user-defined function resources used in the query.
-    pub user_defined_function_resources : Option<Vec<UserDefinedFunctionResource>>,
+    pub user_defined_function_resources: Option<Vec<UserDefinedFunctionResource>>,
     /// Queries and views that reference this view must use the same flag value.
     /// A wrapper is used here because the default value is True..
-    pub use_legacy_sql : bool
+    pub use_legacy_sql: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct MaterializedViewDefinition {
     /// Required. A query whose results are persisted.
-    pub query : String,
+    pub query: String,
     /// Output only. The time when this materialized view was last refreshed, in milliseconds since the epoch.
     #[serde(deserialize_with = "crate::http::from_str_option")]
     #[serde(default)]
@@ -327,7 +327,7 @@ pub struct MaterializedViewDefinition {
     /// Optional. The maximum frequency at which this materialized view will be refreshed. The default value is "1800000" (30 minutes).
     #[serde(deserialize_with = "crate::http::from_str_option")]
     #[serde(default)]
-    pub refresh_interval_ms: Option<u64>
+    pub refresh_interval_ms: Option<u64>,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -336,7 +336,7 @@ pub struct PolicyTag {
     /// A list of policy tag resource names. For example,
     /// "projects/1/locations/eu/taxonomies/2/policyTags/3".
     /// At most 1 policy tag is currently allowed.
-    pub names : Vec<String>
+    pub names: Vec<String>,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -350,7 +350,7 @@ pub enum RoundingMode {
     RoundHalfAwayFromZero,
     /// ROUND_HALF_EVEN rounds half values to the nearest even when applying precision and scale upon writing of NUMERIC and BIGNUMERIC values.
     /// For Scale: 0 1.1, 1.2, 1.3, 1.4 => 1 1.5 => 2 1.6, 1.7, 1.8, 1.9 => 2 2.5 => 2
-    RoundHalfEven
+    RoundHalfEven,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -359,7 +359,34 @@ pub enum TableFieldMode {
     #[default]
     Nullable,
     Required,
-    Repeated
+    Repeated,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TableFieldType {
+    #[default]
+    String,
+    Bytes,
+    Integer,
+    Float,
+    Boolean,
+    Timestamp,
+    Record,
+    Date,
+    Time,
+    Datetime,
+    Numeric,
+    Decimal,
+    Bignumeric,
+    Interval,
+    Json,
+    // aliases
+    Bool,
+    Bigdecimal,
+    Int64,
+    Flaat64,
+    Struct,
 }
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
@@ -386,7 +413,7 @@ pub struct TableFieldSchema {
     /// RECORD (or STRUCT)
     /// Use of RECORD/STRUCT indicates that the field contains a nested schema.
     #[serde(rename(serialize = "type", deserialize = "type"))]
-    pub data_type: String,
+    pub data_type: TableFieldType,
     /// Optional. The field mode. Possible values include NULLABLE, REQUIRED and REPEATED.
     /// The default value is NULLABLE.
     pub mode: Option<TableFieldMode>,
@@ -440,15 +467,26 @@ pub struct TableFieldSchema {
     pub collation: Option<String>,
     /// Optional. A SQL expression to specify the default value for this field.
     /// https://cloud.google.com/bigquery/docs/default-values
-    pub default_value_expression: Option<String>
+    pub default_value_expression: Option<String>,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TimePartitionType {
+    #[default]
+    Hour,
+    Day,
+    Month,
+    Year,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct TimePartitioning {
-    /// Required. The supported types are DAY, HOUR, MONTH, and YEAR, which will generate one partition per day, hour, month, and year, respectively.
+    /// Required. The supported types are DAY, HOUR, MONTH, and YEAR,
+    /// which will generate one partition per day, hour, month, and year, respectively.
     #[serde(rename(serialize = "type", deserialize = "type"))]
-    pub partition_type: String,
+    pub partition_type: TimePartitionType,
     /// Optional. Number of milliseconds for which to keep the storage for a partition.
     /// A wrapper is used here because 0 is an invalid value.
     #[serde(deserialize_with = "crate::http::from_str_option")]
@@ -459,7 +497,7 @@ pub struct TimePartitioning {
     /// The field must be a top-level TIMESTAMP or DATE field.
     /// Its mode must be NULLABLE or REQUIRED.
     /// A wrapper is used here because an empty string is an invalid value.
-    pub field: Option<String>
+    pub field: Option<String>,
 }
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
@@ -469,7 +507,7 @@ pub struct PartitionRange {
     /// Required. [Experimental] The end of range partitioning, exclusive.
     pub end: String,
     /// Required. [Experimental] The width of each interval.
-    pub interval: String
+    pub interval: String,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -487,7 +525,7 @@ pub struct RangePartitioning {
 #[serde(rename_all = "camelCase")]
 pub struct TableSchema {
     /// Describes the fields in a table.
-    pub fields: Vec<TableFieldSchema>
+    pub fields: Vec<TableFieldSchema>,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -495,7 +533,7 @@ pub struct TableSchema {
 pub struct Clustering {
     /// One or more fields on which data should be clustered. Only top-level, non-repeated, simple-type fields are supported. The ordering of the clustering fields should be prioritized from most to least important for filtering purposes.
     /// Additional information on limitations can be found here: https://cloud.google.com/bigquery/docs/creating-clustered-tables#limitations
-    pub fields: Vec<String>
+    pub fields: Vec<String>,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -550,7 +588,7 @@ pub struct ExternalDataConfiguration {
     /// An empty string is an invalid value.
     pub compression: Option<bool>,
     /// Optional. Additional properties to set if sourceFormat is set to CSV.
-    pub csv_options: Option<CsvOptions>
+    pub csv_options: Option<CsvOptions>,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -652,5 +690,5 @@ pub struct Table {
     pub clone_definition: Option<CloneDefinition>,
     /// Optional. The maximum staleness of data that could be returned when the table (or stale MV) is queried.
     /// Staleness encoded as a string encoding of sql IntervalValue type.
-    pub max_staleness: Option<String>
+    pub max_staleness: Option<String>,
 }
