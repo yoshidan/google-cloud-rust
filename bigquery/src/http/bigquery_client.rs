@@ -83,6 +83,12 @@ impl BigqueryClient {
         self.send(builder).await
     }
 
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn delete_table(&self, project_id: &str, dataset_id: &str, table_id: &str) -> Result<(), Error> {
+        let builder = table::delete::build(self.endpoint.as_str(), &self.http, project_id, dataset_id, table_id);
+        self.send_get_empty(builder).await
+    }
+
     async fn with_headers(&self, builder: RequestBuilder) -> Result<RequestBuilder, Error> {
         let token = self.ts.token().await.map_err(Error::TokenSource)?;
         Ok(builder
@@ -139,7 +145,7 @@ mod test {
     use google_cloud_token::TokenSourceProvider;
     use serial_test::serial;
     use std::collections::HashMap;
-    use crate::http::table::{RoundingMode, Table, TableFieldMode, TableFieldSchema, TableSchema, ViewDefinition};
+    use crate::http::table::{MaterializedViewDefinition, RoundingMode, Table, TableFieldMode, TableFieldSchema, TableSchema, ViewDefinition};
 
     #[ctor::ctor]
     fn init() {
@@ -309,5 +315,24 @@ mod test {
         });
         let view= client.create_table(&view).await.unwrap();
 
+        // materialized view
+        let mut mv = Table::default();
+        mv.table_reference.dataset_id = table1.table_reference.dataset_id.to_string();
+        mv.table_reference.project_id = table1.table_reference.project_id.to_string();
+        mv.table_reference.table_id = "materialized_view1".to_string();
+        mv.materialized_view = Some(MaterializedViewDefinition{
+            query: "SELECT col2 FROM rust_test_table.table1".to_string(),
+            refresh_interval_ms: Some(3600000),
+            ..Default::default()
+        });
+        let mv = client.create_table(&mv).await.unwrap();
+
+        // delete
+        let ref1 = &table1.table_reference;
+        client.delete_table(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str()).await.unwrap();
+        let refv= &view.table_reference;
+        client.delete_table(refv.project_id.as_str(), refv.dataset_id.as_str(), refv.table_id.as_str()).await.unwrap();
+        let refmv= &mv.table_reference;
+        client.delete_table(refmv.project_id.as_str(), refmv.dataset_id.as_str(), refmv.table_id.as_str()).await.unwrap();
     }
 }

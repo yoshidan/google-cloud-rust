@@ -1,4 +1,5 @@
 pub mod insert;
+pub mod delete;
 
 use std::io::Bytes;
 use crate::http::types::EncryptionConfiguration;
@@ -318,8 +319,9 @@ pub struct MaterializedViewDefinition {
     /// Required. A query whose results are persisted.
     pub query : String,
     /// Output only. The time when this materialized view was last refreshed, in milliseconds since the epoch.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub last_refresh_time: i64,
+    #[serde(deserialize_with = "crate::http::from_str_option")]
+    #[serde(default)]
+    pub last_refresh_time: Option<i64>,
     /// Optional. Enable automatic refresh of the materialized view when the base table is updated. The default value is "true".
     pub enable_refresh: Option<bool>,
     /// Optional. The maximum frequency at which this materialized view will be refreshed. The default value is "1800000" (30 minutes).
