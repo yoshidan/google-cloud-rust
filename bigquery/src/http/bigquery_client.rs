@@ -1,4 +1,5 @@
 use crate::http::dataset;
+use crate::http::dataset::list::{DatasetOverview, ListDatasetsRequest, ListDatasetsResponse};
 use crate::http::dataset::Dataset;
 use crate::http::error::{Error, ErrorWrapper};
 use google_cloud_token::TokenSource;
@@ -43,6 +44,32 @@ impl BigqueryClient {
         self.send_get_empty(builder).await
     }
 
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn get_dataset(&self, project_id: &str, dataset_id: &str) -> Result<Dataset, Error> {
+        let builder = dataset::get::build(self.endpoint.as_str(), &self.http, project_id, dataset_id);
+        self.send(builder).await
+    }
+
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn list_datasets(
+        &self,
+        project_id: &str,
+        req: Option<&ListDatasetsRequest>,
+    ) -> Result<Vec<DatasetOverview>, Error> {
+        let mut page_token: Option<String> = None;
+        let mut datasets = vec![];
+        loop {
+            let builder = dataset::list::build(self.endpoint.as_str(), &self.http, project_id, req, page_token);
+            let response: ListDatasetsResponse = self.send(builder).await?;
+            datasets.extend(response.datasets);
+            if response.next_page_token.is_none() {
+                break;
+            }
+            page_token = response.next_page_token;
+        }
+        Ok(datasets)
+    }
+
     async fn with_headers(&self, builder: RequestBuilder) -> Result<RequestBuilder, Error> {
         let token = self.ts.token().await.map_err(Error::TokenSource)?;
         Ok(builder
@@ -58,6 +85,7 @@ impl BigqueryClient {
         let request = self.with_headers(builder).await?;
         let response = request.send().await?;
         let response = Self::check_response_status(response).await?;
+        //TODO json
         let text = response.text().await?;
         tracing::info!("{}", text);
         Ok(serde_json::from_str(text.as_str()).unwrap())
@@ -89,14 +117,15 @@ impl BigqueryClient {
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashMap;
     use crate::http::bigquery_client::{BigqueryClient, SCOPES};
+    use crate::http::dataset::list::ListDatasetsRequest;
     use crate::http::dataset::{Access, Dataset, DatasetReference, SpecialGroup, StorageBillingModel};
+    use crate::http::types::EncryptionConfiguration;
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_token::TokenSourceProvider;
     use serial_test::serial;
-    use crate::http::types::EncryptionConfiguration;
+    use std::collections::HashMap;
 
     #[ctor::ctor]
     fn init() {
@@ -123,7 +152,7 @@ mod test {
 
         // minimum dataset
         let mut ds1 = Dataset::default();
-        ds1.dataset_reference.dataset_id = "rust_test_empty" .to_string();
+        ds1.dataset_reference.dataset_id = "rust_test_empty".to_string();
         ds1 = client.insert_dataset(project.as_str(), &ds1).await.unwrap();
 
         // full prop dataset
@@ -146,17 +175,69 @@ mod test {
             }],
             location: "asia-northeast1".to_string(),
             default_encryption_configuration: Some(EncryptionConfiguration {
-                kms_key_name: Some(format!("projects/{}/locations/asia-northeast1/keyRings/gcr_test/cryptoKeys/gcr_test", project.as_str())),
+                kms_key_name: Some(format!(
+                    "projects/{}/locations/asia-northeast1/keyRings/gcr_test/cryptoKeys/gcr_test",
+                    project.as_str()
+                )),
             }),
             is_case_insensitive: Some(true),
             default_collation: Some("und:ci".to_string()),
             max_time_travel_hours: Some(48),
             storage_billing_model: Some(StorageBillingModel::Logical),
             ..Default::default()
-        } ;
+        };
         let ds2 = client.insert_dataset(project.as_str(), &ds2).await.unwrap();
 
-        client.delete_dataset(project.as_str(), ds1.dataset_reference.dataset_id.as_str()).await.unwrap();
-        client.delete_dataset(project.as_str(), ds2.dataset_reference.dataset_id.as_str()).await.unwrap();
+        // test get
+        let res1 = client
+            .get_dataset(project.as_str(), &ds1.dataset_reference.dataset_id)
+            .await
+            .unwrap();
+        let res2 = client
+            .get_dataset(project.as_str(), &ds2.dataset_reference.dataset_id)
+            .await
+            .unwrap();
+        assert_eq!(ds1, res1);
+        assert_eq!(ds2, res2);
+
+        // test list
+        let result = client.list_datasets(project.as_str(), None).await.unwrap();
+        assert!(result.len() >= 2);
+        let result = client
+            .list_datasets(
+                project.as_str(),
+                Some(&ListDatasetsRequest {
+                    max_results: Some(100),
+                    all: true,
+                    filter: "".to_string(),
+                }),
+            )
+            .await
+            .unwrap();
+        assert!(result.len() >= 2);
+
+        let result = client
+            .list_datasets(
+                project.as_str(),
+                Some(&ListDatasetsRequest {
+                    max_results: None,
+                    all: true,
+                    filter: "labels.key:value".to_string(),
+                }),
+            )
+            .await
+            .unwrap();
+        assert_eq!(1, result.len());
+        assert_eq!(res2.id, result[0].id);
+
+        // test delete
+        client
+            .delete_dataset(project.as_str(), ds1.dataset_reference.dataset_id.as_str())
+            .await
+            .unwrap();
+        client
+            .delete_dataset(project.as_str(), ds2.dataset_reference.dataset_id.as_str())
+            .await
+            .unwrap();
     }
 }
