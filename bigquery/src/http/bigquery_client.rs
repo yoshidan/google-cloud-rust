@@ -1,11 +1,15 @@
 use crate::http::dataset::list::{DatasetOverview, ListDatasetsRequest, ListDatasetsResponse};
 use crate::http::dataset::Dataset;
 use crate::http::error::{Error, ErrorWrapper};
-use crate::http::table::Table;
+use crate::http::table::{Table, TableReference};
 use crate::http::{dataset, table};
 use google_cloud_token::TokenSource;
 use reqwest::{Client, RequestBuilder, Response};
 use std::sync::Arc;
+use crate::http::table::get_iam_policy::GetIamPolicyRequest;
+use crate::http::table::set_iam_policy::SetIamPolicyRequest;
+use crate::http::table::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
+use crate::http::types::Policy;
 
 pub const SCOPES: [&str; 7] = [
     "https://www.googleapis.com/auth/bigquery",
@@ -101,6 +105,24 @@ impl BigqueryClient {
         self.send(builder).await
     }
 
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn get_table_iam_policy(&self, project_id: &str, dataset_id: &str, table_id: &str, req: &GetIamPolicyRequest) -> Result<Policy, Error> {
+        let builder = table::get_iam_policy::build(self.endpoint.as_str(), &self.http, project_id, dataset_id, table_id, req);
+        self.send(builder).await
+    }
+
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn set_table_iam_policy(&self, project_id: &str, dataset_id: &str, table_id: &str, req: &SetIamPolicyRequest) -> Result<Policy, Error> {
+        let builder = table::set_iam_policy::build(self.endpoint.as_str(), &self.http, project_id, dataset_id, table_id, req);
+        self.send(builder).await
+    }
+
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn test_table_iam_permissions(&self, project_id: &str, dataset_id: &str, table_id: &str, req: &TestIamPermissionsRequest) -> Result<TestIamPermissionsResponse, Error> {
+        let builder = table::test_iam_permissions::build(self.endpoint.as_str(), &self.http, project_id, dataset_id, table_id, req);
+        self.send(builder).await
+    }
+
     async fn with_headers(&self, builder: RequestBuilder) -> Result<RequestBuilder, Error> {
         let token = self.ts.token().await.map_err(Error::TokenSource)?;
         Ok(builder
@@ -156,12 +178,15 @@ mod test {
         RangePartitioning, RoundingMode, SourceFormat, Table, TableFieldMode, TableFieldSchema, TableFieldType,
         TableSchema, TimePartitionType, TimePartitioning, ViewDefinition,
     };
-    use crate::http::types::EncryptionConfiguration;
+    use crate::http::types::{Bindings, EncryptionConfiguration, Policy};
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_token::TokenSourceProvider;
     use serial_test::serial;
     use std::collections::HashMap;
+    use crate::http::table::get_iam_policy::GetIamPolicyRequest;
+    use crate::http::table::set_iam_policy::SetIamPolicyRequest;
+    use crate::http::table::test_iam_permissions::TestIamPermissionsRequest;
 
     #[ctor::ctor]
     fn init() {
@@ -332,6 +357,22 @@ mod test {
         });
         let table1 = client.create_table(&table1).await.unwrap();
 
+        // iam
+        let ref1 = &table1.table_reference;
+        let policy = client.set_table_iam_policy(&ref1.project_id, &ref1.dataset_id, &ref1.table_id, &SetIamPolicyRequest {
+            policy: Policy {
+                bindings: vec![Bindings {
+                    role: "roles/viewer".to_string(),
+                    members: vec!["allAuthenticatedUsers".to_string()],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            },
+            ..Default::default()
+        }).await.unwrap();
+        let actual_policy = client.get_table_iam_policy(&ref1.project_id, &ref1.dataset_id, &ref1.table_id, &GetIamPolicyRequest::default()).await.unwrap();
+        assert_eq!(policy, actual_policy);
+
         let mut view = Table::default();
         view.table_reference.dataset_id = table1.table_reference.dataset_id.to_string();
         view.table_reference.project_id = table1.table_reference.project_id.to_string();
@@ -429,4 +470,5 @@ mod test {
             .await
             .unwrap();
     }
+
 }

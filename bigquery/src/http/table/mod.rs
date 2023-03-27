@@ -2,6 +2,9 @@ pub mod delete;
 pub mod get;
 pub mod insert;
 pub mod patch;
+pub mod get_iam_policy;
+pub mod set_iam_policy;
+pub mod test_iam_permissions;
 
 use crate::http::types::EncryptionConfiguration;
 
@@ -17,6 +20,13 @@ pub struct TableReference {
     /// The maximum length is 1,024 characters. Certain operations allow suffixing of the table ID with a partition decorator, such as sample_table$20190123.
     pub table_id: String,
 }
+
+impl TableReference {
+   pub fn resource(&self) -> String {
+       return format!("projects/{}/datasets/{}/tables/{}", &self.project_id, &self.dataset_id, &self.table_id)
+   }
+}
+
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct CsvOptions {
@@ -213,6 +223,7 @@ pub enum DecimalTargetType {
     /// Decimal values could be converted to STRING type.
     String,
 }
+
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct AvroOptions {
