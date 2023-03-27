@@ -40,7 +40,7 @@ impl BigqueryClient {
     }
 
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn update_dataset(&self, metadata: &Dataset) -> Result<Dataset, Error> {
+    pub async fn patch_dataset(&self, metadata: &Dataset) -> Result<Dataset, Error> {
         let builder = dataset::patch::build(self.endpoint.as_str(), &self.http, metadata);
         self.send(builder).await
     }
@@ -87,6 +87,18 @@ impl BigqueryClient {
     pub async fn delete_table(&self, project_id: &str, dataset_id: &str, table_id: &str) -> Result<(), Error> {
         let builder = table::delete::build(self.endpoint.as_str(), &self.http, project_id, dataset_id, table_id);
         self.send_get_empty(builder).await
+    }
+
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn patch_table(&self, metadata: &Table) -> Result<Table, Error> {
+        let builder = table::patch::build(self.endpoint.as_str(), &self.http, metadata);
+        self.send(builder).await
+    }
+
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn get_table(&self, project_id: &str, dataset_id: &str, table_id: &str) -> Result<Table, Error> {
+        let builder = table::get::build(self.endpoint.as_str(), &self.http, project_id, dataset_id, table_id);
+        self.send(builder).await
     }
 
     async fn with_headers(&self, builder: RequestBuilder) -> Result<RequestBuilder, Error> {
@@ -227,7 +239,7 @@ mod test {
 
         // test update
         res1.description = Some("rust_test_empty_updated".to_string());
-        client.update_dataset(&res1).await.unwrap();
+        client.patch_dataset(&res1).await.unwrap();
 
         // test list
         let result = client.list_datasets(project.as_str(), None).await.unwrap();
@@ -402,11 +414,18 @@ mod test {
             ..Default::default()
         });
 
+        let create_result = client.create_table(&table).await.unwrap();
+        let patch_result = client.patch_table(&create_result).await.unwrap();
+        let tref = &patch_result.table_reference;
+        let get_result = client
+            .get_table(tref.project_id.as_str(), tref.dataset_id.as_str(), tref.table_id.as_str())
+            .await
+            .unwrap();
+        assert_eq!(get_result, patch_result);
+
         // cleanup
-        let table = client.create_table(&table).await.unwrap();
-        let table = table.table_reference;
         client
-            .delete_table(table.project_id.as_str(), table.dataset_id.as_str(), table.table_id.as_str())
+            .delete_table(tref.project_id.as_str(), tref.dataset_id.as_str(), tref.table_id.as_str())
             .await
             .unwrap();
     }

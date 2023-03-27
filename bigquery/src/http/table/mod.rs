@@ -1,5 +1,7 @@
 pub mod delete;
+pub mod get;
 pub mod insert;
+pub mod patch;
 
 use crate::http::types::EncryptionConfiguration;
 
