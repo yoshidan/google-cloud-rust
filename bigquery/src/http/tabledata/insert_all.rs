@@ -5,7 +5,12 @@ use serde::Serialize;
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Row<T: Serialize> {
-    pub insert_id: String,
+    /// [Optional] A unique ID for each row. BigQuery uses this
+    /// property to detect duplicate insertion requests on a best-effort basis.
+    pub insert_id: Option<String>,
+
+    /// [Required] A JSON object that contains a row of data. The
+    /// object's properties and values must match the destination table's schema.
     pub json: T,
 }
 

@@ -548,7 +548,7 @@ mod test {
         let mut table1 = Table::default();
         table1.table_reference.dataset_id = "rust_test_table".to_string();
         table1.table_reference.project_id = project.to_string();
-        table1.table_reference.table_id = "table_data".to_string();
+        table1.table_reference.table_id = "table_data5".to_string();
         table1.schema = Some(TableSchema {
             fields: vec![
                 TableFieldSchema {
@@ -579,7 +579,7 @@ mod test {
         // json value
         let mut req = InsertAllRequest::<Value>::default();
         req.rows.push(Row {
-            insert_id: "mustberandom".to_string(),
+            insert_id: None,
             json: serde_json::from_str(
                 r#"
                 {"col1": "test1", "col2": [1,2,3], "col3":"2022-10-23T00:00:00"}
@@ -588,7 +588,7 @@ mod test {
             .unwrap(),
         });
         req.rows.push(Row {
-            insert_id: "mustberandom2".to_string(),
+            insert_id: None,
             json: serde_json::from_str(
                 r#"
                 {"col2": [4,5,6], "col3":"2022-10-23T00:00:00"}
@@ -604,7 +604,7 @@ mod test {
         // struct
         let mut req2 = InsertAllRequest::<TestData>::default();
         req2.rows.push(Row {
-            insert_id: "mustberandom".to_string(),
+            insert_id: None,
             json: TestData {
                 col1: Some("test3".to_string()),
                 col2: vec![10, 11, 12],
@@ -612,7 +612,7 @@ mod test {
             },
         });
         req2.rows.push(Row {
-            insert_id: "mustberandom2".to_string(),
+            insert_id: None,
             json: TestData {
                 col1: None,
                 col2: vec![100, 1100, 120],
