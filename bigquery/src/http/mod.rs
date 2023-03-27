@@ -8,6 +8,7 @@ pub mod dataset;
 pub mod error;
 pub mod routine;
 pub mod table;
+pub mod tabledata;
 pub mod types;
 
 fn from_str_option<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>

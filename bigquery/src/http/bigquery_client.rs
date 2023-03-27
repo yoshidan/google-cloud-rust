@@ -5,10 +5,12 @@ use crate::http::table::get_iam_policy::GetIamPolicyRequest;
 use crate::http::table::set_iam_policy::SetIamPolicyRequest;
 use crate::http::table::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
 use crate::http::table::{Table, TableReference};
+use crate::http::tabledata::insert_all::{InsertAllRequest, InsertAllResponse};
 use crate::http::types::Policy;
-use crate::http::{dataset, table};
+use crate::http::{dataset, table, tabledata};
 use google_cloud_token::TokenSource;
 use reqwest::{Client, RequestBuilder, Response};
+use serde::Serialize;
 use std::sync::Arc;
 
 pub const SCOPES: [&str; 7] = [
@@ -150,6 +152,19 @@ impl BigqueryClient {
         self.send(builder).await
     }
 
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn insert_into_table<T: Serialize>(
+        &self,
+        project_id: &str,
+        dataset_id: &str,
+        table_id: &str,
+        req: &InsertAllRequest<T>,
+    ) -> Result<InsertAllResponse, Error> {
+        let builder =
+            tabledata::insert_all::build(self.endpoint.as_str(), &self.http, project_id, dataset_id, table_id, req);
+        self.send(builder).await
+    }
+
     async fn with_headers(&self, builder: RequestBuilder) -> Result<RequestBuilder, Error> {
         let token = self.ts.token().await.map_err(Error::TokenSource)?;
         Ok(builder
@@ -208,12 +223,15 @@ mod test {
         RangePartitioning, RoundingMode, SourceFormat, Table, TableFieldMode, TableFieldSchema, TableFieldType,
         TableSchema, TimePartitionType, TimePartitioning, ViewDefinition,
     };
+    use crate::http::tabledata::insert_all::{InsertAllRequest, Row};
     use crate::http::types::{Bindings, Collation, EncryptionConfiguration, Policy};
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_token::TokenSourceProvider;
+    use serde_json::{json, Value};
     use serial_test::serial;
     use std::collections::HashMap;
+    use time::OffsetDateTime;
 
     #[ctor::ctor]
     fn init() {
@@ -475,6 +493,7 @@ mod test {
                 .unwrap();
         }
     }
+
     #[tokio::test]
     #[serial]
     pub async fn external_table() {
@@ -512,5 +531,110 @@ mod test {
             .delete_table(tref.project_id.as_str(), tref.dataset_id.as_str(), tref.table_id.as_str())
             .await
             .unwrap();
+    }
+
+    #[derive(serde::Serialize)]
+    struct TestData {
+        pub col1: Option<String>,
+        pub col2: Vec<i32>,
+        #[serde(with = "time::serde::rfc3339")]
+        pub col3: OffsetDateTime,
+    }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn table_data() {
+        let (client, project) = client().await;
+        let mut table1 = Table::default();
+        table1.table_reference.dataset_id = "rust_test_table".to_string();
+        table1.table_reference.project_id = project.to_string();
+        table1.table_reference.table_id = "table_data".to_string();
+        table1.schema = Some(TableSchema {
+            fields: vec![
+                TableFieldSchema {
+                    name: "col1".to_string(),
+                    data_type: TableFieldType::String,
+                    description: Some("column1".to_string()),
+                    max_length: Some(32),
+                    ..Default::default()
+                },
+                TableFieldSchema {
+                    name: "col2".to_string(),
+                    data_type: TableFieldType::Numeric,
+                    mode: Some(TableFieldMode::Repeated),
+                    description: Some("column2".to_string()),
+                    ..Default::default()
+                },
+                TableFieldSchema {
+                    name: "col3".to_string(),
+                    data_type: TableFieldType::Timestamp,
+                    description: Some("column3".to_string()),
+                    ..Default::default()
+                },
+            ],
+        });
+        let table1 = client.create_table(&table1).await.unwrap();
+        let ref1 = table1.table_reference;
+
+        // json value
+        let mut req = InsertAllRequest::<Value>::default();
+        req.rows.push(Row {
+            insert_id: "mustberandom".to_string(),
+            json: serde_json::from_str(
+                r#"
+                {"col1": "test1", "col2": [1,2,3], "col3":"2022-10-23T00:00:00"}
+            "#,
+            )
+            .unwrap(),
+        });
+        req.rows.push(Row {
+            insert_id: "mustberandom2".to_string(),
+            json: serde_json::from_str(
+                r#"
+                {"col2": [4,5,6], "col3":"2022-10-23T00:00:00"}
+            "#,
+            )
+            .unwrap(),
+        });
+        let res = client
+            .insert_into_table(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str(), &req)
+            .await
+            .unwrap();
+
+        // struct
+        let mut req2 = InsertAllRequest::<TestData>::default();
+        req2.rows.push(Row {
+            insert_id: "mustberandom".to_string(),
+            json: TestData {
+                col1: Some("test3".to_string()),
+                col2: vec![10, 11, 12],
+                col3: OffsetDateTime::now_utc(),
+            },
+        });
+        req2.rows.push(Row {
+            insert_id: "mustberandom2".to_string(),
+            json: TestData {
+                col1: None,
+                col2: vec![100, 1100, 120],
+                col3: OffsetDateTime::now_utc(),
+            },
+        });
+        let res2 = client
+            .insert_into_table(
+                ref1.project_id.as_str(),
+                ref1.dataset_id.as_str(),
+                ref1.table_id.as_str(),
+                &req2,
+            )
+            .await
+            .unwrap();
+
+        client
+            .delete_table(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str())
+            .await
+            .unwrap();
+
+        assert!(res.insert_errors.is_none());
+        assert!(res2.insert_errors.is_none());
     }
 }

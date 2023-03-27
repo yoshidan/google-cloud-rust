@@ -751,7 +751,7 @@ pub struct Table {
     ///
     /// 'und:ci': undetermined locale, case insensitive.
     /// '': empty string. Default to case-sensitive behavior.
-    pub default_collation: Option<String>,
+    pub default_collation: Option<Collation>,
     /// Output only. Contains information about the clone. This value is set via the clone operation.
     pub clone_definition: Option<CloneDefinition>,
     /// Optional. The maximum staleness of data that could be returned when the table (or stale MV) is queried.
