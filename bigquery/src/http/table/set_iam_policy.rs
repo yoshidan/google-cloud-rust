@@ -14,10 +14,20 @@ pub struct SetIamPolicyRequest {
     /// paths: "bindings, etag"
     ///
     /// This is a comma-separated list of fully qualified names of fields. Example: "user.displayName,photo".
-    pub update_mask: Option<String>
+    pub update_mask: Option<String>,
 }
 
-pub(crate) fn build(base_url: &str, client: &Client, project_id: &str, dataset_id:&str, table_id: &str, req: &SetIamPolicyRequest) -> RequestBuilder {
-    let url = format!("{}/projects/{}/datasets/{}/tables/{}:setIamPolicy?alt=json", base_url, project_id, dataset_id, table_id);
+pub(crate) fn build(
+    base_url: &str,
+    client: &Client,
+    project_id: &str,
+    dataset_id: &str,
+    table_id: &str,
+    req: &SetIamPolicyRequest,
+) -> RequestBuilder {
+    let url = format!(
+        "{}/projects/{}/datasets/{}/tables/{}:setIamPolicy?alt=json",
+        base_url, project_id, dataset_id, table_id
+    );
     client.post(url).json(&req)
 }

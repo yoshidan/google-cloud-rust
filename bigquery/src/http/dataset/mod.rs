@@ -6,7 +6,7 @@ pub mod patch;
 
 use crate::http::routine::RoutineReference;
 use crate::http::table::TableReference;
-use crate::http::types::EncryptionConfiguration;
+use crate::http::types::{Collation, EncryptionConfiguration};
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
@@ -225,7 +225,7 @@ pub struct Dataset {
     ///
     /// 'und:ci': undetermined locale, case insensitive.
     /// '': empty string. Default to case-sensitive behavior.
-    pub default_collation: Option<String>,
+    pub default_collation: Option<Collation>,
     /// Optional. Defines the time travel window in hours.
     /// The value can be from 48 to 168 hours (2 to 7 days).
     /// The default value is 168 hours if this is not set.

@@ -18,7 +18,17 @@ pub struct TestIamPermissionsResponse {
     pub permissions: Vec<String>,
 }
 
-pub(crate) fn build(base_url: &str, client: &Client, project_id: &str, dataset_id:&str, table_id: &str, req: &TestIamPermissionsRequest) -> RequestBuilder {
-    let url = format!("{}/projects/{}/datasets/{}/tables/{}:testIamPermissions", base_url, project_id, dataset_id, table_id);
+pub(crate) fn build(
+    base_url: &str,
+    client: &Client,
+    project_id: &str,
+    dataset_id: &str,
+    table_id: &str,
+    req: &TestIamPermissionsRequest,
+) -> RequestBuilder {
+    let url = format!(
+        "{}/projects/{}/datasets/{}/tables/{}:testIamPermissions",
+        base_url, project_id, dataset_id, table_id
+    );
     client.post(url).json(&req)
 }

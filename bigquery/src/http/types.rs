@@ -1,4 +1,16 @@
-#[derive(Clone, PartialEq, Eq,  serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(untagged)]
+pub enum Collation {
+    /// '': empty string. Default to case-sensitive behavior.
+    #[default]
+    #[serde(rename = "")]
+    Default,
+    /// 'und:ci': undetermined locale, case insensitive.
+    #[serde(rename = "und:ci")]
+    UndeterminedLocaleCaseInsensitive,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct EncryptionConfiguration {
     /// Optional. Describes the Cloud KMS encryption key that will be used to protect destination BigQuery table.
@@ -6,14 +18,14 @@ pub struct EncryptionConfiguration {
     pub kms_key_name: Option<String>,
 }
 
-#[derive(Clone, PartialEq, Eq,  serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct AuditLogConfig {
     /// The log type that this config enables.
     pub log_type: LogType,
     /// Specifies the identities that do not cause logging for this type of permission.
     /// Follows the same format of Binding.members.
-    pub exempted_members: Vec<String>
+    pub exempted_members: Vec<String>,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -28,17 +40,17 @@ pub enum LogType {
     DataRead,
 }
 
-#[derive(Clone, PartialEq, Eq,  serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct AuditConfig {
     /// Specifies a service that will be enabled for audit logging. For example, storage.googleapis.com, cloudsql.googleapis.com.
     /// allServices is a special value that covers all services.
     pub service: String,
     /// The configuration for logging of each type of permission.
-    pub audit_log_configs: Vec<AuditLogConfig>
+    pub audit_log_configs: Vec<AuditLogConfig>,
 }
 
-#[derive(Clone, PartialEq, Eq,  serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct GetPolicyOptions {
     /// Optional. The maximum policy version that will be used to format the policy.
@@ -46,10 +58,10 @@ pub struct GetPolicyOptions {
     /// Requests for policies with any conditional role bindings must specify version 3. Policies with no conditional role bindings may specify any valid value or leave the field unset.
     /// The policy in the response might use the policy version that you specified, or it might use a lower policy version. For example, if you specify version 3, but the policy has no conditional role bindings, the response uses version 1.
     /// To learn which resources support conditions in their IAM policies, see the IAM documentation.
-    pub requested_policy_version: Option<i32>
+    pub requested_policy_version: Option<i32>,
 }
 
-#[derive(Clone, PartialEq, Eq,  serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct PolicyExpr {
     /// Textual representation of an expression in Common Expression Language syntax.
@@ -62,16 +74,15 @@ pub struct PolicyExpr {
     pub description: Option<String>,
     /// Optional. String indicating the location of the expression for error reporting,
     /// e.g. a file name and a position in the file.
-    pub location: Option<String>
-
+    pub location: Option<String>,
 }
 
-#[derive(Clone, PartialEq, Eq,  serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Bindings {
     /// Role that is assigned to the list of members, or principals.
     /// For example, roles/viewer, roles/editor, or roles/owner.
-    pub role: String  ,
+    pub role: String,
     /// Specifies the principals requesting access for a Google Cloud resource.
     /// members can have the following values:
     ///
@@ -93,10 +104,10 @@ pub struct Bindings {
     /// If the condition evaluates to false, then this binding does not apply to the current request. However, a different role binding might grant the same role to one or more of the principals in this binding.
     ///
     /// To learn which resources support conditions in their IAM policies, see the IAM documentation.
-    pub condition: Option<PolicyExpr>
+    pub condition: Option<PolicyExpr>,
 }
 
-#[derive(Clone, PartialEq, Eq,  serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Policy {
     /// Specifies the format of the policy.
@@ -139,5 +150,5 @@ pub struct Policy {
     /// and all of the conditions in the version 3 policy are lost.
     ///
     /// A base64-encoded string.
-    pub etag: Option<String>
+    pub etag: Option<String>,
 }

@@ -1,15 +1,15 @@
 use crate::http::dataset::list::{DatasetOverview, ListDatasetsRequest, ListDatasetsResponse};
 use crate::http::dataset::Dataset;
 use crate::http::error::{Error, ErrorWrapper};
+use crate::http::table::get_iam_policy::GetIamPolicyRequest;
+use crate::http::table::set_iam_policy::SetIamPolicyRequest;
+use crate::http::table::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
 use crate::http::table::{Table, TableReference};
+use crate::http::types::Policy;
 use crate::http::{dataset, table};
 use google_cloud_token::TokenSource;
 use reqwest::{Client, RequestBuilder, Response};
 use std::sync::Arc;
-use crate::http::table::get_iam_policy::GetIamPolicyRequest;
-use crate::http::table::set_iam_policy::SetIamPolicyRequest;
-use crate::http::table::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
-use crate::http::types::Policy;
 
 pub const SCOPES: [&str; 7] = [
     "https://www.googleapis.com/auth/bigquery",
@@ -106,20 +106,47 @@ impl BigqueryClient {
     }
 
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn get_table_iam_policy(&self, project_id: &str, dataset_id: &str, table_id: &str, req: &GetIamPolicyRequest) -> Result<Policy, Error> {
-        let builder = table::get_iam_policy::build(self.endpoint.as_str(), &self.http, project_id, dataset_id, table_id, req);
+    pub async fn get_table_iam_policy(
+        &self,
+        project_id: &str,
+        dataset_id: &str,
+        table_id: &str,
+        req: &GetIamPolicyRequest,
+    ) -> Result<Policy, Error> {
+        let builder =
+            table::get_iam_policy::build(self.endpoint.as_str(), &self.http, project_id, dataset_id, table_id, req);
         self.send(builder).await
     }
 
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn set_table_iam_policy(&self, project_id: &str, dataset_id: &str, table_id: &str, req: &SetIamPolicyRequest) -> Result<Policy, Error> {
-        let builder = table::set_iam_policy::build(self.endpoint.as_str(), &self.http, project_id, dataset_id, table_id, req);
+    pub async fn set_table_iam_policy(
+        &self,
+        project_id: &str,
+        dataset_id: &str,
+        table_id: &str,
+        req: &SetIamPolicyRequest,
+    ) -> Result<Policy, Error> {
+        let builder =
+            table::set_iam_policy::build(self.endpoint.as_str(), &self.http, project_id, dataset_id, table_id, req);
         self.send(builder).await
     }
 
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn test_table_iam_permissions(&self, project_id: &str, dataset_id: &str, table_id: &str, req: &TestIamPermissionsRequest) -> Result<TestIamPermissionsResponse, Error> {
-        let builder = table::test_iam_permissions::build(self.endpoint.as_str(), &self.http, project_id, dataset_id, table_id, req);
+    pub async fn test_table_iam_permissions(
+        &self,
+        project_id: &str,
+        dataset_id: &str,
+        table_id: &str,
+        req: &TestIamPermissionsRequest,
+    ) -> Result<TestIamPermissionsResponse, Error> {
+        let builder = table::test_iam_permissions::build(
+            self.endpoint.as_str(),
+            &self.http,
+            project_id,
+            dataset_id,
+            table_id,
+            req,
+        );
         self.send(builder).await
     }
 
@@ -173,20 +200,20 @@ mod test {
     use crate::http::bigquery_client::{BigqueryClient, SCOPES};
     use crate::http::dataset::list::ListDatasetsRequest;
     use crate::http::dataset::{Access, Dataset, DatasetReference, SpecialGroup, StorageBillingModel};
+    use crate::http::table::get_iam_policy::GetIamPolicyRequest;
+    use crate::http::table::set_iam_policy::SetIamPolicyRequest;
+    use crate::http::table::test_iam_permissions::TestIamPermissionsRequest;
     use crate::http::table::{
         Clustering, CsvOptions, ExternalDataConfiguration, MaterializedViewDefinition, PartitionRange,
         RangePartitioning, RoundingMode, SourceFormat, Table, TableFieldMode, TableFieldSchema, TableFieldType,
         TableSchema, TimePartitionType, TimePartitioning, ViewDefinition,
     };
-    use crate::http::types::{Bindings, EncryptionConfiguration, Policy};
+    use crate::http::types::{Bindings, Collation, EncryptionConfiguration, Policy};
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_token::TokenSourceProvider;
     use serial_test::serial;
     use std::collections::HashMap;
-    use crate::http::table::get_iam_policy::GetIamPolicyRequest;
-    use crate::http::table::set_iam_policy::SetIamPolicyRequest;
-    use crate::http::table::test_iam_permissions::TestIamPermissionsRequest;
 
     #[ctor::ctor]
     fn init() {
@@ -243,7 +270,7 @@ mod test {
                 )),
             }),
             is_case_insensitive: Some(true),
-            default_collation: Some("und:ci".to_string()),
+            default_collation: Some(Collation::UndeterminedLocaleCaseInsensitive),
             max_time_travel_hours: Some(48),
             storage_billing_model: Some(StorageBillingModel::Logical),
             ..Default::default()
@@ -359,18 +386,34 @@ mod test {
 
         // iam
         let ref1 = &table1.table_reference;
-        let policy = client.set_table_iam_policy(&ref1.project_id, &ref1.dataset_id, &ref1.table_id, &SetIamPolicyRequest {
-            policy: Policy {
-                bindings: vec![Bindings {
-                    role: "roles/viewer".to_string(),
-                    members: vec!["allAuthenticatedUsers".to_string()],
+        let policy = client
+            .set_table_iam_policy(
+                &ref1.project_id,
+                &ref1.dataset_id,
+                &ref1.table_id,
+                &SetIamPolicyRequest {
+                    policy: Policy {
+                        bindings: vec![Bindings {
+                            role: "roles/viewer".to_string(),
+                            members: vec!["allAuthenticatedUsers".to_string()],
+                            ..Default::default()
+                        }],
+                        ..Default::default()
+                    },
                     ..Default::default()
-                }],
-                ..Default::default()
-            },
-            ..Default::default()
-        }).await.unwrap();
-        let actual_policy = client.get_table_iam_policy(&ref1.project_id, &ref1.dataset_id, &ref1.table_id, &GetIamPolicyRequest::default()).await.unwrap();
+                },
+            )
+            .await
+            .unwrap();
+        let actual_policy = client
+            .get_table_iam_policy(
+                &ref1.project_id,
+                &ref1.dataset_id,
+                &ref1.table_id,
+                &GetIamPolicyRequest::default(),
+            )
+            .await
+            .unwrap();
         assert_eq!(policy, actual_policy);
 
         let mut view = Table::default();
@@ -470,5 +513,4 @@ mod test {
             .await
             .unwrap();
     }
-
 }

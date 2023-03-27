@@ -1,12 +1,12 @@
 pub mod delete;
 pub mod get;
+pub mod get_iam_policy;
 pub mod insert;
 pub mod patch;
-pub mod get_iam_policy;
 pub mod set_iam_policy;
 pub mod test_iam_permissions;
 
-use crate::http::types::EncryptionConfiguration;
+use crate::http::types::{Collation, EncryptionConfiguration};
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
@@ -22,9 +22,12 @@ pub struct TableReference {
 }
 
 impl TableReference {
-   pub fn resource(&self) -> String {
-       return format!("projects/{}/datasets/{}/tables/{}", &self.project_id, &self.dataset_id, &self.table_id)
-   }
+    pub fn resource(&self) -> String {
+        return format!(
+            "projects/{}/datasets/{}/tables/{}",
+            &self.project_id, &self.dataset_id, &self.table_id
+        );
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -476,7 +479,7 @@ pub struct TableFieldSchema {
     ///
     /// 'und:ci': undetermined locale, case insensitive.
     /// '': empty string. Default to case-sensitive behavior.
-    pub collation: Option<String>,
+    pub collation: Option<Collation>,
     /// Optional. A SQL expression to specify the default value for this field.
     /// https://cloud.google.com/bigquery/docs/default-values
     pub default_value_expression: Option<String>,
