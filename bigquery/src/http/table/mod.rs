@@ -2,7 +2,6 @@ pub mod delete;
 pub mod insert;
 
 use crate::http::types::EncryptionConfiguration;
-use std::io::Bytes;
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
@@ -537,6 +536,20 @@ pub struct Clustering {
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SourceFormat {
+    #[default]
+    Csv,
+    Avro,
+    NewlineDelimitedJson,
+    DatastoreBackup,
+    GoogleSheets,
+    Bigtable,
+    Parquet,
+    Orc,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ExternalDataConfiguration {
     /// [Required] The fully-qualified URIs that point to your data in Google Cloud.
@@ -560,7 +573,7 @@ pub struct ExternalDataConfiguration {
     /// For Google Cloud Datastore backups, specify "DATASTORE_BACKUP".
     /// For ORC files, specify "ORC". For Parquet files, specify "PARQUET".
     /// [Beta] For Google Cloud Bigtable, specify "BIGTABLE".
-    pub source_format: String,
+    pub source_format: SourceFormat,
     /// Optional. The maximum number of bad records that BigQuery can ignore when reading data.
     /// If the number of bad records exceeds this value, an invalid error is returned in the job result.
     /// The default value is 0, which requires that all records are valid. This setting is ignored for Google Cloud Bigtable, Google Cloud Datastore backups, Avro, ORC and Parquet formats.
@@ -581,7 +594,7 @@ pub struct ExternalDataConfiguration {
     /// ORC: This setting is ignored.
     /// Parquet: This setting is ignored.
     pub ignore_unknown_values: Option<bool>,
-    ///Optional. The compression type of the data source.
+    /// Optional. The compression type of the data source.
     /// Possible values include GZIP and NONE.
     /// The default value is NONE.
     /// This setting is ignored for Google Cloud Bigtable, Google Cloud Datastore backups, Avro, ORC and Parquet formats.
@@ -589,6 +602,43 @@ pub struct ExternalDataConfiguration {
     pub compression: Option<bool>,
     /// Optional. Additional properties to set if sourceFormat is set to CSV.
     pub csv_options: Option<CsvOptions>,
+    /// Optional. Additional options if sourceFormat is set to BIGTABLE.
+    pub bigtable_options: Option<BigtableOptions>,
+    /// Optional. Additional options if sourceFormat is set to GOOGLE_SHEETS.
+    pub google_sheets_options: Option<GoogleSheetsOptions>,
+    /// Optional. When set, configures hive partitioning support.
+    /// Not all storage formats support hive partitioning -- requesting hive partitioning on an unsupported format will lead to an error,
+    /// as will providing an invalid specification..
+    pub hive_partitioning_options: Option<HivePartitioningOptions>,
+    /// Optional. The connection specifying the credentials to be used to read external storage,
+    /// such as Azure Blob, Cloud Storage, or S3.
+    /// The connectionId can have the form "<project_id>.<location_id>.<connection_id>" or "projects/<project_id>/locations/<location_id>/connections/<connection_id>".
+    pub connection_id: Option<String>,
+    /// Defines the list of possible SQL data types to which the source decimal values are converted. This list and the precision and the scale parameters of the decimal field determine the target type. In the order of NUMERIC, BIGNUMERIC, and STRING, a type is picked if it is in the specified list and if it supports the precision and the scale. STRING supports all precision and scale values. If none of the listed types supports the precision and the scale, the type supporting the widest range in the specified list is picked, and if a value exceeds the supported range when reading the data, an error will be thrown.
+    ///
+    /// Example: Suppose the value of this field is ["NUMERIC", "BIGNUMERIC"]. If (precision,scale) is:
+    ///
+    /// (38,9) -> NUMERIC;
+    /// (39,9) -> BIGNUMERIC (NUMERIC cannot hold 30 integer digits);
+    /// (38,10) -> BIGNUMERIC (NUMERIC cannot hold 10 fractional digits);
+    /// (76,38) -> BIGNUMERIC;
+    /// (77,38) -> BIGNUMERIC (error if value exeeds supported range).
+    /// This field cannot contain duplicate types. The order of the types in this field is ignored. For example, ["BIGNUMERIC", "NUMERIC"] is the same as ["NUMERIC", "BIGNUMERIC"] and NUMERIC always takes precedence over BIGNUMERIC.
+    ///
+    /// Defaults to ["NUMERIC", "STRING"] for ORC and ["NUMERIC"] for the other file format
+    pub decimal_target_types: Option<Vec<DecimalTargetType>>,
+    /// Optional. Additional properties to set if sourceFormat is set to AVRO.
+    pub avro_options: Option<AvroOptions>,
+    /// Optional. Additional properties to set if sourceFormat is set to PARQUET.
+    pub parquet_options: Option<ParquetOptions>,
+    /// Optional. When creating an external table, the user can provide a reference file with the table schema.
+    /// This is enabled for the following formats: AVRO, PARQUET, ORC.
+    pub reference_file_schema_uri: Option<String>,
+    /// Optional. Metadata Cache Mode for the table. Set this to enable caching of metadata from external data source.
+    pub metadata_cache_mode: Option<MetadataCacheMode>,
+    /// Optional. ObjectMetadata is used to create Object Tables. Object Tables contain a listing of objects (with their metadata) found at the sourceUris. If ObjectMetadata is set, sourceFormat should be omitted.
+    /// Currently SIMPLE is the only supported Object Metadata type.
+    pub object_metadata: Option<ObjectMetadata>,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]

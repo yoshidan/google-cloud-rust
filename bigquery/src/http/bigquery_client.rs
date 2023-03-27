@@ -140,8 +140,9 @@ mod test {
     use crate::http::dataset::list::ListDatasetsRequest;
     use crate::http::dataset::{Access, Dataset, DatasetReference, SpecialGroup, StorageBillingModel};
     use crate::http::table::{
-        Clustering, MaterializedViewDefinition, PartitionRange, RangePartitioning, RoundingMode, Table, TableFieldMode,
-        TableFieldSchema, TableFieldType, TableSchema, TimePartitionType, TimePartitioning, ViewDefinition,
+        Clustering, CsvOptions, ExternalDataConfiguration, MaterializedViewDefinition, PartitionRange,
+        RangePartitioning, RoundingMode, SourceFormat, Table, TableFieldMode, TableFieldSchema, TableFieldType,
+        TableSchema, TimePartitionType, TimePartitioning, ViewDefinition,
     };
     use crate::http::types::EncryptionConfiguration;
     use google_cloud_auth::project::Config;
@@ -340,6 +341,7 @@ mod test {
                 interval: "1".to_string(),
             },
         });
+        table2.expiration_time = Some(3600);
         let table2 = client.create_table(&table2).await.unwrap();
 
         // time partition
@@ -368,29 +370,43 @@ mod test {
         let mv = client.create_table(&mv).await.unwrap();
 
         // delete
-        let ref1 = &table1.table_reference;
+        let tables = vec![table1, table2, table3, view, mv];
+        for table in tables {
+            let table = table.table_reference;
+            client
+                .delete_table(table.project_id.as_str(), table.dataset_id.as_str(), table.table_id.as_str())
+                .await
+                .unwrap();
+        }
+    }
+    #[tokio::test]
+    #[serial]
+    pub async fn external_table() {
+        let (client, project) = client().await;
+
+        // CSV
+        let mut table = Table::default();
+        table.table_reference.dataset_id = "rust_test_external_table".to_string();
+        table.table_reference.project_id = project.to_string();
+        table.table_reference.table_id = "csv_table".to_string();
+        table.external_data_configuration = Some(ExternalDataConfiguration {
+            source_uris: vec!["gs://rust-bq-test/external_data.csv".to_string()],
+            autodetect: true,
+            source_format: SourceFormat::Csv,
+            csv_options: Some(CsvOptions {
+                field_delimiter: Some("|".to_string()),
+                encoding: Some("UTF-8".to_string()),
+                skip_leading_rows: Some(0),
+                ..Default::default()
+            }),
+            ..Default::default()
+        });
+
+        // cleanup
+        let table = client.create_table(&table).await.unwrap();
+        let table = table.table_reference;
         client
-            .delete_table(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str())
-            .await
-            .unwrap();
-        let refv = &view.table_reference;
-        client
-            .delete_table(refv.project_id.as_str(), refv.dataset_id.as_str(), refv.table_id.as_str())
-            .await
-            .unwrap();
-        let refmv = &mv.table_reference;
-        client
-            .delete_table(refmv.project_id.as_str(), refmv.dataset_id.as_str(), refmv.table_id.as_str())
-            .await
-            .unwrap();
-        let ref2 = &table2.table_reference;
-        client
-            .delete_table(ref2.project_id.as_str(), ref2.dataset_id.as_str(), ref2.table_id.as_str())
-            .await
-            .unwrap();
-        let ref3 = &table3.table_reference;
-        client
-            .delete_table(ref3.project_id.as_str(), ref3.dataset_id.as_str(), ref3.table_id.as_str())
+            .delete_table(table.project_id.as_str(), table.dataset_id.as_str(), table.table_id.as_str())
             .await
             .unwrap();
     }

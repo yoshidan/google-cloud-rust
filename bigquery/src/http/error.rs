@@ -35,15 +35,6 @@ pub struct ErrorResponse {
     pub message: String,
 }
 
-impl ErrorResponse {
-    /// Returns `true` if the error is retriable according to the [GCS documentation][1].
-    ///
-    /// [1]: https://cloud.google.com/storage/docs/retry-strategy#retryable
-    pub fn is_retriable(&self) -> bool {
-        matches!(self.code, 408 | 429 | 500..=599)
-    }
-}
-
 impl fmt::Display for ErrorResponse {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.message.fmt(f)
