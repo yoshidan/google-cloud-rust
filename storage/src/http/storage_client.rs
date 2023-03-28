@@ -2032,11 +2032,11 @@ mod test {
             .upload_multiple_chunk(chunk2_data.clone(), &chunk2)
             .await
             .unwrap();
-        assert_eq!(status2, UploadStatus::Ok);
+        assert!(matches!(status2, UploadStatus::Ok(_)));
 
         tracing::info!("check status chunk2");
         let status_check2 = uploader.status(total_size).await.unwrap();
-        assert_eq!(status_check2, UploadStatus::Ok);
+        assert!(matches!(status_check2, UploadStatus::Ok(_)));
 
         let get_request = &GetObjectRequest {
             bucket: bucket_name.to_string(),
@@ -2136,7 +2136,7 @@ mod test {
             .upload_multiple_chunk(chunk2_data.clone(), &chunk2)
             .await
             .unwrap();
-        assert_eq!(status2, UploadStatus::Ok);
+        assert!(matches!(status2, UploadStatus::Ok(_)));
 
         let get_request = &GetObjectRequest {
             bucket: bucket_name.to_string(),
