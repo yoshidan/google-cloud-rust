@@ -10,13 +10,66 @@ Google Cloud Platform pub/sub library.
 
 ## Installation
 
-```
+```toml
 [dependencies]
 google-cloud-pubsub = <version>
 google-cloud-default = { version = <version>, features = ["pubsub"] }
 ```
 
-## Quick Start
+## Quickstart
+
+### Authentication
+
+When you are not using an emulator you'll need to be authenticated.
+There are two ways to do that:
+
+#### Automatically
+You can use [google-cloud-default](https://crates.io/crates/google-cloud-default) to create [ClientConfig](https://docs.rs/google-cloud-pubsub/0.14.0/google_cloud_pubsub/client/struct.ClientConfig.html)
+
+This will try and read the credentials from a file specified in the environment variable `GOOGLE_APPLICATION_CREDENTIALS_JSON` or
+from a metadata server.
+
+This is also described in [google-cloud-auth](https://github.com/yoshidan/google-cloud-rust/blob/main/foundation/auth/README.md)
+
+See [implementation](https://docs.rs/google-cloud-auth/0.9.1/src/google_cloud_auth/token.rs.html#59-74)
+
+#### Manually
+
+When you cant use the `gcloud` authentication but you have a different way to get your credentials (e.g a different environment variable)
+you can parse your own version of the 'credentials-file' and use it like that:
+
+```rust 
+let creds = Box::new(CredentialsFile {
+    // add your parsed creds here
+});
+
+let project_conf = project::Config {
+    audience: Some(AUDIENCE),
+    scopes: Some(&SCOPES),
+};
+
+// build your own TokenSourceProvider
+let token_source = DefaultTokenSourceProvider::new_with_credentials(project_conf, creds)
+    .await?;
+
+// use that provider to authenticate yourself against the google cloud
+let config = ClientConfig {
+    project_id: token_source.project_id.clone(),
+    environment: Environment::GoogleCloud(Box::new(token_source)),
+    ..ClientConfig::default()
+};
+```
+
+### Emulator
+For tests you can use the [Emulator-Option](https://docs.rs/google-cloud-gax/latest/google_cloud_gax/conn/enum.Environment.html#variant.GoogleCloud) like that:
+
+```rust
+let config = ClientConfig {
+    project_id: token_source.project_id.clone(),
+    environment: Environment::Emulator("localhost:1234".into()),
+    ..ClientConfig::default()
+};
+```
 
 ### Publish Message
 
@@ -50,10 +103,12 @@ google-cloud-default = { version = <version>, features = ["pubsub"] }
      let tasks : Vec<JoinHandle<Result<String,Status>>> = (0..10).into_iter().map(|_i| {
          let publisher = publisher.clone();
          tokio::spawn(async move {
-             let mut msg = PubsubMessage::default();
-             msg.data = "abc".into();
-             // Set ordering_key if needed (https://cloud.google.com/pubsub/docs/ordering)
-             // msg.ordering_key = "order".into();
+             let msg = PubsubMessage {
+                data: "abc".into(),
+                // Set ordering_key if needed (https://cloud.google.com/pubsub/docs/ordering)
+                ordering_key: "order".into(),
+                ..Default::default()
+             };
 
              // Send a message. There are also `publish_bulk` and `publish_immediately` methods.
              let mut awaiter = publisher.publish(msg).await;
@@ -97,10 +152,14 @@ google-cloud-default = { version = <version>, features = ["pubsub"] }
      // Get the topic to subscribe to.
      let topic = client.topic("test-topic");
 
-     // Configure subscription.
-     let mut config = SubscriptionConfig::default();
-     // Enable message ordering if needed (https://cloud.google.com/pubsub/docs/ordering)
-     config.enable_message_ordering = true;
+    // Create subscription
+    // If subscription name does not contain a "/", then the project is taken from client above. Otherwise, the
+    // name will be treated as a fully qualified resource name
+    let subscription_config = SubscriptionConfig {
+        // Enable message ordering if needed (https://cloud.google.com/pubsub/docs/ordering)
+        enable_message_ordering: true,
+        ..Default::default()
+    };
 
      // Create subscription
      // If subscription name does not contain a "/", then the project is taken from client above. Otherwise, the
@@ -109,6 +168,7 @@ google-cloud-default = { version = <version>, features = ["pubsub"] }
      if !subscription.exists(None).await? {
          subscription.create(topic.fully_qualified_name(), config, None).await?;
      }
+
      // Token for cancel.
      let cancel = CancellationToken::new();
      let cancel2 = cancel.clone();
@@ -128,6 +188,20 @@ google-cloud-default = { version = <version>, features = ["pubsub"] }
          // Ack or Nack message.
          message.ack().await;
      }, cancel.clone(), None).await;
+
+     // Alternativly you can use the messages as a stream
+     // (needs futures_util::StreamExt as import)
+     // Note: This blocks the current thread but helps working with non clonable data
+     let mut stream = subscription.subscribe(None).await?();
+     while let Some(message) = stream.next().await {
+        // Handle data.
+        let data = message.message.data.as_ref();
+        println!("{:?}", data);
+
+        // Ack or Nack message.
+        message.ack().await;
+     }
+
 
      // Delete subscription if needed.
      subscription.delete(None).await;
