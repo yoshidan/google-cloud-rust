@@ -26,7 +26,7 @@ There are two ways to do that:
 #### Automatically
 You can use [google-cloud-default](https://crates.io/crates/google-cloud-default) to create [ClientConfig](https://docs.rs/google-cloud-pubsub/0.14.0/google_cloud_pubsub/client/struct.ClientConfig.html)
 
-This will try and read the credentials from a file specified in the environment variable `GOOGLE_APPLICATION_CREDENTIALS_JSON` or
+This will try and read the credentials from a file specified in the environment variable `GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_APPLICATION_CREDENTIALS_JSON` or
 from a metadata server.
 
 This is also described in [google-cloud-auth](https://github.com/yoshidan/google-cloud-rust/blob/main/foundation/auth/README.md)
