@@ -28,8 +28,33 @@
 //! you can parse your own version of the 'credentials-file' and use it like that:
 //!
 //! ```
+//! # use google_cloud_auth::{credentials::CredentialsFile, project, token::DefaultTokenSourceProvider};
+//! # use google_cloud_gax::conn::Environment;
+//! # use google_cloud_pubsub::{
+//! #     apiv1::conn_pool::{AUDIENCE, SCOPES},
+//! #     client::ClientConfig,
+//! # };
+//! #
+//! # async fn test() {
 //! let creds = Box::new(CredentialsFile {
-//!     // add your parsed creds here
+//!     // Add your credentials here
+//! #    tp: "".to_owned(),
+//! #    project_id: None,
+//! #    private_key_id: None,
+//! #    private_key: None,
+//! #    client_email: None,
+//! #    client_id: None,
+//! #    auth_uri: None,
+//! #    token_uri: None,
+//! #    client_secret: None,
+//! #    audience: None,
+//! #    subject_token_type: None,
+//! #    token_url_external: None,
+//! #    token_info_url: None,
+//! #    service_account_impersonation_url: None,
+//! #    credential_source: None,
+//! #    quota_project_id: None,
+//! #    refresh_token: None,
 //! });
 //!
 //! let project_conf = project::Config {
@@ -39,7 +64,8 @@
 //!
 //! // build your own TokenSourceProvider
 //! let token_source = DefaultTokenSourceProvider::new_with_credentials(project_conf, creds)
-//!     .await?;
+//!     .await
+//!     .unwrap();
 //!
 //! // use that provider to authenticate yourself against the google cloud
 //! let config = ClientConfig {
@@ -47,17 +73,31 @@
 //!     environment: Environment::GoogleCloud(Box::new(token_source)),
 //!     ..ClientConfig::default()
 //! };
+//! #
+//! # let _ = config;
+//! # }
 //! ```
 //!
 //! ### Emulator
 //! For tests you can use the [Emulator-Option](https://docs.rs/google-cloud-gax/latest/google_cloud_gax/conn/enum.Environment.html#variant.GoogleCloud) like that:
 //!
 //! ```
+//! # use google_cloud_auth::{credentials::CredentialsFile, project, token::DefaultTokenSourceProvider};
+//! # use google_cloud_gax::conn::Environment;
+//! # use google_cloud_pubsub::{
+//! #     apiv1::conn_pool::{AUDIENCE, SCOPES},
+//! #     client::ClientConfig,
+//! # };
+//! #
+//! # async fn test() {
 //! let config = ClientConfig {
-//!     project_id: token_source.project_id.clone(),
+//! #    project_id: None,
 //!     environment: Environment::Emulator("localhost:1234".into()),
 //!     ..ClientConfig::default()
 //! };
+//! #
+//! # let _ = config;
+//! # }
 //! ```
 //!
 //! ### Publish Message
@@ -71,7 +111,6 @@
 //! use tokio::task::JoinHandle;
 //! use tokio_util::sync::CancellationToken;
 //!
-//! // Client config
 //! #[tokio::main]
 //! async fn main() -> Result<(), Status> {
 //!
@@ -172,8 +211,7 @@
 //!     // Or simply use the `subscription.subscribe` method.
 //!     subscription.receive(|mut message, cancel| async move {
 //!         // Handle data.
-//!         let data = message.message.data.as_ref();
-//!         println!("{:?}", data);
+//!         println!("Got Message: {:?}", message.message.data);
 //!
 //!         // Ack or Nack message.
 //!         message.ack().await;
@@ -182,11 +220,10 @@
 //!     // Alternativly you can use the messages as a stream
 //!     // (needs futures_util::StreamExt as import)
 //!     // Note: This blocks the current thread but helps working with non clonable data
-//!     let mut stream = subscription.subscribe(None).await?();
+//!     let mut stream = subscription.subscribe(None).await?;
 //!     while let Some(message) = stream.next().await {
 //!         // Handle data.
-//!         let data = message.message.data.as_ref();
-//!         println!("{:?}", data);
+//!         println!("Got Message: {:?}", message.message);
 //!
 //!         // Ack or Nack message.
 //!         message.ack().await;

@@ -28,8 +28,29 @@
 //! you can parse your own version of the 'credentials-file' and use it like that:
 //!
 //! ```
+//! # use google_cloud_auth::{credentials::CredentialsFile, project, token::DefaultTokenSourceProvider};
+//! # use google_cloud_storage::{client::ClientConfig, http::storage_client::SCOPES};
+//! #
+//! # async fn test() {
 //! let creds = Box::new(CredentialsFile {
-//!     // add your parsed creds here
+//!     // Add your credentials here
+//! #    tp: "".to_owned(),
+//! #    project_id: None,
+//! #    private_key_id: None,
+//! #    private_key: None,
+//! #    client_email: None,
+//! #    client_id: None,
+//! #    auth_uri: None,
+//! #    token_uri: None,
+//! #    client_secret: None,
+//! #    audience: None,
+//! #    subject_token_type: None,
+//! #    token_url_external: None,
+//! #    token_info_url: None,
+//! #    service_account_impersonation_url: None,
+//! #    credential_source: None,
+//! #    quota_project_id: None,
+//! #    refresh_token: None,
 //! });
 //!
 //! let project_conf = project::Config {
@@ -39,7 +60,8 @@
 //!
 //! // build your own TokenSourceProvider
 //! let token_source = DefaultTokenSourceProvider::new_with_credentials(project_conf, creds)
-//!     .await?;
+//!     .await
+//!     .unwrap();
 //!
 //! // use that provider to authenticate yourself against the google cloud
 //! let config = ClientConfig {
@@ -47,6 +69,9 @@
 //!     token_source_provider: Box::new(token_source),
 //!     ..ClientConfig::default()
 //! };
+//! #
+//! # let _ = config;
+//! # }
 //! ```
 //! You can use [google-cloud-default](https://crates.io/crates/google-cloud-default) to create `ClientConfig`
 //!
