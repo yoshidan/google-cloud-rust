@@ -7,32 +7,42 @@
 //!
 //! ## Quick Start
 //!
-//! ### Authentication
+//! There are two ways to create a client that is authenticated against the google cloud.
 //!
-//! When you are not using an emulator you'll need to be authenticated.
-//! There are two ways to do that:
+//! The crate [google-cloud-default](https://crates.io/crates/google-cloud-default) provides two
+//! methods that help implementing those.
 //!
 //! #### Automatically
-//! You can use [google-cloud-default](https://crates.io/crates/google-cloud-default) to create [ClientConfig][crate::client::ClientConfig]
 //!
-//! This will try and read the credentials from a file specified in the environment variable `GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_APPLICATION_CREDENTIALS_JSON` or
+//! The function `with_auth()` will try and read the credentials from a file specified in the environment variable `GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_APPLICATION_CREDENTIALS_JSON` or
 //! from a metadata server.
 //!
 //! This is also described in [google-cloud-auth](https://github.com/yoshidan/google-cloud-rust/blob/main/foundation/auth/README.md)
 //!
 //! See [implementation](https://docs.rs/google-cloud-auth/0.9.1/src/google_cloud_auth/token.rs.html#59-74)
 //!
-//! #### Manually
+//! ```
+//! # use google_cloud_storage::client::ClientConfig;
+//! # use google_cloud_default::WithAuthExt;
+//! #
+//! # async fn test() {
+//! let config = ClientConfig::default().with_auth().await.unwrap();
+//! # let _ = config;
+//! # }
+//! ```
+//!
+//! ### Manually
 //!
 //! When you cant use the `gcloud` authentication but you have a different way to get your credentials (e.g a different environment variable)
 //! you can parse your own version of the 'credentials-file' and use it like that:
 //!
 //! ```
 //! # use google_cloud_auth::{credentials::CredentialsFile, project, token::DefaultTokenSourceProvider};
-//! # use google_cloud_storage::{client::ClientConfig, http::storage_client::SCOPES};
+//! # use google_cloud_storage::client::ClientConfig;
+//! # use google_cloud_default::WithAuthExt;
 //! #
 //! # async fn test() {
-//! let creds = Box::new(CredentialsFile {
+//! let creds = CredentialsFile {
 //!     // Add your credentials here
 //! #    tp: "".to_owned(),
 //! #    project_id: None,
@@ -51,29 +61,13 @@
 //! #    credential_source: None,
 //! #    quota_project_id: None,
 //! #    refresh_token: None,
-//! });
-//!
-//! let project_conf = project::Config {
-//!     audience: None,
-//!     scopes: Some(&SCOPES),
 //! };
 //!
-//! // build your own TokenSourceProvider
-//! let token_source = DefaultTokenSourceProvider::new_with_credentials(project_conf, creds)
-//!     .await
-//!     .unwrap();
-//!
-//! // use that provider to authenticate yourself against the google cloud
-//! let config = ClientConfig {
-//!     project_id: token_source.project_id.clone(),
-//!     token_source_provider: Box::new(token_source),
-//!     ..ClientConfig::default()
-//! };
+//! let config = ClientConfig::default().with_credentials(creds).await.unwrap();
 //! #
 //! # let _ = config;
 //! # }
 //! ```
-//! You can use [google-cloud-default](https://crates.io/crates/google-cloud-default) to create `ClientConfig`
 //!
 //! ### Usage
 //!
