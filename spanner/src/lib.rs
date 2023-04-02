@@ -135,7 +135,7 @@
 //!
 //! See [implementation](https://docs.rs/google-cloud-auth/0.9.1/src/google_cloud_auth/token.rs.html#59-74)
 //!
-//! ```no_run
+//! ```ignore
 //! use google_cloud_spanner::client::{ClientConfig, Client};
 //! use google_cloud_default::WithAuthExt;
 //!
@@ -150,7 +150,7 @@
 //! When you can't use the `gcloud` authentication but you have a different way to get your credentials (e.g a different environment variable)
 //! you can parse your own version of the 'credentials-file' and use it like that:
 //!
-//! ```no_run
+//! ```ignore
 //! use google_cloud_auth::credentials::CredentialsFile;
 //! use google_cloud_spanner::client::{ClientConfig, Client};
 //! use google_cloud_default::WithAuthExt;
