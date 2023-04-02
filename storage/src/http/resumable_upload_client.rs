@@ -16,6 +16,7 @@ pub enum ChunkError {
 }
 
 #[derive(PartialEq, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum UploadStatus {
     Ok(Object),
     ResumeIncomplete,

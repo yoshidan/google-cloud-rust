@@ -1070,7 +1070,7 @@ impl StorageClient {
     ///
     ///     let chunk2 = ChunkSize::new(chunk1_size, chunk1_size + chunk2_size - 1, total_size.clone());
     ///     let status2 = uploader.upload_multiple_chunk(chunk2_data.clone(), &chunk2).await.unwrap();
-    ///     assert_eq!(status2, UploadStatus::Ok);
+    ///     assert!(matches!(status2, UploadStatus::Ok(_)));
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
