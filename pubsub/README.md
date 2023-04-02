@@ -79,8 +79,6 @@ use tokio_util::sync::CancellationToken;
 async fn run(config: ClientConfig) -> Result<(), Status> {
 
     // Create pubsub client.
-    // `use google_cloud_default::WithAuthExt;` is required to use default authentication.
-    let config = ClientConfig::default();//.with_auth().await.unwrap();
     let client = Client::new(config).await.unwrap();
 
     // Create topic.
