@@ -22,13 +22,13 @@
 //! See [implementation](https://docs.rs/google-cloud-auth/0.9.1/src/google_cloud_auth/token.rs.html#59-74)
 //!
 //! ```
-//! # use google_cloud_pubsub::client::ClientConfig;
-//! # use google_cloud_default::WithAuthExt;
-//! #
-//! # async fn test() {
-//! let config = ClientConfig::default().with_auth().await.unwrap();
-//! # let _ = config;
-//! # }
+//! use google_cloud_pubsub::client::{ClientConfig, Client};
+//! use google_cloud_default::WithAuthExt;
+//!
+//! async fn run() {
+//!     let config = ClientConfig::default().with_auth().await.unwrap();
+//!     let client = Client::new(config).await.unwrap();
+//! }
 //! ```
 //!
 //! ### Manually
@@ -37,55 +37,22 @@
 //! you can parse your own version of the 'credentials-file' and use it like that:
 //!
 //! ```
-//! # use google_cloud_auth::{credentials::CredentialsFile, project, token::DefaultTokenSourceProvider};
-//! # use google_cloud_pubsub::client::ClientConfig;
-//! # use google_cloud_default::WithAuthExt;
-//! # use google_cloud_gax::conn::Environment;
-//! #
-//! # async fn test() {
-//! let creds = CredentialsFile {
-//!     // Add your credentials here
-//! #    tp: "".to_owned(),
-//! #    project_id: None,
-//! #    private_key_id: None,
-//! #    private_key: None,
-//! #    client_email: None,
-//! #    client_id: None,
-//! #    auth_uri: None,
-//! #    token_uri: None,
-//! #    client_secret: None,
-//! #    audience: None,
-//! #    subject_token_type: None,
-//! #    token_url_external: None,
-//! #    token_info_url: None,
-//! #    service_account_impersonation_url: None,
-//! #    credential_source: None,
-//! #    quota_project_id: None,
-//! #    refresh_token: None,
-//! };
+//! use google_cloud_auth::credentials::CredentialsFile;
+//! use google_cloud_pubsub::client::{ClientConfig, Client};
+//! use google_cloud_default::WithAuthExt;
 //!
-//! let config = ClientConfig::default().with_credentials(creds).await.unwrap();
-//! #
-//! # let _ = config;
-//! # }
+//! async fn run(cred: CredentialsFile) {
+//!     let config = ClientConfig::default().with_credentials(cred).await.unwrap();
+//!     let client = Client::new(config).await.unwrap();
+//! }
 //! ```
 //!
 //! ### Emulator
-//! For tests you can use the [Emulator-Option](https://docs.rs/google-cloud-gax/latest/google_cloud_gax/conn/enum.Environment.html#variant.GoogleCloud) like that:
+//! For tests, you can use the [Emulator-Option](https://docs.rs/google-cloud-gax/latest/google_cloud_gax/conn/enum.Environment.html#variant.GoogleCloud) like that:
+//! Before executing the program, specify the address of the emulator in the following environment variable.
 //!
-//! ```
-//! # use google_cloud_auth::{credentials::CredentialsFile, project, token::DefaultTokenSourceProvider};
-//! # use google_cloud_gax::conn::Environment;
-//! # use google_cloud_pubsub::client::ClientConfig;
-//! #
-//! # async fn test() {
-//! let config = ClientConfig {
-//!     environment: Environment::Emulator("localhost:1234".into()),
-//!     ..ClientConfig::default()
-//! };
-//! #
-//! # let _ = config;
-//! # }
+//! ```sh
+//! export PUBSUB_EMULATOR_HOST=localhost:8681
 //! ```
 //!
 //! ### Publish Message
@@ -99,8 +66,7 @@
 //! use tokio::task::JoinHandle;
 //! use tokio_util::sync::CancellationToken;
 //!
-//! #[tokio::main]
-//! async fn main() -> Result<(), Status> {
+//! async fn run(config: ClientConfig) -> Result<(), Status> {
 //!
 //!     // Create pubsub client.
 //!     // `use google_cloud_default::WithAuthExt;` is required to use default authentication.
@@ -158,14 +124,10 @@
 //! use std::time::Duration;
 //! use tokio_util::sync::CancellationToken;
 //! use futures_util::StreamExt;
-//! // use google_cloud_default::WithAuthExt;
 //!
-//! #[tokio::main]
-//! async fn main() -> Result<(), Status> {
+//! async fn run(config: ClientConfig) -> Result<(), Status> {
 //!
 //!     // Create pubsub client.
-//!     // `with_auth` is the trait defined at google-cloud-default crate.
-//!     let config = ClientConfig::default();//.with_auth().await.unwrap();
 //!     let client = Client::new(config).await.unwrap();
 //!
 //!     // Get the topic to subscribe to.
@@ -202,11 +164,11 @@
 //!         println!("Got Message: {:?}", message.message.data);
 //!
 //!         // Ack or Nack message.
-//!         message.ack().await;
-//!     }, cancel.clone(), None).await;
+//!         let _ = message.ack().await;
+//!     }, cancel.clone(), None).await?;
 //!
 //!     // Delete subscription if needed.
-//!     subscription.delete(None).await;
+//!     subscription.delete(None).await?;
 //!
 //!     Ok(())
 //! }
@@ -222,28 +184,11 @@
 //! use std::time::Duration;
 //! use tokio_util::sync::CancellationToken;
 //! use futures_util::StreamExt;
-//! // use google_cloud_default::WithAuthExt;
 //!
-//! #[tokio::main]
-//! async fn main() -> Result<(), Status> {
-//!
+//! async fn run(config: ClientConfig) -> Result<(), Status> {
 //!     // Creating Client, Topic and Subscription...
-//! #
-//! #     let config = ClientConfig::default();//.with_auth().await.unwrap();
-//! #     let client = Client::new(config).await.unwrap();
-//! #
-//! #     let topic = client.topic("test-topic");
-//! #
-//! #     let config = SubscriptionConfig {
-//! #         // Enable message ordering if needed (https://cloud.google.com/pubsub/docs/ordering)
-//! #         enable_message_ordering: true,
-//! #         ..Default::default()
-//! #     };
-//! #
-//! #     let subscription = client.subscription("test-subscription");
-//! #     if !subscription.exists(None).await? {
-//! #         subscription.create(topic.fully_qualified_name(), config, None).await?;
-//! #     }
+//!     let client = Client::new(config).await.unwrap();
+//!     let subscription = client.subscription("test-subscription");
 //!
 //!     // Read the messages as a stream
 //!     // (needs futures_util::StreamExt as import)
@@ -254,13 +199,9 @@
 //!         println!("Got Message: {:?}", message.message);
 //!
 //!         // Ack or Nack message.
-//!         message.ack().await;
+//!         let _ = message.ack().await;
 //!     }
-//! #
-//! #    // Delete subscription if needed.
-//! #    subscription.delete(None).await;
-//! #
-//! #    Ok(())
+//!     Ok(())
 //! }
 //! ```
 pub mod apiv1;

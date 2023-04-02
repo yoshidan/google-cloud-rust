@@ -22,13 +22,13 @@
 //! See [implementation](https://docs.rs/google-cloud-auth/0.9.1/src/google_cloud_auth/token.rs.html#59-74)
 //!
 //! ```
-//! # use google_cloud_storage::client::ClientConfig;
-//! # use google_cloud_default::WithAuthExt;
-//! #
-//! # async fn test() {
-//! let config = ClientConfig::default().with_auth().await.unwrap();
-//! # let _ = config;
-//! # }
+//! use google_cloud_storage::client::{ClientConfig, Client};
+//! use google_cloud_default::WithAuthExt;
+//!
+//! async fn run() {
+//!     let config = ClientConfig::default().with_auth().await.unwrap();
+//!     let client = Client::new(config);
+//! }
 //! ```
 //!
 //! ### Manually
@@ -37,36 +37,14 @@
 //! you can parse your own version of the 'credentials-file' and use it like that:
 //!
 //! ```
-//! # use google_cloud_auth::{credentials::CredentialsFile, project, token::DefaultTokenSourceProvider};
-//! # use google_cloud_storage::client::ClientConfig;
-//! # use google_cloud_default::WithAuthExt;
-//! #
-//! # async fn test() {
-//! let creds = CredentialsFile {
-//!     // Add your credentials here
-//! #    tp: "".to_owned(),
-//! #    project_id: None,
-//! #    private_key_id: None,
-//! #    private_key: None,
-//! #    client_email: None,
-//! #    client_id: None,
-//! #    auth_uri: None,
-//! #    token_uri: None,
-//! #    client_secret: None,
-//! #    audience: None,
-//! #    subject_token_type: None,
-//! #    token_url_external: None,
-//! #    token_info_url: None,
-//! #    service_account_impersonation_url: None,
-//! #    credential_source: None,
-//! #    quota_project_id: None,
-//! #    refresh_token: None,
-//! };
+//! use google_cloud_auth::credentials::CredentialsFile;
+//! use google_cloud_storage::client::{ClientConfig, Client};
+//! use google_cloud_default::WithAuthExt;
 //!
-//! let config = ClientConfig::default().with_credentials(creds).await.unwrap();
-//! #
-//! # let _ = config;
-//! # }
+//! async fn run(cred: CredentialsFile) {
+//!     let config = ClientConfig::default().with_credentials(cred).await.unwrap();
+//!     let client = Client::new(config);
+//! }
 //! ```
 //!
 //! ### Usage
@@ -85,8 +63,6 @@
 //! use std::io::BufReader;
 //! use std::io::Read;
 //!
-//! // use google_cloud_default::WithAuthExt;
-//! // let config = ClientConfig::default().with_auth().await?;
 //! async fn run(config: ClientConfig) -> Result<(), Error> {
 //!
 //!     // Create client.
