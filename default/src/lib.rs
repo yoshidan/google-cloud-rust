@@ -17,6 +17,13 @@ pub trait WithAuthExt {
     async fn with_auth(mut self) -> Result<Self, Error>
     where
         Self: Sized;
+
+    async fn with_credentials(
+        self,
+        credentials: google_cloud_auth::credentials::CredentialsFile,
+    ) -> Result<Self, Error>
+    where
+        Self: Sized;
 }
 
 #[cfg(feature = "pubsub")]
@@ -32,6 +39,26 @@ impl WithAuthExt for google_cloud_pubsub::client::ClientConfig {
             self.project_id = ts.project_id.clone();
             self.environment = google_cloud_gax::conn::Environment::GoogleCloud(Box::new(ts))
         }
+        Ok(self)
+    }
+
+    async fn with_credentials(
+        mut self,
+        credentials: google_cloud_auth::credentials::CredentialsFile,
+    ) -> Result<Self, Error> {
+        if let google_cloud_gax::conn::Environment::GoogleCloud(_) = self.environment {
+            let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new_with_credentials(
+                google_cloud_auth::project::Config {
+                    audience: Some(google_cloud_pubsub::apiv1::conn_pool::AUDIENCE),
+                    scopes: Some(&google_cloud_pubsub::apiv1::conn_pool::SCOPES),
+                },
+                Box::new(credentials),
+            )
+            .await?;
+            self.project_id = ts.project_id.clone();
+            self.environment = google_cloud_gax::conn::Environment::GoogleCloud(Box::new(ts))
+        }
+
         Ok(self)
     }
 }
@@ -50,6 +77,24 @@ impl WithAuthExt for google_cloud_spanner::client::ClientConfig {
         }
         Ok(self)
     }
+
+    async fn with_credentials(
+        mut self,
+        credentials: google_cloud_auth::credentials::CredentialsFile,
+    ) -> Result<Self, Error> {
+        if let google_cloud_gax::conn::Environment::GoogleCloud(_) = self.environment {
+            let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new_with_credentials(
+                google_cloud_auth::project::Config {
+                    audience: Some(google_cloud_spanner::apiv1::conn_pool::AUDIENCE),
+                    scopes: Some(&google_cloud_spanner::apiv1::conn_pool::SCOPES),
+                },
+                Box::new(credentials),
+            )
+            .await?;
+            self.environment = google_cloud_gax::conn::Environment::GoogleCloud(Box::new(ts))
+        }
+        Ok(self)
+    }
 }
 
 #[cfg(feature = "storage")]
@@ -63,7 +108,42 @@ impl WithAuthExt for google_cloud_storage::client::ClientConfig {
         .await?;
 
         match &ts.source_credentials {
-            //Credential file is used.
+            // Credential file is used.
+            Some(cred) => {
+                self.project_id = cred.project_id.clone();
+                if let Some(pk) = &cred.private_key {
+                    self.default_sign_by =
+                        Some(google_cloud_storage::sign::SignBy::PrivateKey(pk.clone().into_bytes()));
+                }
+                self.default_google_access_id = cred.client_email.clone();
+            }
+            // On Google Cloud
+            None => {
+                self.project_id = Some(google_cloud_metadata::project_id().await);
+                self.default_sign_by = Some(google_cloud_storage::sign::SignBy::SignBytes);
+                self.default_google_access_id = google_cloud_metadata::email("default").await.ok();
+            }
+        }
+
+        self.token_source_provider = Box::new(ts);
+        Ok(self)
+    }
+
+    async fn with_credentials(
+        mut self,
+        credentials: google_cloud_auth::credentials::CredentialsFile,
+    ) -> Result<Self, Error> {
+        let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new_with_credentials(
+            google_cloud_auth::project::Config {
+                audience: None,
+                scopes: Some(&google_cloud_storage::http::storage_client::SCOPES),
+            },
+            Box::new(credentials),
+        )
+        .await?;
+
+        match &ts.source_credentials {
+            // Credential file is used.
             Some(cred) => {
                 self.project_id = cred.project_id.clone();
                 if let Some(pk) = &cred.private_key {
