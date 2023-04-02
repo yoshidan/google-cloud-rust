@@ -18,10 +18,9 @@ google-cloud-default = { version = <version>, features = ["pubsub"] }
 
 ## Quickstart
 
+### Authentication
 There are two ways to create a client that is authenticated against the google cloud.
-
-The crate [google-cloud-default](https://crates.io/crates/google-cloud-default) provides two
-methods that help implementing those.
+The crate [google-cloud-default](https://crates.io/crates/google-cloud-default) provides two methods that help to implement those.
 
 #### Automatically
 
@@ -44,7 +43,7 @@ async fn run() {
 
 ### Manually
 
-When you cant use the `gcloud` authentication but you have a different way to get your credentials (e.g a different environment variable)
+When you can't use the `gcloud` authentication but you have a different way to get your credentials (e.g a different environment variable)
 you can parse your own version of the 'credentials-file' and use it like that:
 
 ```rust

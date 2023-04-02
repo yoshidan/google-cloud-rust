@@ -7,10 +7,10 @@
 //!
 //! ## Quickstart
 //!
+//! ### Authentication
 //! There are two ways to create a client that is authenticated against the google cloud.
 //!
-//! The crate [google-cloud-default](https://crates.io/crates/google-cloud-default) provides two
-//! methods that help implementing those.
+//! The crate [google-cloud-default](https://crates.io/crates/google-cloud-default) provides two methods that help to implement those.
 //!
 //! #### Automatically
 //!
