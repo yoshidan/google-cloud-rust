@@ -57,6 +57,16 @@ impl Default for Client {
 }
 
 impl Client {
+
+    pub fn default_signed_url_option(&self) -> Result<SignedURLOptions, SignedURLError> {
+        let google_access_id = self.default_google_access_id.clone()
+            .ok_or(SignedURLError::InvalidOption("No default google_access_id is found"))?;
+        let sign_by = self.default_sign_by.clone()
+            .ok_or(SignedURLError::InvalidOption("No default sign_by was found"))?;
+            Ok(Self::new(google_access_id, sign_by))
+        }
+        Ok(SignedURLOptions::new(google_access_id, sign_by))
+    }
     /// New client
     pub fn new(config: ClientConfig) -> Self {
         let ts = config.token_source_provider.token_source();

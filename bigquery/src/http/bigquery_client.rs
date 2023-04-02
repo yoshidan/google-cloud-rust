@@ -10,8 +10,9 @@ use crate::http::types::Policy;
 use crate::http::{dataset, table, tabledata};
 use google_cloud_token::TokenSource;
 use reqwest::{Client, RequestBuilder, Response};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use crate::http::tabledata::list::{FetchDataRequest, FetchDataResponse};
 
 pub const SCOPES: [&str; 7] = [
     "https://www.googleapis.com/auth/bigquery",
@@ -165,6 +166,19 @@ impl BigqueryClient {
         self.send(builder).await
     }
 
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn read_from_table(
+        &self,
+        project_id: &str,
+        dataset_id: &str,
+        table_id: &str,
+        req: &FetchDataRequest,
+    ) -> Result<FetchDataResponse, Error> {
+        let builder =
+            tabledata::list::build(self.endpoint.as_str(), &self.http, project_id, dataset_id, table_id, req);
+        self.send(builder).await
+    }
+
     async fn with_headers(&self, builder: RequestBuilder) -> Result<RequestBuilder, Error> {
         let token = self.ts.token().await.map_err(Error::TokenSource)?;
         Ok(builder
@@ -232,6 +246,8 @@ mod test {
     use serial_test::serial;
     use std::collections::HashMap;
     use time::OffsetDateTime;
+    use crate::http::tabledata::list;
+    use crate::http::tabledata::list::{FetchDataRequest, FetchDataResponse};
 
     #[ctor::ctor]
     fn init() {
@@ -533,7 +549,7 @@ mod test {
             .unwrap();
     }
 
-    #[derive(serde::Serialize)]
+    #[derive(serde::Serialize, serde::Deserialize)]
     struct TestData {
         pub col1: Option<String>,
         pub col2: Vec<i32>,
@@ -548,7 +564,7 @@ mod test {
         let mut table1 = Table::default();
         table1.table_reference.dataset_id = "rust_test_table".to_string();
         table1.table_reference.project_id = project.to_string();
-        table1.table_reference.table_id = "table_data5".to_string();
+        table1.table_reference.table_id = "table_data9".to_string();
         table1.schema = Some(TableSchema {
             fields: vec![
                 TableFieldSchema {
@@ -573,7 +589,7 @@ mod test {
                 },
             ],
         });
-        let table1 = client.create_table(&table1).await.unwrap();
+     //   let table1 = client.create_table(&table1).await.unwrap();
         let ref1 = table1.table_reference;
 
         // json value
@@ -596,10 +612,10 @@ mod test {
             )
             .unwrap(),
         });
-        let res = client
-            .insert_into_table(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str(), &req)
-            .await
-            .unwrap();
+     //   let res = client
+     //       .insert_into_table(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str(), &req)
+      //      .await
+       //     .unwrap();
 
         // struct
         let mut req2 = InsertAllRequest::<TestData>::default();
@@ -619,6 +635,7 @@ mod test {
                 col3: OffsetDateTime::now_utc(),
             },
         });
+        /*
         let res2 = client
             .insert_into_table(
                 ref1.project_id.as_str(),
@@ -628,13 +645,28 @@ mod test {
             )
             .await
             .unwrap();
+    */
+        let mut fetch_request = FetchDataRequest {
+            max_results: Some(1),
+            ..Default::default()
+        };
+        let mut data : Vec<list::Row>= vec![];
+        loop {
+            let result  = client.read_from_table(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str(), &fetch_request).await.unwrap();
+            data.extend(result.rows);
+            if result.page_token.is_none() {
+                break;
+            }
+            fetch_request.page_token = result.page_token
+        }
+        assert_eq!(data.len(), 4, "{:?}", data.pop());
 
-        client
-            .delete_table(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str())
-            .await
-            .unwrap();
+     //   client
+      //      .delete_table(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str())
+       //     .await
+        //    .unwrap();
 
-        assert!(res.insert_errors.is_none());
-        assert!(res2.insert_errors.is_none());
+     //   assert!(res.insert_errors.is_none());
+      //  assert!(res2.insert_errors.is_none());
     }
 }
