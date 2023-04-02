@@ -31,7 +31,7 @@ pub struct ChunkSize {
 
 impl fmt::Display for ChunkSize {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.first_byte == self.last_byte {
+        if self.total_object_size == Some(self.first_byte) {
             write!(f, "bytes */")?;
         } else {
             write!(f, "bytes {}-{}/", self.first_byte, self.last_byte)?;
@@ -54,7 +54,7 @@ impl ChunkSize {
     }
 
     pub fn size(&self) -> u64 {
-        if self.first_byte == self.last_byte {
+        if self.total_object_size == Some(self.first_byte) {
             0
         } else {
             self.last_byte - self.first_byte + 1
