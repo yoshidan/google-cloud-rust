@@ -2010,7 +2010,7 @@ mod test {
         let total_size = Some(chunk1_data.len() as u64 + chunk2_data.len() as u64);
 
         tracing::info!("start upload chunk {}", uploader.url());
-        let chunk1 = ChunkSize::new(0, chunk1_data.len() as u64 - 1, total_size.clone());
+        let chunk1 = ChunkSize::new(0, chunk1_data.len() as u64 - 1, total_size);
         tracing::info!("upload chunk1 {:?}", chunk1);
         let status1 = uploader
             .upload_multiple_chunk(chunk1_data.clone(), &chunk1)
@@ -2025,7 +2025,7 @@ mod test {
         let chunk2 = ChunkSize::new(
             chunk1_data.len() as u64,
             chunk1_data.len() as u64 + chunk2_data.len() as u64 - 1,
-            total_size.clone(),
+            total_size,
         );
         tracing::info!("upload chunk2 {:?}", chunk2);
         let status2 = uploader
@@ -2113,7 +2113,7 @@ mod test {
         let total_size = None;
 
         tracing::info!("start upload chunk {}", uploader.url());
-        let chunk1 = ChunkSize::new(0, chunk1_data.len() as u64 - 1, total_size.clone());
+        let chunk1 = ChunkSize::new(0, chunk1_data.len() as u64 - 1, total_size);
         tracing::info!("upload chunk1 {:?}", chunk1);
         let status1 = uploader
             .upload_multiple_chunk(chunk1_data.clone(), &chunk1)
