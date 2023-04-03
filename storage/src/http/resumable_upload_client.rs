@@ -3,7 +3,7 @@ use std::fmt;
 use reqwest::header::{CONTENT_LENGTH, CONTENT_RANGE};
 use reqwest::{Body, Client, Response};
 
-use crate::http::{check_response_status, Error};
+use crate::http::{check_response_status, objects::Object, Error};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ChunkError {
@@ -16,8 +16,9 @@ pub enum ChunkError {
 }
 
 #[derive(PartialEq, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum UploadStatus {
-    Ok,
+    Ok(Object),
     ResumeIncomplete,
 }
 
@@ -128,8 +129,8 @@ impl ResumableUploadClient {
         if response.status() == 308 {
             Ok(UploadStatus::ResumeIncomplete)
         } else {
-            check_response_status(response).await?;
-            Ok(UploadStatus::Ok)
+            let response = check_response_status(response).await?;
+            Ok(UploadStatus::Ok(response.json::<Object>().await?))
         }
     }
 }
