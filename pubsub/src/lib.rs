@@ -19,8 +19,6 @@
 //!
 //! This is also described in [google-cloud-auth](https://github.com/yoshidan/google-cloud-rust/blob/main/foundation/auth/README.md)
 //!
-//! See [implementation](https://docs.rs/google-cloud-auth/0.9.1/src/google_cloud_auth/token.rs.html#59-74)
-//!
 //! ```ignore
 //! use google_cloud_pubsub::client::{ClientConfig, Client};
 //! use google_cloud_default::WithAuthExt;
@@ -48,7 +46,7 @@
 //! ```
 //!
 //! ### Emulator
-//! For tests, you can use the [Emulator-Option](https://docs.rs/google-cloud-gax/latest/google_cloud_gax/conn/enum.Environment.html#variant.GoogleCloud) like that:
+//! For tests, you can use the [Emulator-Option](https://github.com/yoshidan/google-cloud-rust/blob/cbd5ed1315d7b828c89a50fe71fcbaf15ddc964b/pubsub/src/client.rs#L32) like that:
 //! Before executing the program, specify the address of the emulator in the following environment variable.
 //!
 //! ```sh

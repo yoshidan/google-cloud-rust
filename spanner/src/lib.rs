@@ -6,7 +6,7 @@
 //! * [Spanner API Documentation](https://cloud.google.com/spanner/docs)
 //! * [Rust client Documentation](#Documentation)
 //!
-//! ## Quick Start
+//! ## Quickstart
 //! You can use [google-cloud-default](https://crates.io/crates/google-cloud-default) to create `ClientConfig`
 //!
 //! Create `Client` and call transaction API same as [Google Cloud Go](https://github.com/googleapis/google-cloud-go/tree/main/spanner).
@@ -21,14 +21,11 @@
 //! use google_cloud_spanner::client::ClientConfig;
 //! use google_cloud_gax::grpc::Status;
 //!
-//! #[tokio::main]
-//! async fn main() -> Result<(), Error>{
+//! async fn run(config: ClientConfig) -> Result<(), Error>{
 //!
 //!     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 //!
 //!     // Create spanner client
-//!     // `use google_cloud_default::WithAuthExt;` is required to use default authentication.
-//!     let config = ClientConfig::default();//.with_auth().await.unwrap();
 //!     let mut client = Client::new(DATABASE, config).await?;
 //!
 //!     // Insert or update
@@ -45,6 +42,7 @@
 //!         // do something
 //!     }
 //!
+//!     // Remove all the sessions.
 //!     client.close().await;
 //!     Ok(())
 //! }
@@ -132,8 +130,6 @@
 //! from a metadata server.
 //!
 //! This is also described in [google-cloud-auth](https://github.com/yoshidan/google-cloud-rust/blob/main/foundation/auth/README.md)
-//!
-//! See [implementation](https://docs.rs/google-cloud-auth/0.9.1/src/google_cloud_auth/token.rs.html#59-74)
 //!
 //! ```ignore
 //! use google_cloud_spanner::client::{ClientConfig, Client};

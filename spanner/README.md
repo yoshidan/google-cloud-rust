@@ -16,7 +16,7 @@ google-cloud-spanner = <version>
 google-cloud-default = { version = <version>, features = ["spanner"] }
 ```
 
-## Quick Start
+## Quickstart
 
 Create `Client` and call transaction API same as [Google Cloud Go](https://github.com/googleapis/google-cloud-go/tree/main/spanner).
 
@@ -50,6 +50,9 @@ Create `Client` and call transaction API same as [Google Cloud Go](https://githu
      while let Some(row) = iter.next().await? {
          let guild_id = row.column_by_name::<String>("GuildId");
      }
+
+     // Remove all the sessions.
+     client.close().await;
      Ok(())
  }
 ```
