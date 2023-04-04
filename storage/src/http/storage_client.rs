@@ -1070,7 +1070,7 @@ impl StorageClient {
     ///
     ///     let chunk2 = ChunkSize::new(chunk1_size, chunk1_size + chunk2_size - 1, total_size.clone());
     ///     let status2 = uploader.upload_multiple_chunk(chunk2_data.clone(), &chunk2).await.unwrap();
-    ///     assert_eq!(status2, UploadStatus::Ok);
+    ///     assert!(matches!(status2, UploadStatus::Ok(_)));
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
@@ -2010,7 +2010,7 @@ mod test {
         let total_size = Some(chunk1_data.len() as u64 + chunk2_data.len() as u64);
 
         tracing::info!("start upload chunk {}", uploader.url());
-        let chunk1 = ChunkSize::new(0, chunk1_data.len() as u64 - 1, total_size.clone());
+        let chunk1 = ChunkSize::new(0, chunk1_data.len() as u64 - 1, total_size);
         tracing::info!("upload chunk1 {:?}", chunk1);
         let status1 = uploader
             .upload_multiple_chunk(chunk1_data.clone(), &chunk1)
@@ -2025,18 +2025,18 @@ mod test {
         let chunk2 = ChunkSize::new(
             chunk1_data.len() as u64,
             chunk1_data.len() as u64 + chunk2_data.len() as u64 - 1,
-            total_size.clone(),
+            total_size,
         );
         tracing::info!("upload chunk2 {:?}", chunk2);
         let status2 = uploader
             .upload_multiple_chunk(chunk2_data.clone(), &chunk2)
             .await
             .unwrap();
-        assert_eq!(status2, UploadStatus::Ok);
+        assert!(matches!(status2, UploadStatus::Ok(_)));
 
         tracing::info!("check status chunk2");
         let status_check2 = uploader.status(total_size).await.unwrap();
-        assert_eq!(status_check2, UploadStatus::Ok);
+        assert!(matches!(status_check2, UploadStatus::Ok(_)));
 
         let get_request = &GetObjectRequest {
             bucket: bucket_name.to_string(),
@@ -2113,7 +2113,7 @@ mod test {
         let total_size = None;
 
         tracing::info!("start upload chunk {}", uploader.url());
-        let chunk1 = ChunkSize::new(0, chunk1_data.len() as u64 - 1, total_size.clone());
+        let chunk1 = ChunkSize::new(0, chunk1_data.len() as u64 - 1, total_size);
         tracing::info!("upload chunk1 {:?}", chunk1);
         let status1 = uploader
             .upload_multiple_chunk(chunk1_data.clone(), &chunk1)
@@ -2136,7 +2136,7 @@ mod test {
             .upload_multiple_chunk(chunk2_data.clone(), &chunk2)
             .await
             .unwrap();
-        assert_eq!(status2, UploadStatus::Ok);
+        assert!(matches!(status2, UploadStatus::Ok(_)));
 
         let get_request = &GetObjectRequest {
             bucket: bucket_name.to_string(),

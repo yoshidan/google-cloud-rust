@@ -57,6 +57,7 @@
 //!
 //! ### Overview
 //! * [Creating a Client](#CreatingAClient)
+//! * [Authentication](#Authentication)
 //! * [Simple Reads and Writes](#SimpleReadsAndWrites)
 //! * [Keys](#Keys)
 //! * [KeyRanges](#KeyRanges)
@@ -115,6 +116,48 @@
 //!     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 //!     let client = Client::new(DATABASE, ClientConfig::default()).await?;
 //!     Ok(())
+//! }
+//! ```
+//!
+//! ### <a name="Authentication"></a>Authentication
+//!
+//! There are two ways to create a client that is authenticated against the google cloud.
+//!
+//! The crate [google-cloud-default](https://crates.io/crates/google-cloud-default) provides two
+//! methods that help implementing those.
+//!
+//! #### Automatically
+//!
+//! The function `with_auth()` will try and read the credentials from a file specified in the environment variable `GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_APPLICATION_CREDENTIALS_JSON` or
+//! from a metadata server.
+//!
+//! This is also described in [google-cloud-auth](https://github.com/yoshidan/google-cloud-rust/blob/main/foundation/auth/README.md)
+//!
+//! See [implementation](https://docs.rs/google-cloud-auth/0.9.1/src/google_cloud_auth/token.rs.html#59-74)
+//!
+//! ```ignore
+//! use google_cloud_spanner::client::{ClientConfig, Client};
+//! use google_cloud_default::WithAuthExt;
+//!
+//! async fn run() {
+//!     let config = ClientConfig::default().with_auth().await.unwrap();
+//!     let client = Client::new("projects/project/instances/instance/databases/database",config).await.unwrap();
+//! }
+//! ```
+//!
+//! ### Manually
+//!
+//! When you can't use the `gcloud` authentication but you have a different way to get your credentials (e.g a different environment variable)
+//! you can parse your own version of the 'credentials-file' and use it like that:
+//!
+//! ```ignore
+//! use google_cloud_auth::credentials::CredentialsFile;
+//! use google_cloud_spanner::client::{ClientConfig, Client};
+//! use google_cloud_default::WithAuthExt;
+//!
+//! async fn run(cred: CredentialsFile) {
+//!     let config = ClientConfig::default().with_credentials(cred).await.unwrap();
+//!     let client = Client::new("projects/project/instances/instance/databases/database",config).await.unwrap();
 //! }
 //! ```
 //!

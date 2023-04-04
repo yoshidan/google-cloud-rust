@@ -10,128 +10,205 @@ Google Cloud Platform pub/sub library.
 
 ## Installation
 
-```
+```toml
 [dependencies]
 google-cloud-pubsub = <version>
 google-cloud-default = { version = <version>, features = ["pubsub"] }
 ```
 
-## Quick Start
+## Quickstart
+
+### Authentication
+There are two ways to create a client that is authenticated against the google cloud.
+The crate [google-cloud-default](https://crates.io/crates/google-cloud-default) provides two methods that help to implement those.
+
+#### Automatically
+
+The function `with_auth()` will try and read the credentials from a file specified in the environment variable `GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_APPLICATION_CREDENTIALS_JSON` or
+from a metadata server.
+
+This is also described in [google-cloud-auth](https://github.com/yoshidan/google-cloud-rust/blob/main/foundation/auth/README.md)
+
+See [implementation](https://docs.rs/google-cloud-auth/0.9.1/src/google_cloud_auth/token.rs.html#59-74)
+
+```rust
+use google_cloud_pubsub::client::{ClientConfig, Client};
+use google_cloud_default::WithAuthExt;
+
+async fn run() {
+    let config = ClientConfig::default().with_auth().await.unwrap();
+    let client = Client::new(config).await.unwrap();
+}
+```
+
+### Manually
+
+When you can't use the `gcloud` authentication but you have a different way to get your credentials (e.g a different environment variable)
+you can parse your own version of the 'credentials-file' and use it like that:
+
+```rust
+use google_cloud_auth::credentials::CredentialsFile;
+use google_cloud_pubsub::client::{ClientConfig, Client};
+use google_cloud_default::WithAuthExt;
+
+async fn run(cred: CredentialsFile) {
+    let config = ClientConfig::default().with_credentials(cred).await.unwrap();
+    let client = Client::new(config).await.unwrap();
+}
+```
+
+### Emulator
+For tests, you can use the [Emulator-Option](https://docs.rs/google-cloud-gax/latest/google_cloud_gax/conn/enum.Environment.html#variant.GoogleCloud) like that:
+Before executing the program, specify the address of the emulator in the following environment variable.
+
+```sh
+export PUBSUB_EMULATOR_HOST=localhost:8681
+```
 
 ### Publish Message
 
-```rust
- use google_cloud_pubsub::client::Client;
- use google_cloud_googleapis::pubsub::v1::PubsubMessage;
- use google_cloud_pubsub::topic::TopicConfig;
- use google_cloud_pubsub::subscription::SubscriptionConfig;
- use google_cloud_gax::grpc::Status;
- use tokio::task::JoinHandle;
- use tokio_util::sync::CancellationToken;
- use google_cloud_default::WithAuthExt;
+```
+use google_cloud_pubsub::client::{Client, ClientConfig};
+use google_cloud_googleapis::pubsub::v1::PubsubMessage;
+use google_cloud_pubsub::topic::TopicConfig;
+use google_cloud_pubsub::subscription::SubscriptionConfig;
+use google_cloud_gax::grpc::Status;
+use tokio::task::JoinHandle;
+use tokio_util::sync::CancellationToken;
 
- #[tokio::main]
- async fn main() -> Result<(), Status> {
+async fn run(config: ClientConfig) -> Result<(), Status> {
 
-     // Create pubsub client. 
-     let config = ClientConfig::default().with_auth().await.unwrap();
-     let client = Client::new(config).await.unwrap();
+    // Create pubsub client.
+    let client = Client::new(config).await.unwrap();
 
-     // Create topic.
-     let topic = client.topic("test-topic");
-     if !topic.exists(None).await? {
-         topic.create(None, None).await?;
-     }
+    // Create topic.
+    let topic = client.topic("test-topic");
+    if !topic.exists(None).await? {
+        topic.create(None, None).await?;
+    }
 
-     // Start publisher.
-     let publisher = topic.new_publisher(None);
+    // Start publisher.
+    let publisher = topic.new_publisher(None);
 
-     // Publish message.
-     let tasks : Vec<JoinHandle<Result<String,Status>>> = (0..10).into_iter().map(|_i| {
-         let publisher = publisher.clone();
-         tokio::spawn(async move {
-             let mut msg = PubsubMessage::default();
-             msg.data = "abc".into();
-             // Set ordering_key if needed (https://cloud.google.com/pubsub/docs/ordering)
-             // msg.ordering_key = "order".into();
+    // Publish message.
+    let tasks : Vec<JoinHandle<Result<String,Status>>> = (0..10).into_iter().map(|_i| {
+        let publisher = publisher.clone();
+        tokio::spawn(async move {
+            let msg = PubsubMessage {
+               data: "abc".into(),
+               // Set ordering_key if needed (https://cloud.google.com/pubsub/docs/ordering)
+               ordering_key: "order".into(),
+               ..Default::default()
+            };
 
-             // Send a message. There are also `publish_bulk` and `publish_immediately` methods.
-             let mut awaiter = publisher.publish(msg).await;
-             
-             // The get method blocks until a server-generated ID or an error is returned for the published message.
-             awaiter.get().await
-         })
-     }).collect();
+            // Send a message. There are also `publish_bulk` and `publish_immediately` methods.
+            let mut awaiter = publisher.publish(msg).await;
 
-     // Wait for all publish task finish
-     for task in tasks {
-         let message_id = task.await.unwrap()?;
-     }
+            // The get method blocks until a server-generated ID or an error is returned for the published message.
+            awaiter.get().await
+        })
+    }).collect();
 
-     // Wait for publishers in topic finish.
-     let mut publisher = publisher;
-     publisher.shutdown();
+    // Wait for all publish task finish
+    for task in tasks {
+        let message_id = task.await.unwrap()?;
+    }
 
-     Ok(())
- }
+    // Wait for publishers in topic finish.
+    let mut publisher = publisher;
+    publisher.shutdown();
+
+    Ok(())
+}
 ```
 
 ### Subscribe Message
 
-```rust
- use google_cloud_pubsub::client::Client;
- use google_cloud_googleapis::pubsub::v1::PubsubMessage;
- use google_cloud_pubsub::subscription::SubscriptionConfig;
- use google_cloud_gax::grpc::Status;
- use std::time::Duration;
- use tokio_util::sync::CancellationToken;
- use google_cloud_default::WithAuthExt;
+```
+use google_cloud_pubsub::client::{Client, ClientConfig};
+use google_cloud_googleapis::pubsub::v1::PubsubMessage;
+use google_cloud_pubsub::subscription::SubscriptionConfig;
+use google_cloud_gax::grpc::Status;
+use std::time::Duration;
+use tokio_util::sync::CancellationToken;
+use futures_util::StreamExt;
 
- #[tokio::main]
- async fn main() -> Result<(), Status> {
+async fn run(config: ClientConfig) -> Result<(), Status> {
 
-     // Create pubsub client. 
-     let config = ClientConfig::default().with_auth().await.unwrap();
-     let client = Client::new(config).await.unwrap();
+    // Create pubsub client.
+    let client = Client::new(config).await.unwrap();
 
-     // Get the topic to subscribe to.
-     let topic = client.topic("test-topic");
+    // Get the topic to subscribe to.
+    let topic = client.topic("test-topic");
 
-     // Configure subscription.
-     let mut config = SubscriptionConfig::default();
-     // Enable message ordering if needed (https://cloud.google.com/pubsub/docs/ordering)
-     config.enable_message_ordering = true;
+    // Create subscription
+    // If subscription name does not contain a "/", then the project is taken from client above. Otherwise, the
+    // name will be treated as a fully qualified resource name
+    let config = SubscriptionConfig {
+        // Enable message ordering if needed (https://cloud.google.com/pubsub/docs/ordering)
+        enable_message_ordering: true,
+        ..Default::default()
+    };
 
-     // Create subscription
-     // If subscription name does not contain a "/", then the project is taken from client above. Otherwise, the
-     // name will be treated as a fully qualified resource name
-     let subscription = client.subscription("test-subscription");
-     if !subscription.exists(None).await? {
-         subscription.create(topic.fully_qualified_name(), config, None).await?;
-     }
-     // Token for cancel.
-     let cancel = CancellationToken::new();
-     let cancel2 = cancel.clone();
-     tokio::spawn(async move {
-         // Cancel after 10 seconds.
-         tokio::time::sleep(Duration::from_secs(10)).await;
-         cancel2.cancel();
-     });
+    // Create subscription
+    let subscription = client.subscription("test-subscription");
+    if !subscription.exists(None).await? {
+        subscription.create(topic.fully_qualified_name(), config, None).await?;
+    }
 
-     // Receive blocks until the ctx is cancelled or an error occurs.
-     // Or simply use the `subscription.subscribe` method.
-     subscription.receive(|mut message, cancel| async move {
-         // Handle data.
-         let data = message.message.data.as_ref();
-         println!("{:?}", data);
+    // Token for cancel.
+    let cancel = CancellationToken::new();
+    let cancel2 = cancel.clone();
+    tokio::spawn(async move {
+        // Cancel after 10 seconds.
+        tokio::time::sleep(Duration::from_secs(10)).await;
+        cancel2.cancel();
+    });
 
-         // Ack or Nack message.
-         message.ack().await;
-     }, cancel.clone(), None).await;
+    // Receive blocks until the ctx is cancelled or an error occurs.
+    // Or simply use the `subscription.subscribe` method.
+    subscription.receive(|mut message, cancel| async move {
+        // Handle data.
+        println!("Got Message: {:?}", message.message.data);
 
-     // Delete subscription if needed.
-     subscription.delete(None).await;
+        // Ack or Nack message.
+        let _ = message.ack().await;
+    }, cancel.clone(), None).await?;
 
-     Ok(())
- }
+    // Delete subscription if needed.
+    subscription.delete(None).await?;
+
+    Ok(())
+}
+```
+
+### Subscribe Message (Alternative Way)
+
+```no_run
+use google_cloud_pubsub::client::{Client, ClientConfig};
+use google_cloud_googleapis::pubsub::v1::PubsubMessage;
+use google_cloud_pubsub::subscription::SubscriptionConfig;
+use google_cloud_gax::grpc::Status;
+use std::time::Duration;
+use tokio_util::sync::CancellationToken;
+use futures_util::StreamExt;
+
+async fn run(config: ClientConfig) -> Result<(), Status> {
+    // Creating Client, Topic and Subscription...
+    let client = Client::new(config).await.unwrap();
+    let subscription = client.subscription("test-subscription");
+
+    // Read the messages as a stream
+    // (needs futures_util::StreamExt as import)
+    // Note: This blocks the current thread but helps working with non clonable data
+    let mut stream = subscription.subscribe(None).await?;
+    while let Some(message) = stream.next().await {
+        // Handle data.
+        println!("Got Message: {:?}", message.message);
+
+        // Ack or Nack message.
+        let _ = message.ack().await;
+    }
+    Ok(())
+}
 ```

@@ -15,27 +15,67 @@ google-cloud-storage = <version>
 google-cloud-default = { version = <version>, features = ["storage"] }
 ```
 
-## Quick Start
+## Quickstart
+
+### Authentication
+There are two ways to create a client that is authenticated against the google cloud.
+
+The crate [google-cloud-default](https://crates.io/crates/google-cloud-default) provides two methods that help to implement those.
+
+#### Automatically
+
+The function `with_auth()` will try and read the credentials from a file specified in the environment variable `GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_APPLICATION_CREDENTIALS_JSON` or
+from a metadata server.
+
+This is also described in [google-cloud-auth](https://github.com/yoshidan/google-cloud-rust/blob/main/foundation/auth/README.md)
+
+See [implementation](https://docs.rs/google-cloud-auth/0.9.1/src/google_cloud_auth/token.rs.html#59-74)
+
+```rust
+use google_cloud_storage::client::{ClientConfig, Client};
+use google_cloud_default::WithAuthExt;
+
+async fn run() {
+    let config = ClientConfig::default().with_auth().await.unwrap();
+    let client = Client::new(config);
+}
+```
+
+#### Manually
+
+When you cant use the `gcloud` authentication but you have a different way to get your credentials (e.g a different environment variable)
+you can parse your own version of the 'credentials-file' and use it like that:
+
+```rust
+use google_cloud_auth::credentials::CredentialsFile;
+use google_cloud_storage::client::{ClientConfig, Client};
+use google_cloud_default::WithAuthExt;
+
+async fn run(cred: CredentialsFile) {
+    let config = ClientConfig::default().with_credentials(cred).await.unwrap();
+    let client = Client::new(config);
+}
+```
+
+### Usage
 
 ```rust
 use google_cloud_storage::client::Client;
+use google_cloud_storage::client::ClientConfig;
 use google_cloud_storage::sign::SignedURLOptions;
 use google_cloud_storage::sign::SignedURLMethod;
 use google_cloud_storage::http::Error;
 use google_cloud_storage::http::objects::download::Range;
 use google_cloud_storage::http::objects::get::GetObjectRequest;
-use google_cloud_storage::http::objects::upload::UploadObjectRequest;
+use google_cloud_storage::http::objects::upload::{Media, UploadObjectRequest, UploadType};
 use tokio::task::JoinHandle;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
-use google_cloud_default::WithAuthExt;
 
-#[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn run(config: ClientConfig) -> Result<(), Error> {
 
     // Create client.
-    let config = ClientConfig::default().with_auth().await.unwrap();
     let mut client = Client::new(config);
 
     // Upload the file
@@ -43,7 +83,7 @@ async fn main() -> Result<(), Error> {
     let uploaded = client.upload_object(&UploadObjectRequest {
         bucket: "bucket".to_string(),
         ..Default::default()
-    }, "hello world".as_bytes(), upload_type).await;
+    }, "hello world".as_bytes(), &upload_type).await;
 
     // Download the file
     let data = client.download_object(&GetObjectRequest {
