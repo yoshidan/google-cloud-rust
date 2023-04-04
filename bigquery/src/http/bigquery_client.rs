@@ -6,13 +6,13 @@ use crate::http::table::set_iam_policy::SetIamPolicyRequest;
 use crate::http::table::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
 use crate::http::table::{Table, TableReference};
 use crate::http::tabledata::insert_all::{InsertAllRequest, InsertAllResponse};
+use crate::http::tabledata::list::{FetchDataRequest, FetchDataResponse};
 use crate::http::types::Policy;
 use crate::http::{dataset, table, tabledata};
 use google_cloud_token::TokenSource;
 use reqwest::{Client, RequestBuilder, Response};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use crate::http::tabledata::list::{FetchDataRequest, FetchDataResponse};
 
 pub const SCOPES: [&str; 7] = [
     "https://www.googleapis.com/auth/bigquery",
@@ -174,8 +174,7 @@ impl BigqueryClient {
         table_id: &str,
         req: &FetchDataRequest,
     ) -> Result<FetchDataResponse, Error> {
-        let builder =
-            tabledata::list::build(self.endpoint.as_str(), &self.http, project_id, dataset_id, table_id, req);
+        let builder = tabledata::list::build(self.endpoint.as_str(), &self.http, project_id, dataset_id, table_id, req);
         self.send(builder).await
     }
 
@@ -238,16 +237,16 @@ mod test {
         TableSchema, TimePartitionType, TimePartitioning, ViewDefinition,
     };
     use crate::http::tabledata::insert_all::{InsertAllRequest, Row};
+    use crate::http::tabledata::list;
+    use crate::http::tabledata::list::{FetchDataRequest, FetchDataResponse, Value};
     use crate::http::types::{Bindings, Collation, EncryptionConfiguration, Policy};
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_token::TokenSourceProvider;
-    use serde_json::{json, Value};
+    use serde_json::json;
     use serial_test::serial;
     use std::collections::HashMap;
     use time::OffsetDateTime;
-    use crate::http::tabledata::list;
-    use crate::http::tabledata::list::{FetchDataRequest, FetchDataResponse};
 
     #[ctor::ctor]
     fn init() {
@@ -550,11 +549,21 @@ mod test {
     }
 
     #[derive(serde::Serialize, serde::Deserialize)]
+    struct TestDataStruct {
+        pub f1: bool,
+        pub f2: Vec<i64>,
+    }
+    #[derive(serde::Serialize, serde::Deserialize)]
     struct TestData {
-        pub col1: Option<String>,
-        pub col2: Vec<i32>,
-        #[serde(with = "time::serde::rfc3339")]
-        pub col3: OffsetDateTime,
+        pub col_string: Option<String>,
+        pub col_number: Option<i32>,
+        pub col_number_array: Vec<i32>,
+        #[serde(default, with = "time::serde::rfc3339::option")]
+        pub col_timestamp: Option<OffsetDateTime>,
+        pub col_json: Option<String>,
+        pub col_json_array: Vec<String>,
+        pub col_struct: Option<TestDataStruct>,
+        pub col_struct_array: Vec<TestDataStruct>,
     }
 
     #[tokio::test]
@@ -564,41 +573,91 @@ mod test {
         let mut table1 = Table::default();
         table1.table_reference.dataset_id = "rust_test_table".to_string();
         table1.table_reference.project_id = project.to_string();
-        table1.table_reference.table_id = "table_data9".to_string();
+        table1.table_reference.table_id = "table_data38".to_string();
         table1.schema = Some(TableSchema {
             fields: vec![
                 TableFieldSchema {
-                    name: "col1".to_string(),
+                    name: "col_string".to_string(),
                     data_type: TableFieldType::String,
-                    description: Some("column1".to_string()),
                     max_length: Some(32),
                     ..Default::default()
                 },
                 TableFieldSchema {
-                    name: "col2".to_string(),
+                    name: "col_number".to_string(),
                     data_type: TableFieldType::Numeric,
-                    mode: Some(TableFieldMode::Repeated),
-                    description: Some("column2".to_string()),
                     ..Default::default()
                 },
                 TableFieldSchema {
-                    name: "col3".to_string(),
+                    name: "col_number_array".to_string(),
+                    data_type: TableFieldType::Numeric,
+                    mode: Some(TableFieldMode::Repeated),
+                    ..Default::default()
+                },
+                TableFieldSchema {
+                    name: "col_timestamp".to_string(),
                     data_type: TableFieldType::Timestamp,
-                    description: Some("column3".to_string()),
+                    ..Default::default()
+                },
+                TableFieldSchema {
+                    name: "col_json".to_string(),
+                    data_type: TableFieldType::Json,
+                    ..Default::default()
+                },
+                TableFieldSchema {
+                    name: "col_json_array".to_string(),
+                    data_type: TableFieldType::Json,
+                    mode: Some(TableFieldMode::Repeated),
+                    ..Default::default()
+                },
+                TableFieldSchema {
+                    name: "col_struct".to_string(),
+                    data_type: TableFieldType::Struct,
+                    fields: Some(vec![
+                        TableFieldSchema {
+                            name: "f1".to_string(),
+                            data_type: TableFieldType::Bool,
+                            ..Default::default()
+                        },
+                        TableFieldSchema {
+                            name: "f2".to_string(),
+                            data_type: TableFieldType::Int64,
+                            mode: Some(TableFieldMode::Repeated),
+                            ..Default::default()
+                        },
+                    ]),
+                    ..Default::default()
+                },
+                TableFieldSchema {
+                    name: "col_struct_array".to_string(),
+                    data_type: TableFieldType::Struct,
+                    fields: Some(vec![
+                        TableFieldSchema {
+                            name: "f1".to_string(),
+                            data_type: TableFieldType::Bool,
+                            ..Default::default()
+                        },
+                        TableFieldSchema {
+                            name: "f2".to_string(),
+                            data_type: TableFieldType::Int64,
+                            mode: Some(TableFieldMode::Repeated),
+                            ..Default::default()
+                        },
+                    ]),
+                    mode: Some(TableFieldMode::Repeated),
                     ..Default::default()
                 },
             ],
         });
-     //   let table1 = client.create_table(&table1).await.unwrap();
+        let table1 = client.create_table(&table1).await.unwrap();
         let ref1 = table1.table_reference;
 
         // json value
-        let mut req = InsertAllRequest::<Value>::default();
+        let mut req = InsertAllRequest::<serde_json::Value>::default();
         req.rows.push(Row {
             insert_id: None,
             json: serde_json::from_str(
                 r#"
-                {"col1": "test1", "col2": [1,2,3], "col3":"2022-10-23T00:00:00"}
+                {"col_string": "test1", "col_number": 1, "col_number_array": [1,2,3], "col_timestamp":"2022-10-23T00:00:00", "col_json":"{\"field\":100}","col_json_array":["{\"field\":100}","{\"field\":200}"],"col_struct": {"f1":true, "f2":[3,4]},"col_struct_array": [{"f1":true, "f2":[3,4]},{"f1":false, "f2":[30,40]}]}
             "#,
             )
             .unwrap(),
@@ -607,35 +666,58 @@ mod test {
             insert_id: None,
             json: serde_json::from_str(
                 r#"
-                {"col2": [4,5,6], "col3":"2022-10-23T00:00:00"}
+                {"col_number_array": [1,2,3], "col_struct_array": [{"f1":true, "f2":[3,4]},{"f1":false, "f2":[30,40]}]}
             "#,
             )
             .unwrap(),
         });
-     //   let res = client
-     //       .insert_into_table(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str(), &req)
-      //      .await
-       //     .unwrap();
+
+        let res = client
+            .insert_into_table(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str(), &req)
+            .await
+            .unwrap();
+        assert!(res.insert_errors.is_none());
 
         // struct
         let mut req2 = InsertAllRequest::<TestData>::default();
         req2.rows.push(Row {
             insert_id: None,
             json: TestData {
-                col1: Some("test3".to_string()),
-                col2: vec![10, 11, 12],
-                col3: OffsetDateTime::now_utc(),
+                col_string: Some("test3".to_string()),
+                col_number: Some(1),
+                col_number_array: vec![10, 11, 12],
+                col_timestamp: Some(OffsetDateTime::now_utc()),
+                col_json: Some("{\"field\":100}".to_string()),
+                col_json_array: vec!["{\"field\":100}".to_string(), "{\"field\":200}".to_string()],
+                col_struct: Some(TestDataStruct {
+                    f1: true,
+                    f2: vec![3, 4],
+                }),
+                col_struct_array: vec![
+                    TestDataStruct {
+                        f1: true,
+                        f2: vec![3, 4],
+                    },
+                    TestDataStruct {
+                        f1: false,
+                        f2: vec![30, 40],
+                    },
+                ],
             },
         });
         req2.rows.push(Row {
             insert_id: None,
             json: TestData {
-                col1: None,
-                col2: vec![100, 1100, 120],
-                col3: OffsetDateTime::now_utc(),
+                col_string: None,
+                col_number: None,
+                col_number_array: vec![],
+                col_timestamp: None,
+                col_json: None,
+                col_json_array: vec![],
+                col_struct: None,
+                col_struct_array: vec![],
             },
         });
-        /*
         let res2 = client
             .insert_into_table(
                 ref1.project_id.as_str(),
@@ -645,28 +727,58 @@ mod test {
             )
             .await
             .unwrap();
-    */
+        assert!(res2.insert_errors.is_none());
         let mut fetch_request = FetchDataRequest {
             max_results: Some(1),
             ..Default::default()
         };
-        let mut data : Vec<list::Row>= vec![];
+        let mut data: Vec<list::Row> = vec![];
         loop {
-            let result  = client.read_from_table(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str(), &fetch_request).await.unwrap();
-            data.extend(result.rows);
+            let result = client
+                .read_from_table(
+                    ref1.project_id.as_str(),
+                    ref1.dataset_id.as_str(),
+                    ref1.table_id.as_str(),
+                    &fetch_request,
+                )
+                .await
+                .unwrap();
+            if let Some(rows) = result.rows {
+                println!("{:?}", rows);
+                data.extend(rows);
+            }
             if result.page_token.is_none() {
                 break;
             }
             fetch_request.page_token = result.page_token
         }
         assert_eq!(data.len(), 4, "{:?}", data.pop());
+        match &data[0].f[0].v {
+            Value::String(v) => assert_eq!("test1", v),
+            _ => unreachable!(),
+        }
+        match &data[0].f[2].v {
+            Value::Array(v) => assert_eq!(3, v.len()),
+            _ => unreachable!(),
+        }
+        match &data[0].f[4].v {
+            Value::String(v) => assert_eq!("{\"field\":100}", v),
+            _ => unreachable!(),
+        }
+        match &data[0].f[6].v {
+            Value::Struct(v) => match &v.f[1].v {
+                Value::Array(v) => match &v[1].v {
+                    Value::String(v) => assert_eq!("4", v, "invalid struct row"),
+                    _ => unreachable!("7-1-1 {:?}", v[1].v),
+                },
+                _ => unreachable!("7-1 {:?}", v.f[1].v),
+            },
+            _ => unreachable!("7 {:?}", &data[0].f[7].v),
+        }
 
-     //   client
-      //      .delete_table(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str())
-       //     .await
-        //    .unwrap();
-
-     //   assert!(res.insert_errors.is_none());
-      //  assert!(res2.insert_errors.is_none());
+        client
+            .delete_table(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str())
+            .await
+            .unwrap();
     }
 }

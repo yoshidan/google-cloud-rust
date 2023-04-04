@@ -1,26 +1,26 @@
+use crate::http::table::Table;
+use reqwest::{Client, RequestBuilder};
+use serde::de::Visitor;
+use serde::{de, Deserialize, Deserializer};
 use std::any::Any;
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::{Debug, Write};
 use std::marker::PhantomData;
-use crate::http::table::Table;
-use reqwest::{Client, RequestBuilder};
-use serde::de::Visitor;
-use serde::{de, Deserialize, Deserializer};
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(untagged)]
-pub enum JsonAny {
+pub enum Value {
     Null,
     String(String),
     Array(Vec<Cell>),
-    Struct(Row)
+    Struct(Row),
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Cell {
-    pub v: JsonAny,
+    pub v: Value,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
@@ -59,7 +59,7 @@ pub struct FetchDataResponse {
     /// list call to the string returned in this field.
     pub page_token: Option<String>,
     /// Repeated rows as result. The REST-based representation of this data leverages a series of JSON f,v objects for indicating fields and values.
-    pub rows: Vec<Row>
+    pub rows: Option<Vec<Row>>,
 }
 
 pub fn build(
@@ -71,8 +71,8 @@ pub fn build(
     data: &FetchDataRequest,
 ) -> RequestBuilder {
     let url = format!(
-        "{}/projects/{}/datasets/{}/tables/{}/data?selectedFields=col1,col2,col3",
+        "{}/projects/{}/datasets/{}/tables/{}/data",
         base_url, project_id, dataset_id, table_id
     );
-    client.get(url)
+    client.get(url).query(&data)
 }
