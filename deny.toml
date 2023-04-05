@@ -230,7 +230,6 @@ deny = [
 # Certain crates/versions that will be skipped when doing duplicate detection.
 skip = [
     { name = "base64", version = "0.13" },
-    { name = "windows-sys", version = "=0.42" },
     { name = "hermit-abi", version = "=0.3" },
     { name = "redox_syscall", version = "=0.2.16" },
     { name = "syn", version = "=1.0.109" },
@@ -240,6 +239,7 @@ skip = [
 # dependencies starting at the specified crate, up to a certain depth, which is
 # by default infinite.
 skip-tree = [
+    { name = "windows-sys" },
 ]
 
 # This section is considered when running `cargo deny check sources`.
