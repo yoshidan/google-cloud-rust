@@ -31,7 +31,7 @@ pub struct ChunkSize {
 
 impl fmt::Display for ChunkSize {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.first_byte == self.last_byte {
+        if self.total_object_size == Some(self.first_byte) {
             write!(f, "bytes */")?;
         } else {
             write!(f, "bytes {}-{}/", self.first_byte, self.last_byte)?;
@@ -54,7 +54,7 @@ impl ChunkSize {
     }
 
     pub fn size(&self) -> u64 {
-        if self.first_byte == self.last_byte {
+        if self.total_object_size == Some(self.first_byte) {
             0
         } else {
             self.last_byte - self.first_byte + 1
@@ -106,7 +106,20 @@ impl ResumableUploadClient {
 
     /// https://cloud.google.com/storage/docs/performing-resumable-uploads#status-check
     pub async fn status(&self, object_size: Option<u64>) -> Result<UploadStatus, Error> {
-        self.upload_multiple_chunk("", &ChunkSize::new(0, 0, object_size)).await
+        let mut content_range = "bytes */".to_owned();
+        match object_size {
+            Some(object_size) => content_range.push_str(&object_size.to_string()),
+            None => content_range.push('*'),
+        };
+        let response = self
+            .http
+            .put(&self.session_url)
+            .header(CONTENT_RANGE, content_range)
+            .header(CONTENT_LENGTH, 0)
+            .body(Vec::new())
+            .send()
+            .await?;
+        Self::map_resume_response(response).await
     }
 
     /// https://cloud.google.com/storage/docs/performing-resumable-uploads#cancel-upload

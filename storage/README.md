@@ -29,8 +29,6 @@ from a metadata server.
 
 This is also described in [google-cloud-auth](https://github.com/yoshidan/google-cloud-rust/blob/main/foundation/auth/README.md)
 
-See [implementation](https://docs.rs/google-cloud-auth/0.9.1/src/google_cloud_auth/token.rs.html#59-74)
-
 ```rust
 use google_cloud_storage::client::{ClientConfig, Client};
 use google_cloud_default::WithAuthExt;
@@ -43,7 +41,7 @@ async fn run() {
 
 #### Manually
 
-When you cant use the `gcloud` authentication but you have a different way to get your credentials (e.g a different environment variable)
+When you can't use the `gcloud` authentication but you have a different way to get your credentials (e.g a different environment variable)
 you can parse your own version of the 'credentials-file' and use it like that:
 
 ```rust

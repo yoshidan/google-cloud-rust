@@ -20,8 +20,6 @@
 //!
 //! This is also described in [google-cloud-auth](https://github.com/yoshidan/google-cloud-rust/blob/main/foundation/auth/README.md)
 //!
-//! See [implementation](https://docs.rs/google-cloud-auth/0.9.1/src/google_cloud_auth/token.rs.html#59-74)
-//!
 //! ```ignore
 //! use google_cloud_storage::client::{ClientConfig, Client};
 //! use google_cloud_default::WithAuthExt;
