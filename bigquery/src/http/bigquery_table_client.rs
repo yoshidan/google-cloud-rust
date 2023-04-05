@@ -6,7 +6,7 @@ use crate::http::table::set_iam_policy::SetIamPolicyRequest;
 use crate::http::table::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
 use crate::http::table::Table;
 use crate::http::types::Policy;
-use serde::Serialize;
+
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -104,7 +104,7 @@ impl BigqueryTableClient {
 #[cfg(test)]
 mod test {
     use crate::http::bigquery_client::test::create_client;
-    use crate::http::bigquery_client::{BigqueryClient, SCOPES};
+
     use crate::http::bigquery_table_client::BigqueryTableClient;
     use crate::http::table::get_iam_policy::GetIamPolicyRequest;
     use crate::http::table::set_iam_policy::SetIamPolicyRequest;

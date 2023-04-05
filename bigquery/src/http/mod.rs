@@ -1,7 +1,8 @@
-use serde::{de, Deserialize, Deserializer};
-use serde_json::Value;
 use std::fmt::Display;
 use std::str::FromStr;
+
+use serde::{de, Deserialize, Deserializer};
+use serde_json::Value;
 
 pub mod bigquery_client;
 mod bigquery_dataset_client;

@@ -1,17 +1,8 @@
-use crate::http::dataset::list::{DatasetOverview, ListDatasetsRequest, ListDatasetsResponse};
-use crate::http::dataset::Dataset;
 use crate::http::error::{Error, ErrorWrapper};
-use crate::http::table::get_iam_policy::GetIamPolicyRequest;
-use crate::http::table::set_iam_policy::SetIamPolicyRequest;
-use crate::http::table::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
-use crate::http::table::{Table, TableReference};
-use crate::http::tabledata::insert_all::{InsertAllRequest, InsertAllResponse};
-use crate::http::tabledata::list::{FetchDataRequest, FetchDataResponse};
-use crate::http::types::Policy;
-use crate::http::{dataset, table, tabledata};
+
 use google_cloud_token::TokenSource;
 use reqwest::{Client, RequestBuilder, Response};
-use serde::{Deserialize, Serialize};
+
 use std::sync::Arc;
 
 pub const SCOPES: [&str; 7] = [

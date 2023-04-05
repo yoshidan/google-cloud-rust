@@ -1,4 +1,3 @@
-use crate::http::table::Table;
 use reqwest::{Client, RequestBuilder};
 use serde::Serialize;
 

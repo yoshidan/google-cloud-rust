@@ -23,10 +23,10 @@ pub struct TableReference {
 
 impl TableReference {
     pub fn resource(&self) -> String {
-        return format!(
+        format!(
             "projects/{}/datasets/{}/tables/{}",
             &self.project_id, &self.dataset_id, &self.table_id
-        );
+        )
     }
 }
 

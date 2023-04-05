@@ -1,12 +1,12 @@
+use crate::http::routine::RoutineReference;
+use crate::http::table::TableReference;
+use crate::http::types::{Collation, EncryptionConfiguration};
+
 pub mod delete;
 pub mod get;
 pub mod insert;
 pub mod list;
 pub mod patch;
-
-use crate::http::routine::RoutineReference;
-use crate::http::table::TableReference;
-use crate::http::types::{Collation, EncryptionConfiguration};
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]

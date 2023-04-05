@@ -1,5 +1,6 @@
-use crate::http::dataset::Dataset;
 use reqwest::{Client, RequestBuilder};
+
+use crate::http::dataset::Dataset;
 
 pub fn build(base_url: &str, client: &Client, data: &Dataset) -> RequestBuilder {
     let url = format!(

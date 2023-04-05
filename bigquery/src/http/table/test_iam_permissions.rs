@@ -1,7 +1,5 @@
 use reqwest::{Client, RequestBuilder};
 
-use crate::http::types::Policy;
-
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct TestIamPermissionsRequest {

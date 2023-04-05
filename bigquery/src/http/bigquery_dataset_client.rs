@@ -2,13 +2,9 @@ use crate::http::bigquery_client::BigqueryClient;
 use crate::http::dataset::list::{DatasetOverview, ListDatasetsRequest, ListDatasetsResponse};
 use crate::http::dataset::Dataset;
 use crate::http::error::Error;
-use crate::http::table::get_iam_policy::GetIamPolicyRequest;
-use crate::http::table::set_iam_policy::SetIamPolicyRequest;
-use crate::http::table::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
-use crate::http::table::Table;
-use crate::http::types::Policy;
-use crate::http::{dataset, table};
-use serde::Serialize;
+
+use crate::http::dataset;
+
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -73,7 +69,7 @@ mod test {
     use crate::http::dataset::list::ListDatasetsRequest;
     use crate::http::dataset::{Access, Dataset, DatasetReference, SpecialGroup, StorageBillingModel};
     use crate::http::types::{Collation, EncryptionConfiguration};
-    use google_cloud_auth::project::Config;
+
     use serial_test::serial;
     use std::collections::HashMap;
     use std::sync::Arc;

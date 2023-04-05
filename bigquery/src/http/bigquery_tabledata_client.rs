@@ -1,13 +1,10 @@
 use crate::http::bigquery_client::BigqueryClient;
 use crate::http::error::Error;
-use crate::http::table::get_iam_policy::GetIamPolicyRequest;
-use crate::http::table::set_iam_policy::SetIamPolicyRequest;
-use crate::http::table::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
-use crate::http::table::Table;
+
 use crate::http::tabledata::insert_all::{InsertAllRequest, InsertAllResponse};
 use crate::http::tabledata::list::{FetchDataRequest, FetchDataResponse};
-use crate::http::types::Policy;
-use crate::http::{table, tabledata};
+
+use crate::http::tabledata;
 use serde::Serialize;
 use std::sync::Arc;
 

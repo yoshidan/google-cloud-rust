@@ -1,6 +1,8 @@
-use crate::http::dataset::DatasetReference;
-use reqwest::{Client, RequestBuilder};
 use std::collections::HashMap;
+
+use reqwest::{Client, RequestBuilder};
+
+use crate::http::dataset::DatasetReference;
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
