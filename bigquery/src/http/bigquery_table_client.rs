@@ -7,6 +7,7 @@ use crate::http::table::test_iam_permissions::{TestIamPermissionsRequest, TestIa
 use crate::http::table::Table;
 use crate::http::types::Policy;
 
+use crate::http::table::list::{ListTablesRequest, ListTablesResponse, TableOverview};
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -99,11 +100,40 @@ impl BigqueryTableClient {
         );
         self.inner.send(builder).await
     }
+
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn list(
+        &self,
+        project_id: &str,
+        dataset_id: &str,
+        req: Option<&ListTablesRequest>,
+    ) -> Result<Vec<TableOverview>, Error> {
+        let mut page_token: Option<String> = None;
+        let mut tables = vec![];
+        loop {
+            let builder = table::list::build(
+                self.inner.endpoint(),
+                self.inner.http(),
+                project_id,
+                dataset_id,
+                req,
+                page_token,
+            );
+            let response: ListTablesResponse = self.inner.send(builder).await?;
+            tables.extend(response.tables);
+            if response.next_page_token.is_none() {
+                break;
+            }
+            page_token = response.next_page_token;
+        }
+        Ok(tables)
+    }
 }
 
 #[cfg(test)]
 mod test {
     use crate::http::bigquery_client::test::create_client;
+    use std::ops::Add;
 
     use crate::http::bigquery_table_client::BigqueryTableClient;
     use crate::http::table::get_iam_policy::GetIamPolicyRequest;
@@ -116,6 +146,7 @@ mod test {
     use crate::http::types::{Bindings, Policy};
     use serial_test::serial;
     use std::sync::Arc;
+    use time::OffsetDateTime;
 
     #[ctor::ctor]
     fn init() {
@@ -226,7 +257,7 @@ mod test {
                 interval: "1".to_string(),
             },
         });
-        table2.expiration_time = Some(3600);
+        table2.expiration_time = Some(OffsetDateTime::now_utc().add(time::Duration::days(1)).unix_timestamp() * 1000);
         let table2 = client.create(&table2).await.unwrap();
 
         // time partition
@@ -255,7 +286,10 @@ mod test {
         let mv = client.create(&mv).await.unwrap();
 
         // delete
-        let tables = vec![table1, table2, table3, view, mv];
+        let tables = client
+            .list(project.as_str(), &table1.table_reference.dataset_id, None)
+            .await
+            .unwrap();
         for table in tables {
             let table = table.table_reference;
             client

@@ -2,6 +2,7 @@ pub mod delete;
 pub mod get;
 pub mod get_iam_policy;
 pub mod insert;
+pub mod list;
 pub mod patch;
 pub mod set_iam_policy;
 pub mod test_iam_permissions;

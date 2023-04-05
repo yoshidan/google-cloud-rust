@@ -56,6 +56,7 @@ mod test {
     use crate::http::bigquery_client::test::create_client;
     use crate::http::bigquery_table_client::BigqueryTableClient;
     use crate::http::bigquery_tabledata_client::BigqueryTabledataClient;
+    use crate::http::table::list::ListTablesRequest;
     use crate::http::table::{Table, TableFieldMode, TableFieldSchema, TableFieldType, TableSchema};
     use crate::http::tabledata::insert_all::{InsertAllRequest, Row};
     use crate::http::tabledata::list;
