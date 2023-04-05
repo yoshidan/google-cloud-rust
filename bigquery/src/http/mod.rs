@@ -4,6 +4,9 @@ use std::fmt::Display;
 use std::str::FromStr;
 
 pub mod bigquery_client;
+mod bigquery_dataset_client;
+pub mod bigquery_table_client;
+pub mod bigquery_tabledata_client;
 pub mod dataset;
 pub mod error;
 pub mod routine;
