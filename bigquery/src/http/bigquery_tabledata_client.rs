@@ -97,7 +97,7 @@ mod test {
         let mut table1 = Table::default();
         table1.table_reference.dataset_id = "rust_test_table".to_string();
         table1.table_reference.project_id = project.to_string();
-        table1.table_reference.table_id = "table_data38".to_string();
+        table1.table_reference.table_id = format!("table_data_{}", OffsetDateTime::now_utc().unix_timestamp());
         table1.schema = Some(TableSchema {
             fields: vec![
                 TableFieldSchema {

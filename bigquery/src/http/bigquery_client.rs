@@ -36,7 +36,7 @@ impl BigqueryClient {
     }
 
     pub(crate) fn http(&self) -> &Client {
-        self.http()
+        &self.http
     }
 
     async fn with_headers(&self, builder: RequestBuilder) -> Result<RequestBuilder, Error> {
