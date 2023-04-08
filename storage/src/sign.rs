@@ -18,6 +18,7 @@ use crate::sign::SignedURLError::InvalidOption;
 
 static SPACE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r" +").unwrap());
 static TAB_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"[\t]+").unwrap());
+static ONE_WEEK_IN_SECONDS: u64 = 604801;
 
 pub enum SignedURLMethod {
     DELETE,
@@ -79,28 +80,6 @@ impl Debug for SignBy {
 
 /// SignedURLOptions allows you to restrict the access to the signed URL.
 pub struct SignedURLOptions {
-    /// GoogleAccessID represents the authorizer of the signed URL generation.
-    /// It is typically the Google service account client email address from
-    /// the Google Developers Console in the form of "xxx@developer.gserviceaccount.com".
-    /// Required.
-    pub google_access_id: String,
-
-    /// PrivateKey is the Google service account private key. It is obtainable
-    /// from the Google Developers Console.
-    /// At https://console.developers.google.com/project/<your-project-id>/apiui/credential,
-    /// create a service account client ID or reuse one of your existing service account
-    /// credentials. Click on the "Generate new P12 key" to generate and download
-    /// a new private key. Once you download the P12 file, use the following command
-    /// to convert it into a PEM file.
-    ///
-    ///    $ openssl pkcs12 -in key.p12 -passin pass:notasecret -out key.pem -nodes
-    ///
-    /// Provide the contents of the PEM file as a byte slice.
-    /// Exactly one of PrivateKey or SignBytes must be non-nil.
-    ///
-    /// SignBytes is a function for implementing custom signing.
-    pub sign_by: SignBy,
-
     /// Method is the HTTP method to be used with the signed URL.
     /// Signed URLs can be used with GET, HEAD, PUT, and DELETE requests.
     /// Required.
@@ -153,8 +132,6 @@ pub struct SignedURLOptions {
 impl Default for SignedURLOptions {
     fn default() -> Self {
         Self {
-            google_access_id: "".to_string(),
-            sign_by: SignBy::PrivateKey(vec![]),
             method: SignedURLMethod::GET,
             expires: std::time::Duration::from_secs(600),
             content_type: None,
@@ -182,10 +159,11 @@ pub enum SignedURLError {
 pub(crate) fn create_signed_buffer(
     bucket: &str,
     name: &str,
+    google_access_id: &str,
     opts: &SignedURLOptions,
 ) -> Result<(Vec<u8>, Url), SignedURLError> {
     let now = OffsetDateTime::now_utc();
-    validate_options(opts, &now)?;
+    validate_options(opts)?;
 
     let headers = v4_sanitize_headers(&opts.headers);
     // create base url
@@ -228,7 +206,7 @@ pub(crate) fn create_signed_buffer(
     {
         let mut query = builder.query_pairs_mut();
         query.append_pair("X-Goog-Algorithm", "GOOG4-RSA-SHA256");
-        query.append_pair("X-Goog-Credential", &format!("{}/{}", opts.google_access_id, credential_scope));
+        query.append_pair("X-Goog-Credential", &format!("{}/{}", google_access_id, credential_scope));
         query.append_pair("X-Goog-Date", &timestamp);
         query.append_pair("X-Goog-Expires", opts.expires.as_secs().to_string().as_str());
         query.append_pair("X-Goog-SignedHeaders", &signed_headers);
@@ -328,12 +306,9 @@ fn extract_header_names(kvs: &[String]) -> Vec<&str> {
         .collect();
 }
 
-fn validate_options(opts: &SignedURLOptions, _now: &OffsetDateTime) -> Result<(), SignedURLError> {
-    if opts.google_access_id.is_empty() {
-        return Err(InvalidOption("storage: missing required GoogleAccessID"));
-    }
+fn validate_options(opts: &SignedURLOptions) -> Result<(), SignedURLError> {
     if opts.expires.is_zero() {
-        return Err(InvalidOption("missing required expires option"));
+        return Err(InvalidOption("storage: expires cannot be zero"));
     }
     if let Some(md5) = &opts.md5 {
         match BASE64_STANDARD.decode(md5) {
@@ -345,7 +320,7 @@ fn validate_options(opts: &SignedURLOptions, _now: &OffsetDateTime) -> Result<()
             Err(_e) => return Err(InvalidOption("storage: invalid MD5 checksum")),
         }
     }
-    if opts.expires > Duration::from_secs(604801) {
+    if opts.expires > Duration::from_secs(ONE_WEEK_IN_SECONDS) {
         return Err(InvalidOption("storage: expires must be within seven days from now"));
     }
     Ok(())
@@ -360,7 +335,7 @@ mod test {
 
     use google_cloud_auth::credentials::CredentialsFile;
 
-    use crate::sign::{create_signed_buffer, SignBy, SignedURLOptions};
+    use crate::sign::{create_signed_buffer, SignedURLOptions};
 
     #[ctor::ctor]
     fn init() {
@@ -376,14 +351,14 @@ mod test {
             param.insert("tes t+".to_string(), vec!["++ +".to_string()]);
             param
         };
+        let google_access_id = file.client_email.unwrap();
         let opts = SignedURLOptions {
-            sign_by: SignBy::PrivateKey(file.private_key.unwrap().into()),
-            google_access_id: file.client_email.unwrap(),
             expires: Duration::from_secs(3600),
             query_parameters: param,
             ..Default::default()
         };
-        let (signed_buffer, _builder) = create_signed_buffer("rust-object-test", "test1", &opts).unwrap();
+        let (signed_buffer, _builder) =
+            create_signed_buffer("rust-object-test", "test1", &google_access_id, &opts).unwrap();
         assert_eq!(signed_buffer.len(), 134)
     }
 }

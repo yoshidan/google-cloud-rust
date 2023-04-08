@@ -61,6 +61,7 @@ async fn run(cred: CredentialsFile) {
 use google_cloud_storage::client::Client;
 use google_cloud_storage::client::ClientConfig;
 use google_cloud_storage::sign::SignedURLOptions;
+use google_cloud_storage::sign::SignBy;
 use google_cloud_storage::sign::SignedURLMethod;
 use google_cloud_storage::http::Error;
 use google_cloud_storage::http::objects::download::Range;
@@ -90,12 +91,13 @@ async fn run(config: ClientConfig) -> Result<(), Error> {
         ..Default::default()
    }, &Range::default()).await;
 
-    // Create signed url.
-    let url_for_download = client.signed_url("bucket", "foo.txt", SignedURLOptions::default());
-    let url_for_upload = client.signed_url("bucket", "foo.txt", SignedURLOptions {
+    // Create signed url with the default key and google-access-id of the client
+    let url_for_download = client.signed_url("bucket", "foo.txt", None, None, SignedURLOptions::default());
+    let url_for_upload = client.signed_url("bucket", "foo.txt", None, None, SignedURLOptions {
         method: SignedURLMethod::PUT,
         ..Default::default()
     });
+
     Ok(())
 }
 ```
