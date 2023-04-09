@@ -81,12 +81,13 @@
 //!         ..Default::default()
 //!    }, &Range::default()).await;
 //!
-//!     // Create signed url.
-//!     let url_for_download = client.signed_url("bucket", "foo.txt", SignedURLOptions::default());
-//!     let url_for_upload = client.signed_url("bucket", "foo.txt", SignedURLOptions {
+//!     // Create signed url with the default key and google-access-id of the client
+//!     let url_for_download = client.signed_url("bucket", "foo.txt", None, None, SignedURLOptions::default());
+//!     let url_for_upload = client.signed_url("bucket", "foo.txt", None, None, SignedURLOptions {
 //!         method: SignedURLMethod::PUT,
 //!         ..Default::default()
 //!     });
+//!
 //!     Ok(())
 //! }
 //! ```
