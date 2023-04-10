@@ -79,13 +79,30 @@ impl Client {
     /// Google account or signing in. For more information about signed URLs, see
     /// https://cloud.google.com/storage/docs/accesscontrol#signed_urls_query_string_authentication
     ///
+    /// Using the client defaults:
     /// ```
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::sign::{SignedURLOptions, SignedURLMethod};
     ///
     /// async fn run(client: Client) {
-    ///     let url_for_download = client.signed_url("bucket", "file.txt", SignedURLOptions::default()).await;
-    ///     let url_for_upload = client.signed_url("bucket", "file.txt", SignedURLOptions {
+    ///     let url_for_download = client.signed_url("bucket", "file.txt", None, None, SignedURLOptions::default()).await;
+    ///     let url_for_upload = client.signed_url("bucket", "file.txt", None, None, SignedURLOptions {
+    ///         method: SignedURLMethod::PUT,
+    ///         ..Default::default()
+    ///     }).await;
+    /// }
+    /// ```
+    ///
+    /// Overwriting the client defaults:
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::sign::{SignBy, SignedURLOptions, SignedURLMethod};
+    ///
+    /// async fn run(client: Client) {
+    /// #   let private_key = SignBy::PrivateKey(vec![]);
+    ///
+    ///     let url_for_download = client.signed_url("bucket", "file.txt", Some("google_access_id".to_string()), Some(private_key.clone()), SignedURLOptions::default()).await;
+    ///     let url_for_upload = client.signed_url("bucket", "file.txt", Some("google_access_id".to_string()), Some(private_key.clone()), SignedURLOptions {
     ///         method: SignedURLMethod::PUT,
     ///         ..Default::default()
     ///     }).await;
@@ -96,31 +113,48 @@ impl Client {
         &self,
         bucket: &str,
         object: &str,
+        google_access_id: Option<String>,
+        sign_by: Option<SignBy>,
         opts: SignedURLOptions,
     ) -> Result<String, SignedURLError> {
-        let mut opts = opts;
-        if opts.google_access_id.is_empty() {
-            opts.google_access_id = self
-                .default_google_access_id
-                .clone()
-                .ok_or(SignedURLError::InvalidOption("No default google_access_id is found"))?;
-        }
-        let (signed_buffer, mut builder) = create_signed_buffer(bucket, object, &opts)?;
-        tracing::trace!("signed_buffer={:?}", String::from_utf8_lossy(&signed_buffer));
+        // use the one from the options or the default one or error out
 
-        let mut sign_by = opts.sign_by;
-        if let PrivateKey(pk) = &sign_by {
-            if pk.is_empty() {
-                sign_by = self
+        let google_access_id = match &google_access_id {
+            Some(overwritten_gai) => overwritten_gai.to_owned(),
+            None => {
+                let default_gai = &self
+                    .default_google_access_id
+                    .clone()
+                    .ok_or(SignedURLError::InvalidOption("No default google_access_id is found"))?;
+
+                default_gai.to_owned()
+            }
+        };
+
+        // use the one from the options or the default one or error out
+        let sign_by = match &sign_by {
+            Some(overwritten_sign_by) => overwritten_sign_by.to_owned(),
+            None => {
+                let default_sign_by = &self
                     .default_sign_by
                     .clone()
-                    .ok_or(SignedURLError::InvalidOption("No default sign_by was found"))?;
+                    .ok_or(SignedURLError::InvalidOption("No default google_access_id is found"))?;
+
+                default_sign_by.to_owned()
             }
-        }
+        };
+
+        let (signed_buffer, mut builder) = create_signed_buffer(bucket, object, &google_access_id, &opts)?;
+        tracing::trace!("signed_buffer={:?}", String::from_utf8_lossy(&signed_buffer));
 
         // create signature
         let signature = match &sign_by {
             PrivateKey(private_key) => {
+                // if sign_by is a collection of private keys we check that at least one is present
+                if private_key.is_empty() {
+                    return Err(SignedURLError::InvalidOption("No keys present"));
+                }
+
                 let str = String::from_utf8_lossy(private_key);
                 let pkcs = rsa::RsaPrivateKey::from_pkcs8_pem(str.as_ref())
                     .map_err(|e| SignedURLError::CertError(e.to_string()))?;
@@ -141,7 +175,7 @@ impl Client {
                 signed
             }
             SignBy::SignBytes => {
-                let path = format!("projects/-/serviceAccounts/{}", &opts.google_access_id);
+                let path = format!("projects/-/serviceAccounts/{}", google_access_id);
                 self.service_account_client
                     .sign_blob(&path, signed_buffer.as_slice())
                     .await
@@ -310,7 +344,7 @@ mod test {
             ..SignedURLOptions::default()
         };
         let url = client
-            .signed_url(bucket_name, "signed_uploadtest", option)
+            .signed_url(bucket_name, "signed_uploadtest", None, None, option)
             .await
             .unwrap();
         println!("uploading={url:?}");
@@ -328,7 +362,71 @@ mod test {
             ..SignedURLOptions::default()
         };
         let url = client
-            .signed_url(bucket_name, "signed_uploadtest", option)
+            .signed_url(bucket_name, "signed_uploadtest", None, None, option)
+            .await
+            .unwrap();
+        println!("downloading={url:?}");
+        let result = reqwest::Client::default()
+            .get(url)
+            .header("content-type", content_type)
+            .send()
+            .await
+            .unwrap()
+            .text()
+            .await
+            .unwrap();
+        assert_eq!(result, data);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_sign_with_overwrites() {
+        let (client, _) = create_client().await;
+        let bucket_name = "rust-object-test";
+        let data = "aiueo";
+        let content_type = "application/octet-stream";
+        let overwritten_gai = client.default_google_access_id.as_ref().unwrap();
+        let overwritten_sign_by = client.default_sign_by.as_ref().unwrap();
+
+        // upload
+        let option = SignedURLOptions {
+            method: SignedURLMethod::PUT,
+            content_type: Some(content_type.to_string()),
+            ..SignedURLOptions::default()
+        };
+        let url = client
+            .signed_url(
+                bucket_name,
+                "signed_uploadtest",
+                Some(overwritten_gai.to_owned()),
+                Some(overwritten_sign_by.to_owned()),
+                option,
+            )
+            .await
+            .unwrap();
+        println!("uploading={url:?}");
+        let request = reqwest::Client::default()
+            .put(url)
+            .header("content-type", content_type)
+            .body(data.as_bytes());
+        let result = request.send().await.unwrap();
+        let status = result.status();
+        assert!(status.is_success(), "{:?}", result.text().await.unwrap());
+
+        //download
+        let option = SignedURLOptions {
+            content_type: Some(content_type.to_string()),
+            ..SignedURLOptions::default()
+        };
+
+        let url = client
+            .signed_url(
+                bucket_name,
+                "signed_uploadtest",
+                Some(overwritten_gai.to_owned()),
+                Some(overwritten_sign_by.to_owned()),
+                option,
+            )
             .await
             .unwrap();
         println!("downloading={url:?}");
