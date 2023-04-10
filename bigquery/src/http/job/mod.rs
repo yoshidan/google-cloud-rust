@@ -1,9 +1,13 @@
+use crate::http::dataset::DatasetReference;
+use crate::http::model::IterationResult;
+use crate::http::routine::RoutineReference;
+use crate::http::table::{
+    Clustering, ExternalDataConfiguration, RangePartitioning, TableReference, TableSchema, TimePartitioning,
+    UserDefinedFunctionResource,
+};
+use crate::http::types::{ConnectionProperty, EncryptionConfiguration, QueryParameter};
 use std::collections::HashMap;
 use std::iter::Map;
-use crate::http::dataset::DatasetReference;
-use crate::http::routine::RoutineReference;
-use crate::http::table::{Clustering, ExternalDataConfiguration, RangePartitioning, TableReference, TableSchema, TimePartitioning, UserDefinedFunctionResource};
-use crate::http::types::{ConnectionProperty, EncryptionConfiguration, QueryParameter};
 
 pub mod delete;
 
@@ -12,7 +16,7 @@ pub mod delete;
 pub enum KeyResultStatementKind {
     #[default]
     Last,
-    FirstSelect
+    FirstSelect,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -25,10 +29,10 @@ pub struct ScriptOptions {
     /// Limit on the number of bytes billed per statement. Exceeding this budget results in an error.
     #[serde(deserialize_with = "crate::http::from_str_option")]
     #[serde(default)]
-    pub statement_byte_budget : Option<i64>,
+    pub statement_byte_budget: Option<i64>,
     /// Determines which statement in the script represents the "key result",
     /// used to populate the schema and query results of the script job. Default is LAST.
-    pub key_result_statement: Option<KeyResultStatementKind>
+    pub key_result_statement: Option<KeyResultStatementKind>,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -38,7 +42,7 @@ pub enum CreateDisposition {
     #[default]
     CreateIfNeeded,
     /// The table must already exist. If it does not, a 'notFound' error is returned in the job result.
-    CreateNever
+    CreateNever,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -50,7 +54,7 @@ pub enum WriteDisposition {
     WriteAppend,
     /// If the table already exists and contains data, a 'duplicate' error is returned in the job result.
     #[default]
-    WriteEmpty
+    WriteEmpty,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -66,7 +70,7 @@ pub enum SchemaUpdateOption {
     /// allow adding a nullable field to the schema.
     AllowFieldAddition,
     /// allow relaxing a required field in the original schema to nullable.
-    AllowFieldRelaxation
+    AllowFieldRelaxation,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -81,7 +85,7 @@ pub struct JobConfigurationQuery {
     /// Optional. You can specify external table definitions,
     /// which operate as ephemeral tables that can be queried. These definitions are configured using a JSON map, where the string key represents the table identifier, and the value is the corresponding external data configuration object.
     /// An object containing a list of "key": value pairs. Example: { "name": "wrench", "mass": "1.3kg", "count": "3" }.
-    pub table_definitions: Option<HashMap<String,ExternalDataConfiguration>>,
+    pub table_definitions: Option<HashMap<String, ExternalDataConfiguration>>,
     /// Describes user-defined function resources used in the query.
     pub user_defined_function_resources: Option<Vec<UserDefinedFunctionResource>>,
     /// Optional. Specifies whether the job is allowed to create new tables. The following values are supported:
@@ -147,7 +151,7 @@ pub struct JobConfigurationQuery {
     /// Clustering specification for the destination table.
     pub clustering: Option<Clustering>,
     /// Custom encryption configuration (e.g., Cloud KMS keys)
-    pub destination_encryption_configuration : Option<EncryptionConfiguration>,
+    pub destination_encryption_configuration: Option<EncryptionConfiguration>,
     /// Options controlling the execution of scripts.
     pub script_options: Option<ScriptOptions>,
     /// Connection properties which can modify the query behavior.
@@ -199,7 +203,7 @@ pub struct JobReference {
     /// Required. The ID of the job. The ID must contain only letters (a-z, A-Z), numbers (0-9), underscores (_), or dashes (-). The maximum length is 1,024 characters.
     pub job_id: String,
     /// Optional. The geographic location of the job. The default value is US.
-    pub location: Option<String>
+    pub location: Option<String>,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -222,7 +226,7 @@ pub struct Job {
     /// Output only. Information about the job, including starting time and ending time of the job.
     pub statistics: JobStatistics,
     /// Output only. The status of this job. Examine this value when polling an asynchronous job to see if the job is complete.
-    pub job_status: JobStatus
+    pub job_status: JobStatus,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -267,7 +271,7 @@ pub struct JobStatistics {
     /// Output only. If this a child job of a script, specifies information about the context of this job within the script.
     pub script_statistics: ScriptStatistics,
     /// Output only. Statistics for row-level security. Present only for query and extract jobs.
-    pub row_level_security_statistics: RowLevelSecurityStatistics ,
+    pub row_level_security_statistics: RowLevelSecurityStatistics,
     /// Output only. Statistics for data-masking. Present only for query and extract jobs.
     pub data_masking_statistics: DataMaskingStatistics,
     /// Output only. [Alpha] Information of the multi-statement transaction if this job is part of one.
@@ -278,7 +282,7 @@ pub struct JobStatistics {
     /// Output only. The duration in milliseconds of the execution of the final attempt of this job,
     /// as BigQuery may internally re-attempt to execute the job.
     #[serde(deserialize_with = "crate::http::from_str")]
-    pub final_execution_duration_ms: i64
+    pub final_execution_duration_ms: i64,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -288,7 +292,7 @@ pub struct JobStatisticsQuery {
     pub query_plan: Vec<ExpalinQueryStage>,
     /// Output only. The original estimate of bytes processed for the job.
     #[serde(deserialize_with = "crate::http::from_str")]
-    pub estimated_bytes_processed:  i64,
+    pub estimated_bytes_processed: i64,
     /// Output only. Describes a timeline of job execution.
     pub timeline: Vec<QueryTimelineSample>,
     /// Output only. Total number of partitions processed from all partitioned tables referenced in the job.
@@ -380,7 +384,7 @@ pub struct JobStatisticsQuery {
     /// Output only. Statistics for a LOAD query.
     pub load_query_statistics: Option<LoadQueryStatistics>,
     /// Output only. Referenced table for DCL statement.
-    pub dcl_target_table: Option<TableReference> ,
+    pub dcl_target_table: Option<TableReference>,
     /// Output only. Referenced view for DCL statement.
     pub dcl_target_view: Option<TableReference>,
     /// Output only. Search query specific statistics.
@@ -392,7 +396,7 @@ pub struct JobStatisticsQuery {
     /// Output only. Total bytes transferred for cross-cloud queries such as Cross Cloud Transfer and CREATE TABLE AS SELECT (CTAS).
     #[serde(deserialize_with = "crate::http::from_str_option")]
     #[serde(default)]
-    pub transferred_bytes: Option<i64>
+    pub transferred_bytes: Option<i64>,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -465,5 +469,66 @@ pub struct ExplainStageQuery {
     pub steps: Vec<ExplainQueryStep>,
     /// Slot-milliseconds used by the stage
     #[serde(deserialize_with = "crate::http::from_str")]
-    pub slot_ms: i64
+    pub slot_ms: i64,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ExplainQueryStep {
+    /// Machine-readable operation type.
+    pub kind: String,
+    /// Human-readable description of the step(s).
+    pub substeps: Vec<String>,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct QueryTimelineSample {
+    /// Milliseconds elapsed since the start of query execution.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub elapsed_ms: i64,
+    /// Cumulative slot-ms consumed by the query.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub total_slot_ms: i64,
+    /// Total units of work remaining for the query. This number can be revised (increased or decreased) while the query is running.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub pending_units: i64,
+    /// Total parallel units of work completed by this query.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub completed_units: i64,
+    /// Total number of active workers. This does not correspond directly to slot usage. This is the largest value observed since the last sample.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub active_units: i64,
+    /// Units of work that can be scheduled immediately. Providing additional slots for these units of work will accelerate the query, if no other query in the reservation needs additional slots.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub estimated_runnable_units: i64,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct MlStatistics {
+    /// Output only. Maximum number of iterations specified as maxIterations in the 'CREATE MODEL' query.
+    /// The actual number of iterations may be less than this number due to early stop.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub max_iterations: i64,
+    /// Results for all completed iterations. Empty for hyperparameter tuning jobs.
+    pub iteration_results: Vec<IterationResult>,
+    /// Output only. The type of the model that is being trained.
+    pub model_type: ModeType,
+    /// Output only. Training type of the job.
+    pub training_type: TrainingType,
+    /// Output only. Trials of a hyperparameter tuning job sorted by trialId.
+    pub hparam_trials: Vec<HparamTuningTrial>,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TrainingType {
+    /// Unspecified training type.
+    #[default]
+    TrainingTypeUnspecified,
+    /// Single training with fixed parameter space.
+    SingleTraining,
+    /// Hyperparameter tuning training.
+    HparamTuning,
 }

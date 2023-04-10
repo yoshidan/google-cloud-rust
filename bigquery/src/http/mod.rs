@@ -10,11 +10,12 @@ pub mod bigquery_table_client;
 pub mod bigquery_tabledata_client;
 pub mod dataset;
 pub mod error;
+pub mod job;
+pub mod model;
 pub mod routine;
 pub mod table;
 pub mod tabledata;
 pub mod types;
-pub mod job;
 
 fn from_str_option<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
 where
