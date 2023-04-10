@@ -14,6 +14,7 @@ pub mod routine;
 pub mod table;
 pub mod tabledata;
 pub mod types;
+pub mod job;
 
 fn from_str_option<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
 where
