@@ -87,10 +87,10 @@ impl BigqueryClient {
 #[cfg(test)]
 pub(crate) mod test {
     use crate::http::bigquery_client::{BigqueryClient, SCOPES};
+    use crate::http::table::{TableFieldMode, TableFieldSchema, TableFieldType, TableSchema};
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_token::TokenSourceProvider;
-    use crate::http::table::{TableFieldMode, TableFieldSchema, TableFieldType, TableSchema};
 
     pub async fn create_client() -> (BigqueryClient, String) {
         let tsp = DefaultTokenSourceProvider::new(Config {

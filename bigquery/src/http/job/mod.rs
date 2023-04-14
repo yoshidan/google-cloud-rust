@@ -4,7 +4,7 @@ use crate::http::routine::RoutineReference;
 use crate::http::row_access_policy::RowAccessPolicyReference;
 use crate::http::table::{
     Clustering, DecimalTargetType, ExternalDataConfiguration, HivePartitioningOptions, ParquetOptions,
-    RangePartitioning, TableReference, TableSchema, TimePartitioning, UserDefinedFunctionResource,
+    RangePartitioning, SourceFormat, TableReference, TableSchema, TimePartitioning, UserDefinedFunctionResource,
 };
 use crate::http::types::{ConnectionProperty, EncryptionConfiguration, ErrorProto, QueryParameter};
 use std::collections::HashMap;
@@ -122,8 +122,14 @@ pub struct JobConfigurationLoad {
     /// The default value is false.
     pub allow_quoted_newlines: Option<bool>,
     /// Optional. The format of the data files.
-    /// For CSV files, specify "CSV". For datastore backups, specify "DATASTORE_BACKUP". For newline-delimited JSON, specify "NEWLINE_DELIMITED_JSON". For Avro, specify "AVRO". For parquet, specify "PARQUET". For orc, specify "ORC". The default value is CSV.
-    pub source_format: Option<String>,
+    /// For CSV files, specify "CSV".
+    /// For datastore backups, specify "DATASTORE_BACKUP".
+    /// For newline-delimited JSON, specify "NEWLINE_DELIMITED_JSON".
+    /// For Avro, specify "AVRO".
+    /// For parquet, specify "PARQUET".
+    /// For orc, specify "ORC".
+    /// The default value is CSV.
+    pub source_format: Option<SourceFormat>,
     /// Optional. Accept rows that are missing trailing optional columns.
     /// The missing values are treated as nulls.
     /// If false, records with missing trailing columns are treated as bad records,
@@ -146,7 +152,7 @@ pub struct JobConfigurationLoad {
     /// If no properties are specified, BigQuery loads all properties.
     /// If any named property isn't found in the Cloud Datastore backup,
     /// an invalid error is returned in the job result.
-    pub projection_fields: Vec<String>,
+    pub projection_fields: Option<Vec<String>>,
     /// Optional. Indicates if we should automatically infer the options and schema for CSV and JSON sources.
     pub autodetect: Option<bool>,
     /// Allows the schema of the destination table to be updated as a side effect of
@@ -159,7 +165,7 @@ pub struct JobConfigurationLoad {
     /// One or more of the following values are specified:
     /// ALLOW_FIELD_ADDITION: allow adding a nullable field to the schema.
     /// ALLOW_FIELD_RELAXATION: allow relaxing a required field in the original schema to nullable.
-    pub schema_update_options: Vec<SchemaUpdateOption>,
+    pub schema_update_options: Option<Vec<SchemaUpdateOption>>,
     /// Time-based partitioning specification for the destination table.
     /// Only one of timePartitioning and rangePartitioning should be specified.
     pub time_partitioning: Option<TimePartitioning>,
@@ -167,7 +173,7 @@ pub struct JobConfigurationLoad {
     /// Only one of timePartitioning and rangePartitioning should be specified.
     pub range_partitioning: Option<RangePartitioning>,
     /// Clustering specification for the destination table.
-    pub clustering: Clustering,
+    pub clustering: Option<Clustering>,
     /// Custom encryption configuration (e.g., Cloud KMS keys)
     pub destination_encryption_configuration: Option<EncryptionConfiguration>,
     /// Optional. If sourceFormat is set to "AVRO", indicates whether to interpret logical types as the corresponding BigQuery data type (for example, TIMESTAMP), instead of using the raw type (for example, INTEGER).
@@ -404,19 +410,29 @@ pub struct JobConfigurationQuery {
     pub create_session: Option<bool>,
 }
 
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum JobType {
+    Query(JobConfigurationQuery),
+    Load(JobConfigurationLoad),
+    Copy(JobConfigurationTableCopy),
+    Extract(JobConfigurationExtract),
+}
+
+impl Default for JobType {
+    fn default() -> Self {
+        Self::Query(JobConfigurationQuery::default())
+    }
+}
+
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct JobConfiguration {
     /// Output only. The type of the job. Can be QUERY, LOAD, EXTRACT, COPY or UNKNOWN.
     pub job_type: String,
-    /// [Pick one] Configures a query job.
-    pub query: Option<JobConfigurationQuery>,
-    /// [Pick one] Configures a load job.
-    pub load: Option<JobConfigurationLoad>,
-    /// [Pick one] Copies a table.
-    pub copy: Option<JobConfigurationTableCopy>,
-    /// [Pick one] Configures an extract job.
-    pub extract: Option<JobConfigurationExtract>,
+    /// [Pick one] Configures a job.
+    #[serde(flatten)]
+    pub job: JobType,
     /// Optional. If set, don't actually run this job.
     /// A valid query will return a mostly empty response with some processing statistics,
     /// while an invalid query will return the same error it would if it wasn't a dry run.
@@ -492,12 +508,12 @@ pub struct JobStatistics {
     pub creation_time: i64,
     /// Output only. Start time of this job, in milliseconds since the epoch.
     /// This field will be present when the job transitions from the PENDING state to either RUNNING or DONE.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub start_time: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub start_time: Option<i64>,
     /// Output only. End time of this job, in milliseconds since the epoch.
     /// This field will be present whenever a job is in the DONE state.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub end_time: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub end_time: Option<i64>,
     /// Output only. Total bytes processed for the job.
     #[serde(default, deserialize_with = "crate::http::from_str_option")]
     pub total_bytes_processed: Option<i64>,

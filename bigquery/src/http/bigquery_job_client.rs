@@ -1,6 +1,6 @@
 use crate::http::bigquery_client::BigqueryClient;
 use crate::http::error::Error;
-use crate::http::{job};
+use crate::http::job;
 
 use crate::http::job::Job;
 use std::sync::Arc;
@@ -30,14 +30,14 @@ impl BigqueryJobClient {
 
 #[cfg(test)]
 mod test {
-    use crate::http::bigquery_client::test::{create_client, create_table_schema};
+    use crate::http::bigquery_client::test::create_client;
 
     use crate::http::bigquery_job_client::BigqueryJobClient;
-    use crate::http::job::{Job, JobConfiguration, JobConfigurationQuery};
+    use crate::http::job::{Job, JobConfiguration, JobConfigurationLoad, JobConfigurationQuery, JobType};
+    use crate::http::table::{SourceFormat, TableFieldSchema, TableFieldType, TableReference, TableSchema};
     use serial_test::serial;
     use std::sync::Arc;
     use time::OffsetDateTime;
-    use crate::http::table::Table;
 
     #[ctor::ctor]
     fn init() {
@@ -55,7 +55,7 @@ mod test {
         job1.job_reference.project_id = project.to_string();
         job1.job_reference.location = Some("asia-northeast1".to_string());
         job1.configuration = JobConfiguration {
-            query: Some(JobConfigurationQuery {
+            job: JobType::Query(JobConfigurationQuery {
                 query: "SELECT 1 FROM invalid_table".to_string(),
                 ..Default::default()
             }),
@@ -79,11 +79,11 @@ mod test {
 
         // query job
         let mut job1 = Job::default();
-        job1.job_reference.job_id = format!("rust_test_{}", OffsetDateTime::now_utc().unix_timestamp());
+        job1.job_reference.job_id = format!("rust_test_query_{}", OffsetDateTime::now_utc().unix_timestamp());
         job1.job_reference.project_id = project.to_string();
         job1.job_reference.location = Some("asia-northeast1".to_string());
         job1.configuration = JobConfiguration {
-            query: Some(JobConfigurationQuery {
+            job: JobType::Query(JobConfigurationQuery {
                 use_legacy_sql: Some(false),
                 query: "SELECT * FROM rust_test_job.table_data_1681472944".to_string(),
                 ..Default::default()
@@ -94,6 +94,36 @@ mod test {
         assert!(job1.status.errors.is_none());
         assert!(job1.status.error_result.is_none());
         assert_eq!(job1.status.state, "DONE");
-        assert_eq!(job1.statistics.unwrap().query.unwrap().statement_type.unwrap().as_str(), "SELECT");
+        assert_eq!(
+            job1.statistics.unwrap().query.unwrap().statement_type.unwrap().as_str(),
+            "SELECT"
+        );
+
+        // load job
+        let mut job1 = Job::default();
+        job1.job_reference.job_id = format!("rust_test_load_{}", OffsetDateTime::now_utc().unix_timestamp());
+        job1.job_reference.project_id = project.to_string();
+        job1.job_reference.location = Some("asia-northeast1".to_string());
+        job1.configuration = JobConfiguration {
+            job: JobType::Load(JobConfigurationLoad {
+                source_uris: vec!["gs://rust-bq-test/external_data.csv".to_string()],
+                source_format: Some(SourceFormat::Csv),
+                field_delimiter: Some("|".to_string()),
+                encoding: Some("UTF-8".to_string()),
+                skip_leading_rows: Some(0),
+                autodetect: Some(true),
+                destination_table: TableReference {
+                    project_id: project.to_string(),
+                    dataset_id: "rust_test_job".to_string(),
+                    table_id: "rust_test_load_result".to_string(),
+                },
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let job1 = client.create(&job1).await.unwrap();
+        assert!(job1.status.errors.is_none());
+        assert!(job1.status.error_result.is_none());
+        assert!(job1.status.state == "RUNNING" || job1.status.state == "DONE");
     }
 }

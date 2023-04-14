@@ -45,10 +45,10 @@ where
 }
 
 fn from_str_vec_option<'de, T, D>(deserializer: D) -> Result<Option<Vec<T>>, D::Error>
-    where
-        T: FromStr,
-        T::Err: Display,
-        D: Deserializer<'de>,
+where
+    T: FromStr,
+    T::Err: Display,
+    D: Deserializer<'de>,
 {
     let s: Result<Value, _> = Deserialize::deserialize(deserializer);
     match s {
@@ -70,10 +70,10 @@ fn from_str_vec_option<'de, T, D>(deserializer: D) -> Result<Option<Vec<T>>, D::
 }
 
 fn from_str_vec<'de, T, D>(deserializer: D) -> Result<Vec<T>, D::Error>
-    where
-        T: FromStr,
-        T::Err: Display,
-        D: Deserializer<'de>,
+where
+    T: FromStr,
+    T::Err: Display,
+    D: Deserializer<'de>,
 {
     let s: Result<Vec<String>, _> = Vec::deserialize(deserializer);
     match s {
