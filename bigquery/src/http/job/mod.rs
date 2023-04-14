@@ -1,5 +1,5 @@
 use crate::http::dataset::DatasetReference;
-use crate::http::model::IterationResult;
+use crate::http::model::{HparamTuningTrial, IterationResult};
 use crate::http::routine::RoutineReference;
 use crate::http::table::{
     Clustering, ExternalDataConfiguration, RangePartitioning, TableReference, TableSchema, TimePartitioning,
