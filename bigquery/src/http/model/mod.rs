@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelReference {
     /// Required. The ID of the project containing this table.
@@ -12,7 +12,7 @@ pub struct ModelReference {
     pub model_id: String,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct IterationResult {
     /// Index of the iteration, 0 based.
@@ -33,7 +33,7 @@ pub struct IterationResult {
     pub principal_component_infos: Vec<PrincipalComponentInfo>,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ClusterInfo {
     /// Centroid id.
@@ -46,7 +46,7 @@ pub struct ClusterInfo {
     pub cluster_size: i64,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ArimaResult {
     /// This message is repeated because there are multiple arima models fitted in auto-arima. For non-auto-arima model, its size is one.
@@ -55,7 +55,7 @@ pub struct ArimaResult {
     pub seasonal_periods: Vec<SeasonalPeriodType>,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ArimaModelInfo {
     /// Non-seasonal order.
@@ -86,7 +86,7 @@ pub struct ArimaModelInfo {
     pub has_step_changes: bool,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ArimaCoefficients {
     /// Auto-regressive coefficients, an array of double.
@@ -97,7 +97,7 @@ pub struct ArimaCoefficients {
     pub intercept_coefficient: f64,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ArimaFittingMetrics {
     /// Log-likelihood.
@@ -108,7 +108,7 @@ pub struct ArimaFittingMetrics {
     pub variance: f64,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SeasonalPeriodType {
     #[default]
@@ -121,7 +121,7 @@ pub enum SeasonalPeriodType {
     Yearly,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct PrincipalComponentInfo {
     /// Id of the principal component.
@@ -136,7 +136,7 @@ pub struct PrincipalComponentInfo {
     pub cumulative_explained_variance_ratio: f64,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ModelType {
     #[default]
@@ -173,7 +173,7 @@ pub enum ModelType {
     ArimaPlus,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct HparamTuningTrial {
     /// 1-based index of the trial.
@@ -202,7 +202,7 @@ pub struct HparamTuningTrial {
     pub hparam_tuning_evaluation_metrics: EvaluationMetrics,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TrialStatus {
     #[default]
@@ -215,7 +215,7 @@ pub enum TrialStatus {
     StoppedEarly,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum LossType {
     #[default]
@@ -224,7 +224,7 @@ pub enum LossType {
     MeanLogLoss,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum DataSplitMethod {
     #[default]
@@ -236,7 +236,7 @@ pub enum DataSplitMethod {
     AutoSplit,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum LearnRateStrategy {
     #[default]
@@ -245,7 +245,7 @@ pub enum LearnRateStrategy {
     Constant,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum DistanceType {
     #[default]
@@ -254,7 +254,7 @@ pub enum DistanceType {
     Cosine,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum OptimizationStrategy {
     #[default]
@@ -263,7 +263,7 @@ pub enum OptimizationStrategy {
     NormalEquation,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum BoosterType {
     #[default]
@@ -272,7 +272,7 @@ pub enum BoosterType {
     Dart,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum DartNormalizeType {
     #[default]
@@ -281,7 +281,7 @@ pub enum DartNormalizeType {
     Forest,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TestMethod {
     #[default]
@@ -292,7 +292,7 @@ pub enum TestMethod {
     Hist,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum FeedbackType {
     #[default]
@@ -301,7 +301,7 @@ pub enum FeedbackType {
     Explicit,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum KmeansInitializationMethod {
     #[default]
@@ -311,7 +311,7 @@ pub enum KmeansInitializationMethod {
     KmeansPlusPlus,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ArimaOrder {
     /// Order of the autoregressive part.
@@ -325,7 +325,7 @@ pub struct ArimaOrder {
     pub q: i64,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum DataFrequency {
     #[default]
@@ -340,7 +340,7 @@ pub enum DataFrequency {
     PerMinute,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum HolidayRegion {
     #[default]
@@ -414,7 +414,7 @@ pub enum HolidayRegion {
     Za,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum HparamTuningObjective {
     #[default]
@@ -437,7 +437,7 @@ pub enum HparamTuningObjective {
     AverageRank,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TreeMethod {
     #[default]
@@ -448,7 +448,7 @@ pub enum TreeMethod {
     Hist,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct TrainingOptions {
     /// The maximum number of iterations in training. Used only for iterative training algorithms.
@@ -604,7 +604,7 @@ pub struct TrainingOptions {
     pub integrated_gradients_num_steps: i64,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub enum EvaluationMetrics {
     /// Populated for regression models and explicit feedback type matrix factorization models.
@@ -623,7 +623,13 @@ pub enum EvaluationMetrics {
     DimensionalityReductionMetrics(DimensionalityReductionMetrics),
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+impl Default for EvaluationMetrics {
+    fn default() -> Self {
+        Self::RegressionMetrics(RegressionMetrics::default())
+    }
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct RegressionMetrics {
     /// Mean absolute error.
@@ -638,7 +644,7 @@ pub struct RegressionMetrics {
     pub r_squared: f64,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct BinaryClassificationMetrics {
     /// Aggregate classification metrics.
@@ -651,7 +657,7 @@ pub struct BinaryClassificationMetrics {
     pub negative_label: String,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct AggregateClassificationMetrics {
     /// Precision is the fraction of actual positive predictions that had positive actual labels.
@@ -674,7 +680,7 @@ pub struct AggregateClassificationMetrics {
     pub roc_auc: f64,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct BinaryConfusionMatrix {
     /// Threshold value used when computing each of the following metric.
@@ -701,7 +707,7 @@ pub struct BinaryConfusionMatrix {
     pub accuracy: f64,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct MultiClassClassificationMetrics {
     /// Aggregate classification metrics.
@@ -710,7 +716,7 @@ pub struct MultiClassClassificationMetrics {
     pub confusion_matrix_list: Vec<ConfusionMatrix>,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ConfusionMatrix {
     /// Confidence threshold used when computing the entries of the confusion matrix.
@@ -719,7 +725,7 @@ pub struct ConfusionMatrix {
     pub rows: Vec<Row>,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Row {
     /// The original label of this row.
@@ -728,7 +734,7 @@ pub struct Row {
     pub entries: Vec<Entry>,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Entry {
     /// The predicted label. For confidenceThreshold > 0,
@@ -739,7 +745,7 @@ pub struct Entry {
     pub item_count: i64,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ClusteringMetrics {
     /// Davies-Bouldin index.
@@ -750,7 +756,7 @@ pub struct ClusteringMetrics {
     pub clusters: Vec<Cluster>,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Cluster {
     /// Centroid id.
@@ -763,7 +769,7 @@ pub struct Cluster {
     pub count: i64,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureValue {
     /// The feature column name.
@@ -772,17 +778,22 @@ pub struct FeatureValue {
     pub value: FeatureValueType,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub enum FeatureValueType {
     /// The numerical feature value. This is the centroid value for this feature.
-    #[default]
     NumericalValue(f64),
     /// The categorical feature value.
     CategoricalValue(CategoricalValue),
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+impl Default for FeatureValueType {
+    fn default() -> Self {
+        Self::NumericalValue(0.0)
+    }
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct CategoricalValue {
     /// Counts of all categories for the categorical feature.
@@ -791,7 +802,7 @@ pub struct CategoricalValue {
     pub category_counts: Vec<CategoryCount>,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct CategoryCount {
     /// The name of category.
@@ -801,7 +812,7 @@ pub struct CategoryCount {
     pub count: i64,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct RankingMetrics {
     /// Calculates a precision per user for all the items by ranking them and then averages all the precisions across all the users.
@@ -814,14 +825,14 @@ pub struct RankingMetrics {
     pub average_rank: f64,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ArimaForecastingMetrics {
     /// Repeated as there can be many metric sets (one for each model) in auto-arima and the large-scale case.
     pub arima_single_model_forecasting_metrics: Vec<ArimaSingleModelForecastingMetrics>,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ArimaSingleModelForecastingMetrics {
     /// Non-seasonal order.
@@ -845,7 +856,7 @@ pub struct ArimaSingleModelForecastingMetrics {
     pub has_step_changes: bool,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DimensionalityReductionMetrics {
     /// Total percentage of variance explained by the selected principal components.

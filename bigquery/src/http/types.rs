@@ -47,7 +47,7 @@ pub struct QueryParameterType {
     #[serde(rename(serialize = "type", deserialize = "type"))]
     pub parameter_type: String,
     /// Optional. The type of the array's elements, if this is an array.
-    pub array_type: Option<QueryParameterType>,
+    pub array_type: Option<Box<QueryParameterType>>,
     /// Optional. The types of the fields of this struct, in order, if this is a struct.
     pub struct_types: Option<Vec<QueryParameterStructType>>,
 }
@@ -62,7 +62,7 @@ pub struct QueryParameterValue {
     /// The struct field values.
     /// An object containing a list of "key": value pairs.
     /// Example: { "name": "wrench", "mass": "1.3kg", "count": "3" }..
-    pub struct_values: Option<QueryParameterValue>,
+    pub struct_values: Option<Box<QueryParameterValue>>,
 }
 
 /// Currently supported connection properties:

@@ -1,18 +1,18 @@
 use crate::http::dataset::DatasetReference;
-use crate::http::model::{EvaluationMetrics, HparamTuningTrial, IterationResult, ModelReference};
+use crate::http::model::{HparamTuningTrial, IterationResult, ModelReference, ModelType};
 use crate::http::routine::RoutineReference;
+use crate::http::row_access_policy::RowAccessPolicyReference;
 use crate::http::table::{
     Clustering, DecimalTargetType, ExternalDataConfiguration, HivePartitioningOptions, ParquetOptions,
     RangePartitioning, TableReference, TableSchema, TimePartitioning, UserDefinedFunctionResource,
 };
 use crate::http::types::{ConnectionProperty, EncryptionConfiguration, ErrorProto, QueryParameter};
 use std::collections::HashMap;
-use std::iter::Map;
 use time::OffsetDateTime;
 
 pub mod delete;
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum KeyResultStatementKind {
     #[default]
@@ -20,7 +20,7 @@ pub enum KeyResultStatementKind {
     FirstSelect,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ScriptOptions {
     /// Timeout period for each statement in a script.
@@ -36,7 +36,7 @@ pub struct ScriptOptions {
     pub key_result_statement: Option<KeyResultStatementKind>,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CreateDisposition {
     /// If the table does not exist, BigQuery creates the table.
@@ -46,7 +46,7 @@ pub enum CreateDisposition {
     CreateNever,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum WriteDisposition {
     /// If the table already exists, BigQuery overwrites the table data and uses the schema from the query result..
@@ -58,14 +58,14 @@ pub enum WriteDisposition {
     WriteEmpty,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Priority {
     #[default]
     Interactive,
     Batch,
 }
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SchemaUpdateOption {
     /// allow adding a nullable field to the schema.
@@ -74,7 +74,7 @@ pub enum SchemaUpdateOption {
     AllowFieldRelaxation,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct JobConfigurationLoad {
     /// [Required] The fully-qualified URIs that point to your data in Google Cloud.
@@ -197,7 +197,7 @@ pub struct JobConfigurationLoad {
     pub preserve_ascii_control_characters: Option<bool>,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub enum JobConfigurationSourceTable {
     SourceTable(TableReference),
@@ -210,7 +210,7 @@ impl Default for JobConfigurationSourceTable {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum OperationType {
     #[default]
@@ -221,7 +221,7 @@ pub enum OperationType {
     Clone,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct JobConfigurationTableCopy {
     #[serde(flatten)]
@@ -247,7 +247,7 @@ pub struct JobConfigurationTableCopy {
     pub destination_expiration_time: Option<OffsetDateTime>,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DestinationTableProperties {
     /// Optional. Friendly name for the destination table.
@@ -266,7 +266,7 @@ pub struct DestinationTableProperties {
     pub labels: Option<HashMap<String, String>>,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub enum JobConfigurationExtractSource {
     SourceTable(TableReference),
@@ -279,7 +279,7 @@ impl Default for JobConfigurationExtractSource {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelExtractOptions {
     /// The 1-based ID of the trial to be exported from a hyperparameter tuning model.
@@ -289,7 +289,7 @@ pub struct ModelExtractOptions {
     pub trial_id: i64,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct JobConfigurationExtract {
     /// A list of fully-qualified Google Cloud Storage URIs where the extracted table should be written.
@@ -311,7 +311,7 @@ pub struct JobConfigurationExtract {
     pub source: JobConfigurationExtractSource,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct JobConfigurationQuery {
     /// [Required] SQL query text to execute.
@@ -403,7 +403,7 @@ pub struct JobConfigurationQuery {
     pub create_session: bool,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct JobConfiguration {
     /// Output only. The type of the job. Can be QUERY, LOAD, EXTRACT, COPY or UNKNOWN.
@@ -433,7 +433,7 @@ pub struct JobConfiguration {
     pub labels: Option<HashMap<String, String>>,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct JobReference {
     /// Required. The ID of the project containing this job.
@@ -444,7 +444,7 @@ pub struct JobReference {
     pub location: Option<String>,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Job {
     /// Output only. The resource type.
@@ -467,7 +467,7 @@ pub struct Job {
     pub job_status: JobStatus,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct JobStatus {
     /// Output only. Final error result of the job.
@@ -481,7 +481,7 @@ pub struct JobStatus {
     pub state: String,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct JobStatistics {
     /// Output only. Creation time of this job, in milliseconds since the epoch.
@@ -536,8 +536,14 @@ pub struct JobStatistics {
     #[serde(deserialize_with = "crate::http::from_str")]
     pub final_execution_duration_ms: i64,
 }
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionInfo {
+    /// Output only. The id of the session.
+    pub session_id: String,
+}
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct JobStatisticsLoad {
     /// Output only. Number of source files in a load job.
@@ -561,7 +567,7 @@ pub struct JobStatisticsLoad {
     pub timeline: Vec<QueryTimelineSample>,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct JobStatisticsExtract {
     /// Output only. Number of files per destination URI or URI pattern specified in the extract configuration. These values will be in the same order as the URIs specified in the 'destinationUris' field.
@@ -575,15 +581,16 @@ pub struct JobStatisticsExtract {
     pub timeline: Vec<QueryTimelineSample>,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum EvaluationKind {
+    #[default]
     EvaluationKindUnspecified,
     Statement,
     Expression,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ScriptStackFrame {
     /// Output only. One-based start line.
@@ -600,28 +607,28 @@ pub struct ScriptStackFrame {
     pub text: String,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct RowLevelSecurityStatistics {
     /// Whether any accessed data was protected by row access policies.
     pub row_level_security_applied: bool,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DataMaskingStatistics {
     /// Whether any accessed data was protected by the data masking.
     pub data_masking_applied: bool,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionInfo {
     /// Output only. [Alpha] Id of the transaction..
     pub transaction_id: String,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ScriptStatistics {
     /// Whether this child job was a statement or expression.
@@ -630,11 +637,11 @@ pub struct ScriptStatistics {
     pub stack_frames: Vec<ScriptStackFrame>,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct JobStatisticsQuery {
     /// Output only. Describes execution plan for the query.
-    pub query_plan: Vec<ExpalinQueryStage>,
+    pub query_plan: Vec<ExplainQueryStage>,
     /// Output only. The original estimate of bytes processed for the job.
     #[serde(deserialize_with = "crate::http::from_str")]
     pub estimated_bytes_processed: i64,
@@ -735,7 +742,7 @@ pub struct JobStatisticsQuery {
     /// Output only. Search query specific statistics.
     pub search_statistics: SearchStatistics,
     /// Output only. Performance insights.
-    pub performance_insights: PeformanceInsights,
+    pub performance_insights: PerformanceInsights,
     /// Output only. Statistics of a Spark procedure job.
     pub spark_statistics: Option<SparkStatistics>,
     /// Output only. Total bytes transferred for cross-cloud queries such as Cross Cloud Transfer and CREATE TABLE AS SELECT (CTAS).
@@ -744,9 +751,237 @@ pub struct JobStatisticsQuery {
     pub transferred_bytes: Option<i64>,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct ExplainStageQuery {
+pub struct SearchStatistics {
+    /// Specifies the index usage mode for the query.
+    pub index_usage_mode: IndexUsageMode,
+    /// When indexUsageMode is UNUSED or PARTIALLY_USED, this field explains why indexes were not used in all or part of the search query. If indexUsageMode is FULLY_USED, this field is not populated.
+    pub index_unused_reasons: Vec<IndexUnusedReason>,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum IndexUsageMode {
+    #[default]
+    IndexUsageModeUnspecified,
+    Unused,
+    PartiallyUsed,
+    FullyUsed,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct IndexUnusedReason {
+    /// Specifies the high-level reason for the scenario when no search index was used.
+    pub code: IndexUnusedCode,
+    /// Free form human-readable reason for the scenario when no search index was used.
+    pub message: String,
+    /// Specifies the base table involved in the reason that no search index was used.
+    pub base_table: TableReference,
+    /// Specifies the name of the unused search index, if available.
+    pub index_name: String,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum IndexUnusedCode {
+    #[default]
+    CodeUnspecified,
+    IndexConfigNotAvailable,
+    PendingIndexCreation,
+    BaseTableTruncated,
+    IndexConfigModified,
+    TimeTravelQuery,
+    NoPruningPower,
+    UnindexedSearchFields,
+    UnsupportedSearchPattern,
+    OptimizedWithMaterializedView,
+    SecuredByDataMasking,
+    MismatchedTextAnalyzer,
+    BaseTableTooSmall,
+    BaseTableTooLarge,
+    EstimatedPerformanceGainTooLow,
+    InternalError,
+    OtherReason,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PerformanceInsights {
+    /// Output only. Average execution ms of previous runs. Indicates the job ran slow compared to previous executions. To find previous executions, use INFORMATION_SCHEMA tables and filter jobs with same query hash.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub avg_previous_execution_ms: i64,
+    /// Output only. Standalone query stage performance insights, for exploring potential improvements.
+    pub stage_performance_standalone_insights: Vec<StagePerformanceStandaloneInsight>,
+    /// Output only. Query stage performance insights compared to previous runs,
+    /// for diagnosing performance regression.
+    pub stage_performance_change_insights: Vec<StagePerformanceChangeInsight>,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct StagePerformanceStandaloneInsight {
+    /// Output only. The stage id that the insight mapped to.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub stage_id: i64,
+    /// Output only. True if the stage has a slot contention issue.
+    pub slot_contention: bool,
+    /// Output only. True if the stage has insufficient shuffle quota.
+    pub insufficient_shuffle_quota: bool,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct StagePerformanceChangeInsight {
+    /// Output only. The stage id that the insight mapped to.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub stage_id: i64,
+    /// Output only. Input data change insight of the query stage.
+    pub input_data_change: InputDataChange,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct InputDataChange {
+    /// Output only. Records read difference percentage compared to a previous run
+    pub records_read_diff_percentage: f64,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct SparkStatistics {
+    /// Output only. Endpoints returned from Dataproc.
+    /// Key list: - history_server_endpoint: A link to Spark job UI.
+    /// An object containing a list of "key": value pairs.
+    /// Example: { "name": "wrench", "mass": "1.3kg", "count": "3" }.
+    pub endpoints: HashMap<String, String>,
+    /// Output only. Spark job ID if a Spark job is created successfully.
+    pub spark_job_id: String,
+    /// Output only. Location where the Spark job is executed.
+    /// A location is selected by BigQueury for jobs configured to run in a multi-region.
+    pub spark_job_location: String,
+    /// Output only. Logging info is used to generate a link to Cloud Logging.
+    pub logging_info: LoggingInfo,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct LoggingInfo {
+    /// Output only. Resource type used for logging.
+    pub resource_type: String,
+    /// Output only. Project ID where the Spark logs were written.
+    pub project_id: String,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportDataStatistics {
+    /// Number of destination files generated in case of EXPORT DATA statement only.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub file_count: i64,
+    /// [Alpha] Number of destination rows generated in case of EXPORT DATA statement only.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub row_count: i64,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ExternalServiceCost {
+    /// External service name.
+    pub external_service: String,
+    /// External service cost in terms of bigquery bytes processed.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub bytes_processed: i64,
+    /// External service cost in terms of bigquery bytes billed.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub bytes_billed: i64,
+    /// External service cost in terms of bigquery slot milliseconds.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub slot_ms: i64,
+    /// Non-preemptable reserved slots used for external job.
+    /// For example, reserved slots for Cloua AI Platform job are the VM usages converted to BigQuery slot with equivalent mount of price.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub reserved_slot_count: i64,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct BiEngineStatistics {
+    /// Output only. Specifies which mode of BI Engine acceleration was performed (if any).
+    pub bi_engine_mode: BiEngineMode,
+    /// Output only. Specifies which mode of BI Engine acceleration was performed (if any).
+    pub acceleration_mode: BiEngineAccelerationMode,
+    /// In case of DISABLED or PARTIAL biEngineMode, these contain the explanatory reasons as to why BI Engine could not accelerate. In case the full query was accelerated, this field is not populated.
+    pub bi_engine_reasons: Vec<BiEngineReason>,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum BiEngineMode {
+    #[default]
+    AccelerationModeUnspecified,
+    Disabled,
+    Partial,
+    Full,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum BiEngineAccelerationMode {
+    #[default]
+    BiEngineAccelerationModeUnspecified,
+    BiEngineDisabled,
+    PartialInput,
+    FullInput,
+    FullQuery,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct BiEngineReason {
+    /// Output only. High-level BI Engine reason for partial or disabled acceleration
+    pub code: BiEngineCode,
+    /// Output only. Free form human-readable reason for partial or disabled acceleration.
+    pub message: String,
+}
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum BiEngineCode {
+    #[default]
+    CodeUnspecified,
+    NoReservation,
+    InsufficientReservation,
+    UnsupportedSqlText,
+    InputTooLarge,
+    OtherReason,
+    TableExcluded,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct LoadQueryStatistics {
+    /// Output only. Number of source files in a LOAD query.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub input_files: i64,
+    /// Output only. Number of bytes of source data in a LOAD query.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub input_file_bytes: i64,
+    /// Output only. Number of rows imported in a LOAD query. Note that while a LOAD query is in the running state, this value may change.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub output_rows: i64,
+    /// Output only. Size of the loaded data in bytes.
+    /// Note that while a LOAD query is in the running state, this value may change.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub output_bytes: i64,
+    /// Output only. The number of bad records encountered while processing a LOAD query. Note that if the job has failed because of more bad records encountered than the maximum allowed in the load job configuration, then this number can be less than the total number of bad records present in the input data.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub bad_records: i64,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ExplainQueryStage {
     /// Human-readable name for the stage.
     pub name: String,
     /// Unique ID for the stage within the plan.
@@ -817,7 +1052,7 @@ pub struct ExplainStageQuery {
     pub slot_ms: i64,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ExplainQueryStep {
     /// Machine-readable operation type.
@@ -826,7 +1061,21 @@ pub struct ExplainQueryStep {
     pub substeps: Vec<String>,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct DmlStats {
+    /// Output only. Number of inserted Rows. Populated by DML INSERT and MERGE statements
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub inserted_row_count: i64,
+    /// Output only. Number of deleted Rows. populated by DML DELETE, MERGE and TRUNCATE statements.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub deleted_row_count: i64,
+    /// Output only. Number of updated Rows. Populated by DML UPDATE and MERGE statements.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub updated_row_count: i64,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct QueryTimelineSample {
     /// Milliseconds elapsed since the start of query execution.
@@ -849,7 +1098,7 @@ pub struct QueryTimelineSample {
     pub estimated_runnable_units: i64,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct MlStatistics {
     /// Output only. Maximum number of iterations specified as maxIterations in the 'CREATE MODEL' query.
@@ -859,14 +1108,14 @@ pub struct MlStatistics {
     /// Results for all completed iterations. Empty for hyperparameter tuning jobs.
     pub iteration_results: Vec<IterationResult>,
     /// Output only. The type of the model that is being trained.
-    pub model_type: ModeType,
+    pub model_type: ModelType,
     /// Output only. Training type of the job.
     pub training_type: TrainingType,
     /// Output only. Trials of a hyperparameter tuning job sorted by trialId.
     pub hparam_trials: Vec<HparamTuningTrial>,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TrainingType {
     /// Unspecified training type.
