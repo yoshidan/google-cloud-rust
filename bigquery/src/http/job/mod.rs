@@ -1,13 +1,14 @@
 use crate::http::dataset::DatasetReference;
-use crate::http::model::{HparamTuningTrial, IterationResult};
+use crate::http::model::{EvaluationMetrics, HparamTuningTrial, IterationResult, ModelReference};
 use crate::http::routine::RoutineReference;
 use crate::http::table::{
-    Clustering, ExternalDataConfiguration, RangePartitioning, TableReference, TableSchema, TimePartitioning,
-    UserDefinedFunctionResource,
+    Clustering, DecimalTargetType, ExternalDataConfiguration, HivePartitioningOptions, ParquetOptions,
+    RangePartitioning, TableReference, TableSchema, TimePartitioning, UserDefinedFunctionResource,
 };
-use crate::http::types::{ConnectionProperty, EncryptionConfiguration, QueryParameter};
+use crate::http::types::{ConnectionProperty, EncryptionConfiguration, ErrorProto, QueryParameter};
 use std::collections::HashMap;
 use std::iter::Map;
+use time::OffsetDateTime;
 
 pub mod delete;
 
@@ -75,6 +76,243 @@ pub enum SchemaUpdateOption {
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
+pub struct JobConfigurationLoad {
+    /// [Required] The fully-qualified URIs that point to your data in Google Cloud.
+    /// For Google Cloud Storage URIs: Each URI can contain one '*' wildcard character and it must come after the 'bucket' name. Size limits related to load jobs apply to external data sources. For Google Cloud Bigtable URIs: Exactly one URI can be specified and it has be a fully specified and valid HTTPS URL for a Google Cloud Bigtable table. For Google Cloud Datastore backups: Exactly one URI can be specified. Also, the '*' wildcard character is not allowed.
+    pub source_uris: Vec<String>,
+    /// Optional. The schema for the destination table. The schema can be omitted if the destination table already exists, or if you're loading data from Google Cloud Datastore.
+    pub schema: Option<TableSchema>,
+    /// [Required] The destination table to load the data into.
+    pub destination_table: TableReference,
+    /// Optional. [Experimental] Properties with which to create the destination table if it is new.
+    pub destination_table_properties: Option<DestinationTableProperties>,
+    /// Optional. Specifies whether the job is allowed to create new tables. The following values are supported:
+    /// CREATE_IF_NEEDED: If the table does not exist, BigQuery creates the table.
+    /// CREATE_NEVER: The table must already exist. If it does not, a 'notFound' error is returned in the job result. The default value is CREATE_IF_NEEDED. Creation, truncation and append actions occur as one atomic update upon job completion.
+    pub create_disposition: Option<CreateDisposition>,
+    /// Optional. Specifies the action that occurs if the destination table already exists. The following values are supported:
+    /// WRITE_TRUNCATE: If the table already exists, BigQuery overwrites the table data and uses the schema from the load.
+    /// WRITE_APPEND: If the table already exists, BigQuery appends the data to the table.
+    /// WRITE_EMPTY: If the table already exists and contains data, a 'duplicate' error is returned in the job result.
+    /// The default value is WRITE_APPEND. Each action is atomic and only occurs if BigQuery is able to complete the job successfully. Creation, truncation and append actions occur as one atomic update upon job completion.
+    pub write_disposition: Option<WriteDisposition>,
+    /// Optional. Specifies a string that represents a null value in a CSV file.
+    /// For example, if you specify "\N", BigQuery interprets "\N" as a null value when loading a CSV file. The default value is the empty string. If you set this property to a custom value, BigQuery throws an error if an empty string is present for all data types except for STRING and BYTE. For STRING and BYTE columns, BigQuery interprets the empty string as an empty value.
+    pub null_marker: Option<String>,
+    /// Optional. The separator character for fields in a CSV file.
+    /// The separator is interpreted as a single byte. For files encoded in ISO-8859-1, any single character can be used as a separator. For files encoded in UTF-8, characters represented in decimal range 1-127 (U+0001-U+007F) can be used without any modification. UTF-8 characters encoded with multiple bytes (i.e. U+0080 and above) will have only the first byte used for separating fields. The remaining bytes will be treated as a part of the field. BigQuery also supports the escape sequence "\t" (U+0009) to specify a tab separator. The default value is comma (",", U+002C).
+    pub field_delimiter: Option<String>,
+    /// Optional. The number of rows at the top of a CSV file that BigQuery will skip when loading the data. The default value is 0. This property is useful if you have header rows in the file that should be skipped. When autodetect is on, the behavior is the following:
+    /// skipLeadingRows unspecified - Autodetect tries to detect headers in the first row. If they are not detected, the row is read as data. Otherwise data is read starting from the second row.
+    /// skipLeadingRows is 0 - Instructs autodetect that there are no headers and data should be read starting from the first row.
+    /// skipLeadingRows = N > 0 - Autodetect skips N-1 rows and tries to detect headers in row N. If headers are not detected, row N is just skipped. Otherwise row N is used to extract column names for the detected schema.
+    pub skip_leading_rows: Option<i64>,
+    /// Optional. The character encoding of the data.
+    /// The supported values are UTF-8, ISO-8859-1, UTF-16BE, UTF-16LE, UTF-32BE, and UTF-32LE. The default value is UTF-8. BigQuery decodes the data after the raw, binary data has been split using the values of the quote and fieldDelimiter properties.
+    /// If you don't specify an encoding, or if you specify a UTF-8 encoding when the CSV file is not UTF-8 encoded, BigQuery attempts to convert the data to UTF-8. Generally, your data loads successfully, but it may not match byte-for-byte what you expect. To avoid this, specify the correct encoding by using the --encoding flag.
+    /// If BigQuery can't convert a character other than the ASCII 0 character, BigQuery converts the character to the standard Unicode replacement character: �.
+    pub encoding: Option<String>,
+    /// Optional. The value that is used to quote data sections in a CSV file. BigQuery converts the string to ISO-8859-1 encoding, and then uses the first byte of the encoded string to split the data in its raw, binary state. The default value is a double-quote ('"'). If your data does not contain quoted sections, set the property value to an empty string. If your data contains quoted newline characters, you must also set the allowQuotedNewlines property to true. To include the specific quote character within a quoted value, precede it with an additional matching quote character. For example, if you want to escape the default character ' " ', use ' "" '. @default "
+    pub quote: Option<String>,
+    /// Optional. The maximum number of bad records that BigQuery can ignore when running the job.
+    /// If the number of bad records exceeds this value, an invalid error is returned in the job result. The default value is 0, which requires that all records are valid. This is only supported for CSV and NEWLINE_DELIMITED_JSON file formats.
+    pub max_bad_records: Option<i64>,
+    /// Indicates if BigQuery should allow quoted data sections that contain newline characters in a CSV file.
+    /// The default value is false.
+    pub allow_quoted_newlines: Option<bool>,
+    /// Optional. The format of the data files.
+    /// For CSV files, specify "CSV". For datastore backups, specify "DATASTORE_BACKUP". For newline-delimited JSON, specify "NEWLINE_DELIMITED_JSON". For Avro, specify "AVRO". For parquet, specify "PARQUET". For orc, specify "ORC". The default value is CSV.
+    pub source_format: Option<String>,
+    /// Optional. Accept rows that are missing trailing optional columns.
+    /// The missing values are treated as nulls.
+    /// If false, records with missing trailing columns are treated as bad records,
+    /// and if there are too many bad records, an invalid error is returned in the job result.
+    /// The default value is false.
+    /// Only applicable to CSV, ignored for other formats.
+    pub allow_jagged_rows: Option<bool>,
+    /// Optional. Indicates if BigQuery should allow extra values that are not represented in the table schema.
+    /// If true, the extra values are ignored.
+    /// If false, records with extra columns are treated as bad records, and if there are too many bad records,
+    /// an invalid error is returned in the job result.
+    /// The default value is false.
+    /// The sourceFormat property determines what BigQuery treats as an extra value:
+    /// CSV: Trailing columns JSON: Named values that don't match any column names in the
+    /// table schema Avro, Parquet, ORC: Fields in the file schema that don't exist in the table schema.
+    pub ignore_unknown_values: Option<bool>,
+    /// If sourceFormat is set to "DATASTORE_BACKUP",
+    /// indicates which entity properties to load into BigQuery from a Cloud Datastore backup.
+    /// Property names are case sensitive and must be top-level properties.
+    /// If no properties are specified, BigQuery loads all properties.
+    /// If any named property isn't found in the Cloud Datastore backup,
+    /// an invalid error is returned in the job result.
+    pub projection_fields: Vec<String>,
+    /// Optional. Indicates if we should automatically infer the options and schema for CSV and JSON sources.
+    pub autodetect: Option<bool>,
+    /// Allows the schema of the destination table to be updated as a side effect of
+    /// the load job if a schema is autodetected or supplied in the job configuration.
+    /// Schema update options are supported in two cases:
+    /// when writeDisposition is WRITE_APPEND;
+    /// when writeDisposition is WRITE_TRUNCATE
+    /// and the destination table is a partition of a table,
+    /// specified by partition decorators. For normal tables, WRITE_TRUNCATE will always overwrite the schema.
+    /// One or more of the following values are specified:
+    /// ALLOW_FIELD_ADDITION: allow adding a nullable field to the schema.
+    /// ALLOW_FIELD_RELAXATION: allow relaxing a required field in the original schema to nullable.
+    pub schema_update_options: Vec<SchemaUpdateOption>,
+    /// Time-based partitioning specification for the destination table.
+    /// Only one of timePartitioning and rangePartitioning should be specified.
+    pub time_partitioning: Option<TimePartitioning>,
+    /// Range partitioning specification for the destination table.
+    /// Only one of timePartitioning and rangePartitioning should be specified.
+    pub range_partitioning: Option<RangePartitioning>,
+    /// Clustering specification for the destination table.
+    pub clustering: Clustering,
+    /// Custom encryption configuration (e.g., Cloud KMS keys)
+    pub destination_encryption_configuration: Option<EncryptionConfiguration>,
+    /// Optional. If sourceFormat is set to "AVRO", indicates whether to interpret logical types as the corresponding BigQuery data type (for example, TIMESTAMP), instead of using the raw type (for example, INTEGER).
+    pub use_avro_logical_types: Option<bool>,
+    /// Optional. The user can provide a reference file with the reader schema. This file is only loaded if it is part of source URIs, but is not loaded otherwise. It is enabled for the following formats: AVRO, PARQUET, ORC.
+    pub reference_file_schema_uri: Option<String>,
+    /// Optional. When set, configures hive partitioning support.
+    /// Not all storage formats support hive partitioning -- requesting hive partitioning on an unsupported format will lead to an error, as will providing an invalid specification.
+    pub hive_partitioning_options: Option<HivePartitioningOptions>,
+    /// Defines the list of possible SQL data types to which the source decimal values are converted.
+    /// This list and the precision and the scale parameters of the decimal field determine the target type.
+    /// In the order of NUMERIC, BIGNUMERIC, and STRING,
+    /// a type is picked if it is in the specified list and if it supports the precision and the scale. STRING supports all precision and scale values. If none of the listed types supports the precision and the scale, the type supporting the widest range in the specified list is picked, and if a value exceeds the supported range when reading the data, an error will be thrown.
+    ///     Example: Suppose the value of this field is ["NUMERIC", "BIGNUMERIC"]. If (precision,scale) is:
+    ///
+    ///     (38,9) -> NUMERIC;
+    ///     (39,9) -> BIGNUMERIC (NUMERIC cannot hold 30 integer digits);
+    ///     (38,10) -> BIGNUMERIC (NUMERIC cannot hold 10 fractional digits);
+    ///     (76,38) -> BIGNUMERIC;
+    ///     (77,38) -> BIGNUMERIC (error if value exeeds supported range).
+    ///     This field cannot contain duplicate types. The order of the types in this field is ignored. For example, ["BIGNUMERIC", "NUMERIC"] is the same as ["NUMERIC", "BIGNUMERIC"] and NUMERIC always takes precedence over BIGNUMERIC.
+    ///
+    /// Defaults to ["NUMERIC", "STRING"] for ORC and ["NUMERIC"] for the other file formats.
+    pub decimal_target_types: Option<Vec<DecimalTargetType>>,
+    /// Optional. Additional properties to set if sourceFormat is set to PARQUET.
+    pub parquet_options: Option<ParquetOptions>,
+    /// Optional. When sourceFormat is set to "CSV", this indicates whether the embedded ASCII control characters (the first 32 characters in the ASCII-table, from '\x00' to '\x1F') are preserved.
+    pub preserve_ascii_control_characters: Option<bool>,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum JobConfigurationSourceTable {
+    SourceTable(TableReference),
+    SourceTables(Vec<TableReference>),
+}
+
+impl Default for JobConfigurationSourceTable {
+    fn default() -> Self {
+        Self::SourceTable(TableReference::default())
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum OperationType {
+    #[default]
+    OperationTypeUnspecified,
+    Copy,
+    Snapshot,
+    Restore,
+    Clone,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct JobConfigurationTableCopy {
+    #[serde(flatten)]
+    pub source_table: JobConfigurationSourceTable,
+    /// Optional. Specifies whether the job is allowed to create new tables. The following values are supported:
+    /// CREATE_IF_NEEDED: If the table does not exist, BigQuery creates the table.
+    /// CREATE_NEVER: The table must already exist. If it does not, a 'notFound' error is returned in the job result.
+    /// The default value is CREATE_IF_NEEDED. Creation, truncation and append actions occur as one atomic update upon job completion.
+    pub create_disposition: Option<CreateDisposition>,
+    /// Optional. Specifies the action that occurs if the destination table already exists. The following values are supported:
+    /// WRITE_TRUNCATE: If the table already exists, BigQuery overwrites the table data and uses the schema from the source table.
+    /// WRITE_APPEND: If the table already exists, BigQuery appends the data to the table.
+    /// WRITE_EMPTY: If the table already exists and contains data, a 'duplicate' error is returned in the job result.
+    /// The default value is WRITE_EMPTY. Each action is atomic and only occurs if BigQuery is able to complete the job successfully. Creation, truncation and append actions occur as one atomic update upon job completion.
+    pub write_disposition: Option<WriteDisposition>,
+    /// Custom encryption configuration (e.g., Cloud KMS keys).
+    pub destination_encryption_configuration: Option<EncryptionConfiguration>,
+    /// Optional. Supported operation types in table copy job.
+    pub operation_type: Option<OperationType>,
+    /// Optional. The time when the destination table expires.
+    /// Expired tables will be deleted and their storage reclaimed.
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub destination_expiration_time: Option<OffsetDateTime>,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct DestinationTableProperties {
+    /// Optional. Friendly name for the destination table.
+    /// If the table already exists, it should be same as the existing friendly name.
+    pub friendly_name: Option<String>,
+    /// Optional. The description for the destination table.
+    /// This will only be used if the destination table is newly created.
+    /// If the table already exists and a value different than the current description is provided, the job will fail.
+    pub description: Option<String>,
+    /// Optional. The labels associated with this table.
+    /// You can use these to organize and group your tables.
+    /// This will only be used if the destination table is newly created.
+    /// If the table already exists and labels are different than the current labels are provided, the job will fail.
+    /// An object containing a list of "key": value pairs.
+    /// Example: { "name": "wrench", "mass": "1.3kg", "count": "3" }.
+    pub labels: Option<HashMap<String, String>>,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum JobConfigurationExtractSource {
+    SourceTable(TableReference),
+    SourceModel(ModelReference),
+}
+
+impl Default for JobConfigurationExtractSource {
+    fn default() -> Self {
+        Self::SourceTable(TableReference::default())
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelExtractOptions {
+    /// The 1-based ID of the trial to be exported from a hyperparameter tuning model.
+    /// If not specified, the trial with id = Model.defaultTrialId is exported.
+    /// This field is ignored for models not trained with hyperparameter tuning.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub trial_id: i64,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct JobConfigurationExtract {
+    /// A list of fully-qualified Google Cloud Storage URIs where the extracted table should be written.
+    pub destination_uris: Vec<String>,
+    /// Optional. Whether to print out a header row in the results. Default is true. Not applicable when extracting models.
+    pub print_header: Option<bool>,
+    /// Optional. When extracting data in CSV format, this defines the delimiter to use between fields in the exported data. Default is ','. Not applicable when extracting models.
+    pub field_delimiter: Option<String>,
+    /// Optional. The exported file format.
+    /// Possible values include CSV, NEWLINE_DELIMITED_JSON, PARQUET, or AVRO for tables and ML_TF_SAVED_MODEL or ML_XGBOOST_BOOSTER for models. The default value for tables is CSV. Tables with nested or repeated fields cannot be exported as CSV. The default value for models is ML_TF_SAVED_MODEL.
+    pub destination_format: Option<String>,
+    /// Optional. The compression type to use for exported files. Possible values include DEFLATE, GZIP, NONE, SNAPPY, and ZSTD. The default value is NONE. Not all compression formats are support for all file formats. DEFLATE is only supported for Avro. ZSTD is only supported for Parquet. Not applicable when extracting models.
+    pub compression: Option<String>,
+    /// Whether to use logical types when extracting to AVRO format. Not applicable when extracting models.
+    pub use_avro_logical_types: Option<bool>,
+    /// Optional. Model extract options only applicable when extracting models.
+    pub model_extract_options: Option<ModelExtractOptions>,
+    #[serde(flatten)]
+    pub source: JobConfigurationExtractSource,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct JobConfigurationQuery {
     /// [Required] SQL query text to execute.
     /// The useLegacySql field can be used to indicate whether the query uses legacy SQL or GoogleSQL.
@@ -105,7 +343,7 @@ pub struct JobConfigurationQuery {
     pub default_dataset: Option<DatasetReference>,
     /// Optional. Specifies a priority for the query.
     /// Possible values include INTERACTIVE and BATCH. The default value is INTERACTIVE.
-    pub priority: Optiopn<Priority>,
+    pub priority: Option<Priority>,
     /// Optional. If true and query uses legacy SQL dialect,
     /// allows the query to produce arbitrarily large result tables at a slight cost in performance.
     /// Requires destinationTable to be set.
@@ -177,7 +415,7 @@ pub struct JobConfiguration {
     /// [Pick one] Copies a table.
     pub copy: Option<JobConfigurationTableCopy>,
     /// [Pick one] Configures an extract job.
-    pub extract: Option<JobConfigurationTableExtract>,
+    pub extract: Option<JobConfigurationExtract>,
     /// Optional. If set, don't actually run this job.
     /// A valid query will return a mostly empty response with some processing statistics,
     /// while an invalid query will return the same error it would if it wasn't a dry run.
@@ -231,6 +469,20 @@ pub struct Job {
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
+pub struct JobStatus {
+    /// Output only. Final error result of the job.
+    /// If present, indicates that the job has completed and was unsuccessful.
+    pub error_result: Option<ErrorProto>,
+    /// Output only. The first errors encountered during the running of the job.
+    /// The final message includes the number of errors that caused the process to stop.
+    /// Errors here do not necessarily mean that the job has not completed or was unsuccessful.
+    pub errors: Vec<ErrorProto>,
+    /// Output only. Running state of the job. Valid states include 'PENDING', 'RUNNING', and 'DONE'.
+    pub state: String,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct JobStatistics {
     /// Output only. Creation time of this job, in milliseconds since the epoch.
     /// This field will be present on all jobs.
@@ -256,7 +508,7 @@ pub struct JobStatistics {
     /// Output only. Statistics for a load job.
     pub load: Option<JobStatisticsLoad>,
     /// Output only. Statistics for an extract job.
-    pub extract: Option<JobStatisticsLoad>,
+    pub extract: Option<JobStatisticsExtract>,
     /// Output only. Slot-milliseconds for the job.
     #[serde(deserialize_with = "crate::http::from_str")]
     pub total_slot_ms: i64,
@@ -283,6 +535,99 @@ pub struct JobStatistics {
     /// as BigQuery may internally re-attempt to execute the job.
     #[serde(deserialize_with = "crate::http::from_str")]
     pub final_execution_duration_ms: i64,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct JobStatisticsLoad {
+    /// Output only. Number of source files in a load job.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub input_files: i64,
+    /// Output only. Number of bytes of source data in a load job.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub input_file_bytes: i64,
+    /// Output only. Number of rows imported in a load job.
+    /// Note that while an import job is in the running state, this value may change.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub output_rows: i64,
+    /// Output only. Size of the loaded data in bytes.
+    /// Note that while a load job is in the running state, this value may change.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub output_bytes: i64,
+    /// Output only. The number of bad records encountered. Note that if the job has failed because of more bad records encountered than the maximum allowed in the load job configuration, then this number can be less than the total number of bad records present in the input data.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub bad_records: i64,
+    /// Output only. Describes a timeline of job execution.
+    pub timeline: Vec<QueryTimelineSample>,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct JobStatisticsExtract {
+    /// Output only. Number of files per destination URI or URI pattern specified in the extract configuration. These values will be in the same order as the URIs specified in the 'destinationUris' field.
+    #[serde(deserialize_with = "crate::http::from_str_vec")]
+    pub destination_uri_file_counts: Vec<i64>,
+    /// Output only. Number of user bytes extracted into the result.
+    /// This is the byte count as computed by BigQuery for billing purposes and doesn't have any relationship with the number of actual result bytes extracted in the desired format.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub input_bytes: i64,
+    /// Output only. Describes a timeline of job execution.
+    pub timeline: Vec<QueryTimelineSample>,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum EvaluationKind {
+    EvaluationKindUnspecified,
+    Statement,
+    Expression,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ScriptStackFrame {
+    /// Output only. One-based start line.
+    pub start_line: i64,
+    /// Output only. One-based start column.
+    pub start_column: i64,
+    /// Output only. One-based end line.
+    pub end_line: i64,
+    /// Output only. One-based end column.
+    pub end_column: i64,
+    /// Output only. Name of the active procedure, empty if in a top-level script.
+    pub procedure_id: String,
+    /// Output only. Text of the current statement/expression.
+    pub text: String,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct RowLevelSecurityStatistics {
+    /// Whether any accessed data was protected by row access policies.
+    pub row_level_security_applied: bool,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct DataMaskingStatistics {
+    /// Whether any accessed data was protected by the data masking.
+    pub data_masking_applied: bool,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct TransactionInfo {
+    /// Output only. [Alpha] Id of the transaction..
+    pub transaction_id: String,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ScriptStatistics {
+    /// Whether this child job was a statement or expression.
+    pub evaluation_kind: EvaluationKind,
+    /// Stack trace showing the line/column/procedure name of each frame on the stack at the point where the current evaluation happened. The leaf frame is first, the primary script is last. Never empty.
+    pub stack_frames: Vec<ScriptStackFrame>,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]

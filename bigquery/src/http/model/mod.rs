@@ -2,6 +2,18 @@ use std::collections::HashMap;
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
+pub struct ModelReference {
+    /// Required. The ID of the project containing this table.
+    pub project_id: String,
+    /// Required. The ID of the dataset containing this table.
+    pub dataset_id: String,
+    /// Required. The ID of the model.
+    /// The ID must contain only letters (a-z, A-Z), numbers (0-9), or underscores (_). The maximum length is 1,024 characters.    pub model_id: String,
+    pub model_id: String,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct IterationResult {
     /// Index of the iteration, 0 based.
     pub index: i32,

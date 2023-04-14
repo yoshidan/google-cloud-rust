@@ -20,6 +20,67 @@ pub struct EncryptionConfiguration {
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
+pub struct QueryParameter {
+    /// Optional. If unset, this is a positional parameter. Otherwise, should be unique within a query.
+    pub name: Option<String>,
+    /// Required. The type of this parameter.
+    pub parameter_type: QueryParameterType,
+    /// Required. The value of this parameter.
+    pub parameter_value: QueryParameterValue,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct QueryParameterStructType {
+    /// Optional. The name of this field.
+    pub name: Option<String>,
+    /// Required. The type of this field.
+    #[serde(rename(serialize = "type", deserialize = "type"))]
+    pub field_type: QueryParameterType,
+    /// Optional. Human-oriented description of the field.
+    pub description: Option<String>,
+}
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct QueryParameterType {
+    /// Required. The top level type of this field.
+    #[serde(rename(serialize = "type", deserialize = "type"))]
+    pub parameter_type: String,
+    /// Optional. The type of the array's elements, if this is an array.
+    pub array_type: Option<QueryParameterType>,
+    /// Optional. The types of the fields of this struct, in order, if this is a struct.
+    pub struct_types: Option<Vec<QueryParameterStructType>>,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct QueryParameterValue {
+    /// Optional. The value of this value, if a simple scalar type.
+    pub value: Option<String>,
+    /// Optional. The array values, if this is an array type.
+    pub array_values: Option<Vec<QueryParameterValue>>,
+    /// The struct field values.
+    /// An object containing a list of "key": value pairs.
+    /// Example: { "name": "wrench", "mass": "1.3kg", "count": "3" }..
+    pub struct_values: Option<QueryParameterValue>,
+}
+
+/// Currently supported connection properties:
+/// A connection-level property to customize query behavior. Under JDBC, these correspond directly to connection properties passed to the DriverManager.
+/// Under ODBC, these correspond to properties in the connection string.
+/// dataset_project_id: represents the default project for datasets that are used in the query. Setting the system variable @@dataset_project_id achieves the same behavior.
+/// time_zone: represents the default timezone used to run the query.
+/// session_id: associates the query with a given session.
+/// query_label: associates the query with a given job label. If set, all subsequent queries in a script or session will have this label. For the format in which a you can specify a query label, see labels in the JobConfiguration resource type. Additional properties are allowed, but ignored. Specifying multiple connection properties with the same key returns an error.
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectionProperty {
+    pub key: String,
+    pub value: String,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct AuditLogConfig {
     /// The log type that this config enables.
     pub log_type: LogType,
@@ -151,4 +212,15 @@ pub struct Policy {
     ///
     /// A base64-encoded string.
     pub etag: Option<String>,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ErrorProto {
+    /// A short error code that summarizes the error.
+    pub reason: String,
+    /// Specifies where the error occurred, if present.
+    pub location: String,
+    /// A human-readable description of the error.
+    pub message: String,
 }
