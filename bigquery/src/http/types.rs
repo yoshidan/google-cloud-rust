@@ -218,9 +218,9 @@ pub struct Policy {
 #[serde(rename_all = "camelCase")]
 pub struct ErrorProto {
     /// A short error code that summarizes the error.
-    pub reason: String,
+    pub reason: Option<String>,
     /// Specifies where the error occurred, if present.
-    pub location: String,
+    pub location: Option<String>,
     /// A human-readable description of the error.
-    pub message: String,
+    pub message: Option<String>,
 }

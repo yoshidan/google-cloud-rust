@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use time::OffsetDateTime;
 
 pub mod delete;
+pub mod insert;
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -375,7 +376,7 @@ pub struct JobConfigurationQuery {
     /// GoogleSQL only. Set to POSITIONAL to use positional (?) query parameters or to NAMED to use named (@myparam) query parameters in this query.
     pub parameter_mode: Option<String>,
     /// Query parameters for GoogleSQL queries.
-    pub query_parameters: Vec<QueryParameter>,
+    pub query_parameters: Option<Vec<QueryParameter>>,
     /// Allows the schema of the destination table to be updated as a side effect of the query job. Schema update options are supported in two cases: when writeDisposition is WRITE_APPEND; when writeDisposition is WRITE_TRUNCATE and the destination table is a partition of a table, specified by partition decorators. For normal tables, WRITE_TRUNCATE will always overwrite the schema. One or more of the following values are specified:
     /// ALLOW_FIELD_ADDITION: allow adding a nullable field to the schema.
     /// ALLOW_FIELD_RELAXATION: allow relaxing a required field in the origin
@@ -400,7 +401,7 @@ pub struct JobConfigurationQuery {
     /// The session identifier is returned as part of the SessionInfo message within the query statistics.
     /// The new session's location will be set to Job.JobReference.location if it is present,
     /// otherwise it's set to the default location based on existing routing logic.
-    pub create_session: bool,
+    pub create_session: Option<bool>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -456,15 +457,16 @@ pub struct Job {
     /// Output only. A URL that can be used to access the resource again.
     pub self_link: String,
     /// Output only. Email address of the user who ran the job.
+    #[serde(rename(deserialize = "user_email"))]
     pub user_email: String,
     /// Required. Describes the job configuration.
     pub configuration: JobConfiguration,
-    /// Optional. Reference describing the unique-per-user name of the job.
-    pub job_reference: Option<JobReference>,
+    /// Reference describing the unique-per-user name of the job.
+    pub job_reference: JobReference,
     /// Output only. Information about the job, including starting time and ending time of the job.
-    pub statistics: JobStatistics,
+    pub statistics: Option<JobStatistics>,
     /// Output only. The status of this job. Examine this value when polling an asynchronous job to see if the job is complete.
-    pub job_status: JobStatus,
+    pub status: JobStatus,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -476,7 +478,7 @@ pub struct JobStatus {
     /// Output only. The first errors encountered during the running of the job.
     /// The final message includes the number of errors that caused the process to stop.
     /// Errors here do not necessarily mean that the job has not completed or was unsuccessful.
-    pub errors: Vec<ErrorProto>,
+    pub errors: Option<Vec<ErrorProto>>,
     /// Output only. Running state of the job. Valid states include 'PENDING', 'RUNNING', and 'DONE'.
     pub state: String,
 }
@@ -497,12 +499,12 @@ pub struct JobStatistics {
     #[serde(deserialize_with = "crate::http::from_str")]
     pub end_time: i64,
     /// Output only. Total bytes processed for the job.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub total_bytes_processed: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub total_bytes_processed: Option<i64>,
     /// Output only. [TrustedTester] Job progress (0.0 -> 1.0) for LOAD and EXTRACT jobs.
-    pub completion_ratio: f32,
+    pub completion_ratio: Option<f32>,
     /// Output only. Quotas which delayed this job's start time.
-    pub quota_deferments: Vec<String>,
+    pub quota_deferments: Option<Vec<String>>,
     /// Output only. Statistics for a query job.
     pub query: Option<JobStatisticsQuery>,
     /// Output only. Statistics for a load job.
@@ -510,31 +512,31 @@ pub struct JobStatistics {
     /// Output only. Statistics for an extract job.
     pub extract: Option<JobStatisticsExtract>,
     /// Output only. Slot-milliseconds for the job.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub total_slot_ms: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub total_slot_ms: Option<i64>,
     /// Output only. Name of the primary reservation assigned to this job.
     /// Note that this could be different than reservations reported in the reservation usage field if parent reservations were used to execute this job.
-    pub reservation_id: String,
+    pub reservation_id: Option<String>,
     /// Output only. Number of child jobs executed.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub num_child_jobs: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub num_child_jobs: Option<i64>,
     /// Output only. If this is a child job, specifies the job ID of the parent.
-    pub parent_job_id: String,
+    pub parent_job_id: Option<String>,
     /// Output only. If this a child job of a script, specifies information about the context of this job within the script.
-    pub script_statistics: ScriptStatistics,
+    pub script_statistics: Option<ScriptStatistics>,
     /// Output only. Statistics for row-level security. Present only for query and extract jobs.
-    pub row_level_security_statistics: RowLevelSecurityStatistics,
+    pub row_level_security_statistics: Option<RowLevelSecurityStatistics>,
     /// Output only. Statistics for data-masking. Present only for query and extract jobs.
-    pub data_masking_statistics: DataMaskingStatistics,
+    pub data_masking_statistics: Option<DataMaskingStatistics>,
     /// Output only. [Alpha] Information of the multi-statement transaction if this job is part of one.
     /// This property is only expected on a child job or a job that is in a session. A script parent job is not part of the transaction started in the script.
-    pub transaction_info: TransactionInfo,
+    pub transaction_info: Option<TransactionInfo>,
     /// Output only. Information of the session if this job is part of one.
-    pub session_info: SessionInfo,
+    pub session_info: Option<SessionInfo>,
     /// Output only. The duration in milliseconds of the execution of the final attempt of this job,
     /// as BigQuery may internally re-attempt to execute the job.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub final_execution_duration_ms: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub final_execution_duration_ms: Option<i64>,
 }
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
@@ -641,53 +643,53 @@ pub struct ScriptStatistics {
 #[serde(rename_all = "camelCase")]
 pub struct JobStatisticsQuery {
     /// Output only. Describes execution plan for the query.
-    pub query_plan: Vec<ExplainQueryStage>,
+    pub query_plan: Option<Vec<ExplainQueryStage>>,
     /// Output only. The original estimate of bytes processed for the job.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub estimated_bytes_processed: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub estimated_bytes_processed: Option<i64>,
     /// Output only. Describes a timeline of job execution.
-    pub timeline: Vec<QueryTimelineSample>,
+    pub timeline: Option<Vec<QueryTimelineSample>>,
     /// Output only. Total number of partitions processed from all partitioned tables referenced in the job.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub total_partitions_processed: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub total_partitions_processed: Option<i64>,
     /// Output only. Total bytes processed for the job.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub total_bytes_processed: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub total_bytes_processed: Option<i64>,
     /// Output only. For dry-run jobs, totalBytesProcessed is an estimate and
     /// this field specifies the accuracy of the estimate. Possible values can be:
     /// UNKNOWN: accuracy of the estimate is unknown.
     /// PRECISE: estimate is precise.
     /// LOWER_BOUND: estimate is lower bound of what the query would cost.
     /// UPPER_BOUND: estimate is upper bound of what the query would cost.
-    pub total_bytes_processed_accuracy: String,
+    pub total_bytes_processed_accuracy: Option<String>,
     /// Output only. If the project is configured to use on-demand pricing,
     /// then this field contains the total bytes billed for the job. If the project is configured to use flat-rate pricing,
     /// then you are not billed for bytes and this field is informational only.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub total_bytes_billed: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub total_bytes_billed: Option<i64>,
     /// Output only. Billing tier for the job.
     /// This is a BigQuery-specific concept which is not related to the GCP notion of "free tier".
     /// The value here is a measure of the query's resource consumption relative to the amount of data scanned. For on-demand queries, the limit is 100, and all queries within this limit are billed at the standard on-demand rates. On-demand queries that exceed this limit will fail with a billingTierLimitExceeded error.
-    pub billing_tier: i32,
+    pub billing_tier: Option<i32>,
     /// Output only. Slot-milliseconds for the job.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub total_slot_ms: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub total_slot_ms: Option<i64>,
     /// Output only. Whether the query result was fetched from the query cache.
-    pub cache_hist: bool,
+    pub cache_hist: Option<bool>,
     /// Output only. Referenced tables for the job. Queries that reference more than 50 tables will not have a complete list.
-    pub referenced_tables: Vec<TableReference>,
+    pub referenced_tables: Option<Vec<TableReference>>,
     /// Output only. Referenced routines for the job.
-    pub referenced_routines: Vec<RoutineReference>,
+    pub referenced_routines: Option<Vec<RoutineReference>>,
     /// Output only. The schema of the results. Present only for successful dry run of non-legacy SQL queries.
     pub schema: Option<TableSchema>,
     /// Output only. The number of rows affected by a DML statement.
     /// Present only for DML statements INSERT, UPDATE or DELETE.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub num_dml_affected_rows: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub num_dml_affected_rows: Option<i64>,
     /// Output only. Detailed statistics for DML statements INSERT, UPDATE, DELETE, MERGE or TRUNCATE
-    pub dml_stats: DmlStats,
+    pub dml_stats: Option<DmlStats>,
     /// Output only. GoogleSQL only: list of undeclared query parameters detected during a dry run validation
-    pub undeclared_query_parameters: Vec<QueryParameter>,
+    pub undeclared_query_parameters: Option<Vec<QueryParameter>>,
     /// Output only. The type of query statement, if valid. Possible values:
     /// SELECT: SELECT statement.
     /// INSERT: INSERT statement.
@@ -711,17 +713,16 @@ pub struct JobStatisticsQuery {
     /// DROP_VIEW: DROP VIEW statement.
     /// EXPORT_MODEL: EXPORT MODEL statement.
     /// LOAD_DATA: LOAD DATA statement.
-    pub statement_type: String,
+    pub statement_type: Option<String>,
     /// Output only. The DDL operation performed, possibly dependent on the pre-existence of the DDL target.
-    pub ddl_operation_performed: String,
+    pub ddl_operation_performed: Option<String>,
     /// Output only. The DDL target table. Present only for CREATE/DROP TABLE/VIEW and DROP ALL ROW ACCESS POLICIES queries.
     pub ddl_target_table: Option<TableReference>,
     /// Output only. The DDL target row access policy. Present only for CREATE/DROP ROW ACCESS POLICY queries.
     pub ddl_target_row_access_policy: Option<RowAccessPolicyReference>,
     /// Output only. The number of row access policies affected by a DDL statement.
     /// Present only for DROP ALL ROW ACCESS POLICIES queries.
-    #[serde(deserialize_with = "crate::http::from_str_option")]
-    #[serde(default)]
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
     pub ddl_affected_row_access_policy_count: Option<i64>,
     /// Output only. [Beta] The DDL target routine. Present only for CREATE/DROP FUNCTION/PROCEDURE queries.
     pub ddl_target_routine: Option<RoutineReference>,
@@ -740,14 +741,13 @@ pub struct JobStatisticsQuery {
     /// Output only. Referenced view for DCL statement.
     pub dcl_target_view: Option<TableReference>,
     /// Output only. Search query specific statistics.
-    pub search_statistics: SearchStatistics,
+    pub search_statistics: Option<SearchStatistics>,
     /// Output only. Performance insights.
-    pub performance_insights: PerformanceInsights,
+    pub performance_insights: Option<PerformanceInsights>,
     /// Output only. Statistics of a Spark procedure job.
     pub spark_statistics: Option<SparkStatistics>,
     /// Output only. Total bytes transferred for cross-cloud queries such as Cross Cloud Transfer and CREATE TABLE AS SELECT (CTAS).
-    #[serde(deserialize_with = "crate::http::from_str_option")]
-    #[serde(default)]
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
     pub transferred_bytes: Option<i64>,
 }
 
