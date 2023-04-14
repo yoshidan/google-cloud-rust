@@ -994,8 +994,8 @@ pub struct ExplainQueryStage {
     #[serde(deserialize_with = "crate::http::from_str")]
     pub end_ms: i64,
     /// IDs for stages that are inputs to this stage.
-    #[serde(deserialize_with = "crate::http::from_str_vec")]
-    pub input_stages: Vec<i64>,
+    #[serde(deserialize_with = "crate::http::from_str_vec_option")]
+    pub input_stages: Option<Vec<i64>>,
     /// Relative amount of time the average shard spent waiting to be scheduled.
     pub wait_ratio_avg: f64,
     /// Milliseconds the average shard spent waiting to be scheduled.
@@ -1014,6 +1014,7 @@ pub struct ExplainQueryStage {
     /// Relative amount of time the slowest shard spent on CPU-bound tasks.
     pub compute_ratio_max: f64,
     /// Milliseconds the slowest shard spent on CPU-bound tasks.
+    #[serde(deserialize_with = "crate::http::from_str")]
     pub compute_ms_max: i64,
     /// Relative amount of time the average shard spent on writing output.
     pub write_ratio_avg: f64,

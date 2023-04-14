@@ -34,11 +34,46 @@ where
     }
 }
 
-fn from_str_vec<'de, T, D>(deserializer: D) -> Result<Vec<T>, D::Error>
+pub fn from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
 where
     T: FromStr,
     T::Err: Display,
-    D: Deserializer<'de>,
+    D: de::Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    T::from_str(&s).map_err(de::Error::custom)
+}
+
+fn from_str_vec_option<'de, T, D>(deserializer: D) -> Result<Option<Vec<T>>, D::Error>
+    where
+        T: FromStr,
+        T::Err: Display,
+        D: Deserializer<'de>,
+{
+    let s: Result<Value, _> = Deserialize::deserialize(deserializer);
+    match s {
+        Ok(Value::Array(vec)) => {
+            let mut result = Vec::with_capacity(vec.len());
+            for v in vec {
+                let v = match v {
+                    Value::String(s) => T::from_str(&s).map_err(de::Error::custom)?,
+                    Value::Number(s) => T::from_str(&s.to_string()).map_err(de::Error::custom)?,
+                    _ => return Err(de::Error::custom("Incorrect type")),
+                };
+                result.push(v);
+            }
+            Ok(Some(result))
+        }
+        Ok(_) => Err(de::Error::custom("Incorrect type")),
+        Err(_) => Ok(None),
+    }
+}
+
+fn from_str_vec<'de, T, D>(deserializer: D) -> Result<Vec<T>, D::Error>
+    where
+        T: FromStr,
+        T::Err: Display,
+        D: Deserializer<'de>,
 {
     let s: Result<Vec<String>, _> = Vec::deserialize(deserializer);
     match s {
@@ -51,14 +86,4 @@ where
         }
         Err(_) => Ok(vec![]),
     }
-}
-
-pub fn from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
-where
-    T: FromStr,
-    T::Err: Display,
-    D: de::Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    T::from_str(&s).map_err(de::Error::custom)
 }

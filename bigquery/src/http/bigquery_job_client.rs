@@ -1,10 +1,8 @@
 use crate::http::bigquery_client::BigqueryClient;
 use crate::http::error::Error;
-use crate::http::types::Policy;
-use crate::http::{job, table};
+use crate::http::{job};
 
 use crate::http::job::Job;
-use crate::http::table::list::{ListTablesRequest, ListTablesResponse, TableOverview};
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -32,14 +30,14 @@ impl BigqueryJobClient {
 
 #[cfg(test)]
 mod test {
-    use crate::http::bigquery_client::test::create_client;
-    use std::ops::Add;
+    use crate::http::bigquery_client::test::{create_client, create_table_schema};
 
     use crate::http::bigquery_job_client::BigqueryJobClient;
     use crate::http::job::{Job, JobConfiguration, JobConfigurationQuery};
     use serial_test::serial;
     use std::sync::Arc;
     use time::OffsetDateTime;
+    use crate::http::table::Table;
 
     #[ctor::ctor]
     fn init() {
@@ -48,30 +46,54 @@ mod test {
 
     #[tokio::test]
     #[serial]
-    pub async fn crud_job() {
+    pub async fn create_job_error() {
         let (client, project) = create_client().await;
         let client = BigqueryJobClient::new(Arc::new(client));
 
-        // empty
         let mut job1 = Job::default();
         job1.job_reference.job_id = format!("rust_test_{}", OffsetDateTime::now_utc().unix_timestamp());
         job1.job_reference.project_id = project.to_string();
         job1.job_reference.location = Some("asia-northeast1".to_string());
         job1.configuration = JobConfiguration {
             query: Some(JobConfigurationQuery {
-                query: "SELECT 1 FROM rust_test_external_table.test_job1".to_string(),
+                query: "SELECT 1 FROM invalid_table".to_string(),
                 ..Default::default()
             }),
             ..Default::default()
         };
-        let job1 = client.create(&job1).await;
-        let job1 = job1.unwrap();
+        let job1 = client.create(&job1).await.unwrap();
+        assert!(job1.status.errors.is_some());
+        assert!(job1.status.error_result.is_some());
+        let error_result = job1.status.error_result.unwrap();
+        assert_eq!(error_result.reason.unwrap().as_str(), "invalid");
+        assert_eq!(error_result.location.unwrap().as_str(), "invalid_table");
+        assert_eq!(job1.status.state, "DONE");
+    }
 
-        // cleanup
-        let jref = job1.job_reference;
-        client
-            .delete(jref.project_id.as_str(), jref.job_id.as_str())
-            .await
-            .unwrap();
+    #[tokio::test]
+    #[serial]
+    pub async fn create_job() {
+        let (client, project) = create_client().await;
+        let client = Arc::new(client);
+        let client = BigqueryJobClient::new(client);
+
+        // query job
+        let mut job1 = Job::default();
+        job1.job_reference.job_id = format!("rust_test_{}", OffsetDateTime::now_utc().unix_timestamp());
+        job1.job_reference.project_id = project.to_string();
+        job1.job_reference.location = Some("asia-northeast1".to_string());
+        job1.configuration = JobConfiguration {
+            query: Some(JobConfigurationQuery {
+                use_legacy_sql: Some(false),
+                query: "SELECT * FROM rust_test_job.table_data_1681472944".to_string(),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let job1 = client.create(&job1).await.unwrap();
+        assert!(job1.status.errors.is_none());
+        assert!(job1.status.error_result.is_none());
+        assert_eq!(job1.status.state, "DONE");
+        assert_eq!(job1.statistics.unwrap().query.unwrap().statement_type.unwrap().as_str(), "SELECT");
     }
 }

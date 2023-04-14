@@ -53,11 +53,11 @@ impl BigqueryTabledataClient {
 
 #[cfg(test)]
 mod test {
-    use crate::http::bigquery_client::test::create_client;
+    use crate::http::bigquery_client::test::{create_client, create_table_schema};
     use crate::http::bigquery_table_client::BigqueryTableClient;
     use crate::http::bigquery_tabledata_client::BigqueryTabledataClient;
 
-    use crate::http::table::{Table, TableFieldMode, TableFieldSchema, TableFieldType, TableSchema};
+    use crate::http::table::{Table};
     use crate::http::tabledata::insert_all::{InsertAllRequest, Row};
     use crate::http::tabledata::list;
     use crate::http::tabledata::list::{FetchDataRequest, Value};
@@ -99,80 +99,7 @@ mod test {
         table1.table_reference.dataset_id = "rust_test_table".to_string();
         table1.table_reference.project_id = project.to_string();
         table1.table_reference.table_id = format!("table_data_{}", OffsetDateTime::now_utc().unix_timestamp());
-        table1.schema = Some(TableSchema {
-            fields: vec![
-                TableFieldSchema {
-                    name: "col_string".to_string(),
-                    data_type: TableFieldType::String,
-                    max_length: Some(32),
-                    ..Default::default()
-                },
-                TableFieldSchema {
-                    name: "col_number".to_string(),
-                    data_type: TableFieldType::Numeric,
-                    ..Default::default()
-                },
-                TableFieldSchema {
-                    name: "col_number_array".to_string(),
-                    data_type: TableFieldType::Numeric,
-                    mode: Some(TableFieldMode::Repeated),
-                    ..Default::default()
-                },
-                TableFieldSchema {
-                    name: "col_timestamp".to_string(),
-                    data_type: TableFieldType::Timestamp,
-                    ..Default::default()
-                },
-                TableFieldSchema {
-                    name: "col_json".to_string(),
-                    data_type: TableFieldType::Json,
-                    ..Default::default()
-                },
-                TableFieldSchema {
-                    name: "col_json_array".to_string(),
-                    data_type: TableFieldType::Json,
-                    mode: Some(TableFieldMode::Repeated),
-                    ..Default::default()
-                },
-                TableFieldSchema {
-                    name: "col_struct".to_string(),
-                    data_type: TableFieldType::Struct,
-                    fields: Some(vec![
-                        TableFieldSchema {
-                            name: "f1".to_string(),
-                            data_type: TableFieldType::Bool,
-                            ..Default::default()
-                        },
-                        TableFieldSchema {
-                            name: "f2".to_string(),
-                            data_type: TableFieldType::Int64,
-                            mode: Some(TableFieldMode::Repeated),
-                            ..Default::default()
-                        },
-                    ]),
-                    ..Default::default()
-                },
-                TableFieldSchema {
-                    name: "col_struct_array".to_string(),
-                    data_type: TableFieldType::Struct,
-                    fields: Some(vec![
-                        TableFieldSchema {
-                            name: "f1".to_string(),
-                            data_type: TableFieldType::Bool,
-                            ..Default::default()
-                        },
-                        TableFieldSchema {
-                            name: "f2".to_string(),
-                            data_type: TableFieldType::Int64,
-                            mode: Some(TableFieldMode::Repeated),
-                            ..Default::default()
-                        },
-                    ]),
-                    mode: Some(TableFieldMode::Repeated),
-                    ..Default::default()
-                },
-            ],
-        });
+        table1.schema = Some(create_table_schema());
         let table1 = table_client.create(&table1).await.unwrap();
         let ref1 = table1.table_reference;
 

@@ -90,6 +90,7 @@ pub(crate) mod test {
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_token::TokenSourceProvider;
+    use crate::http::table::{TableFieldMode, TableFieldSchema, TableFieldType, TableSchema};
 
     pub async fn create_client() -> (BigqueryClient, String) {
         let tsp = DefaultTokenSourceProvider::new(Config {
@@ -102,5 +103,82 @@ pub(crate) mod test {
         let ts = tsp.token_source();
         let client = BigqueryClient::new(ts, "https://bigquery.googleapis.com", reqwest::Client::new());
         (client, cred.unwrap().project_id.unwrap())
+    }
+
+    pub fn create_table_schema() -> TableSchema {
+        TableSchema {
+            fields: vec![
+                TableFieldSchema {
+                    name: "col_string".to_string(),
+                    data_type: TableFieldType::String,
+                    max_length: Some(32),
+                    ..Default::default()
+                },
+                TableFieldSchema {
+                    name: "col_number".to_string(),
+                    data_type: TableFieldType::Numeric,
+                    ..Default::default()
+                },
+                TableFieldSchema {
+                    name: "col_number_array".to_string(),
+                    data_type: TableFieldType::Numeric,
+                    mode: Some(TableFieldMode::Repeated),
+                    ..Default::default()
+                },
+                TableFieldSchema {
+                    name: "col_timestamp".to_string(),
+                    data_type: TableFieldType::Timestamp,
+                    ..Default::default()
+                },
+                TableFieldSchema {
+                    name: "col_json".to_string(),
+                    data_type: TableFieldType::Json,
+                    ..Default::default()
+                },
+                TableFieldSchema {
+                    name: "col_json_array".to_string(),
+                    data_type: TableFieldType::Json,
+                    mode: Some(TableFieldMode::Repeated),
+                    ..Default::default()
+                },
+                TableFieldSchema {
+                    name: "col_struct".to_string(),
+                    data_type: TableFieldType::Struct,
+                    fields: Some(vec![
+                        TableFieldSchema {
+                            name: "f1".to_string(),
+                            data_type: TableFieldType::Bool,
+                            ..Default::default()
+                        },
+                        TableFieldSchema {
+                            name: "f2".to_string(),
+                            data_type: TableFieldType::Int64,
+                            mode: Some(TableFieldMode::Repeated),
+                            ..Default::default()
+                        },
+                    ]),
+                    ..Default::default()
+                },
+                TableFieldSchema {
+                    name: "col_struct_array".to_string(),
+                    data_type: TableFieldType::Struct,
+                    fields: Some(vec![
+                        TableFieldSchema {
+                            name: "f1".to_string(),
+                            data_type: TableFieldType::Bool,
+                            ..Default::default()
+                        },
+                        TableFieldSchema {
+                            name: "f2".to_string(),
+                            data_type: TableFieldType::Int64,
+                            mode: Some(TableFieldMode::Repeated),
+                            ..Default::default()
+                        },
+                    ]),
+                    mode: Some(TableFieldMode::Repeated),
+                    ..Default::default()
+                },
+            ],
+        }
     }
 }
