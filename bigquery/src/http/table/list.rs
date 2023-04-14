@@ -1,9 +1,6 @@
-use std::collections::HashMap;
-
 use reqwest::{Client, RequestBuilder};
 
-use crate::http::dataset::DatasetReference;
-use crate::http::table::{Clustering, RangePartitioning, TableReference, TimePartitioning, ViewDefinition};
+use crate::http::table::{Clustering, RangePartitioning, TableReference, TimePartitioning};
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]

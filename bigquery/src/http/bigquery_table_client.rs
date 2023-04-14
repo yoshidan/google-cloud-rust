@@ -244,7 +244,7 @@ mod test {
             query: "SELECT col1 FROM rust_test_table.table1".to_string(),
             ..Default::default()
         });
-        let view = client.create(&view).await.unwrap();
+        let _view = client.create(&view).await.unwrap();
 
         // range partition
         let mut table2 = table1.clone();
@@ -258,7 +258,7 @@ mod test {
             },
         });
         table2.expiration_time = Some(OffsetDateTime::now_utc().add(time::Duration::days(1)).unix_timestamp() * 1000);
-        let table2 = client.create(&table2).await.unwrap();
+        let _table2 = client.create(&table2).await.unwrap();
 
         // time partition
         let mut table3 = table1.clone();
@@ -271,7 +271,7 @@ mod test {
         table3.clustering = Some(Clustering {
             fields: vec!["col1".to_string(), "col5".to_string()],
         });
-        let table3 = client.create(&table3).await.unwrap();
+        let _table3 = client.create(&table3).await.unwrap();
 
         // materialized view
         let mut mv = Table::default();
@@ -283,7 +283,7 @@ mod test {
             refresh_interval_ms: Some(3600000),
             ..Default::default()
         });
-        let mv = client.create(&mv).await.unwrap();
+        let _mv = client.create(&mv).await.unwrap();
 
         // delete
         let tables = client
