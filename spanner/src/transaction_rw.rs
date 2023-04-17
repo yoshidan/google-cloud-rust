@@ -4,14 +4,10 @@ use std::sync::atomic::{AtomicI64, Ordering};
 
 use prost_types::Struct;
 
-use google_cloud_gax::grpc::{Code, Status};
+use google_cloud_gax::grpc::{Code, Response, Status};
 use google_cloud_gax::retry::{RetrySetting, TryAs};
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::TransactionId;
-use google_cloud_googleapis::spanner::v1::{
-    commit_request, execute_batch_dml_request, result_set_stats, transaction_options, transaction_selector,
-    BeginTransactionRequest, CommitRequest, CommitResponse, ExecuteBatchDmlRequest, ExecuteSqlRequest, Mutation,
-    ResultSetStats, RollbackRequest, TransactionOptions, TransactionSelector,
-};
+use google_cloud_googleapis::spanner::v1::{commit_request, execute_batch_dml_request, result_set_stats, transaction_options, transaction_selector, BeginTransactionRequest, CommitRequest, CommitResponse, ExecuteBatchDmlRequest, ExecuteSqlRequest, Mutation, ResultSetStats, RollbackRequest, TransactionOptions, TransactionSelector, ResultSet};
 
 use crate::session::ManagedSession;
 use crate::statement::Statement;
@@ -160,6 +156,31 @@ impl ReadWriteTransaction {
 
     pub async fn update(&mut self, stmt: Statement) -> Result<i64, Status> {
         self.update_with_option(stmt, QueryOptions::default()).await
+    }
+
+    pub async fn update_resultset(&mut self, stmt: Statement) -> Result<ResultSet, Status>{
+        let options = QueryOptions::default();
+        let request = ExecuteSqlRequest {
+            session: self.get_session_name(),
+            transaction: Some(self.transaction_selector.clone()),
+            sql: stmt.sql.to_string(),
+            params: Some(prost_types::Struct { fields: stmt.params }),
+            param_types: stmt.param_types,
+            resume_token: vec![],
+            query_mode: options.mode.into(),
+            partition_token: vec![],
+            seqno: self.sequence_number.fetch_add(1, Ordering::Relaxed),
+            query_options: options.optimizer_options,
+            request_options: Transaction::create_request_options(options.call_options.priority),
+        };
+
+        let session = self.as_mut_session();
+        let result = session
+            .spanner_client
+            .execute_sql(request, options.call_options.retry)
+            .await;
+        let response = session.invalidate_if_needed(result).await?;
+        Ok(response.into_inner())
     }
 
     pub async fn update_with_option(&mut self, stmt: Statement, options: QueryOptions) -> Result<i64, Status> {
