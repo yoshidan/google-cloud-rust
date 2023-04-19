@@ -38,10 +38,10 @@ serial_test = "0.9"
 tracing-subscriber = "0.3.11"
 ctor = "0.1.22"
 tokio-util =  {version ="0.7", features = ["codec"] }
-google-cloud-auth = { path = "../foundation/auth" }
+google-cloud-auth = { path = "../foundation/auth", default-features=false }
 
 [features]
 default = ["default-tls"]
-default-tls = ["reqwest/default-tls"]
-rustls-tls = ["reqwest/rustls-tls"]
+default-tls = ["reqwest/default-tls", "google-cloud-auth/default-tls"]
+rustls-tls = ["reqwest/rustls-tls", "google-cloud-auth/rustls-tls"]
 trace = []

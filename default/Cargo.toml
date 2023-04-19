@@ -21,7 +21,7 @@ google-cloud-gax = { version = "0.14", path = "../foundation/gax", optional = tr
 # components
 google-cloud-pubsub = { version = "0.14", path = "../pubsub", optional = true }
 google-cloud-spanner = { version = "0.18", path = "../spanner", optional = true }
-google-cloud-storage = { version = "0.10", path = "../storage", optional = true }
+google-cloud-storage = { version = "0.10", path = "../storage", default-features=false, optional = true }
 
 [dev-dependencies]
 tokio = "1.20"
