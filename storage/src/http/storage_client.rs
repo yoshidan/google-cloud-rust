@@ -46,6 +46,7 @@ use crate::http::object_access_controls::list::ListObjectAccessControlsRequest;
 use crate::http::object_access_controls::patch::PatchObjectAccessControlRequest;
 use crate::http::object_access_controls::ObjectAccessControl;
 use crate::http::objects::compose::ComposeObjectRequest;
+use crate::http::objects::copy::CopyObjectRequest;
 use crate::http::objects::delete::DeleteObjectRequest;
 use crate::http::objects::download::Range;
 use crate::http::objects::get::GetObjectRequest;
@@ -897,6 +898,30 @@ impl StorageClient {
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_object(&self, req: &GetObjectRequest) -> Result<Object, Error> {
         let builder = objects::get::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
+    }
+
+    /// Copy the object.
+    /// https://cloud.google.com/storage/docs/json_api/v1/objects/copy
+    ///
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::objects::copy::CopyObjectRequest;
+    ///
+    /// async fn run(client:Client) {
+    ///     let result = client.copy_object(&CopyObjectRequest{
+    ///         source_bucket: "bucket".to_string(),
+    ///         destination_bucket: "bucket".to_string(),
+    ///         destination_object: "object".to_string(),
+    ///         source_object: "object".to_string(),
+    ///         ..Default::default()
+    ///     }).await;
+    /// }
+    /// ```
+    ///
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn copy_object(&self, req: &CopyObjectRequest) -> Result<Object, Error> {
+        let builder = objects::copy::build(self.v1_endpoint.as_str(), &self.http, req);
         self.send(builder).await
     }
 
