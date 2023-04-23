@@ -34,9 +34,9 @@ pub struct CopyObjectRequest {
     pub if_source_metageneration_not_match: Option<i64>,
     /// Set of properties to return. Defaults to noAcl, unless the object resource specifies the acl property, when it defaults to full.
     ///
-    ///     Acceptable values are:
-    ///     full: Include all properties.
-    ///     noAcl: Omit the owner, acl property.
+    /// Acceptable values are:
+    /// full: Include all properties.
+    /// noAcl: Omit the owner, acl property.
     pub projection: Option<Projection>,
     /// If present, selects a specific revision of the source object (as opposed to the latest version, the default)
     pub source_generation: Option<i64>,
