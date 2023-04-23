@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-gax"
-version = "0.14.0"
+version = "0.14.1"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/foundation/gax"
@@ -16,5 +16,5 @@ tonic = { version = "0.8", features = ["prost", "tls-webpki-roots"] }
 thiserror = "1.0"
 tower = { version = "0.4", features = ["filter"] }
 http = "0.2"
-google-cloud-token = { version = "0.1.0", path = "../token" }
+google-cloud-token = { version = "0.1.1", path = "../token" }
 tokio-retry = "0.3"

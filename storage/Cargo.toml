@@ -11,7 +11,7 @@ description = "Google Cloud Platform storage client library."
 documentation = "https://docs.rs/google-cloud-storage/latest/google_cloud_storage/"
 
 [dependencies]
-google-cloud-token = { version = "0.1.0", path = "../foundation/token" }
+google-cloud-token = { version = "0.1.1", path = "../foundation/token" }
 rsa = "0.6"
 thiserror = "1.0"
 time = { version = "0.3", features = ["std", "macros", "formatting", "parsing", "serde"] }
