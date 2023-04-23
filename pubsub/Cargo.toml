@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-pubsub"
-version = "0.14.0"
+version = "0.14.1"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/pubsub"
