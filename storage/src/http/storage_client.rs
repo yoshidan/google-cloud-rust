@@ -1353,6 +1353,7 @@ mod test {
     use crate::http::object_access_controls::list::ListObjectAccessControlsRequest;
     use crate::http::object_access_controls::ObjectACLRole;
     use crate::http::objects::compose::{ComposeObjectRequest, ComposingTargets};
+    use crate::http::objects::copy::CopyObjectRequest;
     use crate::http::objects::delete::DeleteObjectRequest;
     use crate::http::objects::download::Range;
     use crate::http::objects::get::GetObjectRequest;
@@ -1877,6 +1878,17 @@ mod test {
         assert_eq!(downloaded, vec![2, 3]);
         let downloaded = download(Range(None, Some(2))).await;
         assert_eq!(downloaded, vec![5, 6]);
+
+        let _copied = client
+            .copy_object(&CopyObjectRequest {
+                destination_bucket: bucket_name.to_string(),
+                destination_object: format!("{}_copy", uploaded.name),
+                source_bucket: bucket_name.to_string(),
+                source_object: uploaded.name.to_string(),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
 
         let _rewrited = client
             .rewrite_object(&RewriteObjectRequest {
