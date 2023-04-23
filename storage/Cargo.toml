@@ -42,6 +42,6 @@ google-cloud-auth = { path = "../foundation/auth", default-features=false }
 
 [features]
 default = ["default-tls"]
-default-tls = ["reqwest/default-tls", "google-cloud-auth/default-tls"]
-rustls-tls = ["reqwest/rustls-tls", "google-cloud-auth/rustls-tls"]
+default-tls = ["reqwest/default-tls"]
+rustls-tls = ["reqwest/rustls-tls"]
 trace = []
