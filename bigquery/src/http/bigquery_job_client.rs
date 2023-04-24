@@ -80,11 +80,7 @@ mod test {
     use crate::http::bigquery_tabledata_client::BigqueryTabledataClient;
     use crate::http::job::get_query_results::GetQueryResultsRequest;
     use crate::http::job::query::QueryRequest;
-    use crate::http::job::{
-        CreateDisposition, Job, JobConfiguration, JobConfigurationExtract, JobConfigurationExtractSource,
-        JobConfigurationLoad, JobConfigurationQuery, JobConfigurationSourceTable, JobConfigurationTableCopy, JobType,
-        OperationType, WriteDisposition,
-    };
+    use crate::http::job::{CreateDisposition, Job, JobConfiguration, JobConfigurationExtract, JobConfigurationExtractSource, JobConfigurationLoad, JobConfigurationQuery, JobConfigurationSourceTable, JobConfigurationTableCopy, JobState, JobType, OperationType, WriteDisposition};
     use crate::http::table::{DestinationFormat, SourceFormat, Table, TableReference};
     use crate::http::tabledata::insert_all::{InsertAllRequest, Row};
     use core::default::Default;
@@ -120,7 +116,7 @@ mod test {
         let error_result = job1.status.error_result.unwrap();
         assert_eq!(error_result.reason.unwrap().as_str(), "invalid");
         assert_eq!(error_result.location.unwrap().as_str(), "invalid_table");
-        assert_eq!(job1.status.state, "DONE");
+        assert_eq!(job1.status.state, JobState::Done);
     }
 
     #[tokio::test]
@@ -146,7 +142,7 @@ mod test {
         let job1 = client.create(&job1).await.unwrap();
         assert!(job1.status.errors.is_none());
         assert!(job1.status.error_result.is_none());
-        assert_eq!(job1.status.state, "DONE");
+        assert_eq!(job1.status.state, JobState::Done);
         assert_eq!(
             job1.statistics.unwrap().query.unwrap().statement_type.unwrap().as_str(),
             "SELECT"
@@ -178,7 +174,7 @@ mod test {
         let job1 = client.create(&job1).await.unwrap();
         assert!(job1.status.errors.is_none());
         assert!(job1.status.error_result.is_none());
-        assert!(job1.status.state == "RUNNING" || job1.status.state == "DONE");
+        assert!(job1.status.state == JobState::Running || job1.status.state == JobState::Done);
 
         // copy job
         let mut job2 = Job::default();
@@ -207,7 +203,7 @@ mod test {
         let job2 = client.create(&job2).await.unwrap();
         assert!(job2.status.errors.is_none());
         assert!(job2.status.error_result.is_none());
-        assert!(job2.status.state == "RUNNING" || job2.status.state == "DONE");
+        assert!(job2.status.state == JobState::Running || job2.status.state == JobState::Done);
 
         // extract table job
         let mut job3 = Job::default();
@@ -230,7 +226,7 @@ mod test {
         let job3 = client.create(&job3).await.unwrap();
         assert!(job3.status.errors.is_none());
         assert!(job3.status.error_result.is_none());
-        assert!(job3.status.state == "RUNNING" || job3.status.state == "DONE");
+        assert!(job3.status.state == JobState::Running || job3.status.state == JobState::Done);
     }
 
     #[tokio::test]
