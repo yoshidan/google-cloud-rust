@@ -218,7 +218,7 @@ impl Default for JobConfigurationSourceTable {
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum OperationType {
     #[default]
     OperationTypeUnspecified,
@@ -233,6 +233,7 @@ pub enum OperationType {
 pub struct JobConfigurationTableCopy {
     #[serde(flatten)]
     pub source_table: JobConfigurationSourceTable,
+    pub destination_table: TableReference,
     /// Optional. Specifies whether the job is allowed to create new tables. The following values are supported:
     /// CREATE_IF_NEEDED: If the table does not exist, BigQuery creates the table.
     /// CREATE_NEVER: The table must already exist. If it does not, a 'notFound' error is returned in the job result.
@@ -1010,7 +1011,7 @@ pub struct ExplainQueryStage {
     #[serde(deserialize_with = "crate::http::from_str")]
     pub end_ms: i64,
     /// IDs for stages that are inputs to this stage.
-    #[serde(deserialize_with = "crate::http::from_str_vec_option")]
+    #[serde(default, deserialize_with = "crate::http::from_str_vec_option")]
     pub input_stages: Option<Vec<i64>>,
     /// Relative amount of time the average shard spent waiting to be scheduled.
     pub wait_ratio_avg: f64,

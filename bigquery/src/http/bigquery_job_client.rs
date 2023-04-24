@@ -33,7 +33,7 @@ mod test {
     use crate::http::bigquery_client::test::create_client;
 
     use crate::http::bigquery_job_client::BigqueryJobClient;
-    use crate::http::job::{Job, JobConfiguration, JobConfigurationLoad, JobConfigurationQuery, JobType};
+    use crate::http::job::{CreateDisposition, Job, JobConfiguration, JobConfigurationLoad, JobConfigurationQuery, JobConfigurationSourceTable, JobConfigurationTableCopy, JobType, OperationType, WriteDisposition};
     use crate::http::table::{SourceFormat, TableFieldSchema, TableFieldType, TableReference, TableSchema};
     use serial_test::serial;
     use std::sync::Arc;
@@ -125,5 +125,34 @@ mod test {
         assert!(job1.status.errors.is_none());
         assert!(job1.status.error_result.is_none());
         assert!(job1.status.state == "RUNNING" || job1.status.state == "DONE");
+
+        // copy job
+        let mut job2 = Job::default();
+        job2.job_reference.job_id = format!("rust_test_copy_{}", OffsetDateTime::now_utc().unix_timestamp());
+        job2.job_reference.project_id = project.to_string();
+        job2.job_reference.location = Some("asia-northeast1".to_string());
+        job2.configuration = JobConfiguration {
+            job: JobType::Copy(JobConfigurationTableCopy {
+                source_table: JobConfigurationSourceTable::SourceTable(TableReference {
+                    project_id: project.to_string(),
+                    dataset_id: "rust_test_job".to_string(),
+                    table_id: "rust_test_load_result".to_string(),
+                }),
+                destination_table: TableReference {
+                    project_id: project.to_string(),
+                    dataset_id: "rust_test_job".to_string(),
+                    table_id: "rust_test_load_result_copy".to_string(),
+                },
+                create_disposition: Some(CreateDisposition::CreateIfNeeded),
+                write_disposition: Some(WriteDisposition::WriteAppend),
+                operation_type: Some(OperationType::Copy),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let job2= client.create(&job2).await.unwrap();
+        assert!(job2.status.errors.is_none());
+        assert!(job2.status.error_result.is_none());
+        assert!(job2.status.state == "RUNNING" || job2.status.state == "DONE");
     }
 }
