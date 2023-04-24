@@ -46,6 +46,7 @@ use crate::http::object_access_controls::list::ListObjectAccessControlsRequest;
 use crate::http::object_access_controls::patch::PatchObjectAccessControlRequest;
 use crate::http::object_access_controls::ObjectAccessControl;
 use crate::http::objects::compose::ComposeObjectRequest;
+use crate::http::objects::copy::CopyObjectRequest;
 use crate::http::objects::delete::DeleteObjectRequest;
 use crate::http::objects::download::Range;
 use crate::http::objects::get::GetObjectRequest;
@@ -900,6 +901,30 @@ impl StorageClient {
         self.send(builder).await
     }
 
+    /// Copy the object.
+    /// https://cloud.google.com/storage/docs/json_api/v1/objects/copy
+    ///
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::objects::copy::CopyObjectRequest;
+    ///
+    /// async fn run(client:Client) {
+    ///     let result = client.copy_object(&CopyObjectRequest{
+    ///         source_bucket: "bucket".to_string(),
+    ///         destination_bucket: "bucket".to_string(),
+    ///         destination_object: "object".to_string(),
+    ///         source_object: "object".to_string(),
+    ///         ..Default::default()
+    ///     }).await;
+    /// }
+    /// ```
+    ///
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn copy_object(&self, req: &CopyObjectRequest) -> Result<Object, Error> {
+        let builder = objects::copy::build(self.v1_endpoint.as_str(), &self.http, req);
+        self.send(builder).await
+    }
+
     /// Download the object.
     /// https://cloud.google.com/storage/docs/json_api/v1/objects/get
     /// alt is always media
@@ -1328,6 +1353,7 @@ mod test {
     use crate::http::object_access_controls::list::ListObjectAccessControlsRequest;
     use crate::http::object_access_controls::ObjectACLRole;
     use crate::http::objects::compose::{ComposeObjectRequest, ComposingTargets};
+    use crate::http::objects::copy::CopyObjectRequest;
     use crate::http::objects::delete::DeleteObjectRequest;
     use crate::http::objects::download::Range;
     use crate::http::objects::get::GetObjectRequest;
@@ -1852,6 +1878,17 @@ mod test {
         assert_eq!(downloaded, vec![2, 3]);
         let downloaded = download(Range(None, Some(2))).await;
         assert_eq!(downloaded, vec![5, 6]);
+
+        let _copied = client
+            .copy_object(&CopyObjectRequest {
+                destination_bucket: bucket_name.to_string(),
+                destination_object: format!("{}_copy", uploaded.name),
+                source_bucket: bucket_name.to_string(),
+                source_object: uploaded.name.to_string(),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
 
         let _rewrited = client
             .rewrite_object(&RewriteObjectRequest {

@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-default"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/foundation/auth"
@@ -21,7 +21,7 @@ google-cloud-gax = { version = "0.14", path = "../foundation/gax", optional = tr
 # components
 google-cloud-pubsub = { version = "0.14", path = "../pubsub", optional = true }
 google-cloud-spanner = { version = "0.18", path = "../spanner", optional = true }
-google-cloud-storage = { version = "0.10", path = "../storage", optional = true }
+google-cloud-storage = { version = "0.11", path = "../storage", default-features=false, optional = true }
 
 [dev-dependencies]
 tokio = "1.20"

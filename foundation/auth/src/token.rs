@@ -62,7 +62,9 @@ impl DefaultTokenSourceProvider {
 
         let (project_id, source_credentials) = match project {
             Project::FromMetadataServer(info) => (info.project_id, None),
-            Project::FromFile(cred) => (cred.project_id.clone(), Some(cred)),
+            Project::FromFile(cred) => {
+                (cred.project_id.as_ref().or(cred.quota_project_id.as_ref()).cloned(), Some(cred))
+            }
         };
         Ok(Self {
             ts: Arc::new(DefaultTokenSource {

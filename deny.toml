@@ -233,6 +233,7 @@ skip = [
     { name = "hermit-abi", version = "=0.3" },
     { name = "redox_syscall", version = "=0.2.16" },
     { name = "syn", version = "=1.0.109" },
+    { name = "regex-syntax", version = "=0.6.29" },
 ]
 # Similarly to `skip` allows you to skip certain crates during duplicate
 # detection. Unlike skip, it also includes the entire tree of transitive

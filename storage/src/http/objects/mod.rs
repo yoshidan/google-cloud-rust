@@ -6,6 +6,7 @@ use time::OffsetDateTime;
 use crate::http::object_access_controls::ObjectAccessControl;
 
 pub mod compose;
+pub mod copy;
 pub mod delete;
 pub mod download;
 pub mod get;
