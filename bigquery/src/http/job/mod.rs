@@ -2,10 +2,7 @@ use crate::http::dataset::DatasetReference;
 use crate::http::model::{HparamTuningTrial, IterationResult, ModelReference, ModelType};
 use crate::http::routine::RoutineReference;
 use crate::http::row_access_policy::RowAccessPolicyReference;
-use crate::http::table::{
-    Clustering, DecimalTargetType, ExternalDataConfiguration, HivePartitioningOptions, ParquetOptions,
-    RangePartitioning, SourceFormat, TableReference, TableSchema, TimePartitioning, UserDefinedFunctionResource,
-};
+use crate::http::table::{Clustering, DecimalTargetType, DestinationFormat, ExternalDataConfiguration, HivePartitioningOptions, ParquetOptions, RangePartitioning, SourceFormat, TableReference, TableSchema, TimePartitioning, UserDefinedFunctionResource};
 use crate::http::types::{ConnectionProperty, EncryptionConfiguration, ErrorProto, QueryParameter};
 use std::collections::HashMap;
 use time::OffsetDateTime;
@@ -308,7 +305,7 @@ pub struct JobConfigurationExtract {
     pub field_delimiter: Option<String>,
     /// Optional. The exported file format.
     /// Possible values include CSV, NEWLINE_DELIMITED_JSON, PARQUET, or AVRO for tables and ML_TF_SAVED_MODEL or ML_XGBOOST_BOOSTER for models. The default value for tables is CSV. Tables with nested or repeated fields cannot be exported as CSV. The default value for models is ML_TF_SAVED_MODEL.
-    pub destination_format: Option<String>,
+    pub destination_format: Option<DestinationFormat>,
     /// Optional. The compression type to use for exported files. Possible values include DEFLATE, GZIP, NONE, SNAPPY, and ZSTD. The default value is NONE. Not all compression formats are support for all file formats. DEFLATE is only supported for Avro. ZSTD is only supported for Parquet. Not applicable when extracting models.
     pub compression: Option<String>,
     /// Whether to use logical types when extracting to AVRO format. Not applicable when extracting models.

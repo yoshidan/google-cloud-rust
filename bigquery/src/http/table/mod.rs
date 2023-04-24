@@ -567,6 +567,18 @@ pub enum SourceFormat {
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum DestinationFormat {
+    #[default]
+    Csv,
+    NewlineDelimitedJson,
+    Parquet,
+    Avro,
+    MlTfSavedModel,
+    MlXgboostBooster,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ExternalDataConfiguration {
     /// [Required] The fully-qualified URIs that point to your data in Google Cloud.

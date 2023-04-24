@@ -33,8 +33,8 @@ mod test {
     use crate::http::bigquery_client::test::create_client;
 
     use crate::http::bigquery_job_client::BigqueryJobClient;
-    use crate::http::job::{CreateDisposition, Job, JobConfiguration, JobConfigurationLoad, JobConfigurationQuery, JobConfigurationSourceTable, JobConfigurationTableCopy, JobType, OperationType, WriteDisposition};
-    use crate::http::table::{SourceFormat, TableFieldSchema, TableFieldType, TableReference, TableSchema};
+    use crate::http::job::{CreateDisposition, Job, JobConfiguration, JobConfigurationExtract, JobConfigurationExtractSource, JobConfigurationLoad, JobConfigurationQuery, JobConfigurationSourceTable, JobConfigurationTableCopy, JobType, OperationType, WriteDisposition};
+    use crate::http::table::{DestinationFormat, SourceFormat, TableReference};
     use serial_test::serial;
     use std::sync::Arc;
     use time::OffsetDateTime;
@@ -112,6 +112,7 @@ mod test {
                 encoding: Some("UTF-8".to_string()),
                 skip_leading_rows: Some(0),
                 autodetect: Some(true),
+                write_disposition: Some(WriteDisposition::WriteTruncate),
                 destination_table: TableReference {
                     project_id: project.to_string(),
                     dataset_id: "rust_test_job".to_string(),
@@ -144,7 +145,7 @@ mod test {
                     table_id: "rust_test_load_result_copy".to_string(),
                 },
                 create_disposition: Some(CreateDisposition::CreateIfNeeded),
-                write_disposition: Some(WriteDisposition::WriteAppend),
+                write_disposition: Some(WriteDisposition::WriteTruncate),
                 operation_type: Some(OperationType::Copy),
                 ..Default::default()
             }),
@@ -154,5 +155,28 @@ mod test {
         assert!(job2.status.errors.is_none());
         assert!(job2.status.error_result.is_none());
         assert!(job2.status.state == "RUNNING" || job2.status.state == "DONE");
+
+        // extract table job
+        let mut job3 = Job::default();
+        job3.job_reference.job_id = format!("rust_test_extract_{}", OffsetDateTime::now_utc().unix_timestamp());
+        job3.job_reference.project_id = project.to_string();
+        job3.job_reference.location = Some("asia-northeast1".to_string());
+        job3.configuration = JobConfiguration {
+            job: JobType::Extract(JobConfigurationExtract {
+                destination_uris: vec!["gs://rust-bq-test/extracted_data.json".to_string()],
+                destination_format: Some(DestinationFormat::NewlineDelimitedJson),
+                source: JobConfigurationExtractSource::SourceTable(TableReference {
+                    project_id: project.to_string(),
+                    dataset_id: "rust_test_job".to_string(),
+                    table_id: "rust_test_load_result".to_string(),
+                }),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let job3= client.create(&job3).await.unwrap();
+        assert!(job3.status.errors.is_none());
+        assert!(job3.status.error_result.is_none());
+        assert!(job3.status.state == "RUNNING" || job3.status.state == "DONE");
     }
 }
