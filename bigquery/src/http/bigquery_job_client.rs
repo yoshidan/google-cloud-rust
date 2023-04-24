@@ -5,6 +5,7 @@ use crate::http::job;
 use crate::http::job::query::{QueryRequest, QueryResponse};
 use crate::http::job::Job;
 use std::sync::Arc;
+use crate::http::job::get_query_results::{GetQueryResultsRequest, GetQueryResultsResponse};
 
 #[derive(Clone)]
 pub struct BigqueryJobClient {
@@ -33,6 +34,12 @@ impl BigqueryJobClient {
         let builder = job::query::build(self.inner.endpoint(), self.inner.http(), project_id, data);
         self.inner.send(builder).await
     }
+
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn get_query_results(&self, project_id: &str, job_id: &str, data: &GetQueryResultsRequest) -> Result<GetQueryResultsResponse, Error> {
+        let builder = job::get_query_results::build(self.inner.endpoint(), self.inner.http(), project_id, job_id, data);
+        self.inner.send(builder).await
+    }
 }
 
 #[cfg(test)]
@@ -53,6 +60,8 @@ mod test {
     use serial_test::serial;
     use std::sync::Arc;
     use time::OffsetDateTime;
+    use core::default::Default;
+    use crate::http::job::get_query_results::GetQueryResultsRequest;
 
     #[ctor::ctor]
     fn init() {
@@ -256,7 +265,42 @@ mod test {
             .unwrap();
         assert!(result.page_token.is_some());
         assert_eq!(result.rows.unwrap().len(), 2);
-        assert_eq!(result.total_rows, 3);
+        assert_eq!(result.total_rows.unwrap(), 3);
+        assert_eq!(result.total_bytes_processed, 0);
+        assert!(result.job_complete);
+
+        // query all results
+        let mut page_token = result.page_token;
+        let location = result.job_reference.location;
+        loop {
+            let query_results= client.get_query_results(result.job_reference.project_id.as_str(), result.job_reference.job_id.as_str(), &GetQueryResultsRequest {
+                page_token,
+                location: location.clone(),
+                ..Default::default()
+            }).await.unwrap();
+            assert_eq!(query_results.rows.unwrap().len(), 1);
+            assert_eq!(query_results.total_rows, 3);
+            if query_results.page_token.is_none() {
+                break
+            }
+            page_token = query_results.page_token
+        }
+
+        // dry run
+        let result = client
+            .query(
+                project.as_str(),
+                &QueryRequest {
+                    dry_run: Some(true),
+                    max_results: Some(10),
+                    query: format!("SELECT * FROM rust_test_job.{}", ref1.table_id.as_str()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+        assert!(result.job_reference.job_id.is_empty());
+        assert!(result.total_rows.is_none());
         assert_eq!(result.total_bytes_processed, 0);
         assert!(result.job_complete);
     }

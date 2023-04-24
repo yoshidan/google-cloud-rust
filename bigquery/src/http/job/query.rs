@@ -115,8 +115,8 @@ pub struct QueryResponse {
     pub job_reference: JobReference,
     /// The total number of rows in the complete query result set,
     /// which can be more than the number of rows in this single page of results.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub total_rows: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub total_rows: Option<i64>,
     /// A token used for paging results.
     /// A non-empty token indicates that additional results are available.
     /// To see additional results, query the jobs.getQueryResults method.

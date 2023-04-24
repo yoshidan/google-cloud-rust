@@ -14,6 +14,7 @@ use time::OffsetDateTime;
 pub mod delete;
 pub mod insert;
 pub mod query;
+pub mod get_query_results;
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -459,6 +460,8 @@ pub struct JobReference {
     /// Required. The ID of the project containing this job.
     pub project_id: String,
     /// Required. The ID of the job. The ID must contain only letters (a-z, A-Z), numbers (0-9), underscores (_), or dashes (-). The maximum length is 1,024 characters.
+    /// Not found when the job of query is dry run.
+    #[serde(default)]
     pub job_id: String,
     /// Optional. The geographic location of the job. The default value is US.
     pub location: Option<String>,
