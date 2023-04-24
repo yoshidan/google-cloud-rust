@@ -2,6 +2,7 @@ use crate::http::bigquery_client::BigqueryClient;
 use crate::http::error::Error;
 use crate::http::job;
 
+use crate::http::job::query::{QueryRequest, QueryResponse};
 use crate::http::job::Job;
 use std::sync::Arc;
 
@@ -26,6 +27,12 @@ impl BigqueryJobClient {
         let builder = job::delete::build(self.inner.endpoint(), self.inner.http(), project_id, job_id);
         self.inner.send_get_empty(builder).await
     }
+
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn query(&self, project_id: &str, data: &QueryRequest) -> Result<QueryResponse, Error> {
+        let builder = job::query::build(self.inner.endpoint(), self.inner.http(), project_id, data);
+        self.inner.send(builder).await
+    }
 }
 
 #[cfg(test)]
@@ -33,7 +40,12 @@ mod test {
     use crate::http::bigquery_client::test::create_client;
 
     use crate::http::bigquery_job_client::BigqueryJobClient;
-    use crate::http::job::{CreateDisposition, Job, JobConfiguration, JobConfigurationExtract, JobConfigurationExtractSource, JobConfigurationLoad, JobConfigurationQuery, JobConfigurationSourceTable, JobConfigurationTableCopy, JobType, OperationType, WriteDisposition};
+    use crate::http::job::query::QueryRequest;
+    use crate::http::job::{
+        CreateDisposition, Job, JobConfiguration, JobConfigurationExtract, JobConfigurationExtractSource,
+        JobConfigurationLoad, JobConfigurationQuery, JobConfigurationSourceTable, JobConfigurationTableCopy, JobType,
+        OperationType, WriteDisposition,
+    };
     use crate::http::table::{DestinationFormat, SourceFormat, TableReference};
     use serial_test::serial;
     use std::sync::Arc;
@@ -151,7 +163,7 @@ mod test {
             }),
             ..Default::default()
         };
-        let job2= client.create(&job2).await.unwrap();
+        let job2 = client.create(&job2).await.unwrap();
         assert!(job2.status.errors.is_none());
         assert!(job2.status.error_result.is_none());
         assert!(job2.status.state == "RUNNING" || job2.status.state == "DONE");
@@ -174,9 +186,31 @@ mod test {
             }),
             ..Default::default()
         };
-        let job3= client.create(&job3).await.unwrap();
+        let job3 = client.create(&job3).await.unwrap();
         assert!(job3.status.errors.is_none());
         assert!(job3.status.error_result.is_none());
         assert!(job3.status.state == "RUNNING" || job3.status.state == "DONE");
+    }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn query() {
+        let (client, project) = create_client().await;
+        let client = Arc::new(client);
+        let client = BigqueryJobClient::new(client);
+        let result = client
+            .query(
+                project.as_str(),
+                &QueryRequest {
+                    query: "SELECT * FROM rust_test_job.table_data_1681472944".to_string(),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(result.total_rows, 0);
+        assert_eq!(result.total_bytes_processed, 0);
+        assert!(result.job_complete);
+        assert!(result.cache_hit);
     }
 }

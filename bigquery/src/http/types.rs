@@ -1,4 +1,11 @@
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct DataFormatOptions {
+    /// Optional. Output timestamp as usec int64. Default is false.
+    pub use_int64_timestamp: Option<bool>,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(untagged)]
 pub enum Collation {
     /// '': empty string. Default to case-sensitive behavior.

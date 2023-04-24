@@ -2,13 +2,18 @@ use crate::http::dataset::DatasetReference;
 use crate::http::model::{HparamTuningTrial, IterationResult, ModelReference, ModelType};
 use crate::http::routine::RoutineReference;
 use crate::http::row_access_policy::RowAccessPolicyReference;
-use crate::http::table::{Clustering, DecimalTargetType, DestinationFormat, ExternalDataConfiguration, HivePartitioningOptions, ParquetOptions, RangePartitioning, SourceFormat, TableReference, TableSchema, TimePartitioning, UserDefinedFunctionResource};
+use crate::http::table::{
+    Clustering, DecimalTargetType, DestinationFormat, ExternalDataConfiguration, HivePartitioningOptions,
+    ParquetOptions, RangePartitioning, SourceFormat, TableReference, TableSchema, TimePartitioning,
+    UserDefinedFunctionResource,
+};
 use crate::http::types::{ConnectionProperty, EncryptionConfiguration, ErrorProto, QueryParameter};
 use std::collections::HashMap;
 use time::OffsetDateTime;
 
 pub mod delete;
 pub mod insert;
+pub mod query;
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
