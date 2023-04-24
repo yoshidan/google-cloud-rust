@@ -12,9 +12,11 @@ use std::collections::HashMap;
 use time::OffsetDateTime;
 
 pub mod delete;
-pub mod insert;
-pub mod query;
+pub mod get;
 pub mod get_query_results;
+pub mod insert;
+pub mod list;
+pub mod query;
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -492,6 +494,15 @@ pub struct Job {
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum JobState {
+    #[default]
+    Done,
+    Pending,
+    Running,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct JobStatus {
     /// Output only. Final error result of the job.
@@ -502,7 +513,7 @@ pub struct JobStatus {
     /// Errors here do not necessarily mean that the job has not completed or was unsuccessful.
     pub errors: Option<Vec<ErrorProto>>,
     /// Output only. Running state of the job. Valid states include 'PENDING', 'RUNNING', and 'DONE'.
-    pub state: String,
+    pub state: JobState,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]

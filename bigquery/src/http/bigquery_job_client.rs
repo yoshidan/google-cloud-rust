@@ -2,10 +2,12 @@ use crate::http::bigquery_client::BigqueryClient;
 use crate::http::error::Error;
 use crate::http::job;
 
+use crate::http::job::get::GetJobRequest;
+use crate::http::job::get_query_results::{GetQueryResultsRequest, GetQueryResultsResponse};
+use crate::http::job::list::{JobOverview, ListJobsRequest, ListJobsResponse};
 use crate::http::job::query::{QueryRequest, QueryResponse};
 use crate::http::job::Job;
 use std::sync::Arc;
-use crate::http::job::get_query_results::{GetQueryResultsRequest, GetQueryResultsResponse};
 
 #[derive(Clone)]
 pub struct BigqueryJobClient {
@@ -30,15 +32,42 @@ impl BigqueryJobClient {
     }
 
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn get(&self, project_id: &str, job_id: &str, data: &GetJobRequest) -> Result<Job, Error> {
+        let builder = job::get::build(self.inner.endpoint(), self.inner.http(), project_id, job_id, data);
+        self.inner.send(builder).await
+    }
+
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn query(&self, project_id: &str, data: &QueryRequest) -> Result<QueryResponse, Error> {
         let builder = job::query::build(self.inner.endpoint(), self.inner.http(), project_id, data);
         self.inner.send(builder).await
     }
 
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn get_query_results(&self, project_id: &str, job_id: &str, data: &GetQueryResultsRequest) -> Result<GetQueryResultsResponse, Error> {
+    pub async fn get_query_results(
+        &self,
+        project_id: &str,
+        job_id: &str,
+        data: &GetQueryResultsRequest,
+    ) -> Result<GetQueryResultsResponse, Error> {
         let builder = job::get_query_results::build(self.inner.endpoint(), self.inner.http(), project_id, job_id, data);
         self.inner.send(builder).await
+    }
+
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn list(&self, project_id: &str, req: &ListJobsRequest) -> Result<Vec<JobOverview>, Error> {
+        let mut page_token: Option<String> = None;
+        let mut jobs = vec![];
+        loop {
+            let builder = job::list::build(self.inner.endpoint(), self.inner.http(), project_id, req, page_token);
+            let response: ListJobsResponse = self.inner.send(builder).await?;
+            jobs.extend(response.jobs);
+            if response.next_page_token.is_none() {
+                break;
+            }
+            page_token = response.next_page_token;
+        }
+        Ok(jobs)
     }
 }
 
@@ -49,6 +78,7 @@ mod test {
     use crate::http::bigquery_job_client::BigqueryJobClient;
     use crate::http::bigquery_table_client::BigqueryTableClient;
     use crate::http::bigquery_tabledata_client::BigqueryTabledataClient;
+    use crate::http::job::get_query_results::GetQueryResultsRequest;
     use crate::http::job::query::QueryRequest;
     use crate::http::job::{
         CreateDisposition, Job, JobConfiguration, JobConfigurationExtract, JobConfigurationExtractSource,
@@ -57,11 +87,10 @@ mod test {
     };
     use crate::http::table::{DestinationFormat, SourceFormat, Table, TableReference};
     use crate::http::tabledata::insert_all::{InsertAllRequest, Row};
+    use core::default::Default;
     use serial_test::serial;
     use std::sync::Arc;
     use time::OffsetDateTime;
-    use core::default::Default;
-    use crate::http::job::get_query_results::GetQueryResultsRequest;
 
     #[ctor::ctor]
     fn init() {
@@ -273,15 +302,22 @@ mod test {
         let mut page_token = result.page_token;
         let location = result.job_reference.location;
         loop {
-            let query_results= client.get_query_results(result.job_reference.project_id.as_str(), result.job_reference.job_id.as_str(), &GetQueryResultsRequest {
-                page_token,
-                location: location.clone(),
-                ..Default::default()
-            }).await.unwrap();
+            let query_results = client
+                .get_query_results(
+                    result.job_reference.project_id.as_str(),
+                    result.job_reference.job_id.as_str(),
+                    &GetQueryResultsRequest {
+                        page_token,
+                        location: location.clone(),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .unwrap();
             assert_eq!(query_results.rows.unwrap().len(), 1);
             assert_eq!(query_results.total_rows, 3);
             if query_results.page_token.is_none() {
-                break
+                break;
             }
             page_token = query_results.page_token
         }

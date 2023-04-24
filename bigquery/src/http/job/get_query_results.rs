@@ -31,7 +31,7 @@ pub struct GetQueryResultsRequest {
     /// For more information, see https://cloud.google.com/bigquery/docs/locations#specifying_your_location.
     pub location: Option<String>,
     /// Optional. Output format adjustments.
-    pub format_options: Option<DataFormatOptions>
+    pub format_options: Option<DataFormatOptions>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -82,7 +82,13 @@ pub struct GetQueryResultsResponse {
     pub num_dml_affected_rows: Option<i64>,
 }
 
-pub fn build(base_url: &str, client: &Client, project_id: &str, job_id: &str, data: &GetQueryResultsRequest) -> RequestBuilder {
+pub fn build(
+    base_url: &str,
+    client: &Client,
+    project_id: &str,
+    job_id: &str,
+    data: &GetQueryResultsRequest,
+) -> RequestBuilder {
     let url = format!("{}/projects/{}/queries/{}", base_url, project_id, job_id);
     println!("{:?}", serde_json::to_string(data).unwrap());
     client.get(url).query(data)

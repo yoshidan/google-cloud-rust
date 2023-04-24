@@ -106,7 +106,7 @@ impl BigqueryTableClient {
         &self,
         project_id: &str,
         dataset_id: &str,
-        req: Option<&ListTablesRequest>,
+        req: &ListTablesRequest,
     ) -> Result<Vec<TableOverview>, Error> {
         let mut page_token: Option<String> = None;
         let mut tables = vec![];
@@ -137,6 +137,7 @@ mod test {
 
     use crate::http::bigquery_table_client::BigqueryTableClient;
     use crate::http::table::get_iam_policy::GetIamPolicyRequest;
+    use crate::http::table::list::ListTablesRequest;
     use crate::http::table::set_iam_policy::SetIamPolicyRequest;
     use crate::http::table::{
         Clustering, CsvOptions, ExternalDataConfiguration, MaterializedViewDefinition, PartitionRange,
@@ -287,7 +288,11 @@ mod test {
 
         // delete
         let tables = client
-            .list(project.as_str(), &table1.table_reference.dataset_id, None)
+            .list(
+                project.as_str(),
+                &table1.table_reference.dataset_id,
+                &ListTablesRequest::default(),
+            )
             .await
             .unwrap();
         for table in tables {

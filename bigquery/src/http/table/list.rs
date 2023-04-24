@@ -7,7 +7,7 @@ use crate::http::table::{Clustering, RangePartitioning, TableReference, TimePart
 pub struct ListTablesRequest {
     /// The maximum number of results to return in a single response page.
     /// Leverage the page tokens to iterate through the entire collection.
-    pub max_results: Option<i32>,
+    pub max_results: Option<i64>,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -76,16 +76,11 @@ pub fn build(
     client: &Client,
     project_id: &str,
     dataset_id: &str,
-    req: Option<&ListTablesRequest>,
+    req: &ListTablesRequest,
     page_token: Option<String>,
 ) -> RequestBuilder {
     let url = format!("{}/projects/{}/datasets/{}/tables", base_url, project_id, dataset_id);
-    let mut builder = client.get(url);
-    builder = if let Some(req) = req {
-        builder.query(req)
-    } else {
-        builder
-    };
+    let builder = client.get(url).query(req).query(req);
     if let Some(page_token) = page_token {
         builder.query(&[("pageToken", page_token.as_str())])
     } else {
