@@ -91,6 +91,7 @@ pub(crate) mod test {
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_token::TokenSourceProvider;
+    use time::OffsetDateTime;
 
     pub async fn create_client() -> (BigqueryClient, String) {
         let tsp = DefaultTokenSourceProvider::new(Config {
@@ -103,6 +104,24 @@ pub(crate) mod test {
         let ts = tsp.token_source();
         let client = BigqueryClient::new(ts, "https://bigquery.googleapis.com", reqwest::Client::new());
         (client, cred.unwrap().project_id.unwrap())
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct TestDataStruct {
+        pub f1: bool,
+        pub f2: Vec<i64>,
+    }
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct TestData {
+        pub col_string: Option<String>,
+        pub col_number: Option<i32>,
+        pub col_number_array: Vec<i32>,
+        #[serde(default, with = "time::serde::rfc3339::option")]
+        pub col_timestamp: Option<OffsetDateTime>,
+        pub col_json: Option<String>,
+        pub col_json_array: Vec<String>,
+        pub col_struct: Option<TestDataStruct>,
+        pub col_struct_array: Vec<TestDataStruct>,
     }
 
     pub fn create_table_schema() -> TableSchema {

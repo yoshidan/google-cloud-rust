@@ -1,5 +1,5 @@
 use crate::http::dataset::DatasetReference;
-use crate::http::job::{DmlStats, Job, JobReference, SessionInfo};
+use crate::http::job::{DmlStats, JobReference, SessionInfo};
 use crate::http::table::TableSchema;
 use crate::http::tabledata::list::Row;
 use crate::http::types::{ConnectionProperty, DataFormatOptions, ErrorProto, QueryParameter};

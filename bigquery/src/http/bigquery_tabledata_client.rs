@@ -53,7 +53,7 @@ impl BigqueryTabledataClient {
 
 #[cfg(test)]
 mod test {
-    use crate::http::bigquery_client::test::{create_client, create_table_schema};
+    use crate::http::bigquery_client::test::{create_client, create_table_schema, TestData, TestDataStruct};
     use crate::http::bigquery_table_client::BigqueryTableClient;
     use crate::http::bigquery_tabledata_client::BigqueryTabledataClient;
 
@@ -68,24 +68,6 @@ mod test {
     #[ctor::ctor]
     fn init() {
         let _ = tracing_subscriber::fmt::try_init();
-    }
-
-    #[derive(serde::Serialize, serde::Deserialize)]
-    struct TestDataStruct {
-        pub f1: bool,
-        pub f2: Vec<i64>,
-    }
-    #[derive(serde::Serialize, serde::Deserialize)]
-    struct TestData {
-        pub col_string: Option<String>,
-        pub col_number: Option<i32>,
-        pub col_number_array: Vec<i32>,
-        #[serde(default, with = "time::serde::rfc3339::option")]
-        pub col_timestamp: Option<OffsetDateTime>,
-        pub col_json: Option<String>,
-        pub col_json_array: Vec<String>,
-        pub col_struct: Option<TestDataStruct>,
-        pub col_struct_array: Vec<TestDataStruct>,
     }
 
     #[tokio::test]

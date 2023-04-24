@@ -37,16 +37,19 @@ impl BigqueryJobClient {
 
 #[cfg(test)]
 mod test {
-    use crate::http::bigquery_client::test::create_client;
+    use crate::http::bigquery_client::test::{create_client, create_table_schema, TestData, TestDataStruct};
 
     use crate::http::bigquery_job_client::BigqueryJobClient;
+    use crate::http::bigquery_table_client::BigqueryTableClient;
+    use crate::http::bigquery_tabledata_client::BigqueryTabledataClient;
     use crate::http::job::query::QueryRequest;
     use crate::http::job::{
         CreateDisposition, Job, JobConfiguration, JobConfigurationExtract, JobConfigurationExtractSource,
         JobConfigurationLoad, JobConfigurationQuery, JobConfigurationSourceTable, JobConfigurationTableCopy, JobType,
         OperationType, WriteDisposition,
     };
-    use crate::http::table::{DestinationFormat, SourceFormat, TableReference};
+    use crate::http::table::{DestinationFormat, SourceFormat, Table, TableReference};
+    use crate::http::tabledata::insert_all::{InsertAllRequest, Row};
     use serial_test::serial;
     use std::sync::Arc;
     use time::OffsetDateTime;
@@ -197,20 +200,64 @@ mod test {
     pub async fn query() {
         let (client, project) = create_client().await;
         let client = Arc::new(client);
+        let table_client = BigqueryTableClient::new(client.clone());
+        let tabledata_client = BigqueryTabledataClient::new(client.clone());
+
+        // insert test data
+        let mut table1 = Table::default();
+        table1.table_reference.dataset_id = "rust_test_job".to_string();
+        table1.table_reference.project_id = project.to_string();
+        table1.table_reference.table_id = format!("table_data_{}", OffsetDateTime::now_utc().unix_timestamp());
+        table1.schema = Some(create_table_schema());
+        let table1 = table_client.create(&table1).await.unwrap();
+        let ref1 = table1.table_reference;
+
+        // json value
+        let mut req = InsertAllRequest::<TestData>::default();
+        for i in 0..3 {
+            req.rows.push(Row {
+                insert_id: None,
+                json: TestData {
+                    col_string: Some(format!("test{}", i)),
+                    col_number: Some(1),
+                    col_number_array: vec![10, 11, 12],
+                    col_timestamp: Some(OffsetDateTime::now_utc()),
+                    col_json: Some("{\"field\":100}".to_string()),
+                    col_json_array: vec!["{\"field\":100}".to_string(), "{\"field\":200}".to_string()],
+                    col_struct: Some(TestDataStruct {
+                        f1: true,
+                        f2: vec![3, 4],
+                    }),
+                    col_struct_array: vec![TestDataStruct {
+                        f1: true,
+                        f2: vec![3, 4],
+                    }],
+                },
+            });
+        }
+        let res = tabledata_client
+            .insert(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str(), &req)
+            .await
+            .unwrap();
+        assert!(res.insert_errors.is_none());
+
+        // query
         let client = BigqueryJobClient::new(client);
         let result = client
             .query(
                 project.as_str(),
                 &QueryRequest {
-                    query: "SELECT * FROM rust_test_job.table_data_1681472944".to_string(),
+                    max_results: Some(2),
+                    query: format!("SELECT * FROM rust_test_job.{}", ref1.table_id.as_str()),
                     ..Default::default()
                 },
             )
             .await
             .unwrap();
-        assert_eq!(result.total_rows, 0);
+        assert!(result.page_token.is_some());
+        assert_eq!(result.rows.unwrap().len(), 2);
+        assert_eq!(result.total_rows, 3);
         assert_eq!(result.total_bytes_processed, 0);
         assert!(result.job_complete);
-        assert!(result.cache_hit);
     }
 }
