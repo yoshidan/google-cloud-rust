@@ -89,8 +89,8 @@ pub struct Object {
     /// supplied by the user when sending an Object. The server will ignore any
     /// value provided. Users should instead use the object_checksums field on the
     /// InsertObjectRequest when uploading an object.
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub crc32c: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub crc32c: Option<String>,
     /// MD5 hash of the data; encoded using base64 as per
     /// \[<https://tools.ietf.org/html/rfc4648#section-4\][RFC> 4648 §4]. For more
     /// information about using the MD5 hash, see
