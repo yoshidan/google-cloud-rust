@@ -8,6 +8,7 @@ use crate::http::job::list::{JobOverview, ListJobsRequest, ListJobsResponse};
 use crate::http::job::query::{QueryRequest, QueryResponse};
 use crate::http::job::Job;
 use std::sync::Arc;
+use crate::http::job::cancel::{CancelJobRequest, CancelJobResponse};
 
 #[derive(Clone)]
 pub struct BigqueryJobClient {
@@ -34,6 +35,12 @@ impl BigqueryJobClient {
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get(&self, project_id: &str, job_id: &str, data: &GetJobRequest) -> Result<Job, Error> {
         let builder = job::get::build(self.inner.endpoint(), self.inner.http(), project_id, job_id, data);
+        self.inner.send(builder).await
+    }
+
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn cancel(&self, project_id: &str, job_id: &str, data: &CancelJobRequest) -> Result<CancelJobResponse, Error> {
+        let builder = job::cancel::build(self.inner.endpoint(), self.inner.http(), project_id, job_id, data);
         self.inner.send(builder).await
     }
 
@@ -87,6 +94,7 @@ mod test {
     use serial_test::serial;
     use std::sync::Arc;
     use time::OffsetDateTime;
+    use crate::http::job::cancel::CancelJobRequest;
 
     #[ctor::ctor]
     fn init() {
@@ -227,6 +235,16 @@ mod test {
         assert!(job3.status.errors.is_none());
         assert!(job3.status.error_result.is_none());
         assert!(job3.status.state == JobState::Running || job3.status.state == JobState::Done);
+
+        // cancel
+        let cancelled = client.cancel(
+            job3.job_reference.project_id.as_str(),
+            job3.job_reference.job_id.as_str(),
+            &CancelJobRequest {
+                location: job3.job_reference.location
+            }
+        ).await.unwrap();
+        assert!(job3.status.state == JobState::Running || job3.status.state == JobState::Done);
     }
 
     #[tokio::test]
@@ -335,5 +353,6 @@ mod test {
         assert!(result.total_rows.is_none());
         assert_eq!(result.total_bytes_processed, 0);
         assert!(result.job_complete);
+
     }
 }

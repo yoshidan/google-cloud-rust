@@ -17,6 +17,7 @@ pub mod get_query_results;
 pub mod insert;
 pub mod list;
 pub mod query;
+pub mod cancel;
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -482,7 +483,7 @@ pub struct Job {
     pub self_link: String,
     /// Output only. Email address of the user who ran the job.
     #[serde(rename(deserialize = "user_email"))]
-    pub user_email: String,
+    pub user_email: Option<String>,
     /// Required. Describes the job configuration.
     pub configuration: JobConfiguration,
     /// Reference describing the unique-per-user name of the job.
@@ -1124,9 +1125,11 @@ pub struct QueryTimelineSample {
     /// Total parallel units of work completed by this query.
     #[serde(deserialize_with = "crate::http::from_str")]
     pub completed_units: i64,
-    /// Total number of active workers. This does not correspond directly to slot usage. This is the largest value observed since the last sample.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub active_units: i64,
+    /// Total number of active workers.
+    /// This does not correspond directly to slot usage.
+    /// This is the largest value observed since the last sample.
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub active_units: Option<i64>,
     /// Units of work that can be scheduled immediately. Providing additional slots for these units of work will accelerate the query, if no other query in the reservation needs additional slots.
     #[serde(deserialize_with = "crate::http::from_str")]
     pub estimated_runnable_units: i64,
