@@ -244,7 +244,7 @@ mod test {
                 location: job3.job_reference.location
             }
         ).await.unwrap();
-        assert!(job3.status.state == JobState::Running || job3.status.state == JobState::Done);
+        assert!(cancelled.job.status.state == JobState::Running || cancelled.job.status.state == JobState::Done);
     }
 
     #[tokio::test]
