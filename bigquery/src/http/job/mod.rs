@@ -11,13 +11,13 @@ use crate::http::types::{ConnectionProperty, EncryptionConfiguration, ErrorProto
 use std::collections::HashMap;
 use time::OffsetDateTime;
 
+pub mod cancel;
 pub mod delete;
 pub mod get;
 pub mod get_query_results;
 pub mod insert;
 pub mod list;
 pub mod query;
-pub mod cancel;
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]

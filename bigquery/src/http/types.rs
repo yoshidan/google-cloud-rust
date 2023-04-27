@@ -1,5 +1,60 @@
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
+pub struct StandardSqlDataType {
+    /// Required. The top level type of this field. Can be any GoogleSQL data type (e.g., "INT64", "DATE", "ARRAY").
+    pub type_kind: TypeKind,
+}
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct StandardSqlStructType {
+    pub fields: Vec<StandardSqlField>,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct StandardSqlField {
+    /// Optional. The name of this field.
+    /// Can be absent for struct fields.
+    pub name: Option<String>,
+    /// Optional. The type of this parameter.
+    /// Absent if not explicitly specified (e.g., CREATE FUNCTION statement can omit the return type; in this case the output parameter does not have this "type" field).
+    #[serde(rename(serialize = "type", deserialize = "type"))]
+    pub field_type: Option<StandardSqlDataType>,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum StandardSqlDataSubType {
+    /// The type of the array's elements, if typeKind = "ARRAY".
+    ArrayElementType(StandardSqlDataType),
+    /// The fields of this struct, in order, if typeKind = "STRUCT".
+    StructType(StandardSqlStructType),
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TypeKind {
+    #[default]
+    TypeKindUnspecified,
+    Int64,
+    Bool,
+    Float64,
+    String,
+    Bytes,
+    Timestamp,
+    Date,
+    Time,
+    Datetime,
+    Geography,
+    Numeric,
+    Bignumeric,
+    Json,
+    Array,
+    Struct,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct DataFormatOptions {
     /// Optional. Output timestamp as usec int64. Default is false.
     pub use_int64_timestamp: Option<bool>,

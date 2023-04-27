@@ -1,6 +1,6 @@
-use reqwest::{Client, RequestBuilder};
-use reqwest::header::CONTENT_LENGTH;
 use crate::http::job::Job;
+use reqwest::header::CONTENT_LENGTH;
+use reqwest::{Client, RequestBuilder};
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
@@ -19,10 +19,16 @@ pub struct CancelJobResponse {
     /// The resource type of the response.
     pub kind: String,
     /// The final state of the job
-    pub job: Job
+    pub job: Job,
 }
 
-pub fn build(base_url: &str, client: &Client, project_id: &str, job_id: &str, data: &CancelJobRequest) -> RequestBuilder {
+pub fn build(
+    base_url: &str,
+    client: &Client,
+    project_id: &str,
+    job_id: &str,
+    data: &CancelJobRequest,
+) -> RequestBuilder {
     let url = format!("{}/projects/{}/jobs/{}/cancel", base_url, project_id, job_id);
     client.post(url).query(data).header(CONTENT_LENGTH, 0)
 }
