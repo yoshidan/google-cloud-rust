@@ -22,7 +22,7 @@ pub struct StandardSqlField {
     pub field_type: Option<StandardSqlDataType>,
 }
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub enum StandardSqlDataSubType {
     /// The type of the array's elements, if typeKind = "ARRAY".
@@ -31,7 +31,13 @@ pub enum StandardSqlDataSubType {
     StructType(StandardSqlStructType),
 }
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+impl Default for StandardSqlDataSubType {
+    fn default() -> Self {
+        Self::ArrayElementType(StandardSqlDataType::default())
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TypeKind {
     #[default]

@@ -20,7 +20,7 @@ pub struct RoutineReference {
     pub routine_id: String,
 }
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq,serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum RoutineType {
     #[default]
@@ -30,19 +30,19 @@ pub enum RoutineType {
     TableValuedFunction,
 }
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq,serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Language {
     #[default]
     LanguageUnspecified,
-    SQL,
+    Sql,
     Javascript,
     Python,
     Java,
     Scala,
 }
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq,serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ArgumentKind {
     #[default]
@@ -51,7 +51,7 @@ pub enum ArgumentKind {
     AnyType,
 }
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq,serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Mode {
     #[default]
@@ -75,7 +75,7 @@ pub struct StandardSqlTableType {
 /// Example factors include but not limited to: DDL/DML, non-deterministic SQL function calls,
 /// update of referenced tables/views/UDFs or imported JavaScript libraries.
 /// SQL UDFs cannot have determinism specified. Their determinism is automatically determined.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq,serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum DeterminismLevel {
     #[default]
@@ -89,10 +89,10 @@ pub enum DeterminismLevel {
 pub struct RemoteFunctionOptions {
     /// Endpoint of the user-provided remote service,
     /// e.g. https://us-east1-my_gcf_project.cloudfunctions.net/remote_add
-    pub endpoint: String,
+    pub endpoint: Option<String>,
     /// Fully qualified name of the user-provided connection object which holds the authentication
     /// information to send requests to the remote service. Format: "projects/{projectId}/locations/{locationId}/connections/{connectionId}"
-    pub connection: String,
+    pub connection: Option<String>,
     /// User-defined context as a set of key/value pairs, which will be sent as function invocation context together with batched arguments in the requests to the remote service. The total number of bytes of keys and values must be less than 8KB.
     /// An object containing a list of "key": value pairs.
     /// Example: { "name": "wrench", "mass": "1.3kg", "count": "3" }.
@@ -107,7 +107,7 @@ pub struct RemoteFunctionOptions {
 #[serde(rename_all = "camelCase")]
 pub struct Argument {
     /// Optional. The name of this argument. Can be absent for function return argument.
-    pub name: String,
+    pub name: Option<String>,
     /// Optional. Defaults to FIXED_TYPE.
     pub argument_kind: Option<ArgumentKind>,
     /// Optional. Specifies whether the argument is input or output. Can be set for procedures only.
@@ -121,7 +121,7 @@ pub struct Argument {
 pub struct SparkOptions {
     /// Fully qualified name of the user-provided Spark connection object.
     /// Format: "projects/{projectId}/locations/{locationId}/connections/{connectionId}"
-    pub connection: String,
+    pub connection: Option<String>,
     /// Runtime version.
     /// If not specified, the default runtime version is used.
     pub runtime_version: Option<String>,
