@@ -1,4 +1,3 @@
-use crate::http::job::Job;
 use crate::http::routine::Routine;
 use reqwest::{Client, RequestBuilder};
 

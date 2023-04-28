@@ -20,7 +20,7 @@ pub struct RoutineReference {
     pub routine_id: String,
 }
 
-#[derive(Clone, PartialEq, Eq,serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum RoutineType {
     #[default]
@@ -30,7 +30,7 @@ pub enum RoutineType {
     TableValuedFunction,
 }
 
-#[derive(Clone, PartialEq, Eq,serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Language {
     #[default]
@@ -42,7 +42,7 @@ pub enum Language {
     Scala,
 }
 
-#[derive(Clone, PartialEq, Eq,serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ArgumentKind {
     #[default]
@@ -51,7 +51,7 @@ pub enum ArgumentKind {
     AnyType,
 }
 
-#[derive(Clone, PartialEq, Eq,serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Mode {
     #[default]
@@ -75,7 +75,7 @@ pub struct StandardSqlTableType {
 /// Example factors include but not limited to: DDL/DML, non-deterministic SQL function calls,
 /// update of referenced tables/views/UDFs or imported JavaScript libraries.
 /// SQL UDFs cannot have determinism specified. Their determinism is automatically determined.
-#[derive(Clone, PartialEq, Eq,serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum DeterminismLevel {
     #[default]

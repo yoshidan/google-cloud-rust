@@ -1,4 +1,4 @@
-use crate::http::routine::{Language, RemoteFunctionOptions, Routine, RoutineReference, RoutineType};
+use crate::http::routine::{Language, RemoteFunctionOptions, RoutineReference, RoutineType};
 use reqwest::{Client, RequestBuilder};
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]

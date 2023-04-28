@@ -1,5 +1,5 @@
+use crate::http::routine::Routine;
 use reqwest::{Client, RequestBuilder};
-use crate::http::routine::{Routine, RoutineReference};
 
 pub fn build(base_url: &str, client: &Client, data: &Routine) -> RequestBuilder {
     let url = format!(

@@ -1,7 +1,6 @@
 use crate::http::bigquery_client::BigqueryClient;
 use crate::http::error::Error;
 use crate::http::routine;
-use crate::http::routine::get::GetRoutineRequest;
 use crate::http::routine::list::{ListRoutinesRequest, ListRoutinesResponse, RoutineOverview};
 use crate::http::routine::Routine;
 use std::sync::Arc;
@@ -24,7 +23,7 @@ impl BigqueryRoutineClient {
 
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn update(&self, metadata: &Routine) -> Result<Routine, Error> {
-        let builder = routine::update::build(self.inner.endpoint(), self.inner.http(),  metadata);
+        let builder = routine::update::build(self.inner.endpoint(), self.inner.http(), metadata);
         self.inner.send(builder).await
     }
 
@@ -36,21 +35,8 @@ impl BigqueryRoutineClient {
     }
 
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn get(
-        &self,
-        project_id: &str,
-        dataset_id: &str,
-        routine_id: &str,
-        data: &GetRoutineRequest,
-    ) -> Result<Routine, Error> {
-        let builder = routine::get::build(
-            self.inner.endpoint(),
-            self.inner.http(),
-            project_id,
-            dataset_id,
-            routine_id,
-            data,
-        );
+    pub async fn get(&self, project_id: &str, dataset_id: &str, routine_id: &str) -> Result<Routine, Error> {
+        let builder = routine::get::build(self.inner.endpoint(), self.inner.http(), project_id, dataset_id, routine_id);
         self.inner.send(builder).await
     }
 
@@ -85,111 +71,129 @@ impl BigqueryRoutineClient {
 
 #[cfg(test)]
 mod test {
-    use std::sync::Arc;
     use crate::http::bigquery_client::test::create_client;
     use crate::http::bigquery_routine_client::BigqueryRoutineClient;
-    use crate::http::routine::{Argument, ArgumentKind, Language, Mode, Routine, RoutineReference, RoutineType};
-    use serial_test::serial;
-    use time::OffsetDateTime;
     use crate::http::routine::list::ListRoutinesRequest;
+    use crate::http::routine::{Argument, ArgumentKind, Language, Routine, RoutineReference, RoutineType};
     use crate::http::types::{StandardSqlDataType, TypeKind};
+    use serial_test::serial;
+    use std::sync::Arc;
+    use time::OffsetDateTime;
 
     #[tokio::test]
     #[serial]
     pub async fn crud_routine() {
         let (client, project) = create_client().await;
         let client = BigqueryRoutineClient::new(Arc::new(client));
-        let f1 = client.create(&Routine {
-            etag: "".to_string(),
-            routine_reference: RoutineReference {
-                project_id: project.to_string(),
-                dataset_id: "rust_test_routine".to_string(),
-                routine_id:  format!("AddFourAndDivide{}", OffsetDateTime::now_utc().unix_timestamp())
-            },
-            routine_type: RoutineType::ScalarFunction,
-            language: Some(Language::Sql),
-            definition_body: "(x + 4) / y".to_string(),
-            return_type: Some(StandardSqlDataType {
-                type_kind: TypeKind::Float64
-            }),
-            arguments: Some(vec![
-                Argument {
+        let _f1 = client
+            .create(&Routine {
+                etag: "".to_string(),
+                routine_reference: RoutineReference {
+                    project_id: project.to_string(),
+                    dataset_id: "rust_test_routine".to_string(),
+                    routine_id: format!("AddFourAndDivide{}", OffsetDateTime::now_utc().unix_timestamp()),
+                },
+                routine_type: RoutineType::ScalarFunction,
+                language: Some(Language::Sql),
+                definition_body: "(x + 4) / y".to_string(),
+                return_type: Some(StandardSqlDataType {
+                    type_kind: TypeKind::Float64,
+                }),
+                arguments: Some(vec![
+                    Argument {
+                        name: Some("x".to_string()),
+                        argument_kind: Some(ArgumentKind::FixedType),
+                        mode: None,
+                        data_type: StandardSqlDataType {
+                            type_kind: TypeKind::Int64,
+                        },
+                    },
+                    Argument {
+                        name: Some("y".to_string()),
+                        argument_kind: Some(ArgumentKind::FixedType),
+                        mode: None,
+                        data_type: StandardSqlDataType {
+                            type_kind: TypeKind::Int64,
+                        },
+                    },
+                ]),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+
+        let _f2 = client
+            .create(&Routine {
+                etag: "".to_string(),
+                routine_reference: RoutineReference {
+                    project_id: project.to_string(),
+                    dataset_id: "rust_test_routine".to_string(),
+                    routine_id: format!("ExternalTable{}", OffsetDateTime::now_utc().unix_timestamp()),
+                },
+                routine_type: RoutineType::TableValuedFunction,
+                language: Some(Language::Sql),
+                definition_body: format!(
+                    "SELECT * FROM `{}.rust_test_external_table.csv_table` WHERE string_field_0 = x",
+                    project
+                ),
+                arguments: Some(vec![Argument {
                     name: Some("x".to_string()),
                     argument_kind: Some(ArgumentKind::FixedType),
                     mode: None,
                     data_type: StandardSqlDataType {
-                        type_kind: TypeKind::Int64
-                    }
-                },
-                Argument {
-                    name: Some("y".to_string()),
-                    argument_kind: Some(ArgumentKind::FixedType),
-                    mode: None,
-                    data_type: StandardSqlDataType {
-                        type_kind: TypeKind::Int64
-                    }
-                }
-            ]),
-            ..Default::default()
-        }).await.unwrap();
+                        type_kind: TypeKind::String,
+                    },
+                }]),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
 
-        let f2 = client.create(&Routine {
-            etag: "".to_string(),
-            routine_reference: RoutineReference {
-                project_id: project.to_string(),
-                dataset_id: "rust_test_routine".to_string(),
-                routine_id:  format!("ExternalTable{}", OffsetDateTime::now_utc().unix_timestamp())
-            },
-            routine_type: RoutineType::TableValuedFunction,
-            language: Some(Language::Sql),
-            definition_body: format!("SELECT * FROM `{}.rust_test_external_table.csv_table` WHERE string_field_0 = x", project.to_string()),
-            arguments: Some(vec![
-                Argument {
-                    name: Some("x".to_string()),
-                    argument_kind: Some(ArgumentKind::FixedType),
-                    mode: None,
-                    data_type: StandardSqlDataType {
-                        type_kind: TypeKind::String
-                    }
+        let _f3 = client
+            .create(&Routine {
+                etag: "".to_string(),
+                routine_reference: RoutineReference {
+                    project_id: project.to_string(),
+                    dataset_id: "rust_test_routine".to_string(),
+                    routine_id: format!("Procedure{}", OffsetDateTime::now_utc().unix_timestamp()),
                 },
-            ]),
-            ..Default::default()
-        }).await.unwrap();
-
-        let f3 = client.create(&Routine {
-            etag: "".to_string(),
-            routine_reference: RoutineReference {
-                project_id: project.to_string(),
-                dataset_id: "rust_test_routine".to_string(),
-                routine_id:  format!("Procedure{}", OffsetDateTime::now_utc().unix_timestamp())
-            },
-            routine_type: RoutineType::Procedure,
-            definition_body: format!("
+                routine_type: RoutineType::Procedure,
+                definition_body: format!(
+                    "
             DECLARE id STRING;
             SET id = GENERATE_UUID();
             INSERT INTO `{}.rust_test_external_table.csv_table` VALUES(id, name)
-            ", project.to_string()),
-            arguments: Some(vec![
-                Argument {
+            ",
+                    project
+                ),
+                arguments: Some(vec![Argument {
                     name: Some("name".to_string()),
                     argument_kind: Some(ArgumentKind::FixedType),
                     mode: None,
                     data_type: StandardSqlDataType {
-                        type_kind: TypeKind::String
-                    }
-                },
-            ]),
-            ..Default::default()
-        }).await.unwrap();
+                        type_kind: TypeKind::String,
+                    },
+                }]),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
 
-        for f in vec![f1,f2,f3] {
-            client.update(&f).await.unwrap().routine_reference;
-        }
-
-        let all = client.list(project.as_str(), "rust_test_routine", &ListRoutinesRequest::default()).await.unwrap();
-        for f in all{
+        let all = client
+            .list(project.as_str(), "rust_test_routine", &ListRoutinesRequest::default())
+            .await
+            .unwrap();
+        for f in all {
             let f = f.routine_reference;
-            client.delete(f.project_id.as_str(), f.dataset_id.as_str(), f.routine_id.as_str()).await.unwrap();
+            let f = client
+                .get(f.project_id.as_str(), f.dataset_id.as_str(), f.routine_id.as_str())
+                .await
+                .unwrap()
+                .routine_reference;
+            client
+                .delete(f.project_id.as_str(), f.dataset_id.as_str(), f.routine_id.as_str())
+                .await
+                .unwrap();
         }
     }
 }
