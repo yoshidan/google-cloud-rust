@@ -62,7 +62,8 @@ impl Client {
         let ts = config.token_source_provider.token_source();
         let http = config.http.unwrap_or_default();
 
-        let service_account_client = ServiceAccountClient::new(ts.clone(), config.service_account_endpoint.as_str());
+        let service_account_client =
+            ServiceAccountClient::new(ts.clone(), config.service_account_endpoint.as_str(), http.clone());
         let storage_client = StorageClient::new(ts, config.storage_endpoint.as_str(), http);
 
         Self {
