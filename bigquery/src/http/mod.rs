@@ -29,7 +29,6 @@ where
     let s: Result<Value, _> = Deserialize::deserialize(deserializer);
     match s {
         Ok(Value::String(s)) => T::from_str(&s).map_err(de::Error::custom).map(Some),
-        Ok(Value::Number(num)) => T::from_str(&num.to_string()).map_err(de::Error::custom).map(Some),
         Ok(_) => Err(de::Error::custom("Incorrect type")),
         Err(_) => Ok(None),
     }
@@ -58,7 +57,6 @@ where
             for v in vec {
                 let v = match v {
                     Value::String(s) => T::from_str(&s).map_err(de::Error::custom)?,
-                    Value::Number(s) => T::from_str(&s.to_string()).map_err(de::Error::custom)?,
                     _ => return Err(de::Error::custom("Incorrect type")),
                 };
                 result.push(v);
@@ -76,15 +74,46 @@ where
     T::Err: Display,
     D: Deserializer<'de>,
 {
-    let s: Result<Vec<String>, _> = Vec::deserialize(deserializer);
-    match s {
-        Ok(vec) => {
-            let mut result = Vec::with_capacity(vec.len());
-            for v in vec {
-                result.push(T::from_str(&v).map_err(de::Error::custom)?);
-            }
-            Ok(result)
-        }
-        Err(_) => Ok(vec![]),
+    let vec: Vec<String> = Vec::deserialize(deserializer)?;
+    let mut result = Vec::with_capacity(vec.len());
+    for v in vec {
+        result.push(T::from_str(&v).map_err(de::Error::custom)?);
+    }
+    Ok(result)
+}
+
+#[cfg(test)]
+mod test {
+
+    #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+    #[serde(rename_all = "camelCase")]
+    struct Test {
+        #[serde(default, deserialize_with = "crate::http::from_str_vec_option")]
+        pub field: Option<Vec<i64>>,
+    }
+
+    #[test]
+    fn test_from_str_vec_option() {
+        let value: Test = serde_json::from_str(r#"{"field": ["100", "200"]}"#).unwrap();
+        let record = value.field.unwrap();
+        assert_eq!(vec![100, 200], record);
+
+        let value: Test = serde_json::from_str(r#"{}"#).unwrap();
+        assert!(value.field.is_none());
+    }
+
+    #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
+    #[serde(rename_all = "camelCase")]
+    struct Test2 {
+        #[serde(deserialize_with = "crate::http::from_str_vec")]
+        pub field: Vec<i64>,
+    }
+
+    #[test]
+    fn test_from_str_vec() {
+        let value: Test2 = serde_json::from_str(r#"{"field": ["100", "200"]}"#).unwrap();
+        assert_eq!(vec![100, 200], value.field);
+        let result = serde_json::from_str::<Test2>(r#"{}"#);
+        assert!(result.is_err())
     }
 }
