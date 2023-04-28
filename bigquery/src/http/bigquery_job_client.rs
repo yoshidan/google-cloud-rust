@@ -91,13 +91,15 @@ mod test {
     use crate::http::bigquery_table_client::BigqueryTableClient;
     use crate::http::bigquery_tabledata_client::BigqueryTabledataClient;
     use crate::http::job::cancel::CancelJobRequest;
+    use crate::http::job::get::GetJobRequest;
     use crate::http::job::get_query_results::GetQueryResultsRequest;
     use crate::http::job::query::QueryRequest;
     use crate::http::job::{
         CreateDisposition, Job, JobConfiguration, JobConfigurationExtract, JobConfigurationExtractSource,
         JobConfigurationLoad, JobConfigurationQuery, JobConfigurationSourceTable, JobConfigurationTableCopy, JobState,
-        JobType, OperationType, WriteDisposition,
+        JobType, OperationType, TrainingType, WriteDisposition,
     };
+    use crate::http::model::ModelType;
     use crate::http::table::{DestinationFormat, SourceFormat, Table, TableReference};
     use crate::http::tabledata::insert_all::{InsertAllRequest, Row};
     use core::default::Default;
@@ -365,5 +367,28 @@ mod test {
         assert!(result.total_rows.is_none());
         assert_eq!(result.total_bytes_processed, 0);
         assert!(result.job_complete);
+    }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn get_model_training_result() {
+        let (client, project) = create_client().await;
+        let client = Arc::new(client);
+        let client = BigqueryJobClient::new(client);
+        let job = client
+            .get(
+                project.as_str(),
+                "bquxjob_2314a540_187c62eab1d",
+                &GetJobRequest {
+                    location: Some("US".to_string()),
+                },
+            )
+            .await
+            .unwrap();
+        let statistics = job.statistics.unwrap().query.unwrap().ml_statistics;
+        let ml = statistics.unwrap();
+        assert_eq!(ml.training_type, TrainingType::SingleTraining);
+        assert_eq!(ml.model_type, ModelType::LogisticRegression);
+        assert_eq!(ml.max_iterations, Some(15));
     }
 }

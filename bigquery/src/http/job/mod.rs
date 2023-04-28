@@ -576,45 +576,45 @@ pub struct JobStatistics {
 #[serde(rename_all = "camelCase")]
 pub struct SessionInfo {
     /// Output only. The id of the session.
-    pub session_id: String,
+    pub session_id: Option<String>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct JobStatisticsLoad {
     /// Output only. Number of source files in a load job.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub input_files: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub input_files: Option<i64>,
     /// Output only. Number of bytes of source data in a load job.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub input_file_bytes: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub input_file_bytes: Option<i64>,
     /// Output only. Number of rows imported in a load job.
     /// Note that while an import job is in the running state, this value may change.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub output_rows: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub output_rows: Option<i64>,
     /// Output only. Size of the loaded data in bytes.
     /// Note that while a load job is in the running state, this value may change.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub output_bytes: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub output_bytes: Option<i64>,
     /// Output only. The number of bad records encountered. Note that if the job has failed because of more bad records encountered than the maximum allowed in the load job configuration, then this number can be less than the total number of bad records present in the input data.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub bad_records: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub bad_records: Option<i64>,
     /// Output only. Describes a timeline of job execution.
-    pub timeline: Vec<QueryTimelineSample>,
+    pub timeline: Option<Vec<QueryTimelineSample>>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct JobStatisticsExtract {
     /// Output only. Number of files per destination URI or URI pattern specified in the extract configuration. These values will be in the same order as the URIs specified in the 'destinationUris' field.
-    #[serde(deserialize_with = "crate::http::from_str_vec")]
-    pub destination_uri_file_counts: Vec<i64>,
+    #[serde(default, deserialize_with = "crate::http::from_str_vec_option")]
+    pub destination_uri_file_counts: Option<Vec<i64>>,
     /// Output only. Number of user bytes extracted into the result.
     /// This is the byte count as computed by BigQuery for billing purposes and doesn't have any relationship with the number of actual result bytes extracted in the desired format.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub input_bytes: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub input_bytes: Option<i64>,
     /// Output only. Describes a timeline of job execution.
-    pub timeline: Vec<QueryTimelineSample>,
+    pub timeline: Option<Vec<QueryTimelineSample>>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -630,47 +630,47 @@ pub enum EvaluationKind {
 #[serde(rename_all = "camelCase")]
 pub struct ScriptStackFrame {
     /// Output only. One-based start line.
-    pub start_line: i64,
+    pub start_line: Option<i64>,
     /// Output only. One-based start column.
-    pub start_column: i64,
+    pub start_column: Option<i64>,
     /// Output only. One-based end line.
-    pub end_line: i64,
+    pub end_line: Option<i64>,
     /// Output only. One-based end column.
-    pub end_column: i64,
+    pub end_column: Option<i64>,
     /// Output only. Name of the active procedure, empty if in a top-level script.
-    pub procedure_id: String,
+    pub procedure_id: Option<String>,
     /// Output only. Text of the current statement/expression.
-    pub text: String,
+    pub text: Option<String>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct RowLevelSecurityStatistics {
     /// Whether any accessed data was protected by row access policies.
-    pub row_level_security_applied: bool,
+    pub row_level_security_applied: Option<bool>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DataMaskingStatistics {
     /// Whether any accessed data was protected by the data masking.
-    pub data_masking_applied: bool,
+    pub data_masking_applied: Option<bool>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionInfo {
     /// Output only. [Alpha] Id of the transaction..
-    pub transaction_id: String,
+    pub transaction_id: Option<String>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ScriptStatistics {
     /// Whether this child job was a statement or expression.
-    pub evaluation_kind: EvaluationKind,
+    pub evaluation_kind: Option<EvaluationKind>,
     /// Stack trace showing the line/column/procedure name of each frame on the stack at the point where the current evaluation happened. The leaf frame is first, the primary script is last. Never empty.
-    pub stack_frames: Vec<ScriptStackFrame>,
+    pub stack_frames: Option<Vec<ScriptStackFrame>>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -789,9 +789,9 @@ pub struct JobStatisticsQuery {
 #[serde(rename_all = "camelCase")]
 pub struct SearchStatistics {
     /// Specifies the index usage mode for the query.
-    pub index_usage_mode: IndexUsageMode,
+    pub index_usage_mode: Option<IndexUsageMode>,
     /// When indexUsageMode is UNUSED or PARTIALLY_USED, this field explains why indexes were not used in all or part of the search query. If indexUsageMode is FULLY_USED, this field is not populated.
-    pub index_unused_reasons: Vec<IndexUnusedReason>,
+    pub index_unused_reasons: Option<Vec<IndexUnusedReason>>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -808,13 +808,13 @@ pub enum IndexUsageMode {
 #[serde(rename_all = "camelCase")]
 pub struct IndexUnusedReason {
     /// Specifies the high-level reason for the scenario when no search index was used.
-    pub code: IndexUnusedCode,
+    pub code: Option<IndexUnusedCode>,
     /// Free form human-readable reason for the scenario when no search index was used.
-    pub message: String,
+    pub message: Option<String>,
     /// Specifies the base table involved in the reason that no search index was used.
-    pub base_table: TableReference,
+    pub base_table: Option<TableReference>,
     /// Specifies the name of the unused search index, if available.
-    pub index_name: String,
+    pub index_name: Option<String>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -844,42 +844,42 @@ pub enum IndexUnusedCode {
 #[serde(rename_all = "camelCase")]
 pub struct PerformanceInsights {
     /// Output only. Average execution ms of previous runs. Indicates the job ran slow compared to previous executions. To find previous executions, use INFORMATION_SCHEMA tables and filter jobs with same query hash.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub avg_previous_execution_ms: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub avg_previous_execution_ms: Option<i64>,
     /// Output only. Standalone query stage performance insights, for exploring potential improvements.
-    pub stage_performance_standalone_insights: Vec<StagePerformanceStandaloneInsight>,
+    pub stage_performance_standalone_insights: Option<Vec<StagePerformanceStandaloneInsight>>,
     /// Output only. Query stage performance insights compared to previous runs,
     /// for diagnosing performance regression.
-    pub stage_performance_change_insights: Vec<StagePerformanceChangeInsight>,
+    pub stage_performance_change_insights: Option<Vec<StagePerformanceChangeInsight>>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct StagePerformanceStandaloneInsight {
     /// Output only. The stage id that the insight mapped to.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub stage_id: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub stage_id: Option<i64>,
     /// Output only. True if the stage has a slot contention issue.
-    pub slot_contention: bool,
+    pub slot_contention: Option<bool>,
     /// Output only. True if the stage has insufficient shuffle quota.
-    pub insufficient_shuffle_quota: bool,
+    pub insufficient_shuffle_quota: Option<bool>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct StagePerformanceChangeInsight {
     /// Output only. The stage id that the insight mapped to.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub stage_id: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub stage_id: Option<i64>,
     /// Output only. Input data change insight of the query stage.
-    pub input_data_change: InputDataChange,
+    pub input_data_change: Option<InputDataChange>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct InputDataChange {
     /// Output only. Records read difference percentage compared to a previous run
-    pub records_read_diff_percentage: f64,
+    pub records_read_diff_percentage: Option<f64>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -889,34 +889,34 @@ pub struct SparkStatistics {
     /// Key list: - history_server_endpoint: A link to Spark job UI.
     /// An object containing a list of "key": value pairs.
     /// Example: { "name": "wrench", "mass": "1.3kg", "count": "3" }.
-    pub endpoints: HashMap<String, String>,
+    pub endpoints: Option<HashMap<String, String>>,
     /// Output only. Spark job ID if a Spark job is created successfully.
-    pub spark_job_id: String,
+    pub spark_job_id: Option<String>,
     /// Output only. Location where the Spark job is executed.
     /// A location is selected by BigQueury for jobs configured to run in a multi-region.
-    pub spark_job_location: String,
+    pub spark_job_location: Option<String>,
     /// Output only. Logging info is used to generate a link to Cloud Logging.
-    pub logging_info: LoggingInfo,
+    pub logging_info: Option<LoggingInfo>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct LoggingInfo {
     /// Output only. Resource type used for logging.
-    pub resource_type: String,
+    pub resource_type: Option<String>,
     /// Output only. Project ID where the Spark logs were written.
-    pub project_id: String,
+    pub project_id: Option<String>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ExportDataStatistics {
     /// Number of destination files generated in case of EXPORT DATA statement only.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub file_count: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub file_count: Option<i64>,
     /// [Alpha] Number of destination rows generated in case of EXPORT DATA statement only.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub row_count: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub row_count: Option<i64>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -925,29 +925,29 @@ pub struct ExternalServiceCost {
     /// External service name.
     pub external_service: String,
     /// External service cost in terms of bigquery bytes processed.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub bytes_processed: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub bytes_processed: Option<i64>,
     /// External service cost in terms of bigquery bytes billed.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub bytes_billed: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub bytes_billed: Option<i64>,
     /// External service cost in terms of bigquery slot milliseconds.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub slot_ms: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub slot_ms: Option<i64>,
     /// Non-preemptable reserved slots used for external job.
     /// For example, reserved slots for Cloua AI Platform job are the VM usages converted to BigQuery slot with equivalent mount of price.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub reserved_slot_count: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub reserved_slot_count: Option<i64>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct BiEngineStatistics {
     /// Output only. Specifies which mode of BI Engine acceleration was performed (if any).
-    pub bi_engine_mode: BiEngineMode,
+    pub bi_engine_mode: Option<BiEngineMode>,
     /// Output only. Specifies which mode of BI Engine acceleration was performed (if any).
-    pub acceleration_mode: BiEngineAccelerationMode,
+    pub acceleration_mode: Option<BiEngineAccelerationMode>,
     /// In case of DISABLED or PARTIAL biEngineMode, these contain the explanatory reasons as to why BI Engine could not accelerate. In case the full query was accelerated, this field is not populated.
-    pub bi_engine_reasons: Vec<BiEngineReason>,
+    pub bi_engine_reasons: Option<Vec<BiEngineReason>>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -996,21 +996,21 @@ pub enum BiEngineCode {
 #[serde(rename_all = "camelCase")]
 pub struct LoadQueryStatistics {
     /// Output only. Number of source files in a LOAD query.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub input_files: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub input_files: Option<i64>,
     /// Output only. Number of bytes of source data in a LOAD query.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub input_file_bytes: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub input_file_bytes: Option<i64>,
     /// Output only. Number of rows imported in a LOAD query. Note that while a LOAD query is in the running state, this value may change.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub output_rows: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub output_rows: Option<i64>,
     /// Output only. Size of the loaded data in bytes.
     /// Note that while a LOAD query is in the running state, this value may change.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub output_bytes: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub output_bytes: Option<i64>,
     /// Output only. The number of bad records encountered while processing a LOAD query. Note that if the job has failed because of more bad records encountered than the maximum allowed in the load job configuration, then this number can be less than the total number of bad records present in the input data.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub bad_records: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub bad_records: Option<i64>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -1022,69 +1022,69 @@ pub struct ExplainQueryStage {
     #[serde(deserialize_with = "crate::http::from_str")]
     pub id: i64,
     /// Stage start time represented as milliseconds since the epoch
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub start_ms: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub start_ms: Option<i64>,
     /// Stage end time represented as milliseconds since the epoch.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub end_ms: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub end_ms: Option<i64>,
     /// IDs for stages that are inputs to this stage.
     #[serde(default, deserialize_with = "crate::http::from_str_vec_option")]
     pub input_stages: Option<Vec<i64>>,
     /// Relative amount of time the average shard spent waiting to be scheduled.
-    pub wait_ratio_avg: f64,
+    pub wait_ratio_avg: Option<f64>,
     /// Milliseconds the average shard spent waiting to be scheduled.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub wait_ms_avg: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub wait_ms_avg: Option<i64>,
     /// Relative amount of time the slowest shard spent waiting to be scheduled.
-    pub wait_ratio_max: f64,
+    pub wait_ratio_max: Option<f64>,
     ///Milliseconds the slowest shard spent reading input.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub wait_ms_max: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub wait_ms_max: Option<i64>,
     /// Relative amount of time the average shard spent on CPU-bound tasks.
-    pub compute_ratio_avg: f64,
+    pub compute_ratio_avg: Option<f64>,
     /// Milliseconds the average shard spent on CPU-bound tasks.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub compute_ms_avg: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub compute_ms_avg: Option<i64>,
     /// Relative amount of time the slowest shard spent on CPU-bound tasks.
-    pub compute_ratio_max: f64,
+    pub compute_ratio_max: Option<f64>,
     /// Milliseconds the slowest shard spent on CPU-bound tasks.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub compute_ms_max: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub compute_ms_max: Option<i64>,
     /// Relative amount of time the average shard spent on writing output.
-    pub write_ratio_avg: f64,
+    pub write_ratio_avg: Option<f64>,
     /// Milliseconds the average shard spent on writing output.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub write_ms_avg: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub write_ms_avg: Option<i64>,
     /// Relative amount of time the slowest shard spent on writing output.
-    pub write_ratio_max: f64,
+    pub write_ratio_max: Option<f64>,
     /// Milliseconds the slowest shard spent on writing output.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub write_ms_max: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub write_ms_max: Option<i64>,
     /// Total number of bytes written to shuffle.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub shuffle_output_bytes: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub shuffle_output_bytes: Option<i64>,
     /// Total number of bytes written to shuffle.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub shuffle_output_bytes_spilled: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub shuffle_output_bytes_spilled: Option<i64>,
     /// Number of records read into the stage.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub records_read: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub records_read: Option<i64>,
     /// Number of records read written by the stage.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub records_written: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub records_written: Option<i64>,
     /// Number of parallel input segments to be processed
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub parallel_inputs: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub parallel_inputs: Option<i64>,
     /// Number of parallel input segments completed.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub completed_parallel_inputs: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub completed_parallel_inputs: Option<i64>,
     /// Current status for this stage.
     pub status: String,
     /// List of operations within the stage in dependency order (approximately chronological).
-    pub steps: Vec<ExplainQueryStep>,
+    pub steps: Option<Vec<ExplainQueryStep>>,
     /// Slot-milliseconds used by the stage
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub slot_ms: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub slot_ms: Option<i64>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -1093,46 +1093,46 @@ pub struct ExplainQueryStep {
     /// Machine-readable operation type.
     pub kind: String,
     /// Human-readable description of the step(s).
-    pub substeps: Vec<String>,
+    pub substeps: Option<Vec<String>>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DmlStats {
     /// Output only. Number of inserted Rows. Populated by DML INSERT and MERGE statements
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub inserted_row_count: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub inserted_row_count: Option<i64>,
     /// Output only. Number of deleted Rows. populated by DML DELETE, MERGE and TRUNCATE statements.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub deleted_row_count: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub deleted_row_count: Option<i64>,
     /// Output only. Number of updated Rows. Populated by DML UPDATE and MERGE statements.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub updated_row_count: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub updated_row_count: Option<i64>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct QueryTimelineSample {
     /// Milliseconds elapsed since the start of query execution.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub elapsed_ms: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub elapsed_ms: Option<i64>,
     /// Cumulative slot-ms consumed by the query.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub total_slot_ms: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub total_slot_ms: Option<i64>,
     /// Total units of work remaining for the query. This number can be revised (increased or decreased) while the query is running.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub pending_units: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub pending_units: Option<i64>,
     /// Total parallel units of work completed by this query.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub completed_units: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub completed_units: Option<i64>,
     /// Total number of active workers.
     /// This does not correspond directly to slot usage.
     /// This is the largest value observed since the last sample.
     #[serde(default, deserialize_with = "crate::http::from_str_option")]
     pub active_units: Option<i64>,
     /// Units of work that can be scheduled immediately. Providing additional slots for these units of work will accelerate the query, if no other query in the reservation needs additional slots.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub estimated_runnable_units: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub estimated_runnable_units: Option<i64>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -1140,16 +1140,16 @@ pub struct QueryTimelineSample {
 pub struct MlStatistics {
     /// Output only. Maximum number of iterations specified as maxIterations in the 'CREATE MODEL' query.
     /// The actual number of iterations may be less than this number due to early stop.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub max_iterations: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub max_iterations: Option<i64>,
     /// Results for all completed iterations. Empty for hyperparameter tuning jobs.
-    pub iteration_results: Vec<IterationResult>,
+    pub iteration_results: Option<Vec<IterationResult>>,
     /// Output only. The type of the model that is being trained.
     pub model_type: ModelType,
     /// Output only. Training type of the job.
     pub training_type: TrainingType,
     /// Output only. Trials of a hyperparameter tuning job sorted by trialId.
-    pub hparam_trials: Vec<HparamTuningTrial>,
+    pub hparam_trials: Option<Vec<HparamTuningTrial>>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]

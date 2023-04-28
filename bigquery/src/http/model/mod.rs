@@ -21,29 +21,29 @@ pub struct IterationResult {
     #[serde(deserialize_with = "crate::http::from_str")]
     pub duration_ms: i64,
     /// Loss computed on the training data at the end of iteration.
-    pub training_loss: f64,
+    pub training_loss: Option<f64>,
     /// Loss computed on the eval data at the end of iteration.
-    pub eval_loss: f64,
+    pub eval_loss: Option<f64>,
     /// Learn rate used for this iteration.
-    pub learn_rate: f64,
+    pub learn_rate: Option<f64>,
     /// Information about top clusters for clustering models.
-    pub cluster_infos: Vec<ClusterInfo>,
-    pub arima_result: ArimaResult,
+    pub cluster_infos: Option<Vec<ClusterInfo>>,
+    pub arima_result: Option<ArimaResult>,
     /// The information of the principal components.
-    pub principal_component_infos: Vec<PrincipalComponentInfo>,
+    pub principal_component_infos: Option<Vec<PrincipalComponentInfo>>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ClusterInfo {
     /// Centroid id.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub centroid_id: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub centroid_id: Option<i64>,
     /// Cluster radius, the average distance from centroid to each point assigned to the cluster.
-    pub cluster_radius: f64,
+    pub cluster_radius: Option<f64>,
     /// Cluster size, the total number of points assigned to the cluster.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub cluster_size: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub cluster_size: Option<i64>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
