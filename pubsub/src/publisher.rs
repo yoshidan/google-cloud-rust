@@ -25,7 +25,7 @@ pub(crate) enum Reserved {
     Multi(Vec<ReservedMessage>),
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct PublisherConfig {
     /// worker count. each workers have gRPC channel
     pub workers: usize,
