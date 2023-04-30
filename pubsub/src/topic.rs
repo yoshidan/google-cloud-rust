@@ -15,6 +15,7 @@ use crate::apiv1::subscriber_client::SubscriberClient;
 use crate::publisher::{Publisher, PublisherConfig};
 use crate::subscription::Subscription;
 
+#[derive(Debug, Clone)]
 pub struct TopicConfig {
     pub labels: HashMap<String, String>,
     pub message_storage_policy: Option<MessageStoragePolicy>,
