@@ -52,6 +52,7 @@ struct SignBlobResponse {
 
 #[cfg(test)]
 mod test {
+    use reqwest::Client;
     use serial_test::serial;
 
     use google_cloud_auth::project::Config;
