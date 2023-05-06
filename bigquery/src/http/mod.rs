@@ -5,7 +5,7 @@ use serde::{de, Deserialize, Deserializer};
 use serde_json::Value;
 
 pub mod bigquery_client;
-mod bigquery_dataset_client;
+pub mod bigquery_dataset_client;
 pub mod bigquery_job_client;
 pub mod bigquery_routine_client;
 pub mod bigquery_table_client;
