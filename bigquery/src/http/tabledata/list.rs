@@ -8,7 +8,7 @@ pub enum Value {
     Null,
     String(String),
     Array(Vec<Cell>),
-    Struct(Row),
+    Struct(Tuple),
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
@@ -19,7 +19,7 @@ pub struct Cell {
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct Row {
+pub struct Tuple {
     pub f: Vec<Cell>,
 }
 
@@ -53,7 +53,7 @@ pub struct FetchDataResponse {
     /// list call to the string returned in this field.
     pub page_token: Option<String>,
     /// Repeated rows as result. The REST-based representation of this data leverages a series of JSON f,v objects for indicating fields and values.
-    pub rows: Option<Vec<Row>>,
+    pub rows: Option<Vec<Tuple>>,
 }
 
 pub fn build(
