@@ -1,7 +1,7 @@
 use crate::http::dataset::DatasetReference;
 use crate::http::job::{DmlStats, JobReference, SessionInfo};
 use crate::http::table::TableSchema;
-use crate::http::tabledata::list::Row;
+use crate::http::tabledata::list::Tuple;
 use crate::http::types::{ConnectionProperty, DataFormatOptions, ErrorProto, QueryParameter};
 use reqwest::{Client, RequestBuilder};
 use std::collections::HashMap;
@@ -124,7 +124,7 @@ pub struct QueryResponse {
     pub page_token: Option<String>,
     /// An object with as many results as can be contained within the maximum permitted reply size.
     /// To get any additional rows, you can call jobs.getQueryResults and specify the jobReference returned above.
-    pub rows: Option<Vec<Row>>,
+    pub rows: Option<Vec<Tuple>>,
     /// The total number of bytes processed for this query.
     /// If this query was a dry run, this is the number of bytes that would be processed if the query were run.
     #[serde(deserialize_with = "crate::http::from_str")]

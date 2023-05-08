@@ -11,6 +11,7 @@ description = "Google Cloud Platform bigquery client library."
 documentation = "https://docs.rs/google-cloud-bigquery/latest/google_cloud_bigquery/"
 
 [dependencies]
+async-trait = "0.1"
 google-cloud-token = { version = "0.1.0", path = "../foundation/token" }
 thiserror = "1.0"
 tracing = "0.1"

@@ -166,7 +166,7 @@ mod test {
             max_results: Some(1),
             ..Default::default()
         };
-        let mut data: Vec<list::Row> = vec![];
+        let mut data: Vec<list::Tuple> = vec![];
         loop {
             let result = client
                 .read(

@@ -10,7 +10,7 @@ use std::sync::Arc;
 use crate::http::error::Error;
 use crate::http::job::get_query_results::GetQueryResultsRequest;
 use crate::http::job::query::{QueryRequest, QueryResponse};
-use crate::iterator::RowIterator;
+use crate::iterator::QueryIterator;
 
 #[derive(Debug)]
 pub struct ClientConfig {
@@ -75,9 +75,9 @@ impl Client {
         return &self.job_client
     }
 
-    pub async fn query(&self, request: QueryRequest) -> Result<RowIterator,Error> {
+    pub async fn query(&self, request: QueryRequest) -> Result<QueryIterator,Error> {
         let result = self.job_client.query(self.project_id.as_str(), &request).await?;
-        Ok(RowIterator {
+        Ok(QueryIterator {
             client: self.job_client.clone(),
             project_id: result.job_reference.project_id,
             job_id: result.job_reference.job_id,
@@ -105,6 +105,8 @@ mod tests {
 
     use serial_test::serial;
     use crate::http::job::query::QueryRequest;
+    use crate::iterator::AsyncIterator;
+    use crate::value::Row;
 
     #[ctor::ctor]
     fn init() {
@@ -117,8 +119,8 @@ mod tests {
             audience: None,
             scopes: Some(&SCOPES),
         }).await.unwrap();
+        client_config.project_id = tsp.source_credentials.clone().unwrap().project_id;
         client_config.token_source_provider = Box::new(tsp);
-        client_config.project_id = tsp.source_credentials.unwrap().project_id;
         Client::new(client_config)
     }
 
@@ -128,12 +130,15 @@ mod tests {
         let client = create_client().await;
         let mut iterator= client.query(QueryRequest {
             max_results: Some(2),
-            query: "SELECT * from dual".to_string(),
+            query: "SELECT 'A' as col1 ".to_string(),
             ..Default::default()
         }).await.unwrap();
 
-        while let Some(row)  = iterator.next().await.unwrap() {
+        assert_eq!(1, iterator.total_size);
 
+        while let Some(row) = iterator.next::<Row>().await.unwrap() {
+            let v : &str = row.column(0).unwrap();
+            assert_eq!(v, "A");
         }
     }
 }

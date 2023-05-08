@@ -5,16 +5,23 @@ use crate::http::error::Error as HttpError;
 use crate::http::job::get_query_results::GetQueryResultsRequest;
 use crate::http::job::query::{QueryRequest, QueryResponse};
 use crate::http::tabledata::list::Tuple;
+use async_trait::async_trait;
+use crate::value::Row;
 
-#[derive(thiserror::Error)]
-enum Error {
-    #[error(transparent)]
-    Http(#[from] HttpError),
-    #[error(transparent)]
-    Decode(#[from] Infallible)
+#[async_trait]
+pub trait AsyncIterator {
+    async fn next<T: TryFrom<Tuple,Error=String>>(&mut self) -> Result<Option<T>, Error>;
 }
 
-pub struct RowIterator {
+#[derive(thiserror::Error,Debug)]
+pub enum Error {
+    #[error(transparent)]
+    Http(#[from] HttpError),
+    #[error("invalid type {0}")]
+    Decode(String)
+}
+
+pub struct QueryIterator {
     pub(crate) client: BigqueryJobClient,
     pub(crate) project_id: String,
     pub(crate) job_id: String,
@@ -23,8 +30,10 @@ pub struct RowIterator {
     pub total_size: i64
 }
 
-impl <T: TryFrom<Tuple>> RowIterator {
-    pub async fn next<T>(&mut self) -> Result<Option<T>, Error> {
+#[async_trait]
+impl AsyncIterator for QueryIterator {
+
+    async fn next<T: TryFrom<Tuple,Error=String>>(&mut self) -> Result<Option<T>, Error> {
         if let Some(v) = self.chunk.pop_front() {
             return T::try_from(v).map(Some).map_err(Error::Decode);
         }
@@ -32,13 +41,12 @@ impl <T: TryFrom<Tuple>> RowIterator {
             return Ok(None)
         }
         let response = self.client.get_query_results(self.project_id.as_str(), self.job_id.as_str(), &self.request).await?;
-        match response.rows {
-            None => return Ok(None),
-            Some(v) => {
-                self.chunk = VecDeque::from(v);
-                self.request.page_token = response.page_token;
-                self.next()
-            }
+        if response.rows.is_none() {
+            return Ok(None);
         }
+        let v = response.rows.unwrap();
+        self.chunk = VecDeque::from(v);
+        self.request.page_token = response.page_token;
+        return self.next().await;
     }
 }
