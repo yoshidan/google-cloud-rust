@@ -21,6 +21,7 @@ fn generate(config: prost_build::Config, out_dir: impl AsRef<std::path::Path>) {
         .compile_with_config(
             config,
             &[
+                "googleapis/google/cloud/bigquery/storage/v1/storage.proto",
                 "googleapis/google/storage/v2/storage.proto",
                 "googleapis/google/pubsub/v1/pubsub.proto",
                 "googleapis/google/spanner/v1/spanner.proto",
