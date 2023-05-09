@@ -13,6 +13,8 @@ documentation = "https://docs.rs/google-cloud-bigquery/latest/google_cloud_bigqu
 [dependencies]
 async-trait = "0.1"
 google-cloud-token = { version = "0.1.0", path = "../foundation/token" }
+google-cloud-googleapis = { version="0.8.0", path = "../googleapis", features=["bigquery"]}
+google-cloud-gax = { version = "0.14.1", path = "../foundation/gax"}
 thiserror = "1.0"
 tracing = "0.1"
 reqwest = { version = "0.11", features = ["json", "stream", "multipart"], default-features = false }

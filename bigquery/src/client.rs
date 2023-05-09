@@ -1,16 +1,16 @@
-use std::collections::VecDeque;
 use crate::http::bigquery_client::BigqueryClient;
 use crate::http::bigquery_dataset_client::BigqueryDatasetClient;
 use crate::http::bigquery_job_client::BigqueryJobClient;
 use crate::http::bigquery_table_client::BigqueryTableClient;
 use crate::http::bigquery_tabledata_client::BigqueryTabledataClient;
-use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
-use std::ops::Deref;
-use std::sync::Arc;
 use crate::http::error::Error;
 use crate::http::job::get_query_results::GetQueryResultsRequest;
 use crate::http::job::query::{QueryRequest, QueryResponse};
 use crate::iterator::QueryIterator;
+use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
+use std::collections::VecDeque;
+use std::ops::Deref;
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct ClientConfig {
@@ -36,7 +36,7 @@ pub struct Client {
     table_client: BigqueryTableClient,
     tabledata_client: BigqueryTabledataClient,
     job_client: BigqueryJobClient,
-    project_id: String
+    project_id: String,
 }
 
 impl Default for Client {
@@ -55,27 +55,27 @@ impl Client {
             table_client: BigqueryTableClient::new(client.clone()),
             tabledata_client: BigqueryTabledataClient::new(client.clone()),
             job_client: BigqueryJobClient::new(client.clone()),
-            project_id: config.project_id.unwrap_or_default()
+            project_id: config.project_id.unwrap_or_default(),
         }
     }
 
-    pub fn dataset(&self) -> &BigqueryDatasetClient{
-        return &self.dataset_client
+    pub fn dataset(&self) -> &BigqueryDatasetClient {
+        return &self.dataset_client;
     }
 
     pub fn table(&self) -> &BigqueryTableClient {
-        return &self.table_client
+        return &self.table_client;
     }
 
     pub fn tabledata(&self) -> &BigqueryTabledataClient {
-        return &self.tabledata_client
+        return &self.tabledata_client;
     }
 
     pub fn job(&self) -> &BigqueryJobClient {
-        return &self.job_client
+        return &self.job_client;
     }
 
-    pub async fn query(&self, request: QueryRequest) -> Result<QueryIterator,Error> {
+    pub async fn query(&self, request: QueryRequest) -> Result<QueryIterator, Error> {
         let result = self.job_client.query(self.project_id.as_str(), &request).await?;
         Ok(QueryIterator {
             client: self.job_client.clone(),
@@ -87,26 +87,26 @@ impl Client {
                 max_results: request.max_results,
                 timeout_ms: request.timeout_ms,
                 location: Some(request.location),
-                format_options: request.format_options
+                format_options: request.format_options,
             },
             chunk: VecDeque::from(result.rows.unwrap_or_default()),
-            total_size: result.total_rows.unwrap_or_default()
+            total_size: result.total_rows.unwrap_or_default(),
         })
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::client::{Client, ClientConfig};
+    use crate::http::bigquery_client::SCOPES;
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_token::TokenSourceProvider;
-    use crate::client::{Client, ClientConfig};
-    use crate::http::bigquery_client::SCOPES;
 
-    use serial_test::serial;
     use crate::http::job::query::QueryRequest;
     use crate::iterator::AsyncIterator;
     use crate::value::Row;
+    use serial_test::serial;
 
     #[ctor::ctor]
     fn init() {
@@ -118,7 +118,9 @@ mod tests {
         let tsp = DefaultTokenSourceProvider::new(Config {
             audience: None,
             scopes: Some(&SCOPES),
-        }).await.unwrap();
+        })
+        .await
+        .unwrap();
         client_config.project_id = tsp.source_credentials.clone().unwrap().project_id;
         client_config.token_source_provider = Box::new(tsp);
         Client::new(client_config)
@@ -128,16 +130,19 @@ mod tests {
     #[serial]
     async fn test_query() {
         let client = create_client().await;
-        let mut iterator= client.query(QueryRequest {
-            max_results: Some(2),
-            query: "SELECT 'A' as col1 ".to_string(),
-            ..Default::default()
-        }).await.unwrap();
+        let mut iterator = client
+            .query(QueryRequest {
+                max_results: Some(2),
+                query: "SELECT 'A' as col1 ".to_string(),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
 
         assert_eq!(1, iterator.total_size);
 
         while let Some(row) = iterator.next::<Row>().await.unwrap() {
-            let v : &str = row.column(0).unwrap();
+            let v: &str = row.column(0).unwrap();
             assert_eq!(v, "A");
         }
     }
