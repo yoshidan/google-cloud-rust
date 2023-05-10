@@ -111,7 +111,7 @@ impl Transaction {
             seqno: 0,
             query_options: options.optimizer_options,
             request_options: Transaction::create_request_options(options.call_options.priority),
-            data_boost_enabled: false
+            data_boost_enabled: false,
         };
         let session = self.session.as_mut().unwrap().deref_mut();
         let reader = Box::new(StatementReader { request });
@@ -168,7 +168,7 @@ impl Transaction {
             resume_token: vec![],
             partition_token: vec![],
             request_options: Transaction::create_request_options(options.call_options.priority),
-            data_boost_enabled: false
+            data_boost_enabled: false,
         };
 
         let session = self.as_mut_session();

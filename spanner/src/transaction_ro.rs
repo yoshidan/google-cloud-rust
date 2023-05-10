@@ -164,7 +164,7 @@ impl BatchReadOnlyTransaction {
         keys: impl Into<KeySet> + Clone,
         po: Option<PartitionOptions>,
         ro: ReadOptions,
-        data_boost_enabled: bool
+        data_boost_enabled: bool,
     ) -> Result<Vec<Partition<TableReader>>, Status> {
         let columns: Vec<String> = columns.iter().map(|x| x.to_string()).collect();
         let inner_keyset = keys.into().inner;
@@ -200,7 +200,7 @@ impl BatchReadOnlyTransaction {
                             resume_token: vec![],
                             partition_token: x.partition_token,
                             request_options: Transaction::create_request_options(ro.call_options.priority),
-                            data_boost_enabled
+                            data_boost_enabled,
                         },
                     },
                 })
@@ -222,7 +222,7 @@ impl BatchReadOnlyTransaction {
         stmt: Statement,
         po: Option<PartitionOptions>,
         qo: QueryOptions,
-        data_boost_enabled: bool
+        data_boost_enabled: bool,
     ) -> Result<Vec<Partition<StatementReader>>, Status> {
         let request = PartitionQueryRequest {
             session: self.get_session_name(),
@@ -260,7 +260,7 @@ impl BatchReadOnlyTransaction {
                             seqno: 0,
                             query_options: qo.optimizer_options.clone(),
                             request_options: Transaction::create_request_options(qo.call_options.priority),
-                            data_boost_enabled
+                            data_boost_enabled,
                         },
                     },
                 })
