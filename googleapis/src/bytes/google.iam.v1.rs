@@ -38,7 +38,8 @@ pub struct GetPolicyOptions {
 /// only if the expression evaluates to `true`. A condition can add constraints
 /// based on attributes of the request, the resource, or both. To learn which
 /// resources support conditions in their IAM policies, see the
-/// [IAM documentation](<https://cloud.google.com/iam/help/conditions/resource-policies>).
+/// [IAM
+/// documentation](<https://cloud.google.com/iam/help/conditions/resource-policies>).
 ///
 /// **JSON example:**
 ///
@@ -61,7 +62,8 @@ pub struct GetPolicyOptions {
 ///            "condition": {
 ///              "title": "expirable access",
 ///              "description": "Does not grant access after Sep 2020",
-///              "expression": "request.time < timestamp('2020-10-01T00:00:00.000Z')",
+///              "expression": "request.time <
+///              timestamp('2020-10-01T00:00:00.000Z')",
 ///            }
 ///          }
 ///        ],
@@ -116,7 +118,8 @@ pub struct Policy {
     /// specify any valid version or leave the field unset.
     ///
     /// To learn which resources support conditions in their IAM policies, see the
-    /// [IAM documentation](<https://cloud.google.com/iam/help/conditions/resource-policies>).
+    /// [IAM
+    /// documentation](<https://cloud.google.com/iam/help/conditions/resource-policies>).
     #[prost(int32, tag = "1")]
     pub version: i32,
     /// Associates a list of `members`, or principals, with a `role`. Optionally,
@@ -308,7 +311,8 @@ pub struct AuditLogConfig {
     pub log_type: i32,
     /// Specifies the identities that do not cause logging for this type of
     /// permission.
-    /// Follows the same format of \[Binding.members][google.iam.v1.Binding.members\].
+    /// Follows the same format of
+    /// \[Binding.members][google.iam.v1.Binding.members\].
     #[prost(string, repeated, tag = "2")]
     pub exempted_members: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }

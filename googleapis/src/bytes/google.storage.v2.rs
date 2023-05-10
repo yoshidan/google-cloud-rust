@@ -42,9 +42,12 @@ pub struct CreateBucketRequest {
     #[prost(string, tag = "1")]
     pub parent: ::prost::alloc::string::String,
     /// Properties of the new bucket being inserted.
-    /// The project and name of the bucket are specified in the parent and
-    /// bucket_id fields, respectively. Populating those fields in `bucket` will
-    /// result in an error.
+    /// The name of the bucket is specified in the `bucket_id` field. Populating
+    /// `bucket.name` field will result in an error.
+    /// The project of the bucket must be specified in the `bucket.project` field.
+    /// This field must be in `projects/{projectIdentifier}` format,
+    /// {projectIdentifier} can be the project ID or project number. The `parent`
+    /// field must be either empty or `projects/_`.
     #[prost(message, optional, tag = "2")]
     pub bucket: ::core::option::Option<Bucket>,
     /// Required. The ID to use for this bucket, which will become the final
@@ -148,68 +151,65 @@ pub struct UpdateBucketRequest {
     /// may accidentally reset the new field's value.
     ///
     /// Not specifying any fields is an error.
-    /// Not specifying a field while setting that field to a non-default value is
-    /// an error.
     #[prost(message, optional, tag = "6")]
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
-/// Request message for DeleteNotification.
+/// Request message for DeleteNotificationConfig.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DeleteNotificationRequest {
-    /// Required. The parent bucket of the notification.
+pub struct DeleteNotificationConfigRequest {
+    /// Required. The parent bucket of the NotificationConfig.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
-/// Request message for GetNotification.
+/// Request message for GetNotificationConfig.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetNotificationRequest {
-    /// Required. The parent bucket of the notification.
+pub struct GetNotificationConfigRequest {
+    /// Required. The parent bucket of the NotificationConfig.
     /// Format:
-    /// `projects/{project}/buckets/{bucket}/notificationConfigs/{notification}`
+    /// `projects/{project}/buckets/{bucket}/notificationConfigs/{notificationConfig}`
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
-/// Request message for CreateNotification.
+/// Request message for CreateNotificationConfig.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CreateNotificationRequest {
-    /// Required. The bucket to which this notification belongs.
+pub struct CreateNotificationConfigRequest {
+    /// Required. The bucket to which this NotificationConfig belongs.
     #[prost(string, tag = "1")]
     pub parent: ::prost::alloc::string::String,
-    /// Required. Properties of the notification to be inserted.
+    /// Required. Properties of the NotificationConfig to be inserted.
     #[prost(message, optional, tag = "2")]
-    pub notification: ::core::option::Option<Notification>,
+    pub notification_config: ::core::option::Option<NotificationConfig>,
 }
 /// Request message for ListNotifications.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListNotificationsRequest {
+pub struct ListNotificationConfigsRequest {
     /// Required. Name of a Google Cloud Storage bucket.
     #[prost(string, tag = "1")]
     pub parent: ::prost::alloc::string::String,
-    /// The maximum number of notifications to return. The service may return fewer
-    /// than this value.
-    /// The default value is 100. Specifying a value above 100 will result in a
-    /// page_size of 100.
+    /// The maximum number of NotificationConfigs to return. The service may
+    /// return fewer than this value. The default value is 100. Specifying a value
+    /// above 100 will result in a page_size of 100.
     #[prost(int32, tag = "2")]
     pub page_size: i32,
-    /// A page token, received from a previous `ListNotifications` call.
+    /// A page token, received from a previous `ListNotificationConfigs` call.
     /// Provide this to retrieve the subsequent page.
     ///
-    /// When paginating, all other parameters provided to `ListNotifications` must
-    /// match the call that provided the page token.
+    /// When paginating, all other parameters provided to `ListNotificationConfigs`
+    /// must match the call that provided the page token.
     #[prost(string, tag = "3")]
     pub page_token: ::prost::alloc::string::String,
 }
-/// The result of a call to Notifications.ListNotifications
+/// The result of a call to ListNotificationConfigs
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListNotificationsResponse {
+pub struct ListNotificationConfigsResponse {
     /// The list of items.
     #[prost(message, repeated, tag = "1")]
-    pub notifications: ::prost::alloc::vec::Vec<Notification>,
+    pub notification_configs: ::prost::alloc::vec::Vec<NotificationConfig>,
     /// A token, which can be sent as `page_token` to retrieve the next page.
     /// If this field is omitted, there are no subsequent pages.
     #[prost(string, tag = "2")]
@@ -511,8 +511,6 @@ pub struct WriteObjectSpec {
     /// This situation is considered a client error, and if such an error occurs
     /// you must start the upload over from scratch, this time sending the correct
     /// number of bytes.
-    ///
-    /// The `object_size` value is ignored for one-shot (non-resumable) writes.
     #[prost(int64, optional, tag = "8")]
     pub object_size: ::core::option::Option<i64>,
 }
@@ -928,8 +926,6 @@ pub struct UpdateObjectRequest {
     /// may accidentally reset the new field's value.
     ///
     /// Not specifying any fields is an error.
-    /// Not specifying a field while setting that field to a non-default value is
-    /// an error.
     #[prost(message, optional, tag = "7")]
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
     /// A set of parameters common to Storage API requests concerning an object.
@@ -940,8 +936,8 @@ pub struct UpdateObjectRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetServiceAccountRequest {
-    /// Required. Project ID, in the format of "projects/<projectIdentifier>".
-    /// <projectIdentifier> can be the project ID or project number.
+    /// Required. Project ID, in the format of "projects/{projectIdentifier}".
+    /// {projectIdentifier} can be the project ID or project number.
     #[prost(string, tag = "1")]
     pub project: ::prost::alloc::string::String,
 }
@@ -950,7 +946,7 @@ pub struct GetServiceAccountRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateHmacKeyRequest {
     /// Required. The project that the HMAC-owning service account lives in, in the
-    /// format of "projects/<projectIdentifier>". <projectIdentifier> can be the
+    /// format of "projects/{projectIdentifier}". {projectIdentifier} can be the
     /// project ID or project number.
     #[prost(string, tag = "1")]
     pub project: ::prost::alloc::string::String,
@@ -978,8 +974,8 @@ pub struct DeleteHmacKeyRequest {
     #[prost(string, tag = "1")]
     pub access_id: ::prost::alloc::string::String,
     /// Required. The project that owns the HMAC key, in the format of
-    /// "projects/<projectIdentifier>".
-    /// <projectIdentifier> can be the project ID or project number.
+    /// "projects/{projectIdentifier}".
+    /// {projectIdentifier} can be the project ID or project number.
     #[prost(string, tag = "2")]
     pub project: ::prost::alloc::string::String,
 }
@@ -991,8 +987,8 @@ pub struct GetHmacKeyRequest {
     #[prost(string, tag = "1")]
     pub access_id: ::prost::alloc::string::String,
     /// Required. The project the HMAC key lies in, in the format of
-    /// "projects/<projectIdentifier>".
-    /// <projectIdentifier> can be the project ID or project number.
+    /// "projects/{projectIdentifier}".
+    /// {projectIdentifier} can be the project ID or project number.
     #[prost(string, tag = "2")]
     pub project: ::prost::alloc::string::String,
 }
@@ -1001,8 +997,8 @@ pub struct GetHmacKeyRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListHmacKeysRequest {
     /// Required. The project to list HMAC keys for, in the format of
-    /// "projects/<projectIdentifier>".
-    /// <projectIdentifier> can be the project ID or project number.
+    /// "projects/{projectIdentifier}".
+    /// {projectIdentifier} can be the project ID or project number.
     #[prost(string, tag = "1")]
     pub project: ::prost::alloc::string::String,
     /// The maximum number of keys to return.
@@ -1232,8 +1228,8 @@ pub struct Bucket {
     #[prost(string, tag = "29")]
     pub etag: ::prost::alloc::string::String,
     /// Immutable. The project which owns this bucket, in the format of
-    /// "projects/<projectIdentifier>".
-    /// <projectIdentifier> can be the project ID or project number.
+    /// "projects/{projectIdentifier}".
+    /// {projectIdentifier} can be the project ID or project number.
     #[prost(string, tag = "3")]
     pub project: ::prost::alloc::string::String,
     /// Output only. The metadata generation of this bucket.
@@ -1583,12 +1579,6 @@ pub mod bucket {
         /// Once locked, an object retention policy cannot be modified.
         #[prost(bool, tag = "2")]
         pub is_locked: bool,
-        /// The duration in seconds that objects need to be retained. Retention
-        /// duration must be greater than zero and less than 100 years. Note that
-        /// enforcement of retention periods less than a day is not guaranteed. Such
-        /// periods should only be used for testing purposes.
-        #[prost(int64, optional, tag = "3")]
-        pub retention_period: ::core::option::Option<i64>,
         /// The duration that objects need to be retained. Retention duration must be
         /// greater than zero and less than 100 years. Note that enforcement of
         /// retention periods less than a day is not guaranteed. Such periods should
@@ -1723,7 +1713,7 @@ pub struct ChecksummedData {
 pub struct ObjectChecksums {
     /// CRC32C digest of the object data. Computed by the Cloud Storage service for
     /// all written objects.
-    /// If set in an WriteObjectRequest, service will validate that the stored
+    /// If set in a WriteObjectRequest, service will validate that the stored
     /// object matches this checksum.
     #[prost(fixed32, optional, tag = "1")]
     pub crc32c: ::core::option::Option<u32>,
@@ -1742,16 +1732,16 @@ pub struct ObjectChecksums {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct HmacKeyMetadata {
     /// Immutable. Resource name ID of the key in the format
-    /// <projectIdentifier>/<accessId>.
-    /// <projectIdentifier> can be the project ID or project number.
+    /// {projectIdentifier}/{accessId}.
+    /// {projectIdentifier} can be the project ID or project number.
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
     /// Immutable. Globally unique id for keys.
     #[prost(string, tag = "2")]
     pub access_id: ::prost::alloc::string::String,
     /// Immutable. Identifies the project that owns the service account of the
-    /// specified HMAC key, in the format "projects/<projectIdentifier>".
-    /// <projectIdentifier> can be the project ID or project number.
+    /// specified HMAC key, in the format "projects/{projectIdentifier}".
+    /// {projectIdentifier} can be the project ID or project number.
     #[prost(string, tag = "3")]
     pub project: ::prost::alloc::string::String,
     /// Output only. Email of the service account the key authenticates as.
@@ -1774,10 +1764,10 @@ pub struct HmacKeyMetadata {
 /// A directive to publish Pub/Sub notifications upon changes to a bucket.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Notification {
-    /// Required. The resource name of this notification.
+pub struct NotificationConfig {
+    /// Required. The resource name of this NotificationConfig.
     /// Format:
-    /// `projects/{project}/buckets/{bucket}/notificationConfigs/{notification}`
+    /// `projects/{project}/buckets/{bucket}/notificationConfigs/{notificationConfig}`
     /// The `{project}` portion may be `_` for globally unique buckets.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
@@ -1786,23 +1776,23 @@ pub struct Notification {
     /// '//pubsub.googleapis.com/projects/{project-identifier}/topics/{my-topic}'
     #[prost(string, tag = "2")]
     pub topic: ::prost::alloc::string::String,
-    /// The etag of the Notification.
-    /// If included in the metadata of GetNotificationRequest, the operation will
-    /// only be performed if the etag matches that of the Notification.
+    /// The etag of the NotificationConfig.
+    /// If included in the metadata of GetNotificationConfigRequest, the operation
+    /// will only be performed if the etag matches that of the NotificationConfig.
     #[prost(string, tag = "7")]
     pub etag: ::prost::alloc::string::String,
-    /// If present, only send notifications about listed event types. If empty,
-    /// sent notifications for all event types.
+    /// If present, only send notifications about listed event types. If
+    /// empty, sent notifications for all event types.
     #[prost(string, repeated, tag = "3")]
     pub event_types: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// A list of additional attributes to attach to each Pub/Sub
-    /// message published for this notification subscription.
+    /// message published for this NotificationConfig.
     #[prost(map = "string, string", tag = "4")]
     pub custom_attributes: ::std::collections::HashMap<
         ::prost::alloc::string::String,
         ::prost::alloc::string::String,
     >,
-    /// If present, only apply this notification config to object names that
+    /// If present, only apply this NotificationConfig to object names that
     /// begin with this prefix.
     #[prost(string, tag = "5")]
     pub object_name_prefix: ::prost::alloc::string::String,
@@ -2394,10 +2384,10 @@ pub mod storage_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// Permanently deletes a notification subscription.
-        pub async fn delete_notification(
+        /// Permanently deletes a NotificationConfig.
+        pub async fn delete_notification_config(
             &mut self,
-            request: impl tonic::IntoRequest<super::DeleteNotificationRequest>,
+            request: impl tonic::IntoRequest<super::DeleteNotificationConfigRequest>,
         ) -> Result<tonic::Response<()>, tonic::Status> {
             self.inner
                 .ready()
@@ -2410,15 +2400,15 @@ pub mod storage_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/DeleteNotification",
+                "/google.storage.v2.Storage/DeleteNotificationConfig",
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// View a notification config.
-        pub async fn get_notification(
+        /// View a NotificationConfig.
+        pub async fn get_notification_config(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetNotificationRequest>,
-        ) -> Result<tonic::Response<super::Notification>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::GetNotificationConfigRequest>,
+        ) -> Result<tonic::Response<super::NotificationConfig>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -2430,18 +2420,18 @@ pub mod storage_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/GetNotification",
+                "/google.storage.v2.Storage/GetNotificationConfig",
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// Creates a notification subscription for a given bucket.
-        /// These notifications, when triggered, publish messages to the specified
-        /// Pub/Sub topics.
-        /// See https://cloud.google.com/storage/docs/pubsub-notifications.
-        pub async fn create_notification(
+        /// Creates a NotificationConfig for a given bucket.
+        /// These NotificationConfigs, when triggered, publish messages to the
+        /// specified Pub/Sub topics. See
+        /// https://cloud.google.com/storage/docs/pubsub-notifications.
+        pub async fn create_notification_config(
             &mut self,
-            request: impl tonic::IntoRequest<super::CreateNotificationRequest>,
-        ) -> Result<tonic::Response<super::Notification>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::CreateNotificationConfigRequest>,
+        ) -> Result<tonic::Response<super::NotificationConfig>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -2453,15 +2443,18 @@ pub mod storage_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/CreateNotification",
+                "/google.storage.v2.Storage/CreateNotificationConfig",
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// Retrieves a list of notification subscriptions for a given bucket.
-        pub async fn list_notifications(
+        /// Retrieves a list of NotificationConfigs for a given bucket.
+        pub async fn list_notification_configs(
             &mut self,
-            request: impl tonic::IntoRequest<super::ListNotificationsRequest>,
-        ) -> Result<tonic::Response<super::ListNotificationsResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::ListNotificationConfigsRequest>,
+        ) -> Result<
+            tonic::Response<super::ListNotificationConfigsResponse>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2473,7 +2466,7 @@ pub mod storage_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/ListNotifications",
+                "/google.storage.v2.Storage/ListNotificationConfigs",
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
@@ -2498,8 +2491,12 @@ pub mod storage_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// Deletes an object and its metadata. Deletions are permanent if versioning
-        /// is not enabled for the bucket, or if the `generation` parameter is used.
+        /// Deletes an object and its metadata.
+        ///
+        /// Deletions are normally permanent when versioning is disabled or whenever
+        /// the generation parameter is used. However, if soft delete is enabled for
+        /// the bucket, deleted objects can be restored using RestoreObject until the
+        /// soft delete retention period has passed.
         pub async fn delete_object(
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteObjectRequest>,
@@ -2520,6 +2517,13 @@ pub mod storage_client {
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Cancels an in-progress resumable upload.
+        ///
+        /// Any attempts to write to the resumable upload after cancelling the upload
+        /// will fail.
+        ///
+        /// The behavior for currently in progress write operations is not guaranteed -
+        /// they could either complete before the cancellation or fail if the
+        /// cancellation completes first.
         pub async fn cancel_resumable_write(
             &mut self,
             request: impl tonic::IntoRequest<super::CancelResumableWriteRequest>,
@@ -2645,8 +2649,9 @@ pub mod storage_client {
         ///     returned `persisted_size`; in this case, the service will skip data at
         ///     offsets that were already persisted (without checking that it matches
         ///     the previously written data), and write only the data starting from the
-        ///     persisted offset. This behavior can make client-side handling simpler
-        ///     in some cases.
+        ///     persisted offset. Even though the data isn't written, it may still
+        ///     incur a performance cost over resuming at the correct write offset.
+        ///     This behavior can make client-side handling simpler in some cases.
         ///
         /// The service will not view the object as complete until the client has
         /// sent a `WriteObjectRequest` with `finish_write` set to `true`. Sending any
