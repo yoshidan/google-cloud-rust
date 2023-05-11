@@ -192,13 +192,13 @@ pub struct DeleteSchemaRevisionRequest {
     /// Required. The name of the schema revision to be deleted, with a revision ID
     /// explicitly included.
     ///
-    /// Example: projects/123/schemas/my-schema@c7cfa2a8
+    /// Example: `projects/123/schemas/my-schema@c7cfa2a8`
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
-    /// Required. The revision ID to roll back to.
-    /// It must be a revision of the same schema.
-    ///
-    ///    Example: c7cfa2a8
+    /// Optional. This field is deprecated and should not be used for specifying
+    /// the revision ID. The revision ID should be specified via the `name`
+    /// parameter.
+    #[deprecated]
     #[prost(string, tag = "2")]
     pub revision_id: ::prost::alloc::string::String,
 }
@@ -595,7 +595,7 @@ pub struct Topic {
     /// timestamp](<https://cloud.google.com/pubsub/docs/replay-overview#seek_to_a_time>)
     /// that is up to `message_retention_duration` in the past. If this field is
     /// not set, message retention is controlled by settings on individual
-    /// subscriptions. Cannot be more than 7 days or less than 10 minutes.
+    /// subscriptions. Cannot be more than 31 days or less than 10 minutes.
     #[prost(message, optional, tag = "8")]
     pub message_retention_duration: ::core::option::Option<::prost_types::Duration>,
 }
@@ -636,6 +636,8 @@ pub struct PubsubMessage {
     /// delivered to subscribers in the order in which they are received by the
     /// Pub/Sub system. All `PubsubMessage`s published in a given `PublishRequest`
     /// must specify the same `ordering_key` value.
+    /// For more information, see [ordering
+    /// messages](<https://cloud.google.com/pubsub/docs/ordering>).
     #[prost(string, tag = "5")]
     pub ordering_key: ::prost::alloc::string::String,
 }
@@ -797,7 +799,9 @@ pub struct DetachSubscriptionRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DetachSubscriptionResponse {}
-/// A subscription resource.
+/// A subscription resource. If none of `push_config` or `bigquery_config` is
+/// set, then the subscriber will pull and ack messages using API methods. At
+/// most one of these fields may be set.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Subscription {
@@ -815,21 +819,17 @@ pub struct Subscription {
     #[prost(string, tag = "2")]
     pub topic: ::prost::alloc::string::String,
     /// If push delivery is used with this subscription, this field is
-    /// used to configure it. Either `pushConfig` or `bigQueryConfig` can be set,
-    /// but not both. If both are empty, then the subscriber will pull and ack
-    /// messages using API methods.
+    /// used to configure it.
     #[prost(message, optional, tag = "4")]
     pub push_config: ::core::option::Option<PushConfig>,
     /// If delivery to BigQuery is used with this subscription, this field is
-    /// used to configure it. Either `pushConfig` or `bigQueryConfig` can be set,
-    /// but not both. If both are empty, then the subscriber will pull and ack
-    /// messages using API methods.
+    /// used to configure it.
     #[prost(message, optional, tag = "18")]
     pub bigquery_config: ::core::option::Option<BigQueryConfig>,
     /// The approximate amount of time (on a best-effort basis) Pub/Sub waits for
     /// the subscriber to acknowledge receipt before resending the message. In the
     /// interval after the message is delivered and before it is acknowledged, it
-    /// is considered to be <i>outstanding</i>. During that time period, the
+    /// is considered to be _outstanding_. During that time period, the
     /// message will not be redelivered (on a best-effort basis).
     ///
     /// For pull subscriptions, this value is used as the initial value for the ack
@@ -864,8 +864,8 @@ pub struct Subscription {
     /// minutes.
     #[prost(message, optional, tag = "8")]
     pub message_retention_duration: ::core::option::Option<::prost_types::Duration>,
-    /// See <a href="<https://cloud.google.com/pubsub/docs/labels">> Creating and
-    /// managing labels</a>.
+    /// See [Creating and managing
+    /// labels](<https://cloud.google.com/pubsub/docs/labels>).
     #[prost(map = "string, string", tag = "9")]
     pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     /// If true, messages published with the same `ordering_key` in `PubsubMessage`
@@ -879,7 +879,8 @@ pub struct Subscription {
     /// successfully consuming messages from the subscription or is issuing
     /// operations on the subscription. If `expiration_policy` is not set, a
     /// *default policy* with `ttl` of 31 days will be used. The minimum allowed
-    /// value for `expiration_policy.ttl` is 1 day.
+    /// value for `expiration_policy.ttl` is 1 day. If `expiration_policy` is set,
+    /// but `expiration_policy.ttl` is not set, the subscription never expires.
     #[prost(message, optional, tag = "11")]
     pub expiration_policy: ::core::option::Option<ExpirationPolicy>,
     /// An expression written in the Pub/Sub [filter
@@ -1079,7 +1080,7 @@ pub struct PushConfig {
     /// * `v1` or `v1beta2`: uses the push format defined in the v1 Pub/Sub API.
     ///
     /// For example:
-    /// <pre><code>attributes { "x-goog-version": "v1" } </code></pre>
+    /// `attributes { "x-goog-version": "v1" }`
     #[prost(map = "string, string", tag = "2")]
     pub attributes: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     /// An authentication method used by push endpoints to verify the source of
@@ -1133,7 +1134,7 @@ pub mod push_config {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BigQueryConfig {
     /// The name of the table to which to write data, of the form
-    /// {projectId}:{datasetId}.{tableId}
+    /// {projectId}.{datasetId}.{tableId}
     #[prost(string, tag = "1")]
     pub table: ::prost::alloc::string::String,
     /// When true, use the topic's schema as the columns to write to in BigQuery,
@@ -1170,6 +1171,11 @@ pub mod big_query_config {
         /// The subscription can actively send messages to BigQuery
         Active = 1,
         /// Cannot write to the BigQuery table because of permission denied errors.
+        /// This can happen if
+        /// - Pub/Sub SA has not been granted the [appropriate BigQuery IAM
+        /// permissions](<https://cloud.google.com/pubsub/docs/create-subscription#assign_bigquery_service_account>)
+        /// - bigquery.googleapis.com API is not enabled for the project
+        /// (\[instructions\](<https://cloud.google.com/service-usage/docs/enable-disable>))
         PermissionDenied = 2,
         /// Cannot write to the BigQuery table because it does not exist.
         NotFound = 3,
@@ -1338,7 +1344,8 @@ pub struct PullRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PullResponse {
     /// Received Pub/Sub messages. The list will be empty if there are no more
-    /// messages available in the backlog. For JSON, the response can be entirely
+    /// messages available in the backlog, or if no messages could be returned
+    /// before the request timeout. For JSON, the response can be entirely
     /// empty. The Pub/Sub system may return fewer than the `maxMessages` requested
     /// even if there are more messages available in the backlog.
     #[prost(message, repeated, tag = "1")]
@@ -1494,6 +1501,9 @@ pub mod streaming_pull_response {
         /// List of acknowledgement IDs that were out of order.
         #[prost(string, repeated, tag = "3")]
         pub unordered_ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+        /// List of acknowledgement IDs that failed processing with temporary issues.
+        #[prost(string, repeated, tag = "4")]
+        pub temporary_failed_ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     }
     /// Acknowledgement IDs sent in one or more previous requests to modify the
     /// deadline for a specific message.
@@ -1507,6 +1517,9 @@ pub mod streaming_pull_response {
         /// deadline has expired.
         #[prost(string, repeated, tag = "2")]
         pub invalid_ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+        /// List of acknowledgement IDs that failed processing with temporary issues.
+        #[prost(string, repeated, tag = "3")]
+        pub temporary_failed_ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     }
     /// Subscription properties sent as part of the response.
     #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1527,9 +1540,9 @@ pub struct CreateSnapshotRequest {
     /// Required. User-provided name for this snapshot. If the name is not provided
     /// in the request, the server will assign a random name for this snapshot on
     /// the same project as the subscription. Note that for REST API requests, you
-    /// must specify a name.  See the <a
-    /// href="<https://cloud.google.com/pubsub/docs/admin#resource_names">> resource
-    /// name rules</a>. Format is `projects/{project}/snapshots/{snap}`.
+    /// must specify a name.  See the [resource name
+    /// rules](<https://cloud.google.com/pubsub/docs/admin#resource_names>). Format
+    /// is `projects/{project}/snapshots/{snap}`.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// Required. The subscription whose backlog the snapshot retains.
@@ -1543,8 +1556,8 @@ pub struct CreateSnapshotRequest {
     /// Format is `projects/{project}/subscriptions/{sub}`.
     #[prost(string, tag = "2")]
     pub subscription: ::prost::alloc::string::String,
-    /// See <a href="<https://cloud.google.com/pubsub/docs/labels">> Creating and
-    /// managing labels</a>.
+    /// See [Creating and managing
+    /// labels](<https://cloud.google.com/pubsub/docs/labels>).
     #[prost(map = "string, string", tag = "3")]
     pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
@@ -2039,9 +2052,7 @@ pub mod subscriber_client {
             let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/Acknowledge");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// Pulls messages from the server. The server may return `UNAVAILABLE` if
-        /// there are too many concurrent pull requests pending for the given
-        /// subscription.
+        /// Pulls messages from the server.
         pub async fn pull(
             &mut self,
             request: impl tonic::IntoRequest<super::PullRequest>,
@@ -2091,10 +2102,10 @@ pub mod subscriber_client {
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Gets the configuration details of a snapshot. Snapshots are used in
-        /// <a href="https://cloud.google.com/pubsub/docs/replay-overview">Seek</a>
-        /// operations, which allow you to manage message acknowledgments in bulk. That
-        /// is, you can set the acknowledgment state of messages in an existing
-        /// subscription to the state captured by a snapshot.
+        /// [Seek](https://cloud.google.com/pubsub/docs/replay-overview) operations,
+        /// which allow you to manage message acknowledgments in bulk. That is, you can
+        /// set the acknowledgment state of messages in an existing subscription to the
+        /// state captured by a snapshot.
         pub async fn get_snapshot(
             &mut self,
             request: impl tonic::IntoRequest<super::GetSnapshotRequest>,
@@ -2150,11 +2161,10 @@ pub mod subscriber_client {
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// Updates an existing snapshot. Snapshots are used in
-        /// <a href="https://cloud.google.com/pubsub/docs/replay-overview">Seek</a>
-        /// operations, which allow
-        /// you to manage message acknowledgments in bulk. That is, you can set the
-        /// acknowledgment state of messages in an existing subscription to the state
-        /// captured by a snapshot.
+        /// [Seek](https://cloud.google.com/pubsub/docs/replay-overview) operations,
+        /// which allow you to manage message acknowledgments in bulk. That is, you can
+        /// set the acknowledgment state of messages in an existing subscription to the
+        /// state captured by a snapshot.
         pub async fn update_snapshot(
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateSnapshotRequest>,
