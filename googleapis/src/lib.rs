@@ -54,12 +54,15 @@ pub mod storage {
     pub mod v2;
 }
 
-#[cfg(feature = "bigquery")]
 #[path = ""]
-pub mod bigquery {
+pub mod cloud {
+    #[cfg(feature = "bigquery")]
     #[path = ""]
-    pub mod storage {
-        #[path = "google.cloud.bigquery.storage.v1.rs"]
-        pub mod v1;
+    pub mod bigquery {
+        #[path = ""]
+        pub mod storage {
+            #[path = "google.cloud.bigquery.storage.v1.rs"]
+            pub mod v1;
+        }
     }
 }

@@ -5,11 +5,10 @@ use crate::http::bigquery_table_client::BigqueryTableClient;
 use crate::http::bigquery_tabledata_client::BigqueryTabledataClient;
 use crate::http::error::Error;
 use crate::http::job::get_query_results::GetQueryResultsRequest;
-use crate::http::job::query::{QueryRequest, QueryResponse};
+use crate::http::job::query::QueryRequest;
 use crate::iterator::QueryIterator;
 use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
 use std::collections::VecDeque;
-use std::ops::Deref;
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -101,7 +100,6 @@ mod tests {
     use crate::http::bigquery_client::SCOPES;
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
-    use google_cloud_token::TokenSourceProvider;
 
     use crate::http::job::query::QueryRequest;
     use crate::iterator::AsyncIterator;

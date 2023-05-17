@@ -1,5 +1,4 @@
 use crate::http::tabledata::list::{Cell, Tuple, Value};
-use std::convert::Infallible;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {

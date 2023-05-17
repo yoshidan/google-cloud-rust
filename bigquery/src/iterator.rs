@@ -1,12 +1,9 @@
 use crate::http::bigquery_job_client::BigqueryJobClient;
 use crate::http::error::Error as HttpError;
 use crate::http::job::get_query_results::GetQueryResultsRequest;
-use crate::http::job::query::{QueryRequest, QueryResponse};
 use crate::http::tabledata::list::Tuple;
-use crate::value::Row;
 use async_trait::async_trait;
 use std::collections::VecDeque;
-use std::convert::Infallible;
 
 #[async_trait]
 pub trait AsyncIterator {
