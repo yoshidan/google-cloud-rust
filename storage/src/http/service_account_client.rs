@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use reqwest::Client;
-
 use google_cloud_token::TokenSource;
 
 use crate::http::{check_response_status, Error};
@@ -9,13 +7,15 @@ use crate::http::{check_response_status, Error};
 pub struct ServiceAccountClient {
     ts: Arc<dyn TokenSource>,
     v1_endpoint: String,
+    http: reqwest::Client,
 }
 
 impl ServiceAccountClient {
-    pub(crate) fn new(ts: Arc<dyn TokenSource>, endpoint: &str) -> Self {
+    pub(crate) fn new(ts: Arc<dyn TokenSource>, endpoint: &str, http: reqwest::Client) -> Self {
         Self {
             ts,
             v1_endpoint: format!("{endpoint}/v1"),
+            http,
         }
     }
 
@@ -24,7 +24,8 @@ impl ServiceAccountClient {
         let url = format!("{}/{}:signBlob", self.v1_endpoint, name);
         let request = SignBlobRequest { payload };
         let token = self.ts.token().await.map_err(Error::TokenSource)?;
-        let request = Client::default()
+        let request = self
+            .http
             .post(url)
             .json(&request)
             .header("X-Goog-Api-Client", "rust")
@@ -51,6 +52,7 @@ struct SignBlobResponse {
 
 #[cfg(test)]
 mod test {
+    use reqwest::Client;
     use serial_test::serial;
 
     use google_cloud_auth::project::Config;
@@ -72,7 +74,7 @@ mod test {
         .await
         .unwrap()
         .token_source();
-        ServiceAccountClient::new(ts, "https://iamcredentials.googleapis.com")
+        ServiceAccountClient::new(ts, "https://iamcredentials.googleapis.com", Client::default())
     }
 
     #[tokio::test]

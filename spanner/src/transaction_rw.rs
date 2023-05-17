@@ -167,6 +167,7 @@ impl ReadWriteTransaction {
             session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
             sql: stmt.sql.to_string(),
+            data_boost_enabled: false,
             params: Some(prost_types::Struct { fields: stmt.params }),
             param_types: stmt.param_types,
             resume_token: vec![],

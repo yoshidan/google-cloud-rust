@@ -184,6 +184,7 @@ mod tests {
             seqno: 0,
             query_options: None,
             request_options: None,
+            data_boost_enabled: false,
         };
         match client.execute_sql(request, None).await {
             Ok(res) => {
@@ -210,6 +211,7 @@ mod tests {
             seqno: 0,
             query_options: None,
             request_options: None,
+            data_boost_enabled: false,
         };
 
         let resume_token = match client.execute_streaming_sql(request.clone(), None).await {
@@ -375,6 +377,7 @@ mod tests {
             partition_token: vec![],
             request_options: None,
             limit: 0,
+            data_boost_enabled: false,
         };
 
         match client.read(request, None).await {
@@ -405,6 +408,7 @@ mod tests {
             partition_token: vec![],
             request_options: None,
             limit: 0,
+            data_boost_enabled: false,
         };
 
         match client.streaming_read(request, None).await {

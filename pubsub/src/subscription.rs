@@ -20,7 +20,7 @@ use google_cloud_googleapis::pubsub::v1::{
 use crate::apiv1::subscriber_client::SubscriberClient;
 use crate::subscriber::{ack, ReceivedMessage, Subscriber, SubscriberConfig};
 
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct SubscriptionConfig {
     pub push_config: Option<PushConfig>,
     pub ack_deadline_seconds: i32,
@@ -64,7 +64,7 @@ impl From<InternalSubscription> for SubscriptionConfig {
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct SubscriptionConfigToUpdate {
     pub push_config: Option<PushConfig>,
     pub bigquery_config: Option<BigQueryConfig>,
@@ -77,6 +77,7 @@ pub struct SubscriptionConfigToUpdate {
     pub retry_policy: Option<RetryPolicy>,
 }
 
+#[derive(Debug, Clone)]
 pub struct ReceiveConfig {
     pub worker_count: usize,
     pub subscriber_config: SubscriberConfig,
@@ -91,6 +92,7 @@ impl Default for ReceiveConfig {
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum SeekTo {
     Timestamp(SystemTime),
     Snapshot(String),

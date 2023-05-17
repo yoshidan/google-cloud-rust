@@ -90,7 +90,9 @@ pub struct CommonLanguageSettings {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ClientLibrarySettings {
-    /// Version of the API to apply these settings to.
+    /// Version of the API to apply these settings to. This is the full protobuf
+    /// package for the API, ending in the version element.
+    /// Examples: "google.cloud.speech.v1" and "google.spanner.admin.database.v1".
     #[prost(string, tag = "1")]
     pub version: ::prost::alloc::string::String,
     /// Launch stage of this version of the API.
@@ -135,7 +137,7 @@ pub struct Publishing {
     /// long-running operation pattern.
     #[prost(message, repeated, tag = "2")]
     pub method_settings: ::prost::alloc::vec::Vec<MethodSettings>,
-    /// Link to a place that API users can report issues.  Example:
+    /// Link to a *public* URI where users can report issues.  Example:
     /// <https://issuetracker.google.com/issues/new?component=190865&template=1161103>
     #[prost(string, tag = "101")]
     pub new_issue_uri: ::prost::alloc::string::String,
@@ -167,6 +169,10 @@ pub struct Publishing {
     /// settings with the same version string are discarded.
     #[prost(message, repeated, tag = "109")]
     pub library_settings: ::prost::alloc::vec::Vec<ClientLibrarySettings>,
+    /// Optional link to proto reference documentation.  Example:
+    /// <https://cloud.google.com/pubsub/lite/docs/reference/rpc>
+    #[prost(string, tag = "110")]
+    pub proto_reference_documentation_uri: ::prost::alloc::string::String,
 }
 /// Settings for Java client libraries.
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -247,6 +253,44 @@ pub struct DotnetSettings {
     /// Some settings.
     #[prost(message, optional, tag = "1")]
     pub common: ::core::option::Option<CommonLanguageSettings>,
+    /// Map from original service names to renamed versions.
+    /// This is used when the default generated types
+    /// would cause a naming conflict. (Neither name is
+    /// fully-qualified.)
+    /// Example: Subscriber to SubscriberServiceApi.
+    #[prost(map = "string, string", tag = "2")]
+    pub renamed_services: ::std::collections::HashMap<
+        ::prost::alloc::string::String,
+        ::prost::alloc::string::String,
+    >,
+    /// Map from full resource types to the effective short name
+    /// for the resource. This is used when otherwise resource
+    /// named from different services would cause naming collisions.
+    /// Example entry:
+    /// "datalabeling.googleapis.com/Dataset": "DataLabelingDataset"
+    #[prost(map = "string, string", tag = "3")]
+    pub renamed_resources: ::std::collections::HashMap<
+        ::prost::alloc::string::String,
+        ::prost::alloc::string::String,
+    >,
+    /// List of full resource types to ignore during generation.
+    /// This is typically used for API-specific Location resources,
+    /// which should be handled by the generator as if they were actually
+    /// the common Location resources.
+    /// Example entry: "documentai.googleapis.com/Location"
+    #[prost(string, repeated, tag = "4")]
+    pub ignored_resources: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// Namespaces which must be aliased in snippets due to
+    /// a known (but non-generator-predictable) naming collision
+    #[prost(string, repeated, tag = "5")]
+    pub forced_namespace_aliases: ::prost::alloc::vec::Vec<
+        ::prost::alloc::string::String,
+    >,
+    /// Method signatures (in the form "service.method(signature)")
+    /// which are provided separately, so shouldn't be generated.
+    /// Snippets *calling* these methods are still generated, however.
+    #[prost(string, repeated, tag = "6")]
+    pub handwritten_signatures: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// Settings for Ruby client libraries.
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -279,8 +323,8 @@ pub struct MethodSettings {
     /// Example of a YAML configuration::
     ///
     ///   publishing:
-    ///     method_behavior:
-    ///       - selector: CreateAdDomain
+    ///     method_settings:
+    ///       - selector: google.cloud.speech.v2.Speech.BatchRecognize
     ///         long_running:
     ///           initial_poll_delay:
     ///             seconds: 60 # 1 minute
@@ -336,6 +380,12 @@ pub enum ClientLibraryOrganization {
     Photos = 3,
     /// Street View Org.
     StreetView = 4,
+    /// Shopping Org.
+    Shopping = 5,
+    /// Geo Org.
+    Geo = 6,
+    /// Generative AI - <https://developers.generativeai.google>
+    GenerativeAi = 7,
 }
 impl ClientLibraryOrganization {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -351,6 +401,9 @@ impl ClientLibraryOrganization {
             ClientLibraryOrganization::Ads => "ADS",
             ClientLibraryOrganization::Photos => "PHOTOS",
             ClientLibraryOrganization::StreetView => "STREET_VIEW",
+            ClientLibraryOrganization::Shopping => "SHOPPING",
+            ClientLibraryOrganization::Geo => "GEO",
+            ClientLibraryOrganization::GenerativeAi => "GENERATIVE_AI",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -361,6 +414,9 @@ impl ClientLibraryOrganization {
             "ADS" => Some(Self::Ads),
             "PHOTOS" => Some(Self::Photos),
             "STREET_VIEW" => Some(Self::StreetView),
+            "SHOPPING" => Some(Self::Shopping),
+            "GEO" => Some(Self::Geo),
+            "GENERATIVE_AI" => Some(Self::GenerativeAi),
             _ => None,
         }
     }
@@ -1363,15 +1419,18 @@ pub struct Http {
 /// 1. Leaf request fields (recursive expansion nested messages in the request
 ///     message) are classified into three categories:
 ///     - Fields referred by the path template. They are passed via the URL path.
-///     - Fields referred by the \[HttpRule.body][google.api.HttpRule.body\]. They are passed via the HTTP
+///     - Fields referred by the \[HttpRule.body][google.api.HttpRule.body\]. They
+///     are passed via the HTTP
 ///       request body.
 ///     - All other fields are passed via the URL query parameters, and the
 ///       parameter name is the field path in the request message. A repeated
 ///       field can be represented as multiple query parameters under the same
 ///       name.
-///   2. If \[HttpRule.body][google.api.HttpRule.body\] is "*", there is no URL query parameter, all fields
+///   2. If \[HttpRule.body][google.api.HttpRule.body\] is "*", there is no URL
+///   query parameter, all fields
 ///      are passed via URL path and HTTP request body.
-///   3. If \[HttpRule.body][google.api.HttpRule.body\] is omitted, there is no HTTP request body, all
+///   3. If \[HttpRule.body][google.api.HttpRule.body\] is omitted, there is no HTTP
+///   request body, all
 ///      fields are passed via URL path and URL query parameters.
 ///
 /// ### Path template syntax
@@ -1468,7 +1527,8 @@ pub struct Http {
 pub struct HttpRule {
     /// Selects a method to which this rule applies.
     ///
-    /// Refer to \[selector][google.api.DocumentationRule.selector\] for syntax details.
+    /// Refer to \[selector][google.api.DocumentationRule.selector\] for syntax
+    /// details.
     #[prost(string, tag = "1")]
     pub selector: ::prost::alloc::string::String,
     /// The name of the request field whose value is mapped to the HTTP request

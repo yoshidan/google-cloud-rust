@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-pubsub"
-version = "0.14.1"
+version = "0.15.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/pubsub"
@@ -21,7 +21,7 @@ tokio-util = "0.7"
 
 google-cloud-token = { version = "0.1.1", path = "../foundation/token" }
 google-cloud-gax = { version = "0.14.1", path = "../foundation/gax" }
-google-cloud-googleapis = { version = "0.8.0", path = "../googleapis", features = ["pubsub"]}
+google-cloud-googleapis = { version = "0.9.0", path = "../googleapis", features = ["pubsub"]}
 
 [dev-dependencies]
 tokio = { version="1.20", features=["rt-multi-thread"] }

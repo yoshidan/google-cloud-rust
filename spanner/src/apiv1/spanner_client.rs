@@ -25,6 +25,7 @@ pub(crate) fn ping_query_request(session_name: impl Into<String>) -> ExecuteSqlR
         seqno: 0,
         query_options: None,
         request_options: None,
+        data_boost_enabled: false,
     }
 }
 

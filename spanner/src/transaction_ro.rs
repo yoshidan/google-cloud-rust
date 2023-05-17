@@ -149,7 +149,7 @@ impl BatchReadOnlyTransaction {
         columns: &[&str],
         keys: impl Into<KeySet> + Clone,
     ) -> Result<Vec<Partition<TableReader>>, Status> {
-        self.partition_read_with_option(table, columns, keys, None, ReadOptions::default())
+        self.partition_read_with_option(table, columns, keys, None, ReadOptions::default(), false)
             .await
     }
 
@@ -164,6 +164,7 @@ impl BatchReadOnlyTransaction {
         keys: impl Into<KeySet> + Clone,
         po: Option<PartitionOptions>,
         ro: ReadOptions,
+        data_boost_enabled: bool,
     ) -> Result<Vec<Partition<TableReader>>, Status> {
         let columns: Vec<String> = columns.iter().map(|x| x.to_string()).collect();
         let inner_keyset = keys.into().inner;
@@ -199,6 +200,7 @@ impl BatchReadOnlyTransaction {
                             resume_token: vec![],
                             partition_token: x.partition_token,
                             request_options: Transaction::create_request_options(ro.call_options.priority),
+                            data_boost_enabled,
                         },
                     },
                 })
@@ -210,7 +212,7 @@ impl BatchReadOnlyTransaction {
 
     /// partition_query returns a list of Partitions that can be used to execute a query against the database.
     pub async fn partition_query(&mut self, stmt: Statement) -> Result<Vec<Partition<StatementReader>>, Status> {
-        self.partition_query_with_option(stmt, None, QueryOptions::default())
+        self.partition_query_with_option(stmt, None, QueryOptions::default(), false)
             .await
     }
 
@@ -220,6 +222,7 @@ impl BatchReadOnlyTransaction {
         stmt: Statement,
         po: Option<PartitionOptions>,
         qo: QueryOptions,
+        data_boost_enabled: bool,
     ) -> Result<Vec<Partition<StatementReader>>, Status> {
         let request = PartitionQueryRequest {
             session: self.get_session_name(),
@@ -257,6 +260,7 @@ impl BatchReadOnlyTransaction {
                             seqno: 0,
                             query_options: qo.optimizer_options.clone(),
                             request_options: Transaction::create_request_options(qo.call_options.priority),
+                            data_boost_enabled,
                         },
                     },
                 })

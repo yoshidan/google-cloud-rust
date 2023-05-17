@@ -55,7 +55,7 @@ impl ReceivedMessage {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct SubscriberConfig {
     /// ping interval for Bi Directional Streaming
     pub ping_interval: Duration,
