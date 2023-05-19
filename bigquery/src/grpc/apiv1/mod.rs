@@ -8,7 +8,7 @@ pub mod test {
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_gax::conn::Environment;
-    use google_cloud_googleapis::cloud::bigquery::storage::v1::{CreateReadSessionRequest, DataFormat, ReadSession};
+    use google_cloud_googleapis::cloud::bigquery::storage::v1::{CreateReadSessionRequest, DataFormat, ReadRowsRequest, ReadSession};
     use crate::grpc::apiv1::bigquery_client::ReadClient;
     use crate::grpc::apiv1::conn_pool::{AUDIENCE, DOMAIN, ReadConnectionManager};
     use crate::http::bigquery_client::SCOPES;
@@ -50,5 +50,11 @@ pub mod test {
         assert_eq!(response.get_ref().table.as_str(), table_id);
         assert_eq!(response.get_ref().estimated_row_count, 10);
         assert!(response.get_ref().streams.len() > 0);
+
+        let streams = response.into_inner().streams;
+        let requests : Vec<ReadRowsRequest> = streams.iter().map(|e| ReadRowsRequest {
+            read_stream: e.name.to_string() ,
+            offset: 0
+        }).collect();
     }
 }
