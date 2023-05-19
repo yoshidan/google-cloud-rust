@@ -4,6 +4,7 @@ use google_cloud_token::TokenSource;
 
 use crate::http::{check_response_status, Error};
 
+#[derive(Clone)]
 pub struct ServiceAccountClient {
     ts: Arc<dyn TokenSource>,
     v1_endpoint: String,
