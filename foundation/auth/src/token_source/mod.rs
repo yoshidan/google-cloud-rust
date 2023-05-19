@@ -68,7 +68,8 @@ mod tests {
     async fn test_oauth2_token_source() -> Result<(), Error> {
         let credentials = CredentialsFile::new().await?;
         let scope = "https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/spanner.data";
-        let ts = OAuth2ServiceAccountTokenSource::new(&credentials, scope)?;
+        let sub = None;
+        let ts = OAuth2ServiceAccountTokenSource::new(&credentials, scope, sub)?;
         let token = ts.token().await?;
         assert_eq!("Bearer", token.token_type);
         assert!(token.expiry.unwrap().unix_timestamp() > 0);

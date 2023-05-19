@@ -222,6 +222,7 @@ mod test {
         let ts = DefaultTokenSourceProvider::new(Config {
             audience: None,
             scopes: Some(&SCOPES),
+            sub: None
         })
         .await
         .unwrap();
