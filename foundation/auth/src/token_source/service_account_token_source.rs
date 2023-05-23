@@ -140,10 +140,7 @@ impl OAuth2ServiceAccountTokenSource {
                 Some(s) => s.to_string(),
             },
             client: default_http_client(),
-            sub: match sub {
-                None => None,
-                Some(s) => Some(s.to_string()),
-            },
+            sub: sub.map(|s| s.to_string()),
         })
     }
 }
