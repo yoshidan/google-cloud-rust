@@ -121,8 +121,11 @@ fn credentials_from_json_with_params(
                     }
 
                     // use Standard OAuth 2.0 Flow
-                    let source =
-                        OAuth2ServiceAccountTokenSource::new(credentials, config.scopes_to_string(" ").as_str(), config.sub)?;
+                    let source = OAuth2ServiceAccountTokenSource::new(
+                        credentials,
+                        config.scopes_to_string(" ").as_str(),
+                        config.sub,
+                    )?;
                     Ok(Box::new(source))
                 }
                 Some(audience) => {

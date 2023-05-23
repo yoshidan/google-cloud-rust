@@ -71,7 +71,7 @@ mod test {
         let ts = DefaultTokenSourceProvider::new(Config {
             audience: None,
             scopes: Some(&["https://www.googleapis.com/auth/cloud-platform"]),
-            sub: None
+            sub: None,
         })
         .await
         .unwrap()
