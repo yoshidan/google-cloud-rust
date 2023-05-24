@@ -15,6 +15,7 @@ use google_cloud_googleapis::pubsub::v1::{
 };
 
 use crate::apiv1::conn_pool::ConnectionManager;
+use crate::apiv1::PUBSUB_MESSAGE_LIMIT;
 
 pub(crate) fn create_empty_streaming_pull_request() -> StreamingPullRequest {
     StreamingPullRequest {
@@ -44,6 +45,8 @@ impl SubscriberClient {
     #[inline]
     fn client(&self) -> InternalSubscriberClient<Channel> {
         InternalSubscriberClient::new(self.cm.conn())
+            .max_decoding_message_size(PUBSUB_MESSAGE_LIMIT)
+            .max_encoding_message_size(PUBSUB_MESSAGE_LIMIT)
     }
 
     /// create_subscription creates a subscription to a given topic. See the [resource name rules]
