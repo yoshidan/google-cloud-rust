@@ -49,6 +49,10 @@ impl SubscriberClient {
             .max_encoding_message_size(PUBSUB_MESSAGE_LIMIT)
     }
 
+    pub(crate) fn pool_size(&self) -> usize {
+        self.cm.num()
+    }
+
     /// create_subscription creates a subscription to a given topic. See the [resource name rules]
     /// (https://cloud.google.com/pubsub/docs/admin#resource_names (at https://cloud.google.com/pubsub/docs/admin#resource_names)).
     /// If the subscription already exists, returns ALREADY_EXISTS.

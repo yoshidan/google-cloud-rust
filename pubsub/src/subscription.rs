@@ -139,6 +139,10 @@ impl Subscription {
         Self { fqsn, subc }
     }
 
+    pub(crate) fn pool_size(&self) -> usize {
+        self.subc.pool_size()
+    }
+
     /// id returns the unique identifier of the subscription within its project.
     pub fn id(&self) -> String {
         self.fqsn
@@ -340,9 +344,20 @@ impl Subscription {
     /// ```
     pub async fn subscribe(&self, opt: Option<SubscriberConfig>) -> Result<MessageStream, Status> {
         let (tx, rx) = async_channel::unbounded::<ReceivedMessage>();
-
         let cancel = CancellationToken::new();
-        Subscriber::start(cancel.clone(), self.fqsn.clone(), self.subc.clone(), tx, opt);
+
+        // spawn a separate subscriber task for each connection in the pool
+        for _ in 0..self.pool_size() {
+            let cancel = cancel.clone();
+            let fqsn = self.fqsn.clone();
+            let subc = self.subc.clone();
+            let tx = tx.clone();
+            let opt = opt.clone();
+
+            tokio::spawn(async move {
+                Subscriber::start(cancel, fqsn, subc, tx, opt);
+            });
+        }
 
         Ok(MessageStream { queue: rx, cancel })
     }
