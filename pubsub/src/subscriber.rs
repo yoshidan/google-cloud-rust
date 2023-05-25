@@ -15,6 +15,7 @@ use google_cloud_googleapis::pubsub::v1::{
 use crate::apiv1::default_retry_setting;
 use crate::apiv1::subscriber_client::{create_empty_streaming_pull_request, SubscriberClient};
 
+#[derive(Debug)]
 pub struct ReceivedMessage {
     pub message: PubsubMessage,
     ack_id: String,
