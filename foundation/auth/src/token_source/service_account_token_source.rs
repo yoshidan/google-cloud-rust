@@ -105,6 +105,7 @@ pub struct OAuth2ServiceAccountTokenSource {
     pub pk_id: String,
     pub scopes: String,
     pub token_url: String,
+    pub sub: Option<String>,
 
     pub client: reqwest::Client,
 }
@@ -117,6 +118,7 @@ impl Debug for OAuth2ServiceAccountTokenSource {
             .field("pk_id", &self.pk_id)
             .field("scopes", &self.scopes)
             .field("token_url", &self.token_url)
+            .field("sub", &self.sub)
             .field("client", &self.client)
             .finish()
     }
@@ -126,6 +128,7 @@ impl OAuth2ServiceAccountTokenSource {
     pub(crate) fn new(
         cred: &credentials::CredentialsFile,
         scopes: &str,
+        sub: Option<&str>,
     ) -> Result<OAuth2ServiceAccountTokenSource, Error> {
         Ok(OAuth2ServiceAccountTokenSource {
             email: cred.client_email.unwrap_or_empty(),
@@ -137,6 +140,7 @@ impl OAuth2ServiceAccountTokenSource {
                 Some(s) => s.to_string(),
             },
             client: default_http_client(),
+            sub: sub.map(|s| s.to_string()),
         })
     }
 }
@@ -149,7 +153,7 @@ impl TokenSource for OAuth2ServiceAccountTokenSource {
 
         let request_token = Claims {
             iss: self.email.as_ref(),
-            sub: None, // TODO support impersonate credentials
+            sub: self.sub.as_ref().map(|s| s.as_ref()),
             scope: Some(self.scopes.as_ref()),
             aud: self.token_url.as_ref(),
             exp: exp.unix_timestamp(),

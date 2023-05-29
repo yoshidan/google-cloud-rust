@@ -34,6 +34,7 @@ impl WithAuthExt for google_cloud_pubsub::client::ClientConfig {
             let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new(google_cloud_auth::project::Config {
                 audience: Some(google_cloud_pubsub::apiv1::conn_pool::AUDIENCE),
                 scopes: Some(&google_cloud_pubsub::apiv1::conn_pool::SCOPES),
+                sub: None,
             })
             .await?;
             self.project_id = ts.project_id.clone();
@@ -51,6 +52,7 @@ impl WithAuthExt for google_cloud_pubsub::client::ClientConfig {
                 google_cloud_auth::project::Config {
                     audience: Some(google_cloud_pubsub::apiv1::conn_pool::AUDIENCE),
                     scopes: Some(&google_cloud_pubsub::apiv1::conn_pool::SCOPES),
+                    sub: None,
                 },
                 Box::new(credentials),
             )
@@ -71,6 +73,7 @@ impl WithAuthExt for google_cloud_spanner::client::ClientConfig {
             let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new(google_cloud_auth::project::Config {
                 audience: Some(google_cloud_spanner::apiv1::conn_pool::AUDIENCE),
                 scopes: Some(&google_cloud_spanner::apiv1::conn_pool::SCOPES),
+                sub: None,
             })
             .await?;
             self.environment = google_cloud_gax::conn::Environment::GoogleCloud(Box::new(ts))
@@ -87,6 +90,7 @@ impl WithAuthExt for google_cloud_spanner::client::ClientConfig {
                 google_cloud_auth::project::Config {
                     audience: Some(google_cloud_spanner::apiv1::conn_pool::AUDIENCE),
                     scopes: Some(&google_cloud_spanner::apiv1::conn_pool::SCOPES),
+                    sub: None,
                 },
                 Box::new(credentials),
             )
@@ -104,6 +108,7 @@ impl WithAuthExt for google_cloud_storage::client::ClientConfig {
         let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new(google_cloud_auth::project::Config {
             audience: None,
             scopes: Some(&google_cloud_storage::http::storage_client::SCOPES),
+            sub: None,
         })
         .await?;
 
@@ -137,6 +142,7 @@ impl WithAuthExt for google_cloud_storage::client::ClientConfig {
             google_cloud_auth::project::Config {
                 audience: None,
                 scopes: Some(&google_cloud_storage::http::storage_client::SCOPES),
+                sub: None,
             },
             Box::new(credentials),
         )
