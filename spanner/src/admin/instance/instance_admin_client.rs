@@ -22,7 +22,7 @@ pub struct InstanceAdminClient {
 }
 
 impl InstanceAdminClient {
-    pub fn new(channel: InternalInstanceAdminClient<Channel>, lro_client: OperationsClient) -> Self {
+    pub fn new(channel: Channel, lro_client: OperationsClient) -> Self {
         Self {
             inner: InternalInstanceAdminClient::new(channel).max_decoding_message_size(i32::MAX as usize),
             lro_client,

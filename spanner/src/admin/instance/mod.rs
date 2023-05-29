@@ -7,7 +7,7 @@ mod tests {
 
     use google_cloud_gax::conn::{ConnectionManager, Environment};
     use google_cloud_googleapis::spanner::admin::instance::v1::instance::State;
-    use google_cloud_googleapis::spanner::admin::instance::v1::instance_admin_client::InstanceAdminClient as InternalInstanceAdminClient;
+
     use google_cloud_googleapis::spanner::admin::instance::v1::{
         CreateInstanceRequest, DeleteInstanceRequest, GetInstanceConfigRequest, GetInstanceRequest, Instance,
         ListInstanceConfigsRequest, ListInstancesRequest,
@@ -23,7 +23,7 @@ mod tests {
                 .await
                 .unwrap();
         let lro_client = OperationsClient::new(conn_pool.conn()).await.unwrap();
-        InstanceAdminClient::new(InternalInstanceAdminClient::new(conn_pool.conn()), lro_client)
+        InstanceAdminClient::new(conn_pool.conn(), lro_client)
     }
 
     async fn create_instance() -> Instance {

@@ -1,6 +1,5 @@
 use google_cloud_gax::conn::{Channel, ConnectionManager, Error};
-use google_cloud_googleapis::spanner::admin::database::v1::database_admin_client::DatabaseAdminClient as InternalDatabaseAdminClient;
-use google_cloud_googleapis::spanner::admin::instance::v1::instance_admin_client::InstanceAdminClient as InternalInstanceAdminClient;
+
 use google_cloud_longrunning::autogen::operations_client::OperationsClient;
 
 use crate::admin::database::database_admin_client::DatabaseAdminClient;
