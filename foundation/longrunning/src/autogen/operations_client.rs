@@ -29,7 +29,7 @@ pub struct OperationsClient {
 impl OperationsClient {
     pub async fn new(channel: Channel) -> Result<Self, Error> {
         Ok(OperationsClient {
-            inner: InternalOperationsClient::new(channel),
+            inner: InternalOperationsClient::new(channel).max_decoding_message_size(i32::MAX as usize),
         })
     }
 

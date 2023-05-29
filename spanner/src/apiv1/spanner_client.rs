@@ -49,7 +49,7 @@ impl Client {
     pub fn new(inner: SpannerClient<Channel>) -> Client {
         // https://github.com/googleapis/google-cloud-go/blob/65a9ba55ed3777f520bd881d891e8917323549a5/spanner/apiv1/spanner_client.go#L73
         Client {
-            inner: inner.max_decoding_message_size(i32::MAX as usize)
+            inner: inner.max_decoding_message_size(i32::MAX as usize),
         }
     }
 

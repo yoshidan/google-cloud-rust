@@ -17,10 +17,10 @@ pub struct Client {
 impl Client {
     pub async fn new(config: AdminClientConfig) -> Result<Self, Error> {
         let (conn, lro_client) = internal_client(&config).await?;
-        let database = DatabaseAdminClient::new(InternalDatabaseAdminClient::new(conn), lro_client);
+        let database = DatabaseAdminClient::new(conn, lro_client);
 
         let (conn, lro_client) = internal_client(&config).await?;
-        let instance = InstanceAdminClient::new(InternalInstanceAdminClient::new(conn), lro_client);
+        let instance = InstanceAdminClient::new(conn, lro_client);
         Ok(Self { database, instance })
     }
 
