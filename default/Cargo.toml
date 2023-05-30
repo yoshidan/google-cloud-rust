@@ -12,7 +12,7 @@ description = "Google Cloud Platform default config."
 [dependencies]
 async-trait = "0.1"
 
-google-cloud-auth = { version = "0.9", path = "../foundation/auth", default-features = false }
+google-cloud-auth = { version = "0.10", path = "../foundation/auth", default-features = false }
 
 # optional
 google-cloud-metadata = { version = "0.3", path = "../foundation/metadata", optional = true }
