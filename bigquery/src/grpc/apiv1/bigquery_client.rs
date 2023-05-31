@@ -29,7 +29,9 @@ pub struct ReadClient {
 
 impl ReadClient {
     pub fn new(inner: BigQueryReadClient<Channel>) -> Self {
-        Self { inner }
+        Self {
+            inner : inner.max_decoding_message_size(i32::MAX as usize)
+        }
     }
 
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
