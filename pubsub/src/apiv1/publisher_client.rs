@@ -13,6 +13,7 @@ use google_cloud_googleapis::pubsub::v1::{
 };
 
 use crate::apiv1::conn_pool::ConnectionManager;
+use crate::apiv1::PUBSUB_MESSAGE_LIMIT;
 
 #[derive(Clone, Debug)]
 pub(crate) struct PublisherClient {
@@ -29,6 +30,8 @@ impl PublisherClient {
     #[inline]
     fn client(&self) -> InternalPublisherClient<Channel> {
         InternalPublisherClient::new(self.cm.conn())
+            .max_decoding_message_size(PUBSUB_MESSAGE_LIMIT)
+            .max_encoding_message_size(PUBSUB_MESSAGE_LIMIT)
     }
 
     /// create_topic creates the given topic with the given name. See the [resource name rules]

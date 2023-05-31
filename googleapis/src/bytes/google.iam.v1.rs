@@ -617,7 +617,7 @@ pub mod iam_policy_client {
         /// Attempt to create a new client by connecting to a given endpoint.
         pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
         where
-            D: std::convert::TryInto<tonic::transport::Endpoint>,
+            D: TryInto<tonic::transport::Endpoint>,
             D::Error: Into<StdError>,
         {
             let conn = tonic::transport::Endpoint::new(dst)?.connect().await?;
@@ -673,6 +673,22 @@ pub mod iam_policy_client {
             self.inner = self.inner.accept_compressed(encoding);
             self
         }
+        /// Limits the maximum size of a decoded message.
+        ///
+        /// Default: `4MB`
+        #[must_use]
+        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_decoding_message_size(limit);
+            self
+        }
+        /// Limits the maximum size of an encoded message.
+        ///
+        /// Default: `usize::MAX`
+        #[must_use]
+        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_encoding_message_size(limit);
+            self
+        }
         /// Sets the access control policy on the specified resource. Replaces any
         /// existing policy.
         ///
@@ -680,7 +696,7 @@ pub mod iam_policy_client {
         pub async fn set_iam_policy(
             &mut self,
             request: impl tonic::IntoRequest<super::SetIamPolicyRequest>,
-        ) -> Result<tonic::Response<super::Policy>, tonic::Status> {
+        ) -> std::result::Result<tonic::Response<super::Policy>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -694,7 +710,10 @@ pub mod iam_policy_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.iam.v1.IAMPolicy/SetIamPolicy",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("google.iam.v1.IAMPolicy", "SetIamPolicy"));
+            self.inner.unary(req, path, codec).await
         }
         /// Gets the access control policy for a resource.
         /// Returns an empty policy if the resource exists and does not have a policy
@@ -702,7 +721,7 @@ pub mod iam_policy_client {
         pub async fn get_iam_policy(
             &mut self,
             request: impl tonic::IntoRequest<super::GetIamPolicyRequest>,
-        ) -> Result<tonic::Response<super::Policy>, tonic::Status> {
+        ) -> std::result::Result<tonic::Response<super::Policy>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -716,7 +735,10 @@ pub mod iam_policy_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.iam.v1.IAMPolicy/GetIamPolicy",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("google.iam.v1.IAMPolicy", "GetIamPolicy"));
+            self.inner.unary(req, path, codec).await
         }
         /// Returns permissions that a caller has on the specified resource.
         /// If the resource does not exist, this will return an empty set of
@@ -728,7 +750,10 @@ pub mod iam_policy_client {
         pub async fn test_iam_permissions(
             &mut self,
             request: impl tonic::IntoRequest<super::TestIamPermissionsRequest>,
-        ) -> Result<tonic::Response<super::TestIamPermissionsResponse>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::TestIamPermissionsResponse>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -742,7 +767,12 @@ pub mod iam_policy_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.iam.v1.IAMPolicy/TestIamPermissions",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("google.iam.v1.IAMPolicy", "TestIamPermissions"),
+                );
+            self.inner.unary(req, path, codec).await
         }
     }
 }

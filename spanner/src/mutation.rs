@@ -260,7 +260,7 @@ mod tests {
     fn test_insert_struct_ref() {
         let mutation = insert_struct(
             "Guild",
-            &TestStruct {
+            TestStruct {
                 struct_field: "abc".to_string(),
             },
         );
@@ -306,7 +306,7 @@ mod tests {
         let st = TestStruct {
             struct_field: "abc".to_string(),
         };
-        let mutation = update_struct("Guild", &st);
+        let mutation = update_struct("Guild", st);
         match mutation.operation.unwrap() {
             v1::mutation::Operation::Update(w) => assert_struct(w),
             _ => panic!("invalid operation"),

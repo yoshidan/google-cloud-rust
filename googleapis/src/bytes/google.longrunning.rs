@@ -169,7 +169,7 @@ pub mod operations_client {
         /// Attempt to create a new client by connecting to a given endpoint.
         pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
         where
-            D: std::convert::TryInto<tonic::transport::Endpoint>,
+            D: TryInto<tonic::transport::Endpoint>,
             D::Error: Into<StdError>,
         {
             let conn = tonic::transport::Endpoint::new(dst)?.connect().await?;
@@ -225,6 +225,22 @@ pub mod operations_client {
             self.inner = self.inner.accept_compressed(encoding);
             self
         }
+        /// Limits the maximum size of a decoded message.
+        ///
+        /// Default: `4MB`
+        #[must_use]
+        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_decoding_message_size(limit);
+            self
+        }
+        /// Limits the maximum size of an encoded message.
+        ///
+        /// Default: `usize::MAX`
+        #[must_use]
+        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_encoding_message_size(limit);
+            self
+        }
         /// Lists operations that match the specified filter in the request. If the
         /// server doesn't support this method, it returns `UNIMPLEMENTED`.
         ///
@@ -238,7 +254,10 @@ pub mod operations_client {
         pub async fn list_operations(
             &mut self,
             request: impl tonic::IntoRequest<super::ListOperationsRequest>,
-        ) -> Result<tonic::Response<super::ListOperationsResponse>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::ListOperationsResponse>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -252,7 +271,12 @@ pub mod operations_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.longrunning.Operations/ListOperations",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("google.longrunning.Operations", "ListOperations"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Gets the latest state of a long-running operation.  Clients can use this
         /// method to poll the operation result at intervals as recommended by the API
@@ -260,7 +284,7 @@ pub mod operations_client {
         pub async fn get_operation(
             &mut self,
             request: impl tonic::IntoRequest<super::GetOperationRequest>,
-        ) -> Result<tonic::Response<super::Operation>, tonic::Status> {
+        ) -> std::result::Result<tonic::Response<super::Operation>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -274,7 +298,12 @@ pub mod operations_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.longrunning.Operations/GetOperation",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("google.longrunning.Operations", "GetOperation"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Deletes a long-running operation. This method indicates that the client is
         /// no longer interested in the operation result. It does not cancel the
@@ -283,7 +312,7 @@ pub mod operations_client {
         pub async fn delete_operation(
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteOperationRequest>,
-        ) -> Result<tonic::Response<()>, tonic::Status> {
+        ) -> std::result::Result<tonic::Response<()>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -297,7 +326,12 @@ pub mod operations_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.longrunning.Operations/DeleteOperation",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("google.longrunning.Operations", "DeleteOperation"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Starts asynchronous cancellation on a long-running operation.  The server
         /// makes a best effort to cancel the operation, but success is not
@@ -312,7 +346,7 @@ pub mod operations_client {
         pub async fn cancel_operation(
             &mut self,
             request: impl tonic::IntoRequest<super::CancelOperationRequest>,
-        ) -> Result<tonic::Response<()>, tonic::Status> {
+        ) -> std::result::Result<tonic::Response<()>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -326,7 +360,12 @@ pub mod operations_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.longrunning.Operations/CancelOperation",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("google.longrunning.Operations", "CancelOperation"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Waits until the specified long-running operation is done or reaches at most
         /// a specified timeout, returning the latest state.  If the operation is
@@ -340,7 +379,7 @@ pub mod operations_client {
         pub async fn wait_operation(
             &mut self,
             request: impl tonic::IntoRequest<super::WaitOperationRequest>,
-        ) -> Result<tonic::Response<super::Operation>, tonic::Status> {
+        ) -> std::result::Result<tonic::Response<super::Operation>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -354,7 +393,12 @@ pub mod operations_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.longrunning.Operations/WaitOperation",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("google.longrunning.Operations", "WaitOperation"),
+                );
+            self.inner.unary(req, path, codec).await
         }
     }
 }

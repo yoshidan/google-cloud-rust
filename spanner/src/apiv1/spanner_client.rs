@@ -47,7 +47,10 @@ pub struct Client {
 impl Client {
     /// create new spanner client
     pub fn new(inner: SpannerClient<Channel>) -> Client {
-        Client { inner }
+        // https://github.com/googleapis/google-cloud-go/blob/65a9ba55ed3777f520bd881d891e8917323549a5/spanner/apiv1/spanner_client.go#L73
+        Client {
+            inner: inner.max_decoding_message_size(i32::MAX as usize),
+        }
     }
 
     /// create_session creates a new session. A session can be used to perform

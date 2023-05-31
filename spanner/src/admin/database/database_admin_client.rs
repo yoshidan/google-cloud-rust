@@ -25,8 +25,11 @@ pub struct DatabaseAdminClient {
 }
 
 impl DatabaseAdminClient {
-    pub fn new(inner: InternalDatabaseAdminClient<Channel>, lro_client: OperationsClient) -> Self {
-        Self { inner, lro_client }
+    pub fn new(channel: Channel, lro_client: OperationsClient) -> Self {
+        Self {
+            inner: InternalDatabaseAdminClient::new(channel).max_decoding_message_size(i32::MAX as usize),
+            lro_client,
+        }
     }
 
     /// list_databases lists Cloud Spanner databases.

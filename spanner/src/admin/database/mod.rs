@@ -7,7 +7,7 @@ mod tests {
 
     use google_cloud_gax::conn::{ConnectionManager, Environment};
     use google_cloud_googleapis::spanner::admin::database::v1::database::State;
-    use google_cloud_googleapis::spanner::admin::database::v1::database_admin_client::DatabaseAdminClient as InternalDatabaseAdminClient;
+
     use google_cloud_googleapis::spanner::admin::database::v1::{
         CreateDatabaseRequest, Database, DatabaseDialect, DropDatabaseRequest, GetDatabaseDdlRequest,
         GetDatabaseRequest, ListDatabasesRequest, UpdateDatabaseDdlRequest,
@@ -23,7 +23,7 @@ mod tests {
                 .await
                 .unwrap();
         let lro_client = OperationsClient::new(conn_pool.conn()).await.unwrap();
-        DatabaseAdminClient::new(InternalDatabaseAdminClient::new(conn_pool.conn()), lro_client)
+        DatabaseAdminClient::new(conn_pool.conn(), lro_client)
     }
 
     async fn create_database() -> Database {

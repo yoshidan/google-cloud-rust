@@ -35,6 +35,7 @@ impl Default for ClientConfig {
     }
 }
 
+#[derive(Clone)]
 pub struct Client {
     default_google_access_id: Option<String>,
     default_sign_by: Option<SignBy>,
@@ -221,6 +222,7 @@ mod test {
         let ts = DefaultTokenSourceProvider::new(Config {
             audience: None,
             scopes: Some(&SCOPES),
+            sub: None,
         })
         .await
         .unwrap();

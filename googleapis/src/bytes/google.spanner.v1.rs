@@ -2221,7 +2221,7 @@ pub mod spanner_client {
         /// Attempt to create a new client by connecting to a given endpoint.
         pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
         where
-            D: std::convert::TryInto<tonic::transport::Endpoint>,
+            D: TryInto<tonic::transport::Endpoint>,
             D::Error: Into<StdError>,
         {
             let conn = tonic::transport::Endpoint::new(dst)?.connect().await?;
@@ -2277,6 +2277,22 @@ pub mod spanner_client {
             self.inner = self.inner.accept_compressed(encoding);
             self
         }
+        /// Limits the maximum size of a decoded message.
+        ///
+        /// Default: `4MB`
+        #[must_use]
+        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_decoding_message_size(limit);
+            self
+        }
+        /// Limits the maximum size of an encoded message.
+        ///
+        /// Default: `usize::MAX`
+        #[must_use]
+        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_encoding_message_size(limit);
+            self
+        }
         /// Creates a new session. A session can be used to perform
         /// transactions that read and/or modify data in a Cloud Spanner database.
         /// Sessions are meant to be reused for many consecutive
@@ -2299,7 +2315,7 @@ pub mod spanner_client {
         pub async fn create_session(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateSessionRequest>,
-        ) -> Result<tonic::Response<super::Session>, tonic::Status> {
+        ) -> std::result::Result<tonic::Response<super::Session>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -2313,7 +2329,10 @@ pub mod spanner_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.v1.Spanner/CreateSession",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("google.spanner.v1.Spanner", "CreateSession"));
+            self.inner.unary(req, path, codec).await
         }
         /// Creates multiple new sessions.
         ///
@@ -2322,7 +2341,10 @@ pub mod spanner_client {
         pub async fn batch_create_sessions(
             &mut self,
             request: impl tonic::IntoRequest<super::BatchCreateSessionsRequest>,
-        ) -> Result<tonic::Response<super::BatchCreateSessionsResponse>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::BatchCreateSessionsResponse>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2336,7 +2358,12 @@ pub mod spanner_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.v1.Spanner/BatchCreateSessions",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("google.spanner.v1.Spanner", "BatchCreateSessions"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Gets a session. Returns `NOT_FOUND` if the session does not exist.
         /// This is mainly useful for determining whether a session is still
@@ -2344,7 +2371,7 @@ pub mod spanner_client {
         pub async fn get_session(
             &mut self,
             request: impl tonic::IntoRequest<super::GetSessionRequest>,
-        ) -> Result<tonic::Response<super::Session>, tonic::Status> {
+        ) -> std::result::Result<tonic::Response<super::Session>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -2358,13 +2385,19 @@ pub mod spanner_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.v1.Spanner/GetSession",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("google.spanner.v1.Spanner", "GetSession"));
+            self.inner.unary(req, path, codec).await
         }
         /// Lists all sessions in a given database.
         pub async fn list_sessions(
             &mut self,
             request: impl tonic::IntoRequest<super::ListSessionsRequest>,
-        ) -> Result<tonic::Response<super::ListSessionsResponse>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::ListSessionsResponse>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2378,7 +2411,10 @@ pub mod spanner_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.v1.Spanner/ListSessions",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("google.spanner.v1.Spanner", "ListSessions"));
+            self.inner.unary(req, path, codec).await
         }
         /// Ends a session, releasing server resources associated with it. This will
         /// asynchronously trigger cancellation of any operations that are running with
@@ -2386,7 +2422,7 @@ pub mod spanner_client {
         pub async fn delete_session(
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteSessionRequest>,
-        ) -> Result<tonic::Response<()>, tonic::Status> {
+        ) -> std::result::Result<tonic::Response<()>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -2400,7 +2436,10 @@ pub mod spanner_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.v1.Spanner/DeleteSession",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("google.spanner.v1.Spanner", "DeleteSession"));
+            self.inner.unary(req, path, codec).await
         }
         /// Executes an SQL statement, returning all results in a single reply. This
         /// method cannot be used to return a result set larger than 10 MiB;
@@ -2416,7 +2455,7 @@ pub mod spanner_client {
         pub async fn execute_sql(
             &mut self,
             request: impl tonic::IntoRequest<super::ExecuteSqlRequest>,
-        ) -> Result<tonic::Response<super::ResultSet>, tonic::Status> {
+        ) -> std::result::Result<tonic::Response<super::ResultSet>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -2430,7 +2469,10 @@ pub mod spanner_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.v1.Spanner/ExecuteSql",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("google.spanner.v1.Spanner", "ExecuteSql"));
+            self.inner.unary(req, path, codec).await
         }
         /// Like [ExecuteSql][google.spanner.v1.Spanner.ExecuteSql], except returns the result
         /// set as a stream. Unlike [ExecuteSql][google.spanner.v1.Spanner.ExecuteSql], there
@@ -2440,7 +2482,7 @@ pub mod spanner_client {
         pub async fn execute_streaming_sql(
             &mut self,
             request: impl tonic::IntoRequest<super::ExecuteSqlRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<tonic::codec::Streaming<super::PartialResultSet>>,
             tonic::Status,
         > {
@@ -2457,7 +2499,12 @@ pub mod spanner_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.v1.Spanner/ExecuteStreamingSql",
             );
-            self.inner.server_streaming(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("google.spanner.v1.Spanner", "ExecuteStreamingSql"),
+                );
+            self.inner.server_streaming(req, path, codec).await
         }
         /// Executes a batch of SQL DML statements. This method allows many statements
         /// to be run with lower latency than submitting them sequentially with
@@ -2473,7 +2520,10 @@ pub mod spanner_client {
         pub async fn execute_batch_dml(
             &mut self,
             request: impl tonic::IntoRequest<super::ExecuteBatchDmlRequest>,
-        ) -> Result<tonic::Response<super::ExecuteBatchDmlResponse>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::ExecuteBatchDmlResponse>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2487,7 +2537,10 @@ pub mod spanner_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.v1.Spanner/ExecuteBatchDml",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("google.spanner.v1.Spanner", "ExecuteBatchDml"));
+            self.inner.unary(req, path, codec).await
         }
         /// Reads rows from the database using key lookups and scans, as a
         /// simple key/value style alternative to
@@ -2505,7 +2558,7 @@ pub mod spanner_client {
         pub async fn read(
             &mut self,
             request: impl tonic::IntoRequest<super::ReadRequest>,
-        ) -> Result<tonic::Response<super::ResultSet>, tonic::Status> {
+        ) -> std::result::Result<tonic::Response<super::ResultSet>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -2519,7 +2572,10 @@ pub mod spanner_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.v1.Spanner/Read",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("google.spanner.v1.Spanner", "Read"));
+            self.inner.unary(req, path, codec).await
         }
         /// Like [Read][google.spanner.v1.Spanner.Read], except returns the result set as a
         /// stream. Unlike [Read][google.spanner.v1.Spanner.Read], there is no limit on the
@@ -2529,7 +2585,7 @@ pub mod spanner_client {
         pub async fn streaming_read(
             &mut self,
             request: impl tonic::IntoRequest<super::ReadRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<tonic::codec::Streaming<super::PartialResultSet>>,
             tonic::Status,
         > {
@@ -2546,7 +2602,10 @@ pub mod spanner_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.v1.Spanner/StreamingRead",
             );
-            self.inner.server_streaming(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("google.spanner.v1.Spanner", "StreamingRead"));
+            self.inner.server_streaming(req, path, codec).await
         }
         /// Begins a new transaction. This step can often be skipped:
         /// [Read][google.spanner.v1.Spanner.Read], [ExecuteSql][google.spanner.v1.Spanner.ExecuteSql] and
@@ -2555,7 +2614,7 @@ pub mod spanner_client {
         pub async fn begin_transaction(
             &mut self,
             request: impl tonic::IntoRequest<super::BeginTransactionRequest>,
-        ) -> Result<tonic::Response<super::Transaction>, tonic::Status> {
+        ) -> std::result::Result<tonic::Response<super::Transaction>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -2569,7 +2628,12 @@ pub mod spanner_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.v1.Spanner/BeginTransaction",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("google.spanner.v1.Spanner", "BeginTransaction"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Commits a transaction. The request includes the mutations to be
         /// applied to rows in the database.
@@ -2588,7 +2652,7 @@ pub mod spanner_client {
         pub async fn commit(
             &mut self,
             request: impl tonic::IntoRequest<super::CommitRequest>,
-        ) -> Result<tonic::Response<super::CommitResponse>, tonic::Status> {
+        ) -> std::result::Result<tonic::Response<super::CommitResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -2602,7 +2666,10 @@ pub mod spanner_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.v1.Spanner/Commit",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("google.spanner.v1.Spanner", "Commit"));
+            self.inner.unary(req, path, codec).await
         }
         /// Rolls back a transaction, releasing any locks it holds. It is a good
         /// idea to call this for any transaction that includes one or more
@@ -2615,7 +2682,7 @@ pub mod spanner_client {
         pub async fn rollback(
             &mut self,
             request: impl tonic::IntoRequest<super::RollbackRequest>,
-        ) -> Result<tonic::Response<()>, tonic::Status> {
+        ) -> std::result::Result<tonic::Response<()>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -2629,7 +2696,10 @@ pub mod spanner_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.v1.Spanner/Rollback",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("google.spanner.v1.Spanner", "Rollback"));
+            self.inner.unary(req, path, codec).await
         }
         /// Creates a set of partition tokens that can be used to execute a query
         /// operation in parallel.  Each of the returned partition tokens can be used
@@ -2645,7 +2715,10 @@ pub mod spanner_client {
         pub async fn partition_query(
             &mut self,
             request: impl tonic::IntoRequest<super::PartitionQueryRequest>,
-        ) -> Result<tonic::Response<super::PartitionResponse>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::PartitionResponse>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2659,7 +2732,10 @@ pub mod spanner_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.v1.Spanner/PartitionQuery",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("google.spanner.v1.Spanner", "PartitionQuery"));
+            self.inner.unary(req, path, codec).await
         }
         /// Creates a set of partition tokens that can be used to execute a read
         /// operation in parallel.  Each of the returned partition tokens can be used
@@ -2677,7 +2753,10 @@ pub mod spanner_client {
         pub async fn partition_read(
             &mut self,
             request: impl tonic::IntoRequest<super::PartitionReadRequest>,
-        ) -> Result<tonic::Response<super::PartitionResponse>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::PartitionResponse>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2691,7 +2770,10 @@ pub mod spanner_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.v1.Spanner/PartitionRead",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("google.spanner.v1.Spanner", "PartitionRead"));
+            self.inner.unary(req, path, codec).await
         }
     }
 }

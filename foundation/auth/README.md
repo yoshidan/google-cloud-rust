@@ -27,11 +27,12 @@ async fn main() -> Result<(), error::Error> {
         // audience is required only for service account jwt-auth
         // https://developers.google.com/identity/protocols/oauth2/service-account#jwt-auth
         audience: Some(audience),
-        // scopes is required only for service account Oauth2 
+        // scopes is required only for service account Oauth2
         // https://developers.google.com/identity/protocols/oauth2/service-account
-        scopes: Some(&scopes) 
+        scopes: Some(&scopes),
+        sub: None
     };
-    let ts = create_token_source(config).await?;  
+    let ts = create_token_source(config).await?;
     let token = ts.token().await?;
     println!("token is {}",token.access_token);
     Ok(())
