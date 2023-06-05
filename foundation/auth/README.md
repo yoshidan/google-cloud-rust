@@ -54,7 +54,7 @@ preferring the first location found:
 - [x] [Service Account(JWT)](https://developers.google.com/identity/protocols/oauth2/service-account#jwt-auth)
 - [x] [Service Account(OAuth 2.0)](https://developers.google.com/identity/protocols/oauth2/service-account)
 - [x] [Authorized User](https://cloud.google.com/docs/authentication/end-user)
-- [ ] [External Account](https://cloud.google.com/anthos/clusters/docs/aws/how-to/workload-identity-gcp?hl=ja)
+- [ ] [External Account](https://cloud.google.com/anthos/clusters/docs/aws/how-to/workload-identity-gcp)
 - [ ] Google Developers Console client_credentials.json
 
 ## Supported Workload Identity
