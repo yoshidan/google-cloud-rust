@@ -6,7 +6,7 @@ Procedural macro for [google-cloud-spanner](../spanner).
 
 ## Installation
 
-```
+```toml
 [dependencies]
 google-cloud-spanner-derive = <version>
 ```

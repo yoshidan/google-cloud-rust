@@ -10,7 +10,7 @@ Google Cloud Platform spanner library.
 
 ## Installation
 
-```
+```toml
 [dependencies]
 google-cloud-spanner = <version>
 google-cloud-default = { version = <version>, features = ["spanner"] }

@@ -6,7 +6,7 @@ Google Cloud Platform token spec for google-cloud-rust.
 
 ## Installation
 
-```
+```toml
 [dependencies]
 google-cloud-token = <version>
 ```

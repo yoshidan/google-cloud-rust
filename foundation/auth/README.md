@@ -6,7 +6,7 @@ Google Cloud Platform server application authentication library.
 
 ## Installation
 
-```
+```toml
 [dependencies]
 google-cloud-auth = <version>
 ```
