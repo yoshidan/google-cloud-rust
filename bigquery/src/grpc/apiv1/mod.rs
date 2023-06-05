@@ -4,11 +4,14 @@ pub mod conn_pool;
 
 #[cfg(test)]
 pub mod test {
+    use std::io::{BufReader, Cursor};
+    use arrow::ipc::reader::StreamReader;
     use serial_test::serial;
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_gax::conn::Environment;
     use google_cloud_googleapis::cloud::bigquery::storage::v1::{CreateReadSessionRequest, DataFormat, ReadRowsRequest, ReadSession};
+    use google_cloud_googleapis::cloud::bigquery::storage::v1::read_rows_response::{Rows, Schema};
     use crate::grpc::apiv1::bigquery_client::ReadClient;
     use crate::grpc::apiv1::conn_pool::{AUDIENCE, DOMAIN, ReadConnectionManager};
     use crate::http::bigquery_client::SCOPES;
@@ -16,7 +19,8 @@ pub mod test {
     async fn create_read_client() -> ReadClient {
         let tsp = DefaultTokenSourceProvider::new(Config {
             audience: Some(AUDIENCE),
-            scopes: Some(SCOPES.as_ref())
+            scopes: Some(SCOPES.as_ref()),
+            sub: None,
         }).await.unwrap();
         let cm = ReadConnectionManager::new(1, &Environment::GoogleCloud(Box::new(tsp)), DOMAIN)
             .await
@@ -56,5 +60,29 @@ pub mod test {
             read_stream: e.name.to_string() ,
             offset: 0
         }).collect();
+
+        for request in requests {
+            let rows = client.read_rows(request, None).await.unwrap();
+            let mut response = rows.into_inner();
+            while let Some(response) = response.message().await.unwrap() {
+                let schema = match response.schema.unwrap() {
+                    Schema::ArrowSchema(schema) => schema,
+                    _ => unreachable!("unsupported schema")
+                };
+                let schema_data = Cursor::new(schema.serialized_schema);
+                let arrow_schema: StreamReader<BufReader<Cursor<Vec<u8>>>> = arrow::ipc::reader::StreamReader::try_new(schema_data, None).unwrap();
+                tracing::info!("schema {:?}", arrow_schema);
+
+                if let Some(rows) = response.rows {
+                    match rows {
+                        Rows::ArrowRecordBatch(rows) => {
+                        }
+                        _ => unreachable!("unsupported rows")
+                    }
+                }
+            }
+        }
+
+
     }
 }

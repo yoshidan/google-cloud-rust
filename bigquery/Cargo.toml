@@ -22,6 +22,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version="1.20", features=["macros"] }
 time = { version = "0.3", features = ["std", "macros", "formatting", "parsing", "serde"] }
+arrow = { version="40.0", default-features = false, features = ["ipc"] }
 
 [dev-dependencies]
 tokio = { version="1.20", features=["rt-multi-thread"] }

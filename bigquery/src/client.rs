@@ -116,6 +116,7 @@ mod tests {
         let tsp = DefaultTokenSourceProvider::new(Config {
             audience: None,
             scopes: Some(&SCOPES),
+            sub: None,
         })
         .await
         .unwrap();
