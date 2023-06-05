@@ -1,3 +1,5 @@
+extern crate core;
+
 pub mod arrow;
 pub mod client;
 pub mod grpc;

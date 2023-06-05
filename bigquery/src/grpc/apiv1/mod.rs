@@ -3,9 +3,11 @@ pub mod conn_pool;
 
 #[cfg(test)]
 pub mod test {
+    use crate::arrow::ArrowDecodable;
     use crate::grpc::apiv1::bigquery_client::ReadClient;
     use crate::grpc::apiv1::conn_pool::{ReadConnectionManager, AUDIENCE, DOMAIN};
     use crate::http::bigquery_client::SCOPES;
+    use crate::types::Numeric;
     use arrow::datatypes::{DataType, FieldRef, TimeUnit};
     use arrow::ipc::reader::StreamReader;
     use arrow::ipc::Field;
@@ -18,6 +20,7 @@ pub mod test {
     };
     use serial_test::serial;
     use std::io::{BufReader, Cursor};
+    use time::OffsetDateTime;
 
     async fn create_read_client() -> ReadClient {
         let tsp = DefaultTokenSourceProvider::new(Config {
@@ -31,6 +34,23 @@ pub mod test {
             .await
             .unwrap();
         cm.conn()
+    }
+
+    #[derive(Default)]
+    struct TestDataStruct {
+        pub f1: bool,
+        pub f2: Vec<i64>,
+    }
+    #[derive(Default)]
+    struct TestData {
+        pub col_string: Option<String>,
+        pub col_number: Option<Numeric>,
+        pub col_number_array: Vec<Numeric>,
+        pub col_timestamp: Option<OffsetDateTime>,
+        pub col_json: Option<String>,
+        pub col_json_array: Vec<String>,
+        pub col_struct: Option<TestDataStruct>,
+        pub col_struct_array: Vec<TestDataStruct>,
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -198,6 +218,19 @@ pub mod test {
                                 };
                                 assert_eq!(row.schema().fields()[7].name(), "col_struct_array");
                                 assert!(!row.schema().fields()[7].is_nullable());
+
+                                let mut data: Vec<TestData> = Vec::with_capacity(row.num_rows());
+                                for _i in 0..row.num_rows() {
+                                    data.push(TestData::default())
+                                }
+                                let column = row.column(0);
+                                for row_no in 0..column.len() {
+                                    data[row_no].col_string = Option::<String>::decode(column, row_no).unwrap();
+                                }
+                                let column = row.column(1);
+                                for row_no in 0..column.len() {
+                                    data[row_no].col_number = Option::<Numeric>::decode(column, row_no).unwrap();
+                                }
                             });
                         }
                         _ => unreachable!("unsupported rows"),

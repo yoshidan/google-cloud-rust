@@ -107,12 +107,12 @@ pub(crate) mod test {
         (client, cred.unwrap().project_id.unwrap())
     }
 
-    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(serde::Serialize, serde::Deserialize, Default)]
     pub struct TestDataStruct {
         pub f1: bool,
         pub f2: Vec<i64>,
     }
-    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(serde::Serialize, serde::Deserialize, Default)]
     pub struct TestData {
         pub col_string: Option<String>,
         pub col_number: Option<i32>,
