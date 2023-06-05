@@ -317,7 +317,15 @@ impl Subscription {
         Ok(messages
             .into_iter()
             .filter(|m| m.message.is_some())
-            .map(|m| ReceivedMessage::new(self.fqsn.clone(), self.subc.clone(), m.message.unwrap(), m.ack_id))
+            .map(|m| {
+                ReceivedMessage::new(
+                    self.fqsn.clone(),
+                    self.subc.clone(),
+                    m.message.unwrap(),
+                    m.ack_id,
+                    (m.delivery_attempt > 0).then_some(m.delivery_attempt as usize),
+                )
+            })
             .collect())
     }
 

@@ -21,15 +21,23 @@ pub struct ReceivedMessage {
     ack_id: String,
     subscription: String,
     subscriber_client: SubscriberClient,
+    delivery_attempt: Option<usize>,
 }
 
 impl ReceivedMessage {
-    pub(crate) fn new(subscription: String, subc: SubscriberClient, message: PubsubMessage, ack_id: String) -> Self {
+    pub(crate) fn new(
+        subscription: String,
+        subc: SubscriberClient,
+        message: PubsubMessage,
+        ack_id: String,
+        delivery_attempt: Option<usize>,
+    ) -> Self {
         Self {
             message,
             ack_id,
             subscription,
             subscriber_client: subc,
+            delivery_attempt,
         }
     }
 
@@ -53,6 +61,17 @@ impl ReceivedMessage {
             vec![self.ack_id.to_string()],
         )
         .await
+    }
+
+    /// The approximate number of times that Cloud Pub/Sub has attempted to deliver
+    /// the associated message to a subscriber.
+    ///
+    /// The returned value, if present, will be greater than zero.
+    ///
+    /// For more information refer to the
+    /// [protobuf definition](https://github.com/googleapis/googleapis/blob/3c7c76fb63d0f511cdb8c3c1cbc157315f6fbfd3/google/pubsub/v1/pubsub.proto#L1099-L1115).
+    pub fn delivery_attempt(&self) -> Option<usize> {
+        self.delivery_attempt
     }
 }
 
@@ -230,6 +249,7 @@ async fn handle_message(
                     client.clone(),
                     message,
                     received_message.ack_id.clone(),
+                    (received_message.delivery_attempt > 0).then_some(received_message.delivery_attempt as usize),
                 ))
                 .await
             {
