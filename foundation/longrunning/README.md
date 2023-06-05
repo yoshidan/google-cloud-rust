@@ -6,7 +6,7 @@ Google Cloud Platform long running operation library.
 
 ## Installation
 
-```
+```toml
 [dependencies]
 google-cloud-longrunning = <version>
 ```

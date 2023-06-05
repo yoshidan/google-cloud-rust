@@ -65,7 +65,7 @@ export PUBSUB_EMULATOR_HOST=localhost:8681
 
 ### Publish Message
 
-```
+```rust
 use google_cloud_pubsub::client::{Client, ClientConfig};
 use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 use google_cloud_pubsub::topic::TopicConfig;
@@ -122,7 +122,7 @@ async fn run(config: ClientConfig) -> Result<(), Status> {
 
 ### Subscribe Message
 
-```
+```rust
 use google_cloud_pubsub::client::{Client, ClientConfig};
 use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 use google_cloud_pubsub::subscription::SubscriptionConfig;

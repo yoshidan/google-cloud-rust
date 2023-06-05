@@ -9,7 +9,7 @@ Google Cloud Platform Storage Client library.
 
 ## Installation
 
-```
+```toml
 [dependencies]
 google-cloud-storage = <version>
 google-cloud-default = { version = <version>, features = ["storage"] }

@@ -6,7 +6,7 @@ Google Cloud Platform default configuration for google-cloud-rust.
 
 ## Installation
 
-```
+```toml
 [dependencies]
 google-cloud-default = <version>
 ```
