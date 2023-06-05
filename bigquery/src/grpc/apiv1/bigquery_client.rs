@@ -1,4 +1,3 @@
-use std::time::Duration;
 use google_cloud_gax::conn::Channel;
 use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::{Code, IntoStreamingRequest, Response, Status, Streaming};
@@ -11,6 +10,7 @@ use google_cloud_googleapis::cloud::bigquery::storage::v1::{
     FlushRowsRequest, FlushRowsResponse, GetWriteStreamRequest, ReadRowsRequest, ReadRowsResponse, ReadSession,
     SplitReadStreamRequest, SplitReadStreamResponse, WriteStream,
 };
+use std::time::Duration;
 
 fn default_setting() -> RetrySetting {
     RetrySetting {
@@ -30,7 +30,7 @@ pub struct ReadClient {
 impl ReadClient {
     pub fn new(inner: BigQueryReadClient<Channel>) -> Self {
         Self {
-            inner : inner.max_decoding_message_size(i32::MAX as usize)
+            inner: inner.max_decoding_message_size(i32::MAX as usize),
         }
     }
 
