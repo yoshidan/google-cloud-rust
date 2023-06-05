@@ -102,6 +102,7 @@ pub mod test {
                                 assert_eq!(row.schema().fields()[0].data_type(), &DataType::Utf8);
                                 assert_eq!(row.schema().fields()[0].name(), "col_string");
                                 assert!(row.schema().fields()[0].is_nullable());
+
                                 assert_eq!(row.schema().fields()[1].data_type(), &DataType::Decimal128(38, 9));
                                 assert_eq!(row.schema().fields()[1].name(), "col_number");
                                 assert!(row.schema().fields()[1].is_nullable());
