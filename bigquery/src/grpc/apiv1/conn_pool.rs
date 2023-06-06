@@ -5,6 +5,11 @@ use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_write_clien
 
 pub const AUDIENCE: &str = "https://bigquerystorage.googleapis.com/";
 pub const DOMAIN: &str = "bigquerystorage.googleapis.com";
+pub const SCOPES: [&str; 3] = [
+    "https://www.googleapis.com/auth/bigquery",
+    "https://www.googleapis.com/auth/bigquery.insertdata",
+    "https://www.googleapis.com/auth/cloud-platform",
+];
 
 pub struct ReadConnectionManager {
     inner: GRPCConnectionManager,

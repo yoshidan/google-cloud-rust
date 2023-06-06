@@ -75,39 +75,39 @@ mod test {
         let client = BigqueryTabledataClient::new(Arc::new(client));
         // struct
         let mut req = InsertAllRequest::<TestData>::default();
-            for i in 0..30 {
-                let i = i as i64;
-                req.rows.push(Row {
-                    insert_id: None,
-                    json: TestData {
-                        col_string: Some(format!("test{}", i)),
-                        col_number: Some(i as i32),
-                        col_number_array: vec![10, 11, 12],
-                        col_timestamp: Some(OffsetDateTime::now_utc()),
-                        col_json: Some("{\"field\":100}".to_string()),
-                        col_json_array: vec!["{\"field\":100}".to_string(), "{\"field\":200}".to_string()],
-                        col_struct: Some(TestDataStruct {
+        for i in 0..30 {
+            let i = i as i64;
+            req.rows.push(Row {
+                insert_id: None,
+                json: TestData {
+                    col_string: Some(format!("test{}", i)),
+                    col_number: Some(i as i32),
+                    col_number_array: vec![10, 11, 12],
+                    col_timestamp: Some(OffsetDateTime::now_utc()),
+                    col_json: Some("{\"field\":100}".to_string()),
+                    col_json_array: vec!["{\"field\":100}".to_string(), "{\"field\":200}".to_string()],
+                    col_struct: Some(TestDataStruct {
+                        f1: true,
+                        f2: vec![i, 4],
+                    }),
+                    col_struct_array: vec![
+                        TestDataStruct {
                             f1: true,
-                            f2: vec![i, 4],
-                        }),
-                        col_struct_array: vec![
-                            TestDataStruct {
-                                f1: true,
-                                f2: vec![i * 10, 4],
-                            },
-                            TestDataStruct {
-                                f1: false,
-                                f2: vec![i * 100, 40],
-                            },
-                        ],
-                    },
-                });
-            }
-            let res = client
-                .insert("atl-dev1", "rust_test_table", "table_data_1686033753", &req)
-                .await
-                .unwrap();
-            assert!(res.insert_errors.is_none());
+                            f2: vec![i * 10, 4],
+                        },
+                        TestDataStruct {
+                            f1: false,
+                            f2: vec![i * 100, 40],
+                        },
+                    ],
+                },
+            });
+        }
+        let res = client
+            .insert("atl-dev1", "rust_test_table", "table_data_1686033753", &req)
+            .await
+            .unwrap();
+        assert!(res.insert_errors.is_none());
     }
 
     #[tokio::test]
@@ -250,9 +250,9 @@ mod test {
             _ => unreachable!("7 {:?}", &data[0].f[7].v),
         }
 
-      table_client
-      .delete(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str())
-       .await
-        .unwrap();
+        table_client
+            .delete(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str())
+            .await
+            .unwrap();
     }
 }

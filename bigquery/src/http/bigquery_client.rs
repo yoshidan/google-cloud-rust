@@ -86,8 +86,10 @@ impl BigqueryClient {
 
 #[cfg(test)]
 pub(crate) mod test {
+    use crate::arrow::{ArrowDecodable, ArrowStructDecodable, Error};
     use crate::http::bigquery_client::{BigqueryClient, SCOPES};
     use crate::http::table::{TableFieldMode, TableFieldSchema, TableFieldType, TableSchema};
+    use arrow::array::ArrayRef;
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_token::TokenSourceProvider;
@@ -107,11 +109,20 @@ pub(crate) mod test {
         (client, cred.unwrap().project_id.unwrap())
     }
 
-    #[derive(serde::Serialize, serde::Deserialize, Default)]
+    #[derive(serde::Serialize, serde::Deserialize, Default, Debug)]
     pub struct TestDataStruct {
         pub f1: bool,
         pub f2: Vec<i64>,
     }
+
+    impl ArrowStructDecodable<TestDataStruct> for TestDataStruct {
+        fn decode(col: &[ArrayRef], row_no: usize) -> Result<TestDataStruct, Error> {
+            let f1 = bool::decode(&col[0], row_no)?;
+            let f2 = Vec::<i64>::decode(&col[1], row_no)?;
+            Ok(TestDataStruct { f1, f2 })
+        }
+    }
+
     #[derive(serde::Serialize, serde::Deserialize, Default)]
     pub struct TestData {
         pub col_string: Option<String>,

@@ -5,21 +5,26 @@ pub mod conn_pool;
 pub mod test {
     use crate::arrow::{ArrowDecodable, ArrowStructDecodable, Decimal128, Error};
     use crate::grpc::apiv1::bigquery_client::{StreamingReadClient, StreamingWriteClient};
-    use crate::grpc::apiv1::conn_pool::{ReadConnectionManager, AUDIENCE, DOMAIN, WriteConnectionManager};
+    use crate::grpc::apiv1::conn_pool::{ReadConnectionManager, WriteConnectionManager, AUDIENCE, DOMAIN};
+    use crate::http::bigquery_client::test::TestDataStruct;
     use crate::http::bigquery_client::SCOPES;
+    use arrow::array::{Array, ArrayRef};
     use arrow::datatypes::{DataType, FieldRef, TimeUnit};
     use arrow::ipc::reader::StreamReader;
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_gax::conn::Environment;
-    use google_cloud_googleapis::cloud::bigquery::storage::v1::read_rows_response::{Rows, Schema};
-    use google_cloud_googleapis::cloud::bigquery::storage::v1::{append_rows_request, AppendRowsRequest, ArrowSchema, CreateReadSessionRequest, CreateWriteStreamRequest, DataFormat, ProtoRows, ReadRowsRequest, ReadSession, SplitReadStreamRequest, write_stream, WriteStream};
-    use serial_test::serial;
-    use std::io::{BufReader, Cursor};
-    use arrow::array::{Array, ArrayRef};
-    use time::OffsetDateTime;
     use google_cloud_gax::grpc::IntoStreamingRequest;
     use google_cloud_googleapis::cloud::bigquery::storage::v1::append_rows_request::ProtoData;
+    use google_cloud_googleapis::cloud::bigquery::storage::v1::read_rows_response::{Rows, Schema};
+    use google_cloud_googleapis::cloud::bigquery::storage::v1::{
+        append_rows_request, write_stream, AppendRowsRequest, ArrowSchema, CreateReadSessionRequest,
+        CreateWriteStreamRequest, DataFormat, ProtoRows, ReadRowsRequest, ReadSession, SplitReadStreamRequest,
+        WriteStream,
+    };
+    use serial_test::serial;
+    use std::io::{BufReader, Cursor};
+    use time::OffsetDateTime;
 
     async fn create_read_client() -> StreamingReadClient {
         let tsp = DefaultTokenSourceProvider::new(Config {
@@ -36,24 +41,7 @@ pub mod test {
     }
 
     #[derive(Debug, Default)]
-    struct TestDataStruct {
-        pub f1: bool,
-        pub f2: Vec<i64>,
-    }
-
-    impl ArrowStructDecodable<TestDataStruct> for TestDataStruct {
-        fn decode(col: &[ArrayRef], row_no: usize) -> Result<TestDataStruct, Error> {
-            let f1 =bool::decode(&col[0], row_no)?;
-            let f2 = Vec::<i64>::decode(&col[1], row_no)?;
-            Ok(TestDataStruct {
-                f1,
-                f2
-            })
-        }
-    }
-
-    #[derive(Debug,Default)]
-    struct TestData {
+    pub struct TestData {
         pub col_string: Option<String>,
         pub col_number: Option<Decimal128>,
         pub col_number_array: Vec<Decimal128>,
@@ -62,6 +50,29 @@ pub mod test {
         pub col_json_array: Vec<String>,
         pub col_struct: Option<TestDataStruct>,
         pub col_struct_array: Vec<TestDataStruct>,
+    }
+
+    impl ArrowStructDecodable<TestData> for TestData {
+        fn decode(col: &[ArrayRef], row_no: usize) -> Result<TestData, Error> {
+            let col_string = Option::<String>::decode(&col[0], row_no)?;
+            let col_number = Option::<Decimal128>::decode(&col[1], row_no)?;
+            let col_number_array = Vec::<Decimal128>::decode(&col[2], row_no)?;
+            let col_timestamp = Option::<OffsetDateTime>::decode(&col[3], row_no)?;
+            let col_json = Option::<String>::decode(&col[4], row_no)?;
+            let col_json_array = Vec::<String>::decode(&col[5], row_no)?;
+            let col_struct = Option::<TestDataStruct>::decode(&col[6], row_no)?;
+            let col_struct_array = Vec::<TestDataStruct>::decode(&col[7], row_no)?;
+            Ok(TestData {
+                col_string,
+                col_number,
+                col_number_array,
+                col_timestamp,
+                col_json,
+                col_json_array,
+                col_struct,
+                col_struct_array,
+            })
+        }
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -111,7 +122,7 @@ pub mod test {
             let rows = client.read_rows(request, None).await.unwrap();
             let mut response = rows.into_inner();
 
-            let mut schema : Option<ArrowSchema> = None;
+            let mut schema: Option<ArrowSchema> = None;
             while let Some(response) = response.message().await.unwrap() {
                 if let Some(first_row_schema) = response.schema {
                     schema = match first_row_schema {
@@ -120,7 +131,7 @@ pub mod test {
                             //let arrow_schema: StreamReader<BufReader<Cursor<Vec<u8>>>> =arrow::ipc::reader::StreamReader::try_new(schema_data, None).unwrap();
                             // tracing::info!("schema {:?}", arrow_schema);
                             Some(first_row_schema)
-                        },
+                        }
                         _ => unreachable!("unsupported schema"),
                     }
                 };
@@ -254,7 +265,8 @@ pub mod test {
                                 }
                                 let column = row.column(3);
                                 for row_no in 0..column.len() {
-                                    data[row_no].col_timestamp = Option::<OffsetDateTime>::decode(column, row_no).unwrap();
+                                    data[row_no].col_timestamp =
+                                        Option::<OffsetDateTime>::decode(column, row_no).unwrap();
                                 }
                                 let column = row.column(4);
                                 for row_no in 0..column.len() {
@@ -270,7 +282,8 @@ pub mod test {
                                 }
                                 let column = row.column(7);
                                 for row_no in 0..column.len() {
-                                    data[row_no].col_struct_array = Vec::<TestDataStruct>::decode(column, row_no).unwrap();
+                                    data[row_no].col_struct_array =
+                                        Vec::<TestDataStruct>::decode(column, row_no).unwrap();
                                 }
                                 table_data.extend(data);
                             });

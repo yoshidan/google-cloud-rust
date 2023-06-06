@@ -1,7 +1,12 @@
-use arrow::array::{Array, ArrayAccessor, ArrayRef, AsArray, BinaryArray, BooleanArray, Date32Array, Date64Array, Decimal128Array, Decimal256Array, Float32Array, Float64Array, Int16Array, Int32Array, Int64Array, Int8Array, ListArray, StringArray, Time32MillisecondArray, Time32SecondArray, Time64MicrosecondArray, Time64NanosecondArray, TimestampMicrosecondArray, UInt16Array, UInt32Array, UInt64Array, UInt8Array};
+use arrow::array::{
+    Array, ArrayAccessor, ArrayRef, AsArray, BinaryArray, BooleanArray, Date32Array, Date64Array, Decimal128Array,
+    Decimal256Array, Float32Array, Float64Array, Int16Array, Int32Array, Int64Array, Int8Array, ListArray, StringArray,
+    Time32MillisecondArray, Time32SecondArray, Time64MicrosecondArray, Time64NanosecondArray,
+    TimestampMicrosecondArray, UInt16Array, UInt32Array, UInt64Array, UInt8Array,
+};
 use arrow::datatypes::{ArrowPrimitiveType, DataType, TimeUnit};
-use std::ops::Add;
 use arrow::ipc::{Decimal, Timestamp};
+use std::ops::Add;
 use time::macros::date;
 use time::{Date, Duration, Month, OffsetDateTime, Time};
 
@@ -75,7 +80,10 @@ pub trait ArrowStructDecodable<T> {
     fn decode(fields: &[ArrayRef], row_no: usize) -> Result<T, Error>;
 }
 
-impl <S> ArrowDecodable<S> for S where S: ArrowStructDecodable<S>{
+impl<S> ArrowDecodable<S> for S
+where
+    S: ArrowStructDecodable<S>,
+{
     fn decode(col: &dyn Array, row_no: usize) -> Result<S, Error> {
         match col.data_type() {
             DataType::Struct(_) => S::decode(downcast::<arrow::array::StructArray>(col)?.columns(), row_no),
@@ -138,14 +146,14 @@ impl ArrowDecodable<String> for String {
             return Err(Error::InvalidNullable);
         }
         match col.data_type() {
-            DataType::Decimal128(_,_)=> Decimal128::decode(col, row_no).map(|v| v.to_string()),
-            DataType::Decimal256(_,_)=>  Decimal256::decode(col, row_no).map(|v| v.to_string()),
+            DataType::Decimal128(_, _) => Decimal128::decode(col, row_no).map(|v| v.to_string()),
+            DataType::Decimal256(_, _) => Decimal256::decode(col, row_no).map(|v| v.to_string()),
             DataType::Date32 => Date::decode(col, row_no).map(|v| v.to_string()),
-            DataType::Timestamp(_,_) => OffsetDateTime::decode(col, row_no).map(|v| v.to_string()),
-            DataType::Time64(_) => Time::decode(col, row_no).map(|v|v.to_string()),
-            DataType::Boolean=> bool::decode(col, row_no).map(|v|v.to_string()),
+            DataType::Timestamp(_, _) => OffsetDateTime::decode(col, row_no).map(|v| v.to_string()),
+            DataType::Time64(_) => Time::decode(col, row_no).map(|v| v.to_string()),
+            DataType::Boolean => bool::decode(col, row_no).map(|v| v.to_string()),
             DataType::Float64 => f64::decode(col, row_no).map(|v| v.to_string()),
-            DataType::Int64 => i64::decode(col,row_no).map(|v| v.to_string()),
+            DataType::Int64 => i64::decode(col, row_no).map(|v| v.to_string()),
             DataType::Utf8 => Ok(downcast::<StringArray>(col)?.value(row_no).to_string()),
             _ => Err(Error::InvalidDataType(col.data_type().clone(), "String")),
         }
@@ -165,7 +173,7 @@ impl ArrowDecodable<Decimal128> for Decimal128 {
                     precision: precision.clone(),
                     scale: scale.clone(),
                 })
-            },
+            }
             _ => Err(Error::InvalidDataType(col.data_type().clone(), "Decimal128")),
         }
     }
@@ -184,7 +192,7 @@ impl ArrowDecodable<Decimal256> for Decimal256 {
                     precision: precision.clone(),
                     scale: scale.clone(),
                 })
-            },
+            }
             _ => Err(Error::InvalidDataType(col.data_type().clone(), "Decimal256")),
         }
     }
@@ -255,20 +263,20 @@ where
 }
 
 impl<T> ArrowDecodable<Vec<T>> for Vec<T>
-    where
-        T: ArrowDecodable<T>,
+where
+    T: ArrowDecodable<T>,
 {
     fn decode(col: &dyn Array, row_no: usize) -> Result<Vec<T>, Error> {
         match col.data_type() {
-           DataType::List(_) => {
-               let list = downcast::<ListArray>(col)?;
-               let col = list.value(row_no);
-               let mut result : Vec<T> = Vec::with_capacity(col.len());
-               for row_num in 0..col.len() {
-                   result.push(T::decode(&col, row_num)?);
-               }
-               Ok(result)
-           },
+            DataType::List(_) => {
+                let list = downcast::<ListArray>(col)?;
+                let col = list.value(row_no);
+                let mut result: Vec<T> = Vec::with_capacity(col.len());
+                for row_num in 0..col.len() {
+                    result.push(T::decode(&col, row_num)?);
+                }
+                Ok(result)
+            }
             _ => Err(Error::InvalidDataType(col.data_type().clone(), "Days")),
         }
     }

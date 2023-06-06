@@ -1,17 +1,19 @@
+use crate::arrow::{ArrowDecodable, ArrowStructDecodable};
+use crate::grpc::apiv1::bigquery_client::StreamingReadClient;
 use crate::http::bigquery_job_client::BigqueryJobClient;
 use crate::http::error::Error as HttpError;
 use crate::http::job::get_query_results::GetQueryResultsRequest;
 use crate::http::tabledata::list::Tuple;
-use async_trait::async_trait;
-use std::collections::VecDeque;
-use std::io::{BufReader, Cursor};
 use arrow::error::ArrowError;
 use arrow::ipc::reader::StreamReader;
+use async_trait::async_trait;
 use google_cloud_gax::grpc::{Status, Streaming};
-use google_cloud_googleapis::cloud::bigquery::storage::v1::{ArrowSchema, ReadRowsRequest, ReadRowsResponse, ReadSession, ReadStream};
 use google_cloud_googleapis::cloud::bigquery::storage::v1::read_rows_response::{Rows, Schema};
-use crate::arrow::{ArrowDecodable, ArrowStructDecodable};
-use crate::grpc::apiv1::bigquery_client::StreamingReadClient;
+use google_cloud_googleapis::cloud::bigquery::storage::v1::{
+    ArrowSchema, ReadRowsRequest, ReadRowsResponse, ReadSession, ReadStream,
+};
+use std::collections::VecDeque;
+use std::io::{BufReader, Cursor};
 
 #[derive(thiserror::Error, Debug)]
 pub enum QueryError {
@@ -51,11 +53,10 @@ impl QueryIterator {
             self.request.page_token = response.page_token;
         }
     }
-
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum TableReadError {
+pub enum TableDataError {
     #[error(transparent)]
     GRPC(#[from] Status),
     #[error(transparent)]
@@ -70,23 +71,34 @@ pub enum TableReadError {
     NoSchemaFound,
 }
 
-pub struct TableIterator<T> where T: ArrowStructDecodable<T> + Default{
+pub struct TableDataIterator<T>
+where
+    T: ArrowStructDecodable<T> + Default,
+{
     client: StreamingReadClient,
     session: ReadSession,
     // mutable
     stream_index: usize,
     current_stream: Streaming<ReadRowsResponse>,
     chunk: VecDeque<T>,
-    schema : Option<ArrowSchema>
+    schema: Option<ArrowSchema>,
 }
 
-impl <T> TableIterator<T> where T: ArrowStructDecodable<T> + Default{
-
-   pub async fn new(mut client: StreamingReadClient, session: ReadSession) -> Result<Self, TableReadError> {
-       let current_stream = client.read_rows(ReadRowsRequest {
-           read_stream: session.streams[0].name.to_string(),
-           offset: 0
-       }, None).await?.into_inner();
+impl<T> TableDataIterator<T>
+where
+    T: ArrowStructDecodable<T> + Default,
+{
+    pub async fn new(mut client: StreamingReadClient, session: ReadSession) -> Result<Self, TableDataError> {
+        let current_stream = client
+            .read_rows(
+                ReadRowsRequest {
+                    read_stream: session.streams[0].name.to_string(),
+                    offset: 0,
+                },
+                None,
+            )
+            .await?
+            .into_inner();
         Ok(Self {
             client,
             session,
@@ -95,9 +107,9 @@ impl <T> TableIterator<T> where T: ArrowStructDecodable<T> + Default{
             chunk: VecDeque::new(),
             schema: None,
         })
-   }
+    }
 
-    pub async fn next(&mut self) -> Result<Option<T>, TableReadError> {
+    pub async fn next(&mut self) -> Result<Option<T>, TableDataError> {
         loop {
             if let Some(row) = self.chunk.pop_front() {
                 return Ok(Some(row));
@@ -105,11 +117,11 @@ impl <T> TableIterator<T> where T: ArrowStructDecodable<T> + Default{
             if let Some(rows) = self.current_stream.message().await? {
                 // Only first response contain schema information
                 let schema = match &self.schema {
-                    None => match rows.schema.ok_or(TableReadError::NoSchemaFound)? {
+                    None => match rows.schema.ok_or(TableDataError::NoSchemaFound)? {
                         Schema::ArrowSchema(schema) => schema,
-                        _ => return Err(TableReadError::InvalidSchemaFormat)
+                        _ => return Err(TableDataError::InvalidSchemaFormat),
                     },
-                    Some(schema) => schema.clone()
+                    Some(schema) => schema.clone(),
                 };
                 if let Some(rows) = rows.rows {
                     self.chunk = rows_to_chunk(schema, rows)?;
@@ -123,15 +135,25 @@ impl <T> TableIterator<T> where T: ArrowStructDecodable<T> + Default{
                 self.stream_index += 1
             }
             let stream = &self.session.streams[self.stream_index].name;
-            self.current_stream = self.client.read_rows(ReadRowsRequest {
-                read_stream: stream.to_string(),
-                offset: 0
-            }, None).await?.into_inner();
+            self.current_stream = self
+                .client
+                .read_rows(
+                    ReadRowsRequest {
+                        read_stream: stream.to_string(),
+                        offset: 0,
+                    },
+                    None,
+                )
+                .await?
+                .into_inner();
         }
     }
 }
 
-fn rows_to_chunk<T>(schema: ArrowSchema, rows: Rows) -> Result<VecDeque<T>, TableReadError> where T: ArrowStructDecodable<T> + Default {
+fn rows_to_chunk<T>(schema: ArrowSchema, rows: Rows) -> Result<VecDeque<T>, TableDataError>
+where
+    T: ArrowStructDecodable<T> + Default,
+{
     match rows {
         Rows::ArrowRecordBatch(rows) => {
             let mut rows_with_schema = schema.serialized_schema;
@@ -144,9 +166,9 @@ fn rows_to_chunk<T>(schema: ArrowSchema, rows: Rows) -> Result<VecDeque<T>, Tabl
                 for row_no in 0..row.num_rows() {
                     chunk.push_back(T::decode(row.columns(), row_no)?)
                 }
-            };
+            }
             Ok(chunk)
-        },
-        _ => Err(TableReadError::InvalidDateFormat)
+        }
+        _ => Err(TableDataError::InvalidDateFormat),
     }
 }
