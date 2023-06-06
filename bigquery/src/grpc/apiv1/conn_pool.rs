@@ -1,4 +1,4 @@
-use crate::grpc::apiv1::bigquery_client::{ReadClient, WriteClient};
+use crate::grpc::apiv1::bigquery_client::{StreamingReadClient, StreamingWriteClient};
 use google_cloud_gax::conn::{ConnectionManager as GRPCConnectionManager, Environment, Error};
 use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_read_client::BigQueryReadClient;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_write_client::BigQueryWriteClient;
@@ -21,9 +21,9 @@ impl ReadConnectionManager {
         self.inner.num()
     }
 
-    pub fn conn(&self) -> ReadClient {
+    pub fn conn(&self) -> StreamingReadClient {
         let conn = self.inner.conn();
-        ReadClient::new(BigQueryReadClient::new(conn))
+        StreamingReadClient::new(BigQueryReadClient::new(conn))
     }
 }
 
@@ -42,8 +42,8 @@ impl WriteConnectionManager {
         self.inner.num()
     }
 
-    pub fn conn(&self) -> WriteClient {
+    pub fn conn(&self) -> StreamingWriteClient {
         let conn = self.inner.conn();
-        WriteClient::new(BigQueryWriteClient::new(conn))
+        StreamingWriteClient::new(BigQueryWriteClient::new(conn))
     }
 }

@@ -102,7 +102,6 @@ mod tests {
     use google_cloud_auth::token::DefaultTokenSourceProvider;
 
     use crate::http::job::query::QueryRequest;
-    use crate::iterator::AsyncIterator;
     use crate::value::Row;
     use serial_test::serial;
 

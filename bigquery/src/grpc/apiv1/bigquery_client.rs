@@ -23,11 +23,11 @@ fn default_setting() -> RetrySetting {
 }
 
 #[derive(Clone)]
-pub struct ReadClient {
+pub struct StreamingReadClient {
     inner: BigQueryReadClient<Channel>,
 }
 
-impl ReadClient {
+impl StreamingReadClient {
     pub fn new(inner: BigQueryReadClient<Channel>) -> Self {
         Self {
             inner: inner.max_decoding_message_size(i32::MAX as usize),
@@ -97,11 +97,11 @@ impl ReadClient {
 }
 
 #[derive(Clone)]
-pub struct WriteClient {
+pub struct StreamingWriteClient {
     inner: BigQueryWriteClient<Channel>,
 }
 
-impl WriteClient {
+impl StreamingWriteClient {
     pub fn new(inner: BigQueryWriteClient<Channel>) -> Self {
         Self { inner }
     }

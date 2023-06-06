@@ -4,7 +4,7 @@ pub mod conn_pool;
 #[cfg(test)]
 pub mod test {
     use crate::arrow::{ArrowDecodable, ArrowStructDecodable, Decimal128, Error};
-    use crate::grpc::apiv1::bigquery_client::{ReadClient, WriteClient};
+    use crate::grpc::apiv1::bigquery_client::{StreamingReadClient, StreamingWriteClient};
     use crate::grpc::apiv1::conn_pool::{ReadConnectionManager, AUDIENCE, DOMAIN, WriteConnectionManager};
     use crate::http::bigquery_client::SCOPES;
     use arrow::datatypes::{DataType, FieldRef, TimeUnit};
@@ -21,7 +21,7 @@ pub mod test {
     use google_cloud_gax::grpc::IntoStreamingRequest;
     use google_cloud_googleapis::cloud::bigquery::storage::v1::append_rows_request::ProtoData;
 
-    async fn create_read_client() -> ReadClient {
+    async fn create_read_client() -> StreamingReadClient {
         let tsp = DefaultTokenSourceProvider::new(Config {
             audience: Some(AUDIENCE),
             scopes: Some(SCOPES.as_ref()),
@@ -30,20 +30,6 @@ pub mod test {
         .await
         .unwrap();
         let cm = ReadConnectionManager::new(1, &Environment::GoogleCloud(Box::new(tsp)), DOMAIN)
-            .await
-            .unwrap();
-        cm.conn()
-    }
-
-    async fn create_write_client() -> WriteClient {
-        let tsp = DefaultTokenSourceProvider::new(Config {
-            audience: Some(AUDIENCE),
-            scopes: Some(SCOPES.as_ref()),
-            sub: None,
-        })
-            .await
-            .unwrap();
-        let cm = WriteConnectionManager::new(1, &Environment::GoogleCloud(Box::new(tsp)), DOMAIN)
             .await
             .unwrap();
         cm.conn()
