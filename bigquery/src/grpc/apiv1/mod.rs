@@ -4,8 +4,8 @@ pub mod conn_pool;
 #[cfg(test)]
 pub mod test {
     use crate::arrow::{ArrowDecodable, ArrowStructDecodable, Decimal128, Error};
-    use crate::grpc::apiv1::bigquery_client::ReadClient;
-    use crate::grpc::apiv1::conn_pool::{ReadConnectionManager, AUDIENCE, DOMAIN};
+    use crate::grpc::apiv1::bigquery_client::{ReadClient, WriteClient};
+    use crate::grpc::apiv1::conn_pool::{ReadConnectionManager, AUDIENCE, DOMAIN, WriteConnectionManager};
     use crate::http::bigquery_client::SCOPES;
     use arrow::datatypes::{DataType, FieldRef, TimeUnit};
     use arrow::ipc::reader::StreamReader;
@@ -13,13 +13,13 @@ pub mod test {
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_gax::conn::Environment;
     use google_cloud_googleapis::cloud::bigquery::storage::v1::read_rows_response::{Rows, Schema};
-    use google_cloud_googleapis::cloud::bigquery::storage::v1::{
-        CreateReadSessionRequest, DataFormat, ReadRowsRequest, ReadSession,
-    };
+    use google_cloud_googleapis::cloud::bigquery::storage::v1::{append_rows_request, AppendRowsRequest, ArrowSchema, CreateReadSessionRequest, CreateWriteStreamRequest, DataFormat, ProtoRows, ReadRowsRequest, ReadSession, SplitReadStreamRequest, write_stream, WriteStream};
     use serial_test::serial;
     use std::io::{BufReader, Cursor};
     use arrow::array::{Array, ArrayRef};
     use time::OffsetDateTime;
+    use google_cloud_gax::grpc::IntoStreamingRequest;
+    use google_cloud_googleapis::cloud::bigquery::storage::v1::append_rows_request::ProtoData;
 
     async fn create_read_client() -> ReadClient {
         let tsp = DefaultTokenSourceProvider::new(Config {
@@ -30,6 +30,20 @@ pub mod test {
         .await
         .unwrap();
         let cm = ReadConnectionManager::new(1, &Environment::GoogleCloud(Box::new(tsp)), DOMAIN)
+            .await
+            .unwrap();
+        cm.conn()
+    }
+
+    async fn create_write_client() -> WriteClient {
+        let tsp = DefaultTokenSourceProvider::new(Config {
+            audience: Some(AUDIENCE),
+            scopes: Some(SCOPES.as_ref()),
+            sub: None,
+        })
+            .await
+            .unwrap();
+        let cm = WriteConnectionManager::new(1, &Environment::GoogleCloud(Box::new(tsp)), DOMAIN)
             .await
             .unwrap();
         cm.conn()
@@ -68,7 +82,7 @@ pub mod test {
     #[serial]
     async fn test_read() {
         let mut client = create_read_client().await;
-        let table_id = "projects/atl-dev1/datasets/rust_test_table/tables/table_data_1682321746";
+        let table_id = "projects/atl-dev1/datasets/rust_test_table/tables/table_data_1686033753";
         let response = client
             .create_read_session(
                 CreateReadSessionRequest {
@@ -86,16 +100,16 @@ pub mod test {
                         trace_id: "".to_string(),
                         schema: None,
                     }),
-                    max_stream_count: 0,
-                    preferred_min_stream_count: 0,
+                    max_stream_count: 100,
+                    preferred_min_stream_count: 10,
                 },
                 None,
             )
             .await
             .unwrap();
         assert_eq!(response.get_ref().table.as_str(), table_id);
-        assert_eq!(response.get_ref().estimated_row_count, 10);
         assert!(response.get_ref().streams.len() > 0);
+        tracing::info!("stream count = {}", response.get_ref().streams.len());
 
         let streams = response.into_inner().streams;
         let requests: Vec<ReadRowsRequest> = streams
@@ -106,19 +120,25 @@ pub mod test {
             })
             .collect();
 
+        let mut table_data = vec![];
         for request in requests {
             let rows = client.read_rows(request, None).await.unwrap();
             let mut response = rows.into_inner();
-            while let Some(response) = response.message().await.unwrap() {
-                let schema = match response.schema.unwrap() {
-                    Schema::ArrowSchema(schema) => schema,
-                    _ => unreachable!("unsupported schema"),
-                };
-                let schema_data = Cursor::new(schema.serialized_schema.clone());
-                let arrow_schema: StreamReader<BufReader<Cursor<Vec<u8>>>> =
-                    arrow::ipc::reader::StreamReader::try_new(schema_data, None).unwrap();
-                tracing::info!("schema {:?}", arrow_schema);
 
+            let mut schema : Option<ArrowSchema> = None;
+            while let Some(response) = response.message().await.unwrap() {
+                if let Some(first_row_schema) = response.schema {
+                    schema = match first_row_schema {
+                        Schema::ArrowSchema(first_row_schema) => {
+                            //let schema_data = Cursor::new(schema.serialized_schema.clone());
+                            //let arrow_schema: StreamReader<BufReader<Cursor<Vec<u8>>>> =arrow::ipc::reader::StreamReader::try_new(schema_data, None).unwrap();
+                            // tracing::info!("schema {:?}", arrow_schema);
+                            Some(first_row_schema)
+                        },
+                        _ => unreachable!("unsupported schema"),
+                    }
+                };
+                let schema = schema.clone().unwrap();
                 if let Some(rows) = response.rows {
                     match rows {
                         Rows::ArrowRecordBatch(rows) => {
@@ -266,7 +286,7 @@ pub mod test {
                                 for row_no in 0..column.len() {
                                     data[row_no].col_struct_array = Vec::<TestDataStruct>::decode(column, row_no).unwrap();
                                 }
-                                tracing::info!("{:?}", data);
+                                table_data.extend(data);
                             });
                         }
                         _ => unreachable!("unsupported rows"),
@@ -274,5 +294,6 @@ pub mod test {
                 }
             }
         }
+        assert_eq!(table_data.len(), 34);
     }
 }
