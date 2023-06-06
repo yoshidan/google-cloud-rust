@@ -1,13 +1,7 @@
-use crate::types;
-use crate::types::Numeric;
-use arrow::array::{
-    Array, AsArray, BinaryArray, Date32Array, Date64Array, Decimal128Array, Float32Array, Float64Array, Int16Array,
-    Int32Array, Int64Array, Int8Array, StringArray, Time32MillisecondArray, Time32SecondArray, Time64MicrosecondArray,
-    Time64NanosecondArray, TimestampMicrosecondArray, UInt16Array, UInt32Array, UInt64Array, UInt8Array,
-};
-use arrow::datatypes::DataType::Boolean;
+use arrow::array::{Array, ArrayAccessor, ArrayRef, AsArray, BinaryArray, BooleanArray, Date32Array, Date64Array, Decimal128Array, Decimal256Array, Float32Array, Float64Array, Int16Array, Int32Array, Int64Array, Int8Array, ListArray, StringArray, Time32MillisecondArray, Time32SecondArray, Time64MicrosecondArray, Time64NanosecondArray, TimestampMicrosecondArray, UInt16Array, UInt32Array, UInt64Array, UInt8Array};
 use arrow::datatypes::{ArrowPrimitiveType, DataType, TimeUnit};
 use std::ops::Add;
+use arrow::ipc::{Decimal, Timestamp};
 use time::macros::date;
 use time::{Date, Duration, Month, OffsetDateTime, Time};
 
@@ -23,9 +17,71 @@ pub enum Error {
     InvalidTime(#[from] time::error::ComponentRange),
 }
 
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Decimal128 {
+    pub value: i128,
+    pub precision: u8,
+    pub scale: i8,
+}
+
+impl ToString for Decimal128 {
+    fn to_string(&self) -> String {
+        format_decimal_str(self.value.to_string().as_str(), self.precision as usize, self.scale)
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Decimal256 {
+    pub value: arrow::datatypes::i256,
+    pub precision: u8,
+    pub scale: i8,
+}
+
+impl ToString for Decimal256 {
+    fn to_string(&self) -> String {
+        format_decimal_str(self.value.to_string().as_str(), self.precision as usize, self.scale)
+    }
+}
+
+fn format_decimal_str(value_str: &str, precision: usize, scale: i8) -> String {
+    let (sign, rest) = match value_str.strip_prefix('-') {
+        Some(stripped) => ("-", stripped),
+        None => ("", value_str),
+    };
+    let bound = precision.min(rest.len()) + sign.len();
+    let value_str = &value_str[0..bound];
+
+    if scale == 0 {
+        value_str.to_string()
+    } else if scale < 0 {
+        let padding = value_str.len() + scale.unsigned_abs() as usize;
+        format!("{value_str:0<padding$}")
+    } else if rest.len() > scale as usize {
+        // Decimal separator is in the middle of the string
+        let (whole, decimal) = value_str.split_at(value_str.len() - scale as usize);
+        format!("{whole}.{decimal}")
+    } else {
+        // String has to be padded
+        format!("{}0.{:0>width$}", sign, rest, width = scale as usize)
+    }
+}
+
 /// https://cloud.google.com/bigquery/docs/reference/storage#arrow_schema_details
 pub trait ArrowDecodable<T> {
     fn decode(col: &dyn Array, row_no: usize) -> Result<T, Error>;
+}
+
+pub trait ArrowStructDecodable<T> {
+    fn decode(fields: &[ArrayRef], row_no: usize) -> Result<T, Error>;
+}
+
+impl <S> ArrowDecodable<S> for S where S: ArrowStructDecodable<S>{
+    fn decode(col: &dyn Array, row_no: usize) -> Result<S, Error> {
+        match col.data_type() {
+            DataType::Struct(_) => S::decode(downcast::<arrow::array::StructArray>(col)?.columns(), row_no),
+            _ => Err(Error::InvalidDataType(col.data_type().clone(), "struct")),
+        }
+    }
 }
 
 impl ArrowDecodable<bool> for bool {
@@ -34,7 +90,7 @@ impl ArrowDecodable<bool> for bool {
             return Err(Error::InvalidNullable);
         }
         match col.data_type() {
-            Boolean => Ok(col.as_boolean().value(row_no)),
+            DataType::Boolean => Ok(col.as_boolean().value(row_no)),
             _ => Err(Error::InvalidDataType(col.data_type().clone(), "bool")),
         }
     }
@@ -82,27 +138,54 @@ impl ArrowDecodable<String> for String {
             return Err(Error::InvalidNullable);
         }
         match col.data_type() {
+            DataType::Decimal128(_,_)=> Decimal128::decode(col, row_no).map(|v| v.to_string()),
+            DataType::Decimal256(_,_)=>  Decimal256::decode(col, row_no).map(|v| v.to_string()),
+            DataType::Date32 => Date::decode(col, row_no).map(|v| v.to_string()),
+            DataType::Timestamp(_,_) => OffsetDateTime::decode(col, row_no).map(|v| v.to_string()),
+            DataType::Time64(_) => Time::decode(col, row_no).map(|v|v.to_string()),
+            DataType::Boolean=> bool::decode(col, row_no).map(|v|v.to_string()),
+            DataType::Float64 => f64::decode(col, row_no).map(|v| v.to_string()),
+            DataType::Int64 => i64::decode(col,row_no).map(|v| v.to_string()),
             DataType::Utf8 => Ok(downcast::<StringArray>(col)?.value(row_no).to_string()),
             _ => Err(Error::InvalidDataType(col.data_type().clone(), "String")),
         }
     }
 }
 
-impl ArrowDecodable<Numeric> for Numeric {
-    fn decode(col: &dyn Array, row_no: usize) -> Result<Numeric, Error> {
+impl ArrowDecodable<Decimal128> for Decimal128 {
+    fn decode(col: &dyn Array, row_no: usize) -> Result<Decimal128, Error> {
         if col.is_null(row_no) {
             return Err(Error::InvalidNullable);
         }
         match col.data_type() {
-            DataType::Decimal128(precision, scale) => Ok(Numeric {
-                precision: precision.clone(),
-                scale: scale.clone(),
-            }),
-            DataType::Decimal256(precision, scale) => Ok(Numeric {
-                precision: precision.clone(),
-                scale: scale.clone(),
-            }),
-            _ => Err(Error::InvalidDataType(col.data_type().clone(), "String")),
+            DataType::Decimal128(precision, scale) => {
+                let value = downcast::<Decimal128Array>(col)?.value(row_no);
+                Ok(Decimal128 {
+                    value,
+                    precision: precision.clone(),
+                    scale: scale.clone(),
+                })
+            },
+            _ => Err(Error::InvalidDataType(col.data_type().clone(), "Decimal128")),
+        }
+    }
+}
+
+impl ArrowDecodable<Decimal256> for Decimal256 {
+    fn decode(col: &dyn Array, row_no: usize) -> Result<Decimal256, Error> {
+        if col.is_null(row_no) {
+            return Err(Error::InvalidNullable);
+        }
+        match col.data_type() {
+            DataType::Decimal256(precision, scale) => {
+                let value = downcast::<Decimal256Array>(col)?.value(row_no);
+                Ok(Decimal256 {
+                    value,
+                    precision: precision.clone(),
+                    scale: scale.clone(),
+                })
+            },
+            _ => Err(Error::InvalidDataType(col.data_type().clone(), "Decimal256")),
         }
     }
 }
@@ -168,6 +251,26 @@ where
             return Ok(None);
         }
         Ok(Some(T::decode(col, row_no)?))
+    }
+}
+
+impl<T> ArrowDecodable<Vec<T>> for Vec<T>
+    where
+        T: ArrowDecodable<T>,
+{
+    fn decode(col: &dyn Array, row_no: usize) -> Result<Vec<T>, Error> {
+        match col.data_type() {
+           DataType::List(_) => {
+               let list = downcast::<ListArray>(col)?;
+               let col = list.value(row_no);
+               let mut result : Vec<T> = Vec::with_capacity(col.len());
+               for row_num in 0..col.len() {
+                   result.push(T::decode(&col, row_num)?);
+               }
+               Ok(result)
+           },
+            _ => Err(Error::InvalidDataType(col.data_type().clone(), "Days")),
+        }
     }
 }
 

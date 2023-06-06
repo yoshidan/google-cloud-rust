@@ -3,14 +3,12 @@ pub mod conn_pool;
 
 #[cfg(test)]
 pub mod test {
-    use crate::arrow::ArrowDecodable;
+    use crate::arrow::{ArrowDecodable, ArrowStructDecodable, Decimal128, Error};
     use crate::grpc::apiv1::bigquery_client::ReadClient;
     use crate::grpc::apiv1::conn_pool::{ReadConnectionManager, AUDIENCE, DOMAIN};
     use crate::http::bigquery_client::SCOPES;
-    use crate::types::Numeric;
     use arrow::datatypes::{DataType, FieldRef, TimeUnit};
     use arrow::ipc::reader::StreamReader;
-    use arrow::ipc::Field;
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_gax::conn::Environment;
@@ -20,6 +18,7 @@ pub mod test {
     };
     use serial_test::serial;
     use std::io::{BufReader, Cursor};
+    use arrow::array::{Array, ArrayRef};
     use time::OffsetDateTime;
 
     async fn create_read_client() -> ReadClient {
@@ -36,16 +35,28 @@ pub mod test {
         cm.conn()
     }
 
-    #[derive(Default)]
+    #[derive(Debug, Default)]
     struct TestDataStruct {
         pub f1: bool,
         pub f2: Vec<i64>,
     }
-    #[derive(Default)]
+
+    impl ArrowStructDecodable<TestDataStruct> for TestDataStruct {
+        fn decode(col: &[ArrayRef], row_no: usize) -> Result<TestDataStruct, Error> {
+            let f1 =bool::decode(&col[0], row_no)?;
+            let f2 = Vec::<i64>::decode(&col[1], row_no)?;
+            Ok(TestDataStruct {
+                f1,
+                f2
+            })
+        }
+    }
+
+    #[derive(Debug,Default)]
     struct TestData {
         pub col_string: Option<String>,
-        pub col_number: Option<Numeric>,
-        pub col_number_array: Vec<Numeric>,
+        pub col_number: Option<Decimal128>,
+        pub col_number_array: Vec<Decimal128>,
         pub col_timestamp: Option<OffsetDateTime>,
         pub col_json: Option<String>,
         pub col_json_array: Vec<String>,
@@ -229,8 +240,33 @@ pub mod test {
                                 }
                                 let column = row.column(1);
                                 for row_no in 0..column.len() {
-                                    data[row_no].col_number = Option::<Numeric>::decode(column, row_no).unwrap();
+                                    data[row_no].col_number = Option::<Decimal128>::decode(column, row_no).unwrap();
                                 }
+                                let column = row.column(2);
+                                for row_no in 0..column.len() {
+                                    data[row_no].col_number_array = Vec::<Decimal128>::decode(column, row_no).unwrap();
+                                }
+                                let column = row.column(3);
+                                for row_no in 0..column.len() {
+                                    data[row_no].col_timestamp = Option::<OffsetDateTime>::decode(column, row_no).unwrap();
+                                }
+                                let column = row.column(4);
+                                for row_no in 0..column.len() {
+                                    data[row_no].col_json = Option::<String>::decode(column, row_no).unwrap();
+                                }
+                                let column = row.column(5);
+                                for row_no in 0..column.len() {
+                                    data[row_no].col_json_array = Vec::<String>::decode(column, row_no).unwrap();
+                                }
+                                let column = row.column(6);
+                                for row_no in 0..column.len() {
+                                    data[row_no].col_struct = Option::<TestDataStruct>::decode(column, row_no).unwrap();
+                                }
+                                let column = row.column(7);
+                                for row_no in 0..column.len() {
+                                    data[row_no].col_struct_array = Vec::<TestDataStruct>::decode(column, row_no).unwrap();
+                                }
+                                tracing::info!("{:?}", data);
                             });
                         }
                         _ => unreachable!("unsupported rows"),
