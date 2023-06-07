@@ -4,7 +4,7 @@ pub mod conn_pool;
 #[cfg(test)]
 pub mod test {
     use crate::arrow::{ArrowDecodable, ArrowStructDecodable, Decimal128, Error};
-    use crate::grpc::apiv1::bigquery_client::{StreamingReadClient};
+    use crate::grpc::apiv1::bigquery_client::StreamingReadClient;
     use crate::grpc::apiv1::conn_pool::{ReadConnectionManager, AUDIENCE, DOMAIN};
     use crate::http::bigquery_client::test::TestDataStruct;
     use crate::http::bigquery_client::SCOPES;
@@ -14,8 +14,7 @@ pub mod test {
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_gax::conn::Environment;
-    
-    
+
     use google_cloud_googleapis::cloud::bigquery::storage::v1::read_rows_response::{Rows, Schema};
     use google_cloud_googleapis::cloud::bigquery::storage::v1::{
         ArrowSchema, CreateReadSessionRequest, DataFormat, ReadRowsRequest, ReadSession,

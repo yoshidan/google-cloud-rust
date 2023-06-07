@@ -1,7 +1,6 @@
 use arrow::array::{
-    Array, ArrayAccessor, ArrayRef, AsArray, BinaryArray, Date32Array, Decimal128Array,
-    Decimal256Array, Float64Array, Int64Array, ListArray, StringArray, Time64MicrosecondArray,
-    TimestampMicrosecondArray,
+    Array, ArrayAccessor, ArrayRef, AsArray, BinaryArray, Date32Array, Decimal128Array, Decimal256Array, Float64Array,
+    Int64Array, ListArray, StringArray, Time64MicrosecondArray, TimestampMicrosecondArray,
 };
 use arrow::datatypes::{DataType, TimeUnit};
 
@@ -282,8 +281,7 @@ where
 }
 
 fn downcast<T: 'static>(col: &dyn Array) -> Result<&T, Error> {
-    col
-        .as_any()
+    col.as_any()
         .downcast_ref::<T>()
         .ok_or(Error::InvalidDowncast(col.data_type().clone()))
 }
@@ -292,7 +290,6 @@ fn downcast<T: 'static>(col: &dyn Array) -> Result<&T, Error> {
 mod test {
     use crate::arrow::ArrowDecodable;
     use arrow::array::BooleanArray;
-    
 
     #[test]
     fn test_bool() {
