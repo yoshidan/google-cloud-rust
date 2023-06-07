@@ -22,6 +22,7 @@ use google_cloud_googleapis::cloud::bigquery::storage::v1::{
 use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
 use std::collections::VecDeque;
 use std::sync::Arc;
+use crate::http::bigquery_row_access_policy_client::BigqueryRowAccessPolicyClient;
 
 #[derive(Debug)]
 pub struct ClientConfig {
@@ -59,6 +60,7 @@ pub struct Client {
     tabledata_client: BigqueryTabledataClient,
     job_client: BigqueryJobClient,
     routine_client: BigqueryRoutineClient,
+    row_access_policy_client: BigqueryRowAccessPolicyClient,
     streaming_read_client_conn_pool: ReadConnectionManager,
     project_id: String,
 }
@@ -76,6 +78,7 @@ impl Client {
             tabledata_client: BigqueryTabledataClient::new(client.clone()),
             job_client: BigqueryJobClient::new(client.clone()),
             routine_client: BigqueryRoutineClient::new(client.clone()),
+            row_access_policy_client: BigqueryRowAccessPolicyClient::new(client.clone()),
             streaming_read_client_conn_pool,
             project_id: config.project_id.unwrap_or_default(),
         })
@@ -99,6 +102,10 @@ impl Client {
 
     pub fn routine(&self) -> &BigqueryRoutineClient {
         &self.routine_client
+    }
+
+    pub fn row_access_policy(&self) -> &BigqueryRowAccessPolicyClient{
+        &self.row_access_policy_client
     }
 
     pub async fn query(&self, request: QueryRequest) -> Result<QueryIterator, Error> {
