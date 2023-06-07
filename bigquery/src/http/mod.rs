@@ -11,6 +11,7 @@ pub mod bigquery_routine_client;
 pub mod bigquery_row_access_policy_client;
 pub mod bigquery_table_client;
 pub mod bigquery_tabledata_client;
+pub mod bigquery_model_client;
 pub mod dataset;
 pub mod error;
 pub mod job;

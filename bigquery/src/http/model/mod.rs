@@ -1,4 +1,262 @@
+pub mod list;
+pub mod get;
+pub mod delete;
+pub mod patch;
+
 use std::collections::HashMap;
+use time::OffsetDateTime;
+use crate::http::table::TableReference;
+use crate::http::types::{EncryptionConfiguration, StandardSqlField};
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Model {
+    /// Output only. A hash of this resource.
+    pub etag: String,
+    /// Required. Unique identifier for this model.
+    pub model_reference: ModelReference,
+    /// Output only. The time when this model was created, in millisecs since the epoch.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub creation_time: i64,
+    /// Output only. The time when this model was last modified, in millisecs since the epoch.
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub last_modified_time: u64,
+    /// Optional. A user-friendly description of this model.
+    pub description: Option<String>,
+    /// Optional. A descriptive name for this model.
+    pub friendly_name: Option<String>,
+    /// The labels associated with this model.
+    /// You can use these to organize and group your models. Label keys and values can be no longer than 63 characters,
+    /// can only contain lowercase letters, numeric characters, underscores and dashes.
+    /// International characters are allowed. Label values are optional.
+    /// Label keys must start with a letter and each label in the list must have a different key.
+    /// An object containing a list of "key": value pairs. Example: { "name": "wrench", "mass": "1.3kg", "count": "3" }.
+    pub labels: Option<HashMap<String,String>>,
+    /// Optional. The time when this model expires, in milliseconds since the epoch.
+    /// If not present, the model will persist indefinitely. Expired models will be deleted and their storage reclaimed. The defaultTableExpirationMs property of the encapsulating dataset can be used to set a default expirationTime on newly created models.
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub expiration_time: Option<i64>,
+    /// Output only. The geographic location where the model resides. This value is inherited from the dataset.
+    pub location: Option<String>,
+    /// Custom encryption configuration (e.g., Cloud KMS keys).
+    /// This shows the encryption configuration of the model data while stored in BigQuery storage.
+    /// This field can be used with models.patch to update encryption key for an already encrypted model.
+    pub encryption_configuration: Option<EncryptionConfiguration>,
+    /// Output only. Type of the model resource.
+    pub model_type: Option<ModelType>,
+    /// Information for all training runs in increasing order of startTime.
+    pub training_runs: Option<Vec<TrainingRun>>,
+    /// Output only. Input feature columns that were used to train this model.
+    pub feature_columns : Option<Vec<StandardSqlField>>,
+    /// Output only. Label columns that were used to train this model.
+    /// The output of the model will have a "predicted_" prefix to these columns.
+    pub label_columns : Option<Vec<StandardSqlField>>,
+    /// Output only. All hyperparameter search spaces in this model.
+    pub hparam_search_spaces: Option<HparamSearchSpaces>,
+    /// Output only. The default trialId to use in TVFs when the trialId is not passed in. For single-objective hyperparameter tuning models, this is the best trial ID. For multi-objective hyperparameter tuning models, this is the smallest trial ID among all Pareto optimal trials.
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub default_trial_id: Option<i64>,
+    /// Output only. Trials of a hyperparameter tuning model sorted by trialId.
+    pub hparam_trials: Option<Vec<HparamTuningTrial>>,
+    /// Output only. For single-objective hyperparameter tuning models, it only contains the best trial.
+    /// For multi-objective hyperparameter tuning models, it contains all Pareto optimal trials sorted by trialId.
+    #[serde(default, deserialize_with = "crate::http::from_str_vec_option")]
+    pub optimal_trial_ids: Option<Vec<i64>>,
+    /// Output only. Remote model info
+    pub remote_model_info: Option<RemoteModelInfo>
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct TrainingRun {
+    /// Output only. Options that were used for this training run, includes user specified and default options that were used.
+    pub training_options: Option<TrainingOptions>,
+    /// Output only. The start time of this training run.
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub start_time: Option<OffsetDateTime>,
+    /// Output only. Output of each iteration run, results.size() <= maxIterations.
+    pub results: Option<Vec<IterationResult>>,
+    /// Output only. The evaluation metrics over training/eval data that were computed at the end of training.
+    pub evaluation_metrics: Option<EvaluationMetrics>,
+    /// Output only. Data split result of the training run. Only set when the input data is actually split.
+    pub data_split_result: Option<DataSplitResult>,
+    /// Output only. Global explanation contains the explanation of top features on the model level. Applies to both regression and classification models.
+    pub model_level_global_explanation: Option<GlobalExplanation>,
+    /// Output only. Global explanation contains the explanation of top features on the class level. Applies to classification models only.
+    pub class_level_global_explanations: Option<Vec<GlobalExplanation>>,
+    /// The model id in the Vertex AI Model Registry for this training run.
+    pub vertex_ai_model_id: Option<String>,
+    /// Output only. The model version in the Vertex AI Model Registry for this training run.
+    pub vertex_ai_model_version: Option<String>,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct DataSplitResult {
+    /// Table reference of the training data after split.
+    pub training_table: Option<TableReference>,
+    /// Table reference of the evaluation data after split.
+    pub evaluation_table: Option<TableReference>,
+    /// Table reference of the test data after split.
+    pub test_table: Option<TableReference>
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GlobalExplanation {
+    /// A list of the top global explanations. Sorted by absolute value of attribution in descending order.
+    pub explanations: Option<Vec<Explanation>>,
+    /// Class label for this set of global explanations.
+    /// Will be empty/null for binary logistic and linear regression models. Sorted alphabetically in descending order.
+    pub class_label: Option<String>,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Explanation {
+    /// The full feature name.
+    /// For non-numerical features, will be formatted like <column_name>.<encoded_feature_name>.
+    /// Overall size of feature name will always be truncated to first 120 characters..
+    pub feature_name: String,
+    /// Attribution of feature.
+    pub attribution: f64,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteModelInfo {
+    /// Output only. Fully qualified name of the user-provided connection object of the remote model.
+    /// Format: "projects/{projectId}/locations/{locationId}/connections/{connectionId}"
+    pub connection: String,
+    /// Output only. Max number of rows in each batch sent to the remote service. If unset, the number of rows in each batch is set dynamically.
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub max_batching_rows: Option<i64>,
+    /// Output only. The endpoint for remote model.
+    pub endpoint: String,
+    /// Output only. The remote service type for remote model.
+    pub remote_service_type: RemoteServiceType
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct HparamSearchSpaces {
+    /// Learning rate of training jobs.
+    pub learn_rate: Option<DoubleHparamSearchSpace>,
+    /// L1 regularization coefficient.
+    pub l1_reg: Option<DoubleHparamSearchSpace>,
+    /// L2 regularization coefficient.
+    pub l2_reg: Option<DoubleHparamSearchSpace>,
+    /// Number of clusters for k-means.
+    pub num_clusters: Option<IntHparamSearchSpace>,
+    /// Number of latent factors to train on.
+    pub num_factors: Option<IntHparamSearchSpace>,
+    /// Hidden units for neural network models.
+    pub hidden_units: Option<IntArrayHparamSearchSpace>,
+    /// Mini batch sample size.
+    pub batch_size: Option<IntHparamSearchSpace>,
+    /// Dropout probability for dnn model training and boosted tree models using dart booster.
+    pub dropout: Option<DoubleHparamSearchSpace>,
+    /// Maximum depth of a tree for boosted tree models.
+    pub max_tree_depth: Option<IntHparamSearchSpace>,
+    /// Subsample the training data to grow tree to prevent overfitting for boosted tree models.
+    pub subsample: Option<DoubleHparamSearchSpace>,
+    /// Minimum split loss for boosted tree models.
+    pub min_split_loss: Option<DoubleHparamSearchSpace>,
+    /// Hyperparameter for matrix factoration when implicit feedback type is specified.
+    pub wals_alpha: Option<DoubleHparamSearchSpace>,
+    /// Booster type for boosted tree models.
+    pub booster_type: Option<StringHparamSearchSpace>,
+    /// Number of parallel trees for boosted tree models.
+    pub num_parallel_tree: Option<IntHparamSearchSpace>,
+    /// Dart normalization type for boosted tree models.
+    pub dart_normalize_type: Option<StringHparamSearchSpace>,
+    /// Tree construction algorithm for boosted tree models.
+    pub tree_method: Option<StringHparamSearchSpace>,
+    /// Minimum sum of instance weight needed in a child for boosted tree models.
+    pub min_tree_child_weight: Option<IntHparamSearchSpace>,
+    /// Subsample ratio of columns when constructing each tree for boosted tree models.
+    pub colsample_bytree: Option<DoubleHparamSearchSpace>,
+    /// Subsample ratio of columns for each level for boosted tree models.
+    pub colsample_bylevel: Option<DoubleHparamSearchSpace>,
+    /// Subsample ratio of columns for each node(split) for boosted tree models.
+    pub colsample_bynode: Option<DoubleHparamSearchSpace>,
+    /// Activation functions of neural network models.
+    pub activation_fn: Option<StringHparamSearchSpace>,
+    /// Optimizer of TF models.
+    pub optimizer: Option<StringHparamSearchSpace>,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum DoubleHparamSearchSpace {
+    Range(DoubleRange),
+    Candidates(DoubleCandidates),
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DoubleRange {
+    pub min: f64,
+    pub max: f64,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DoubleCandidates {
+    pub candidates: Vec<f64>,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum IntHparamSearchSpace {
+    Range(IntRange),
+    Candidates(IntCandidates),
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct IntRange {
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub min: i64,
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub max: i64,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct IntCandidates {
+    #[serde(deserialize_with = "crate::http::from_str_vec")]
+    pub candidates: Vec<i64>,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct IntArrayHparamSearchSpace {
+    pub candidates: Vec<IntArray>,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct IntArray {
+    #[serde(deserialize_with = "crate::http::from_str")]
+    pub elements: i64,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct StringHparamSearchSpace {
+    pub candidates: Vec<String>,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum RemoteServiceType {
+    #[default]
+    RemoteServiceTypeUnspecified,
+    CloudAiTranslateV3,
+    CloudAiVisionV1,
+    CloudAiNaturalLanguageV1,
+}
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
