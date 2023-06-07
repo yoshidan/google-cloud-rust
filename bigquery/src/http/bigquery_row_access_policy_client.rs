@@ -98,17 +98,15 @@ impl BigqueryRowAccessPolicyClient {
 #[cfg(test)]
 mod test {
     use crate::http::bigquery_client::test::create_client;
-    use std::ops::Add;
 
     use crate::http::bigquery_row_access_policy_client::BigqueryRowAccessPolicyClient;
     use crate::http::row_access_policy::list::ListRowAccessPoliciesRequest;
     use crate::http::table::get_iam_policy::GetIamPolicyRequest;
-    use crate::http::table::test_iam_permissions::TestIamPermissionsRequest;
-    use crate::http::table::{Table, TableReference};
-    use crate::http::types::{Bindings, Policy};
+
+    use crate::http::table::TableReference;
+
     use serial_test::serial;
     use std::sync::Arc;
-    use time::OffsetDateTime;
 
     #[ctor::ctor]
     fn init() {

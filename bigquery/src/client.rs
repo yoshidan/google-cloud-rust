@@ -1,4 +1,5 @@
 use crate::arrow::ArrowStructDecodable;
+use std::borrow::Cow;
 
 use crate::grpc::apiv1::conn_pool::{ReadConnectionManager, DOMAIN};
 use crate::http::bigquery_client::BigqueryClient;
@@ -15,42 +16,55 @@ use crate::http::table::TableReference;
 use crate::iterator::{QueryIterator, TableDataError, TableDataIterator};
 use google_cloud_gax::conn::Environment;
 
+use crate::http::bigquery_model_client::BigqueryModelClient;
+use crate::http::bigquery_row_access_policy_client::BigqueryRowAccessPolicyClient;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::{
     read_session, CreateReadSessionRequest, DataFormat, ReadSession,
 };
-use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
+use google_cloud_token::TokenSourceProvider;
 use std::collections::VecDeque;
 use std::sync::Arc;
-use crate::http::bigquery_row_access_policy_client::BigqueryRowAccessPolicyClient;
 
 #[derive(Debug)]
 pub struct ClientConfig {
-    pub http: reqwest::Client,
-    pub bigquery_endpoint: String,
-    pub token_source_provider: Box<dyn TokenSourceProvider>,
-    pub project_id: Option<String>,
-    pub storage_environment: Environment,
-    pub read_connection_size: usize,
+    http: reqwest::Client,
+    bigquery_endpoint: Cow<'static, str>,
+    token_source_provider: Box<dyn TokenSourceProvider>,
+    storage_environment: Environment,
+    read_connection_size: u8,
+    debug: bool,
 }
 
 impl ClientConfig {
-    pub fn nope() -> Self {
-        Self::new_with_default(Box::new(NopeTokenSourceProvider {}), Box::new(NopeTokenSourceProvider {}))
-    }
-
-    pub fn new_with_default(
+    pub fn new(
         http_token_source_provider: Box<dyn TokenSourceProvider>,
         grpc_token_source_provider: Box<dyn TokenSourceProvider>,
     ) -> Self {
         Self {
             http: reqwest::Client::default(),
-            bigquery_endpoint: "https://bigquery.googleapis.com".to_string(),
+            bigquery_endpoint: "https://bigquery.googleapis.com".into(),
             token_source_provider: http_token_source_provider,
-            project_id: None,
             storage_environment: Environment::GoogleCloud(grpc_token_source_provider),
             read_connection_size: 4,
+            debug: false,
         }
+    }
+    pub fn with_debug(mut self, value: bool) -> Self {
+        self.debug = value;
+        self
+    }
+    pub fn with_read_connection_size(mut self, value: u8) -> Self {
+        self.read_connection_size = value;
+        self
+    }
+    pub fn with_http_client(mut self, value: reqwest::Client) -> Self {
+        self.http = value;
+        self
+    }
+    pub fn with_endpoint(mut self, value: impl Into<Cow<'static, str>>) -> Self {
+        self.bigquery_endpoint = value.into();
+        self
     }
 }
 
@@ -61,17 +75,23 @@ pub struct Client {
     job_client: BigqueryJobClient,
     routine_client: BigqueryRoutineClient,
     row_access_policy_client: BigqueryRowAccessPolicyClient,
+    model_client: BigqueryModelClient,
     streaming_read_client_conn_pool: ReadConnectionManager,
-    project_id: String,
 }
 
 impl Client {
     /// New client
     pub async fn new(config: ClientConfig) -> Result<Self, google_cloud_gax::conn::Error> {
         let ts = config.token_source_provider.token_source();
-        let client = Arc::new(BigqueryClient::new(ts, config.bigquery_endpoint.as_str(), config.http));
+        let client = Arc::new(BigqueryClient::new(
+            ts,
+            config.bigquery_endpoint.into_owned().as_str(),
+            config.http,
+            config.debug,
+        ));
         let streaming_read_client_conn_pool =
-            ReadConnectionManager::new(config.read_connection_size, &config.storage_environment, DOMAIN).await?;
+            ReadConnectionManager::new(config.read_connection_size as usize, &config.storage_environment, DOMAIN)
+                .await?;
         Ok(Self {
             dataset_client: BigqueryDatasetClient::new(client.clone()),
             table_client: BigqueryTableClient::new(client.clone()),
@@ -79,8 +99,8 @@ impl Client {
             job_client: BigqueryJobClient::new(client.clone()),
             routine_client: BigqueryRoutineClient::new(client.clone()),
             row_access_policy_client: BigqueryRowAccessPolicyClient::new(client.clone()),
+            model_client: BigqueryModelClient::new(client.clone()),
             streaming_read_client_conn_pool,
-            project_id: config.project_id.unwrap_or_default(),
         })
     }
 
@@ -104,12 +124,16 @@ impl Client {
         &self.routine_client
     }
 
-    pub fn row_access_policy(&self) -> &BigqueryRowAccessPolicyClient{
+    pub fn row_access_policy(&self) -> &BigqueryRowAccessPolicyClient {
         &self.row_access_policy_client
     }
 
-    pub async fn query(&self, request: QueryRequest) -> Result<QueryIterator, Error> {
-        let result = self.job_client.query(self.project_id.as_str(), &request).await?;
+    pub fn model(&self) -> &BigqueryModelClient {
+        &self.model_client
+    }
+
+    pub async fn query(&self, project_id: &str, request: QueryRequest) -> Result<QueryIterator, Error> {
+        let result = self.job_client.query(project_id, &request).await?;
         Ok(QueryIterator {
             client: self.job_client.clone(),
             project_id: result.job_reference.project_id,
@@ -221,7 +245,7 @@ mod tests {
         let _ = tracing_subscriber::fmt::try_init();
     }
 
-    async fn create_client() -> Client {
+    async fn create_client() -> (Client, String) {
         let http_tsp = DefaultTokenSourceProvider::new(Config {
             audience: None,
             scopes: Some(&SCOPES),
@@ -236,22 +260,24 @@ mod tests {
         })
         .await
         .unwrap();
-        let project_id = http_tsp.source_credentials.clone().unwrap().project_id;
-        let mut client_config = ClientConfig::new_with_default(Box::new(http_tsp), Box::new(grpc_tsp));
-        client_config.project_id = project_id;
-        Client::new(client_config).await.unwrap()
+        let project_id = http_tsp.source_credentials.clone().unwrap().project_id.unwrap();
+        let client_config = ClientConfig::new(Box::new(http_tsp), Box::new(grpc_tsp));
+        (Client::new(client_config).await.unwrap(), project_id)
     }
 
     #[tokio::test]
     #[serial]
     async fn test_query() {
-        let client = create_client().await;
+        let (client, project_id) = create_client().await;
         let mut iterator = client
-            .query(QueryRequest {
-                max_results: Some(2),
-                query: "SELECT 'A' as col1 ".to_string(),
-                ..Default::default()
-            })
+            .query(
+                &project_id,
+                QueryRequest {
+                    max_results: Some(2),
+                    query: "SELECT 'A' as col1 ".to_string(),
+                    ..Default::default()
+                },
+            )
             .await
             .unwrap();
 
@@ -266,9 +292,9 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_read_table() {
-        let client = create_client().await;
+        let (client, project_id) = create_client().await;
         let table = TableReference {
-            project_id: "atl-dev1".to_string(),
+            project_id,
             dataset_id: "rust_test_table".to_string(),
             table_id: "table_data_1686033753".to_string(),
         };

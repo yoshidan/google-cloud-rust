@@ -1,7 +1,5 @@
+use crate::http::model::{ModelReference, ModelType};
 use reqwest::{Client, RequestBuilder};
-use crate::http::model::{Model, ModelReference, ModelType};
-
-use crate::http::table::{Clustering, RangePartitioning, TableReference, TimePartitioning};
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]

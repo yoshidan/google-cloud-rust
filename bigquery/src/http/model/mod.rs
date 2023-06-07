@@ -1,12 +1,12 @@
-pub mod list;
-pub mod get;
 pub mod delete;
+pub mod get;
+pub mod list;
 pub mod patch;
 
-use std::collections::HashMap;
-use time::OffsetDateTime;
 use crate::http::table::TableReference;
 use crate::http::types::{EncryptionConfiguration, StandardSqlField};
+use std::collections::HashMap;
+use time::OffsetDateTime;
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -31,7 +31,7 @@ pub struct Model {
     /// International characters are allowed. Label values are optional.
     /// Label keys must start with a letter and each label in the list must have a different key.
     /// An object containing a list of "key": value pairs. Example: { "name": "wrench", "mass": "1.3kg", "count": "3" }.
-    pub labels: Option<HashMap<String,String>>,
+    pub labels: Option<HashMap<String, String>>,
     /// Optional. The time when this model expires, in milliseconds since the epoch.
     /// If not present, the model will persist indefinitely. Expired models will be deleted and their storage reclaimed. The defaultTableExpirationMs property of the encapsulating dataset can be used to set a default expirationTime on newly created models.
     #[serde(default, deserialize_with = "crate::http::from_str_option")]
@@ -47,10 +47,10 @@ pub struct Model {
     /// Information for all training runs in increasing order of startTime.
     pub training_runs: Option<Vec<TrainingRun>>,
     /// Output only. Input feature columns that were used to train this model.
-    pub feature_columns : Option<Vec<StandardSqlField>>,
+    pub feature_columns: Option<Vec<StandardSqlField>>,
     /// Output only. Label columns that were used to train this model.
     /// The output of the model will have a "predicted_" prefix to these columns.
-    pub label_columns : Option<Vec<StandardSqlField>>,
+    pub label_columns: Option<Vec<StandardSqlField>>,
     /// Output only. All hyperparameter search spaces in this model.
     pub hparam_search_spaces: Option<HparamSearchSpaces>,
     /// Output only. The default trialId to use in TVFs when the trialId is not passed in. For single-objective hyperparameter tuning models, this is the best trial ID. For multi-objective hyperparameter tuning models, this is the smallest trial ID among all Pareto optimal trials.
@@ -63,7 +63,7 @@ pub struct Model {
     #[serde(default, deserialize_with = "crate::http::from_str_vec_option")]
     pub optimal_trial_ids: Option<Vec<i64>>,
     /// Output only. Remote model info
-    pub remote_model_info: Option<RemoteModelInfo>
+    pub remote_model_info: Option<RemoteModelInfo>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
@@ -98,7 +98,7 @@ pub struct DataSplitResult {
     /// Table reference of the evaluation data after split.
     pub evaluation_table: Option<TableReference>,
     /// Table reference of the test data after split.
-    pub test_table: Option<TableReference>
+    pub test_table: Option<TableReference>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
@@ -134,7 +134,7 @@ pub struct RemoteModelInfo {
     /// Output only. The endpoint for remote model.
     pub endpoint: String,
     /// Output only. The remote service type for remote model.
-    pub remote_service_type: RemoteServiceType
+    pub remote_service_type: RemoteServiceType,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]

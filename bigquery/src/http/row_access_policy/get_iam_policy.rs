@@ -1,6 +1,5 @@
-use crate::http::row_access_policy::RowAccessPolicyReference;
 use crate::http::table::get_iam_policy::GetIamPolicyRequest;
-use crate::http::types::GetPolicyOptions;
+
 use reqwest::{Client, RequestBuilder};
 
 pub fn build(

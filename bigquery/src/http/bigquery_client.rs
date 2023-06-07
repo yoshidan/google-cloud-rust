@@ -20,14 +20,16 @@ pub struct BigqueryClient {
     ts: Arc<dyn TokenSource>,
     endpoint: String,
     http: Client,
+    debug: bool,
 }
 
 impl BigqueryClient {
-    pub(crate) fn new(ts: Arc<dyn TokenSource>, endpoint: &str, http: Client) -> Self {
+    pub(crate) fn new(ts: Arc<dyn TokenSource>, endpoint: &str, http: Client, debug: bool) -> Self {
         Self {
             ts,
             endpoint: format!("{endpoint}/bigquery/v2"),
             http,
+            debug,
         }
     }
 
@@ -54,10 +56,13 @@ impl BigqueryClient {
         let request = self.with_headers(builder).await?;
         let response = request.send().await?;
         let response = Self::check_response_status(response).await?;
-        //TODO json
-        let text = response.text().await?;
-        tracing::info!("{}", text);
-        Ok(serde_json::from_str(text.as_str()).unwrap())
+        if self.debug {
+            let text = response.text().await?;
+            tracing::info!("{}", text);
+            Ok(serde_json::from_str(text.as_str()).unwrap())
+        } else {
+            Ok(response.json().await?)
+        }
     }
 
     pub async fn send_get_empty(&self, builder: RequestBuilder) -> Result<(), Error> {
@@ -105,7 +110,7 @@ pub(crate) mod test {
         .unwrap();
         let cred = tsp.source_credentials.clone();
         let ts = tsp.token_source();
-        let client = BigqueryClient::new(ts, "https://bigquery.googleapis.com", reqwest::Client::new());
+        let client = BigqueryClient::new(ts, "https://bigquery.googleapis.com", reqwest::Client::new(), true);
         (client, cred.unwrap().project_id.unwrap())
     }
 
