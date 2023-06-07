@@ -6,7 +6,7 @@ Google Cloud Platform GCE check library.
 
 ## Installation
 
-```
+```toml
 [dependencies]
 google-cloud-metadata = <version>
 ```

@@ -6,7 +6,7 @@ Google Cloud Platform gRPC retry library.
 
 ## Installation
 
-```
+```toml
 [dependencies]
 google-cloud-gax = <version>
 ```
