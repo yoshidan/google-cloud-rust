@@ -6,11 +6,12 @@ use crate::http::job::get_query_results::GetQueryResultsRequest;
 use crate::http::tabledata::list::Tuple;
 use arrow::error::ArrowError;
 use arrow::ipc::reader::StreamReader;
-use async_trait::async_trait;
+
 use google_cloud_gax::grpc::{Status, Streaming};
+use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::read_rows_response::{Rows, Schema};
 use google_cloud_googleapis::cloud::bigquery::storage::v1::{
-    ArrowSchema, ReadRowsRequest, ReadRowsResponse, ReadSession, ReadStream,
+    ArrowSchema, ReadRowsRequest, ReadRowsResponse, ReadSession,
 };
 use std::collections::VecDeque;
 use std::io::{BufReader, Cursor};
@@ -77,6 +78,7 @@ where
 {
     client: StreamingReadClient,
     session: ReadSession,
+    retry: Option<RetrySetting>,
     // mutable
     stream_index: usize,
     current_stream: Streaming<ReadRowsResponse>,
@@ -88,20 +90,25 @@ impl<T> TableDataIterator<T>
 where
     T: ArrowStructDecodable<T> + Default,
 {
-    pub async fn new(mut client: StreamingReadClient, session: ReadSession) -> Result<Self, TableDataError> {
+    pub async fn new(
+        mut client: StreamingReadClient,
+        session: ReadSession,
+        retry: Option<RetrySetting>,
+    ) -> Result<Self, TableDataError> {
         let current_stream = client
             .read_rows(
                 ReadRowsRequest {
                     read_stream: session.streams[0].name.to_string(),
                     offset: 0,
                 },
-                None,
+                retry.clone(),
             )
             .await?
             .into_inner();
         Ok(Self {
             client,
             session,
+            retry,
             current_stream,
             stream_index: 0,
             chunk: VecDeque::new(),
@@ -142,7 +149,7 @@ where
                         read_stream: stream.to_string(),
                         offset: 0,
                     },
-                    None,
+                    self.retry.clone(),
                 )
                 .await?
                 .into_inner();
@@ -159,9 +166,9 @@ where
             let mut rows_with_schema = schema.serialized_schema;
             rows_with_schema.extend_from_slice(&rows.serialized_record_batch);
             let rows = Cursor::new(rows_with_schema);
-            let mut rows: StreamReader<BufReader<Cursor<Vec<u8>>>> = StreamReader::try_new(rows, None)?;
+            let rows: StreamReader<BufReader<Cursor<Vec<u8>>>> = StreamReader::try_new(rows, None)?;
             let mut chunk: VecDeque<T> = VecDeque::new();
-            while let Some(row) = rows.next() {
+            for row in rows {
                 let row = row?;
                 for row_no in 0..row.num_rows() {
                     chunk.push_back(T::decode(row.columns(), row_no)?)

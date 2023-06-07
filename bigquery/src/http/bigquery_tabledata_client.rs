@@ -71,7 +71,7 @@ mod test {
     }
 
     async fn insert_test_data() {
-        let (client, project) = create_client().await;
+        let (client, _project) = create_client().await;
         let client = BigqueryTabledataClient::new(Arc::new(client));
         // struct
         let mut req = InsertAllRequest::<TestData>::default();

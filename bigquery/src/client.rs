@@ -1,20 +1,24 @@
 use crate::arrow::ArrowStructDecodable;
-use crate::grpc::apiv1::bigquery_client::StreamingReadClient;
+
 use crate::grpc::apiv1::conn_pool::{ReadConnectionManager, DOMAIN};
 use crate::http::bigquery_client::BigqueryClient;
 use crate::http::bigquery_dataset_client::BigqueryDatasetClient;
 use crate::http::bigquery_job_client::BigqueryJobClient;
+use crate::http::bigquery_routine_client::BigqueryRoutineClient;
 use crate::http::bigquery_table_client::BigqueryTableClient;
 use crate::http::bigquery_tabledata_client::BigqueryTabledataClient;
 use crate::http::error::Error;
 use crate::http::job::get_query_results::GetQueryResultsRequest;
 use crate::http::job::query::QueryRequest;
-use crate::http::model::HolidayRegion::No;
+
 use crate::http::table::TableReference;
 use crate::iterator::{QueryIterator, TableDataError, TableDataIterator};
 use google_cloud_gax::conn::Environment;
-use google_cloud_gax::grpc::Status;
-use google_cloud_googleapis::cloud::bigquery::storage::v1::{CreateReadSessionRequest, DataFormat, ReadSession};
+
+use google_cloud_gax::retry::RetrySetting;
+use google_cloud_googleapis::cloud::bigquery::storage::v1::{
+    read_session, CreateReadSessionRequest, DataFormat, ReadSession,
+};
 use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -54,6 +58,7 @@ pub struct Client {
     table_client: BigqueryTableClient,
     tabledata_client: BigqueryTabledataClient,
     job_client: BigqueryJobClient,
+    routine_client: BigqueryRoutineClient,
     streaming_read_client_conn_pool: ReadConnectionManager,
     project_id: String,
 }
@@ -70,25 +75,30 @@ impl Client {
             table_client: BigqueryTableClient::new(client.clone()),
             tabledata_client: BigqueryTabledataClient::new(client.clone()),
             job_client: BigqueryJobClient::new(client.clone()),
+            routine_client: BigqueryRoutineClient::new(client.clone()),
             streaming_read_client_conn_pool,
             project_id: config.project_id.unwrap_or_default(),
         })
     }
 
     pub fn dataset(&self) -> &BigqueryDatasetClient {
-        return &self.dataset_client;
+        &self.dataset_client
     }
 
     pub fn table(&self) -> &BigqueryTableClient {
-        return &self.table_client;
+        &self.table_client
     }
 
     pub fn tabledata(&self) -> &BigqueryTabledataClient {
-        return &self.tabledata_client;
+        &self.tabledata_client
     }
 
     pub fn job(&self) -> &BigqueryJobClient {
-        return &self.job_client;
+        &self.job_client
+    }
+
+    pub fn routine(&self) -> &BigqueryRoutineClient {
+        &self.routine_client
     }
 
     pub async fn query(&self, request: QueryRequest) -> Result<QueryIterator, Error> {
@@ -110,10 +120,16 @@ impl Client {
         })
     }
 
-    pub async fn read_table<T>(&self, table: &TableReference) -> Result<TableDataIterator<T>, TableDataError>
+    pub async fn read_table<T>(
+        &self,
+        table: &TableReference,
+        option: Option<ReadTableOption>,
+    ) -> Result<TableDataIterator<T>, TableDataError>
     where
         T: ArrowStructDecodable<T> + Default,
     {
+        let option = option.unwrap_or_default();
+
         let mut client = self.streaming_read_client_conn_pool.conn();
         let read_session = client
             .create_read_session(
@@ -124,22 +140,58 @@ impl Client {
                         expire_time: None,
                         data_format: DataFormat::Arrow.into(),
                         table: table.resource(),
-                        table_modifiers: None,
-                        read_options: None,
+                        table_modifiers: option.session_table_modifiers,
+                        read_options: option.session_read_options,
                         streams: vec![],
                         estimated_total_bytes_scanned: 0,
                         estimated_row_count: 0,
                         trace_id: "".to_string(),
-                        schema: None,
+                        schema: option.session_schema,
                     }),
                     max_stream_count: 0,
                     preferred_min_stream_count: 0,
                 },
-                None,
+                option.session_retry_setting,
             )
             .await?
             .into_inner();
-        TableDataIterator::new(client, read_session).await
+        TableDataIterator::new(client, read_session, option.read_rows_retry_setting).await
+    }
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct ReadTableOption {
+    session_read_options: Option<read_session::TableReadOptions>,
+    session_table_modifiers: Option<read_session::TableModifiers>,
+    session_schema: Option<read_session::Schema>,
+    session_retry_setting: Option<RetrySetting>,
+    read_rows_retry_setting: Option<RetrySetting>,
+}
+
+impl ReadTableOption {
+    pub fn with_session_read_options(mut self, value: read_session::TableReadOptions) -> Self {
+        self.session_read_options = Some(value);
+        self
+    }
+
+    pub fn with_session_table_modifiers(mut self, value: read_session::TableModifiers) -> Self {
+        self.session_table_modifiers = Some(value);
+        self
+    }
+
+    pub fn with_session_schema(mut self, value: read_session::Schema) -> Self {
+        self.session_schema = Some(value);
+        self
+    }
+
+    pub fn with_session_retry_setting(mut self, value: RetrySetting) -> Self {
+        self.session_retry_setting = Some(value);
+        self
+    }
+
+    pub fn with_read_rows_retry_setting(mut self, value: RetrySetting) -> Self {
+        self.read_rows_retry_setting = Some(value);
+        self
     }
 }
 
@@ -171,7 +223,7 @@ mod tests {
         .await
         .unwrap();
         let grpc_tsp = DefaultTokenSourceProvider::new(Config {
-            audience: Some(&apiv1::conn_pool::AUDIENCE),
+            audience: Some(apiv1::conn_pool::AUDIENCE),
             scopes: Some(&apiv1::conn_pool::SCOPES),
             sub: None,
         })
@@ -213,7 +265,7 @@ mod tests {
             dataset_id: "rust_test_table".to_string(),
             table_id: "table_data_1686033753".to_string(),
         };
-        let mut iterator = client.read_table::<TestData>(&table).await.unwrap();
+        let mut iterator = client.read_table::<TestData>(&table, None).await.unwrap();
 
         let mut data = vec![];
         let mut interrupt = tokio::time::interval(tokio::time::Duration::from_micros(100));

@@ -1,14 +1,13 @@
 use arrow::array::{
-    Array, ArrayAccessor, ArrayRef, AsArray, BinaryArray, BooleanArray, Date32Array, Date64Array, Decimal128Array,
-    Decimal256Array, Float32Array, Float64Array, Int16Array, Int32Array, Int64Array, Int8Array, ListArray, StringArray,
-    Time32MillisecondArray, Time32SecondArray, Time64MicrosecondArray, Time64NanosecondArray,
-    TimestampMicrosecondArray, UInt16Array, UInt32Array, UInt64Array, UInt8Array,
+    Array, ArrayAccessor, ArrayRef, AsArray, BinaryArray, Date32Array, Decimal128Array,
+    Decimal256Array, Float64Array, Int64Array, ListArray, StringArray, Time64MicrosecondArray,
+    TimestampMicrosecondArray,
 };
-use arrow::datatypes::{ArrowPrimitiveType, DataType, TimeUnit};
-use arrow::ipc::{Decimal, Timestamp};
+use arrow::datatypes::{DataType, TimeUnit};
+
 use std::ops::Add;
 use time::macros::date;
-use time::{Date, Duration, Month, OffsetDateTime, Time};
+use time::{Date, Duration, OffsetDateTime, Time};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -170,8 +169,8 @@ impl ArrowDecodable<Decimal128> for Decimal128 {
                 let value = downcast::<Decimal128Array>(col)?.value(row_no);
                 Ok(Decimal128 {
                     value,
-                    precision: precision.clone(),
-                    scale: scale.clone(),
+                    precision: *precision,
+                    scale: *scale,
                 })
             }
             _ => Err(Error::InvalidDataType(col.data_type().clone(), "Decimal128")),
@@ -189,8 +188,8 @@ impl ArrowDecodable<Decimal256> for Decimal256 {
                 let value = downcast::<Decimal256Array>(col)?.value(row_no);
                 Ok(Decimal256 {
                     value,
-                    precision: precision.clone(),
-                    scale: scale.clone(),
+                    precision: *precision,
+                    scale: *scale,
                 })
             }
             _ => Err(Error::InvalidDataType(col.data_type().clone(), "Decimal256")),
@@ -283,17 +282,17 @@ where
 }
 
 fn downcast<T: 'static>(col: &dyn Array) -> Result<&T, Error> {
-    Ok(col
+    col
         .as_any()
         .downcast_ref::<T>()
-        .ok_or(Error::InvalidDowncast(col.data_type().clone()))?)
+        .ok_or(Error::InvalidDowncast(col.data_type().clone()))
 }
 
 #[cfg(test)]
 mod test {
     use crate::arrow::ArrowDecodable;
     use arrow::array::BooleanArray;
-    use std::sync::Arc;
+    
 
     #[test]
     fn test_bool() {
