@@ -35,6 +35,8 @@ pub struct ReadOptions {
     pub limit: i64,
 
     pub call_options: CallOptions,
+
+    pub enable_resume: bool,
 }
 
 impl Default for ReadOptions {
@@ -43,6 +45,7 @@ impl Default for ReadOptions {
             index: "".to_string(),
             limit: 0,
             call_options: CallOptions::default(),
+            enable_resume: true
         }
     }
 }
@@ -52,6 +55,7 @@ pub struct QueryOptions {
     pub mode: QueryMode,
     pub optimizer_options: Option<ExecuteQueryOptions>,
     pub call_options: CallOptions,
+    pub enable_resume: bool,
 }
 
 impl Default for QueryOptions {
@@ -60,6 +64,7 @@ impl Default for QueryOptions {
             mode: QueryMode::Normal,
             optimizer_options: None,
             call_options: CallOptions::default(),
+            enable_resume: true,
         }
     }
 }
@@ -114,7 +119,10 @@ impl Transaction {
             data_boost_enabled: false,
         };
         let session = self.session.as_mut().unwrap().deref_mut();
-        let reader = Box::new(StatementReader { request });
+        let reader = Box::new(StatementReader {
+            enable_resume: options.enable_resume,
+            request
+        });
         RowIterator::new(session, reader, Some(options.call_options)).await
     }
 
@@ -172,7 +180,10 @@ impl Transaction {
         };
 
         let session = self.as_mut_session();
-        let reader = Box::new(TableReader { request });
+        let reader = Box::new(TableReader {
+            enable_resume: options.enable_resume,
+            request
+        });
         RowIterator::new(session, reader, Some(options.call_options)).await
     }
 

@@ -33,7 +33,7 @@ use crate::value::TimestampBound;
 /// TimestampBound for more details.
 pub struct ReadOnlyTransaction {
     base_tx: Transaction,
-    pub rts: Option<time::OffsetDateTime>,
+    pub rts: Option<OffsetDateTime>,
 }
 
 impl Deref for ReadOnlyTransaction {
@@ -189,6 +189,7 @@ impl BatchReadOnlyTransaction {
                 .into_iter()
                 .map(|x| Partition {
                     reader: TableReader {
+                        enable_resume: ro.enable_resume,
                         request: ReadRequest {
                             session: self.get_session_name(),
                             transaction: Some(self.transaction_selector.clone()),
@@ -246,6 +247,7 @@ impl BatchReadOnlyTransaction {
                 .into_iter()
                 .map(|x| Partition {
                     reader: StatementReader {
+                        enable_resume: qo.enable_resume,
                         request: ExecuteSqlRequest {
                             session: self.get_session_name(),
                             transaction: Some(self.transaction_selector.clone()),
