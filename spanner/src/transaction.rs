@@ -45,7 +45,7 @@ impl Default for ReadOptions {
             index: "".to_string(),
             limit: 0,
             call_options: CallOptions::default(),
-            enable_resume: true
+            enable_resume: true,
         }
     }
 }
@@ -121,7 +121,7 @@ impl Transaction {
         let session = self.session.as_mut().unwrap().deref_mut();
         let reader = Box::new(StatementReader {
             enable_resume: options.enable_resume,
-            request
+            request,
         });
         RowIterator::new(session, reader, Some(options.call_options)).await
     }
@@ -182,7 +182,7 @@ impl Transaction {
         let session = self.as_mut_session();
         let reader = Box::new(TableReader {
             enable_resume: options.enable_resume,
-            request
+            request,
         });
         RowIterator::new(session, reader, Some(options.call_options)).await
     }

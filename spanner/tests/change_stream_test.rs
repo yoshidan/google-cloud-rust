@@ -1,22 +1,19 @@
-use std::collections::HashMap;
-use std::ops::Sub;
-use tokio::time::sleep;
 use std::time::Duration;
+use tokio::time::sleep;
 
 use serial_test::serial;
 use time::OffsetDateTime;
 use tokio::task::JoinHandle;
 
-use common::*;
 use google_cloud_gax::conn::Environment;
-use google_cloud_gax::conn::Environment::{Emulator, GoogleCloud};
-use google_cloud_gax::grpc::{Code, Status};
+use google_cloud_gax::conn::Environment::GoogleCloud;
+use google_cloud_gax::grpc::Code;
 use google_cloud_googleapis::spanner::admin::database::v1::UpdateDatabaseDdlRequest;
-use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
+
 use google_cloud_spanner::admin;
 use google_cloud_spanner::admin::AdminClientConfig;
 use google_cloud_spanner::client::{Client, ClientConfig};
-use google_cloud_spanner::key::Key;
+
 use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
 use google_cloud_spanner::row::{Error, Row, Struct, TryFromStruct};
 use google_cloud_spanner::statement::Statement;
@@ -35,14 +32,14 @@ fn init() {
 #[derive(Debug)]
 struct ChangeRecord {
     pub data_change_record: Vec<DataChangeRecord>,
-    pub child_partitions_record: Vec<ChildPartitionsRecord>
+    pub child_partitions_record: Vec<ChildPartitionsRecord>,
 }
 
 impl TryFromStruct for ChangeRecord {
     fn try_from_struct(s: Struct<'_>) -> Result<Self, Error> {
         Ok(Self {
             data_change_record: s.column_by_name("data_change_record")?,
-            child_partitions_record: s.column_by_name("child_partitions_record")?
+            child_partitions_record: s.column_by_name("child_partitions_record")?,
         })
     }
 }
@@ -51,7 +48,7 @@ impl TryFromStruct for ChangeRecord {
 struct ChildPartitionsRecord {
     pub start_timestamp: OffsetDateTime,
     pub record_sequence: String,
-    pub child_partitions: Vec<ChildPartition>
+    pub child_partitions: Vec<ChildPartition>,
 }
 
 impl TryFromStruct for ChildPartitionsRecord {
@@ -67,14 +64,14 @@ impl TryFromStruct for ChildPartitionsRecord {
 #[derive(Debug)]
 struct ChildPartition {
     pub token: String,
-    pub parent_partition_tokens: Vec<String>
+    pub parent_partition_tokens: Vec<String>,
 }
 
 impl TryFromStruct for ChildPartition {
     fn try_from_struct(s: Struct<'_>) -> Result<Self, Error> {
         Ok(Self {
             token: s.column_by_name("token")?,
-            parent_partition_tokens: s.column_by_name("parent_partition_tokens")?
+            parent_partition_tokens: s.column_by_name("parent_partition_tokens")?,
         })
     }
 }
@@ -91,7 +88,7 @@ struct DataChangeRecord {
     pub number_of_records_in_transaction: i64,
     pub number_of_partitions_in_transaction: i64,
     pub transaction_tag: String,
-    pub is_system_transaction:bool
+    pub is_system_transaction: bool,
 }
 impl TryFromStruct for DataChangeRecord {
     fn try_from_struct(s: Struct<'_>) -> Result<Self, Error> {
@@ -99,7 +96,8 @@ impl TryFromStruct for DataChangeRecord {
             commit_timestamp: s.column_by_name("commit_timestamp")?,
             record_sequence: s.column_by_name("record_sequence")?,
             server_transaction_id: s.column_by_name("server_transaction_id")?,
-            is_last_record_in_transaction_in_partition: s.column_by_name("is_last_record_in_transaction_in_partition")?,
+            is_last_record_in_transaction_in_partition: s
+                .column_by_name("is_last_record_in_transaction_in_partition")?,
             table_name: s.column_by_name("table_name")?,
             mod_type: s.column_by_name("mod_type")?,
             value_capture_type: s.column_by_name("value_capture_type")?,
@@ -116,20 +114,24 @@ async fn create_environment() -> Environment {
         audience: Some(google_cloud_spanner::apiv1::conn_pool::AUDIENCE),
         scopes: Some(&google_cloud_spanner::apiv1::conn_pool::SCOPES),
         sub: None,
-    }).await.unwrap();
+    })
+    .await
+    .unwrap();
     GoogleCloud(Box::new(ts))
 }
 
 async fn query_change_record(tx: &mut ReadOnlyTransaction, now: OffsetDateTime, token: Option<String>) -> RowIterator {
-    let query = format!("
+    let query = format!(
+        "
         SELECT ChangeRecord FROM READ_UserItemChangeStream (
           start_timestamp => @now,
           end_timestamp => NULL,
           partition_token => {},
           heartbeat_milliseconds => 10000
-        )", match &token {
+        )",
+        match &token {
             Some(_) => "@token",
-            None => "NULL"
+            None => "NULL",
         }
     );
     tracing::info!("query = {}", query);
@@ -138,34 +140,45 @@ async fn query_change_record(tx: &mut ReadOnlyTransaction, now: OffsetDateTime, 
     if let Some(token) = token {
         stmt.add_param("token", &token);
     }
-    tx.query_with_option(stmt, QueryOptions {
-        enable_resume: false,
-        ..Default::default()
-    }).await.unwrap()
-
+    tx.query_with_option(
+        stmt,
+        QueryOptions {
+            enable_resume: false,
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap()
 }
 
-#[tokio::test(flavor="multi_thread")]
+#[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_read_change_stream() {
-
     // Create Change Stream
     let db = "projects/atl-dev1/instances/test-instance/databases/local-database";
     let admin_client = admin::client::Client::new(AdminClientConfig {
-       environment: create_environment().await
-    }).await.unwrap();
-    let _ = admin_client.database().update_database_ddl(UpdateDatabaseDdlRequest {
-        database: db.to_string(),
-        statements: vec!["CREATE CHANGE STREAM UserItemChangeStream FOR UserItem".to_string()],
-        operation_id: "".to_string()
-    }, None).await;
+        environment: create_environment().await,
+    })
+    .await
+    .unwrap();
+    let _ = admin_client
+        .database()
+        .update_database_ddl(
+            UpdateDatabaseDdlRequest {
+                database: db.to_string(),
+                statements: vec!["CREATE CHANGE STREAM UserItemChangeStream FOR UserItem".to_string()],
+                operation_id: "".to_string(),
+            },
+            None,
+        )
+        .await;
 
     sleep(Duration::from_secs(20)).await;
 
     let now = OffsetDateTime::now_utc();
 
     // Select Changed Data
-    let mut config = ClientConfig {
+    let config = ClientConfig {
         environment: create_environment().await,
         ..Default::default()
     };
@@ -176,18 +189,25 @@ async fn test_read_change_stream() {
     let mut index = 0;
     while let Some(row) = row.next().await.unwrap() {
         tasks.push(create_watcher(client.clone(), index, now, row).await);
-        index+=1;
+        index += 1;
     }
 
     sleep(Duration::from_secs(30)).await;
 
     // Drop change stream
     tracing::info!("drop change stream");
-    admin_client.database().update_database_ddl(UpdateDatabaseDdlRequest {
-        database: db.to_string(),
-        statements: vec!["DROP CHANGE STREAM UserItemChangeStream".to_string()],
-        operation_id: "".to_string()
-    }, None).await.unwrap();
+    admin_client
+        .database()
+        .update_database_ddl(
+            UpdateDatabaseDdlRequest {
+                database: db.to_string(),
+                statements: vec!["DROP CHANGE STREAM UserItemChangeStream".to_string()],
+                operation_id: "".to_string(),
+            },
+            None,
+        )
+        .await
+        .unwrap();
 
     for task in tasks {
         let _ = task.await;
@@ -205,7 +225,7 @@ async fn create_watcher(client: Client, i: usize, now: OffsetDateTime, row: Row)
                     let client = client.clone();
                     tasks.push(tokio::spawn(async move {
                         let mut tx = client.single().await.unwrap();
-                        let mut rows = query_change_record(&mut tx, now, Some(p.token)) .await;
+                        let mut rows = query_change_record(&mut tx, now, Some(p.token)).await;
                         let mut tick = tokio::time::interval(Duration::from_millis(100));
                         loop {
                             tokio::select! {
