@@ -137,6 +137,11 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v0.6.0
+        with:
+          service_account_key: ${{ secrets.STORAGE_CREDENTIALS }}
+          export_default_credentials: true
       - uses: actions-rs/cargo@v1
         name: test
         with:
