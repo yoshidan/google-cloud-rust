@@ -13,9 +13,9 @@ use crate::http::job::get_query_results::GetQueryResultsRequest;
 use crate::http::job::query::QueryRequest;
 
 use crate::http::table::TableReference;
-use google_cloud_gax::conn::Environment;
 use crate::query;
 use crate::storage;
+use google_cloud_gax::conn::Environment;
 
 use crate::http::bigquery_model_client::BigqueryModelClient;
 use crate::http::bigquery_row_access_policy_client::BigqueryRowAccessPolicyClient;
@@ -240,6 +240,7 @@ mod tests {
     use crate::http::table::TableReference;
     use crate::query;
     use serial_test::serial;
+    use time::OffsetDateTime;
 
     #[ctor::ctor]
     fn init() {
@@ -262,7 +263,7 @@ mod tests {
         .await
         .unwrap();
         let project_id = http_tsp.source_credentials.clone().unwrap().project_id.unwrap();
-        let client_config = ClientConfig::new(Box::new(http_tsp), Box::new(grpc_tsp));
+        let client_config = ClientConfig::new(Box::new(http_tsp), Box::new(grpc_tsp)).with_debug(true);
         (Client::new(client_config).await.unwrap(), project_id)
     }
 
@@ -275,7 +276,7 @@ mod tests {
                 &project_id,
                 QueryRequest {
                     max_results: Some(2),
-                    query: "SELECT 'A' as col1 ".to_string(),
+                    query: "SELECT 'A' as col1, TIMESTAMP_MICROS(1230219000000019) as col2 ".to_string(),
                     ..Default::default()
                 },
             )
@@ -287,6 +288,8 @@ mod tests {
         while let Some(row) = iterator.next::<query::row::Row>().await.unwrap() {
             let v: &str = row.column(0).unwrap();
             assert_eq!(v, "A");
+            let v: OffsetDateTime = row.column(1).unwrap();
+            assert_eq!(v.unix_timestamp_nanos(), 1230219000000019000);
         }
     }
 
