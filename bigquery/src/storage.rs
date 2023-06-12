@@ -17,47 +17,7 @@ use std::collections::VecDeque;
 use std::io::{BufReader, Cursor};
 
 #[derive(thiserror::Error, Debug)]
-pub enum QueryError {
-    #[error(transparent)]
-    Http(#[from] HttpError),
-    #[error("invalid type {0}")]
-    Decode(String),
-}
-
-pub struct QueryIterator {
-    pub(crate) client: BigqueryJobClient,
-    pub(crate) project_id: String,
-    pub(crate) job_id: String,
-    pub(crate) request: GetQueryResultsRequest,
-    pub(crate) chunk: VecDeque<Tuple>,
-    pub total_size: i64,
-}
-
-impl QueryIterator {
-    pub async fn next<T: TryFrom<Tuple, Error = String>>(&mut self) -> Result<Option<T>, QueryError> {
-        loop {
-            if let Some(v) = self.chunk.pop_front() {
-                return T::try_from(v).map(Some).map_err(QueryError::Decode);
-            }
-            if self.request.page_token.is_none() {
-                return Ok(None);
-            }
-            let response = self
-                .client
-                .get_query_results(self.project_id.as_str(), self.job_id.as_str(), &self.request)
-                .await?;
-            if response.rows.is_none() {
-                return Ok(None);
-            }
-            let v = response.rows.unwrap();
-            self.chunk = VecDeque::from(v);
-            self.request.page_token = response.page_token;
-        }
-    }
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum TableDataError {
+pub enum Error {
     #[error(transparent)]
     GRPC(#[from] Status),
     #[error(transparent)]
@@ -72,7 +32,7 @@ pub enum TableDataError {
     NoSchemaFound,
 }
 
-pub struct TableDataIterator<T>
+pub struct Iterator<T>
 where
     T: ArrowStructDecodable<T> + Default,
 {
@@ -86,7 +46,7 @@ where
     schema: Option<ArrowSchema>,
 }
 
-impl<T> TableDataIterator<T>
+impl<T> Iterator<T>
 where
     T: ArrowStructDecodable<T> + Default,
 {
@@ -94,7 +54,7 @@ where
         mut client: StreamingReadClient,
         session: ReadSession,
         retry: Option<RetrySetting>,
-    ) -> Result<Self, TableDataError> {
+    ) -> Result<Self, Error> {
         let current_stream = client
             .read_rows(
                 ReadRowsRequest {
@@ -116,7 +76,7 @@ where
         })
     }
 
-    pub async fn next(&mut self) -> Result<Option<T>, TableDataError> {
+    pub async fn next(&mut self) -> Result<Option<T>, Error> {
         loop {
             if let Some(row) = self.chunk.pop_front() {
                 return Ok(Some(row));
@@ -124,9 +84,9 @@ where
             if let Some(rows) = self.current_stream.message().await? {
                 // Only first response contain schema information
                 let schema = match &self.schema {
-                    None => match rows.schema.ok_or(TableDataError::NoSchemaFound)? {
+                    None => match rows.schema.ok_or(Error::NoSchemaFound)? {
                         Schema::ArrowSchema(schema) => schema,
-                        _ => return Err(TableDataError::InvalidSchemaFormat),
+                        _ => return Err(Error::InvalidSchemaFormat),
                     },
                     Some(schema) => schema.clone(),
                 };
@@ -157,7 +117,7 @@ where
     }
 }
 
-fn rows_to_chunk<T>(schema: ArrowSchema, rows: Rows) -> Result<VecDeque<T>, TableDataError>
+fn rows_to_chunk<T>(schema: ArrowSchema, rows: Rows) -> Result<VecDeque<T>, Error>
 where
     T: ArrowStructDecodable<T> + Default,
 {
@@ -176,6 +136,6 @@ where
             }
             Ok(chunk)
         }
-        _ => Err(TableDataError::InvalidDateFormat),
+        _ => Err(Error::InvalidDateFormat),
     }
 }

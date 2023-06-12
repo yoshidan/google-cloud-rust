@@ -13,8 +13,9 @@ use crate::http::job::get_query_results::GetQueryResultsRequest;
 use crate::http::job::query::QueryRequest;
 
 use crate::http::table::TableReference;
-use crate::iterator::{QueryIterator, TableDataError, TableDataIterator};
 use google_cloud_gax::conn::Environment;
+use crate::query;
+use crate::storage;
 
 use crate::http::bigquery_model_client::BigqueryModelClient;
 use crate::http::bigquery_row_access_policy_client::BigqueryRowAccessPolicyClient;
@@ -132,9 +133,9 @@ impl Client {
         &self.model_client
     }
 
-    pub async fn query(&self, project_id: &str, request: QueryRequest) -> Result<QueryIterator, Error> {
+    pub async fn query(&self, project_id: &str, request: QueryRequest) -> Result<query::Iterator, Error> {
         let result = self.job_client.query(project_id, &request).await?;
-        Ok(QueryIterator {
+        Ok(query::Iterator {
             client: self.job_client.clone(),
             project_id: result.job_reference.project_id,
             job_id: result.job_reference.job_id,
@@ -155,7 +156,7 @@ impl Client {
         &self,
         table: &TableReference,
         option: Option<ReadTableOption>,
-    ) -> Result<TableDataIterator<T>, TableDataError>
+    ) -> Result<storage::Iterator<T>, storage::Error>
     where
         T: ArrowStructDecodable<T> + Default,
     {
@@ -186,7 +187,7 @@ impl Client {
             )
             .await?
             .into_inner();
-        TableDataIterator::new(client, read_session, option.read_rows_retry_setting).await
+        storage::Iterator::new(client, read_session, option.read_rows_retry_setting).await
     }
 }
 
@@ -237,7 +238,7 @@ mod tests {
     use crate::grpc::apiv1::test::TestData;
     use crate::http::job::query::QueryRequest;
     use crate::http::table::TableReference;
-    use crate::value::Row;
+    use crate::query;
     use serial_test::serial;
 
     #[ctor::ctor]
@@ -283,7 +284,7 @@ mod tests {
 
         assert_eq!(1, iterator.total_size);
 
-        while let Some(row) = iterator.next::<Row>().await.unwrap() {
+        while let Some(row) = iterator.next::<query::row::Row>().await.unwrap() {
             let v: &str = row.column(0).unwrap();
             assert_eq!(v, "A");
         }
