@@ -53,6 +53,7 @@ pub struct QueryOptions {
     /// If cancel safe is required, such as when tokio::select is used, set to false.
     /// ```
     /// use time::{Duration, OffsetDateTime};
+    /// use google_cloud_spanner::reader::AsyncIterator;
     /// use google_cloud_spanner::client::Client;
     /// use google_cloud_spanner::key::Key;
     /// use google_cloud_spanner::statement::Statement;
@@ -71,8 +72,8 @@ pub struct QueryOptions {
     ///           heartbeat_milliseconds => 10000
     ///   )");
     ///   stmt.add_param("now", &OffsetDateTime::now_utc());
-    ///   let mut rows = tx.query_with_option(stmt, option);
-    ///   let mut tick = tokio::time::interval(Duration::from_millis(100));
+    ///   let mut rows = tx.query_with_option(stmt, option).await.unwrap();
+    ///   let mut tick = tokio::time::interval(tokio::time::Duration::from_millis(100));
     ///   loop {
     ///     tokio::select! {
     ///        _ = tick.tick() => {
@@ -81,7 +82,8 @@ pub struct QueryOptions {
     ///        maybe = rows.next() =>  {
     ///          let row = maybe.unwrap().unwrap();
     ///        }
-    ///    }
+    ///     }
+    ///   }
     /// }
     pub enable_resume: bool,
 }
