@@ -59,7 +59,6 @@ impl Reader for StatementReader {
 }
 
 pub struct TableReader {
-    pub enable_resume: bool,
     pub request: ReadRequest,
 }
 
@@ -81,7 +80,7 @@ impl Reader for TableReader {
     }
 
     fn can_resume(&self) -> bool {
-        self.enable_resume && !self.request.resume_token.is_empty()
+        !self.request.resume_token.is_empty()
     }
 }
 

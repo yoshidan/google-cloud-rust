@@ -189,7 +189,6 @@ impl BatchReadOnlyTransaction {
                 .into_iter()
                 .map(|x| Partition {
                     reader: TableReader {
-                        enable_resume: ro.enable_resume,
                         request: ReadRequest {
                             session: self.get_session_name(),
                             transaction: Some(self.transaction_selector.clone()),
