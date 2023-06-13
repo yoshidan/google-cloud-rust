@@ -15,11 +15,13 @@ pub mod test {
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_gax::conn::Environment;
 
+    use bigdecimal::BigDecimal;
     use google_cloud_googleapis::cloud::bigquery::storage::v1::read_rows_response::{Rows, Schema};
-    use google_cloud_googleapis::cloud::bigquery::storage::v1::{ArrowSchema, CreateReadSessionRequest, DataFormat, ReadRowsRequest, ReadSession};
+    use google_cloud_googleapis::cloud::bigquery::storage::v1::{
+        ArrowSchema, CreateReadSessionRequest, DataFormat, ReadRowsRequest, ReadSession,
+    };
     use serial_test::serial;
     use std::io::{BufReader, Cursor};
-    use bigdecimal::BigDecimal;
     use time::OffsetDateTime;
 
     async fn create_read_client() -> StreamingReadClient {

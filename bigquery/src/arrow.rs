@@ -4,9 +4,9 @@ use arrow::array::{
 };
 use arrow::datatypes::{DataType, TimeUnit};
 
+use bigdecimal::BigDecimal;
 use std::ops::Add;
 use std::str::FromStr;
-use bigdecimal::BigDecimal;
 use time::macros::date;
 use time::{Date, Duration, OffsetDateTime, Time};
 
@@ -126,7 +126,7 @@ impl ArrowDecodable<BigDecimal> for BigDecimal {
             DataType::Decimal256(precision, scale) => {
                 let value = downcast::<Decimal256Array>(col)?.value_as_string(row_no);
                 Ok(BigDecimal::from_str(&value)?)
-            },
+            }
             _ => Err(Error::InvalidDataType(col.data_type().clone(), "Decimal128")),
         }
     }
