@@ -5,6 +5,8 @@ use arrow::array::{
 use arrow::datatypes::{DataType, TimeUnit};
 
 use std::ops::Add;
+use std::str::FromStr;
+use bigdecimal::BigDecimal;
 use time::macros::date;
 use time::{Date, Duration, OffsetDateTime, Time};
 
@@ -18,55 +20,8 @@ pub enum Error {
     InvalidNullable,
     #[error(transparent)]
     InvalidTime(#[from] time::error::ComponentRange),
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct Decimal128 {
-    pub value: i128,
-    pub precision: u8,
-    pub scale: i8,
-}
-
-impl ToString for Decimal128 {
-    fn to_string(&self) -> String {
-        format_decimal_str(self.value.to_string().as_str(), self.precision as usize, self.scale)
-    }
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct Decimal256 {
-    pub value: arrow::datatypes::i256,
-    pub precision: u8,
-    pub scale: i8,
-}
-
-impl ToString for Decimal256 {
-    fn to_string(&self) -> String {
-        format_decimal_str(self.value.to_string().as_str(), self.precision as usize, self.scale)
-    }
-}
-
-fn format_decimal_str(value_str: &str, precision: usize, scale: i8) -> String {
-    let (sign, rest) = match value_str.strip_prefix('-') {
-        Some(stripped) => ("-", stripped),
-        None => ("", value_str),
-    };
-    let bound = precision.min(rest.len()) + sign.len();
-    let value_str = &value_str[0..bound];
-
-    if scale == 0 {
-        value_str.to_string()
-    } else if scale < 0 {
-        let padding = value_str.len() + scale.unsigned_abs() as usize;
-        format!("{value_str:0<padding$}")
-    } else if rest.len() > scale as usize {
-        // Decimal separator is in the middle of the string
-        let (whole, decimal) = value_str.split_at(value_str.len() - scale as usize);
-        format!("{whole}.{decimal}")
-    } else {
-        // String has to be padded
-        format!("{}0.{:0>width$}", sign, rest, width = scale as usize)
-    }
+    #[error(transparent)]
+    InvalidDecimal(#[from] bigdecimal::ParseBigDecimalError),
 }
 
 /// https://cloud.google.com/bigquery/docs/reference/storage#arrow_schema_details
@@ -144,8 +99,8 @@ impl ArrowDecodable<String> for String {
             return Err(Error::InvalidNullable);
         }
         match col.data_type() {
-            DataType::Decimal128(_, _) => Decimal128::decode(col, row_no).map(|v| v.to_string()),
-            DataType::Decimal256(_, _) => Decimal256::decode(col, row_no).map(|v| v.to_string()),
+            DataType::Decimal128(_, _) => Ok(downcast::<Decimal128Array>(col)?.value_as_string(row_no)),
+            DataType::Decimal256(_, _) => Ok(downcast::<Decimal256Array>(col)?.value_as_string(row_no)),
             DataType::Date32 => Date::decode(col, row_no).map(|v| v.to_string()),
             DataType::Timestamp(_, _) => OffsetDateTime::decode(col, row_no).map(|v| v.to_string()),
             DataType::Time64(_) => Time::decode(col, row_no).map(|v| v.to_string()),
@@ -158,40 +113,21 @@ impl ArrowDecodable<String> for String {
     }
 }
 
-impl ArrowDecodable<Decimal128> for Decimal128 {
-    fn decode(col: &dyn Array, row_no: usize) -> Result<Decimal128, Error> {
+impl ArrowDecodable<BigDecimal> for BigDecimal {
+    fn decode(col: &dyn Array, row_no: usize) -> Result<BigDecimal, Error> {
         if col.is_null(row_no) {
             return Err(Error::InvalidNullable);
         }
         match col.data_type() {
             DataType::Decimal128(precision, scale) => {
-                let value = downcast::<Decimal128Array>(col)?.value(row_no);
-                Ok(Decimal128 {
-                    value,
-                    precision: *precision,
-                    scale: *scale,
-                })
+                let value = downcast::<Decimal128Array>(col)?.value_as_string(row_no);
+                Ok(BigDecimal::from_str(&value)?)
             }
-            _ => Err(Error::InvalidDataType(col.data_type().clone(), "Decimal128")),
-        }
-    }
-}
-
-impl ArrowDecodable<Decimal256> for Decimal256 {
-    fn decode(col: &dyn Array, row_no: usize) -> Result<Decimal256, Error> {
-        if col.is_null(row_no) {
-            return Err(Error::InvalidNullable);
-        }
-        match col.data_type() {
             DataType::Decimal256(precision, scale) => {
-                let value = downcast::<Decimal256Array>(col)?.value(row_no);
-                Ok(Decimal256 {
-                    value,
-                    precision: *precision,
-                    scale: *scale,
-                })
-            }
-            _ => Err(Error::InvalidDataType(col.data_type().clone(), "Decimal256")),
+                let value = downcast::<Decimal256Array>(col)?.value_as_string(row_no);
+                Ok(BigDecimal::from_str(&value)?)
+            },
+            _ => Err(Error::InvalidDataType(col.data_type().clone(), "Decimal128")),
         }
     }
 }

@@ -3,7 +3,7 @@ pub mod conn_pool;
 
 #[cfg(test)]
 pub mod test {
-    use crate::arrow::{ArrowDecodable, ArrowStructDecodable, Decimal128, Error};
+    use crate::arrow::{ArrowDecodable, ArrowStructDecodable, Error};
     use crate::grpc::apiv1::bigquery_client::StreamingReadClient;
     use crate::grpc::apiv1::conn_pool::{ReadConnectionManager, AUDIENCE, DOMAIN};
     use crate::http::bigquery_client::test::TestDataStruct;
@@ -16,11 +16,10 @@ pub mod test {
     use google_cloud_gax::conn::Environment;
 
     use google_cloud_googleapis::cloud::bigquery::storage::v1::read_rows_response::{Rows, Schema};
-    use google_cloud_googleapis::cloud::bigquery::storage::v1::{
-        ArrowSchema, CreateReadSessionRequest, DataFormat, ReadRowsRequest, ReadSession,
-    };
+    use google_cloud_googleapis::cloud::bigquery::storage::v1::{ArrowSchema, CreateReadSessionRequest, DataFormat, ReadRowsRequest, ReadSession};
     use serial_test::serial;
     use std::io::{BufReader, Cursor};
+    use bigdecimal::BigDecimal;
     use time::OffsetDateTime;
 
     async fn create_read_client() -> StreamingReadClient {
@@ -40,8 +39,8 @@ pub mod test {
     #[derive(Debug, Default)]
     pub struct TestData {
         pub col_string: Option<String>,
-        pub col_number: Option<Decimal128>,
-        pub col_number_array: Vec<Decimal128>,
+        pub col_number: Option<BigDecimal>,
+        pub col_number_array: Vec<BigDecimal>,
         pub col_timestamp: Option<OffsetDateTime>,
         pub col_json: Option<String>,
         pub col_json_array: Vec<String>,
@@ -52,8 +51,8 @@ pub mod test {
     impl ArrowStructDecodable<TestData> for TestData {
         fn decode(col: &[ArrayRef], row_no: usize) -> Result<TestData, Error> {
             let col_string = Option::<String>::decode(&col[0], row_no)?;
-            let col_number = Option::<Decimal128>::decode(&col[1], row_no)?;
-            let col_number_array = Vec::<Decimal128>::decode(&col[2], row_no)?;
+            let col_number = Option::<BigDecimal>::decode(&col[1], row_no)?;
+            let col_number_array = Vec::<BigDecimal>::decode(&col[2], row_no)?;
             let col_timestamp = Option::<OffsetDateTime>::decode(&col[3], row_no)?;
             let col_json = Option::<String>::decode(&col[4], row_no)?;
             let col_json_array = Vec::<String>::decode(&col[5], row_no)?;
@@ -254,11 +253,11 @@ pub mod test {
                                 }
                                 let column = row.column(1);
                                 for row_no in 0..column.len() {
-                                    data[row_no].col_number = Option::<Decimal128>::decode(column, row_no).unwrap();
+                                    data[row_no].col_number = Option::<BigDecimal>::decode(column, row_no).unwrap();
                                 }
                                 let column = row.column(2);
                                 for row_no in 0..column.len() {
-                                    data[row_no].col_number_array = Vec::<Decimal128>::decode(column, row_no).unwrap();
+                                    data[row_no].col_number_array = Vec::<BigDecimal>::decode(column, row_no).unwrap();
                                 }
                                 let column = row.column(3);
                                 for row_no in 0..column.len() {
