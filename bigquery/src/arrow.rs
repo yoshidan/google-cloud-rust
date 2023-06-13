@@ -1,12 +1,11 @@
 use arrow::array::{
-    Array, ArrayAccessor, ArrayRef, AsArray, BinaryArray, Date32Array, Decimal128Array, Decimal256Array, Float64Array,
+    Array, ArrayRef, AsArray, BinaryArray, Date32Array, Decimal128Array, Decimal256Array, Float64Array,
     Int64Array, ListArray, StringArray, Time64MicrosecondArray, TimestampMicrosecondArray,
 };
 use arrow::datatypes::{DataType, TimeUnit};
 
 use bigdecimal::BigDecimal;
 use std::ops::Add;
-use std::str::FromStr;
 use time::macros::date;
 use time::{Date, Duration, OffsetDateTime, Time};
 
@@ -99,8 +98,8 @@ impl ArrowDecodable<String> for String {
             return Err(Error::InvalidNullable);
         }
         match col.data_type() {
-            DataType::Decimal128(_, _) => Ok(downcast::<Decimal128Array>(col)?.value_as_string(row_no)),
-            DataType::Decimal256(_, _) => Ok(downcast::<Decimal256Array>(col)?.value_as_string(row_no)),
+            DataType::Decimal128(_, _) => BigDecimal::decode(col, row_no).map(|v| v.to_string()),
+            DataType::Decimal256(_, _) => BigDecimal::decode(col, row_no).map(|v| v.to_string()),
             DataType::Date32 => Date::decode(col, row_no).map(|v| v.to_string()),
             DataType::Timestamp(_, _) => OffsetDateTime::decode(col, row_no).map(|v| v.to_string()),
             DataType::Time64(_) => Time::decode(col, row_no).map(|v| v.to_string()),
@@ -119,13 +118,17 @@ impl ArrowDecodable<BigDecimal> for BigDecimal {
             return Err(Error::InvalidNullable);
         }
         match col.data_type() {
-            DataType::Decimal128(precision, scale) => {
-                let value = downcast::<Decimal128Array>(col)?.value_as_string(row_no);
-                Ok(BigDecimal::from_str(&value)?)
+            DataType::Decimal128(_, _) => {
+                let decimal = downcast::<Decimal128Array>(col)?;
+                let value = decimal.value(row_no);
+                let bigint = num_bigint::BigInt::from_signed_bytes_le(&value.to_le_bytes());
+                Ok(BigDecimal::from((bigint, decimal.scale() as i64)))
             }
-            DataType::Decimal256(precision, scale) => {
-                let value = downcast::<Decimal256Array>(col)?.value_as_string(row_no);
-                Ok(BigDecimal::from_str(&value)?)
+            DataType::Decimal256(_, _) => {
+                let decimal = downcast::<Decimal256Array>(col)?;
+                let value = decimal.value(row_no);
+                let bigint = num_bigint::BigInt::from_signed_bytes_le(&value.to_le_bytes());
+                Ok(BigDecimal::from((bigint, decimal.scale() as i64)))
             }
             _ => Err(Error::InvalidDataType(col.data_type().clone(), "Decimal128")),
         }

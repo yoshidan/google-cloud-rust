@@ -103,8 +103,10 @@ mod test {
     use crate::http::table::{DestinationFormat, SourceFormat, Table, TableReference};
     use crate::http::tabledata::insert_all::{InsertAllRequest, Row};
     use core::default::Default;
+    use std::str::FromStr;
     use serial_test::serial;
     use std::sync::Arc;
+    use bigdecimal::BigDecimal;
     use time::OffsetDateTime;
 
     #[ctor::ctor]
@@ -285,8 +287,11 @@ mod test {
                 insert_id: None,
                 json: TestData {
                     col_string: Some(format!("test{}", i)),
-                    col_number: Some(1),
-                    col_number_array: vec![10, 11, 12],
+                    col_number: Some(BigDecimal::from_str("-99999999999999999999999999999.999999999").unwrap()),
+                    col_number_array: vec![
+                        BigDecimal::from_str("578960446186580977117854925043439539266.34992332820282019728792003956564819967").unwrap(),
+                        BigDecimal::from_str("-578960446186580977117854925043439539266.34992332820282019728792003956564819968").unwrap(),
+                    ],
                     col_timestamp: Some(OffsetDateTime::now_utc()),
                     col_json: Some("{\"field\":100}".to_string()),
                     col_json_array: vec!["{\"field\":100}".to_string(), "{\"field\":200}".to_string()],
@@ -367,6 +372,8 @@ mod test {
         assert!(result.total_rows.is_none());
         assert_eq!(result.total_bytes_processed, 0);
         assert!(result.job_complete);
+
+        table_client.delete(&ref1.project_id, &ref1.dataset_id, &ref1.table_id).await.unwrap();
     }
 
     #[tokio::test]

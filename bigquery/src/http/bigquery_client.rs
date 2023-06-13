@@ -95,6 +95,7 @@ pub(crate) mod test {
     use crate::http::bigquery_client::{BigqueryClient, SCOPES};
     use crate::http::table::{TableFieldMode, TableFieldSchema, TableFieldType, TableSchema};
     use arrow::array::ArrayRef;
+    use bigdecimal::BigDecimal;
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_token::TokenSourceProvider;
@@ -131,8 +132,8 @@ pub(crate) mod test {
     #[derive(serde::Serialize, serde::Deserialize, Default)]
     pub struct TestData {
         pub col_string: Option<String>,
-        pub col_number: Option<i32>,
-        pub col_number_array: Vec<i32>,
+        pub col_number: Option<BigDecimal>,
+        pub col_number_array: Vec<BigDecimal>,
         #[serde(default, with = "time::serde::rfc3339::option")]
         pub col_timestamp: Option<OffsetDateTime>,
         pub col_json: Option<String>,
@@ -157,7 +158,7 @@ pub(crate) mod test {
                 },
                 TableFieldSchema {
                     name: "col_number_array".to_string(),
-                    data_type: TableFieldType::Numeric,
+                    data_type: TableFieldType::Bignumeric,
                     mode: Some(TableFieldMode::Repeated),
                     ..Default::default()
                 },

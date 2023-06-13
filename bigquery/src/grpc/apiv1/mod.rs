@@ -22,6 +22,7 @@ pub mod test {
     };
     use serial_test::serial;
     use std::io::{BufReader, Cursor};
+    use std::str::FromStr;
     use time::OffsetDateTime;
 
     async fn create_read_client() -> StreamingReadClient {
@@ -77,7 +78,7 @@ pub mod test {
     #[serial]
     async fn test_read() {
         let mut client = create_read_client().await;
-        let table_id = "projects/atl-dev1/datasets/rust_test_table/tables/table_data_1686033753";
+        let table_id = "projects/atl-dev1/datasets/rust_test_job/tables/table_data_1686639524";
         let response = client
             .create_read_session(
                 CreateReadSessionRequest {
@@ -156,7 +157,7 @@ pub mod test {
                                 match row.schema().fields()[2].data_type() {
                                     DataType::List(field) => {
                                         assert_eq!(field.name(), "item");
-                                        assert_eq!(field.data_type(), &DataType::Decimal128(38, 9));
+                                        assert_eq!(field.data_type(), &DataType::Decimal256(76, 38));
                                         assert!(field.is_nullable());
                                     }
                                     _ => unreachable!("unsupported rows"),
@@ -245,6 +246,7 @@ pub mod test {
                                 assert_eq!(row.schema().fields()[7].name(), "col_struct_array");
                                 assert!(!row.schema().fields()[7].is_nullable());
 
+                                // check data
                                 let mut data: Vec<TestData> = Vec::with_capacity(row.num_rows());
                                 for _i in 0..row.num_rows() {
                                     data.push(TestData::default())
@@ -291,6 +293,14 @@ pub mod test {
                 }
             }
         }
-        assert_eq!(table_data.len(), 34);
+        assert_eq!(table_data.len(), 3);
+
+        for d in table_data {
+            let col_number = d.col_number.unwrap();
+            assert_eq!(col_number, BigDecimal::from_str("-99999999999999999999999999999.999999999").unwrap());
+            let col_number_array = d.col_number_array;
+            assert_eq!(col_number_array[0], BigDecimal::from_str("578960446186580977117854925043439539266.34992332820282019728792003956564819967").unwrap());
+            assert_eq!(col_number_array[1], BigDecimal::from_str("-578960446186580977117854925043439539266.34992332820282019728792003956564819968").unwrap());
+        }
     }
 }

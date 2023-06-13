@@ -1,10 +1,7 @@
-use crate::arrow::{ArrowDecodable, ArrowStructDecodable};
+use crate::arrow::{ArrowStructDecodable};
 use crate::grpc::apiv1::bigquery_client::StreamingReadClient;
-use crate::http::bigquery_job_client::BigqueryJobClient;
 use crate::http::error::Error as HttpError;
-use crate::http::job::get_query_results::GetQueryResultsRequest;
 use crate::http::tabledata::list::Tuple;
-use arrow::error::ArrowError;
 use arrow::ipc::reader::StreamReader;
 
 use google_cloud_gax::grpc::{Status, Streaming};
@@ -15,6 +12,7 @@ use google_cloud_googleapis::cloud::bigquery::storage::v1::{
 };
 use std::collections::VecDeque;
 use std::io::{BufReader, Cursor};
+use arrow::error::ArrowError;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
