@@ -30,10 +30,8 @@ pub struct ReadOptions {
     /// that are part of the index key, part of the primary key, or stored in the
     /// index due to a STORING clause in the index definition.
     pub index: String,
-
     /// The maximum number of rows to read. A limit value less than 1 means no limit.
     pub limit: i64,
-
     pub call_options: CallOptions,
 }
 
@@ -52,6 +50,42 @@ pub struct QueryOptions {
     pub mode: QueryMode,
     pub optimizer_options: Option<ExecuteQueryOptions>,
     pub call_options: CallOptions,
+    /// If cancel safe is required, such as when tokio::select is used, set to false.
+    /// ```
+    /// use time::{Duration, OffsetDateTime};
+    /// use google_cloud_spanner::reader::AsyncIterator;
+    /// use google_cloud_spanner::client::Client;
+    /// use google_cloud_spanner::key::Key;
+    /// use google_cloud_spanner::statement::Statement;
+    /// use google_cloud_spanner::transaction::QueryOptions;
+    ///
+    /// async fn query(client: Client) {
+    ///   let mut tx = client.single().await.unwrap();
+    ///   let option = QueryOptions {
+    ///     enable_resume: false,
+    ///     ..Default::default()
+    ///   };
+    ///   let mut stmt = Statement::new("SELECT ChangeRecord FROM READ_UserItemChangeStream (
+    ///           start_timestamp => @now,
+    ///           end_timestamp => NULL,
+    ///           partition_token => {},
+    ///           heartbeat_milliseconds => 10000
+    ///   )");
+    ///   stmt.add_param("now", &OffsetDateTime::now_utc());
+    ///   let mut rows = tx.query_with_option(stmt, option).await.unwrap();
+    ///   let mut tick = tokio::time::interval(tokio::time::Duration::from_millis(100));
+    ///   loop {
+    ///     tokio::select! {
+    ///        _ = tick.tick() => {
+    ///             // run task
+    ///        },
+    ///        maybe = rows.next() =>  {
+    ///          let row = maybe.unwrap().unwrap();
+    ///        }
+    ///     }
+    ///   }
+    /// }
+    pub enable_resume: bool,
 }
 
 impl Default for QueryOptions {
@@ -60,6 +94,7 @@ impl Default for QueryOptions {
             mode: QueryMode::Normal,
             optimizer_options: None,
             call_options: CallOptions::default(),
+            enable_resume: true,
         }
     }
 }
@@ -114,7 +149,10 @@ impl Transaction {
             data_boost_enabled: false,
         };
         let session = self.session.as_mut().unwrap().deref_mut();
-        let reader = Box::new(StatementReader { request });
+        let reader = Box::new(StatementReader {
+            enable_resume: options.enable_resume,
+            request,
+        });
         RowIterator::new(session, reader, Some(options.call_options)).await
     }
 
