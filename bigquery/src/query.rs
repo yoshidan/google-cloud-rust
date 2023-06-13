@@ -47,8 +47,11 @@ impl Iterator {
 pub mod row {
     use crate::http::tabledata::list::{Cell, Tuple, Value};
     use std::str::FromStr;
+    use base64::Engine;
+    use base64::prelude::BASE64_STANDARD;
     use time::error::ComponentRange;
-    use time::OffsetDateTime;
+    use time::{Date, OffsetDateTime, Time};
+    use time::macros::format_description;
 
     #[derive(thiserror::Error, Debug)]
     pub enum Error {
@@ -61,7 +64,11 @@ pub mod row {
         #[error(transparent)]
         Timestamp(#[from] ComponentRange),
         #[error("invalid number {0}")]
-        InvalidNumber(String),
+        ParseString(String),
+        #[error(transparent)]
+        DateTimeParse(#[from] time::error::Parse),
+        #[error(transparent)]
+        Base64(#[from] base64::DecodeError),
     }
 
     pub struct Row {
@@ -69,9 +76,9 @@ pub mod row {
     }
 
     impl Row {
-        pub fn column<'a, T: TryFrom<&'a Value, Error = Error>>(&'a self, index: usize) -> Result<T, Error> {
+        pub fn column<'a, T: ValueDecodable<'a>>(&'a self, index: usize) -> Result<T, Error> {
             let cell: &Cell = self.inner.get(index).ok_or(Error::NoDataFound)?;
-            T::try_from(&cell.v)
+            T::decode(&cell.v)
         }
     }
 
@@ -83,10 +90,12 @@ pub mod row {
         }
     }
 
-    impl<'a> TryFrom<&'a Value> for &'a str {
-        type Error = Error;
+    pub trait ValueDecodable<'a> : Sized {
+        fn decode(value: &'a Value) -> Result<Self, Error>;
+    }
 
-        fn try_from(value: &'a Value) -> Result<Self, Self::Error> {
+    impl<'a> ValueDecodable<'a> for &'a str {
+        fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => Ok(v.as_str()),
                 Value::Null => Err(Error::UnexpectedNullValue),
@@ -95,20 +104,103 @@ pub mod row {
         }
     }
 
-    impl<'a> TryFrom<&'a Value> for OffsetDateTime {
-        type Error = Error;
-
-        fn try_from(value: &'a Value) -> Result<Self, Self::Error> {
+    impl<'a> ValueDecodable<'a> for String{
+        fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
-                Value::String(v) => {
-                    let f: f64 = v.parse().map_err(|_| Error::InvalidNumber(v.clone()))?;
-                    let sec = f.trunc();
-                    // Timestamps in BigQuery have microsecond precision, so we must
-                    // return a round number of microseconds.
-                    let micro = ((f - sec.clone()) * 1000000.0 + 0.5).trunc();
-                    Ok(OffsetDateTime::from_unix_timestamp_nanos(
-                        sec as i128 * 1_000_000_000 + micro as i128 * 1000,
-                    )?)
+                Value::String(v) => Ok(v.to_string()),
+                Value::Null => Err(Error::UnexpectedNullValue),
+                _ => Err(Error::InvalidType),
+            }
+        }
+    }
+
+    impl<'a> ValueDecodable<'a> for Vec<u8> {
+        fn decode(value: &'a Value) -> Result<Self, Error> {
+            match value {
+                Value::String(v) => Ok(BASE64_STANDARD.decode(v)?),
+                Value::Null => Err(Error::UnexpectedNullValue),
+                _ => Err(Error::InvalidType),
+            }
+        }
+    }
+
+    impl<'a> ValueDecodable<'a> for bool {
+        fn decode(value: &'a Value) -> Result<Self, Error> {
+            match value {
+                Value::String(v) => Ok(v.parse::<bool>().map_err(|_| Error::ParseString(v.clone()))?),
+                Value::Null => Err(Error::UnexpectedNullValue),
+                _ => Err(Error::InvalidType),
+            }
+        }
+    }
+
+    impl<'a> ValueDecodable<'a> for f64{
+        fn decode(value: &'a Value) -> Result<Self, Error> {
+            match value {
+                Value::String(v) => Ok(v.parse::<f64>().map_err(|_| Error::ParseString(v.clone()))?),
+                Value::Null => Err(Error::UnexpectedNullValue),
+                _ => Err(Error::InvalidType),
+            }
+        }
+    }
+
+    impl<'a> ValueDecodable<'a> for i64 {
+
+        fn decode(value: &'a Value) -> Result<Self, Error> {
+            match value {
+                Value::String(v) => Ok(v.parse::<i64>().map_err(|_| Error::ParseString(v.clone()))?),
+                Value::Null => Err(Error::UnexpectedNullValue),
+                _ => Err(Error::InvalidType),
+            }
+        }
+    }
+
+    impl<'a> ValueDecodable<'a> for OffsetDateTime {
+
+        fn decode(value: &'a Value) -> Result<Self, Error> {
+            let f = f64::decode(value)?;
+            let sec = f.trunc();
+            // Timestamps in BigQuery have microsecond precision, so we must
+            // return a round number of microseconds.
+            let micro = ((f - sec.clone()) * 1000000.0 + 0.5).trunc();
+            Ok(OffsetDateTime::from_unix_timestamp_nanos(
+                sec as i128 * 1_000_000_000 + micro as i128 * 1000,
+            )?)
+        }
+    }
+
+    impl<'a> ValueDecodable<'a> for Date{
+
+        fn decode(value: &'a Value) -> Result<Self, Error> {
+            match value {
+                Value::String(v) => Ok(Date::parse(v, format_description!("[year]-[month]-[day]"))?),
+                Value::Null => Err(Error::UnexpectedNullValue),
+                _ => Err(Error::InvalidType),
+            }
+        }
+    }
+
+    impl<'a> ValueDecodable<'a> for Time {
+
+        fn decode(value: &'a Value) -> Result<Self, Error> {
+            match value {
+                Value::String(v) => Ok(Time::parse(v, format_description!("[hour]:[minute]:[second]"))?),
+                Value::Null => Err(Error::UnexpectedNullValue),
+                _ => Err(Error::InvalidType),
+            }
+        }
+    }
+
+    impl<'a, T> ValueDecodable<'a> for Vec<T> where T: ValueDecodable<'a>{
+
+        fn decode(value: &'a Value) -> Result<Self, Error> {
+            match value {
+                Value::Array(v) => {
+                    let mut result = Vec::with_capacity(v.len());
+                    for element in v {
+                        result.push(T::decode(&element.v)?);
+                    }
+                    Ok(result)
                 }
                 Value::Null => Err(Error::UnexpectedNullValue),
                 _ => Err(Error::InvalidType),
@@ -116,15 +208,14 @@ pub mod row {
         }
     }
 
-    impl<'a> TryFrom<&'a Value> for i64 {
-        type Error = Error;
+    impl<'a, T> ValueDecodable<'a> for Option<T> where T: ValueDecodable<'a>{
 
-        fn try_from(value: &'a Value) -> Result<Self, Self::Error> {
+        fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
-                Value::String(v) => Ok(v.parse::<i64>().map_err(|_| Error::InvalidNumber(v.clone()))?),
-                Value::Null => Err(Error::UnexpectedNullValue),
-                _ => Err(Error::InvalidType),
+                Value::Null => Ok(None),
+                _ => Ok(Some(T::decode(value)?))
             }
         }
     }
+
 }

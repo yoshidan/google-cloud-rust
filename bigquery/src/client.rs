@@ -240,7 +240,7 @@ mod tests {
     use crate::http::table::TableReference;
     use crate::query;
     use serial_test::serial;
-    use time::OffsetDateTime;
+    use time::{Time, Date, OffsetDateTime};
 
     #[ctor::ctor]
     fn init() {
@@ -276,7 +276,25 @@ mod tests {
                 &project_id,
                 QueryRequest {
                     max_results: Some(2),
-                    query: "SELECT 'A' as col1, TIMESTAMP_MICROS(1230219000000019) as col2 ".to_string(),
+                    query: "SELECT
+                        'A',
+                        TIMESTAMP_MICROS(1230219000000019),
+                        100,
+                        0.432899,
+                        DATE(2023,9,1),
+                        TIME(15, 30, 01),
+                        NULL,
+                        ['A','B'],
+                        [TIMESTAMP_MICROS(1230219000000019), TIMESTAMP_MICROS(1230219000000020)],
+                        [100,200],
+                        [0.432899,0.432900],
+                        [DATE(2023,9,1),DATE(2023,9,2)],
+                        [TIME(15, 30, 01),TIME(15, 30, 02)],
+                        b'test',
+                        true,
+                        [b'test',b'test2'],
+                        [true,false]
+                    ".to_string(),
                     ..Default::default()
                 },
             )
@@ -288,8 +306,59 @@ mod tests {
         while let Some(row) = iterator.next::<query::row::Row>().await.unwrap() {
             let v: &str = row.column(0).unwrap();
             assert_eq!(v, "A");
+            let v: String = row.column(0).unwrap();
+            assert_eq!(v, "A");
             let v: OffsetDateTime = row.column(1).unwrap();
             assert_eq!(v.unix_timestamp_nanos(), 1230219000000019000);
+            let v: i64 = row.column(2).unwrap();
+            assert_eq!(v, 100);
+            let v: f64 = row.column(3).unwrap();
+            assert_eq!(v, 0.432899);
+            let v: Date = row.column(4).unwrap();
+            assert_eq!(v, time::macros::date!(2023-09-01));
+            let v: Time = row.column(5).unwrap();
+            assert_eq!(v, time::macros::time!(15:30:01));
+            let v: Option<&str> = row.column(6).unwrap();
+            assert!(v.is_none());
+            let v: Option<OffsetDateTime> = row.column(6).unwrap();
+            assert!(v.is_none());
+            let v: Option<i64> = row.column(6).unwrap();
+            assert!(v.is_none());
+            let v: Option<f64> = row.column(6).unwrap();
+            assert!(v.is_none());
+            let v: Option<Date> = row.column(6).unwrap();
+            assert!(v.is_none());
+            let v: Option<Time> = row.column(6).unwrap();
+            assert!(v.is_none());
+            let v: Option<Vec<Time>> = row.column(6).unwrap();
+            assert!(v.is_none());
+
+            let v: Vec<&str> = row.column(7).unwrap();
+            assert_eq!(v, vec!["A","B"]);
+            let v: Vec<OffsetDateTime> = row.column(8).unwrap();
+            assert_eq!(v[0].unix_timestamp_nanos(), 1230219000000019000);
+            assert_eq!(v[1].unix_timestamp_nanos(), 1230219000000020000);
+            let v: Vec<i64> = row.column(9).unwrap();
+            assert_eq!(v, vec![100, 200]);
+            let v: Vec<f64> = row.column(10).unwrap();
+            assert_eq!(v, vec![0.432899, 0.432900]);
+            let v: Vec<Date> = row.column(11).unwrap();
+            assert_eq!(v[0], time::macros::date!(2023-09-01));
+            assert_eq!(v[1], time::macros::date!(2023-09-02));
+            let v: Vec<Time> = row.column(12).unwrap();
+            assert_eq!(v[0], time::macros::time!(15:30:01));
+            assert_eq!(v[1], time::macros::time!(15:30:02));
+
+            let v: Vec<u8> = row.column(13).unwrap();
+            assert_eq!(v, b"test");
+            let v: bool = row.column(14).unwrap();
+            assert!(v);
+            let v: Vec<Vec<u8>> = row.column(15).unwrap();
+            assert_eq!(v[0], b"test");
+            assert_eq!(v[1], b"test2");
+            let v: Vec<bool> = row.column(16).unwrap();
+            assert!(v[0]);
+            assert!(!v[1]);
         }
     }
 
