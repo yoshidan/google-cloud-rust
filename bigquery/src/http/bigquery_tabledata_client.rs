@@ -53,18 +53,18 @@ impl BigqueryTabledataClient {
 
 #[cfg(test)]
 mod test {
-    use std::str::FromStr;
     use crate::http::bigquery_client::test::{create_client, create_table_schema, TestData, TestDataStruct};
     use crate::http::bigquery_table_client::BigqueryTableClient;
     use crate::http::bigquery_tabledata_client::BigqueryTabledataClient;
+    use std::str::FromStr;
 
     use crate::http::table::Table;
     use crate::http::tabledata::insert_all::{InsertAllRequest, Row};
     use crate::http::tabledata::list;
     use crate::http::tabledata::list::{FetchDataRequest, Value};
+    use bigdecimal::BigDecimal;
     use serial_test::serial;
     use std::sync::Arc;
-    use bigdecimal::BigDecimal;
     use time::OffsetDateTime;
 
     #[ctor::ctor]
@@ -85,8 +85,14 @@ mod test {
                     col_string: Some(format!("test{}", i)),
                     col_number: Some(BigDecimal::from_str("-99999999999999999999999999999.999999999").unwrap()),
                     col_number_array: vec![
-                        BigDecimal::from_str("578960446186580977117854925043439539266.34992332820282019728792003956564819967").unwrap(),
-                        BigDecimal::from_str("-578960446186580977117854925043439539266.34992332820282019728792003956564819968").unwrap(),
+                        BigDecimal::from_str(
+                            "578960446186580977117854925043439539266.34992332820282019728792003956564819967",
+                        )
+                        .unwrap(),
+                        BigDecimal::from_str(
+                            "-578960446186580977117854925043439539266.34992332820282019728792003956564819968",
+                        )
+                        .unwrap(),
                     ],
                     col_timestamp: Some(OffsetDateTime::now_utc()),
                     col_json: Some("{\"field\":100}".to_string()),
@@ -105,6 +111,7 @@ mod test {
                             f2: vec![i * 100, 40],
                         },
                     ],
+                    col_binary: b"dGVzdAo=".to_vec(),
                 },
             });
         }
@@ -136,7 +143,7 @@ mod test {
             insert_id: None,
             json: serde_json::from_str(
                 r#"
-                {"col_string": "test1", "col_number": 1, "col_number_array": [1,2,3], "col_timestamp":"2022-10-23T00:00:00", "col_json":"{\"field\":100}","col_json_array":["{\"field\":100}","{\"field\":200}"],"col_struct": {"f1":true, "f2":[3,4]},"col_struct_array": [{"f1":true, "f2":[3,4]},{"f1":false, "f2":[30,40]}]}
+                {"col_string": "test1", "col_number": 1, "col_number_array": [1,2,3], "col_timestamp":"2022-10-23T00:00:00", "col_json":"{\"field\":100}","col_json_array":["{\"field\":100}","{\"field\":200}"],"col_struct": {"f1":true, "f2":[3,4]},"col_struct_array": [{"f1":true, "f2":[3,4]},{"f1":false, "f2":[30,40]}], "col_binary": "dGVzdAo="}
             "#,
             )
                 .unwrap(),
@@ -145,7 +152,7 @@ mod test {
             insert_id: None,
             json: serde_json::from_str(
                 r#"
-                {"col_number_array": [1,2,3], "col_struct_array": [{"f1":true, "f2":[3,4]},{"f1":false, "f2":[30,40]}]}
+                {"col_number_array": [1,2,3], "col_struct_array": [{"f1":true, "f2":[3,4]},{"f1":false, "f2":[30,40]}], "col_binary": "dGVzdAo="}
             "#,
             )
             .unwrap(),
@@ -165,8 +172,14 @@ mod test {
                 col_string: Some("test3".to_string()),
                 col_number: Some(BigDecimal::from_str("-99999999999999999999999999999.999999999").unwrap()),
                 col_number_array: vec![
-                    BigDecimal::from_str("578960446186580977117854925043439539266.34992332820282019728792003956564819967").unwrap(),
-                    BigDecimal::from_str("-578960446186580977117854925043439539266.34992332820282019728792003956564819968").unwrap(),
+                    BigDecimal::from_str(
+                        "578960446186580977117854925043439539266.34992332820282019728792003956564819967",
+                    )
+                    .unwrap(),
+                    BigDecimal::from_str(
+                        "-578960446186580977117854925043439539266.34992332820282019728792003956564819968",
+                    )
+                    .unwrap(),
                 ],
                 col_timestamp: Some(OffsetDateTime::now_utc()),
                 col_json: Some("{\"field\":100}".to_string()),
@@ -185,6 +198,7 @@ mod test {
                         f2: vec![30, 40],
                     },
                 ],
+                col_binary: b"test".to_vec(),
             },
         });
         req2.rows.push(Row {
@@ -198,6 +212,7 @@ mod test {
                 col_json_array: vec![],
                 col_struct: None,
                 col_struct_array: vec![],
+                col_binary: b"test".to_vec(),
             },
         });
         let res2 = client
@@ -256,6 +271,10 @@ mod test {
                 _ => unreachable!("7-1 {:?}", v.f[1].v),
             },
             _ => unreachable!("7 {:?}", &data[0].f[7].v),
+        }
+        match &data[0].f[8].v {
+            Value::String(v) => assert_eq!("dGVzdAo=", v),
+            _ => unreachable!(),
         }
 
         table_client

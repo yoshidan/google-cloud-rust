@@ -95,11 +95,15 @@ pub(crate) mod test {
     use crate::http::bigquery_client::{BigqueryClient, SCOPES};
     use crate::http::table::{TableFieldMode, TableFieldSchema, TableFieldType, TableSchema};
     use arrow::array::ArrayRef;
+    use base64::engine::general_purpose::STANDARD;
+    use base64_serde::base64_serde_type;
     use bigdecimal::BigDecimal;
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_token::TokenSourceProvider;
     use time::OffsetDateTime;
+
+    base64_serde_type!(Base64Standard, STANDARD);
 
     pub async fn create_client() -> (BigqueryClient, String) {
         let tsp = DefaultTokenSourceProvider::new(Config {
@@ -140,6 +144,8 @@ pub(crate) mod test {
         pub col_json_array: Vec<String>,
         pub col_struct: Option<TestDataStruct>,
         pub col_struct_array: Vec<TestDataStruct>,
+        #[serde(default, with = "Base64Standard")]
+        pub col_binary: Vec<u8>,
     }
 
     pub fn create_table_schema() -> TableSchema {
@@ -213,6 +219,12 @@ pub(crate) mod test {
                         },
                     ]),
                     mode: Some(TableFieldMode::Repeated),
+                    ..Default::default()
+                },
+                TableFieldSchema {
+                    name: "col_binary".to_string(),
+                    data_type: TableFieldType::Bytes,
+                    mode: Some(TableFieldMode::Required),
                     ..Default::default()
                 },
             ],

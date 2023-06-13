@@ -49,6 +49,7 @@ pub mod test {
         pub col_json_array: Vec<String>,
         pub col_struct: Option<TestDataStruct>,
         pub col_struct_array: Vec<TestDataStruct>,
+        pub col_binary: Vec<u8>,
     }
 
     impl ArrowStructDecodable<TestData> for TestData {
@@ -61,6 +62,7 @@ pub mod test {
             let col_json_array = Vec::<String>::decode(&col[5], row_no)?;
             let col_struct = Option::<TestDataStruct>::decode(&col[6], row_no)?;
             let col_struct_array = Vec::<TestDataStruct>::decode(&col[7], row_no)?;
+            let col_binary = Vec::<u8>::decode(&col[8], row_no)?;
             Ok(TestData {
                 col_string,
                 col_number,
@@ -70,6 +72,7 @@ pub mod test {
                 col_json_array,
                 col_struct,
                 col_struct_array,
+                col_binary,
             })
         }
     }
@@ -78,7 +81,7 @@ pub mod test {
     #[serial]
     async fn test_read() {
         let mut client = create_read_client().await;
-        let table_id = "projects/atl-dev1/datasets/rust_test_job/tables/table_data_1686639524";
+        let table_id = "projects/atl-dev1/datasets/rust_test_job/tables/table_data_1686646343";
         let response = client
             .create_read_session(
                 CreateReadSessionRequest {
@@ -145,7 +148,7 @@ pub mod test {
                                 arrow::ipc::reader::StreamReader::try_new(rows, None).unwrap();
                             rows.for_each(|row| {
                                 let row = row.unwrap();
-                                assert_eq!(row.schema().fields().len(), 8);
+                                assert_eq!(row.schema().fields().len(), 9);
                                 assert_eq!(row.schema().fields()[0].data_type(), &DataType::Utf8);
                                 assert_eq!(row.schema().fields()[0].name(), "col_string");
                                 assert!(row.schema().fields()[0].is_nullable());
@@ -246,6 +249,9 @@ pub mod test {
                                 assert_eq!(row.schema().fields()[7].name(), "col_struct_array");
                                 assert!(!row.schema().fields()[7].is_nullable());
 
+                                assert_eq!(row.schema().fields()[8].name(), "col_binary");
+                                assert!(!row.schema().fields()[8].is_nullable());
+
                                 // check data
                                 let mut data: Vec<TestData> = Vec::with_capacity(row.num_rows());
                                 for _i in 0..row.num_rows() {
@@ -285,6 +291,10 @@ pub mod test {
                                     data[row_no].col_struct_array =
                                         Vec::<TestDataStruct>::decode(column, row_no).unwrap();
                                 }
+                                let column = row.column(8);
+                                for row_no in 0..column.len() {
+                                    data[row_no].col_binary = Vec::<u8>::decode(column, row_no).unwrap();
+                                }
                                 table_data.extend(data);
                             });
                         }
@@ -297,10 +307,22 @@ pub mod test {
 
         for d in table_data {
             let col_number = d.col_number.unwrap();
-            assert_eq!(col_number, BigDecimal::from_str("-99999999999999999999999999999.999999999").unwrap());
+            assert_eq!(
+                col_number,
+                BigDecimal::from_str("-99999999999999999999999999999.999999999").unwrap()
+            );
             let col_number_array = d.col_number_array;
-            assert_eq!(col_number_array[0], BigDecimal::from_str("578960446186580977117854925043439539266.34992332820282019728792003956564819967").unwrap());
-            assert_eq!(col_number_array[1], BigDecimal::from_str("-578960446186580977117854925043439539266.34992332820282019728792003956564819968").unwrap());
+            assert_eq!(
+                col_number_array[0],
+                BigDecimal::from_str("578960446186580977117854925043439539266.34992332820282019728792003956564819967")
+                    .unwrap()
+            );
+            assert_eq!(
+                col_number_array[1],
+                BigDecimal::from_str("-578960446186580977117854925043439539266.34992332820282019728792003956564819968")
+                    .unwrap()
+            );
+            assert_eq!(d.col_binary, b"test".to_vec());
         }
     }
 }

@@ -1,6 +1,6 @@
 use arrow::array::{
-    Array, ArrayRef, AsArray, BinaryArray, Date32Array, Decimal128Array, Decimal256Array, Float64Array,
-    Int64Array, ListArray, StringArray, Time64MicrosecondArray, TimestampMicrosecondArray,
+    Array, ArrayRef, AsArray, BinaryArray, Date32Array, Decimal128Array, Decimal256Array, Float64Array, Int64Array,
+    ListArray, StringArray, Time64MicrosecondArray, TimestampMicrosecondArray,
 };
 use arrow::datatypes::{DataType, TimeUnit};
 
