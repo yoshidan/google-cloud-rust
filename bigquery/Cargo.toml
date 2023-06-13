@@ -24,6 +24,7 @@ tokio = { version="1.20", features=["macros"] }
 time = { version = "0.3", features = ["std", "macros", "formatting", "parsing", "serde"] }
 arrow = { version="40.0", default-features = false, features = ["ipc"] }
 base64 = "0.21"
+bigdecimal = "0.3"
 
 [dev-dependencies]
 tokio = { version="1.20", features=["rt-multi-thread"] }

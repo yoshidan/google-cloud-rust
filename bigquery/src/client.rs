@@ -231,6 +231,7 @@ impl ReadTableOption {
 mod tests {
     use crate::client::{Client, ClientConfig};
     use crate::http::bigquery_client::SCOPES;
+    use bigdecimal::BigDecimal;
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
 
@@ -240,7 +241,7 @@ mod tests {
     use crate::http::table::TableReference;
     use crate::query;
     use serial_test::serial;
-    use time::{Time, Date, OffsetDateTime};
+    use time::{Date, OffsetDateTime, Time};
 
     #[ctor::ctor]
     fn init() {
@@ -293,7 +294,12 @@ mod tests {
                         b'test',
                         true,
                         [b'test',b'test2'],
-                        [true,false]
+                        [true,false],
+                        cast('-5.7896044618658097711785492504343953926634992332820282019728792003956564819968E+38' as BIGNUMERIC),
+                        cast('5.7896044618658097711785492504343953926634992332820282019728792003956564819967E+38' as BIGNUMERIC),
+                        cast('-9.9999999999999999999999999999999999999E+28' as NUMERIC),
+                        cast('9.9999999999999999999999999999999999999E+28' as NUMERIC),
+                        [cast('-5.7896044618658097711785492504343953926634992332820282019728792003956564819968E+38' as BIGNUMERIC),cast('5.7896044618658097711785492504343953926634992332820282019728792003956564819967E+38' as BIGNUMERIC)]
                     ".to_string(),
                     ..Default::default()
                 },
@@ -315,7 +321,7 @@ mod tests {
             let v: f64 = row.column(3).unwrap();
             assert_eq!(v, 0.432899);
             let v: Date = row.column(4).unwrap();
-            assert_eq!(v, time::macros::date!(2023-09-01));
+            assert_eq!(v, time::macros::date!(2023 - 09 - 01));
             let v: Time = row.column(5).unwrap();
             assert_eq!(v, time::macros::time!(15:30:01));
             let v: Option<&str> = row.column(6).unwrap();
@@ -332,9 +338,17 @@ mod tests {
             assert!(v.is_none());
             let v: Option<Vec<Time>> = row.column(6).unwrap();
             assert!(v.is_none());
+            let v: Option<BigDecimal> = row.column(6).unwrap();
+            assert!(v.is_none());
+            let v: Option<bool> = row.column(6).unwrap();
+            assert!(v.is_none());
+            let v: Option<String> = row.column(6).unwrap();
+            assert!(v.is_none());
+            let v: Option<Vec<u8>> = row.column(6).unwrap();
+            assert!(v.is_none());
 
             let v: Vec<&str> = row.column(7).unwrap();
-            assert_eq!(v, vec!["A","B"]);
+            assert_eq!(v, vec!["A", "B"]);
             let v: Vec<OffsetDateTime> = row.column(8).unwrap();
             assert_eq!(v[0].unix_timestamp_nanos(), 1230219000000019000);
             assert_eq!(v[1].unix_timestamp_nanos(), 1230219000000020000);
@@ -343,8 +357,8 @@ mod tests {
             let v: Vec<f64> = row.column(10).unwrap();
             assert_eq!(v, vec![0.432899, 0.432900]);
             let v: Vec<Date> = row.column(11).unwrap();
-            assert_eq!(v[0], time::macros::date!(2023-09-01));
-            assert_eq!(v[1], time::macros::date!(2023-09-02));
+            assert_eq!(v[0], time::macros::date!(2023 - 09 - 01));
+            assert_eq!(v[1], time::macros::date!(2023 - 09 - 02));
             let v: Vec<Time> = row.column(12).unwrap();
             assert_eq!(v[0], time::macros::time!(15:30:01));
             assert_eq!(v[1], time::macros::time!(15:30:02));
@@ -359,6 +373,29 @@ mod tests {
             let v: Vec<bool> = row.column(16).unwrap();
             assert!(v[0]);
             assert!(!v[1]);
+            let v: BigDecimal = row.column(17).unwrap();
+            assert_eq!(
+                v.to_string(),
+                "-578960446186580977117854925043439539266.34992332820282019728792003956564819968"
+            );
+            let v: BigDecimal = row.column(18).unwrap();
+            assert_eq!(
+                v.to_string(),
+                "578960446186580977117854925043439539266.34992332820282019728792003956564819967"
+            );
+            let v: BigDecimal = row.column(19).unwrap();
+            assert_eq!(v.to_string(), "-99999999999999999999999999999.999999999");
+            let v: BigDecimal = row.column(20).unwrap();
+            assert_eq!(v.to_string(), "99999999999999999999999999999.999999999");
+            let v: Vec<BigDecimal> = row.column(21).unwrap();
+            assert_eq!(
+                v[0].to_string(),
+                "-578960446186580977117854925043439539266.34992332820282019728792003956564819968"
+            );
+            assert_eq!(
+                v[1].to_string(),
+                "578960446186580977117854925043439539266.34992332820282019728792003956564819967"
+            );
         }
     }
 

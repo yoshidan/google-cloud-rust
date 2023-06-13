@@ -46,12 +46,13 @@ impl Iterator {
 
 pub mod row {
     use crate::http::tabledata::list::{Cell, Tuple, Value};
-    use std::str::FromStr;
-    use base64::Engine;
     use base64::prelude::BASE64_STANDARD;
+    use base64::Engine;
+    use bigdecimal::BigDecimal;
+    use std::str::FromStr;
     use time::error::ComponentRange;
-    use time::{Date, OffsetDateTime, Time};
     use time::macros::format_description;
+    use time::{Date, OffsetDateTime, Time};
 
     #[derive(thiserror::Error, Debug)]
     pub enum Error {
@@ -64,11 +65,13 @@ pub mod row {
         #[error(transparent)]
         Timestamp(#[from] ComponentRange),
         #[error("invalid number {0}")]
-        ParseString(String),
-        #[error(transparent)]
-        DateTimeParse(#[from] time::error::Parse),
+        FromString(String),
         #[error(transparent)]
         Base64(#[from] base64::DecodeError),
+        #[error(transparent)]
+        ParseDateTime(#[from] time::error::Parse),
+        #[error(transparent)]
+        ParseBigDecimal(#[from] bigdecimal::ParseBigDecimalError),
     }
 
     pub struct Row {
@@ -90,7 +93,7 @@ pub mod row {
         }
     }
 
-    pub trait ValueDecodable<'a> : Sized {
+    pub trait ValueDecodable<'a>: Sized {
         fn decode(value: &'a Value) -> Result<Self, Error>;
     }
 
@@ -104,7 +107,7 @@ pub mod row {
         }
     }
 
-    impl<'a> ValueDecodable<'a> for String{
+    impl<'a> ValueDecodable<'a> for String {
         fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => Ok(v.to_string()),
@@ -127,17 +130,17 @@ pub mod row {
     impl<'a> ValueDecodable<'a> for bool {
         fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
-                Value::String(v) => Ok(v.parse::<bool>().map_err(|_| Error::ParseString(v.clone()))?),
+                Value::String(v) => Ok(v.parse::<bool>().map_err(|_| Error::FromString(v.clone()))?),
                 Value::Null => Err(Error::UnexpectedNullValue),
                 _ => Err(Error::InvalidType),
             }
         }
     }
 
-    impl<'a> ValueDecodable<'a> for f64{
+    impl<'a> ValueDecodable<'a> for f64 {
         fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
-                Value::String(v) => Ok(v.parse::<f64>().map_err(|_| Error::ParseString(v.clone()))?),
+                Value::String(v) => Ok(v.parse::<f64>().map_err(|_| Error::FromString(v.clone()))?),
                 Value::Null => Err(Error::UnexpectedNullValue),
                 _ => Err(Error::InvalidType),
             }
@@ -145,10 +148,19 @@ pub mod row {
     }
 
     impl<'a> ValueDecodable<'a> for i64 {
-
         fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
-                Value::String(v) => Ok(v.parse::<i64>().map_err(|_| Error::ParseString(v.clone()))?),
+                Value::String(v) => Ok(v.parse::<i64>().map_err(|_| Error::FromString(v.clone()))?),
+                Value::Null => Err(Error::UnexpectedNullValue),
+                _ => Err(Error::InvalidType),
+            }
+        }
+    }
+
+    impl<'a> ValueDecodable<'a> for BigDecimal {
+        fn decode(value: &'a Value) -> Result<Self, Error> {
+            match value {
+                Value::String(v) => Ok(BigDecimal::from_str(v)?),
                 Value::Null => Err(Error::UnexpectedNullValue),
                 _ => Err(Error::InvalidType),
             }
@@ -156,7 +168,6 @@ pub mod row {
     }
 
     impl<'a> ValueDecodable<'a> for OffsetDateTime {
-
         fn decode(value: &'a Value) -> Result<Self, Error> {
             let f = f64::decode(value)?;
             let sec = f.trunc();
@@ -169,8 +180,7 @@ pub mod row {
         }
     }
 
-    impl<'a> ValueDecodable<'a> for Date{
-
+    impl<'a> ValueDecodable<'a> for Date {
         fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => Ok(Date::parse(v, format_description!("[year]-[month]-[day]"))?),
@@ -181,7 +191,6 @@ pub mod row {
     }
 
     impl<'a> ValueDecodable<'a> for Time {
-
         fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => Ok(Time::parse(v, format_description!("[hour]:[minute]:[second]"))?),
@@ -191,8 +200,10 @@ pub mod row {
         }
     }
 
-    impl<'a, T> ValueDecodable<'a> for Vec<T> where T: ValueDecodable<'a>{
-
+    impl<'a, T> ValueDecodable<'a> for Vec<T>
+    where
+        T: ValueDecodable<'a>,
+    {
         fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
                 Value::Array(v) => {
@@ -208,14 +219,15 @@ pub mod row {
         }
     }
 
-    impl<'a, T> ValueDecodable<'a> for Option<T> where T: ValueDecodable<'a>{
-
+    impl<'a, T> ValueDecodable<'a> for Option<T>
+    where
+        T: ValueDecodable<'a>,
+    {
         fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
                 Value::Null => Ok(None),
-                _ => Ok(Some(T::decode(value)?))
+                _ => Ok(Some(T::decode(value)?)),
             }
         }
     }
-
 }
