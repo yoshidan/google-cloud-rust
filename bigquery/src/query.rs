@@ -2,15 +2,15 @@ use crate::http::bigquery_job_client::BigqueryJobClient;
 use crate::http::error::Error as HttpError;
 use crate::http::job::get_query_results::GetQueryResultsRequest;
 use crate::http::tabledata::list::Tuple;
+use crate::query::value::StructDecodable;
 use std::collections::VecDeque;
-use crate::query::row::{ValueDecodable, ValueStructDecodable};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
     Http(#[from] HttpError),
     #[error(transparent)]
-    Row(#[from] row::Error),
+    Value(#[from] value::Error),
 }
 
 pub struct Iterator {
@@ -23,7 +23,7 @@ pub struct Iterator {
 }
 
 impl Iterator {
-    pub async fn next<T: ValueStructDecodable>(&mut self) -> Result<Option<T>, Error> {
+    pub async fn next<T: StructDecodable>(&mut self) -> Result<Option<T>, Error> {
         loop {
             if let Some(v) = self.chunk.pop_front() {
                 return Ok(T::decode(v).map(Some)?);
@@ -47,6 +47,7 @@ impl Iterator {
 
 pub mod row {
     use crate::http::tabledata::list::{Cell, Tuple, Value};
+    use crate::query::value::StructDecodable;
     use base64::prelude::BASE64_STANDARD;
     use base64::Engine;
     use bigdecimal::BigDecimal;
@@ -59,6 +60,40 @@ pub mod row {
     pub enum Error {
         #[error("no data found: {0}")]
         UnexpectedColumnIndex(usize),
+        #[error(transparent)]
+        Value(#[from] super::value::Error),
+    }
+
+    pub struct Row {
+        inner: Vec<Cell>,
+    }
+
+    impl Row {
+        pub fn column<'a, T: super::value::Decodable<'a>>(&'a self, index: usize) -> Result<T, Error> {
+            let cell: &Cell = self.inner.get(index).ok_or(Error::UnexpectedColumnIndex(index))?;
+            Ok(T::decode(&cell.v)?)
+        }
+    }
+
+    impl StructDecodable for Row {
+        fn decode(value: Tuple) -> Result<Self, crate::query::value::Error> {
+            Ok(Self { inner: value.f })
+        }
+    }
+}
+
+pub mod value {
+    use crate::http::tabledata::list::{Cell, Tuple, Value};
+    use base64::prelude::BASE64_STANDARD;
+    use base64::Engine;
+    use bigdecimal::BigDecimal;
+    use std::str::FromStr;
+    use time::error::ComponentRange;
+    use time::macros::format_description;
+    use time::{Date, OffsetDateTime, Time};
+
+    #[derive(thiserror::Error, Debug)]
+    pub enum Error {
         #[error("invalid type")]
         InvalidType,
         #[error("unexpected null value")]
@@ -75,15 +110,15 @@ pub mod row {
         ParseBigDecimal(#[from] bigdecimal::ParseBigDecimalError),
     }
 
-    pub trait ValueDecodable<'a>: Sized {
+    pub trait Decodable<'a>: Sized {
         fn decode(value: &'a Value) -> Result<Self, Error>;
     }
 
-    pub trait ValueStructDecodable : Sized {
+    pub trait StructDecodable: Sized {
         fn decode(value: Tuple) -> Result<Self, Error>;
     }
 
-    impl<'a, T: ValueStructDecodable> ValueDecodable<'a> for T {
+    impl<'a, T: StructDecodable> Decodable<'a> for T {
         fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
                 Value::Struct(v) => T::decode(v.clone()),
@@ -93,7 +128,7 @@ pub mod row {
         }
     }
 
-    impl<'a> ValueDecodable<'a> for &'a str {
+    impl<'a> Decodable<'a> for &'a str {
         fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => Ok(v.as_str()),
@@ -103,7 +138,7 @@ pub mod row {
         }
     }
 
-    impl<'a> ValueDecodable<'a> for String {
+    impl<'a> Decodable<'a> for String {
         fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => Ok(v.to_string()),
@@ -113,7 +148,7 @@ pub mod row {
         }
     }
 
-    impl<'a> ValueDecodable<'a> for Vec<u8> {
+    impl<'a> Decodable<'a> for Vec<u8> {
         fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => Ok(BASE64_STANDARD.decode(v)?),
@@ -123,7 +158,7 @@ pub mod row {
         }
     }
 
-    impl<'a> ValueDecodable<'a> for bool {
+    impl<'a> Decodable<'a> for bool {
         fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => Ok(v.parse::<bool>().map_err(|_| Error::FromString(v.clone()))?),
@@ -133,7 +168,7 @@ pub mod row {
         }
     }
 
-    impl<'a> ValueDecodable<'a> for f64 {
+    impl<'a> Decodable<'a> for f64 {
         fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => Ok(v.parse::<f64>().map_err(|_| Error::FromString(v.clone()))?),
@@ -143,7 +178,7 @@ pub mod row {
         }
     }
 
-    impl<'a> ValueDecodable<'a> for i64 {
+    impl<'a> Decodable<'a> for i64 {
         fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => Ok(v.parse::<i64>().map_err(|_| Error::FromString(v.clone()))?),
@@ -153,7 +188,7 @@ pub mod row {
         }
     }
 
-    impl<'a> ValueDecodable<'a> for BigDecimal {
+    impl<'a> Decodable<'a> for BigDecimal {
         fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => Ok(BigDecimal::from_str(v)?),
@@ -163,7 +198,7 @@ pub mod row {
         }
     }
 
-    impl<'a> ValueDecodable<'a> for OffsetDateTime {
+    impl<'a> Decodable<'a> for OffsetDateTime {
         fn decode(value: &'a Value) -> Result<Self, Error> {
             let f = f64::decode(value)?;
             let sec = f.trunc();
@@ -176,7 +211,7 @@ pub mod row {
         }
     }
 
-    impl<'a> ValueDecodable<'a> for Date {
+    impl<'a> Decodable<'a> for Date {
         fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => Ok(Date::parse(v, format_description!("[year]-[month]-[day]"))?),
@@ -186,7 +221,7 @@ pub mod row {
         }
     }
 
-    impl<'a> ValueDecodable<'a> for Time {
+    impl<'a> Decodable<'a> for Time {
         fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => Ok(Time::parse(v, format_description!("[hour]:[minute]:[second]"))?),
@@ -196,9 +231,9 @@ pub mod row {
         }
     }
 
-    impl<'a, T> ValueDecodable<'a> for Vec<T>
+    impl<'a, T> Decodable<'a> for Vec<T>
     where
-        T: ValueDecodable<'a>,
+        T: Decodable<'a>,
     {
         fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
@@ -215,33 +250,15 @@ pub mod row {
         }
     }
 
-    impl<'a, T> ValueDecodable<'a> for Option<T>
+    impl<'a, T> Decodable<'a> for Option<T>
     where
-        T: ValueDecodable<'a>,
+        T: Decodable<'a>,
     {
         fn decode(value: &'a Value) -> Result<Self, Error> {
             match value {
                 Value::Null => Ok(None),
                 _ => Ok(Some(T::decode(value)?)),
             }
-        }
-    }
-
-
-    pub struct Row {
-        inner: Vec<Cell>,
-    }
-
-    impl Row {
-        pub fn column<'a, T: ValueDecodable<'a>>(&'a self, index: usize) -> Result<T, Error> {
-            let cell: &Cell = self.inner.get(index).ok_or(Error::UnexpectedColumnIndex(index))?;
-            T::decode(&cell.v)
-        }
-    }
-
-    impl ValueStructDecodable for Row {
-        fn decode(value: Tuple) -> Result<Row, Error> {
-            Ok(Self { inner: value.f })
         }
     }
 }

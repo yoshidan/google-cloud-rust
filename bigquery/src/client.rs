@@ -1,4 +1,3 @@
-use crate::arrow::ArrowStructDecodable;
 use std::borrow::Cow;
 
 use crate::grpc::apiv1::conn_pool::{ReadConnectionManager, DOMAIN};
@@ -159,7 +158,7 @@ impl Client {
         option: Option<ReadTableOption>,
     ) -> Result<storage::Iterator<T>, storage::Error>
     where
-        T: ArrowStructDecodable,
+        T: storage::value::StructDecodable,
     {
         let option = option.unwrap_or_default();
 
@@ -244,8 +243,8 @@ mod tests {
     use crate::query;
     use crate::storage::row::Row;
     use serial_test::serial;
-    use time::{Date, OffsetDateTime, Time};
     use time::macros::datetime;
+    use time::{Date, OffsetDateTime, Time};
 
     #[ctor::ctor]
     fn init() {
@@ -408,7 +407,7 @@ mod tests {
     async fn test_query_table() {
         let (client, project_id) = create_client().await;
         let mut data_as_row: Vec<TestData> = vec![];
-        let mut iterator_as_row= client
+        let mut iterator_as_row = client
             .query(
                 &project_id,
                 QueryRequest {
@@ -416,7 +415,9 @@ mod tests {
                     query: "SELECT * FROM rust_test_job.table_data_1686707863".to_string(),
                     ..Default::default()
                 },
-            ).await.unwrap();
+            )
+            .await
+            .unwrap();
         while let Some(row) = iterator_as_row.next::<query::row::Row>().await.unwrap() {
             data_as_row.push(TestData {
                 col_string: row.column(0).unwrap(),
@@ -431,7 +432,7 @@ mod tests {
             });
         }
         let mut data_as_struct: Vec<TestData> = vec![];
-        let mut iterator_as_struct= client
+        let mut iterator_as_struct = client
             .query(
                 &project_id,
                 QueryRequest {
@@ -439,7 +440,9 @@ mod tests {
                     query: "SELECT * FROM rust_test_job.table_data_1686707863".to_string(),
                     ..Default::default()
                 },
-            ).await.unwrap();
+            )
+            .await
+            .unwrap();
         while let Some(row) = iterator_as_struct.next::<TestData>().await.unwrap() {
             data_as_struct.push(row);
         }
@@ -511,11 +514,11 @@ mod tests {
     fn assert_data(index: usize, d: TestData) {
         let now = if index == 0 {
             datetime!(2023-06-14 01:57:43.438086 UTC)
-        }else if index == 1 {
+        } else if index == 1 {
             datetime!(2023-06-14 01:57:43.438296 UTC)
-        }else {
+        } else {
             datetime!(2023-06-14 01:57:43.438410 UTC)
         };
-        assert_eq!(TestData::default(index, now) , d);
+        assert_eq!(TestData::default(index, now), d);
     }
 }

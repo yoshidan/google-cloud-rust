@@ -91,9 +91,9 @@ impl BigqueryClient {
 
 #[cfg(test)]
 pub(crate) mod test {
-    use crate::arrow::{ArrowDecodable, ArrowStructDecodable, Error};
     use crate::http::bigquery_client::{BigqueryClient, SCOPES};
     use crate::http::table::{TableFieldMode, TableFieldSchema, TableFieldType, TableSchema};
+    use crate::http::tabledata::list::Tuple;
     use arrow::array::ArrayRef;
     use base64::engine::general_purpose::STANDARD;
     use base64_serde::base64_serde_type;
@@ -103,9 +103,11 @@ pub(crate) mod test {
     use google_cloud_token::TokenSourceProvider;
     use std::str::FromStr;
     use time::OffsetDateTime;
-    use crate::http::tabledata::list::Tuple;
-    use crate::query::row::ValueStructDecodable;
-    use crate::query::row::ValueDecodable;
+
+    use crate::query::value::Decodable as QueryDecodable;
+    use crate::query::value::StructDecodable as QueryStructDecodable;
+    use crate::storage::value::Decodable as StorageDecodable;
+    use crate::storage::value::StructDecodable as StorageStructDecodable;
 
     base64_serde_type!(Base64Standard, STANDARD);
 
@@ -123,14 +125,14 @@ pub(crate) mod test {
         (client, cred.unwrap().project_id.unwrap())
     }
 
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone,PartialEq)]
+    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone, PartialEq)]
     pub struct TestDataStruct {
         pub f1: bool,
         pub f2: Vec<i64>,
     }
 
-    impl ValueStructDecodable for TestDataStruct {
-        fn decode(value: Tuple) -> Result<Self, crate::query::row::Error> {
+    impl QueryStructDecodable for TestDataStruct {
+        fn decode(value: Tuple) -> Result<Self, crate::query::value::Error> {
             let col = &value.f;
             Ok(Self {
                 f1: bool::decode(&col[0].v)?,
@@ -139,8 +141,8 @@ pub(crate) mod test {
         }
     }
 
-    impl ArrowStructDecodable for TestDataStruct {
-        fn decode_arrow(col: &[ArrayRef], row_no: usize) -> Result<TestDataStruct, Error> {
+    impl StorageStructDecodable for TestDataStruct {
+        fn decode_arrow(col: &[ArrayRef], row_no: usize) -> Result<TestDataStruct, crate::storage::value::Error> {
             let f1 = bool::decode_arrow(&col[0], row_no)?;
             let f2 = Vec::<i64>::decode_arrow(&col[1], row_no)?;
             Ok(TestDataStruct { f1, f2 })
@@ -162,8 +164,8 @@ pub(crate) mod test {
         pub col_binary: Vec<u8>,
     }
 
-    impl ValueStructDecodable for TestData {
-        fn decode(value: Tuple) -> Result<Self, crate::query::row::Error> {
+    impl QueryStructDecodable for TestData {
+        fn decode(value: Tuple) -> Result<Self, crate::query::value::Error> {
             let col = &value.f;
             let col_string = Option::<String>::decode(&col[0].v)?;
             let col_number = Option::<BigDecimal>::decode(&col[1].v)?;
@@ -188,8 +190,8 @@ pub(crate) mod test {
         }
     }
 
-    impl ArrowStructDecodable for TestData {
-        fn decode_arrow(col: &[ArrayRef], row_no: usize) -> Result<TestData, Error> {
+    impl StorageStructDecodable for TestData {
+        fn decode_arrow(col: &[ArrayRef], row_no: usize) -> Result<TestData, crate::storage::value::Error> {
             let col_string = Option::<String>::decode_arrow(&col[0], row_no)?;
             let col_number = Option::<BigDecimal>::decode_arrow(&col[1], row_no)?;
             let col_number_array = Vec::<BigDecimal>::decode_arrow(&col[2], row_no)?;
