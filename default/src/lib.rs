@@ -13,6 +13,21 @@ use async_trait::async_trait;
 use google_cloud_auth::error::Error;
 
 #[async_trait]
+pub trait CreateAuthExt {
+    async fn create(mut self) -> Result<Self, Error>
+        where
+            Self: Sized;
+
+    async fn create_with_credentials(
+        self,
+        credentials: google_cloud_auth::credentials::CredentialsFile,
+    ) -> Result<Self, Error>
+        where
+            Self: Sized;
+}
+
+
+#[async_trait]
 pub trait WithAuthExt {
     async fn with_auth(mut self) -> Result<Self, Error>
     where
@@ -168,6 +183,53 @@ impl WithAuthExt for google_cloud_storage::client::ClientConfig {
 
         self.token_source_provider = Box::new(ts);
         Ok(self)
+    }
+}
+
+#[cfg(feature = "bigquery")]
+mod bigquery {
+    use google_cloud_auth::error::Error;
+    use google_cloud_auth::token::DefaultTokenSourceProvider;
+    use google_cloud_auth::project::Config;
+    use google_cloud_auth::credentials::CredentialsFile;
+    use google_cloud_bigquery::client::ClientConfig;
+
+    #[async_trait]
+    impl DefaultAuthExt for ClientConfig {
+        async fn create() -> Result<(Self, Option<String>), Error> {
+            let ts_http = DefaultTokenSourceProvider::new(bigquery_http_auth_config()).await?;
+            let ts_grpc = DefaultTokenSourceProvider::new(bigquery_grpc_auth_config()).await?;
+            let project_id = ts_grpc.project_id.clone();
+            let config = Self::new(Box::new(ts_http), Box::new(ts_grpc));
+            Ok((config, project_id))
+        }
+        async fn create_with_credentials(mut self, credentials: CredentialsFile) -> Result<(Self, Option<String>), Error>
+            where
+                Self: Sized {
+            let ts_http = DefaultTokenSourceProvider::new_with_credentials(bigquery_http_auth_config(), Box::new(credentials.clone())).await?;
+            let ts_grpc = DefaultTokenSourceProvider::new_with_credentials(bigquery_grpc_auth_config(), Box::new(credentials)).await?;
+            let project_id = ts_grpc.project_id.clone();
+            let config = Self::new(Box::new(ts_http), Box::new(ts_grpc));
+            Ok((config, project_id))
+        }
+    }
+
+    #[cfg(feature = "bigquery")]
+    fn bigquery_http_auth_config() -> Config {
+        Config {
+            audience: None,
+            scopes: Some(&google_cloud_bigquery::http::bigquery_client::SCOPES),
+            sub: None,
+        }
+    }
+
+    #[cfg(feature = "bigquery")]
+    fn bigquery_grpc_auth_config() -> Config {
+        Config {
+            audience: Some(google_cloud_bigquery::apiv1::conn_pool::AUDIENCE),
+            scopes: Some(&google_cloud_bigquery::apiv1::conn_pool::SCOPES),
+            sub: None,
+        }
     }
 }
 
