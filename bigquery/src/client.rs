@@ -159,7 +159,7 @@ impl Client {
         option: Option<ReadTableOption>,
     ) -> Result<storage::Iterator<T>, storage::Error>
     where
-        T: ArrowStructDecodable<T>,
+        T: ArrowStructDecodable,
     {
         let option = option.unwrap_or_default();
 

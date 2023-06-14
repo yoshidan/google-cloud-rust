@@ -24,17 +24,17 @@ pub enum Error {
 }
 
 /// https://cloud.google.com/bigquery/docs/reference/storage#arrow_schema_details
-pub trait ArrowDecodable<T> {
-    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<T, Error>;
+pub trait ArrowDecodable : Sized {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<Self, Error>;
 }
 
-pub trait ArrowStructDecodable<T> {
-    fn decode_arrow(fields: &[ArrayRef], row_no: usize) -> Result<T, Error>;
+pub trait ArrowStructDecodable : Sized {
+    fn decode_arrow(fields: &[ArrayRef], row_no: usize) -> Result<Self, Error>;
 }
 
-impl<S> ArrowDecodable<S> for S
+impl <S> ArrowDecodable for S
 where
-    S: ArrowStructDecodable<S>,
+    S: ArrowStructDecodable,
 {
     fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<S, Error> {
         match col.data_type() {
@@ -44,8 +44,8 @@ where
     }
 }
 
-impl ArrowDecodable<bool> for bool {
-    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<bool, Error> {
+impl ArrowDecodable for bool {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<Self, Error> {
         if col.is_null(row_no) {
             return Err(Error::InvalidNullable);
         }
@@ -56,8 +56,8 @@ impl ArrowDecodable<bool> for bool {
     }
 }
 
-impl ArrowDecodable<i64> for i64 {
-    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<i64, Error> {
+impl ArrowDecodable for i64 {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<Self, Error> {
         if col.is_null(row_no) {
             return Err(Error::InvalidNullable);
         }
@@ -68,8 +68,8 @@ impl ArrowDecodable<i64> for i64 {
     }
 }
 
-impl ArrowDecodable<f64> for f64 {
-    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<f64, Error> {
+impl ArrowDecodable for f64 {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<Self, Error> {
         if col.is_null(row_no) {
             return Err(Error::InvalidNullable);
         }
@@ -80,8 +80,8 @@ impl ArrowDecodable<f64> for f64 {
     }
 }
 
-impl ArrowDecodable<Vec<u8>> for Vec<u8> {
-    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<Vec<u8>, Error> {
+impl ArrowDecodable for Vec<u8> {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<Self, Error> {
         if col.is_null(row_no) {
             return Err(Error::InvalidNullable);
         }
@@ -92,8 +92,8 @@ impl ArrowDecodable<Vec<u8>> for Vec<u8> {
     }
 }
 
-impl ArrowDecodable<String> for String {
-    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<String, Error> {
+impl ArrowDecodable for String {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<Self, Error> {
         if col.is_null(row_no) {
             return Err(Error::InvalidNullable);
         }
@@ -112,8 +112,8 @@ impl ArrowDecodable<String> for String {
     }
 }
 
-impl ArrowDecodable<BigDecimal> for BigDecimal {
-    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<BigDecimal, Error> {
+impl ArrowDecodable for BigDecimal {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<Self, Error> {
         if col.is_null(row_no) {
             return Err(Error::InvalidNullable);
         }
@@ -135,8 +135,8 @@ impl ArrowDecodable<BigDecimal> for BigDecimal {
     }
 }
 
-impl ArrowDecodable<Time> for Time {
-    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<Time, Error> {
+impl ArrowDecodable for Time {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<Self, Error> {
         if col.is_null(row_no) {
             return Err(Error::InvalidNullable);
         }
@@ -153,8 +153,8 @@ impl ArrowDecodable<Time> for Time {
     }
 }
 
-impl ArrowDecodable<Date> for Date {
-    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<Date, Error> {
+impl ArrowDecodable for Date {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<Self, Error> {
         if col.is_null(row_no) {
             return Err(Error::InvalidNullable);
         }
@@ -169,8 +169,8 @@ impl ArrowDecodable<Date> for Date {
     }
 }
 
-impl ArrowDecodable<OffsetDateTime> for OffsetDateTime {
-    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<OffsetDateTime, Error> {
+impl ArrowDecodable for OffsetDateTime {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<Self, Error> {
         if col.is_null(row_no) {
             return Err(Error::InvalidNullable);
         }
@@ -187,9 +187,9 @@ impl ArrowDecodable<OffsetDateTime> for OffsetDateTime {
     }
 }
 
-impl<T> ArrowDecodable<Option<T>> for Option<T>
+impl<T> ArrowDecodable for Option<T>
 where
-    T: ArrowDecodable<T>,
+    T: ArrowDecodable,
 {
     fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<Option<T>, Error> {
         if col.is_null(row_no) {
@@ -199,9 +199,9 @@ where
     }
 }
 
-impl<T> ArrowDecodable<Vec<T>> for Vec<T>
+impl<T> ArrowDecodable for Vec<T>
 where
-    T: ArrowDecodable<T>,
+    T: ArrowDecodable,
 {
     fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<Vec<T>, Error> {
         match col.data_type() {

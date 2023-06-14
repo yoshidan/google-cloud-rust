@@ -32,7 +32,7 @@ pub enum Error {
 
 pub struct Iterator<T>
 where
-    T: ArrowStructDecodable<T>,
+    T: ArrowStructDecodable,
 {
     client: StreamingReadClient,
     session: ReadSession,
@@ -46,7 +46,7 @@ where
 
 impl<T> Iterator<T>
 where
-    T: ArrowStructDecodable<T>,
+    T: ArrowStructDecodable,
 {
     pub async fn new(
         mut client: StreamingReadClient,
@@ -117,7 +117,7 @@ where
 
 fn rows_to_chunk<T>(schema: ArrowSchema, rows: Rows) -> Result<VecDeque<T>, Error>
 where
-    T: ArrowStructDecodable<T>,
+    T: ArrowStructDecodable,
 {
     match rows {
         Rows::ArrowRecordBatch(rows) => {
@@ -155,7 +155,7 @@ pub mod row {
         row_no: usize,
     }
 
-    impl ArrowStructDecodable<Row> for Row {
+    impl ArrowStructDecodable for Row {
         fn decode_arrow(fields: &[ArrayRef], row_no: usize) -> Result<Row, crate::arrow::Error> {
             Ok(Self {
                 fields: fields.to_vec(),
@@ -165,7 +165,7 @@ pub mod row {
     }
 
     impl Row {
-        pub fn column<T: ArrowDecodable<T>>(&self, index: usize) -> Result<T, Error> {
+        pub fn column<T: ArrowDecodable>(&self, index: usize) -> Result<T, Error> {
             let column = self.fields.get(index).ok_or(Error::UnexpectedColumnIndex(index))?;
             Ok(T::decode_arrow(column, self.row_no)?)
         }

@@ -139,7 +139,7 @@ pub(crate) mod test {
         }
     }
 
-    impl ArrowStructDecodable<TestDataStruct> for TestDataStruct {
+    impl ArrowStructDecodable for TestDataStruct {
         fn decode_arrow(col: &[ArrayRef], row_no: usize) -> Result<TestDataStruct, Error> {
             let f1 = bool::decode_arrow(&col[0], row_no)?;
             let f2 = Vec::<i64>::decode_arrow(&col[1], row_no)?;
@@ -188,7 +188,7 @@ pub(crate) mod test {
         }
     }
 
-    impl ArrowStructDecodable<TestData> for TestData {
+    impl ArrowStructDecodable for TestData {
         fn decode_arrow(col: &[ArrayRef], row_no: usize) -> Result<TestData, Error> {
             let col_string = Option::<String>::decode_arrow(&col[0], row_no)?;
             let col_number = Option::<BigDecimal>::decode_arrow(&col[1], row_no)?;
