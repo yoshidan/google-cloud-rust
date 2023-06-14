@@ -129,7 +129,7 @@ where
             for row in rows {
                 let row = row?;
                 for row_no in 0..row.num_rows() {
-                    chunk.push_back(T::decode(row.columns(), row_no)?)
+                    chunk.push_back(T::decode_arrow(row.columns(), row_no)?)
                 }
             }
             Ok(chunk)
@@ -156,7 +156,7 @@ pub mod row {
     }
 
     impl ArrowStructDecodable<Row> for Row {
-        fn decode(fields: &[ArrayRef], row_no: usize) -> Result<Row, crate::arrow::Error> {
+        fn decode_arrow(fields: &[ArrayRef], row_no: usize) -> Result<Row, crate::arrow::Error> {
             Ok(Self {
                 fields: fields.to_vec(),
                 row_no,
@@ -167,7 +167,7 @@ pub mod row {
     impl Row {
         pub fn column<T: ArrowDecodable<T>>(&self, index: usize) -> Result<T, Error> {
             let column = self.fields.get(index).ok_or(Error::UnexpectedColumnIndex(index))?;
-            Ok(T::decode(column, self.row_no)?)
+            Ok(T::decode_arrow(column, self.row_no)?)
         }
     }
 }

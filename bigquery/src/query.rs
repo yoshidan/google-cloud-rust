@@ -3,6 +3,7 @@ use crate::http::error::Error as HttpError;
 use crate::http::job::get_query_results::GetQueryResultsRequest;
 use crate::http::tabledata::list::Tuple;
 use std::collections::VecDeque;
+use crate::query::row::{ValueDecodable, ValueStructDecodable};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -22,10 +23,10 @@ pub struct Iterator {
 }
 
 impl Iterator {
-    pub async fn next<T: TryFrom<Tuple, Error = row::Error>>(&mut self) -> Result<Option<T>, Error> {
+    pub async fn next<T: ValueStructDecodable>(&mut self) -> Result<Option<T>, Error> {
         loop {
             if let Some(v) = self.chunk.pop_front() {
-                return Ok(T::try_from(v).map(Some)?);
+                return Ok(T::decode(v).map(Some)?);
             }
             if self.request.page_token.is_none() {
                 return Ok(None);
@@ -74,27 +75,22 @@ pub mod row {
         ParseBigDecimal(#[from] bigdecimal::ParseBigDecimalError),
     }
 
-    pub struct Row {
-        inner: Vec<Cell>,
-    }
-
-    impl Row {
-        pub fn column<'a, T: ValueDecodable<'a>>(&'a self, index: usize) -> Result<T, Error> {
-            let cell: &Cell = self.inner.get(index).ok_or(Error::UnexpectedColumnIndex(index))?;
-            T::decode(&cell.v)
-        }
-    }
-
-    impl TryFrom<Tuple> for Row {
-        type Error = Error;
-
-        fn try_from(value: Tuple) -> Result<Self, Self::Error> {
-            Ok(Self { inner: value.f })
-        }
-    }
-
     pub trait ValueDecodable<'a>: Sized {
         fn decode(value: &'a Value) -> Result<Self, Error>;
+    }
+
+    pub trait ValueStructDecodable : Sized {
+        fn decode(value: Tuple) -> Result<Self, Error>;
+    }
+
+    impl<'a, T: ValueStructDecodable> ValueDecodable<'a> for T {
+        fn decode(value: &'a Value) -> Result<Self, Error> {
+            match value {
+                Value::Struct(v) => T::decode(v.clone()),
+                Value::Null => Err(Error::UnexpectedNullValue),
+                _ => Err(Error::InvalidType),
+            }
+        }
     }
 
     impl<'a> ValueDecodable<'a> for &'a str {
@@ -228,6 +224,24 @@ pub mod row {
                 Value::Null => Ok(None),
                 _ => Ok(Some(T::decode(value)?)),
             }
+        }
+    }
+
+
+    pub struct Row {
+        inner: Vec<Cell>,
+    }
+
+    impl Row {
+        pub fn column<'a, T: ValueDecodable<'a>>(&'a self, index: usize) -> Result<T, Error> {
+            let cell: &Cell = self.inner.get(index).ok_or(Error::UnexpectedColumnIndex(index))?;
+            T::decode(&cell.v)
+        }
+    }
+
+    impl ValueStructDecodable for Row {
+        fn decode(value: Tuple) -> Result<Row, Error> {
+            Ok(Self { inner: value.f })
         }
     }
 }

@@ -144,8 +144,9 @@ impl Client {
                 page_token: result.page_token,
                 max_results: request.max_results,
                 timeout_ms: request.timeout_ms,
-                location: Some(request.location),
+                location: result.job_reference.location,
                 format_options: request.format_options,
+                ..Default::default()
             },
             chunk: VecDeque::from(result.rows.unwrap_or_default()),
             total_size: result.total_rows.unwrap_or_default(),
@@ -403,6 +404,57 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
+    async fn test_query_table() {
+        let (client, project_id) = create_client().await;
+        let mut data_as_row: Vec<TestData> = vec![];
+        let mut iterator_as_row= client
+            .query(
+                &project_id,
+                QueryRequest {
+                    max_results: Some(1),
+                    query: "SELECT * FROM rust_test_job.table_data_1686707863".to_string(),
+                    ..Default::default()
+                },
+            ).await.unwrap();
+        while let Some(row) = iterator_as_row.next::<query::row::Row>().await.unwrap() {
+            data_as_row.push(TestData {
+                col_string: row.column(0).unwrap(),
+                col_number: row.column(1).unwrap(),
+                col_number_array: row.column(2).unwrap(),
+                col_timestamp: row.column(3).unwrap(),
+                col_json: row.column(4).unwrap(),
+                col_json_array: row.column(5).unwrap(),
+                col_struct: row.column(6).unwrap(),
+                col_struct_array: row.column(7).unwrap(),
+                col_binary: row.column(8).unwrap(),
+            });
+        }
+        let mut data_as_struct: Vec<TestData> = vec![];
+        let mut iterator_as_struct= client
+            .query(
+                &project_id,
+                QueryRequest {
+                    max_results: Some(1),
+                    query: "SELECT * FROM rust_test_job.table_data_1686707863".to_string(),
+                    ..Default::default()
+                },
+            ).await.unwrap();
+        while let Some(row) = iterator_as_struct.next::<TestData>().await.unwrap() {
+            data_as_struct.push(row);
+        }
+        assert_eq!(data_as_struct.len(), 3);
+        assert_eq!(data_as_row.len(), 3);
+
+        for (i, d) in data_as_struct.iter().enumerate() {
+            assert_data(i, d.clone());
+        }
+        for (i, d) in data_as_row.iter().enumerate() {
+            assert_data(i, d.clone());
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
     async fn test_read_table() {
         let (client, project_id) = create_client().await;
         let table = TableReference {
@@ -455,7 +507,7 @@ mod tests {
         }
     }
 
-    async fn assert_data(index: usize, d: TestData) {
+    fn assert_data(index: usize, d: TestData) {
         assert_eq!(d.col_string.unwrap(), format!("test_{}", index));
         assert_eq!(
             d.col_number.unwrap(),

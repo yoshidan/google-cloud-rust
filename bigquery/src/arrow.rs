@@ -25,27 +25,27 @@ pub enum Error {
 
 /// https://cloud.google.com/bigquery/docs/reference/storage#arrow_schema_details
 pub trait ArrowDecodable<T> {
-    fn decode(col: &dyn Array, row_no: usize) -> Result<T, Error>;
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<T, Error>;
 }
 
 pub trait ArrowStructDecodable<T> {
-    fn decode(fields: &[ArrayRef], row_no: usize) -> Result<T, Error>;
+    fn decode_arrow(fields: &[ArrayRef], row_no: usize) -> Result<T, Error>;
 }
 
 impl<S> ArrowDecodable<S> for S
 where
     S: ArrowStructDecodable<S>,
 {
-    fn decode(col: &dyn Array, row_no: usize) -> Result<S, Error> {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<S, Error> {
         match col.data_type() {
-            DataType::Struct(_) => S::decode(downcast::<arrow::array::StructArray>(col)?.columns(), row_no),
+            DataType::Struct(_) => S::decode_arrow(downcast::<arrow::array::StructArray>(col)?.columns(), row_no),
             _ => Err(Error::InvalidDataType(col.data_type().clone(), "struct")),
         }
     }
 }
 
 impl ArrowDecodable<bool> for bool {
-    fn decode(col: &dyn Array, row_no: usize) -> Result<bool, Error> {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<bool, Error> {
         if col.is_null(row_no) {
             return Err(Error::InvalidNullable);
         }
@@ -57,7 +57,7 @@ impl ArrowDecodable<bool> for bool {
 }
 
 impl ArrowDecodable<i64> for i64 {
-    fn decode(col: &dyn Array, row_no: usize) -> Result<i64, Error> {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<i64, Error> {
         if col.is_null(row_no) {
             return Err(Error::InvalidNullable);
         }
@@ -69,7 +69,7 @@ impl ArrowDecodable<i64> for i64 {
 }
 
 impl ArrowDecodable<f64> for f64 {
-    fn decode(col: &dyn Array, row_no: usize) -> Result<f64, Error> {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<f64, Error> {
         if col.is_null(row_no) {
             return Err(Error::InvalidNullable);
         }
@@ -81,7 +81,7 @@ impl ArrowDecodable<f64> for f64 {
 }
 
 impl ArrowDecodable<Vec<u8>> for Vec<u8> {
-    fn decode(col: &dyn Array, row_no: usize) -> Result<Vec<u8>, Error> {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<Vec<u8>, Error> {
         if col.is_null(row_no) {
             return Err(Error::InvalidNullable);
         }
@@ -93,19 +93,19 @@ impl ArrowDecodable<Vec<u8>> for Vec<u8> {
 }
 
 impl ArrowDecodable<String> for String {
-    fn decode(col: &dyn Array, row_no: usize) -> Result<String, Error> {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<String, Error> {
         if col.is_null(row_no) {
             return Err(Error::InvalidNullable);
         }
         match col.data_type() {
-            DataType::Decimal128(_, _) => BigDecimal::decode(col, row_no).map(|v| v.to_string()),
-            DataType::Decimal256(_, _) => BigDecimal::decode(col, row_no).map(|v| v.to_string()),
-            DataType::Date32 => Date::decode(col, row_no).map(|v| v.to_string()),
-            DataType::Timestamp(_, _) => OffsetDateTime::decode(col, row_no).map(|v| v.to_string()),
-            DataType::Time64(_) => Time::decode(col, row_no).map(|v| v.to_string()),
-            DataType::Boolean => bool::decode(col, row_no).map(|v| v.to_string()),
-            DataType::Float64 => f64::decode(col, row_no).map(|v| v.to_string()),
-            DataType::Int64 => i64::decode(col, row_no).map(|v| v.to_string()),
+            DataType::Decimal128(_, _) => BigDecimal::decode_arrow(col, row_no).map(|v| v.to_string()),
+            DataType::Decimal256(_, _) => BigDecimal::decode_arrow(col, row_no).map(|v| v.to_string()),
+            DataType::Date32 => Date::decode_arrow(col, row_no).map(|v| v.to_string()),
+            DataType::Timestamp(_, _) => OffsetDateTime::decode_arrow(col, row_no).map(|v| v.to_string()),
+            DataType::Time64(_) => Time::decode_arrow(col, row_no).map(|v| v.to_string()),
+            DataType::Boolean => bool::decode_arrow(col, row_no).map(|v| v.to_string()),
+            DataType::Float64 => f64::decode_arrow(col, row_no).map(|v| v.to_string()),
+            DataType::Int64 => i64::decode_arrow(col, row_no).map(|v| v.to_string()),
             DataType::Utf8 => Ok(downcast::<StringArray>(col)?.value(row_no).to_string()),
             _ => Err(Error::InvalidDataType(col.data_type().clone(), "String")),
         }
@@ -113,7 +113,7 @@ impl ArrowDecodable<String> for String {
 }
 
 impl ArrowDecodable<BigDecimal> for BigDecimal {
-    fn decode(col: &dyn Array, row_no: usize) -> Result<BigDecimal, Error> {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<BigDecimal, Error> {
         if col.is_null(row_no) {
             return Err(Error::InvalidNullable);
         }
@@ -136,7 +136,7 @@ impl ArrowDecodable<BigDecimal> for BigDecimal {
 }
 
 impl ArrowDecodable<Time> for Time {
-    fn decode(col: &dyn Array, row_no: usize) -> Result<Time, Error> {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<Time, Error> {
         if col.is_null(row_no) {
             return Err(Error::InvalidNullable);
         }
@@ -154,7 +154,7 @@ impl ArrowDecodable<Time> for Time {
 }
 
 impl ArrowDecodable<Date> for Date {
-    fn decode(col: &dyn Array, row_no: usize) -> Result<Date, Error> {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<Date, Error> {
         if col.is_null(row_no) {
             return Err(Error::InvalidNullable);
         }
@@ -170,7 +170,7 @@ impl ArrowDecodable<Date> for Date {
 }
 
 impl ArrowDecodable<OffsetDateTime> for OffsetDateTime {
-    fn decode(col: &dyn Array, row_no: usize) -> Result<OffsetDateTime, Error> {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<OffsetDateTime, Error> {
         if col.is_null(row_no) {
             return Err(Error::InvalidNullable);
         }
@@ -191,11 +191,11 @@ impl<T> ArrowDecodable<Option<T>> for Option<T>
 where
     T: ArrowDecodable<T>,
 {
-    fn decode(col: &dyn Array, row_no: usize) -> Result<Option<T>, Error> {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<Option<T>, Error> {
         if col.is_null(row_no) {
             return Ok(None);
         }
-        Ok(Some(T::decode(col, row_no)?))
+        Ok(Some(T::decode_arrow(col, row_no)?))
     }
 }
 
@@ -203,14 +203,14 @@ impl<T> ArrowDecodable<Vec<T>> for Vec<T>
 where
     T: ArrowDecodable<T>,
 {
-    fn decode(col: &dyn Array, row_no: usize) -> Result<Vec<T>, Error> {
+    fn decode_arrow(col: &dyn Array, row_no: usize) -> Result<Vec<T>, Error> {
         match col.data_type() {
             DataType::List(_) => {
                 let list = downcast::<ListArray>(col)?;
                 let col = list.value(row_no);
                 let mut result: Vec<T> = Vec::with_capacity(col.len());
                 for row_num in 0..col.len() {
-                    result.push(T::decode(&col, row_num)?);
+                    result.push(T::decode_arrow(&col, row_num)?);
                 }
                 Ok(result)
             }
@@ -234,17 +234,17 @@ mod test {
     fn test_bool() {
         let v = vec![Some(false), Some(true), Some(false), Some(true)];
         let array = v.into_iter().collect::<BooleanArray>();
-        assert!(!bool::decode(&array, 0).unwrap());
-        assert!(bool::decode(&array, 1).unwrap());
-        assert!(!bool::decode(&array, 2).unwrap());
-        assert!(bool::decode(&array, 3).unwrap())
+        assert!(!bool::decode_arrow(&array, 0).unwrap());
+        assert!(bool::decode_arrow(&array, 1).unwrap());
+        assert!(!bool::decode_arrow(&array, 2).unwrap());
+        assert!(bool::decode_arrow(&array, 3).unwrap())
     }
 
     #[test]
     fn test_bool_option() {
         let v = vec![Some(true), None];
         let array = v.into_iter().collect::<BooleanArray>();
-        assert!(Option::<bool>::decode(&array, 0).unwrap().unwrap());
-        assert!(Option::<bool>::decode(&array, 1).unwrap().is_none());
+        assert!(Option::<bool>::decode_arrow(&array, 0).unwrap().unwrap());
+        assert!(Option::<bool>::decode_arrow(&array, 1).unwrap().is_none());
     }
 }

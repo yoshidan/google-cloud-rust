@@ -85,7 +85,7 @@ impl BigqueryJobClient {
 
 #[cfg(test)]
 mod test {
-    use crate::http::bigquery_client::test::{create_client, create_table_schema, TestData, TestDataStruct};
+    use crate::http::bigquery_client::test::{create_client, create_table_schema, TestData};
 
     use crate::http::bigquery_job_client::BigqueryJobClient;
     use crate::http::bigquery_table_client::BigqueryTableClient;

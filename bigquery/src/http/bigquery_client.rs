@@ -103,6 +103,9 @@ pub(crate) mod test {
     use google_cloud_token::TokenSourceProvider;
     use std::str::FromStr;
     use time::OffsetDateTime;
+    use crate::http::tabledata::list::Tuple;
+    use crate::query::row::ValueStructDecodable;
+    use crate::query::row::ValueDecodable;
 
     base64_serde_type!(Base64Standard, STANDARD);
 
@@ -126,10 +129,21 @@ pub(crate) mod test {
         pub f2: Vec<i64>,
     }
 
+
+    impl ValueStructDecodable for TestDataStruct {
+        fn decode(value: Tuple) -> Result<Self, crate::query::row::Error> {
+            let col = &value.f;
+            Ok(Self {
+                f1: bool::decode(&col[0].v)?,
+                f2: Vec::<i64>::decode(&col[1].v)?,
+            })
+        }
+    }
+
     impl ArrowStructDecodable<TestDataStruct> for TestDataStruct {
-        fn decode(col: &[ArrayRef], row_no: usize) -> Result<TestDataStruct, Error> {
-            let f1 = bool::decode(&col[0], row_no)?;
-            let f2 = Vec::<i64>::decode(&col[1], row_no)?;
+        fn decode_arrow(col: &[ArrayRef], row_no: usize) -> Result<TestDataStruct, Error> {
+            let f1 = bool::decode_arrow(&col[0], row_no)?;
+            let f2 = Vec::<i64>::decode_arrow(&col[1], row_no)?;
             Ok(TestDataStruct { f1, f2 })
         }
     }
@@ -149,17 +163,43 @@ pub(crate) mod test {
         pub col_binary: Vec<u8>,
     }
 
+    impl ValueStructDecodable for TestData {
+        fn decode(value: Tuple) -> Result<Self, crate::query::row::Error> {
+            let col = &value.f;
+            let col_string = Option::<String>::decode(&col[0].v)?;
+            let col_number = Option::<BigDecimal>::decode(&col[1].v)?;
+            let col_number_array = Vec::<BigDecimal>::decode(&col[2].v)?;
+            let col_timestamp = Option::<OffsetDateTime>::decode(&col[3].v)?;
+            let col_json = Option::<String>::decode(&col[4].v)?;
+            let col_json_array = Vec::<String>::decode(&col[5].v)?;
+            let col_struct = Option::<TestDataStruct>::decode(&col[6].v)?;
+            let col_struct_array = Vec::<TestDataStruct>::decode(&col[7].v)?;
+            let col_binary = Vec::<u8>::decode(&col[8].v)?;
+            Ok(TestData {
+                col_string,
+                col_number,
+                col_number_array,
+                col_timestamp,
+                col_json,
+                col_json_array,
+                col_struct,
+                col_struct_array,
+                col_binary,
+            })
+        }
+    }
+
     impl ArrowStructDecodable<TestData> for TestData {
-        fn decode(col: &[ArrayRef], row_no: usize) -> Result<TestData, Error> {
-            let col_string = Option::<String>::decode(&col[0], row_no)?;
-            let col_number = Option::<BigDecimal>::decode(&col[1], row_no)?;
-            let col_number_array = Vec::<BigDecimal>::decode(&col[2], row_no)?;
-            let col_timestamp = Option::<OffsetDateTime>::decode(&col[3], row_no)?;
-            let col_json = Option::<String>::decode(&col[4], row_no)?;
-            let col_json_array = Vec::<String>::decode(&col[5], row_no)?;
-            let col_struct = Option::<TestDataStruct>::decode(&col[6], row_no)?;
-            let col_struct_array = Vec::<TestDataStruct>::decode(&col[7], row_no)?;
-            let col_binary = Vec::<u8>::decode(&col[8], row_no)?;
+        fn decode_arrow(col: &[ArrayRef], row_no: usize) -> Result<TestData, Error> {
+            let col_string = Option::<String>::decode_arrow(&col[0], row_no)?;
+            let col_number = Option::<BigDecimal>::decode_arrow(&col[1], row_no)?;
+            let col_number_array = Vec::<BigDecimal>::decode_arrow(&col[2], row_no)?;
+            let col_timestamp = Option::<OffsetDateTime>::decode_arrow(&col[3], row_no)?;
+            let col_json = Option::<String>::decode_arrow(&col[4], row_no)?;
+            let col_json_array = Vec::<String>::decode_arrow(&col[5], row_no)?;
+            let col_struct = Option::<TestDataStruct>::decode_arrow(&col[6], row_no)?;
+            let col_struct_array = Vec::<TestDataStruct>::decode_arrow(&col[7], row_no)?;
+            let col_binary = Vec::<u8>::decode_arrow(&col[8], row_no)?;
             Ok(TestData {
                 col_string,
                 col_number,
