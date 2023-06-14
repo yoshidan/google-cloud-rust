@@ -1,6 +1,6 @@
-use reqwest::{Client, RequestBuilder};
-
 use std::fmt::Debug;
+
+use reqwest::{Client, RequestBuilder};
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(untagged)]

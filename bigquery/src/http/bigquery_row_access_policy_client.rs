@@ -1,14 +1,14 @@
+use std::sync::Arc;
+
 use crate::http::bigquery_client::BigqueryClient;
 use crate::http::error::Error;
-use crate::http::types::Policy;
-
 use crate::http::row_access_policy;
 use crate::http::row_access_policy::list::{
     ListRowAccessPoliciesRequest, ListRowAccessPoliciesResponse, RowAccessPolicyOverview,
 };
 use crate::http::table::get_iam_policy::GetIamPolicyRequest;
 use crate::http::table::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
-use std::sync::Arc;
+use crate::http::types::Policy;
 
 #[derive(Clone)]
 pub struct BigqueryRowAccessPolicyClient {
@@ -97,16 +97,15 @@ impl BigqueryRowAccessPolicyClient {
 
 #[cfg(test)]
 mod test {
-    use crate::http::bigquery_client::test::create_client;
+    use std::sync::Arc;
 
+    use serial_test::serial;
+
+    use crate::http::bigquery_client::test::create_client;
     use crate::http::bigquery_row_access_policy_client::BigqueryRowAccessPolicyClient;
     use crate::http::row_access_policy::list::ListRowAccessPoliciesRequest;
     use crate::http::table::get_iam_policy::GetIamPolicyRequest;
-
     use crate::http::table::TableReference;
-
-    use serial_test::serial;
-    use std::sync::Arc;
 
     #[ctor::ctor]
     fn init() {

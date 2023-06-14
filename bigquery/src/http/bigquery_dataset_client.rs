@@ -1,11 +1,10 @@
-use crate::http::bigquery_client::BigqueryClient;
-use crate::http::dataset::list::{DatasetOverview, ListDatasetsRequest, ListDatasetsResponse};
-use crate::http::dataset::Dataset;
-use crate::http::error::Error;
-
-use crate::http::dataset;
-
 use std::sync::Arc;
+
+use crate::http::bigquery_client::BigqueryClient;
+use crate::http::dataset;
+use crate::http::dataset::Dataset;
+use crate::http::dataset::list::{DatasetOverview, ListDatasetsRequest, ListDatasetsResponse};
+use crate::http::error::Error;
 
 #[derive(Clone)]
 pub struct BigqueryDatasetClient {
@@ -64,15 +63,16 @@ impl BigqueryDatasetClient {
 
 #[cfg(test)]
 mod test {
-    use crate::http::bigquery_client::test::create_client;
-    use crate::http::bigquery_dataset_client::BigqueryDatasetClient;
-    use crate::http::dataset::list::ListDatasetsRequest;
-    use crate::http::dataset::{Access, Dataset, DatasetReference, SpecialGroup, StorageBillingModel};
-    use crate::http::types::{Collation, EncryptionConfiguration};
-
-    use serial_test::serial;
     use std::collections::HashMap;
     use std::sync::Arc;
+
+    use serial_test::serial;
+
+    use crate::http::bigquery_client::test::create_client;
+    use crate::http::bigquery_dataset_client::BigqueryDatasetClient;
+    use crate::http::dataset::{Access, Dataset, DatasetReference, SpecialGroup, StorageBillingModel};
+    use crate::http::dataset::list::ListDatasetsRequest;
+    use crate::http::types::{Collation, EncryptionConfiguration};
 
     #[ctor::ctor]
     fn init() {

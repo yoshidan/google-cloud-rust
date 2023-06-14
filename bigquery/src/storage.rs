@@ -1,18 +1,20 @@
-use crate::grpc::apiv1::bigquery_client::StreamingReadClient;
-use crate::http::tabledata::list::Tuple;
+use std::collections::VecDeque;
+use std::io::{BufReader, Cursor};
 
-use crate::storage::value::StructDecodable;
 use arrow::array::ArrayRef;
 use arrow::error::ArrowError;
 use arrow::ipc::reader::StreamReader;
+
 use google_cloud_gax::grpc::{Status, Streaming};
 use google_cloud_gax::retry::RetrySetting;
-use google_cloud_googleapis::cloud::bigquery::storage::v1::read_rows_response::{Rows, Schema};
 use google_cloud_googleapis::cloud::bigquery::storage::v1::{
     ArrowSchema, ReadRowsRequest, ReadRowsResponse, ReadSession,
 };
-use std::collections::VecDeque;
-use std::io::{BufReader, Cursor};
+use google_cloud_googleapis::cloud::bigquery::storage::v1::read_rows_response::{Rows, Schema};
+
+use crate::grpc::apiv1::bigquery_client::StreamingReadClient;
+use crate::http::tabledata::list::Tuple;
+use crate::storage::value::StructDecodable;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -139,8 +141,9 @@ where
 }
 
 pub mod row {
-    use crate::storage::value::{Decodable, StructDecodable};
     use arrow::array::{Array, ArrayRef};
+
+    use crate::storage::value::{Decodable, StructDecodable};
 
     #[derive(thiserror::Error, Debug)]
     pub enum Error {
@@ -173,16 +176,16 @@ pub mod row {
 }
 
 pub mod value {
+    use std::ops::Add;
+
     use arrow::array::{
         Array, ArrayRef, AsArray, BinaryArray, Date32Array, Decimal128Array, Decimal256Array, Float64Array, Int64Array,
         ListArray, StringArray, Time64MicrosecondArray, TimestampMicrosecondArray,
-    };
+        };
     use arrow::datatypes::{DataType, TimeUnit};
-
     use bigdecimal::BigDecimal;
-    use std::ops::Add;
-    use time::macros::date;
     use time::{Date, Duration, OffsetDateTime, Time};
+    use time::macros::date;
 
     #[derive(thiserror::Error, Debug)]
     pub enum Error {
@@ -402,8 +405,9 @@ pub mod value {
 
     #[cfg(test)]
     mod test {
-        use crate::storage::value::Decodable;
         use arrow::array::BooleanArray;
+
+        use crate::storage::value::Decodable;
 
         #[test]
         fn test_bool() {

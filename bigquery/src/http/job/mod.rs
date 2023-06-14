@@ -1,3 +1,7 @@
+use std::collections::HashMap;
+
+use time::OffsetDateTime;
+
 use crate::http::dataset::DatasetReference;
 use crate::http::model::{HparamTuningTrial, IterationResult, ModelReference, ModelType};
 use crate::http::routine::RoutineReference;
@@ -8,8 +12,6 @@ use crate::http::table::{
     UserDefinedFunctionResource,
 };
 use crate::http::types::{ConnectionProperty, EncryptionConfiguration, ErrorProto, QueryParameter};
-use std::collections::HashMap;
-use time::OffsetDateTime;
 
 pub mod cancel;
 pub mod delete;

@@ -1,6 +1,7 @@
-use crate::http::row_access_policy::RowAccessPolicyReference;
 use reqwest::{Client, RequestBuilder};
 use time::OffsetDateTime;
+
+use crate::http::row_access_policy::RowAccessPolicyReference;
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]

@@ -1,11 +1,12 @@
+use std::collections::HashMap;
+
+use crate::http::types::{StandardSqlDataType, StandardSqlField};
+
 pub mod delete;
 pub mod get;
 pub mod insert;
 pub mod list;
 pub mod update;
-
-use crate::http::types::{StandardSqlDataType, StandardSqlField};
-use std::collections::HashMap;
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]

@@ -1,7 +1,8 @@
-use crate::grpc::apiv1::bigquery_client::{StreamingReadClient, StreamingWriteClient};
 use google_cloud_gax::conn::{ConnectionManager as GRPCConnectionManager, Environment, Error};
 use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_read_client::BigQueryReadClient;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_write_client::BigQueryWriteClient;
+
+use crate::grpc::apiv1::bigquery_client::{StreamingReadClient, StreamingWriteClient};
 
 pub const AUDIENCE: &str = "https://bigquerystorage.googleapis.com/";
 pub const DOMAIN: &str = "bigquerystorage.googleapis.com";

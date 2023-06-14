@@ -1,6 +1,6 @@
-use crate::http::table::test_iam_permissions::TestIamPermissionsRequest;
-
 use reqwest::{Client, RequestBuilder};
+
+use crate::http::table::test_iam_permissions::TestIamPermissionsRequest;
 
 pub fn build(
     base_url: &str,

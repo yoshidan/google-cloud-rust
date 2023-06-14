@@ -1,5 +1,6 @@
-use crate::http::model::Model;
 use reqwest::{Client, RequestBuilder};
+
+use crate::http::model::Model;
 
 pub fn build(base_url: &str, client: &Client, data: &Model) -> RequestBuilder {
     let url = format!(

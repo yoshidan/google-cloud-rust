@@ -1,9 +1,10 @@
+use std::sync::Arc;
+
 use crate::http::bigquery_client::BigqueryClient;
 use crate::http::error::Error;
 use crate::http::routine;
 use crate::http::routine::list::{ListRoutinesRequest, ListRoutinesResponse, RoutineOverview};
 use crate::http::routine::Routine;
-use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct BigqueryRoutineClient {
@@ -71,14 +72,16 @@ impl BigqueryRoutineClient {
 
 #[cfg(test)]
 mod test {
+    use std::sync::Arc;
+
+    use serial_test::serial;
+    use time::OffsetDateTime;
+
     use crate::http::bigquery_client::test::create_client;
     use crate::http::bigquery_routine_client::BigqueryRoutineClient;
-    use crate::http::routine::list::ListRoutinesRequest;
     use crate::http::routine::{Argument, ArgumentKind, Language, Routine, RoutineReference, RoutineType};
+    use crate::http::routine::list::ListRoutinesRequest;
     use crate::http::types::{StandardSqlDataType, TypeKind};
-    use serial_test::serial;
-    use std::sync::Arc;
-    use time::OffsetDateTime;
 
     #[tokio::test]
     #[serial]

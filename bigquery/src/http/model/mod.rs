@@ -1,12 +1,14 @@
+use std::collections::HashMap;
+
+use time::OffsetDateTime;
+
+use crate::http::table::TableReference;
+use crate::http::types::{EncryptionConfiguration, StandardSqlField};
+
 pub mod delete;
 pub mod get;
 pub mod list;
 pub mod patch;
-
-use crate::http::table::TableReference;
-use crate::http::types::{EncryptionConfiguration, StandardSqlField};
-use std::collections::HashMap;
-use time::OffsetDateTime;
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

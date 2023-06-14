@@ -1,6 +1,7 @@
+use reqwest::{Client, RequestBuilder};
+
 use crate::http::job::{JobConfiguration, JobReference, JobState, JobStatistics, JobStatus};
 use crate::http::types::ErrorProto;
-use reqwest::{Client, RequestBuilder};
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]

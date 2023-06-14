@@ -1,8 +1,9 @@
+use reqwest::{Client, RequestBuilder};
+
 use crate::http::job::JobReference;
 use crate::http::table::TableSchema;
 use crate::http::tabledata::list::Tuple;
 use crate::http::types::{DataFormatOptions, ErrorProto};
-use reqwest::{Client, RequestBuilder};
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]

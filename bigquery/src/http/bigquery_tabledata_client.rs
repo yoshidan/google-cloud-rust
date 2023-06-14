@@ -1,12 +1,12 @@
+use std::sync::Arc;
+
+use serde::Serialize;
+
 use crate::http::bigquery_client::BigqueryClient;
 use crate::http::error::Error;
-
+use crate::http::tabledata;
 use crate::http::tabledata::insert_all::{InsertAllRequest, InsertAllResponse};
 use crate::http::tabledata::list::{FetchDataRequest, FetchDataResponse};
-
-use crate::http::tabledata;
-use serde::Serialize;
-use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct BigqueryTabledataClient {
@@ -53,19 +53,20 @@ impl BigqueryTabledataClient {
 
 #[cfg(test)]
 mod test {
+    use std::str::FromStr;
+    use std::sync::Arc;
+
+    use bigdecimal::BigDecimal;
+    use serial_test::serial;
+    use time::OffsetDateTime;
+
     use crate::http::bigquery_client::test::{create_client, create_table_schema, TestData, TestDataStruct};
     use crate::http::bigquery_table_client::BigqueryTableClient;
     use crate::http::bigquery_tabledata_client::BigqueryTabledataClient;
-    use std::str::FromStr;
-
     use crate::http::table::Table;
     use crate::http::tabledata::insert_all::{InsertAllRequest, Row};
     use crate::http::tabledata::list;
     use crate::http::tabledata::list::FetchDataRequest;
-    use bigdecimal::BigDecimal;
-    use serial_test::serial;
-    use std::sync::Arc;
-    use time::OffsetDateTime;
 
     #[ctor::ctor]
     fn init() {

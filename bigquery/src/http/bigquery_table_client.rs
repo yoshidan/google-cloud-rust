@@ -1,14 +1,14 @@
+use std::sync::Arc;
+
 use crate::http::bigquery_client::BigqueryClient;
 use crate::http::error::Error;
 use crate::http::table;
 use crate::http::table::get_iam_policy::GetIamPolicyRequest;
-use crate::http::table::set_iam_policy::SetIamPolicyRequest;
-use crate::http::table::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
-use crate::http::table::Table;
-use crate::http::types::Policy;
-
 use crate::http::table::list::{ListTablesRequest, ListTablesResponse, TableOverview};
-use std::sync::Arc;
+use crate::http::table::set_iam_policy::SetIamPolicyRequest;
+use crate::http::table::Table;
+use crate::http::table::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
+use crate::http::types::Policy;
 
 #[derive(Clone)]
 pub struct BigqueryTableClient {
@@ -132,22 +132,23 @@ impl BigqueryTableClient {
 
 #[cfg(test)]
 mod test {
-    use crate::http::bigquery_client::test::create_client;
     use std::ops::Add;
+    use std::sync::Arc;
 
+    use serial_test::serial;
+    use time::OffsetDateTime;
+
+    use crate::http::bigquery_client::test::create_client;
     use crate::http::bigquery_table_client::BigqueryTableClient;
-    use crate::http::table::get_iam_policy::GetIamPolicyRequest;
-    use crate::http::table::list::ListTablesRequest;
-    use crate::http::table::set_iam_policy::SetIamPolicyRequest;
     use crate::http::table::{
         Clustering, CsvOptions, ExternalDataConfiguration, MaterializedViewDefinition, PartitionRange,
         RangePartitioning, RoundingMode, SourceFormat, Table, TableFieldMode, TableFieldSchema, TableFieldType,
-        TableSchema, TimePartitionType, TimePartitioning, ViewDefinition,
+        TableSchema, TimePartitioning, TimePartitionType, ViewDefinition,
     };
+    use crate::http::table::get_iam_policy::GetIamPolicyRequest;
+    use crate::http::table::list::ListTablesRequest;
+    use crate::http::table::set_iam_policy::SetIamPolicyRequest;
     use crate::http::types::{Bindings, Policy};
-    use serial_test::serial;
-    use std::sync::Arc;
-    use time::OffsetDateTime;
 
     #[ctor::ctor]
     fn init() {

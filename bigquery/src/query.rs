@@ -1,9 +1,10 @@
+use std::collections::VecDeque;
+
 use crate::http::bigquery_job_client::BigqueryJobClient;
 use crate::http::error::Error as HttpError;
 use crate::http::job::get_query_results::GetQueryResultsRequest;
 use crate::http::tabledata::list::Tuple;
 use crate::query::value::StructDecodable;
-use std::collections::VecDeque;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -46,15 +47,17 @@ impl Iterator {
 }
 
 pub mod row {
-    use crate::http::tabledata::list::{Cell, Tuple, Value};
-    use crate::query::value::StructDecodable;
-    use base64::prelude::BASE64_STANDARD;
-    use base64::Engine;
-    use bigdecimal::BigDecimal;
     use std::str::FromStr;
+
+    use base64::Engine;
+    use base64::prelude::BASE64_STANDARD;
+    use bigdecimal::BigDecimal;
+    use time::{Date, OffsetDateTime, Time};
     use time::error::ComponentRange;
     use time::macros::format_description;
-    use time::{Date, OffsetDateTime, Time};
+
+    use crate::http::tabledata::list::{Cell, Tuple, Value};
+    use crate::query::value::StructDecodable;
 
     #[derive(thiserror::Error, Debug)]
     pub enum Error {
@@ -83,14 +86,16 @@ pub mod row {
 }
 
 pub mod value {
-    use crate::http::tabledata::list::{Cell, Tuple, Value};
-    use base64::prelude::BASE64_STANDARD;
-    use base64::Engine;
-    use bigdecimal::BigDecimal;
     use std::str::FromStr;
+
+    use base64::Engine;
+    use base64::prelude::BASE64_STANDARD;
+    use bigdecimal::BigDecimal;
+    use time::{Date, OffsetDateTime, Time};
     use time::error::ComponentRange;
     use time::macros::format_description;
-    use time::{Date, OffsetDateTime, Time};
+
+    use crate::http::tabledata::list::{Cell, Tuple, Value};
 
     #[derive(thiserror::Error, Debug)]
     pub enum Error {

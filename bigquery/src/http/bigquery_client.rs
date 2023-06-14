@@ -1,9 +1,10 @@
-use crate::http::error::{Error, ErrorWrapper};
+use std::sync::Arc;
 
-use google_cloud_token::TokenSource;
 use reqwest::{Client, RequestBuilder, Response};
 
-use std::sync::Arc;
+use google_cloud_token::TokenSource;
+
+use crate::http::error::{Error, ErrorWrapper};
 
 pub const SCOPES: [&str; 7] = [
     "https://www.googleapis.com/auth/bigquery",
@@ -91,19 +92,21 @@ impl BigqueryClient {
 
 #[cfg(test)]
 pub(crate) mod test {
-    use crate::http::bigquery_client::{BigqueryClient, SCOPES};
-    use crate::http::table::{TableFieldMode, TableFieldSchema, TableFieldType, TableSchema};
-    use crate::http::tabledata::list::Tuple;
+    use std::str::FromStr;
+
     use arrow::array::ArrayRef;
     use base64::engine::general_purpose::STANDARD;
     use base64_serde::base64_serde_type;
     use bigdecimal::BigDecimal;
+    use time::OffsetDateTime;
+
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_token::TokenSourceProvider;
-    use std::str::FromStr;
-    use time::OffsetDateTime;
 
+    use crate::http::bigquery_client::{BigqueryClient, SCOPES};
+    use crate::http::table::{TableFieldMode, TableFieldSchema, TableFieldType, TableSchema};
+    use crate::http::tabledata::list::Tuple;
     use crate::query::value::Decodable as QueryDecodable;
     use crate::query::value::StructDecodable as QueryStructDecodable;
     use crate::storage::value::Decodable as StorageDecodable;

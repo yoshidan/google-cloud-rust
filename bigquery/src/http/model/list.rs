@@ -1,5 +1,6 @@
-use crate::http::model::{ModelReference, ModelType};
 use reqwest::{Client, RequestBuilder};
+
+use crate::http::model::{ModelReference, ModelType};
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]

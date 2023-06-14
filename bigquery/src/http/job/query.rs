@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+
+use reqwest::{Client, RequestBuilder};
+
 use crate::http::dataset::DatasetReference;
 use crate::http::job::{DmlStats, JobReference, SessionInfo};
 use crate::http::table::TableSchema;
 use crate::http::tabledata::list::Tuple;
 use crate::http::types::{ConnectionProperty, DataFormatOptions, ErrorProto, QueryParameter};
-use reqwest::{Client, RequestBuilder};
-use std::collections::HashMap;
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]

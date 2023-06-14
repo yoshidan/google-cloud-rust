@@ -1,10 +1,10 @@
+use std::sync::Arc;
+
 use crate::http::bigquery_client::BigqueryClient;
 use crate::http::error::Error;
 use crate::http::model;
-use crate::http::model::Model;
-
 use crate::http::model::list::{ListModelsRequest, ListModelsResponse, ModelOverview};
-use std::sync::Arc;
+use crate::http::model::Model;
 
 #[derive(Clone)]
 pub struct BigqueryModelClient {
@@ -65,18 +65,18 @@ impl BigqueryModelClient {
 
 #[cfg(test)]
 mod test {
-    use crate::http::bigquery_client::test::create_client;
-
-    use crate::http::bigquery_job_client::BigqueryJobClient;
-    use crate::http::bigquery_model_client::BigqueryModelClient;
-    use crate::http::job::get::GetJobRequest;
-    use crate::http::job::query::QueryRequest;
-    use crate::http::job::{Job, JobConfiguration, JobConfigurationQuery, JobState, JobType};
-    use crate::http::model::list::ListModelsRequest;
-    use serial_test::serial;
     use std::sync::Arc;
+
+    use serial_test::serial;
     use time::OffsetDateTime;
 
+    use crate::http::bigquery_client::test::create_client;
+    use crate::http::bigquery_job_client::BigqueryJobClient;
+    use crate::http::bigquery_model_client::BigqueryModelClient;
+    use crate::http::job::{Job, JobConfiguration, JobConfigurationQuery, JobState, JobType};
+    use crate::http::job::get::GetJobRequest;
+    use crate::http::job::query::QueryRequest;
+    use crate::http::model::list::ListModelsRequest;
     use crate::http::model::ModelType;
 
     #[ctor::ctor]

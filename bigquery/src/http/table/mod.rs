@@ -1,3 +1,5 @@
+use crate::http::types::{Collation, EncryptionConfiguration};
+
 pub mod delete;
 pub mod get;
 pub mod get_iam_policy;
@@ -6,8 +8,6 @@ pub mod list;
 pub mod patch;
 pub mod set_iam_policy;
 pub mod test_iam_permissions;
-
-use crate::http::types::{Collation, EncryptionConfiguration};
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]

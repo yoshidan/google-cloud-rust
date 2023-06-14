@@ -1,30 +1,29 @@
 use std::borrow::Cow;
+use std::collections::VecDeque;
+use std::sync::Arc;
 
-use crate::grpc::apiv1::conn_pool::{ReadConnectionManager, DOMAIN};
+use google_cloud_gax::conn::Environment;
+use google_cloud_gax::retry::RetrySetting;
+use google_cloud_googleapis::cloud::bigquery::storage::v1::{
+    CreateReadSessionRequest, DataFormat, read_session, ReadSession,
+};
+use google_cloud_token::TokenSourceProvider;
+
+use crate::grpc::apiv1::conn_pool::{DOMAIN, ReadConnectionManager};
 use crate::http::bigquery_client::BigqueryClient;
 use crate::http::bigquery_dataset_client::BigqueryDatasetClient;
 use crate::http::bigquery_job_client::BigqueryJobClient;
+use crate::http::bigquery_model_client::BigqueryModelClient;
 use crate::http::bigquery_routine_client::BigqueryRoutineClient;
+use crate::http::bigquery_row_access_policy_client::BigqueryRowAccessPolicyClient;
 use crate::http::bigquery_table_client::BigqueryTableClient;
 use crate::http::bigquery_tabledata_client::BigqueryTabledataClient;
 use crate::http::error::Error;
 use crate::http::job::get_query_results::GetQueryResultsRequest;
 use crate::http::job::query::QueryRequest;
-
 use crate::http::table::TableReference;
 use crate::query;
 use crate::storage;
-use google_cloud_gax::conn::Environment;
-
-use crate::http::bigquery_model_client::BigqueryModelClient;
-use crate::http::bigquery_row_access_policy_client::BigqueryRowAccessPolicyClient;
-use google_cloud_gax::retry::RetrySetting;
-use google_cloud_googleapis::cloud::bigquery::storage::v1::{
-    read_session, CreateReadSessionRequest, DataFormat, ReadSession,
-};
-use google_cloud_token::TokenSourceProvider;
-use std::collections::VecDeque;
-use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct ClientConfig {
@@ -229,22 +228,24 @@ impl ReadTableOption {
 
 #[cfg(test)]
 mod tests {
-    use crate::client::{Client, ClientConfig};
-    use crate::http::bigquery_client::SCOPES;
-    use bigdecimal::BigDecimal;
-    use google_cloud_auth::project::Config;
-    use google_cloud_auth::token::DefaultTokenSourceProvider;
     use std::str::FromStr;
 
+    use bigdecimal::BigDecimal;
+    use serial_test::serial;
+    use time::{Date, OffsetDateTime, Time};
+    use time::macros::datetime;
+
+    use google_cloud_auth::project::Config;
+    use google_cloud_auth::token::DefaultTokenSourceProvider;
+
+    use crate::client::{Client, ClientConfig};
     use crate::grpc::apiv1;
+    use crate::http::bigquery_client::SCOPES;
     use crate::http::bigquery_client::test::TestData;
     use crate::http::job::query::QueryRequest;
     use crate::http::table::TableReference;
     use crate::query;
     use crate::storage::row::Row;
-    use serial_test::serial;
-    use time::macros::datetime;
-    use time::{Date, OffsetDateTime, Time};
 
     #[ctor::ctor]
     fn init() {

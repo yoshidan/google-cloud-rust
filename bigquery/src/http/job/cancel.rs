@@ -1,6 +1,7 @@
-use crate::http::job::Job;
-use reqwest::header::CONTENT_LENGTH;
 use reqwest::{Client, RequestBuilder};
+use reqwest::header::CONTENT_LENGTH;
+
+use crate::http::job::Job;
 
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]

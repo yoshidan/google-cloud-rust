@@ -1,14 +1,14 @@
+use std::sync::Arc;
+
 use crate::http::bigquery_client::BigqueryClient;
 use crate::http::error::Error;
 use crate::http::job;
-
 use crate::http::job::cancel::{CancelJobRequest, CancelJobResponse};
 use crate::http::job::get::GetJobRequest;
 use crate::http::job::get_query_results::{GetQueryResultsRequest, GetQueryResultsResponse};
+use crate::http::job::Job;
 use crate::http::job::list::{JobOverview, ListJobsRequest, ListJobsResponse};
 use crate::http::job::query::{QueryRequest, QueryResponse};
-use crate::http::job::Job;
-use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct BigqueryJobClient {
@@ -85,27 +85,28 @@ impl BigqueryJobClient {
 
 #[cfg(test)]
 mod test {
-    use crate::http::bigquery_client::test::{create_client, create_table_schema, TestData};
+    use core::default::Default;
+    use std::sync::Arc;
 
+    use serial_test::serial;
+    use time::OffsetDateTime;
+
+    use crate::http::bigquery_client::test::{create_client, create_table_schema, TestData};
     use crate::http::bigquery_job_client::BigqueryJobClient;
     use crate::http::bigquery_table_client::BigqueryTableClient;
     use crate::http::bigquery_tabledata_client::BigqueryTabledataClient;
-    use crate::http::job::cancel::CancelJobRequest;
-    use crate::http::job::get::GetJobRequest;
-    use crate::http::job::get_query_results::GetQueryResultsRequest;
-    use crate::http::job::query::QueryRequest;
     use crate::http::job::{
         CreateDisposition, Job, JobConfiguration, JobConfigurationExtract, JobConfigurationExtractSource,
         JobConfigurationLoad, JobConfigurationQuery, JobConfigurationSourceTable, JobConfigurationTableCopy, JobState,
         JobType, OperationType, TrainingType, WriteDisposition,
     };
+    use crate::http::job::cancel::CancelJobRequest;
+    use crate::http::job::get::GetJobRequest;
+    use crate::http::job::get_query_results::GetQueryResultsRequest;
+    use crate::http::job::query::QueryRequest;
     use crate::http::model::ModelType;
     use crate::http::table::{DestinationFormat, SourceFormat, Table, TableReference};
     use crate::http::tabledata::insert_all::{InsertAllRequest, Row};
-    use core::default::Default;
-    use serial_test::serial;
-    use std::sync::Arc;
-    use time::OffsetDateTime;
 
     #[ctor::ctor]
     fn init() {
