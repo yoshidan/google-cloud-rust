@@ -53,14 +53,13 @@ impl BigqueryTabledataClient {
 
 #[cfg(test)]
 mod test {
-    use std::str::FromStr;
+
     use std::sync::Arc;
 
-    use bigdecimal::BigDecimal;
     use serial_test::serial;
     use time::OffsetDateTime;
 
-    use crate::http::bigquery_client::test::{create_client, create_table_schema, TestData, TestDataStruct};
+    use crate::http::bigquery_client::test::{create_client, create_table_schema, TestData};
     use crate::http::bigquery_table_client::BigqueryTableClient;
     use crate::http::bigquery_tabledata_client::BigqueryTabledataClient;
     use crate::http::table::Table;

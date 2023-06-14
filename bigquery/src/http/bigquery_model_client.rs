@@ -73,9 +73,9 @@ mod test {
     use crate::http::bigquery_client::test::create_client;
     use crate::http::bigquery_job_client::BigqueryJobClient;
     use crate::http::bigquery_model_client::BigqueryModelClient;
-    use crate::http::job::{Job, JobConfiguration, JobConfigurationQuery, JobState, JobType};
     use crate::http::job::get::GetJobRequest;
     use crate::http::job::query::QueryRequest;
+    use crate::http::job::{Job, JobConfiguration, JobConfigurationQuery, JobState, JobType};
     use crate::http::model::list::ListModelsRequest;
     use crate::http::model::ModelType;
 

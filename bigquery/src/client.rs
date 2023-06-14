@@ -5,11 +5,11 @@ use std::sync::Arc;
 use google_cloud_gax::conn::Environment;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::{
-    CreateReadSessionRequest, DataFormat, read_session, ReadSession,
+    read_session, CreateReadSessionRequest, DataFormat, ReadSession,
 };
 use google_cloud_token::TokenSourceProvider;
 
-use crate::grpc::apiv1::conn_pool::{DOMAIN, ReadConnectionManager};
+use crate::grpc::apiv1::conn_pool::{ReadConnectionManager, DOMAIN};
 use crate::http::bigquery_client::BigqueryClient;
 use crate::http::bigquery_dataset_client::BigqueryDatasetClient;
 use crate::http::bigquery_job_client::BigqueryJobClient;
@@ -228,20 +228,19 @@ impl ReadTableOption {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
 
     use bigdecimal::BigDecimal;
     use serial_test::serial;
-    use time::{Date, OffsetDateTime, Time};
     use time::macros::datetime;
+    use time::{Date, OffsetDateTime, Time};
 
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
 
     use crate::client::{Client, ClientConfig};
     use crate::grpc::apiv1;
-    use crate::http::bigquery_client::SCOPES;
     use crate::http::bigquery_client::test::TestData;
+    use crate::http::bigquery_client::SCOPES;
     use crate::http::job::query::QueryRequest;
     use crate::http::table::TableReference;
     use crate::query;

@@ -47,16 +47,10 @@ impl Iterator {
 }
 
 pub mod row {
-    use std::str::FromStr;
 
     use base64::Engine;
-    use base64::prelude::BASE64_STANDARD;
-    use bigdecimal::BigDecimal;
-    use time::{Date, OffsetDateTime, Time};
-    use time::error::ComponentRange;
-    use time::macros::format_description;
 
-    use crate::http::tabledata::list::{Cell, Tuple, Value};
+    use crate::http::tabledata::list::{Cell, Tuple};
     use crate::query::value::StructDecodable;
 
     #[derive(thiserror::Error, Debug)]
@@ -88,14 +82,14 @@ pub mod row {
 pub mod value {
     use std::str::FromStr;
 
-    use base64::Engine;
     use base64::prelude::BASE64_STANDARD;
+    use base64::Engine;
     use bigdecimal::BigDecimal;
-    use time::{Date, OffsetDateTime, Time};
     use time::error::ComponentRange;
     use time::macros::format_description;
+    use time::{Date, OffsetDateTime, Time};
 
-    use crate::http::tabledata::list::{Cell, Tuple, Value};
+    use crate::http::tabledata::list::{Tuple, Value};
 
     #[derive(thiserror::Error, Debug)]
     pub enum Error {
@@ -209,7 +203,7 @@ pub mod value {
             let sec = f.trunc();
             // Timestamps in BigQuery have microsecond precision, so we must
             // return a round number of microseconds.
-            let micro = ((f - sec.clone()) * 1000000.0 + 0.5).trunc();
+            let micro = ((f - sec) * 1000000.0 + 0.5).trunc();
             Ok(OffsetDateTime::from_unix_timestamp_nanos(
                 sec as i128 * 1_000_000_000 + micro as i128 * 1000,
             )?)

@@ -79,8 +79,8 @@ mod test {
 
     use crate::http::bigquery_client::test::create_client;
     use crate::http::bigquery_routine_client::BigqueryRoutineClient;
-    use crate::http::routine::{Argument, ArgumentKind, Language, Routine, RoutineReference, RoutineType};
     use crate::http::routine::list::ListRoutinesRequest;
+    use crate::http::routine::{Argument, ArgumentKind, Language, Routine, RoutineReference, RoutineType};
     use crate::http::types::{StandardSqlDataType, TypeKind};
 
     #[tokio::test]

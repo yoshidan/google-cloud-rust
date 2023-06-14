@@ -1,5 +1,5 @@
-use reqwest::{Client, RequestBuilder};
 use reqwest::header::CONTENT_LENGTH;
+use reqwest::{Client, RequestBuilder};
 
 use crate::http::job::Job;
 

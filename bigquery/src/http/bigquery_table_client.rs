@@ -6,8 +6,8 @@ use crate::http::table;
 use crate::http::table::get_iam_policy::GetIamPolicyRequest;
 use crate::http::table::list::{ListTablesRequest, ListTablesResponse, TableOverview};
 use crate::http::table::set_iam_policy::SetIamPolicyRequest;
-use crate::http::table::Table;
 use crate::http::table::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
+use crate::http::table::Table;
 use crate::http::types::Policy;
 
 #[derive(Clone)]
@@ -140,14 +140,14 @@ mod test {
 
     use crate::http::bigquery_client::test::create_client;
     use crate::http::bigquery_table_client::BigqueryTableClient;
-    use crate::http::table::{
-        Clustering, CsvOptions, ExternalDataConfiguration, MaterializedViewDefinition, PartitionRange,
-        RangePartitioning, RoundingMode, SourceFormat, Table, TableFieldMode, TableFieldSchema, TableFieldType,
-        TableSchema, TimePartitioning, TimePartitionType, ViewDefinition,
-    };
     use crate::http::table::get_iam_policy::GetIamPolicyRequest;
     use crate::http::table::list::ListTablesRequest;
     use crate::http::table::set_iam_policy::SetIamPolicyRequest;
+    use crate::http::table::{
+        Clustering, CsvOptions, ExternalDataConfiguration, MaterializedViewDefinition, PartitionRange,
+        RangePartitioning, RoundingMode, SourceFormat, Table, TableFieldMode, TableFieldSchema, TableFieldType,
+        TableSchema, TimePartitionType, TimePartitioning, ViewDefinition,
+    };
     use crate::http::types::{Bindings, Policy};
 
     #[ctor::ctor]
