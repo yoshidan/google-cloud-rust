@@ -245,6 +245,7 @@ mod tests {
     use crate::storage::row::Row;
     use serial_test::serial;
     use time::{Date, OffsetDateTime, Time};
+    use time::macros::datetime;
 
     #[ctor::ctor]
     fn init() {
@@ -508,22 +509,13 @@ mod tests {
     }
 
     fn assert_data(index: usize, d: TestData) {
-        assert_eq!(d.col_string.unwrap(), format!("test_{}", index));
-        assert_eq!(
-            d.col_number.unwrap(),
-            BigDecimal::from_str("-99999999999999999999999999999.999999999").unwrap()
-        );
-        let col_number_array = &d.col_number_array;
-        assert_eq!(
-            col_number_array[0],
-            BigDecimal::from_str("578960446186580977117854925043439539266.34992332820282019728792003956564819967")
-                .unwrap()
-        );
-        assert_eq!(
-            col_number_array[1],
-            BigDecimal::from_str("-578960446186580977117854925043439539266.34992332820282019728792003956564819968")
-                .unwrap()
-        );
-        assert_eq!(d.col_binary, b"test".to_vec());
+        let now = if index == 0 {
+            datetime!(2023-06-14 01:57:43.438086 UTC)
+        }else if index == 1 {
+            datetime!(2023-06-14 01:57:43.438296 UTC)
+        }else {
+            datetime!(2023-06-14 01:57:43.438410 UTC)
+        };
+        assert_eq!(TestData::default(index, now) , d);
     }
 }

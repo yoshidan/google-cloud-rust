@@ -123,12 +123,11 @@ pub(crate) mod test {
         (client, cred.unwrap().project_id.unwrap())
     }
 
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
+    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone,PartialEq)]
     pub struct TestDataStruct {
         pub f1: bool,
         pub f2: Vec<i64>,
     }
-
 
     impl ValueStructDecodable for TestDataStruct {
         fn decode(value: Tuple) -> Result<Self, crate::query::row::Error> {
@@ -148,7 +147,7 @@ pub(crate) mod test {
         }
     }
 
-    #[derive(serde::Serialize, serde::Deserialize, Default, Clone, Debug)]
+    #[derive(serde::Serialize, serde::Deserialize, Default, Clone, Debug, PartialEq)]
     pub struct TestData {
         pub col_string: Option<String>,
         pub col_number: Option<BigDecimal>,
