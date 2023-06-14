@@ -158,7 +158,7 @@ impl Client {
         option: Option<ReadTableOption>,
     ) -> Result<storage::Iterator<T>, storage::Error>
     where
-        T: ArrowStructDecodable<T> + Default,
+        T: ArrowStructDecodable<T>,
     {
         let option = option.unwrap_or_default();
 
@@ -234,12 +234,14 @@ mod tests {
     use bigdecimal::BigDecimal;
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
+    use std::str::FromStr;
 
     use crate::grpc::apiv1;
-    use crate::grpc::apiv1::test::TestData;
+    use crate::http::bigquery_client::test::TestData;
     use crate::http::job::query::QueryRequest;
     use crate::http::table::TableReference;
     use crate::query;
+    use crate::storage::row::Row;
     use serial_test::serial;
     use time::{Date, OffsetDateTime, Time};
 
@@ -405,28 +407,71 @@ mod tests {
         let (client, project_id) = create_client().await;
         let table = TableReference {
             project_id,
-            dataset_id: "rust_test_table".to_string(),
-            table_id: "table_data_1686033753".to_string(),
+            dataset_id: "rust_test_job".to_string(),
+            table_id: "table_data_1686707863".to_string(),
         };
-        let mut iterator = client.read_table::<TestData>(&table, None).await.unwrap();
-
-        let mut data = vec![];
-        let mut interrupt = tokio::time::interval(tokio::time::Duration::from_micros(100));
+        let mut iterator_as_struct = client.read_table::<TestData>(&table, None).await.unwrap();
+        let mut iterator_as_row = client.read_table::<Row>(&table, None).await.unwrap();
+        let mut data_as_row: Vec<TestData> = vec![];
+        let mut data_as_struct: Vec<TestData> = vec![];
         loop {
             tokio::select! {
-                _ = interrupt.tick() => {
-                    tracing::info!("interrupt");
-                },
-                row = iterator.next() => {
-                    tracing::info!("read");
+                row = iterator_as_struct.next() => {
+                    tracing::info!("read struct");
                     if let Some(row) = row.unwrap() {
-                        data.push(row);
+                        data_as_struct.push(row);
+                    }else {
+                        break;
+                    }
+                },
+                row = iterator_as_row.next() => {
+                    tracing::info!("read row");
+                    if let Some(row) = row.unwrap() {
+                        data_as_row.push(TestData {
+                            col_string: row.column(0).unwrap(),
+                            col_number: row.column(1).unwrap(),
+                            col_number_array: row.column(2).unwrap(),
+                            col_timestamp: row.column(3).unwrap(),
+                            col_json: row.column(4).unwrap(),
+                            col_json_array: row.column(5).unwrap(),
+                            col_struct: row.column(6).unwrap(),
+                            col_struct_array: row.column(7).unwrap(),
+                            col_binary: row.column(8).unwrap(),
+            }           );
                     }else {
                         break;
                     }
                 }
             }
         }
-        assert_eq!(data.len(), 34);
+        assert_eq!(data_as_struct.len(), 3);
+        assert_eq!(data_as_row.len(), 3);
+
+        for (i, d) in data_as_struct.iter().enumerate() {
+            assert_data(i, d.clone());
+        }
+        for (i, d) in data_as_row.iter().enumerate() {
+            assert_data(i, d.clone());
+        }
+    }
+
+    async fn assert_data(index: usize, d: TestData) {
+        assert_eq!(d.col_string.unwrap(), format!("test_{}", index));
+        assert_eq!(
+            d.col_number.unwrap(),
+            BigDecimal::from_str("-99999999999999999999999999999.999999999").unwrap()
+        );
+        let col_number_array = &d.col_number_array;
+        assert_eq!(
+            col_number_array[0],
+            BigDecimal::from_str("578960446186580977117854925043439539266.34992332820282019728792003956564819967")
+                .unwrap()
+        );
+        assert_eq!(
+            col_number_array[1],
+            BigDecimal::from_str("-578960446186580977117854925043439539266.34992332820282019728792003956564819968")
+                .unwrap()
+        );
+        assert_eq!(d.col_binary, b"test".to_vec());
     }
 }

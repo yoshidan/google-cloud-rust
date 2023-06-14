@@ -101,6 +101,7 @@ pub(crate) mod test {
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_token::TokenSourceProvider;
+    use std::str::FromStr;
     use time::OffsetDateTime;
 
     base64_serde_type!(Base64Standard, STANDARD);
@@ -119,7 +120,7 @@ pub(crate) mod test {
         (client, cred.unwrap().project_id.unwrap())
     }
 
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug)]
+    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
     pub struct TestDataStruct {
         pub f1: bool,
         pub f2: Vec<i64>,
@@ -133,7 +134,7 @@ pub(crate) mod test {
         }
     }
 
-    #[derive(serde::Serialize, serde::Deserialize, Default)]
+    #[derive(serde::Serialize, serde::Deserialize, Default, Clone, Debug)]
     pub struct TestData {
         pub col_string: Option<String>,
         pub col_number: Option<BigDecimal>,
@@ -146,6 +147,68 @@ pub(crate) mod test {
         pub col_struct_array: Vec<TestDataStruct>,
         #[serde(default, with = "Base64Standard")]
         pub col_binary: Vec<u8>,
+    }
+
+    impl ArrowStructDecodable<TestData> for TestData {
+        fn decode(col: &[ArrayRef], row_no: usize) -> Result<TestData, Error> {
+            let col_string = Option::<String>::decode(&col[0], row_no)?;
+            let col_number = Option::<BigDecimal>::decode(&col[1], row_no)?;
+            let col_number_array = Vec::<BigDecimal>::decode(&col[2], row_no)?;
+            let col_timestamp = Option::<OffsetDateTime>::decode(&col[3], row_no)?;
+            let col_json = Option::<String>::decode(&col[4], row_no)?;
+            let col_json_array = Vec::<String>::decode(&col[5], row_no)?;
+            let col_struct = Option::<TestDataStruct>::decode(&col[6], row_no)?;
+            let col_struct_array = Vec::<TestDataStruct>::decode(&col[7], row_no)?;
+            let col_binary = Vec::<u8>::decode(&col[8], row_no)?;
+            Ok(TestData {
+                col_string,
+                col_number,
+                col_number_array,
+                col_timestamp,
+                col_json,
+                col_json_array,
+                col_struct,
+                col_struct_array,
+                col_binary,
+            })
+        }
+    }
+
+    impl TestData {
+        pub fn default(index: usize, now: OffsetDateTime) -> TestData {
+            TestData {
+                col_string: Some(format!("test_{}", index)),
+                col_number: Some(BigDecimal::from_str("-99999999999999999999999999999.999999999").unwrap()),
+                col_number_array: vec![
+                    BigDecimal::from_str(
+                        "578960446186580977117854925043439539266.34992332820282019728792003956564819967",
+                    )
+                    .unwrap(),
+                    BigDecimal::from_str(
+                        "-578960446186580977117854925043439539266.34992332820282019728792003956564819968",
+                    )
+                    .unwrap(),
+                ],
+                col_timestamp: Some(now),
+                col_json: Some("{\"field\":100}".to_string()),
+                col_json_array: vec!["{\"field\":100}".to_string(), "{\"field\":200}".to_string()],
+                col_struct: Some(TestDataStruct {
+                    f1: true,
+                    f2: vec![index as i64, 3, 4],
+                }),
+                col_struct_array: vec![
+                    TestDataStruct {
+                        f1: true,
+                        f2: vec![index as i64, 5, 6],
+                    },
+                    TestDataStruct {
+                        f1: false,
+                        f2: vec![index as i64, 30, 40],
+                    },
+                ],
+                col_binary: b"test".to_vec(),
+            }
+        }
     }
 
     pub fn create_table_schema() -> TableSchema {

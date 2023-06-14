@@ -1,9 +1,9 @@
 use crate::arrow::ArrowStructDecodable;
 use crate::grpc::apiv1::bigquery_client::StreamingReadClient;
-use crate::http::error::Error as HttpError;
 use crate::http::tabledata::list::Tuple;
 use arrow::ipc::reader::StreamReader;
 
+use arrow::array::ArrayRef;
 use arrow::error::ArrowError;
 use google_cloud_gax::grpc::{Status, Streaming};
 use google_cloud_gax::retry::RetrySetting;
@@ -13,7 +13,6 @@ use google_cloud_googleapis::cloud::bigquery::storage::v1::{
 };
 use std::collections::VecDeque;
 use std::io::{BufReader, Cursor};
-use arrow::array::ArrayRef;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -33,7 +32,7 @@ pub enum Error {
 
 pub struct Iterator<T>
 where
-    T: ArrowStructDecodable<T> + Default,
+    T: ArrowStructDecodable<T>,
 {
     client: StreamingReadClient,
     session: ReadSession,
@@ -47,7 +46,7 @@ where
 
 impl<T> Iterator<T>
 where
-    T: ArrowStructDecodable<T> + Default,
+    T: ArrowStructDecodable<T>,
 {
     pub async fn new(
         mut client: StreamingReadClient,
@@ -118,7 +117,7 @@ where
 
 fn rows_to_chunk<T>(schema: ArrowSchema, rows: Rows) -> Result<VecDeque<T>, Error>
 where
-    T: ArrowStructDecodable<T> + Default,
+    T: ArrowStructDecodable<T>,
 {
     match rows {
         Rows::ArrowRecordBatch(rows) => {
@@ -140,15 +139,15 @@ where
 }
 
 pub mod row {
-    use arrow::array::{Array, ArrayRef};
     use crate::arrow::{ArrowDecodable, ArrowStructDecodable};
+    use arrow::array::{Array, ArrayRef};
 
     #[derive(thiserror::Error, Debug)]
     pub enum Error {
         #[error("UnexpectedColumnIndex: {0}")]
         UnexpectedColumnIndex(usize),
         #[error(transparent)]
-        ArrowError(#[from] crate::arrow::Error)
+        ArrowError(#[from] crate::arrow::Error),
     }
 
     pub struct Row {
@@ -160,13 +159,13 @@ pub mod row {
         fn decode(fields: &[ArrayRef], row_no: usize) -> Result<Row, crate::arrow::Error> {
             Ok(Self {
                 fields: fields.to_vec(),
-                row_no
+                row_no,
             })
         }
     }
 
     impl Row {
-        pub fn column<T: ArrowDecodable<T>>(&self, index: usize) -> Result<T, Error>{
+        pub fn column<T: ArrowDecodable<T>>(&self, index: usize) -> Result<T, Error> {
             let column = self.fields.get(index).ok_or(Error::UnexpectedColumnIndex(index))?;
             Ok(T::decode(column, self.row_no)?)
         }

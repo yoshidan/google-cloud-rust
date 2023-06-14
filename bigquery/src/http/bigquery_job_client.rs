@@ -102,10 +102,8 @@ mod test {
     use crate::http::model::ModelType;
     use crate::http::table::{DestinationFormat, SourceFormat, Table, TableReference};
     use crate::http::tabledata::insert_all::{InsertAllRequest, Row};
-    use bigdecimal::BigDecimal;
     use core::default::Default;
     use serial_test::serial;
-    use std::str::FromStr;
     use std::sync::Arc;
     use time::OffsetDateTime;
 
@@ -285,32 +283,7 @@ mod test {
         for i in 0..3 {
             req.rows.push(Row {
                 insert_id: None,
-                json: TestData {
-                    col_string: Some(format!("test{}", i)),
-                    col_number: Some(BigDecimal::from_str("-99999999999999999999999999999.999999999").unwrap()),
-                    col_number_array: vec![
-                        BigDecimal::from_str(
-                            "578960446186580977117854925043439539266.34992332820282019728792003956564819967",
-                        )
-                        .unwrap(),
-                        BigDecimal::from_str(
-                            "-578960446186580977117854925043439539266.34992332820282019728792003956564819968",
-                        )
-                        .unwrap(),
-                    ],
-                    col_timestamp: Some(OffsetDateTime::now_utc()),
-                    col_json: Some("{\"field\":100}".to_string()),
-                    col_json_array: vec!["{\"field\":100}".to_string(), "{\"field\":200}".to_string()],
-                    col_struct: Some(TestDataStruct {
-                        f1: true,
-                        f2: vec![3, 4],
-                    }),
-                    col_struct_array: vec![TestDataStruct {
-                        f1: true,
-                        f2: vec![3, 4],
-                    }],
-                    col_binary: b"test".to_vec(),
-                },
+                json: TestData::default(i, OffsetDateTime::now_utc()),
             });
         }
         let res = tabledata_client

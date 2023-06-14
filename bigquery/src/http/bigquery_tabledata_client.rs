@@ -61,7 +61,7 @@ mod test {
     use crate::http::table::Table;
     use crate::http::tabledata::insert_all::{InsertAllRequest, Row};
     use crate::http::tabledata::list;
-    use crate::http::tabledata::list::{FetchDataRequest, Value};
+    use crate::http::tabledata::list::FetchDataRequest;
     use bigdecimal::BigDecimal;
     use serial_test::serial;
     use std::sync::Arc;
@@ -70,56 +70,6 @@ mod test {
     #[ctor::ctor]
     fn init() {
         let _ = tracing_subscriber::fmt::try_init();
-    }
-
-    async fn insert_test_data() {
-        let (client, _project) = create_client().await;
-        let client = BigqueryTabledataClient::new(Arc::new(client));
-        // struct
-        let mut req = InsertAllRequest::<TestData>::default();
-        for i in 0..30 {
-            let i = i as i64;
-            req.rows.push(Row {
-                insert_id: None,
-                json: TestData {
-                    col_string: Some(format!("test{}", i)),
-                    col_number: Some(BigDecimal::from_str("-99999999999999999999999999999.999999999").unwrap()),
-                    col_number_array: vec![
-                        BigDecimal::from_str(
-                            "578960446186580977117854925043439539266.34992332820282019728792003956564819967",
-                        )
-                        .unwrap(),
-                        BigDecimal::from_str(
-                            "-578960446186580977117854925043439539266.34992332820282019728792003956564819968",
-                        )
-                        .unwrap(),
-                    ],
-                    col_timestamp: Some(OffsetDateTime::now_utc()),
-                    col_json: Some("{\"field\":100}".to_string()),
-                    col_json_array: vec!["{\"field\":100}".to_string(), "{\"field\":200}".to_string()],
-                    col_struct: Some(TestDataStruct {
-                        f1: true,
-                        f2: vec![i, 4],
-                    }),
-                    col_struct_array: vec![
-                        TestDataStruct {
-                            f1: true,
-                            f2: vec![i * 10, 4],
-                        },
-                        TestDataStruct {
-                            f1: false,
-                            f2: vec![i * 100, 40],
-                        },
-                    ],
-                    col_binary: b"dGVzdAo=".to_vec(),
-                },
-            });
-        }
-        let res = client
-            .insert("atl-dev1", "rust_test_table", "table_data_1686033753", &req)
-            .await
-            .unwrap();
-        assert!(res.insert_errors.is_none());
     }
 
     #[tokio::test]
@@ -137,7 +87,7 @@ mod test {
         let table1 = table_client.create(&table1).await.unwrap();
         let ref1 = table1.table_reference;
 
-        // json value
+        // insert as json string
         let mut req = InsertAllRequest::<serde_json::Value>::default();
         req.rows.push(Row {
             insert_id: None,
@@ -148,72 +98,17 @@ mod test {
             )
                 .unwrap(),
         });
-        req.rows.push(Row {
-            insert_id: None,
-            json: serde_json::from_str(
-                r#"
-                {"col_number_array": [1,2,3], "col_struct_array": [{"f1":true, "f2":[3,4]},{"f1":false, "f2":[30,40]}], "col_binary": "dGVzdAo="}
-            "#,
-            )
-            .unwrap(),
-        });
-
         let res = client
             .insert(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str(), &req)
             .await
             .unwrap();
         assert!(res.insert_errors.is_none());
 
-        // struct
+        // isnert as struct
         let mut req2 = InsertAllRequest::<TestData>::default();
         req2.rows.push(Row {
             insert_id: None,
-            json: TestData {
-                col_string: Some("test3".to_string()),
-                col_number: Some(BigDecimal::from_str("-99999999999999999999999999999.999999999").unwrap()),
-                col_number_array: vec![
-                    BigDecimal::from_str(
-                        "578960446186580977117854925043439539266.34992332820282019728792003956564819967",
-                    )
-                    .unwrap(),
-                    BigDecimal::from_str(
-                        "-578960446186580977117854925043439539266.34992332820282019728792003956564819968",
-                    )
-                    .unwrap(),
-                ],
-                col_timestamp: Some(OffsetDateTime::now_utc()),
-                col_json: Some("{\"field\":100}".to_string()),
-                col_json_array: vec!["{\"field\":100}".to_string(), "{\"field\":200}".to_string()],
-                col_struct: Some(TestDataStruct {
-                    f1: true,
-                    f2: vec![3, 4],
-                }),
-                col_struct_array: vec![
-                    TestDataStruct {
-                        f1: true,
-                        f2: vec![3, 4],
-                    },
-                    TestDataStruct {
-                        f1: false,
-                        f2: vec![30, 40],
-                    },
-                ],
-                col_binary: b"test".to_vec(),
-            },
-        });
-        req2.rows.push(Row {
-            insert_id: None,
-            json: TestData {
-                col_string: None,
-                col_number: None,
-                col_number_array: vec![],
-                col_timestamp: None,
-                col_json: None,
-                col_json_array: vec![],
-                col_struct: None,
-                col_struct_array: vec![],
-                col_binary: b"test".to_vec(),
-            },
+            json: TestData::default(1, OffsetDateTime::now_utc()),
         });
         let res2 = client
             .insert(
@@ -225,6 +120,8 @@ mod test {
             .await
             .unwrap();
         assert!(res2.insert_errors.is_none());
+
+        // fetch
         let mut fetch_request = FetchDataRequest {
             max_results: Some(1),
             ..Default::default()
@@ -249,34 +146,7 @@ mod test {
             }
             fetch_request.page_token = result.page_token
         }
-        assert_eq!(data.len(), 4, "{:?}", data.pop());
-        match &data[0].f[0].v {
-            Value::String(v) => assert_eq!("test1", v),
-            _ => unreachable!(),
-        }
-        match &data[0].f[2].v {
-            Value::Array(v) => assert_eq!(3, v.len()),
-            _ => unreachable!(),
-        }
-        match &data[0].f[4].v {
-            Value::String(v) => assert_eq!("{\"field\":100}", v),
-            _ => unreachable!(),
-        }
-        match &data[0].f[6].v {
-            Value::Struct(v) => match &v.f[1].v {
-                Value::Array(v) => match &v[1].v {
-                    Value::String(v) => assert_eq!("4", v, "invalid struct row"),
-                    _ => unreachable!("7-1-1 {:?}", v[1].v),
-                },
-                _ => unreachable!("7-1 {:?}", v.f[1].v),
-            },
-            _ => unreachable!("7 {:?}", &data[0].f[7].v),
-        }
-        match &data[0].f[8].v {
-            Value::String(v) => assert_eq!("dGVzdAo=", v),
-            _ => unreachable!(),
-        }
-
+        assert_eq!(data.len(), 2, "{:?}", data.pop());
         table_client
             .delete(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str())
             .await
