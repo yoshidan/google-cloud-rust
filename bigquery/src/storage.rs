@@ -13,6 +13,7 @@ use google_cloud_googleapis::cloud::bigquery::storage::v1::{
 };
 use std::collections::VecDeque;
 use std::io::{BufReader, Cursor};
+use arrow::array::ArrayRef;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -135,5 +136,39 @@ where
             Ok(chunk)
         }
         _ => Err(Error::InvalidDateFormat),
+    }
+}
+
+pub mod row {
+    use arrow::array::{Array, ArrayRef};
+    use crate::arrow::{ArrowDecodable, ArrowStructDecodable};
+
+    #[derive(thiserror::Error, Debug)]
+    pub enum Error {
+        #[error("UnexpectedColumnIndex: {0}")]
+        UnexpectedColumnIndex(usize),
+        #[error(transparent)]
+        ArrowError(#[from] crate::arrow::Error)
+    }
+
+    pub struct Row {
+        fields: Vec<ArrayRef>,
+        row_no: usize,
+    }
+
+    impl ArrowStructDecodable<Row> for Row {
+        fn decode(fields: &[ArrayRef], row_no: usize) -> Result<Row, crate::arrow::Error> {
+            Ok(Self {
+                fields: fields.to_vec(),
+                row_no
+            })
+        }
+    }
+
+    impl Row {
+        pub fn column<T: ArrowDecodable<T>>(&self, index: usize) -> Result<T, Error>{
+            let column = self.fields.get(index).ok_or(Error::UnexpectedColumnIndex(index))?;
+            Ok(T::decode(column, self.row_no)?)
+        }
     }
 }

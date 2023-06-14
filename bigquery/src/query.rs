@@ -56,8 +56,8 @@ pub mod row {
 
     #[derive(thiserror::Error, Debug)]
     pub enum Error {
-        #[error("no data found")]
-        NoDataFound,
+        #[error("no data found: {0}")]
+        UnexpectedColumnIndex(usize),
         #[error("invalid type")]
         InvalidType,
         #[error("unexpected null value")]
@@ -80,7 +80,7 @@ pub mod row {
 
     impl Row {
         pub fn column<'a, T: ValueDecodable<'a>>(&'a self, index: usize) -> Result<T, Error> {
-            let cell: &Cell = self.inner.get(index).ok_or(Error::NoDataFound)?;
+            let cell: &Cell = self.inner.get(index).ok_or(Error::UnexpectedColumnIndex(index))?;
             T::decode(&cell.v)
         }
     }
