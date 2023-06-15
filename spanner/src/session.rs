@@ -187,10 +187,10 @@ impl Sessions {
         match result {
             Ok(mut new_sessions) => {
                 while let Some(session) = new_sessions.pop() {
-		    self.available_sessions.push_back(session);
+                    self.available_sessions.push_back(session);
                     if let Some(waiter) = self.take_waiter() {
-			let _ = waiter.send(());
-		    }
+                        let _ = waiter.send(());
+                    }
                 }
             }
             Err(e) => tracing::error!("failed to create new sessions {:?}", e),
@@ -256,55 +256,56 @@ impl SessionPool {
     /// The client on the waiting list will be notified when another client's session has finished and
     /// when the process of replenishing the available sessions is complete.
     async fn acquire(&self) -> Result<ManagedSession, SessionError> {
-	loop {
+        loop {
             let (on_session_acquired, session_count) = {
-		let mut sessions = self.inner.write();
+                let mut sessions = self.inner.write();
 
-		// Prioritize waiters over new acquirers.
-		if sessions.waiters.is_empty() {
+                // Prioritize waiters over new acquirers.
+                if sessions.waiters.is_empty() {
                     if let Some(mut s) = sessions.take() {
-			s.last_used_at = Instant::now();
-			return Ok(ManagedSession::new(self.clone(), s));
+                        s.last_used_at = Instant::now();
+                        return Ok(ManagedSession::new(self.clone(), s));
                     }
-		}
-		// Add the participant to the waiting list.
-		let (sender, receiver) = oneshot::channel();
-		sessions.waiters.push_back(sender);
-		let session_count = sessions.reserve(self.config.max_opened, self.config.inc_step);
-		(receiver, session_count)
+                }
+                // Add the participant to the waiting list.
+                let (sender, receiver) = oneshot::channel();
+                sessions.waiters.push_back(sender);
+                let session_count = sessions.reserve(self.config.max_opened, self.config.inc_step);
+                (receiver, session_count)
             };
 
             if session_count > 0 {
-		let _ = self.session_creation_sender.send(session_count);
+                let _ = self.session_creation_sender.send(session_count);
             }
 
             // Wait for the session available notification.
             match timeout(self.config.session_get_timeout, on_session_acquired).await {
-		Ok(Ok(())) => {
-		    let mut sessions = self.inner.write();
-		    if let Some(mut s) = sessions.take() {
-			s.last_used_at = Instant::now();
-			return Ok(ManagedSession::new(self.clone(), s));
+                Ok(Ok(())) => {
+                    let mut sessions = self.inner.write();
+                    if let Some(mut s) = sessions.take() {
+                        s.last_used_at = Instant::now();
+                        return Ok(ManagedSession::new(self.clone(), s));
                     } else {
-			continue; // another waiter raced for session
-		    }
-		}
-		_ => {
-		    {
-			let sessions = self.inner.write();
-			tracing::info!(
-			    available = sessions.available_sessions.len(),
-			    waiters = sessions.waiters.len(),
-			    orphans = sessions.orphans.len(),
-			    num_inuse = sessions.num_inuse,
-			    num_creating = sessions.num_creating,
-			    max_opened = self.config.max_opened,
-			    "Timeout acquiring session");
-		    }
-		    return Err(SessionError::SessionGetTimeout);
-		},
+                        continue; // another waiter raced for session
+                    }
+                }
+                _ => {
+                    {
+                        let sessions = self.inner.write();
+                        tracing::info!(
+                            available = sessions.available_sessions.len(),
+                            waiters = sessions.waiters.len(),
+                            orphans = sessions.orphans.len(),
+                            num_inuse = sessions.num_inuse,
+                            num_creating = sessions.num_creating,
+                            max_opened = self.config.max_opened,
+                            "Timeout acquiring session"
+                        );
+                    }
+                    return Err(SessionError::SessionGetTimeout);
+                }
             }
-	}
+        }
     }
 
     /// If the session is valid
@@ -315,18 +316,18 @@ impl SessionPool {
     fn recycle(&self, mut session: SessionHandle) {
         if session.valid {
             let mut sessions = self.inner.write();
-	    let waiter = sessions.take_waiter();
-	    if sessions.num_opened() > self.config.max_idle
+            let waiter = sessions.take_waiter();
+            if sessions.num_opened() > self.config.max_idle
                 && session.created_at + self.config.idle_timeout < Instant::now()
-		&& waiter.is_none()
+                && waiter.is_none()
             {
                 // Not reuse expired idle session
                 session.valid = false
             }
-	    sessions.release(session);
+            sessions.release(session);
             if let Some(waiter) = waiter {
-		let _ = waiter.send(());
-	    }
+                let _ = waiter.send(());
+            }
         } else {
             let session_count = {
                 let mut sessions = self.inner.write();
