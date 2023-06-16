@@ -172,7 +172,7 @@ impl WithAuthExt for google_cloud_storage::client::ClientConfig {
 }
 
 #[cfg(feature = "bigquery")]
-mod bigquery {
+pub mod bigquery {
     use async_trait::async_trait;
     use google_cloud_auth::credentials::CredentialsFile;
     use google_cloud_auth::error::Error;
