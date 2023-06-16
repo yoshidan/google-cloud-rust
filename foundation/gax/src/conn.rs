@@ -3,6 +3,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 use http::header::AUTHORIZATION;
 use http::{HeaderValue, Request};
@@ -86,23 +87,44 @@ where
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct ConnectionOptions {
+    pub timeout: Option<Duration>,
+    pub connect_timeout: Option<Duration>,
+}
+
+impl ConnectionOptions {
+    fn apply(&self, mut endpoint: Endpoint) -> Endpoint {
+        endpoint = match self.timeout {
+            Some(t) => endpoint.timeout(t),
+            None => endpoint,
+        };
+        endpoint = match self.connect_timeout {
+            Some(t) => endpoint.connect_timeout(t),
+            None => endpoint,
+        };
+        endpoint
+    }
+}
+
 #[derive(Debug)]
 pub struct ConnectionManager {
     inner: AtomicRing<Channel>,
 }
 
-impl ConnectionManager {
+impl<'a> ConnectionManager {
     pub async fn new(
         pool_size: usize,
         domain_name: impl Into<String>,
         audience: &'static str,
         environment: &Environment,
+	conn_options: &'a ConnectionOptions,
     ) -> Result<Self, Error> {
         let conns = match environment {
             Environment::GoogleCloud(ts_provider) => {
-                Self::create_connections(pool_size, domain_name, audience, ts_provider.as_ref()).await?
+                Self::create_connections(pool_size, domain_name, audience, ts_provider.as_ref(), conn_options).await?
             }
-            Environment::Emulator(host) => Self::create_emulator_connections(host).await?,
+            Environment::Emulator(host) => Self::create_emulator_connections(host, conn_options).await?,
         };
         Ok(Self {
             inner: AtomicRing {
@@ -117,6 +139,7 @@ impl ConnectionManager {
         domain_name: impl Into<String>,
         audience: &'static str,
         ts_provider: &dyn TokenSourceProvider,
+        conn_options: &'a ConnectionOptions,
     ) -> Result<Vec<Channel>, Error> {
         let tls_config = ClientTlsConfig::new().domain_name(domain_name);
         let mut conns = Vec::with_capacity(pool_size);
@@ -125,6 +148,8 @@ impl ConnectionManager {
 
         for _i_ in 0..pool_size {
             let endpoint = TonicChannel::from_static(audience).tls_config(tls_config.clone())?;
+            let endpoint = conn_options.apply(endpoint);
+
             let con = Self::connect(endpoint).await?;
             // use GCP token per call
             let auth_layer = Some(AsyncFilterLayer::new(AsyncAuthInterceptor::new(Arc::clone(&ts))));
@@ -134,10 +159,15 @@ impl ConnectionManager {
         Ok(conns)
     }
 
-    async fn create_emulator_connections(host: &str) -> Result<Vec<Channel>, Error> {
+    async fn create_emulator_connections(
+        host: &str,
+        conn_options: &'a ConnectionOptions,
+    ) -> Result<Vec<Channel>, Error> {
         let mut conns = Vec::with_capacity(1);
         let endpoint = TonicChannel::from_shared(format!("http://{host}").into_bytes())
             .map_err(|_| Error::InvalidEmulatorHOST(host.to_string()))?;
+        let endpoint = conn_options.apply(endpoint);
+
         let con = Self::connect(endpoint).await?;
         conns.push(
             ServiceBuilder::new()

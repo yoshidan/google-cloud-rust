@@ -567,7 +567,7 @@ mod tests {
     use tokio_util::sync::CancellationToken;
     use uuid::Uuid;
 
-    use google_cloud_gax::conn::Environment;
+    use google_cloud_gax::conn::{ConnectionOptions, Environment};
     use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage};
 
     use crate::apiv1::conn_pool::ConnectionManager;
@@ -585,7 +585,7 @@ mod tests {
     }
 
     async fn create_subscription(enable_exactly_once_delivery: bool) -> Subscription {
-        let cm = ConnectionManager::new(4, "", &Environment::Emulator(EMULATOR.to_string()))
+        let cm = ConnectionManager::new(4, "", &Environment::Emulator(EMULATOR.to_string()), &ConnectionOptions::default())
             .await
             .unwrap();
         let client = SubscriberClient::new(cm);
@@ -606,7 +606,7 @@ mod tests {
 
     async fn publish() {
         let pubc = PublisherClient::new(
-            ConnectionManager::new(4, "", &Environment::Emulator(EMULATOR.to_string()))
+            ConnectionManager::new(4, "", &Environment::Emulator(EMULATOR.to_string()), &ConnectionOptions::default())
                 .await
                 .unwrap(),
         );

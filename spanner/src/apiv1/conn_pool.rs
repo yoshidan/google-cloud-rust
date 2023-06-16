@@ -1,4 +1,4 @@
-use google_cloud_gax::conn::{ConnectionManager as GRPCConnectionManager, Environment, Error};
+use google_cloud_gax::conn::{ConnectionManager as GRPCConnectionManager, ConnectionOptions, Environment, Error};
 use google_cloud_googleapis::spanner::v1::spanner_client::SpannerClient;
 
 use crate::apiv1::spanner_client::Client;
@@ -15,9 +15,14 @@ pub struct ConnectionManager {
 }
 
 impl ConnectionManager {
-    pub async fn new(pool_size: usize, environment: &Environment, domain: &str) -> Result<Self, Error> {
+    pub async fn new(
+        pool_size: usize,
+        environment: &Environment,
+        domain: &str,
+        conn_options: &ConnectionOptions,
+    ) -> Result<Self, Error> {
         Ok(ConnectionManager {
-            inner: GRPCConnectionManager::new(pool_size, domain, AUDIENCE, environment).await?,
+            inner: GRPCConnectionManager::new(pool_size, domain, AUDIENCE, environment, conn_options).await?,
         })
     }
 
