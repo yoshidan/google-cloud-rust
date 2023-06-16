@@ -186,7 +186,7 @@ pub mod bigquery {
         where
             Self: Sized;
 
-        async fn create_with_credentials(self, credentials: CredentialsFile) -> Result<(Self, Option<String>), Error>
+        async fn create_with_credentials(credentials: CredentialsFile) -> Result<(Self, Option<String>), Error>
         where
             Self: Sized;
     }
@@ -200,10 +200,7 @@ pub mod bigquery {
             let config = Self::new(Box::new(ts_http), Box::new(ts_grpc));
             Ok((config, project_id))
         }
-        async fn create_with_credentials(
-            mut self,
-            credentials: CredentialsFile,
-        ) -> Result<(Self, Option<String>), Error>
+        async fn create_with_credentials(credentials: CredentialsFile) -> Result<(Self, Option<String>), Error>
         where
             Self: Sized,
         {
