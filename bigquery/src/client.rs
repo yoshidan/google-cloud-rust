@@ -104,34 +104,65 @@ impl Client {
         })
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/datasets
+    /// [BigqueryDatasetClient](crate::http::bigquery_dataset_client::BigqueryDatasetClient)
     pub fn dataset(&self) -> &BigqueryDatasetClient {
         &self.dataset_client
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/tables
+    /// [BigqueryTableClient](crate::http::bigquery_table_client::BigqueryTableClient)
     pub fn table(&self) -> &BigqueryTableClient {
         &self.table_client
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/tabledata
+    /// [BigqueryTabledataClient](crate::http::bigquery_tabledata_client::BigqueryTabledataClient)
     pub fn tabledata(&self) -> &BigqueryTabledataClient {
         &self.tabledata_client
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs
+    /// [BigqueryJobClient](crate::http::bigquery_job_client::BigqueryJobClient)
     pub fn job(&self) -> &BigqueryJobClient {
         &self.job_client
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/routines
+    /// [BigqueryRoutineClient](crate::http::bigquery_routine_client::BigqueryRoutineClient)
     pub fn routine(&self) -> &BigqueryRoutineClient {
         &self.routine_client
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/rowAccessPolicy
+    /// [BigqueryRowAccessPolicyClient](crate::http::bigquery_row_access_policy_client::BigqueryRowAccessPolicyClient)
     pub fn row_access_policy(&self) -> &BigqueryRowAccessPolicyClient {
         &self.row_access_policy_client
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/models
+    /// [BigqueryModelClient](crate::http::bigquery_model_client::BigqueryModelClient)
     pub fn model(&self) -> &BigqueryModelClient {
         &self.model_client
     }
 
+    /// Run query job and get result.
+    /// ```rust
+    /// use google_cloud_bigquery::http::job::query::QueryRequest;
+    /// use google_cloud_bigquery::query::row::Row;
+    /// use google_cloud_bigquery::client::Client;
+    ///
+    /// async fn run(client: &Client, project_id: &str) {
+    ///     let request = QueryRequest {
+    ///         query: "SELECT * FROM dataset.table".to_string(),
+    ///         ..Default::default()
+    ///     };
+    ///     let mut iter = client.query(project_id, request).await.unwrap();
+    ///     while let Some(row) = iter.next::<Row>().await.unwrap() {
+    ///         let col1 = row.column::<String>(0);
+    ///         let col2 = row.column::<Option<String>>(1);
+    ///     }
+    /// }
     pub async fn query(&self, project_id: &str, request: QueryRequest) -> Result<query::Iterator, Error> {
         let result = self.job_client.query(project_id, &request).await?;
         Ok(query::Iterator {
@@ -152,6 +183,25 @@ impl Client {
         })
     }
 
+    /// Read table data by BigQuery Storage Read API.
+    /// ```rust
+    /// use google_cloud_bigquery::storage::row::Row;
+    /// use google_cloud_bigquery::client::Client;
+    /// use google_cloud_bigquery::http::table::TableReference;
+    ///
+    /// async fn run(client: &Client, project_id: &str) {
+    ///     let table = TableReference {
+    ///         project_id: project_id.to_string(),
+    ///         dataset_id: "dataset".to_string(),
+    ///         table_id: "table".to_string(),
+    ///     };
+    ///     let mut iter = client.read_table::<Row>(&table, None).await.unwrap();
+    ///     while let Some(row) = iter.next().await.unwrap() {
+    ///         let col1 = row.column::<String>(0);
+    ///         let col2 = row.column::<Option<String>>(1);
+    ///     }
+    /// }
+    /// ```
     pub async fn read_table<T>(
         &self,
         table: &TableReference,
