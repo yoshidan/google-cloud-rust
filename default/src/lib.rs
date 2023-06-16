@@ -186,7 +186,7 @@ mod bigquery {
         where
             Self: Sized;
 
-        async fn create_with_credentials(self, credentials: CredentialsFile) -> Result<Self, Error>
+        async fn create_with_credentials(self, credentials: CredentialsFile) -> Result<(Self, Option<String>), Error>
         where
             Self: Sized;
     }
