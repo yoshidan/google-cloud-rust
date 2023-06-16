@@ -131,7 +131,7 @@ async fn run(client: &Client, project_id: &str, data: TestData) {
 }
 ```
 
-### Insert from GCS
+### Loading CSV data from GCS
 ```rust
 use google_cloud_bigquery::client::Client;
 use google_cloud_bigquery::http::bigquery_job_client::BigqueryJobClient;
@@ -173,9 +173,11 @@ async fn run(client: &Client, project_id: &str, data_path: &str) {
     },
     ..Default::default()
   };
-  let created = client.job().create(&job1).await.unwrap();
   
-  // check status
+  // Run job
+  let created = client.job().create(&job).await.unwrap();
+  
+  // Check status
   assert!(created.status.errors.is_none());
   assert!(created.status.error_result.is_none());
   assert!(created.status.state == JobState::Running || created.status.state == JobState::Done);
