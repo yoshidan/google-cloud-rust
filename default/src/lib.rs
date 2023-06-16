@@ -237,8 +237,8 @@ mod bigquery {
     #[cfg(feature = "bigquery")]
     fn bigquery_grpc_auth_config() -> Config<'static> {
         Config {
-            audience: Some(google_cloud_bigquery::apiv1::conn_pool::AUDIENCE),
-            scopes: Some(&google_cloud_bigquery::apiv1::conn_pool::SCOPES),
+            audience: Some(google_cloud_bigquery::grpc::apiv1::conn_pool::AUDIENCE),
+            scopes: Some(&google_cloud_bigquery::grpc::apiv1::conn_pool::SCOPES),
             sub: None,
         }
     }
