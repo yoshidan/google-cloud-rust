@@ -6,7 +6,7 @@ use crate::http::routine;
 use crate::http::routine::list::{ListRoutinesRequest, ListRoutinesResponse, RoutineOverview};
 use crate::http::routine::Routine;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct BigqueryRoutineClient {
     inner: Arc<BigqueryClient>,
 }

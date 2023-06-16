@@ -48,8 +48,6 @@ impl Iterator {
 
 pub mod row {
 
-    use base64::Engine;
-
     use crate::http::tabledata::list::{Cell, Tuple};
     use crate::query::value::StructDecodable;
 

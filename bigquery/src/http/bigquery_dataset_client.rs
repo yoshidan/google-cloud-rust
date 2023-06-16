@@ -6,7 +6,7 @@ use crate::http::dataset::list::{DatasetOverview, ListDatasetsRequest, ListDatas
 use crate::http::dataset::Dataset;
 use crate::http::error::Error;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct BigqueryDatasetClient {
     inner: Arc<BigqueryClient>,
 }

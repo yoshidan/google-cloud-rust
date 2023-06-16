@@ -8,7 +8,7 @@ use crate::http::tabledata;
 use crate::http::tabledata::insert_all::{InsertAllRequest, InsertAllResponse};
 use crate::http::tabledata::list::{FetchDataRequest, FetchDataResponse};
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct BigqueryTabledataClient {
     inner: Arc<BigqueryClient>,
 }

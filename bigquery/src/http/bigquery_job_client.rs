@@ -10,7 +10,7 @@ use crate::http::job::list::{JobOverview, ListJobsRequest, ListJobsResponse};
 use crate::http::job::query::{QueryRequest, QueryResponse};
 use crate::http::job::Job;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct BigqueryJobClient {
     inner: Arc<BigqueryClient>,
 }

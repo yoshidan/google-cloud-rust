@@ -67,6 +67,7 @@ impl ClientConfig {
     }
 }
 
+#[derive(Clone)]
 pub struct Client {
     dataset_client: BigqueryDatasetClient,
     table_client: BigqueryTableClient,
@@ -75,7 +76,7 @@ pub struct Client {
     routine_client: BigqueryRoutineClient,
     row_access_policy_client: BigqueryRowAccessPolicyClient,
     model_client: BigqueryModelClient,
-    streaming_read_client_conn_pool: ReadConnectionManager,
+    streaming_read_client_conn_pool: Arc<ReadConnectionManager>,
 }
 
 impl Client {
@@ -99,7 +100,7 @@ impl Client {
             routine_client: BigqueryRoutineClient::new(client.clone()),
             row_access_policy_client: BigqueryRowAccessPolicyClient::new(client.clone()),
             model_client: BigqueryModelClient::new(client.clone()),
-            streaming_read_client_conn_pool,
+            streaming_read_client_conn_pool: Arc::new(streaming_read_client_conn_pool),
         })
     }
 

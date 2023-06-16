@@ -23,7 +23,6 @@ fn default_setting() -> RetrySetting {
     }
 }
 
-#[derive(Clone)]
 pub struct StreamingReadClient {
     inner: BigQueryReadClient<Channel>,
 }

@@ -10,7 +10,7 @@ use crate::http::table::test_iam_permissions::{TestIamPermissionsRequest, TestIa
 use crate::http::table::Table;
 use crate::http::types::Policy;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct BigqueryTableClient {
     inner: Arc<BigqueryClient>,
 }

@@ -10,7 +10,7 @@ use crate::http::table::get_iam_policy::GetIamPolicyRequest;
 use crate::http::table::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
 use crate::http::types::Policy;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct BigqueryRowAccessPolicyClient {
     inner: Arc<BigqueryClient>,
 }

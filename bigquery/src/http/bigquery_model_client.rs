@@ -6,7 +6,7 @@ use crate::http::model;
 use crate::http::model::list::{ListModelsRequest, ListModelsResponse, ModelOverview};
 use crate::http::model::Model;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct BigqueryModelClient {
     inner: Arc<BigqueryClient>,
 }

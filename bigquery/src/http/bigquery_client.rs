@@ -16,7 +16,7 @@ pub const SCOPES: [&str; 7] = [
     "https://www.googleapis.com/auth/devstorage.read_write",
 ];
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct BigqueryClient {
     ts: Arc<dyn TokenSource>,
     endpoint: String,
