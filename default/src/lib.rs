@@ -13,20 +13,6 @@ use async_trait::async_trait;
 use google_cloud_auth::error::Error;
 
 #[async_trait]
-pub trait CreateAuthExt {
-    async fn create() -> Result<Self, Error>
-    where
-        Self: Sized;
-
-    async fn create_with_credentials(
-        self,
-        credentials: google_cloud_auth::credentials::CredentialsFile,
-    ) -> Result<Self, Error>
-    where
-        Self: Sized;
-}
-
-#[async_trait]
 pub trait WithAuthExt {
     async fn with_auth(mut self) -> Result<Self, Error>
     where
@@ -194,6 +180,17 @@ mod bigquery {
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_bigquery::client::ClientConfig;
+
+    #[async_trait]
+    pub trait CreateAuthExt {
+        async fn create() -> Result<(Self, Option<String>), Error>
+        where
+            Self: Sized;
+
+        async fn create_with_credentials(self, credentials: CredentialsFile) -> Result<Self, Error>
+        where
+            Self: Sized;
+    }
 
     #[async_trait]
     impl CreateAuthExt for ClientConfig {
