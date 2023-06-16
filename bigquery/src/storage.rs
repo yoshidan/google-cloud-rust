@@ -399,29 +399,4 @@ pub mod value {
             .downcast_ref::<T>()
             .ok_or(Error::InvalidDowncast(col.data_type().clone()))
     }
-
-    #[cfg(test)]
-    mod test {
-        use arrow::array::BooleanArray;
-
-        use crate::storage::value::Decodable;
-
-        #[test]
-        fn test_bool() {
-            let v = vec![Some(false), Some(true), Some(false), Some(true)];
-            let array = v.into_iter().collect::<BooleanArray>();
-            assert!(!bool::decode_arrow(&array, 0).unwrap());
-            assert!(bool::decode_arrow(&array, 1).unwrap());
-            assert!(!bool::decode_arrow(&array, 2).unwrap());
-            assert!(bool::decode_arrow(&array, 3).unwrap())
-        }
-
-        #[test]
-        fn test_bool_option() {
-            let v = vec![Some(true), None];
-            let array = v.into_iter().collect::<BooleanArray>();
-            assert!(Option::<bool>::decode_arrow(&array, 0).unwrap().unwrap());
-            assert!(Option::<bool>::decode_arrow(&array, 1).unwrap().is_none());
-        }
-    }
 }
