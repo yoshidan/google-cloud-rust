@@ -6,7 +6,7 @@ Google Cloud Platform BigQuery Client library.
 
 ## Installation
 
-```
+```toml
 [dependencies]
 google-cloud-bigquery = <version>
 google-cloud-default = { version = <version>, features = ["bigquery"] }
@@ -101,7 +101,7 @@ Default supported types to decode by `row.column::<T>()` are
 * Option (for all NULLABLE)
 * Vec (for ARRAY)
 
-### Insert Data
+### Insert 
 
 ```rust
 use google_cloud_bigquery::http::tabledata::insert_all::{InsertAllRequest, Row};
@@ -128,6 +128,57 @@ async fn run(client: &Client, project_id: &str, data: TestData) {
     };
     let result = client.tabledata().insert(project_id, "dataset", "table", request).await.unwrap();
     let error = result.insert_errors; 
+}
+```
+
+### Insert from GCS
+```rust
+use google_cloud_bigquery::client::Client;
+use google_cloud_bigquery::http::bigquery_job_client::BigqueryJobClient;
+use google_cloud_bigquery::http::job::cancel::CancelJobRequest;
+use google_cloud_bigquery::http::job::get::GetJobRequest;
+use google_cloud_bigquery::http::job::get_query_results::GetQueryResultsRequest;
+use google_cloud_bigquery::http::job::query::QueryRequest;
+use google_cloud_bigquery::http::job::{
+  Job, JobConfiguration, JobConfigurationLoad, JobState,
+  JobType, OperationType, TrainingType, WriteDisposition,
+};
+use google_cloud_bigquery::http::table::{SourceFormat, TableReference};
+
+async fn run(client: &Client, project_id: &str, data_path: &str) {
+  let job = Job { 
+    job_reference: JobReference {
+      project_id: project_id.to_string(),
+      job_id: "job_id".to_string(),
+      location: Some("asia-northeast1".to_string())
+    },
+    // CSV configuration 
+    configuration: JobConfiguration {
+      job: JobType::Load(JobConfigurationLoad {
+        source_uris: vec![format!("gs://{}.csv",data_path)],
+        source_format: Some(SourceFormat::Csv),
+        field_delimiter: Some("|".to_string()),
+        encoding: Some("UTF-8".to_string()),
+        skip_leading_rows: Some(0),
+        autodetect: Some(true),
+        write_disposition: Some(WriteDisposition::WriteTruncate),
+        destination_table: TableReference {
+          project_id: project.to_string(),
+          dataset_id: "dataset".to_string(),
+          table_id: "table".to_string(),
+        },
+        ..Default::default()
+      }),
+      ..Default::default()
+    },
+    ..Default::default()
+  };
+  let created = client.job().create(&job1).await.unwrap();
+  
+  // check status
+  assert!(created.status.errors.is_none());
+  assert!(created.status.error_result.is_none());
+  assert!(created.status.state == JobState::Running || created.status.state == JobState::Done);
 }
 ```
 
