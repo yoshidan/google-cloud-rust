@@ -81,16 +81,14 @@ where
                 return Ok(Some(row));
             }
             if let Some(rows) = self.current_stream.message().await? {
-                // Only first response contain schema information
-                let schema = match &self.schema {
-                    None => match rows.schema.ok_or(Error::NoSchemaFound)? {
-                        Schema::ArrowSchema(schema) => schema,
+                if self.schema.is_none() {
+                    match rows.schema.ok_or(Error::NoSchemaFound)? {
+                        Schema::ArrowSchema(schema) => self.schema = Some(schema),
                         _ => return Err(Error::InvalidSchemaFormat),
-                    },
-                    Some(schema) => schema.clone(),
+                    }
                 };
                 if let Some(rows) = rows.rows {
-                    self.chunk = rows_to_chunk(schema, rows)?;
+                    self.chunk = rows_to_chunk(self.schema.clone().unwrap(), rows)?;
                     return Ok(self.chunk.pop_front());
                 }
             }
