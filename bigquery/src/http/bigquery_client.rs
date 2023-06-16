@@ -124,7 +124,7 @@ pub(crate) mod test {
         .unwrap();
         let cred = tsp.source_credentials.clone();
         let ts = tsp.token_source();
-        let client = BigqueryClient::new(ts, "https://bigquery.googleapis.com", reqwest::Client::new(), true);
+        let client = BigqueryClient::new(ts, "https://bigquery.googleapis.com", reqwest::Client::new(), false);
         (client, cred.unwrap().project_id.unwrap())
     }
 

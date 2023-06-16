@@ -268,7 +268,7 @@ mod tests {
         .await
         .unwrap();
         let project_id = http_tsp.source_credentials.clone().unwrap().project_id.unwrap();
-        let client_config = ClientConfig::new(Box::new(http_tsp), Box::new(grpc_tsp)).with_debug(true);
+        let client_config = ClientConfig::new(Box::new(http_tsp), Box::new(grpc_tsp)).with_debug(false);
         (Client::new(client_config).await.unwrap(), project_id)
     }
 
@@ -471,19 +471,25 @@ mod tests {
         let mut iterator_as_row = client.read_table::<Row>(&table, None).await.unwrap();
         let mut data_as_row: Vec<TestData> = vec![];
         let mut data_as_struct: Vec<TestData> = vec![];
+        let mut finish1 = false;
+        let mut finish2 = false;
         loop {
             tokio::select! {
                 row = iterator_as_struct.next() => {
-                    tracing::info!("read struct");
                     if let Some(row) = row.unwrap() {
+                    tracing::info!("read struct some");
                         data_as_struct.push(row);
                     }else {
-                        break;
+                    tracing::info!("read struct none");
+                        finish1 = true;
+                        if finish1 && finish2 {
+                            break;
+                        }
                     }
                 },
                 row = iterator_as_row.next() => {
-                    tracing::info!("read row");
                     if let Some(row) = row.unwrap() {
+                        tracing::info!("read row some");
                         data_as_row.push(TestData {
                             col_string: row.column(0).unwrap(),
                             col_number: row.column(1).unwrap(),
@@ -496,7 +502,11 @@ mod tests {
                             col_binary: row.column(8).unwrap(),
             }           );
                     }else {
-                        break;
+                        tracing::info!("read row none");
+                        finish2 = true;
+                        if finish1 && finish2 {
+                            break;
+                        }
                     }
                 }
             }
