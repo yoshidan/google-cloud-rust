@@ -3,6 +3,7 @@ use google_cloud_metadata::on_gce;
 use crate::credentials::CredentialsFile;
 use crate::misc::EMPTY;
 use crate::token_source::authorized_user_token_source::UserAccountTokenSource;
+use crate::token_source::compute_identity_source::ComputeIdentitySource;
 use crate::token_source::compute_token_source::ComputeTokenSource;
 use crate::token_source::reuse_token_source::ReuseTokenSource;
 use crate::token_source::service_account_token_source::OAuth2ServiceAccountTokenSource;
@@ -93,11 +94,22 @@ pub async fn create_token_source_from_project(
 ) -> Result<Box<dyn TokenSource>, error::Error> {
     match project {
         Project::FromFile(file) => create_token_source_from_credentials(file, &config).await,
-        Project::FromMetadataServer(_) => {
-            let ts = ComputeTokenSource::new(&config.scopes_to_string(","))?;
-            let token = ts.token().await?;
-            Ok(Box::new(ReuseTokenSource::new(Box::new(ts), token)))
-        }
+        Project::FromMetadataServer(_) => create_token_source_from_metadata_server(&config).await,
+    }
+}
+
+/// Create a token source that use the metadata server to generate tokens.
+pub async fn create_token_source_from_metadata_server(
+    config: &Config<'_>,
+) -> Result<Box<dyn TokenSource>, error::Error> {
+    if let Some(audience) = config.audience {
+        let ts = ComputeIdentitySource::new(audience)?;
+        let token = ts.token().await?;
+        Ok(Box::new(ReuseTokenSource::new(Box::new(ts), token)))
+    } else {
+        let ts = ComputeTokenSource::new(&config.scopes_to_string(","))?;
+        let token = ts.token().await?;
+        Ok(Box::new(ReuseTokenSource::new(Box::new(ts), token)))
     }
 }
 
