@@ -115,13 +115,17 @@ mod test {
     #[tokio::test]
     #[serial]
     pub async fn test_policy() {
+        /*
+        CREATE ROW ACCESS POLICY test_policy ON `atl-dev1.rust_test_job.rust_test_load_result_iam` GRANT TO ('allAuthenticatedUsers') FILTER USING (string_field_1='test');
+        CREATE ROW ACCESS POLICY test_policy2 ON `atl-dev1.rust_test_job.rust_test_load_result_iam` GRANT TO ('allAuthenticatedUsers') FILTER USING (string_field_1='testhoge');
+         */
         let (client, project) = create_client().await;
         let client = BigqueryRowAccessPolicyClient::new(Arc::new(client));
 
         let mut table1 = TableReference::default();
         table1.dataset_id = "rust_test_job".to_string();
         table1.project_id = project.to_string();
-        table1.table_id = "rust_test_load_result".to_string();
+        table1.table_id = "rust_test_load_result_iam".to_string();
 
         // iam
         let policies = client

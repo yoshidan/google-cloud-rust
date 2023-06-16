@@ -315,7 +315,7 @@ mod test {
         let mut table = Table::default();
         table.table_reference.dataset_id = "rust_test_external_table".to_string();
         table.table_reference.project_id = project.to_string();
-        table.table_reference.table_id = "csv_table".to_string();
+        table.table_reference.table_id = format!("csv_table_{}", OffsetDateTime::now_utc().unix_timestamp());
         table.external_data_configuration = Some(ExternalDataConfiguration {
             source_uris: vec!["gs://rust-bq-test/external_data.csv".to_string()],
             autodetect: true,
