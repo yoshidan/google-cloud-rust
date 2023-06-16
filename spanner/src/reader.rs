@@ -28,10 +28,11 @@ pub trait Reader {
 
     fn update_token(&mut self, resume_token: Vec<u8>);
 
-    fn can_retry(&self) -> bool;
+    fn can_resume(&self) -> bool;
 }
 
 pub struct StatementReader {
+    pub enable_resume: bool,
     pub request: ExecuteSqlRequest,
 }
 
@@ -52,8 +53,8 @@ impl Reader for StatementReader {
         self.request.resume_token = resume_token;
     }
 
-    fn can_retry(&self) -> bool {
-        !self.request.resume_token.is_empty()
+    fn can_resume(&self) -> bool {
+        self.enable_resume && !self.request.resume_token.is_empty()
     }
 }
 
@@ -78,7 +79,7 @@ impl Reader for TableReader {
         self.request.resume_token = resume_token;
     }
 
-    fn can_retry(&self) -> bool {
+    fn can_resume(&self) -> bool {
         !self.request.resume_token.is_empty()
     }
 }
@@ -225,7 +226,7 @@ impl<'a> RowIterator<'a> {
         let maybe_result_set = match self.streaming.message().await {
             Ok(s) => s,
             Err(e) => {
-                if !self.reader.can_retry() {
+                if !self.reader.can_resume() {
                     return Err(e);
                 }
                 tracing::debug!("streaming error: {}. resume reading by resume_token", e);
@@ -266,15 +267,16 @@ impl<'a> AsyncIterator for RowIterator<'a> {
     /// next returns the next result.
     /// Its second return value is None if there are no more results.
     async fn next(&mut self) -> Result<Option<Row>, Status> {
-        let row = self.rs.next();
-        if row.is_some() {
-            return Ok(row);
+        loop {
+            let row = self.rs.next();
+            if row.is_some() {
+                return Ok(row);
+            }
+            // no data found or record chunked.
+            if !self.try_recv(self.reader_option.clone()).await? {
+                return Ok(None);
+            }
         }
-        // no data found or record chunked.
-        if !self.try_recv(self.reader_option.clone()).await? {
-            return Ok(None);
-        }
-        return self.next().await;
     }
 }
 

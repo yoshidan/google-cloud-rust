@@ -20,7 +20,7 @@ google-cloud-gax = { version = "0.14", path = "../foundation/gax", optional = tr
 
 # components
 google-cloud-pubsub = { version = "0.15", path = "../pubsub", optional = true }
-google-cloud-spanner = { version = "0.19", path = "../spanner", optional = true }
+google-cloud-spanner = { version = "0.20", path = "../spanner", optional = true }
 google-cloud-storage = { version = "0.11", path = "../storage", default-features=false, optional = true }
 google-cloud-bigquery = { version = "0.1", path = "../bigquery", default-features=false, optional = true }
 
