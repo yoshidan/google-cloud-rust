@@ -10,13 +10,13 @@ use crate::{
     },
 };
 
-#[derive(Clone)]
-pub struct IdTokenConfig {
+#[derive(Clone, Default)]
+pub struct IdTokenSourceConfig {
     credentials: Option<CredentialsFile>,
-    custom_claims: Option<HashMap<String, serde_json::Value>>,
+    custom_claims: HashMap<String, serde_json::Value>,
 }
 
-impl std::fmt::Debug for IdTokenConfig {
+impl std::fmt::Debug for IdTokenSourceConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("IdTokenConfig")
             .field("custom_claims", &self.custom_claims)
@@ -24,15 +24,24 @@ impl std::fmt::Debug for IdTokenConfig {
     }
 }
 
-impl IdTokenConfig {
+impl IdTokenSourceConfig {
     pub fn with_credentials(mut self, creds: CredentialsFile) -> Self {
-        self.credentials.replace(creds);
+        self.credentials = creds.into();
         self
+    }
+
+    pub fn with_custom_claims(mut self, custom_claims: HashMap<String, serde_json::Value>) -> Self {
+        self.custom_claims = custom_claims;
+        self
+    }
+
+    pub async fn build(self, audience: &str) -> Result<Box<dyn TokenSource>, error::Error> {
+        create_id_token_source(self, audience).await
     }
 }
 
 pub async fn create_id_token_source(
-    config: IdTokenConfig,
+    config: IdTokenSourceConfig,
     audience: &str,
 ) -> Result<Box<dyn TokenSource>, error::Error> {
     if audience.is_empty() {
@@ -65,13 +74,13 @@ pub async fn create_id_token_source(
 }
 
 async fn id_token_source_from_credentials(
-    config: IdTokenConfig,
+    config: IdTokenSourceConfig,
     credentials: &CredentialsFile,
     audience: &str,
 ) -> Result<Box<dyn TokenSource>, error::Error> {
     match credentials.tp.as_str() {
         SERVICE_ACCOUNT_KEY => {
-            let mut claims = config.custom_claims.unwrap_or_default();
+            let mut claims = config.custom_claims;
             claims.insert("target_audience".into(), audience.into());
 
             let source = OAuth2ServiceAccountTokenSource::new(credentials, "", None)?
