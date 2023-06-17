@@ -16,3 +16,4 @@ google-cloud-default = <version>
 * [pubsub](https://github.com/yoshidan/google-cloud-rust/tree/main/pubsub)
 * [spanner](https://github.com/yoshidan/google-cloud-rust/tree/main/spanner)
 * [storage](https://github.com/yoshidan/google-cloud-rust/tree/main/storage)
+* [bigquery](https://github.com/yoshidan/google-cloud-rust/tree/main/bigquery)

@@ -20,6 +20,7 @@ impl BigqueryRowAccessPolicyClient {
         Self { inner }
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/rowAccessPolicies/getIamPolicy
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_iam_policy(
         &self,
@@ -41,6 +42,7 @@ impl BigqueryRowAccessPolicyClient {
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/rowAccessPolicies/testIamPermissions
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn test_iam_permissions(
         &self,
@@ -62,6 +64,7 @@ impl BigqueryRowAccessPolicyClient {
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/rowAccessPolicies/list
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list(
         &self,
@@ -116,8 +119,8 @@ mod test {
     #[serial]
     pub async fn test_policy() {
         /*
-        CREATE ROW ACCESS POLICY test_policy ON `atl-dev1.rust_test_job.rust_test_load_result_iam` GRANT TO ('allAuthenticatedUsers') FILTER USING (string_field_1='test');
-        CREATE ROW ACCESS POLICY test_policy2 ON `atl-dev1.rust_test_job.rust_test_load_result_iam` GRANT TO ('allAuthenticatedUsers') FILTER USING (string_field_1='testhoge');
+        CREATE ROW ACCESS POLICY test_policy ON `rust_test_job.rust_test_load_result_iam` GRANT TO ('allAuthenticatedUsers') FILTER USING (string_field_1='test');
+        CREATE ROW ACCESS POLICY test_policy2 ON `rust_test_job.rust_test_load_result_iam` GRANT TO ('allAuthenticatedUsers') FILTER USING (string_field_1='testhoge');
          */
         let (client, project) = create_client().await;
         let client = BigqueryRowAccessPolicyClient::new(Arc::new(client));

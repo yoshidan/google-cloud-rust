@@ -7,6 +7,7 @@
 //! * [pubsub](https://github.com/yoshidan/google-cloud-rust/tree/main/pubsub)
 //! * [spanner](https://github.com/yoshidan/google-cloud-rust/tree/main/spanner)
 //! * [storage](https://github.com/yoshidan/google-cloud-rust/tree/main/storage)
+//! * [bigquery](https://github.com/yoshidan/google-cloud-rust/tree/main/bigquery)
 //!
 use async_trait::async_trait;
 
@@ -273,5 +274,14 @@ mod test {
             .unwrap();
         assert!(config.default_google_access_id.is_some());
         assert!(config.default_sign_by.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_bigquery() {
+        use crate::bigquery::CreateAuthExt;
+        let (_config,project_id) = google_cloud_bigquery::client::ClientConfig::create()
+            .await
+            .unwrap();
+        assert!(project_id.is_some())
     }
 }
