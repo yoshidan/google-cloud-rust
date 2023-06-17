@@ -18,6 +18,29 @@ impl BigqueryTabledataClient {
         Self { inner }
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/tabledata/insert
+    /// ```rust
+    /// use google_cloud_bigquery::http::tabledata::insert_all::{InsertAllRequest, Row};
+    /// use google_cloud_bigquery::http::bigquery_tabledata_client::BigqueryTabledataClient;
+    ///
+    /// #[derive(serde::Serialize)]
+    /// pub struct TestData {
+    ///     pub col1: String,
+    /// }
+    ///
+    /// async fn run(client: &BigqueryTabledataClient, project_id: &str, data: TestData) {
+    ///     let data1 = Row {
+    ///         insert_id: None,
+    ///         json: data,
+    ///     };
+    ///     let request = InsertAllRequest {
+    ///         rows: vec![data1],
+    ///         ..Default::default()
+    ///     };
+    ///     let result = client.insert(project_id, "dataset", "table", &request).await.unwrap();
+    ///     let error = result.insert_errors;
+    /// }
+    /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn insert<T: Serialize>(
         &self,
@@ -37,6 +60,7 @@ impl BigqueryTabledataClient {
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/tabledata/list
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn read(
         &self,

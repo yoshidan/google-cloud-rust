@@ -16,30 +16,35 @@ impl BigqueryDatasetClient {
         Self { inner }
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/datasets/create
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn create(&self, metadata: &Dataset) -> Result<Dataset, Error> {
         let builder = dataset::insert::build(self.inner.endpoint(), self.inner.http(), metadata);
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/datasets/patch
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn patch(&self, metadata: &Dataset) -> Result<Dataset, Error> {
         let builder = dataset::patch::build(self.inner.endpoint(), self.inner.http(), metadata);
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/datasets/delete
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn delete(&self, project_id: &str, dataset_id: &str) -> Result<(), Error> {
         let builder = dataset::delete::build(self.inner.endpoint(), self.inner.http(), project_id, dataset_id);
         self.inner.send_get_empty(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/datasets/get
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get(&self, project_id: &str, dataset_id: &str) -> Result<Dataset, Error> {
         let builder = dataset::get::build(self.inner.endpoint(), self.inner.http(), project_id, dataset_id);
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/datasets/list
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list(
         &self,

@@ -16,18 +16,21 @@ impl BigqueryRoutineClient {
         Self { inner }
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/routines/create
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn create(&self, metadata: &Routine) -> Result<Routine, Error> {
         let builder = routine::insert::build(self.inner.endpoint(), self.inner.http(), metadata);
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/routines/update
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn update(&self, metadata: &Routine) -> Result<Routine, Error> {
         let builder = routine::update::build(self.inner.endpoint(), self.inner.http(), metadata);
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/routines/delete
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn delete(&self, project_id: &str, dataset_id: &str, routine_id: &str) -> Result<(), Error> {
         let builder =
@@ -35,12 +38,14 @@ impl BigqueryRoutineClient {
         self.inner.send_get_empty(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/routines/get
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get(&self, project_id: &str, dataset_id: &str, routine_id: &str) -> Result<Routine, Error> {
         let builder = routine::get::build(self.inner.endpoint(), self.inner.http(), project_id, dataset_id, routine_id);
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/routines/list
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list(
         &self,

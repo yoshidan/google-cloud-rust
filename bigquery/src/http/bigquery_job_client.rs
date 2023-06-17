@@ -20,24 +20,81 @@ impl BigqueryJobClient {
         Self { inner }
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/create
+    /// ```rust
+    /// use google_cloud_bigquery::http::bigquery_job_client::BigqueryJobClient;
+    /// use google_cloud_bigquery::http::error::Error;
+    /// use google_cloud_bigquery::http::job::{CreateDisposition, Job, JobConfiguration, JobConfigurationSourceTable, JobConfigurationTableCopy, JobReference, JobState, JobType, OperationType, WriteDisposition};
+    /// use google_cloud_bigquery::http::table::TableReference;
+    ///
+    /// async fn run(client: BigqueryJobClient)  {
+    ///     let job = Job {
+    ///         job_reference: JobReference {
+    ///             project_id: "project".to_string(),
+    ///             job_id: "job".to_string(),
+    ///             location: Some("asia-northeast1".to_string()),
+    ///         },
+    ///         configuration: JobConfiguration {
+    ///             job: JobType::Copy(JobConfigurationTableCopy {
+    ///                 source_table: JobConfigurationSourceTable::SourceTable(TableReference {
+    ///                     project_id: "project".to_string(),
+    ///                     dataset_id: "dataset".to_string(),
+    ///                     table_id: "source_table".to_string(),
+    ///                 }),
+    ///                 destination_table: TableReference {
+    ///                     project_id: "project".to_string(),
+    ///                     dataset_id: "dataset".to_string(),
+    ///                     table_id: "destination_table".to_string(),
+    ///                 },
+    ///                 create_disposition: Some(CreateDisposition::CreateIfNeeded),
+    ///                 write_disposition: Some(WriteDisposition::WriteTruncate),
+    ///                 operation_type: Some(OperationType::Copy),
+    ///                 ..Default::default()
+    ///             }),
+    ///             ..Default::default()
+    ///         },
+    ///         ..Default::default()
+    ///     };
+    ///     let created = client.create(&job).await.unwrap();
+    ///     assert!(created.status.errors.is_none());
+    ///     assert!(created.status.error_result.is_none());
+    ///     assert!(created.status.state == JobState::Running || job2.status.state == JobState::Done);
+    /// }
+    /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn create(&self, metadata: &Job) -> Result<Job, Error> {
         let builder = job::insert::build(self.inner.endpoint(), self.inner.http(), metadata);
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/delete
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn delete(&self, project_id: &str, job_id: &str) -> Result<(), Error> {
         let builder = job::delete::build(self.inner.endpoint(), self.inner.http(), project_id, job_id);
         self.inner.send_get_empty(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/get
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get(&self, project_id: &str, job_id: &str, data: &GetJobRequest) -> Result<Job, Error> {
         let builder = job::get::build(self.inner.endpoint(), self.inner.http(), project_id, job_id, data);
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/cancel
+    /// ```rust
+    /// use google_cloud_bigquery::http::bigquery_job_client::BigqueryJobClient;
+    /// use google_cloud_bigquery::http::error::Error;
+    /// use google_cloud_bigquery::http::job::cancel::CancelJobRequest;
+    /// use google_cloud_bigquery::http::job::{Job, JobReference, JobState};
+    ///
+    ///  async fn run(client: BigqueryJobClient, job: JobReference) {
+    ///     let request = CancelJobRequest {
+    ///         location: job.location,
+    ///     };
+    ///     let cancelled = client.cancel(&job.project_id, &job.job_id, &request).await.unwrap();
+    ///  }
+    /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn cancel(
         &self,
@@ -49,12 +106,14 @@ impl BigqueryJobClient {
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/query
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn query(&self, project_id: &str, data: &QueryRequest) -> Result<QueryResponse, Error> {
         let builder = job::query::build(self.inner.endpoint(), self.inner.http(), project_id, data);
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/get_query_results
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_query_results(
         &self,
@@ -66,6 +125,7 @@ impl BigqueryJobClient {
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/list
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list(&self, project_id: &str, req: &ListJobsRequest) -> Result<Vec<JobOverview>, Error> {
         let mut page_token: Option<String> = None;

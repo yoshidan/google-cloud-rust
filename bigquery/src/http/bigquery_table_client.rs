@@ -20,30 +20,62 @@ impl BigqueryTableClient {
         Self { inner }
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/tables/create
+    /// ```rust
+    /// use google_cloud_bigquery::http::bigquery_table_client::BigqueryTableClient;
+    /// use google_cloud_bigquery::http::error::Error;
+    /// use google_cloud_bigquery::http::table::{Table, TableFieldSchema, TableFieldType, TableReference, TableSchema};
+    ///
+    /// async fn run(client: BigqueryTableClient) -> Result<Table, Error> {
+    ///     let mut table = Table {
+    ///         table_reference: TableReference {
+    ///             project_id: "project".to_string(),
+    ///             dataset_id: "dataset".to_string(),
+    ///             table_id: "table".to_string()
+    ///         },
+    ///         schema: Some(TableSchema {
+    ///             fields: vec![
+    ///                 TableFieldSchema {
+    ///                     name: "col1".to_string(),
+    ///                     data_type: TableFieldType::String,
+    ///                     max_length: Some(32),
+    ///                     ..Default::default()
+    ///                 }
+    ///             ]
+    ///         }),
+    ///         ..Default::default()
+    ///     };
+    ///     client.create(table1).await
+    /// }
+    /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn create(&self, metadata: &Table) -> Result<Table, Error> {
         let builder = table::insert::build(self.inner.endpoint(), self.inner.http(), metadata);
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/tables/delete
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn delete(&self, project_id: &str, dataset_id: &str, table_id: &str) -> Result<(), Error> {
         let builder = table::delete::build(self.inner.endpoint(), self.inner.http(), project_id, dataset_id, table_id);
         self.inner.send_get_empty(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/tables/patch
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn patch(&self, metadata: &Table) -> Result<Table, Error> {
         let builder = table::patch::build(self.inner.endpoint(), self.inner.http(), metadata);
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/tables/get
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get(&self, project_id: &str, dataset_id: &str, table_id: &str) -> Result<Table, Error> {
         let builder = table::get::build(self.inner.endpoint(), self.inner.http(), project_id, dataset_id, table_id);
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/tables/get_iam_policy
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_iam_policy(
         &self,
@@ -63,6 +95,7 @@ impl BigqueryTableClient {
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/tables/set_iam_policy
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn set_iam_policy(
         &self,
@@ -82,6 +115,7 @@ impl BigqueryTableClient {
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/tables/test_iam_policy
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn test_iam_permissions(
         &self,
@@ -101,6 +135,7 @@ impl BigqueryTableClient {
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/tables/list
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list(
         &self,

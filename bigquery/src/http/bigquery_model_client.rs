@@ -16,24 +16,28 @@ impl BigqueryModelClient {
         Self { inner }
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/models/delete
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn delete(&self, project_id: &str, dataset_id: &str, table_id: &str) -> Result<(), Error> {
         let builder = model::delete::build(self.inner.endpoint(), self.inner.http(), project_id, dataset_id, table_id);
         self.inner.send_get_empty(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/models/patch
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn patch(&self, metadata: &Model) -> Result<Model, Error> {
         let builder = model::patch::build(self.inner.endpoint(), self.inner.http(), metadata);
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/models/get
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get(&self, project_id: &str, dataset_id: &str, model_id: &str) -> Result<Model, Error> {
         let builder = model::get::build(self.inner.endpoint(), self.inner.http(), project_id, dataset_id, model_id);
         self.inner.send(builder).await
     }
 
+    /// https://cloud.google.com/bigquery/docs/reference/rest/v2/models/list
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list(
         &self,

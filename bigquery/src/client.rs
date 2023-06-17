@@ -287,8 +287,9 @@ mod tests {
 
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
+    use google_cloud_googleapis::cloud::bigquery::storage::v1::read_session::TableReadOptions;
 
-    use crate::client::{Client, ClientConfig};
+    use crate::client::{Client, ClientConfig, ReadTableOption};
     use crate::grpc::apiv1;
     use crate::http::bigquery_client::test::TestData;
     use crate::http::bigquery_client::SCOPES;
@@ -518,7 +519,15 @@ mod tests {
             table_id: "table_data_1686707863".to_string(),
         };
         let mut iterator_as_struct = client.read_table::<TestData>(&table, None).await.unwrap();
-        let mut iterator_as_row = client.read_table::<Row>(&table, None).await.unwrap();
+
+        let option = ReadTableOption {
+            session_read_options: Some(TableReadOptions {
+                row_restriction: "col_string = \"test_0\"".to_string(),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let mut iterator_as_row = client.read_table::<Row>(&table, Some(option)).await.unwrap();
         let mut data_as_row: Vec<TestData> = vec![];
         let mut data_as_struct: Vec<TestData> = vec![];
         let mut finish1 = false;
@@ -562,14 +571,12 @@ mod tests {
             }
         }
         assert_eq!(data_as_struct.len(), 3);
-        assert_eq!(data_as_row.len(), 3);
+        assert_eq!(data_as_row.len(), 1);
 
         for (i, d) in data_as_struct.iter().enumerate() {
             assert_data(i, d.clone());
         }
-        for (i, d) in data_as_row.iter().enumerate() {
-            assert_data(i, d.clone());
-        }
+        assert_data(0, data_as_row[0].clone());
     }
 
     fn assert_data(index: usize, d: TestData) {
