@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     credentials::CredentialsFile,
     error,
-    project::{create_token_source_from_credentials, project, Config, Project, SERVICE_ACCOUNT_KEY},
+    project::{project, Project, SERVICE_ACCOUNT_KEY},
     token_source::{
         compute_identity_source::ComputeIdentitySource, reuse_token_source::ReuseTokenSource,
         service_account_token_source::OAuth2ServiceAccountTokenSource, TokenSource,
@@ -48,22 +48,13 @@ pub async fn create_id_token_source(
         return Err(error::Error::ScopeOrAudienceRequired);
     }
 
-    if let Some(credentials) = config.credentials {
-        return create_token_source_from_credentials(
-            &credentials,
-            &Config {
-                audience: audience.into(),
-                ..Default::default()
-            },
-        )
-        .await;
+    if let Some(credentials) = &config.credentials {
+        return id_token_source_from_credentials(&config.custom_claims, credentials, audience).await;
     }
 
     match project().await? {
         Project::FromFile(credentials) => {
-            let ts = id_token_source_from_credentials(config, &credentials, audience).await?;
-            let token = ts.token().await?;
-            Ok(Box::new(ReuseTokenSource::new(ts, token)))
+            id_token_source_from_credentials(&config.custom_claims, &credentials, audience).await
         }
         Project::FromMetadataServer(_) => {
             let ts = ComputeIdentitySource::new(audience)?;
@@ -74,13 +65,13 @@ pub async fn create_id_token_source(
 }
 
 async fn id_token_source_from_credentials(
-    config: IdTokenSourceConfig,
+    custom_claims: &HashMap<String, serde_json::Value>,
     credentials: &CredentialsFile,
     audience: &str,
 ) -> Result<Box<dyn TokenSource>, error::Error> {
-    match credentials.tp.as_str() {
+    let ts = match credentials.tp.as_str() {
         SERVICE_ACCOUNT_KEY => {
-            let mut claims = config.custom_claims;
+            let mut claims = custom_claims.clone();
             claims.insert("target_audience".into(), audience.into());
 
             let source = OAuth2ServiceAccountTokenSource::new(credentials, "", None)?
@@ -91,5 +82,7 @@ async fn id_token_source_from_credentials(
         }
         // TODO: support impersonation and external account
         _ => Err(error::Error::UnsupportedAccountType(credentials.tp.to_string())),
-    }
+    }?;
+    let token = ts.token().await?;
+    Ok(Box::new(ReuseTokenSource::new(ts, token)))
 }
