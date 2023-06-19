@@ -23,7 +23,7 @@ This is also described in [google-cloud-auth](https://github.com/yoshidan/google
 
 ```rust
 use google_cloud_pubsub::client::{ClientConfig, Client};
-use google_cloud_default::WithAuthExt;
+use google_cloud_default::biqquery::CreateAuthExt;
 
 async fn run() {
     let (config, project_id) = ClientConfig::create().await.unwrap();
