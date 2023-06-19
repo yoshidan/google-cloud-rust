@@ -8,6 +8,7 @@ use crate::error::Error;
 use crate::token::Token;
 
 pub mod authorized_user_token_source;
+pub mod compute_identity_source;
 pub mod compute_token_source;
 pub mod reuse_token_source;
 pub mod service_account_token_source;

@@ -10,9 +10,10 @@ use crate::token_source::service_account_token_source::ServiceAccountTokenSource
 use crate::token_source::TokenSource;
 use crate::{credentials, error};
 
-const SERVICE_ACCOUNT_KEY: &str = "service_account";
+pub(crate) const SERVICE_ACCOUNT_KEY: &str = "service_account";
 const USER_CREDENTIALS_KEY: &str = "authorized_user";
 
+#[derive(Debug, Clone, Default)]
 pub struct Config<'a> {
     pub audience: Option<&'a str>,
     pub scopes: Option<&'a [&'a str]>,
