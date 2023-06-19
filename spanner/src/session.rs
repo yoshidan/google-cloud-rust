@@ -641,7 +641,7 @@ mod tests {
     use tokio::time::sleep;
     use tokio_util::sync::CancellationToken;
 
-    use google_cloud_gax::conn::Environment;
+    use google_cloud_gax::conn::{ConnectionOptions, Environment};
     use google_cloud_googleapis::spanner::v1::ExecuteSqlRequest;
 
     use crate::apiv1::conn_pool::ConnectionManager;
@@ -657,9 +657,14 @@ mod tests {
     }
 
     async fn assert_rush(use_invalidate: bool, config: SessionConfig) -> Arc<SessionManager> {
-        let cm = ConnectionManager::new(4, &Environment::Emulator("localhost:9010".to_string()), "")
-            .await
-            .unwrap();
+        let cm = ConnectionManager::new(
+            4,
+            &Environment::Emulator("localhost:9010".to_string()),
+            "",
+            &ConnectionOptions::default(),
+        )
+        .await
+        .unwrap();
         let sm = SessionManager::new(DATABASE, cm, config).await.unwrap();
 
         let counter = Arc::new(AtomicI64::new(0));
@@ -685,9 +690,14 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_health_check_checked() {
-        let cm = ConnectionManager::new(4, &Environment::Emulator("localhost:9010".to_string()), "")
-            .await
-            .unwrap();
+        let cm = ConnectionManager::new(
+            4,
+            &Environment::Emulator("localhost:9010".to_string()),
+            "",
+            &ConnectionOptions::default(),
+        )
+        .await
+        .unwrap();
         let session_alive_trust_duration = Duration::from_millis(10);
         let config = SessionConfig {
             min_opened: 5,
@@ -709,9 +719,14 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_health_check_not_checked() {
-        let cm = ConnectionManager::new(4, &Environment::Emulator("localhost:9010".to_string()), "")
-            .await
-            .unwrap();
+        let cm = ConnectionManager::new(
+            4,
+            &Environment::Emulator("localhost:9010".to_string()),
+            "",
+            &ConnectionOptions::default(),
+        )
+        .await
+        .unwrap();
         let session_alive_trust_duration = Duration::from_secs(10);
         let config = SessionConfig {
             min_opened: 5,
@@ -733,9 +748,14 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_increase_session_and_idle_session_expired() {
-        let conn_pool = ConnectionManager::new(4, &Environment::Emulator("localhost:9010".to_string()), "")
-            .await
-            .unwrap();
+        let conn_pool = ConnectionManager::new(
+            4,
+            &Environment::Emulator("localhost:9010".to_string()),
+            "",
+            &ConnectionOptions::default(),
+        )
+        .await
+        .unwrap();
         let config = SessionConfig {
             idle_timeout: Duration::from_millis(10),
             min_opened: 10,
@@ -767,9 +787,14 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_too_many_session_timeout() {
-        let conn_pool = ConnectionManager::new(4, &Environment::Emulator("localhost:9010".to_string()), "")
-            .await
-            .unwrap();
+        let conn_pool = ConnectionManager::new(
+            4,
+            &Environment::Emulator("localhost:9010".to_string()),
+            "",
+            &ConnectionOptions::default(),
+        )
+        .await
+        .unwrap();
         let config = SessionConfig {
             idle_timeout: Duration::from_millis(10),
             min_opened: 10,
@@ -1025,9 +1050,14 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_close() {
-        let cm = ConnectionManager::new(4, &Environment::Emulator("localhost:9010".to_string()), "")
-            .await
-            .unwrap();
+        let cm = ConnectionManager::new(
+            4,
+            &Environment::Emulator("localhost:9010".to_string()),
+            "",
+            &ConnectionOptions::default(),
+        )
+        .await
+        .unwrap();
         let config = SessionConfig::default();
         let sm = SessionManager::new(DATABASE, cm, config.clone()).await.unwrap();
         assert_eq!(sm.num_opened(), config.min_opened);
@@ -1039,9 +1069,14 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_batch_create_sessions() {
-        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()), "")
-            .await
-            .unwrap();
+        let cm = ConnectionManager::new(
+            1,
+            &Environment::Emulator("localhost:9010".to_string()),
+            "",
+            &ConnectionOptions::default(),
+        )
+        .await
+        .unwrap();
         let client = cm.conn();
         let session_count = 125;
         let result = batch_create_sessions(client.clone(), DATABASE, session_count).await;

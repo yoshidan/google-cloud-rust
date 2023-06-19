@@ -301,7 +301,7 @@ pub(crate) async fn ack(
 mod tests {
     use serial_test::serial;
 
-    use google_cloud_gax::conn::Environment;
+    use google_cloud_gax::conn::{ConnectionOptions, Environment};
     use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage, PullRequest};
 
     use crate::apiv1::conn_pool::ConnectionManager;
@@ -318,9 +318,14 @@ mod tests {
     #[serial]
     async fn test_handle_message_immediately_nack() {
         let cm = || async {
-            ConnectionManager::new(4, "", &Environment::Emulator("localhost:8681".to_string()))
-                .await
-                .unwrap()
+            ConnectionManager::new(
+                4,
+                "",
+                &Environment::Emulator("localhost:8681".to_string()),
+                &ConnectionOptions::default(),
+            )
+            .await
+            .unwrap()
         };
         let subc = SubscriberClient::new(cm().await);
         let pubc = PublisherClient::new(cm().await);

@@ -6,7 +6,7 @@ mod tests {
     use prost_types::{value::Kind, ListValue, Value};
     use serial_test::serial;
 
-    use google_cloud_gax::conn::Environment;
+    use google_cloud_gax::conn::{ConnectionOptions, Environment};
     use google_cloud_gax::grpc::Code;
     use google_cloud_googleapis::spanner::v1::mutation::{Operation, Write};
     use google_cloud_googleapis::spanner::v1::{
@@ -23,9 +23,14 @@ mod tests {
     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
     async fn create_spanner_client() -> Client {
-        let cm = ConnectionManager::new(1, &Environment::Emulator("localhost:9010".to_string()), "")
-            .await
-            .unwrap();
+        let cm = ConnectionManager::new(
+            1,
+            &Environment::Emulator("localhost:9010".to_string()),
+            "",
+            &ConnectionOptions::default(),
+        )
+        .await
+        .unwrap();
         cm.conn()
     }
 

@@ -1,6 +1,6 @@
 use std::env::var;
 
-use google_cloud_gax::conn::Environment;
+use google_cloud_gax::conn::{ConnectionOptions, Environment};
 use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::{
@@ -68,10 +68,22 @@ impl Client {
         let pool_size = config.pool_size.unwrap_or_default();
 
         let pubc = PublisherClient::new(
-            ConnectionManager::new(pool_size, config.endpoint.as_str(), &config.environment).await?,
+            ConnectionManager::new(
+                pool_size,
+                config.endpoint.as_str(),
+                &config.environment,
+                &ConnectionOptions::default(),
+            )
+            .await?,
         );
         let subc = SubscriberClient::new(
-            ConnectionManager::new(pool_size, config.endpoint.as_str(), &config.environment).await?,
+            ConnectionManager::new(
+                pool_size,
+                config.endpoint.as_str(),
+                &config.environment,
+                &ConnectionOptions::default(),
+            )
+            .await?,
         );
 
         Ok(Self {
