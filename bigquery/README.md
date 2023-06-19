@@ -102,7 +102,9 @@ Default supported types to decode by `row.column::<T>()` are
 * Option (for all NULLABLE)
 * Vec (for ARRAY)
 
-### Insert
+### Insert Data
+
+### Table data API
 
 ```rust
 use google_cloud_bigquery::http::tabledata::insert_all::{InsertAllRequest, Row};
@@ -132,7 +134,8 @@ async fn run(client: &Client, project_id: &str, data: TestData) {
 }
 ```
 
-### Loading CSV data from GCS
+### Run loading job
+ex) Loading CSV data from GCS
 ```rust
 use google_cloud_bigquery::client::Client;
 use google_cloud_bigquery::http::bigquery_job_client::BigqueryJobClient;

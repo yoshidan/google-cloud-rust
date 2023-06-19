@@ -100,8 +100,9 @@
 //! * Option (for all NULLABLE)
 //! * Vec (for ARRAY)
 //!
-//! ### Insert
+//! ### Insert Data
 //!
+//! #### Table data API
 //! ```rust
 //! use google_cloud_bigquery::http::tabledata::insert_all::{InsertAllRequest, Row};
 //! use google_cloud_bigquery::client::Client;
@@ -129,8 +130,8 @@
 //!     let error = result.insert_errors;
 //! }
 //! ```
-//!
-//! ### Loading CSV data from GCS
+//! ### Run loading job
+//! ex) Loading CSV data from GCS
 //! ```rust
 //! use google_cloud_bigquery::client::Client;
 //! use google_cloud_bigquery::http::bigquery_job_client::BigqueryJobClient;
