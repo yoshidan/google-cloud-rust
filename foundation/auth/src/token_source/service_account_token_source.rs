@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt::Debug;
 
 use async_trait::async_trait;
@@ -18,6 +19,8 @@ struct Claims<'a> {
     aud: &'a str,
     exp: i64,
     iat: i64,
+    #[serde(flatten)]
+    private_claims: &'a HashMap<String, serde_json::Value>,
 }
 
 impl Claims<'_> {
@@ -38,6 +41,8 @@ pub struct ServiceAccountTokenSource {
     pk: jsonwebtoken::EncodingKey,
     pk_id: String,
     audience: String,
+    use_id_token: bool,
+    private_claims: HashMap<String, serde_json::Value>,
 }
 
 impl Debug for ServiceAccountTokenSource {
@@ -61,6 +66,8 @@ impl ServiceAccountTokenSource {
                 None => audience.to_string(),
                 Some(s) => s.to_string(),
             },
+            use_id_token: false,
+            private_claims: HashMap::new(),
         })
     }
 }
@@ -78,6 +85,7 @@ impl TokenSource for ServiceAccountTokenSource {
             aud: self.audience.as_ref(),
             exp: exp.unix_timestamp(),
             iat: iat.unix_timestamp(),
+            private_claims: &HashMap::new(),
         }
         .token(&self.pk, &self.pk_id)?;
 
@@ -108,6 +116,9 @@ pub struct OAuth2ServiceAccountTokenSource {
     pub sub: Option<String>,
 
     pub client: reqwest::Client,
+
+    use_id_token: bool,
+    private_claims: HashMap<String, serde_json::Value>,
 }
 
 impl Debug for OAuth2ServiceAccountTokenSource {
@@ -120,6 +131,8 @@ impl Debug for OAuth2ServiceAccountTokenSource {
             .field("token_url", &self.token_url)
             .field("sub", &self.sub)
             .field("client", &self.client)
+            .field("use_id_token", &self.use_id_token)
+            .field("private_claims", &self.private_claims)
             .finish()
     }
 }
@@ -141,7 +154,19 @@ impl OAuth2ServiceAccountTokenSource {
             },
             client: default_http_client(),
             sub: sub.map(|s| s.to_string()),
+            use_id_token: false,
+            private_claims: HashMap::new(),
         })
+    }
+
+    pub(crate) fn with_use_id_token(mut self) -> Self {
+        self.use_id_token = true;
+        self
+    }
+
+    pub(crate) fn with_private_claims(mut self, claims: HashMap<String, serde_json::Value>) -> Self {
+        self.private_claims = claims;
+        self
     }
 }
 
@@ -158,6 +183,7 @@ impl TokenSource for OAuth2ServiceAccountTokenSource {
             aud: self.token_url.as_ref(),
             exp: exp.unix_timestamp(),
             iat: iat.unix_timestamp(),
+            private_claims: &self.private_claims,
         }
         .token(&self.pk, &self.pk_id)?;
 
@@ -174,6 +200,15 @@ impl TokenSource for OAuth2ServiceAccountTokenSource {
             .await?
             .json::<InternalToken>()
             .await?;
-        return Ok(it.to_token(iat));
+
+        Ok(if self.use_id_token {
+            let mut token = it.to_token(iat);
+            token.access_token = it
+                .id_token
+                .ok_or_else(|| Error::DeserializeError("ID token missing from response".into()))?;
+            token
+        } else {
+            it.to_token(iat)
+        })
     }
 }
