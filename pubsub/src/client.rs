@@ -68,10 +68,22 @@ impl Client {
         let pool_size = config.pool_size.unwrap_or_default();
 
         let pubc = PublisherClient::new(
-            ConnectionManager::new(pool_size, config.endpoint.as_str(), &config.environment, &ConnectionOptions::default()).await?,
+            ConnectionManager::new(
+                pool_size,
+                config.endpoint.as_str(),
+                &config.environment,
+                &ConnectionOptions::default(),
+            )
+            .await?,
         );
         let subc = SubscriberClient::new(
-            ConnectionManager::new(pool_size, config.endpoint.as_str(), &config.environment, &ConnectionOptions::default()).await?,
+            ConnectionManager::new(
+                pool_size,
+                config.endpoint.as_str(),
+                &config.environment,
+                &ConnectionOptions::default(),
+            )
+            .await?,
         );
 
         Ok(Self {

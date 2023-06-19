@@ -118,7 +118,7 @@ impl<'a> ConnectionManager {
         domain_name: impl Into<String>,
         audience: &'static str,
         environment: &Environment,
-	conn_options: &'a ConnectionOptions,
+        conn_options: &'a ConnectionOptions,
     ) -> Result<Self, Error> {
         let conns = match environment {
             Environment::GoogleCloud(ts_provider) => {
