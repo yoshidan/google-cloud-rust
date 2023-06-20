@@ -5,7 +5,7 @@ mod tests {
     use serial_test::serial;
     use time::OffsetDateTime;
 
-    use google_cloud_gax::conn::{ConnectionManager, Environment};
+    use google_cloud_gax::conn::{ConnectionManager, ConnectionOptions, Environment};
     use google_cloud_googleapis::spanner::admin::database::v1::database::State;
 
     use google_cloud_googleapis::spanner::admin::database::v1::{
@@ -18,10 +18,15 @@ mod tests {
     use crate::apiv1::conn_pool::{AUDIENCE, SPANNER};
 
     async fn new_client() -> DatabaseAdminClient {
-        let conn_pool =
-            ConnectionManager::new(1, SPANNER, AUDIENCE, &Environment::Emulator("localhost:9010".to_string()))
-                .await
-                .unwrap();
+        let conn_pool = ConnectionManager::new(
+            1,
+            SPANNER,
+            AUDIENCE,
+            &Environment::Emulator("localhost:9010".to_string()),
+            &ConnectionOptions::default(),
+        )
+        .await
+        .unwrap();
         let lro_client = OperationsClient::new(conn_pool.conn()).await.unwrap();
         DatabaseAdminClient::new(conn_pool.conn(), lro_client)
     }

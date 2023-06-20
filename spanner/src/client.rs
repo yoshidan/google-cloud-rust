@@ -3,8 +3,9 @@ use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::time::Duration;
 
-use google_cloud_gax::conn::Environment;
+use google_cloud_gax::conn::{ConnectionOptions, Environment};
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::{invoke_fn, TryAs};
 use google_cloud_googleapis::spanner::v1::{commit_request, transaction_options, Mutation, TransactionOptions};
@@ -50,11 +51,17 @@ pub struct ReadWriteTransactionOption {
 pub struct ChannelConfig {
     /// num_channels is the number of gRPC channels.
     pub num_channels: usize,
+    pub connect_timeout: Duration,
+    pub timeout: Duration,
 }
 
 impl Default for ChannelConfig {
     fn default() -> Self {
-        ChannelConfig { num_channels: 4 }
+        ChannelConfig {
+            num_channels: 4,
+            connect_timeout: Duration::from_secs(30),
+            timeout: Duration::from_secs(30),
+        }
     }
 }
 
@@ -134,7 +141,12 @@ impl Client {
         }
 
         let pool_size = config.channel_config.num_channels;
-        let conn_pool = ConnectionManager::new(pool_size, &config.environment, config.endpoint.as_str()).await?;
+        let options = ConnectionOptions {
+            timeout: Some(config.channel_config.timeout),
+            connect_timeout: Some(config.channel_config.connect_timeout),
+        };
+        let conn_pool =
+            ConnectionManager::new(pool_size, &config.environment, config.endpoint.as_str(), &options).await?;
         let session_manager = SessionManager::new(database, conn_pool, config.session_config).await?;
 
         Ok(Client {

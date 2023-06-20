@@ -1,5 +1,5 @@
 use google_cloud_gax::conn::{Channel, Environment};
-use google_cloud_gax::conn::{ConnectionManager as GRPCConnectionManager, Error};
+use google_cloud_gax::conn::{ConnectionManager as GRPCConnectionManager, ConnectionOptions, Error};
 
 pub const AUDIENCE: &str = "https://pubsub.googleapis.com/";
 pub const PUBSUB: &str = "pubsub.googleapis.com";
@@ -14,9 +14,14 @@ pub struct ConnectionManager {
 }
 
 impl ConnectionManager {
-    pub async fn new(pool_size: usize, domain: &str, environment: &Environment) -> Result<Self, Error> {
+    pub async fn new(
+        pool_size: usize,
+        domain: &str,
+        environment: &Environment,
+        conn_options: &ConnectionOptions,
+    ) -> Result<Self, Error> {
         Ok(ConnectionManager {
-            inner: GRPCConnectionManager::new(pool_size, domain, AUDIENCE, environment).await?,
+            inner: GRPCConnectionManager::new(pool_size, domain, AUDIENCE, environment, conn_options).await?,
         })
     }
 

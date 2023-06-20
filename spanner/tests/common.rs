@@ -87,7 +87,10 @@ pub async fn create_data_client() -> Client {
         ClientConfig {
             session_config,
             environment: Environment::Emulator("localhost:9010".to_string()),
-            channel_config: ChannelConfig { num_channels: 1 },
+            channel_config: ChannelConfig {
+                num_channels: 1,
+                ..Default::default()
+            },
             ..Default::default()
         },
     )

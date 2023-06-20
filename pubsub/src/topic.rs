@@ -140,7 +140,7 @@ mod tests {
     use tokio::time::sleep;
     use uuid::Uuid;
 
-    use google_cloud_gax::conn::Environment;
+    use google_cloud_gax::conn::{ConnectionOptions, Environment};
     use google_cloud_gax::grpc::{Code, Status};
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 
@@ -157,9 +157,13 @@ mod tests {
 
     async fn create_topic() -> Topic {
         let environment = Environment::Emulator("localhost:8681".to_string());
-        let cm1 = ConnectionManager::new(4, "", &environment).await.unwrap();
+        let cm1 = ConnectionManager::new(4, "", &environment, &ConnectionOptions::default())
+            .await
+            .unwrap();
         let pubc = PublisherClient::new(cm1);
-        let cm2 = ConnectionManager::new(4, "", &environment).await.unwrap();
+        let cm2 = ConnectionManager::new(4, "", &environment, &ConnectionOptions::default())
+            .await
+            .unwrap();
         let subc = SubscriberClient::new(cm2);
 
         let uuid = Uuid::new_v4().hyphenated().to_string();
