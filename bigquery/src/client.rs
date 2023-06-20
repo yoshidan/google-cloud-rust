@@ -1,7 +1,7 @@
+use core::time::Duration;
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::sync::Arc;
-use core::time::Duration;
 
 use google_cloud_gax::conn::{ConnectionOptions, Environment};
 use google_cloud_gax::retry::RetrySetting;
@@ -109,15 +109,14 @@ impl Client {
             config.debug,
         ));
 
-        let read_config= config.streaming_read_config;
+        let read_config = config.streaming_read_config;
         let conn_options = ConnectionOptions {
             timeout: read_config.timeout,
-            connect_timeout: read_config.connect_timeout
+            connect_timeout: read_config.connect_timeout,
         };
 
         let streaming_read_client_conn_pool =
-            ReadConnectionManager::new(read_config.num_channels, &config.environment, DOMAIN, &conn_options)
-                .await?;
+            ReadConnectionManager::new(read_config.num_channels, &config.environment, DOMAIN, &conn_options).await?;
         Ok(Self {
             dataset_client: BigqueryDatasetClient::new(client.clone()),
             table_client: BigqueryTableClient::new(client.clone()),
