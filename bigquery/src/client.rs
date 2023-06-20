@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::sync::Arc;
+use core::time::Duration;
 
-use google_cloud_gax::conn::Environment;
+use google_cloud_gax::conn::{ConnectionOptions, Environment};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::{
     read_session, CreateReadSessionRequest, DataFormat, ReadSession,
@@ -30,9 +31,27 @@ pub struct ClientConfig {
     http: reqwest::Client,
     bigquery_endpoint: Cow<'static, str>,
     token_source_provider: Box<dyn TokenSourceProvider>,
-    storage_environment: Environment,
-    read_connection_size: u8,
+    environment: Environment,
+    streaming_read_config: ChannelConfig,
     debug: bool,
+}
+
+#[derive(Clone, Debug)]
+pub struct ChannelConfig {
+    /// num_channels is the number of gRPC channels.
+    pub num_channels: usize,
+    pub connect_timeout: Option<Duration>,
+    pub timeout: Option<Duration>,
+}
+
+impl Default for ChannelConfig {
+    fn default() -> Self {
+        Self {
+            num_channels: 4,
+            connect_timeout: Some(Duration::from_secs(30)),
+            timeout: None,
+        }
+    }
 }
 
 impl ClientConfig {
@@ -44,8 +63,8 @@ impl ClientConfig {
             http: reqwest::Client::default(),
             bigquery_endpoint: "https://bigquery.googleapis.com".into(),
             token_source_provider: http_token_source_provider,
-            storage_environment: Environment::GoogleCloud(grpc_token_source_provider),
-            read_connection_size: 4,
+            environment: Environment::GoogleCloud(grpc_token_source_provider),
+            streaming_read_config: ChannelConfig::default(),
             debug: false,
         }
     }
@@ -53,8 +72,8 @@ impl ClientConfig {
         self.debug = value;
         self
     }
-    pub fn with_read_connection_size(mut self, value: u8) -> Self {
-        self.read_connection_size = value;
+    pub fn with_streaming_read_config(mut self, value: ChannelConfig) -> Self {
+        self.streaming_read_config = value;
         self
     }
     pub fn with_http_client(mut self, value: reqwest::Client) -> Self {
@@ -89,8 +108,15 @@ impl Client {
             config.http,
             config.debug,
         ));
+
+        let read_config= config.streaming_read_config;
+        let conn_options = ConnectionOptions {
+            timeout: read_config.timeout,
+            connect_timeout: read_config.connect_timeout
+        };
+
         let streaming_read_client_conn_pool =
-            ReadConnectionManager::new(config.read_connection_size as usize, &config.storage_environment, DOMAIN)
+            ReadConnectionManager::new(read_config.num_channels, &config.environment, DOMAIN, &conn_options)
                 .await?;
         Ok(Self {
             dataset_client: BigqueryDatasetClient::new(client.clone()),

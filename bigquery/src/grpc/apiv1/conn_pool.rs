@@ -1,4 +1,4 @@
-use google_cloud_gax::conn::{ConnectionManager as GRPCConnectionManager, Environment, Error};
+use google_cloud_gax::conn::{ConnectionManager as GRPCConnectionManager, ConnectionOptions, Environment, Error};
 use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_read_client::BigQueryReadClient;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_write_client::BigQueryWriteClient;
 
@@ -17,9 +17,9 @@ pub struct ReadConnectionManager {
 }
 
 impl ReadConnectionManager {
-    pub async fn new(pool_size: usize, environment: &Environment, domain: &str) -> Result<Self, Error> {
+    pub async fn new(pool_size: usize, environment: &Environment, domain: &str, conn_options: &ConnectionOptions) -> Result<Self, Error> {
         Ok(ReadConnectionManager {
-            inner: GRPCConnectionManager::new(pool_size, domain, AUDIENCE, environment).await?,
+            inner: GRPCConnectionManager::new(pool_size, domain, AUDIENCE, environment, conn_options).await?,
         })
     }
 
@@ -38,9 +38,9 @@ pub struct WriteConnectionManager {
 }
 
 impl WriteConnectionManager {
-    pub async fn new(pool_size: usize, environment: &Environment, domain: &str) -> Result<Self, Error> {
+    pub async fn new(pool_size: usize, environment: &Environment, domain: &str, conn_options: &ConnectionOptions) -> Result<Self, Error> {
         Ok(WriteConnectionManager {
-            inner: GRPCConnectionManager::new(pool_size, domain, AUDIENCE, environment).await?,
+            inner: GRPCConnectionManager::new(pool_size, domain, AUDIENCE, environment, conn_options).await?,
         })
     }
 
