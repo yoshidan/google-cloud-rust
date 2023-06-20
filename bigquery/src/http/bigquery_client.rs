@@ -107,10 +107,10 @@ pub(crate) mod test {
     use crate::http::bigquery_client::{BigqueryClient, SCOPES};
     use crate::http::table::{TableFieldMode, TableFieldSchema, TableFieldType, TableSchema};
     use crate::http::tabledata::list::Tuple;
+    use crate::query;
     use crate::query::value::Decodable as QueryDecodable;
-    use crate::query::value::StructDecodable as QueryStructDecodable;
+    use crate::storage;
     use crate::storage::value::Decodable as StorageDecodable;
-    use crate::storage::value::StructDecodable as StorageStructDecodable;
 
     base64_serde_type!(Base64Standard, STANDARD);
 
@@ -134,8 +134,8 @@ pub(crate) mod test {
         pub f2: Vec<i64>,
     }
 
-    impl QueryStructDecodable for TestDataStruct {
-        fn decode(value: Tuple) -> Result<Self, crate::query::value::Error> {
+    impl query::value::StructDecodable for TestDataStruct {
+        fn decode(value: Tuple) -> Result<Self, query::value::Error> {
             let col = &value.f;
             Ok(Self {
                 f1: bool::decode(&col[0].v)?,
@@ -144,8 +144,8 @@ pub(crate) mod test {
         }
     }
 
-    impl StorageStructDecodable for TestDataStruct {
-        fn decode_arrow(col: &[ArrayRef], row_no: usize) -> Result<TestDataStruct, crate::storage::value::Error> {
+    impl storage::value::StructDecodable for TestDataStruct {
+        fn decode_arrow(col: &[ArrayRef], row_no: usize) -> Result<TestDataStruct, storage::value::Error> {
             let f1 = bool::decode_arrow(&col[0], row_no)?;
             let f2 = Vec::<i64>::decode_arrow(&col[1], row_no)?;
             Ok(TestDataStruct { f1, f2 })
@@ -167,53 +167,35 @@ pub(crate) mod test {
         pub col_binary: Vec<u8>,
     }
 
-    impl QueryStructDecodable for TestData {
-        fn decode(value: Tuple) -> Result<Self, crate::query::value::Error> {
+    impl query::value::StructDecodable for TestData {
+        fn decode(value: Tuple) -> Result<Self, query::value::Error> {
             let col = &value.f;
-            let col_string = Option::<String>::decode(&col[0].v)?;
-            let col_number = Option::<BigDecimal>::decode(&col[1].v)?;
-            let col_number_array = Vec::<BigDecimal>::decode(&col[2].v)?;
-            let col_timestamp = Option::<OffsetDateTime>::decode(&col[3].v)?;
-            let col_json = Option::<String>::decode(&col[4].v)?;
-            let col_json_array = Vec::<String>::decode(&col[5].v)?;
-            let col_struct = Option::<TestDataStruct>::decode(&col[6].v)?;
-            let col_struct_array = Vec::<TestDataStruct>::decode(&col[7].v)?;
-            let col_binary = Vec::<u8>::decode(&col[8].v)?;
             Ok(TestData {
-                col_string,
-                col_number,
-                col_number_array,
-                col_timestamp,
-                col_json,
-                col_json_array,
-                col_struct,
-                col_struct_array,
-                col_binary,
+                col_string: Option::<String>::decode(&col[0].v)?,
+                col_number: Option::<BigDecimal>::decode(&col[1].v)?,
+                col_number_array: Vec::<BigDecimal>::decode(&col[2].v)?,
+                col_timestamp: Option::<OffsetDateTime>::decode(&col[3].v)?,
+                col_json: Option::<String>::decode(&col[4].v)?,
+                col_json_array: Vec::<String>::decode(&col[5].v)?,
+                col_struct: Option::<TestDataStruct>::decode(&col[6].v)?,
+                col_struct_array: Vec::<TestDataStruct>::decode(&col[7].v)?,
+                col_binary: Vec::<u8>::decode(&col[8].v)?,
             })
         }
     }
 
-    impl StorageStructDecodable for TestData {
-        fn decode_arrow(col: &[ArrayRef], row_no: usize) -> Result<TestData, crate::storage::value::Error> {
-            let col_string = Option::<String>::decode_arrow(&col[0], row_no)?;
-            let col_number = Option::<BigDecimal>::decode_arrow(&col[1], row_no)?;
-            let col_number_array = Vec::<BigDecimal>::decode_arrow(&col[2], row_no)?;
-            let col_timestamp = Option::<OffsetDateTime>::decode_arrow(&col[3], row_no)?;
-            let col_json = Option::<String>::decode_arrow(&col[4], row_no)?;
-            let col_json_array = Vec::<String>::decode_arrow(&col[5], row_no)?;
-            let col_struct = Option::<TestDataStruct>::decode_arrow(&col[6], row_no)?;
-            let col_struct_array = Vec::<TestDataStruct>::decode_arrow(&col[7], row_no)?;
-            let col_binary = Vec::<u8>::decode_arrow(&col[8], row_no)?;
+    impl storage::value::StructDecodable for TestData {
+        fn decode_arrow(col: &[ArrayRef], row_no: usize) -> Result<TestData, storage::value::Error> {
             Ok(TestData {
-                col_string,
-                col_number,
-                col_number_array,
-                col_timestamp,
-                col_json,
-                col_json_array,
-                col_struct,
-                col_struct_array,
-                col_binary,
+                col_string: Option::<String>::decode_arrow(&col[0], row_no)?,
+                col_number: Option::<BigDecimal>::decode_arrow(&col[1], row_no)?,
+                col_number_array: Vec::<BigDecimal>::decode_arrow(&col[2], row_no)?,
+                col_timestamp: Option::<OffsetDateTime>::decode_arrow(&col[3], row_no)?,
+                col_json: Option::<String>::decode_arrow(&col[4], row_no)?,
+                col_json_array: Vec::<String>::decode_arrow(&col[5], row_no)?,
+                col_struct: Option::<TestDataStruct>::decode_arrow(&col[6], row_no)?,
+                col_struct_array: Vec::<TestDataStruct>::decode_arrow(&col[7], row_no)?,
+                col_binary: Vec::<u8>::decode_arrow(&col[8], row_no)?,
             })
         }
     }
