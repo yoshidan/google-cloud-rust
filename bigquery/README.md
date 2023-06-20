@@ -98,7 +98,7 @@ Default supported types to decode by `row.column::<T>()` are
 * time::Date (for DATE)
 * time::Time (for TIME)
 * T: StructDecodable (for STRUCT)
-  - [Example](https://github.com/yoshidan/google-cloud-rust/blob/ac291953e52987294d65ef5127cfc5ba8b582bb4/bigquery/src/http/bigquery_client.rs#L132)
+  - [Example](https://github.com/yoshidan/google-cloud-rust/blob/082f4553e65ffe54d80a81f316a3eee6ddb10093/bigquery/src/http/bigquery_client.rs#L156)
 * Option (for all NULLABLE)
 * Vec (for ARRAY)
 
