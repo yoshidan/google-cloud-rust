@@ -3,6 +3,7 @@ use std::io::{BufReader, Cursor};
 
 use arrow::error::ArrowError;
 use arrow::ipc::reader::StreamReader;
+pub use arrow::*;
 
 use google_cloud_gax::grpc::{Status, Streaming};
 use google_cloud_gax::retry::RetrySetting;
@@ -12,7 +13,6 @@ use google_cloud_googleapis::cloud::bigquery::storage::v1::{
 };
 
 use crate::grpc::apiv1::bigquery_client::StreamingReadClient;
-
 use crate::storage::value::StructDecodable;
 
 #[derive(thiserror::Error, Debug)]
