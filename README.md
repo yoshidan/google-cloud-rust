@@ -9,6 +9,7 @@ Providing a high level API for gRPC API like [Google Cloud Go](https://github.co
 * [google-cloud-spanner](./spanner)
 * [google-cloud-pubsub](./pubsub)
 * [google-cloud-storage](./storage)
+* [google-cloud-bigquery](./bigquery)
 
 ## Example
 * [google-cloud-rust-example](https://github.com/yoshidan/google-cloud-rust-example)

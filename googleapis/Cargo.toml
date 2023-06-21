@@ -24,5 +24,6 @@ prost-build = { version = "0.11", optional = true }
 spanner = []
 pubsub = []
 storage = []
+bigquery = []
 generate = ["dep:tonic-build", "dep:prost-build"]
 bytes = []

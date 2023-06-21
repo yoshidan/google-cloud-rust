@@ -22,6 +22,7 @@ google-cloud-gax = { version = "0.14", path = "../foundation/gax", optional = tr
 google-cloud-pubsub = { version = "0.15", path = "../pubsub", optional = true }
 google-cloud-spanner = { version = "0.20", path = "../spanner", optional = true }
 google-cloud-storage = { version = "0.11", path = "../storage", default-features=false, optional = true }
+google-cloud-bigquery = { version = "0.1", path = "../bigquery", default-features=false, optional = true }
 
 [dev-dependencies]
 tokio = "1.20"
@@ -34,3 +35,4 @@ rustls-tls = ["google-cloud-auth/rustls-tls"]
 spanner = ["google-cloud-spanner", "google-cloud-gax"]
 pubsub = ["google-cloud-pubsub", "google-cloud-gax"]
 storage = ["google-cloud-storage", "google-cloud-metadata"]
+bigquery = ["google-cloud-bigquery", "google-cloud-gax"]

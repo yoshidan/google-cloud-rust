@@ -9,6 +9,7 @@ members = [
     "spanner",
     "pubsub",
     "storage",
+    "bigquery",
     "spanner-derive",
     "default",
 ]

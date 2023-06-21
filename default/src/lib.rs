@@ -7,6 +7,7 @@
 //! * [pubsub](https://github.com/yoshidan/google-cloud-rust/tree/main/pubsub)
 //! * [spanner](https://github.com/yoshidan/google-cloud-rust/tree/main/spanner)
 //! * [storage](https://github.com/yoshidan/google-cloud-rust/tree/main/storage)
+//! * [bigquery](https://github.com/yoshidan/google-cloud-rust/tree/main/bigquery)
 //!
 use async_trait::async_trait;
 
@@ -171,6 +172,72 @@ impl WithAuthExt for google_cloud_storage::client::ClientConfig {
     }
 }
 
+#[cfg(feature = "bigquery")]
+pub mod bigquery {
+    use async_trait::async_trait;
+    use google_cloud_auth::credentials::CredentialsFile;
+    use google_cloud_auth::error::Error;
+    use google_cloud_auth::project::Config;
+    use google_cloud_auth::token::DefaultTokenSourceProvider;
+    use google_cloud_bigquery::client::ClientConfig;
+
+    #[async_trait]
+    pub trait CreateAuthExt {
+        async fn new_with_auth() -> Result<(Self, Option<String>), Error>
+        where
+            Self: Sized;
+
+        async fn new_with_credentials(credentials: CredentialsFile) -> Result<(Self, Option<String>), Error>
+        where
+            Self: Sized;
+    }
+
+    #[async_trait]
+    impl CreateAuthExt for ClientConfig {
+        async fn new_with_auth() -> Result<(Self, Option<String>), Error> {
+            let ts_http = DefaultTokenSourceProvider::new(bigquery_http_auth_config()).await?;
+            let ts_grpc = DefaultTokenSourceProvider::new(bigquery_grpc_auth_config()).await?;
+            let project_id = ts_grpc.project_id.clone();
+            let config = Self::new(Box::new(ts_http), Box::new(ts_grpc));
+            Ok((config, project_id))
+        }
+        async fn new_with_credentials(credentials: CredentialsFile) -> Result<(Self, Option<String>), Error>
+        where
+            Self: Sized,
+        {
+            let ts_http = DefaultTokenSourceProvider::new_with_credentials(
+                bigquery_http_auth_config(),
+                Box::new(credentials.clone()),
+            )
+            .await?;
+            let ts_grpc =
+                DefaultTokenSourceProvider::new_with_credentials(bigquery_grpc_auth_config(), Box::new(credentials))
+                    .await?;
+            let project_id = ts_grpc.project_id.clone();
+            let config = Self::new(Box::new(ts_http), Box::new(ts_grpc));
+            Ok((config, project_id))
+        }
+    }
+
+    #[cfg(feature = "bigquery")]
+    fn bigquery_http_auth_config() -> Config<'static> {
+        Config {
+            audience: None,
+            scopes: Some(&google_cloud_bigquery::http::bigquery_client::SCOPES),
+            sub: None,
+        }
+    }
+
+    #[cfg(feature = "bigquery")]
+    fn bigquery_grpc_auth_config() -> Config<'static> {
+        Config {
+            audience: Some(google_cloud_bigquery::grpc::apiv1::conn_pool::AUDIENCE),
+            scopes: Some(&google_cloud_bigquery::grpc::apiv1::conn_pool::SCOPES),
+            sub: None,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use google_cloud_gax::conn::Environment;
@@ -207,5 +274,14 @@ mod test {
             .unwrap();
         assert!(config.default_google_access_id.is_some());
         assert!(config.default_sign_by.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_bigquery() {
+        use crate::bigquery::CreateAuthExt;
+        let (_config, project_id) = google_cloud_bigquery::client::ClientConfig::new_with_auth()
+            .await
+            .unwrap();
+        assert!(project_id.is_some())
     }
 }
