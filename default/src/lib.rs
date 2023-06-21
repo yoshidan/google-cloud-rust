@@ -183,25 +183,25 @@ pub mod bigquery {
 
     #[async_trait]
     pub trait CreateAuthExt {
-        async fn create() -> Result<(Self, Option<String>), Error>
+        async fn new_with_auth() -> Result<(Self, Option<String>), Error>
         where
             Self: Sized;
 
-        async fn create_with_credentials(credentials: CredentialsFile) -> Result<(Self, Option<String>), Error>
+        async fn new_with_credentials(credentials: CredentialsFile) -> Result<(Self, Option<String>), Error>
         where
             Self: Sized;
     }
 
     #[async_trait]
     impl CreateAuthExt for ClientConfig {
-        async fn create() -> Result<(Self, Option<String>), Error> {
+        async fn new_with_auth() -> Result<(Self, Option<String>), Error> {
             let ts_http = DefaultTokenSourceProvider::new(bigquery_http_auth_config()).await?;
             let ts_grpc = DefaultTokenSourceProvider::new(bigquery_grpc_auth_config()).await?;
             let project_id = ts_grpc.project_id.clone();
             let config = Self::new(Box::new(ts_http), Box::new(ts_grpc));
             Ok((config, project_id))
         }
-        async fn create_with_credentials(credentials: CredentialsFile) -> Result<(Self, Option<String>), Error>
+        async fn new_with_credentials(credentials: CredentialsFile) -> Result<(Self, Option<String>), Error>
         where
             Self: Sized,
         {
@@ -279,7 +279,7 @@ mod test {
     #[tokio::test]
     async fn test_bigquery() {
         use crate::bigquery::CreateAuthExt;
-        let (_config, project_id) = google_cloud_bigquery::client::ClientConfig::create().await.unwrap();
+        let (_config, project_id) = google_cloud_bigquery::client::ClientConfig::new_with_auth().await.unwrap();
         assert!(project_id.is_some())
     }
 }

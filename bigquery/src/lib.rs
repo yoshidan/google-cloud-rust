@@ -24,7 +24,7 @@
 //! use google_cloud_default::biqquery::CreateAuthExt;
 //!
 //! async fn run() {
-//!     let (config, project_id) = ClientConfig::create().await.unwrap();
+//!     let (config, project_id) = ClientConfig::new_with_auth().await.unwrap();
 //!     let client = Client::new(config).await.unwrap();
 //! }
 //! ```
@@ -38,7 +38,7 @@
 //! use google_cloud_default::biqquery::CreateAuthExt;
 //!
 //! async fn run(cred: CredentialsFile) {
-//!     let (config, project_id) = ClientConfig::create_with_credentials(cred).await.unwrap();
+//!     let (config, project_id) = ClientConfig::new_with_credentials(cred).await.unwrap();
 //!     let client = Client::new(config).await.unwrap();
 //! }
 //! ```
