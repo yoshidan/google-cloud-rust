@@ -316,13 +316,10 @@ pub mod value {
                 return Err(Error::InvalidNullable);
             }
             match col.data_type() {
-                DataType::Time64(tu) => match tu {
-                    TimeUnit::Microsecond => {
-                        let micros = downcast::<Time64MicrosecondArray>(col)?.value(row_no);
-                        Ok(Time::from_hms_micro(0, 0, 0, micros as u32)?)
-                    }
-                    _ => Err(Error::InvalidDataType(col.data_type().clone(), "Time")),
-                },
+                DataType::Time64(TimeUnit::Microsecond) => {
+                    let micros = downcast::<Time64MicrosecondArray>(col)?.value(row_no);
+                    Ok(Time::from_hms_micro(0, 0, 0, micros as u32)?)
+                }
                 _ => Err(Error::InvalidDataType(col.data_type().clone(), "Time")),
             }
         }
@@ -350,13 +347,10 @@ pub mod value {
                 return Err(Error::InvalidNullable);
             }
             match col.data_type() {
-                DataType::Timestamp(tu, _zone) => match tu {
-                    TimeUnit::Microsecond => {
-                        let micros = downcast::<TimestampMicrosecondArray>(col)?.value(row_no);
-                        Ok(OffsetDateTime::from_unix_timestamp_nanos(micros as i128 * 1000)?)
-                    }
-                    _ => Err(Error::InvalidDataType(col.data_type().clone(), "Days")),
-                },
+                DataType::Timestamp(TimeUnit::Microsecond, _) => {
+                    let micros = downcast::<TimestampMicrosecondArray>(col)?.value(row_no);
+                    Ok(OffsetDateTime::from_unix_timestamp_nanos(micros as i128 * 1000)?)
+                }
                 _ => Err(Error::InvalidDataType(col.data_type().clone(), "Days")),
             }
         }

@@ -201,7 +201,6 @@ impl Client {
                 timeout_ms: request.timeout_ms,
                 location: result.job_reference.location,
                 format_options: request.format_options,
-                ..Default::default()
             },
             chunk: VecDeque::from(result.rows.unwrap_or_default()),
             total_size: result.total_rows.unwrap_or_default(),
