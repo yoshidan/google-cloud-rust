@@ -108,6 +108,7 @@ allow = [
     "MPL-2.0",
     "Unicode-DFS-2016",
     "BSD-3-Clause",
+    "CC0-1.0"
 ]
 # List of explicitly disallowed licenses
 # See https://spdx.org/licenses/ for list of possible licenses
@@ -231,10 +232,10 @@ deny = [
 skip = [
     { name = "base64", version = "0.13" },
     { name = "hermit-abi", version = "=0.3" },
-    { name = "redox_syscall", version = "=0.2.16" },
     { name = "syn", version = "=1.0.109" },
     { name = "regex-syntax", version = "=0.6.29" },
-    { name = "webpki-roots", version = "=0.22.6" }
+    { name = "webpki-roots", version = "=0.22.6" },
+    { name = "hashbrown", version = "=0.14.0" }
 ]
 # Similarly to `skip` allows you to skip certain crates during duplicate
 # detection. Unlike skip, it also includes the entire tree of transitive
