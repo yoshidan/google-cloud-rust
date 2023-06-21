@@ -27,7 +27,7 @@ impl BigqueryTableClient {
     /// use google_cloud_bigquery::http::table::{Table, TableFieldSchema, TableFieldType, TableReference, TableSchema};
     ///
     /// async fn run(client: BigqueryTableClient) -> Result<Table, Error> {
-    ///     let mut table = Table {
+    ///     let table = Table {
     ///         table_reference: TableReference {
     ///             project_id: "project".to_string(),
     ///             dataset_id: "dataset".to_string(),
@@ -45,7 +45,7 @@ impl BigqueryTableClient {
     ///         }),
     ///         ..Default::default()
     ///     };
-    ///     client.create(table1).await
+    ///     client.create(&table).await
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]

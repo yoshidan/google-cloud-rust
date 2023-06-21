@@ -58,7 +58,7 @@ impl BigqueryJobClient {
     ///     let created = client.create(&job).await.unwrap();
     ///     assert!(created.status.errors.is_none());
     ///     assert!(created.status.error_result.is_none());
-    ///     assert!(created.status.state == JobState::Running || job2.status.state == JobState::Done);
+    ///     assert!(created.status.state == JobState::Running || created.status.state == JobState::Done);
     /// }
     /// ```
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
