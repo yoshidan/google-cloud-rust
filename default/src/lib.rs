@@ -279,7 +279,9 @@ mod test {
     #[tokio::test]
     async fn test_bigquery() {
         use crate::bigquery::CreateAuthExt;
-        let (_config, project_id) = google_cloud_bigquery::client::ClientConfig::new_with_auth().await.unwrap();
+        let (_config, project_id) = google_cloud_bigquery::client::ClientConfig::new_with_auth()
+            .await
+            .unwrap();
         assert!(project_id.is_some())
     }
 }
