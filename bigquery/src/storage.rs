@@ -1,16 +1,16 @@
 use std::collections::VecDeque;
 use std::io::{BufReader, Cursor};
 
-pub use arrow::*;
 use arrow::error::ArrowError;
 use arrow::ipc::reader::StreamReader;
+pub use arrow::*;
 
 use google_cloud_gax::grpc::{Status, Streaming};
 use google_cloud_gax::retry::RetrySetting;
+use google_cloud_googleapis::cloud::bigquery::storage::v1::read_rows_response::{Rows, Schema};
 use google_cloud_googleapis::cloud::bigquery::storage::v1::{
     ArrowSchema, ReadRowsRequest, ReadRowsResponse, ReadSession,
 };
-use google_cloud_googleapis::cloud::bigquery::storage::v1::read_rows_response::{Rows, Schema};
 
 use crate::grpc::apiv1::bigquery_client::StreamingReadClient;
 use crate::storage::value::StructDecodable;
@@ -181,8 +181,8 @@ pub mod value {
     };
     use arrow::datatypes::{DataType, TimeUnit};
     use bigdecimal::BigDecimal;
-    use time::{Date, Duration, OffsetDateTime, Time};
     use time::macros::date;
+    use time::{Date, Duration, OffsetDateTime, Time};
 
     #[derive(thiserror::Error, Debug)]
     pub enum Error {

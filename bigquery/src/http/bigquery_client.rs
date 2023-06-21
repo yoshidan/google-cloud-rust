@@ -94,7 +94,6 @@ impl BigqueryClient {
 pub(crate) mod test {
     use std::str::FromStr;
 
-    use arrow::array::ArrayRef;
     use base64::engine::general_purpose::STANDARD;
     use base64_serde::base64_serde_type;
     use bigdecimal::BigDecimal;
@@ -110,6 +109,7 @@ pub(crate) mod test {
     use crate::query;
     use crate::query::value::Decodable as QueryDecodable;
     use crate::storage;
+    use crate::storage::array::ArrayRef;
     use crate::storage::value::Decodable as StorageDecodable;
 
     base64_serde_type!(Base64Standard, STANDARD);
