@@ -356,8 +356,6 @@ mod tests {
     use time::macros::datetime;
     use time::{Date, OffsetDateTime, Time};
 
-    use google_cloud_auth::project::Config;
-    use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_googleapis::cloud::bigquery::storage::v1::read_session::TableReadOptions;
 
     use crate::client::{Client, ClientConfig, ReadTableOption};
@@ -375,23 +373,8 @@ mod tests {
     }
 
     async fn create_client() -> (Client, String) {
-        let http_tsp = DefaultTokenSourceProvider::new(Config {
-            audience: None,
-            scopes: Some(&SCOPES),
-            sub: None,
-        })
-        .await
-        .unwrap();
-        let grpc_tsp = DefaultTokenSourceProvider::new(Config {
-            audience: Some(apiv1::conn_pool::AUDIENCE),
-            scopes: Some(&apiv1::conn_pool::SCOPES),
-            sub: None,
-        })
-        .await
-        .unwrap();
-        let project_id = http_tsp.source_credentials.clone().unwrap().project_id.unwrap();
-        let client_config = ClientConfig::new(Box::new(http_tsp), Box::new(grpc_tsp)).with_debug(false);
-        (Client::new(client_config).await.unwrap(), project_id)
+        let (config, project_id) = ClientConfig::new_with_auth().await.unwrap();
+        (Client::new(client_config).await.unwrap(), project_id.unwrap())
     }
 
     #[tokio::test]

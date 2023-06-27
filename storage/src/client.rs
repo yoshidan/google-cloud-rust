@@ -247,9 +247,6 @@ mod test {
     use serial_test::serial;
     use time::OffsetDateTime;
 
-    use google_cloud_auth::project::Config;
-    use google_cloud_auth::token::DefaultTokenSourceProvider;
-
     use crate::client::{Client, ClientConfig};
     use crate::http::buckets::delete::DeleteBucketRequest;
     use crate::http::buckets::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
@@ -267,20 +264,7 @@ mod test {
     }
 
     async fn create_client() -> (Client, String) {
-        let mut config = ClientConfig::default();
-        let ts = DefaultTokenSourceProvider::new(Config {
-            audience: None,
-            scopes: Some(&SCOPES),
-            sub: None,
-        })
-        .await
-        .unwrap();
-
-        let cred = &ts.source_credentials.clone().unwrap();
-        config.project_id = cred.project_id.clone();
-        config.token_source_provider = Box::new(ts);
-        config.default_google_access_id = cred.client_email.clone();
-        config.default_sign_by = Some(SignBy::PrivateKey(cred.private_key.clone().unwrap().into_bytes()));
+        let mut config = ClientConfig::default().with_auth().await.unwrap();
         let project_id = config.project_id.clone();
         (Client::new(config), project_id.unwrap())
     }
