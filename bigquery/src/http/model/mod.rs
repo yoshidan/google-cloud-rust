@@ -833,6 +833,7 @@ pub struct TrainingOptions {
     pub horizon: Option<i64>,
     /// Whether to preserve the input structs in output feature names.
     /// Suppose there is a struct A with field b. When false (default), the output feature name is A_b. When true, the output feature name is A.b.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub preserve_input_structs: Option<bool>,
     /// The max value of the sum of non-seasonal p and q.
     #[serde(default, deserialize_with = "crate::http::from_str_option")]
