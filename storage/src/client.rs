@@ -35,6 +35,55 @@ impl Default for ClientConfig {
     }
 }
 
+#[cfg(feature = "auth")]
+impl ClientConfig {
+    pub async fn with_auth(mut self) -> Result<Self, google_cloud_auth::error::Error> {
+        let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new(Self::auth_config()).await?;
+        Ok(self.with_token_source(ts))
+    }
+
+    pub async fn with_credentials(
+        mut self,
+        credentials: google_cloud_auth::credentials::CredentialsFile,
+    ) -> Result<Self, google_cloud_auth::error::Error> {
+        let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new_with_credentials(
+            Self::auth_config(),
+            Box::new(credentials),
+        )
+        .await?;
+        Ok(self.with_token_source(ts))
+    }
+
+    fn with_token_source(mut self, ts: google_cloud_auth::token::DefaultTokenSourceProvider) -> Self {
+        match &ts.token_source() {
+            // Credential file is used.
+            Some(cred) => {
+                self.project_id = cred.project_id.clone();
+                if let Some(pk) = &cred.private_key {
+                    self.default_sign_by = Some(PrivateKey(pk.clone().into_bytes()));
+                }
+                self.default_google_access_id = cred.client_email.clone();
+            }
+            // On Google Cloud
+            None => {
+                self.project_id = Some(google_cloud_metadata::project_id().await);
+                self.default_sign_by = Some(SignBy::SignBytes);
+                self.default_google_access_id = google_cloud_metadata::email("default").await.ok();
+            }
+        }
+        self.token_source_provider = Box::new(ts);
+        self
+    }
+
+    fn auth_config() -> google_cloud_auth::project::Config {
+        google_cloud_auth::project::Config {
+            audience: None,
+            scopes: Some(&google_cloud_storage::http::storage_client::SCOPES),
+            sub: None,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Client {
     default_google_access_id: Option<String>,

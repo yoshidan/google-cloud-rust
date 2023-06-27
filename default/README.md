@@ -1,3 +1,8 @@
+# Deprecated
+
+Do not use this crate. Alternatively, you can specify `features=[auth]` for `google-cloud-pubsub`, `google-cloud-spanner`, `google-cloud-bigquery`, and `google-cloud-storage`, respectively.
+This crate will be removed in the near future.
+
 # google-cloud-default
 
 Google Cloud Platform default configuration for google-cloud-rust.

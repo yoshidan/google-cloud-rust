@@ -43,6 +43,42 @@ impl Default for ClientConfig {
     }
 }
 
+#[cfg(feature = "auth")]
+impl ClientConfig {
+    pub async fn with_auth(mut self) -> Result<Self, Error> {
+        if let Environment::GoogleCloud(_) = self.environment {
+            let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new(Self::auth_config()).await?;
+            self.project_id = ts.project_id.clone();
+            self.environment = Environment::GoogleCloud(Box::new(ts))
+        }
+        Ok(self)
+    }
+
+    pub async fn with_credentials(
+        mut self,
+        credentials: google_cloud_auth::credentials::CredentialsFile,
+    ) -> Result<Self, Error> {
+        if let Environment::GoogleCloud(_) = self.environment {
+            let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new_with_credentials(
+                Self::auth_config(),
+                Box::new(credentials),
+            )
+            .await?;
+            self.project_id = ts.project_id.clone();
+            self.environment = Environment::GoogleCloud(Box::new(ts))
+        }
+        Ok(self)
+    }
+
+    fn auth_config() -> google_cloud_auth::project::Config {
+        google_cloud_auth::project::Config {
+            audience: Some(google_cloud_pubsub::apiv1::conn_pool::AUDIENCE),
+            scopes: Some(&google_cloud_pubsub::apiv1::conn_pool::SCOPES),
+            sub: None,
+        }
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]

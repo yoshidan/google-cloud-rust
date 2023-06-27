@@ -55,11 +55,6 @@ jobs:
         with:
           command: test
           args: --release --all-features --manifest-path foundation/gax/Cargo.toml
-      - uses: actions-rs/cargo@v1
-        name: default-test
-        with:
-          command: test
-          args: --release --all-features --manifest-path default/Cargo.toml
       - name: cargo-deny
         uses: EmbarkStudios/cargo-deny-action@v1
         with:
