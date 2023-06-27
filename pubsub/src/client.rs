@@ -45,7 +45,7 @@ impl Default for ClientConfig {
 
 #[cfg(feature = "auth")]
 impl ClientConfig {
-    pub async fn with_auth(mut self) -> Result<Self, Error> {
+    pub async fn with_auth(mut self) -> Result<Self, google_cloud_auth::error::Error> {
         if let Environment::GoogleCloud(_) = self.environment {
             let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new(Self::auth_config()).await?;
             self.project_id = ts.project_id.clone();
@@ -57,7 +57,7 @@ impl ClientConfig {
     pub async fn with_credentials(
         mut self,
         credentials: google_cloud_auth::credentials::CredentialsFile,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, google_cloud_auth::error::Error> {
         if let Environment::GoogleCloud(_) = self.environment {
             let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new_with_credentials(
                 Self::auth_config(),
@@ -70,10 +70,10 @@ impl ClientConfig {
         Ok(self)
     }
 
-    fn auth_config() -> google_cloud_auth::project::Config {
+    fn auth_config() -> google_cloud_auth::project::Config<'static> {
         google_cloud_auth::project::Config {
-            audience: Some(google_cloud_pubsub::apiv1::conn_pool::AUDIENCE),
-            scopes: Some(&google_cloud_pubsub::apiv1::conn_pool::SCOPES),
+            audience: Some(crate::apiv1::conn_pool::AUDIENCE),
+            scopes: Some(&crate::apiv1::conn_pool::SCOPES),
             sub: None,
         }
     }

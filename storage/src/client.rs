@@ -37,13 +37,13 @@ impl Default for ClientConfig {
 
 #[cfg(feature = "auth")]
 impl ClientConfig {
-    pub async fn with_auth(mut self) -> Result<Self, google_cloud_auth::error::Error> {
+    pub async fn with_auth(self) -> Result<Self, google_cloud_auth::error::Error> {
         let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new(Self::auth_config()).await?;
-        Ok(self.with_token_source(ts))
+        Ok(self.with_token_source(ts).await)
     }
 
     pub async fn with_credentials(
-        mut self,
+        self,
         credentials: google_cloud_auth::credentials::CredentialsFile,
     ) -> Result<Self, google_cloud_auth::error::Error> {
         let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new_with_credentials(
@@ -51,11 +51,11 @@ impl ClientConfig {
             Box::new(credentials),
         )
         .await?;
-        Ok(self.with_token_source(ts))
+        Ok(self.with_token_source(ts).await)
     }
 
-    fn with_token_source(mut self, ts: google_cloud_auth::token::DefaultTokenSourceProvider) -> Self {
-        match &ts.token_source() {
+    async fn with_token_source(mut self, ts: google_cloud_auth::token::DefaultTokenSourceProvider) -> Self {
+        match &ts.source_credentials {
             // Credential file is used.
             Some(cred) => {
                 self.project_id = cred.project_id.clone();
@@ -75,10 +75,10 @@ impl ClientConfig {
         self
     }
 
-    fn auth_config() -> google_cloud_auth::project::Config {
+    fn auth_config() -> google_cloud_auth::project::Config<'static> {
         google_cloud_auth::project::Config {
             audience: None,
-            scopes: Some(&google_cloud_storage::http::storage_client::SCOPES),
+            scopes: Some(&crate::http::storage_client::SCOPES),
             sub: None,
         }
     }
@@ -255,8 +255,7 @@ mod test {
     };
     use crate::http::buckets::list::ListBucketsRequest;
     use crate::http::buckets::{lifecycle, Billing, Cors, IamConfiguration, Lifecycle, Website};
-    use crate::http::storage_client::SCOPES;
-    use crate::sign::{SignBy, SignedURLMethod, SignedURLOptions};
+    use crate::sign::{SignedURLMethod, SignedURLOptions};
 
     #[ctor::ctor]
     fn init() {
@@ -264,7 +263,7 @@ mod test {
     }
 
     async fn create_client() -> (Client, String) {
-        let mut config = ClientConfig::default().with_auth().await.unwrap();
+        let config = ClientConfig::default().with_auth().await.unwrap();
         let project_id = config.project_id.clone();
         (Client::new(config), project_id.unwrap())
     }

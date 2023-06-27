@@ -108,7 +108,7 @@ impl ClientConfig {
     pub async fn with_credentials(
         mut self,
         credentials: google_cloud_auth::credentials::CredentialsFile,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, google_cloud_auth::error::Error> {
         if let Environment::GoogleCloud(_) = self.environment {
             let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new_with_credentials(
                 Self::auth_config(),
@@ -120,7 +120,7 @@ impl ClientConfig {
         Ok(self)
     }
 
-    fn auth_config() -> google_cloud_auth::Config {
+    fn auth_config() -> google_cloud_auth::project::Config<'static> {
         google_cloud_auth::project::Config {
             audience: Some(crate::apiv1::conn_pool::AUDIENCE),
             scopes: Some(&crate::apiv1::conn_pool::SCOPES),
