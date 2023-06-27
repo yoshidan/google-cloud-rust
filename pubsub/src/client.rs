@@ -274,10 +274,10 @@ mod tests {
     use std::thread;
     use std::time::Duration;
 
+    use google_cloud_gax::conn::Environment;
     use serial_test::serial;
     use tokio_util::sync::CancellationToken;
     use uuid::Uuid;
-    use google_cloud_gax::conn::Environment;
 
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 
@@ -451,13 +451,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_with_auth() {
-        let config = ClientConfig::default()
-            .with_auth()
-            .await
-            .unwrap();
+        let config = ClientConfig::default().with_auth().await.unwrap();
         if let Environment::Emulator(_) = config.environment {
             unreachable!()
         }
     }
-
 }
