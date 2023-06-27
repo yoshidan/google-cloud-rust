@@ -237,7 +237,7 @@ async fn test_begin_read_write_transaction_retry() {
 #[tokio::test]
 async fn test_with_auth() {
     let config = ClientConfig::default().with_auth().await.unwrap();
-    if let Environment::Emulator(_) = config.environment {
+    if let Environment::GoogleCloud(_) = config.environment {
         unreachable!()
     }
 }
