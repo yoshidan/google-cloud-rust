@@ -277,10 +277,11 @@ mod tests {
     use serial_test::serial;
     use tokio_util::sync::CancellationToken;
     use uuid::Uuid;
+    use google_cloud_gax::conn::Environment;
 
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 
-    use crate::client::Client;
+    use crate::client::{Client, ClientConfig};
     use crate::subscriber::SubscriberConfig;
     use crate::subscription::{ReceiveConfig, SubscriptionConfig};
 
@@ -447,4 +448,16 @@ mod tests {
         assert_eq!(1, subs_after.len() - subs.len());
         assert_eq!(1, snapshots_after.len() - snapshots.len());
     }
+
+    #[tokio::test]
+    async fn test_with_auth() {
+        let config = ClientConfig::default()
+            .with_auth()
+            .await
+            .unwrap();
+        if let Environment::Emulator(_) = config.environment {
+            unreachable!()
+        }
+    }
+
 }
