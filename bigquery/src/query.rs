@@ -1,3 +1,4 @@
+pub use backon::*;
 use std::collections::VecDeque;
 
 use crate::http::bigquery_job_client::BigqueryJobClient;
@@ -5,6 +6,19 @@ use crate::http::error::Error as HttpError;
 use crate::http::job::get_query_results::GetQueryResultsRequest;
 use crate::http::tabledata::list::Tuple;
 use crate::query::value::StructDecodable;
+
+#[derive(Debug, Clone, Default)]
+pub struct QueryOption {
+    /// Exponential back off retry setting
+    pub(crate) retry: ExponentialBuilder,
+}
+
+impl QueryOption {
+    pub fn with_retry(mut self, builder: ExponentialBuilder) -> Self {
+        self.retry = builder;
+        self
+    }
+}
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -20,6 +34,7 @@ pub struct Iterator {
     pub(crate) job_id: String,
     pub(crate) request: GetQueryResultsRequest,
     pub(crate) chunk: VecDeque<Tuple>,
+    pub(crate) force_first_fetch: bool,
     pub total_size: i64,
 }
 
@@ -29,7 +44,9 @@ impl Iterator {
             if let Some(v) = self.chunk.pop_front() {
                 return Ok(T::decode(v).map(Some)?);
             }
-            if self.request.page_token.is_none() {
+            if self.force_first_fetch {
+                self.force_first_fetch = false
+            } else if self.request.page_token.is_none() {
                 return Ok(None);
             }
             let response = self
@@ -257,5 +274,15 @@ pub mod value {
                 _ => Ok(Some(T::decode(value)?)),
             }
         }
+    }
+}
+
+pub mod run {
+    #[derive(thiserror::Error, Debug)]
+    pub enum Error {
+        #[error(transparent)]
+        Http(#[from] crate::http::error::Error),
+        #[error("Retry exceeded with job incomplete")]
+        JobIncomplete,
     }
 }

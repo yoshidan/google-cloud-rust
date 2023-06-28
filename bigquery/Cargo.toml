@@ -26,6 +26,7 @@ arrow = { version="42.0", default-features = false, features = ["ipc"] }
 base64 = "0.21"
 bigdecimal = { version="0.3", features=["serde"] }
 num-bigint = "0.4"
+backon = "0.4"
 
 [dev-dependencies]
 tokio = { version="1.20", features=["rt-multi-thread"] }
