@@ -47,7 +47,7 @@ impl ErrorResponse {
                         }
                     }
                 }
-                return false;
+                false
             }
         }
     }
