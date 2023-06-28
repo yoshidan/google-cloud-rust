@@ -129,8 +129,8 @@ pub struct QueryResponse {
     pub rows: Option<Vec<Tuple>>,
     /// The total number of bytes processed for this query.
     /// If this query was a dry run, this is the number of bytes that would be processed if the query were run.
-    #[serde(deserialize_with = "crate::http::from_str")]
-    pub total_bytes_processed: i64,
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub total_bytes_processed: Option<i64>,
     /// Whether the query has completed or not.
     /// If rows or totalRows are present, this will always be true.
     /// If this is false, totalRows will not be available.
@@ -141,7 +141,7 @@ pub struct QueryResponse {
     /// For more information about error messages, see Error messages.
     pub errors: Option<Vec<ErrorProto>>,
     /// Whether the query result was fetched from the query cache.
-    pub cache_hit: bool,
+    pub cache_hit: Option<bool>,
     /// Output only. The number of rows affected by a DML statement.
     /// Present only for DML statements INSERT, UPDATE or DELETE.
     #[serde(default, deserialize_with = "crate::http::from_str_option")]

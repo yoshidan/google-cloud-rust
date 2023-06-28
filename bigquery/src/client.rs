@@ -1,3 +1,4 @@
+use backon::{ExponentialBuilder, Retryable};
 use core::time::Duration;
 use std::borrow::Cow;
 use std::collections::VecDeque;
@@ -19,12 +20,15 @@ use crate::http::bigquery_routine_client::BigqueryRoutineClient;
 use crate::http::bigquery_row_access_policy_client::BigqueryRowAccessPolicyClient;
 use crate::http::bigquery_table_client::BigqueryTableClient;
 use crate::http::bigquery_tabledata_client::BigqueryTabledataClient;
-use crate::http::error::Error;
 use crate::http::job::get_query_results::GetQueryResultsRequest;
 use crate::http::job::query::QueryRequest;
+use crate::http::job::JobReference;
 use crate::http::table::TableReference;
-use crate::query;
+use crate::query::QueryOption;
 use crate::storage;
+use crate::{http, query};
+
+const JOB_RETRY_REASONS: [&str; 3] = ["backendError", "rateLimitExceeded", "internalError"];
 
 #[derive(Debug)]
 pub struct ClientConfig {
@@ -235,23 +239,109 @@ impl Client {
     ///         let col2 = row.column::<Option<String>>(1);
     ///     }
     /// }
-    pub async fn query(&self, project_id: &str, request: QueryRequest) -> Result<query::Iterator, Error> {
+    pub async fn query(&self, project_id: &str, request: QueryRequest) -> Result<query::Iterator, query::run::Error> {
+        let builder = ExponentialBuilder::default().with_max_times(usize::MAX);
+        self.query_with_option(project_id, request, QueryOption::default().with_retry(builder))
+            .await
+    }
+
+    /// Run query job and get result.
+    /// ```rust
+    /// use google_cloud_bigquery::http::job::query::QueryRequest;
+    /// use google_cloud_bigquery::query::row::Row;
+    /// use google_cloud_bigquery::client::Client;
+    /// use google_cloud_bigquery::query::QueryOption;
+    /// use google_cloud_bigquery::query::ExponentialBuilder;
+    ///
+    /// async fn run(client: &Client, project_id: &str) {
+    ///     let request = QueryRequest {
+    ///         query: "SELECT * FROM dataset.table".to_string(),
+    ///         ..Default::default()
+    ///     };
+    ///     let retry = ExponentialBuilder::default().with_max_times(10);
+    ///     let option = QueryOption::default().with_retry(retry);
+    ///     let mut iter = client.query_with_option(project_id, request, option).await.unwrap();
+    ///     while let Some(row) = iter.next::<Row>().await.unwrap() {
+    ///         let col1 = row.column::<String>(0);
+    ///         let col2 = row.column::<Option<String>>(1);
+    ///     }
+    /// }
+    pub async fn query_with_option(
+        &self,
+        project_id: &str,
+        request: QueryRequest,
+        option: QueryOption,
+    ) -> Result<query::Iterator, query::run::Error> {
         let result = self.job_client.query(project_id, &request).await?;
+        let (total_rows, page_token, rows, force_first_fetch) = if result.job_complete {
+            (
+                result.total_rows.unwrap_or_default(),
+                result.page_token,
+                result.rows.unwrap_or_default(),
+                false,
+            )
+        } else {
+            (
+                self.wait_for_query(&result.job_reference, &option.retry, &request.timeout_ms)
+                    .await?,
+                None,
+                vec![],
+                true,
+            )
+        };
         Ok(query::Iterator {
             client: self.job_client.clone(),
             project_id: result.job_reference.project_id,
             job_id: result.job_reference.job_id,
             request: GetQueryResultsRequest {
                 start_index: 0,
-                page_token: result.page_token,
+                page_token,
                 max_results: request.max_results,
                 timeout_ms: request.timeout_ms,
                 location: result.job_reference.location,
                 format_options: request.format_options,
             },
-            chunk: VecDeque::from(result.rows.unwrap_or_default()),
-            total_size: result.total_rows.unwrap_or_default(),
+            chunk: VecDeque::from(rows),
+            total_size: total_rows,
+            force_first_fetch,
         })
+    }
+
+    async fn wait_for_query(
+        &self,
+        job: &JobReference,
+        builder: &ExponentialBuilder,
+        timeout_ms: &Option<i64>,
+    ) -> Result<i64, query::run::Error> {
+        // Use get_query_results only to wait for completion, not to read results.
+        let request = GetQueryResultsRequest {
+            max_results: Some(0),
+            timeout_ms: *timeout_ms,
+            location: job.location.clone(),
+            ..Default::default()
+        };
+        let action = || async {
+            tracing::debug!("waiting for job completion {:?}", job);
+            let result = self
+                .job_client
+                .get_query_results(&job.project_id, &job.job_id, &request)
+                .await
+                .map_err(query::run::Error::Http)?;
+            if result.job_complete {
+                Ok(result.total_rows)
+            } else {
+                Err(query::run::Error::JobIncomplete)
+            }
+        };
+        action
+            .retry(builder)
+            .when(|e: &query::run::Error| match e {
+                query::run::Error::JobIncomplete => true,
+                query::run::Error::Http(http::error::Error::HttpClient(_)) => true,
+                query::run::Error::Http(http::error::Error::Response(r)) => r.is_retryable(&JOB_RETRY_REASONS),
+                _ => false,
+            })
+            .await
     }
 
     /// Read table data by BigQuery Storage Read API.
@@ -540,7 +630,6 @@ mod tests {
             .query(
                 &project_id,
                 QueryRequest {
-                    max_results: Some(1),
                     query: "SELECT * FROM rust_test_job.table_data_1686707863".to_string(),
                     ..Default::default()
                 },
@@ -550,6 +639,8 @@ mod tests {
         while let Some(row) = iterator_as_struct.next::<TestData>().await.unwrap() {
             data_as_struct.push(row);
         }
+        assert_eq!(iterator_as_struct.total_size, 3);
+        assert_eq!(iterator_as_row.total_size, 3);
         assert_eq!(data_as_struct.len(), 3);
         assert_eq!(data_as_row.len(), 3);
 
@@ -629,6 +720,31 @@ mod tests {
             assert_data(i, d.clone());
         }
         assert_data(0, data_as_row[0].clone());
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_query_job_incomplete() {
+        let (client, project_id) = create_client().await;
+        let mut data: Vec<TestData> = vec![];
+        let mut iter = client
+            .query(
+                &project_id,
+                QueryRequest {
+                    timeout_ms: Some(5), // pass wait_for_query
+                    use_query_cache: Some(false),
+                    max_results: Some(4999),
+                    query: "SELECT * FROM rust_test_job.table_data_10000v2".to_string(),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+        while let Some(row) = iter.next::<TestData>().await.unwrap() {
+            data.push(row);
+        }
+        assert_eq!(iter.total_size, 10000);
+        assert_eq!(data.len(), 10000);
     }
 
     fn assert_data(index: usize, d: TestData) {

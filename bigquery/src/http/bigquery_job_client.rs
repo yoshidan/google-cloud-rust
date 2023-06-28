@@ -369,7 +369,7 @@ mod test {
         assert!(result.page_token.is_some());
         assert_eq!(result.rows.unwrap().len(), 2);
         assert_eq!(result.total_rows.unwrap(), 3);
-        assert_eq!(result.total_bytes_processed, 0);
+        assert_eq!(result.total_bytes_processed.unwrap(), 0);
         assert!(result.job_complete);
 
         // query all results
@@ -411,7 +411,7 @@ mod test {
             .unwrap();
         assert!(result.job_reference.job_id.is_empty());
         assert!(result.total_rows.is_none());
-        assert_eq!(result.total_bytes_processed, 0);
+        assert_eq!(result.total_bytes_processed.unwrap(), 0);
         assert!(result.job_complete);
 
         table_client

@@ -235,7 +235,8 @@ skip = [
     { name = "syn", version = "=1.0.109" },
     { name = "regex-syntax", version = "=0.6.29" },
     { name = "webpki-roots", version = "=0.22.6" },
-    { name = "hashbrown", version = "=0.14.0" }
+    { name = "hashbrown", version = "=0.14.0" },
+    { name = "miniz_oxide", version = "=0.6.2" }
 ]
 # Similarly to `skip` allows you to skip certain crates during duplicate
 # detection. Unlike skip, it also includes the entire tree of transitive

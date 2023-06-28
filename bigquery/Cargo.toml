@@ -26,6 +26,7 @@ arrow = { version="42.0", default-features = false, features = ["ipc"] }
 base64 = "0.21"
 bigdecimal = { version="0.3", features=["serde"] }
 num-bigint = "0.4"
+backon = "0.4"
 
 google-cloud-auth = { optional = true, version = "0.11", path="../foundation/auth", default-features=false }
 
