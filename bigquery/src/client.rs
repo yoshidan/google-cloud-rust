@@ -226,10 +226,10 @@ impl Client {
         option: QueryOption,
     ) -> Result<query::Iterator, query::run::Error> {
         let result = self.job_client.query(project_id, &request).await?;
-        let total_rows = if result.job_complete {
-            self.wait_for_query(&result.job_reference, &option.retry).await?
+        let (total_rows, page_token) = if result.job_complete {
+            (result.total_rows.unwrap_or_default(), result.page_token)
         } else {
-            result.total_rows.unwrap_or_default()
+            (self.wait_for_query(&result.job_reference, &option.retry).await?, None)
         };
         Ok(query::Iterator {
             client: self.job_client.clone(),
@@ -237,7 +237,7 @@ impl Client {
             job_id: result.job_reference.job_id,
             request: GetQueryResultsRequest {
                 start_index: 0,
-                page_token: result.page_token,
+                page_token,
                 max_results: request.max_results,
                 timeout_ms: request.timeout_ms,
                 location: result.job_reference.location,
@@ -249,7 +249,8 @@ impl Client {
     }
 
     async fn wait_for_query(&self, job: &JobReference, builder: &ExponentialBuilder) -> Result<i64, query::run::Error> {
-        // Use GetQueryResults only to wait for completion, not to read results.
+        tracing::debug!("waiting for job completion {:?}", job);
+        // Use get_query_results only to wait for completion, not to read results.
         let request = GetQueryResultsRequest {
             max_results: Some(0),
             location: job.location.clone(),
@@ -672,6 +673,23 @@ mod tests {
             assert_data(i, d.clone());
         }
         assert_data(0, data_as_row[0].clone());
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_wait_for_query() {
+        let (client, project_id) = create_client().await;
+        let request = QueryRequest {
+            max_results: Some(1),
+            query: "SELECT * FROM rust_test_job.table_data_1686707863".to_string(),
+            ..Default::default()
+        };
+        let response = client.job_client.query(&project_id, &request).await.unwrap();
+        let result = client
+            .wait_for_query(&response.job_reference, &query::ExponentialBuilder::default())
+            .await
+            .unwrap();
+        assert_eq!(3, result);
     }
 
     fn assert_data(index: usize, d: TestData) {
