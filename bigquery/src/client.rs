@@ -1,8 +1,8 @@
+use backon::{ExponentialBuilder, Retryable};
 use core::time::Duration;
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::sync::Arc;
-use backon::{ExponentialBuilder, Retryable};
 
 use google_cloud_gax::conn::{ConnectionOptions, Environment};
 use google_cloud_gax::retry::RetrySetting;
@@ -21,14 +21,14 @@ use crate::http::bigquery_row_access_policy_client::BigqueryRowAccessPolicyClien
 use crate::http::bigquery_table_client::BigqueryTableClient;
 use crate::http::bigquery_tabledata_client::BigqueryTabledataClient;
 use crate::http::job::get_query_results::GetQueryResultsRequest;
-use crate::http::job::JobReference;
 use crate::http::job::query::QueryRequest;
+use crate::http::job::JobReference;
 use crate::http::table::TableReference;
-use crate::{http, query};
 use crate::query::QueryOption;
 use crate::storage;
+use crate::{http, query};
 
-const JOB_RETRY_REASONS : [&str; 3] = ["backendError", "rateLimitExceeded", "internalError"];
+const JOB_RETRY_REASONS: [&str; 3] = ["backendError", "rateLimitExceeded", "internalError"];
 
 #[derive(Debug)]
 pub struct ClientConfig {
@@ -195,6 +195,7 @@ impl Client {
     pub async fn query(&self, project_id: &str, request: QueryRequest) -> Result<query::Iterator, query::run::Error> {
         let builder = ExponentialBuilder::default().with_max_times(usize::MAX);
         self.query_with_option(project_id, request, QueryOption::default().with_retry(builder))
+            .await
     }
 
     /// Run query job and get result.
@@ -203,14 +204,14 @@ impl Client {
     /// use google_cloud_bigquery::query::row::Row;
     /// use google_cloud_bigquery::client::Client;
     /// use google_cloud_bigquery::query::QueryOption;
-    /// use google_cloud_bigquery::query::backon::ExponentialBuilder;
+    /// use google_cloud_bigquery::query::ExponentialBuilder;
     ///
     /// async fn run(client: &Client, project_id: &str) {
     ///     let request = QueryRequest {
     ///         query: "SELECT * FROM dataset.table".to_string(),
     ///         ..Default::default()
     ///     };
-    ///     let retry = ExponentialBuilder::with_max_times(100);
+    ///     let retry = ExponentialBuilder::default().with_max_times(20);
     ///     let option = QueryOption::default().with_retry(retry);
     ///     let mut iter = client.query_with_option(project_id, request, option).await.unwrap();
     ///     while let Some(row) = iter.next::<Row>().await.unwrap() {
@@ -218,11 +219,16 @@ impl Client {
     ///         let col2 = row.column::<Option<String>>(1);
     ///     }
     /// }
-    pub async fn query_with_option(&self, project_id: &str, request: QueryRequest, option: QueryOption) -> Result<query::Iterator, query::run::Error> {
+    pub async fn query_with_option(
+        &self,
+        project_id: &str,
+        request: QueryRequest,
+        option: QueryOption,
+    ) -> Result<query::Iterator, query::run::Error> {
         let result = self.job_client.query(project_id, &request).await?;
         let total_rows = if result.job_complete {
             self.wait_for_query(&result.job_reference, &option.retry).await?
-        }else {
+        } else {
             result.total_rows.unwrap_or_default()
         };
         Ok(query::Iterator {
@@ -242,7 +248,7 @@ impl Client {
         })
     }
 
-    async fn wait_for_query(&self, job: &JobReference, builder: &ExponentialBuilder) -> Result<i64,query::run::Error> {
+    async fn wait_for_query(&self, job: &JobReference, builder: &ExponentialBuilder) -> Result<i64, query::run::Error> {
         // Use GetQueryResults only to wait for completion, not to read results.
         let request = GetQueryResultsRequest {
             max_results: Some(0),
@@ -250,10 +256,14 @@ impl Client {
             ..Default::default()
         };
         let action = || async {
-            let result = self.job_client.get_query_results(&job.project_id, &job.job_id, &request).await?;
+            let result = self
+                .job_client
+                .get_query_results(&job.project_id, &job.job_id, &request)
+                .await
+                .map_err(query::run::Error::Http)?;
             if result.job_complete {
                 Ok(result.total_rows)
-            }else {
+            } else {
                 Err(query::run::Error::JobIncomplete)
             }
         };
@@ -263,10 +273,10 @@ impl Client {
                 query::run::Error::JobIncomplete => true,
                 query::run::Error::Http(http::error::Error::HttpClient(_)) => true,
                 query::run::Error::Http(http::error::Error::Response(r)) => r.is_retryable(&JOB_RETRY_REASONS),
-                _ => false
-            }).await
+                _ => false,
+            })
+            .await
     }
-
 
     /// Read table data by BigQuery Storage Read API.
     /// ```rust

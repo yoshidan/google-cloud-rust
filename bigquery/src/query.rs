@@ -1,5 +1,5 @@
-use std::collections::VecDeque;
 pub use backon::*;
+use std::collections::VecDeque;
 
 use crate::http::bigquery_job_client::BigqueryJobClient;
 use crate::http::error::Error as HttpError;
@@ -10,22 +10,22 @@ use crate::query::value::StructDecodable;
 #[derive(Debug, Clone)]
 pub struct QueryOption {
     /// Exponential back off retry setting
-    pub(crate) retry: ExponentialBuilder
+    pub(crate) retry: ExponentialBuilder,
 }
 
 impl Default for QueryOption {
     fn default() -> Self {
         Self {
-            retry: ExponentialBuilder::default().with_max_times(20),
+            retry: ExponentialBuilder::default().with_max_times(10),
         }
     }
 }
 
 impl QueryOption {
-   pub fn with_retry(mut self, builder: ExponentialBuilder) -> Self {
-       self.retry = builder;
-       self
-   }
+    pub fn with_retry(mut self, builder: ExponentialBuilder) -> Self {
+        self.retry = builder;
+        self
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -286,7 +286,7 @@ pub mod run {
     #[derive(thiserror::Error, Debug)]
     pub enum Error {
         #[error(transparent)]
-        Http(#[from] super::Error),
+        Http(#[from] crate::http::error::Error),
         #[error("Retry exceeded with job incomplete")]
         JobIncomplete,
     }

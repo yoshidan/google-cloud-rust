@@ -30,24 +30,24 @@ pub struct ErrorResponse {
     pub message: String,
 }
 
-const RETRYABLE_CODES :[u16;4] = [500,502,503,504];
+const RETRYABLE_CODES: [u16; 4] = [500, 502, 503, 504];
 
 impl ErrorResponse {
     pub fn is_retryable(&self, retryable_reasons: &[&str]) -> bool {
         if RETRYABLE_CODES.contains(&self.code) {
-            return true
+            return true;
         }
         match &self.errors {
             None => false,
             Some(details) => {
                 for detail in details {
                     for reason in retryable_reasons {
-                        if detail.reason == reason {
-                            return true
+                        if &detail.reason == reason {
+                            return true;
                         }
                     }
                 }
-                return false
+                return false;
             }
         }
     }
@@ -82,4 +82,3 @@ impl fmt::Display for ErrorResponseItem {
 pub(crate) struct ErrorWrapper {
     pub(crate) error: ErrorResponse,
 }
-
