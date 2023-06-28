@@ -227,9 +227,20 @@ impl Client {
     ) -> Result<query::Iterator, query::run::Error> {
         let result = self.job_client.query(project_id, &request).await?;
         let (total_rows, page_token, rows, force_first_fetch) = if result.job_complete {
-            (result.total_rows.unwrap_or_default(), result.page_token, result.rows.unwrap_or_default(), false)
+            (
+                result.total_rows.unwrap_or_default(),
+                result.page_token,
+                result.rows.unwrap_or_default(),
+                false,
+            )
         } else {
-            (self.wait_for_query(&result.job_reference, &option.retry, &request.timeout_ms).await?, None, vec![], true)
+            (
+                self.wait_for_query(&result.job_reference, &option.retry, &request.timeout_ms)
+                    .await?,
+                None,
+                vec![],
+                true,
+            )
         };
         Ok(query::Iterator {
             client: self.job_client.clone(),
@@ -249,11 +260,16 @@ impl Client {
         })
     }
 
-    async fn wait_for_query(&self, job: &JobReference, builder: &ExponentialBuilder, timeout_ms: &Option<i64>) -> Result<i64, query::run::Error> {
+    async fn wait_for_query(
+        &self,
+        job: &JobReference,
+        builder: &ExponentialBuilder,
+        timeout_ms: &Option<i64>,
+    ) -> Result<i64, query::run::Error> {
         // Use get_query_results only to wait for completion, not to read results.
         let request = GetQueryResultsRequest {
             max_results: Some(0),
-            timeout_ms: timeout_ms.clone(),
+            timeout_ms: *timeout_ms,
             location: job.location.clone(),
             ..Default::default()
         };
@@ -305,8 +321,8 @@ impl Client {
         table: &TableReference,
         option: Option<ReadTableOption>,
     ) -> Result<storage::Iterator<T>, storage::Error>
-        where
-            T: storage::value::StructDecodable,
+    where
+        T: storage::value::StructDecodable,
     {
         let option = option.unwrap_or_default();
 
@@ -682,7 +698,7 @@ mod tests {
     #[serial]
     async fn test_query_job_incomplete() {
         let (client, project_id) = create_client().await;
-        let mut data : Vec<TestData> = vec![];
+        let mut data: Vec<TestData> = vec![];
         let mut iter = client
             .query(
                 &project_id,

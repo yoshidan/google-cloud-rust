@@ -129,7 +129,7 @@ pub struct QueryResponse {
     pub rows: Option<Vec<Tuple>>,
     /// The total number of bytes processed for this query.
     /// If this query was a dry run, this is the number of bytes that would be processed if the query were run.
-    #[serde(default,deserialize_with = "crate::http::from_str_option")]
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
     pub total_bytes_processed: Option<i64>,
     /// Whether the query has completed or not.
     /// If rows or totalRows are present, this will always be true.

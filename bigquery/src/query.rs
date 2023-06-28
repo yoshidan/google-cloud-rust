@@ -46,10 +46,8 @@ impl Iterator {
             }
             if self.force_first_fetch {
                 self.force_first_fetch = false
-            }else {
-                if self.request.page_token.is_none() {
-                    return Ok(None);
-                }
+            } else if self.request.page_token.is_none() {
+                return Ok(None);
             }
             let response = self
                 .client
