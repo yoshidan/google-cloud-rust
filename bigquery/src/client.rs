@@ -211,7 +211,7 @@ impl Client {
     ///         query: "SELECT * FROM dataset.table".to_string(),
     ///         ..Default::default()
     ///     };
-    ///     let retry = ExponentialBuilder::default().with_max_times(20);
+    ///     let retry = ExponentialBuilder::default().with_max_times(10);
     ///     let option = QueryOption::default().with_retry(retry);
     ///     let mut iter = client.query_with_option(project_id, request, option).await.unwrap();
     ///     while let Some(row) = iter.next::<Row>().await.unwrap() {
@@ -226,10 +226,10 @@ impl Client {
         option: QueryOption,
     ) -> Result<query::Iterator, query::run::Error> {
         let result = self.job_client.query(project_id, &request).await?;
-        let (total_rows, page_token) = if result.job_complete {
-            (result.total_rows.unwrap_or_default(), result.page_token)
+        let (total_rows, page_token, rows, force_first_fetch) = if result.job_complete {
+            (result.total_rows.unwrap_or_default(), result.page_token, result.rows.unwrap_or_default(), false)
         } else {
-            (self.wait_for_query(&result.job_reference, &option.retry).await?, None)
+            (self.wait_for_query(&result.job_reference, &option.retry, &request.timeout_ms).await?, None, vec![], true)
         };
         Ok(query::Iterator {
             client: self.job_client.clone(),
@@ -243,20 +243,22 @@ impl Client {
                 location: result.job_reference.location,
                 format_options: request.format_options,
             },
-            chunk: VecDeque::from(result.rows.unwrap_or_default()),
+            chunk: VecDeque::from(rows),
             total_size: total_rows,
+            force_first_fetch,
         })
     }
 
-    async fn wait_for_query(&self, job: &JobReference, builder: &ExponentialBuilder) -> Result<i64, query::run::Error> {
-        tracing::debug!("waiting for job completion {:?}", job);
+    async fn wait_for_query(&self, job: &JobReference, builder: &ExponentialBuilder, timeout_ms: &Option<i64>) -> Result<i64, query::run::Error> {
         // Use get_query_results only to wait for completion, not to read results.
         let request = GetQueryResultsRequest {
             max_results: Some(0),
+            timeout_ms: timeout_ms.clone(),
             location: job.location.clone(),
             ..Default::default()
         };
         let action = || async {
+            tracing::debug!("waiting for job completion {:?}", job);
             let result = self
                 .job_client
                 .get_query_results(&job.project_id, &job.job_id, &request)
@@ -303,8 +305,8 @@ impl Client {
         table: &TableReference,
         option: Option<ReadTableOption>,
     ) -> Result<storage::Iterator<T>, storage::Error>
-    where
-        T: storage::value::StructDecodable,
+        where
+            T: storage::value::StructDecodable,
     {
         let option = option.unwrap_or_default();
 
@@ -584,7 +586,6 @@ mod tests {
             .query(
                 &project_id,
                 QueryRequest {
-                    max_results: Some(1),
                     query: "SELECT * FROM rust_test_job.table_data_1686707863".to_string(),
                     ..Default::default()
                 },
@@ -594,6 +595,8 @@ mod tests {
         while let Some(row) = iterator_as_struct.next::<TestData>().await.unwrap() {
             data_as_struct.push(row);
         }
+        assert_eq!(iterator_as_struct.total_size, 3);
+        assert_eq!(iterator_as_row.total_size, 3);
         assert_eq!(data_as_struct.len(), 3);
         assert_eq!(data_as_row.len(), 3);
 
@@ -677,19 +680,27 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_wait_for_query() {
+    async fn test_query_job_incomplete() {
         let (client, project_id) = create_client().await;
-        let request = QueryRequest {
-            max_results: Some(1),
-            query: "SELECT * FROM rust_test_job.table_data_1686707863".to_string(),
-            ..Default::default()
-        };
-        let response = client.job_client.query(&project_id, &request).await.unwrap();
-        let result = client
-            .wait_for_query(&response.job_reference, &query::ExponentialBuilder::default())
+        let mut data : Vec<TestData> = vec![];
+        let mut iter = client
+            .query(
+                &project_id,
+                QueryRequest {
+                    timeout_ms: Some(5), // pass wait_for_query
+                    use_query_cache: Some(false),
+                    max_results: Some(4999),
+                    query: "SELECT * FROM rust_test_job.table_data_10000v2".to_string(),
+                    ..Default::default()
+                },
+            )
             .await
             .unwrap();
-        assert_eq!(3, result);
+        while let Some(row) = iter.next::<TestData>().await.unwrap() {
+            data.push(row);
+        }
+        assert_eq!(iter.total_size, 10000);
+        assert_eq!(data.len(), 10000);
     }
 
     fn assert_data(index: usize, d: TestData) {

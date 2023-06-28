@@ -7,18 +7,10 @@ use crate::http::job::get_query_results::GetQueryResultsRequest;
 use crate::http::tabledata::list::Tuple;
 use crate::query::value::StructDecodable;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct QueryOption {
     /// Exponential back off retry setting
     pub(crate) retry: ExponentialBuilder,
-}
-
-impl Default for QueryOption {
-    fn default() -> Self {
-        Self {
-            retry: ExponentialBuilder::default().with_max_times(10),
-        }
-    }
 }
 
 impl QueryOption {
@@ -42,6 +34,7 @@ pub struct Iterator {
     pub(crate) job_id: String,
     pub(crate) request: GetQueryResultsRequest,
     pub(crate) chunk: VecDeque<Tuple>,
+    pub(crate) force_first_fetch: bool,
     pub total_size: i64,
 }
 
@@ -51,8 +44,12 @@ impl Iterator {
             if let Some(v) = self.chunk.pop_front() {
                 return Ok(T::decode(v).map(Some)?);
             }
-            if self.request.page_token.is_none() {
-                return Ok(None);
+            if self.force_first_fetch {
+                self.force_first_fetch = false
+            }else {
+                if self.request.page_token.is_none() {
+                    return Ok(None);
+                }
             }
             let response = self
                 .client
