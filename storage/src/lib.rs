@@ -33,6 +33,7 @@
 //!
 //! ```
 //! use google_cloud_auth::credentials::CredentialsFile;
+//! // or google_cloud_storage::client::google_cloud_auth::credentials::CredentialsFile
 //! use google_cloud_storage::client::{ClientConfig, Client};
 //!
 //! async fn run(cred: CredentialsFile) {

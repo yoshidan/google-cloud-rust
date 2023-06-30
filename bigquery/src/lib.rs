@@ -25,6 +25,7 @@
 //!
 //! ```rust
 //! use google_cloud_auth::credentials::CredentialsFile;
+//! // or google_cloud_bigquery::client::google_cloud_auth::credentials::CredentialsFile
 //! use google_cloud_bigquery::client::{ClientConfig, Client};
 //!
 //! async fn run(cred: CredentialsFile) {
