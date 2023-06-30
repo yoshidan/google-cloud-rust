@@ -124,7 +124,7 @@ mod test {
             is_case_insensitive: Some(true),
             default_collation: Some(Collation::UndeterminedLocaleCaseInsensitive),
             max_time_travel_hours: Some(48),
-            storage_billing_model: Some(StorageBillingModel::Logical),
+            storage_billing_model: Some(StorageBillingModel::Physical), // 'Logical' doesn't return None in get request
             ..Default::default()
         };
         let ds2 = client.create(&ds2).await.unwrap();
