@@ -91,6 +91,9 @@ impl ClientConfig {
 }
 
 #[cfg(feature = "auth")]
+pub use google_cloud_auth;
+
+#[cfg(feature = "auth")]
 impl ClientConfig {
     pub async fn new_with_auth() -> Result<(Self, Option<String>), google_cloud_auth::error::Error> {
         let ts_http =

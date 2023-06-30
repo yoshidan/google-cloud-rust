@@ -36,6 +36,9 @@ impl Default for ClientConfig {
 }
 
 #[cfg(feature = "auth")]
+pub use google_cloud_auth;
+
+#[cfg(feature = "auth")]
 impl ClientConfig {
     pub async fn with_auth(self) -> Result<Self, google_cloud_auth::error::Error> {
         let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new(Self::auth_config()).await?;

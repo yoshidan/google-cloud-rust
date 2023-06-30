@@ -96,6 +96,9 @@ impl Default for ClientConfig {
 }
 
 #[cfg(feature = "auth")]
+pub use google_cloud_auth;
+
+#[cfg(feature = "auth")]
 impl ClientConfig {
     pub async fn with_auth(mut self) -> Result<Self, google_cloud_auth::error::Error> {
         if let Environment::GoogleCloud(_) = self.environment {
