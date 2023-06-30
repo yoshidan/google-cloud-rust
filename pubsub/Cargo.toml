@@ -35,7 +35,7 @@ ctor = "0.1.21"
 futures-util = "0.3"
 
 [features]
-default = []
+default = ["auth"]
 trace = []
 bytes = ["google-cloud-googleapis/bytes"]
 auth = ["google-cloud-auth"]

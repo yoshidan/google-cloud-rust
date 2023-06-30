@@ -37,6 +37,6 @@ ctor = "0.1"
 google-cloud-auth = { path="../foundation/auth", default-features=false, features=["rustls-tls"]}
 
 [features]
-default = ["serde"]
+default = ["serde", "auth"]
 trace = []
 auth = ["google-cloud-auth"]

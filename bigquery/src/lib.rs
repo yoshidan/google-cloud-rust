@@ -2,14 +2,6 @@
 //!
 //! Google Cloud Platform BigQuery Client library.
 //!
-//! ## Installation
-//!
-//! ```toml
-//! [dependencies]
-//! google-cloud-bigquery = <version>
-//! google-cloud-default = { version = <version>, features = ["bigquery"] }
-//! ```
-//!
 //! ## Quick Start
 //!
 //! ### CreateClient

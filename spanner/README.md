@@ -12,7 +12,7 @@ Google Cloud Platform spanner library.
 
 ```toml
 [dependencies]
-google-cloud-spanner = { version=<version>, features=["auth"] }
+google-cloud-spanner = "version"
 ```
 
 ## Quickstart

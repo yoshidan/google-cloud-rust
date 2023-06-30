@@ -12,7 +12,7 @@ Google Cloud Platform pub/sub library.
 
 ```toml
 [dependencies]
-google-cloud-pubsub = { version=<version>, features=["auth"] }
+google-cloud-pubsub = "version"
 ```
 
 ## Quickstart

@@ -7,8 +7,6 @@
 //! * [Rust client Documentation](#Documentation)
 //!
 //! ## Quickstart
-//! You can use [google-cloud-default](https://crates.io/crates/google-cloud-default) to create `ClientConfig`
-//!
 //! Create `Client` and call transaction API same as [Google Cloud Go](https://github.com/googleapis/google-cloud-go/tree/main/spanner).
 //!
 //! ```
@@ -78,13 +76,11 @@
 //!
 //! To start working with this package, create a client that refers to the database of interest:
 //!
-//! ```ignore
+//! ```
 //! use google_cloud_spanner::client::Client;
 //! use google_cloud_spanner::client::ClientConfig;
-//! use google_cloud_default::WithAuthExt;
 //!
-//! #[tokio::main]
-//! async fn main() {
+//! async fn run() {
 //!     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 //!
 //!     // google_cloud_default provides default ClientConfig with credentials source
@@ -92,7 +88,6 @@
 //!     let mut client = Client::new(DATABASE, config).await.unwrap();
 //!
 //!     client.close().await;
-//!     Ok(())
 //! }
 //! ```
 //!
@@ -120,9 +115,6 @@
 //! ### <a name="Authentication"></a>Authentication
 //!
 //! There are two ways to create a client that is authenticated against the google cloud.
-//!
-//! The crate [google-cloud-default](https://crates.io/crates/google-cloud-default) provides two
-//! methods that help implementing those.
 //!
 //! #### Automatically
 //!

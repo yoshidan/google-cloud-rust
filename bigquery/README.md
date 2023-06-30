@@ -8,7 +8,7 @@ Google Cloud Platform BigQuery Client library.
 
 ```toml
 [dependencies]
-google-cloud-bigquery = { version=<version>, features=["auth"] }
+google-cloud-bigquery = version
 ```
 
 ## Quick Start

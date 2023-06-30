@@ -11,7 +11,7 @@ Google Cloud Platform Storage Client library.
 
 ```toml
 [dependencies]
-google-cloud-storage = { version=<version>, features=["auth"] }
+google-cloud-storage = "version"
 ```
 
 ## Quickstart
