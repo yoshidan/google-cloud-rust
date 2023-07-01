@@ -2,6 +2,7 @@ use serial_test::serial;
 use time::OffsetDateTime;
 
 use common::*;
+use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::TryAs;
 use google_cloud_spanner::client::{Client, ClientConfig, Error};
@@ -231,4 +232,12 @@ async fn test_begin_read_write_transaction_retry() {
         }
     }
     assert_eq!(retry_count, 5);
+}
+
+#[tokio::test]
+async fn test_with_auth() {
+    let config = ClientConfig::default().with_auth().await.unwrap();
+    if let Environment::GoogleCloud(_) = config.environment {
+        unreachable!()
+    }
 }

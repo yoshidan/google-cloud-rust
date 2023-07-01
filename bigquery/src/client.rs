@@ -90,6 +90,56 @@ impl ClientConfig {
     }
 }
 
+#[cfg(feature = "auth")]
+pub use google_cloud_auth;
+
+#[cfg(feature = "auth")]
+impl ClientConfig {
+    pub async fn new_with_auth() -> Result<(Self, Option<String>), google_cloud_auth::error::Error> {
+        let ts_http =
+            google_cloud_auth::token::DefaultTokenSourceProvider::new(Self::bigquery_http_auth_config()).await?;
+        let ts_grpc =
+            google_cloud_auth::token::DefaultTokenSourceProvider::new(Self::bigquery_grpc_auth_config()).await?;
+        let project_id = ts_grpc.project_id.clone();
+        let config = Self::new(Box::new(ts_http), Box::new(ts_grpc));
+        Ok((config, project_id))
+    }
+
+    pub async fn new_with_credentials(
+        credentials: google_cloud_auth::credentials::CredentialsFile,
+    ) -> Result<(Self, Option<String>), google_cloud_auth::error::Error> {
+        let ts_http = google_cloud_auth::token::DefaultTokenSourceProvider::new_with_credentials(
+            Self::bigquery_http_auth_config(),
+            Box::new(credentials.clone()),
+        )
+        .await?;
+        let ts_grpc = google_cloud_auth::token::DefaultTokenSourceProvider::new_with_credentials(
+            Self::bigquery_grpc_auth_config(),
+            Box::new(credentials),
+        )
+        .await?;
+        let project_id = ts_grpc.project_id.clone();
+        let config = Self::new(Box::new(ts_http), Box::new(ts_grpc));
+        Ok((config, project_id))
+    }
+
+    fn bigquery_http_auth_config() -> google_cloud_auth::project::Config<'static> {
+        google_cloud_auth::project::Config {
+            audience: None,
+            scopes: Some(&crate::http::bigquery_client::SCOPES),
+            sub: None,
+        }
+    }
+
+    fn bigquery_grpc_auth_config() -> google_cloud_auth::project::Config<'static> {
+        google_cloud_auth::project::Config {
+            audience: Some(crate::grpc::apiv1::conn_pool::AUDIENCE),
+            scopes: Some(&crate::grpc::apiv1::conn_pool::SCOPES),
+            sub: None,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Client {
     dataset_client: BigqueryDatasetClient,
@@ -399,14 +449,10 @@ mod tests {
     use time::macros::datetime;
     use time::{Date, OffsetDateTime, Time};
 
-    use google_cloud_auth::project::Config;
-    use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_googleapis::cloud::bigquery::storage::v1::read_session::TableReadOptions;
 
     use crate::client::{Client, ClientConfig, ReadTableOption};
-    use crate::grpc::apiv1;
     use crate::http::bigquery_client::test::TestData;
-    use crate::http::bigquery_client::SCOPES;
     use crate::http::job::query::QueryRequest;
     use crate::http::table::TableReference;
     use crate::query;
@@ -418,23 +464,8 @@ mod tests {
     }
 
     async fn create_client() -> (Client, String) {
-        let http_tsp = DefaultTokenSourceProvider::new(Config {
-            audience: None,
-            scopes: Some(&SCOPES),
-            sub: None,
-        })
-        .await
-        .unwrap();
-        let grpc_tsp = DefaultTokenSourceProvider::new(Config {
-            audience: Some(apiv1::conn_pool::AUDIENCE),
-            scopes: Some(&apiv1::conn_pool::SCOPES),
-            sub: None,
-        })
-        .await
-        .unwrap();
-        let project_id = http_tsp.source_credentials.clone().unwrap().project_id.unwrap();
-        let client_config = ClientConfig::new(Box::new(http_tsp), Box::new(grpc_tsp)).with_debug(false);
-        (Client::new(client_config).await.unwrap(), project_id)
+        let (client_config, project_id) = ClientConfig::new_with_auth().await.unwrap();
+        (Client::new(client_config).await.unwrap(), project_id.unwrap())
     }
 
     #[tokio::test]

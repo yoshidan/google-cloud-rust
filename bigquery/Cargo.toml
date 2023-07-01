@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-bigquery"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/bigquery"
@@ -28,6 +28,8 @@ bigdecimal = { version="0.3", features=["serde"] }
 num-bigint = "0.4"
 backon = "0.4"
 
+google-cloud-auth = { optional = true, version = "0.11", path="../foundation/auth", default-features=false }
+
 [dev-dependencies]
 tokio = { version="1.20", features=["rt-multi-thread"] }
 serial_test = "0.9"
@@ -38,7 +40,8 @@ google-cloud-auth = { path = "../foundation/auth", default-features=false }
 base64-serde = "0.7"
 
 [features]
-default = ["default-tls"]
+default = ["default-tls", "auth"]
 default-tls = ["reqwest/default-tls"]
 rustls-tls = ["reqwest/rustls-tls"]
 trace = []
+auth = ["google-cloud-auth"]

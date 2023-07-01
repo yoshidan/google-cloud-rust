@@ -43,6 +43,45 @@ impl Default for ClientConfig {
     }
 }
 
+#[cfg(feature = "auth")]
+pub use google_cloud_auth;
+
+#[cfg(feature = "auth")]
+impl ClientConfig {
+    pub async fn with_auth(mut self) -> Result<Self, google_cloud_auth::error::Error> {
+        if let Environment::GoogleCloud(_) = self.environment {
+            let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new(Self::auth_config()).await?;
+            self.project_id = ts.project_id.clone();
+            self.environment = Environment::GoogleCloud(Box::new(ts))
+        }
+        Ok(self)
+    }
+
+    pub async fn with_credentials(
+        mut self,
+        credentials: google_cloud_auth::credentials::CredentialsFile,
+    ) -> Result<Self, google_cloud_auth::error::Error> {
+        if let Environment::GoogleCloud(_) = self.environment {
+            let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new_with_credentials(
+                Self::auth_config(),
+                Box::new(credentials),
+            )
+            .await?;
+            self.project_id = ts.project_id.clone();
+            self.environment = Environment::GoogleCloud(Box::new(ts))
+        }
+        Ok(self)
+    }
+
+    fn auth_config() -> google_cloud_auth::project::Config<'static> {
+        google_cloud_auth::project::Config {
+            audience: Some(crate::apiv1::conn_pool::AUDIENCE),
+            scopes: Some(&crate::apiv1::conn_pool::SCOPES),
+            sub: None,
+        }
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
@@ -238,13 +277,14 @@ mod tests {
     use std::thread;
     use std::time::Duration;
 
+    use google_cloud_gax::conn::Environment;
     use serial_test::serial;
     use tokio_util::sync::CancellationToken;
     use uuid::Uuid;
 
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 
-    use crate::client::Client;
+    use crate::client::{Client, ClientConfig};
     use crate::subscriber::SubscriberConfig;
     use crate::subscription::{ReceiveConfig, SubscriptionConfig};
 
@@ -410,5 +450,13 @@ mod tests {
         assert_eq!(1, topics_after.len() - topics.len());
         assert_eq!(1, subs_after.len() - subs.len());
         assert_eq!(1, snapshots_after.len() - snapshots.len());
+    }
+
+    #[tokio::test]
+    async fn test_with_auth() {
+        let config = ClientConfig::default().with_auth().await.unwrap();
+        if let Environment::GoogleCloud(_) = config.environment {
+            unreachable!()
+        }
     }
 }

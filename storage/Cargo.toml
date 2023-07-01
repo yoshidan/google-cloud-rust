@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-storage"
-version = "0.11.1"
+version = "0.12.0"
 edition = "2021"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/storage"
@@ -32,6 +32,9 @@ percent-encoding = "2.1"
 futures-util = "0.3"
 bytes = "1.2"
 
+google-cloud-metadata = { optional = true, version = "0.3", path = "../foundation/metadata" }
+google-cloud-auth = { optional = true, version = "0.11", path="../foundation/auth", default-features=false }
+
 [dev-dependencies]
 tokio = { version="1.20", features=["rt-multi-thread"] }
 serial_test = "0.9"
@@ -41,7 +44,8 @@ tokio-util =  {version ="0.7", features = ["codec"] }
 google-cloud-auth = { path = "../foundation/auth", default-features=false }
 
 [features]
-default = ["default-tls"]
+default = ["default-tls", "auth"]
 default-tls = ["reqwest/default-tls"]
 rustls-tls = ["reqwest/rustls-tls"]
 trace = []
+auth = ["google-cloud-auth", "google-cloud-metadata"]

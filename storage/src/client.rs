@@ -35,6 +35,58 @@ impl Default for ClientConfig {
     }
 }
 
+#[cfg(feature = "auth")]
+pub use google_cloud_auth;
+
+#[cfg(feature = "auth")]
+impl ClientConfig {
+    pub async fn with_auth(self) -> Result<Self, google_cloud_auth::error::Error> {
+        let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new(Self::auth_config()).await?;
+        Ok(self.with_token_source(ts).await)
+    }
+
+    pub async fn with_credentials(
+        self,
+        credentials: google_cloud_auth::credentials::CredentialsFile,
+    ) -> Result<Self, google_cloud_auth::error::Error> {
+        let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new_with_credentials(
+            Self::auth_config(),
+            Box::new(credentials),
+        )
+        .await?;
+        Ok(self.with_token_source(ts).await)
+    }
+
+    async fn with_token_source(mut self, ts: google_cloud_auth::token::DefaultTokenSourceProvider) -> Self {
+        match &ts.source_credentials {
+            // Credential file is used.
+            Some(cred) => {
+                self.project_id = cred.project_id.clone();
+                if let Some(pk) = &cred.private_key {
+                    self.default_sign_by = Some(PrivateKey(pk.clone().into_bytes()));
+                }
+                self.default_google_access_id = cred.client_email.clone();
+            }
+            // On Google Cloud
+            None => {
+                self.project_id = Some(google_cloud_metadata::project_id().await);
+                self.default_sign_by = Some(SignBy::SignBytes);
+                self.default_google_access_id = google_cloud_metadata::email("default").await.ok();
+            }
+        }
+        self.token_source_provider = Box::new(ts);
+        self
+    }
+
+    fn auth_config() -> google_cloud_auth::project::Config<'static> {
+        google_cloud_auth::project::Config {
+            audience: None,
+            scopes: Some(&crate::http::storage_client::SCOPES),
+            sub: None,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Client {
     default_google_access_id: Option<String>,
@@ -198,9 +250,6 @@ mod test {
     use serial_test::serial;
     use time::OffsetDateTime;
 
-    use google_cloud_auth::project::Config;
-    use google_cloud_auth::token::DefaultTokenSourceProvider;
-
     use crate::client::{Client, ClientConfig};
     use crate::http::buckets::delete::DeleteBucketRequest;
     use crate::http::buckets::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
@@ -209,8 +258,7 @@ mod test {
     };
     use crate::http::buckets::list::ListBucketsRequest;
     use crate::http::buckets::{lifecycle, Billing, Cors, IamConfiguration, Lifecycle, Website};
-    use crate::http::storage_client::SCOPES;
-    use crate::sign::{SignBy, SignedURLMethod, SignedURLOptions};
+    use crate::sign::{SignedURLMethod, SignedURLOptions};
 
     #[ctor::ctor]
     fn init() {
@@ -218,20 +266,7 @@ mod test {
     }
 
     async fn create_client() -> (Client, String) {
-        let mut config = ClientConfig::default();
-        let ts = DefaultTokenSourceProvider::new(Config {
-            audience: None,
-            scopes: Some(&SCOPES),
-            sub: None,
-        })
-        .await
-        .unwrap();
-
-        let cred = &ts.source_credentials.clone().unwrap();
-        config.project_id = cred.project_id.clone();
-        config.token_source_provider = Box::new(ts);
-        config.default_google_access_id = cred.client_email.clone();
-        config.default_sign_by = Some(SignBy::PrivateKey(cred.private_key.clone().unwrap().into_bytes()));
+        let config = ClientConfig::default().with_auth().await.unwrap();
         let project_id = config.project_id.clone();
         (Client::new(config), project_id.unwrap())
     }

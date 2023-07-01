@@ -2,14 +2,6 @@
 //!
 //! Google Cloud Platform BigQuery Client library.
 //!
-//! ## Installation
-//!
-//! ```toml
-//! [dependencies]
-//! google-cloud-bigquery = <version>
-//! google-cloud-default = { version = <version>, features = ["bigquery"] }
-//! ```
-//!
 //! ## Quick Start
 //!
 //! ### CreateClient
@@ -19,9 +11,8 @@
 //!
 //! This is also described in [google-cloud-auth](https://github.com/yoshidan/google-cloud-rust/blob/main/foundation/auth/README.md)
 //!
-//! ```ignore
+//! ```rust
 //! use google_cloud_bigquery::client::{ClientConfig, Client};
-//! use google_cloud_default::biqquery::CreateAuthExt;
 //!
 //! async fn run() {
 //!     let (config, project_id) = ClientConfig::new_with_auth().await.unwrap();
@@ -32,10 +23,10 @@
 //! When you can't use the `gcloud` authentication but you have a different way to get your credentials (e.g a different environment variable)
 //! you can parse your own version of the 'credentials-file' and use it like that:
 //!
-//! ```ignore
+//! ```rust
 //! use google_cloud_auth::credentials::CredentialsFile;
+//! // or google_cloud_bigquery::client::google_cloud_auth::credentials::CredentialsFile
 //! use google_cloud_bigquery::client::{ClientConfig, Client};
-//! use google_cloud_default::biqquery::CreateAuthExt;
 //!
 //! async fn run(cred: CredentialsFile) {
 //!     let (config, project_id) = ClientConfig::new_with_credentials(cred).await.unwrap();

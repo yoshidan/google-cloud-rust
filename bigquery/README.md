@@ -8,8 +8,7 @@ Google Cloud Platform BigQuery Client library.
 
 ```toml
 [dependencies]
-google-cloud-bigquery = <version>
-google-cloud-default = { version = <version>, features = ["bigquery"] }
+google-cloud-bigquery = version
 ```
 
 ## Quick Start
@@ -23,7 +22,6 @@ This is also described in [google-cloud-auth](https://github.com/yoshidan/google
 
 ```rust
 use google_cloud_pubsub::client::{ClientConfig, Client};
-use google_cloud_default::biqquery::CreateAuthExt;
 
 async fn run() {
     let (config, project_id) = ClientConfig::new_with_auth().await.unwrap();
@@ -36,8 +34,8 @@ you can parse your own version of the 'credentials-file' and use it like that:
 
 ```rust
 use google_cloud_auth::credentials::CredentialsFile;
+// or google_cloud_bigquery::client::google_cloud_auth::credentials::CredentialsFile
 use google_cloud_bigquery::client::{ClientConfig, Client};
-use google_cloud_default::biqquery::CreateAuthExt;
 
 async fn run(cred: CredentialsFile) {
     let (config, project_id) = ClientConfig::new_with_credentials(cred).await.unwrap();

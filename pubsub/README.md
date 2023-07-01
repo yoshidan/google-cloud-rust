@@ -12,15 +12,13 @@ Google Cloud Platform pub/sub library.
 
 ```toml
 [dependencies]
-google-cloud-pubsub = <version>
-google-cloud-default = { version = <version>, features = ["pubsub"] }
+google-cloud-pubsub = "version"
 ```
 
 ## Quickstart
 
 ### Authentication
 There are two ways to create a client that is authenticated against the google cloud.
-The crate [google-cloud-default](https://crates.io/crates/google-cloud-default) provides two methods that help to implement those.
 
 #### Automatically
 
@@ -31,7 +29,6 @@ This is also described in [google-cloud-auth](https://github.com/yoshidan/google
 
 ```rust
 use google_cloud_pubsub::client::{ClientConfig, Client};
-use google_cloud_default::WithAuthExt;
 
 async fn run() {
     let config = ClientConfig::default().with_auth().await.unwrap();
@@ -46,8 +43,8 @@ you can parse your own version of the 'credentials-file' and use it like that:
 
 ```rust
 use google_cloud_auth::credentials::CredentialsFile;
+// or google_cloud_pubsub::client::google_cloud_auth::credentials::CredentialsFile
 use google_cloud_pubsub::client::{ClientConfig, Client};
-use google_cloud_default::WithAuthExt;
 
 async fn run(cred: CredentialsFile) {
     let config = ClientConfig::default().with_credentials(cred).await.unwrap();

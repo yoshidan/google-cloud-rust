@@ -7,8 +7,6 @@
 //! * [Rust client Documentation](#Documentation)
 //!
 //! ## Quickstart
-//! You can use [google-cloud-default](https://crates.io/crates/google-cloud-default) to create `ClientConfig`
-//!
 //! Create `Client` and call transaction API same as [Google Cloud Go](https://github.com/googleapis/google-cloud-go/tree/main/spanner).
 //!
 //! ```
@@ -78,13 +76,11 @@
 //!
 //! To start working with this package, create a client that refers to the database of interest:
 //!
-//! ```ignore
+//! ```
 //! use google_cloud_spanner::client::Client;
 //! use google_cloud_spanner::client::ClientConfig;
-//! use google_cloud_default::WithAuthExt;
 //!
-//! #[tokio::main]
-//! async fn main() {
+//! async fn run() {
 //!     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 //!
 //!     // google_cloud_default provides default ClientConfig with credentials source
@@ -92,7 +88,6 @@
 //!     let mut client = Client::new(DATABASE, config).await.unwrap();
 //!
 //!     client.close().await;
-//!     Ok(())
 //! }
 //! ```
 //!
@@ -121,9 +116,6 @@
 //!
 //! There are two ways to create a client that is authenticated against the google cloud.
 //!
-//! The crate [google-cloud-default](https://crates.io/crates/google-cloud-default) provides two
-//! methods that help implementing those.
-//!
 //! #### Automatically
 //!
 //! The function `with_auth()` will try and read the credentials from a file specified in the environment variable `GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_APPLICATION_CREDENTIALS_JSON` or
@@ -131,9 +123,8 @@
 //!
 //! This is also described in [google-cloud-auth](https://github.com/yoshidan/google-cloud-rust/blob/main/foundation/auth/README.md)
 //!
-//! ```ignore
+//! ```
 //! use google_cloud_spanner::client::{ClientConfig, Client};
-//! use google_cloud_default::WithAuthExt;
 //!
 //! async fn run() {
 //!     let config = ClientConfig::default().with_auth().await.unwrap();
@@ -146,10 +137,10 @@
 //! When you can't use the `gcloud` authentication but you have a different way to get your credentials (e.g a different environment variable)
 //! you can parse your own version of the 'credentials-file' and use it like that:
 //!
-//! ```ignore
+//! ```
 //! use google_cloud_auth::credentials::CredentialsFile;
+//! // or google_cloud_spanner::client::google_cloud_auth::credentials::CredentialsFile
 //! use google_cloud_spanner::client::{ClientConfig, Client};
-//! use google_cloud_default::WithAuthExt;
 //!
 //! async fn run(cred: CredentialsFile) {
 //!     let config = ClientConfig::default().with_credentials(cred).await.unwrap();
