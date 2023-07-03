@@ -4,29 +4,6 @@ use std::time::Duration;
 use google_cloud_googleapis::spanner::v1::transaction_options::read_only::TimestampBound as InternalTimestampBound;
 use google_cloud_googleapis::spanner::v1::transaction_options::ReadOnly;
 
-/// https://cloud.google.com/spanner/docs/storing-numeric-data#precision_of_numeric_types
-/// -99999999999999999999999999999.999999999～99999999999999999999999999999.999999999
-/// TODO https://github.com/paupino/rust-decimal/issues/135
-#[derive(Debug, Clone, Eq, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct SpannerNumeric(String);
-
-impl Default for SpannerNumeric {
-    fn default() -> Self {
-        Self::new("0")
-    }
-}
-
-impl SpannerNumeric {
-    pub fn new(value: impl Into<String>) -> Self {
-        Self(value.into())
-    }
-
-    pub fn as_str(&self) -> &str {
-        self.0.as_str()
-    }
-}
-
 #[derive(Clone, PartialEq, Eq)]
 pub struct Timestamp {
     /// Represents seconds of UTC time since Unix epoch

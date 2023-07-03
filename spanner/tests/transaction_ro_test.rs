@@ -100,8 +100,8 @@ async fn test_complex_query() {
     let mut tx = data_client.read_only_transaction().await.unwrap();
     let mut stmt = Statement::new(
         "SELECT *,
-        ARRAY(SELECT AS STRUCT * FROM UserItem WHERE UserId = p.UserId) as UserItem,
-        ARRAY(SELECT AS STRUCT * FROM UserCharacter WHERE UserId = p.UserId) as UserCharacter,
+        ARRAY(SELECT AS STRUCT * FROM UserItem WHERE UserId = p.UserId ORDER BY ItemID) as UserItem,
+        ARRAY(SELECT AS STRUCT * FROM UserCharacter WHERE UserId = p.UserId ORDER BY CharacterID) as UserCharacter,
         FROM User p WHERE UserId = @UserId;
     ",
     );
