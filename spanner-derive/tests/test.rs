@@ -1,8 +1,8 @@
-use std::str::FromStr;
+use google_cloud_spanner::bigdecimal::{BigDecimal, Zero};
 use serde::{Deserialize, Serialize};
 use serial_test::serial;
+use std::str::FromStr;
 use time::{Date, OffsetDateTime};
-use google_cloud_spanner::bigdecimal::{BigDecimal, Zero};
 
 use google_cloud_spanner::client::{Client, ClientConfig, Error};
 use google_cloud_spanner::mutation::insert_struct;

@@ -11,8 +11,8 @@ use time::{Date, OffsetDateTime};
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::{StructType, Type, TypeAnnotationCode, TypeCode};
 
-use crate::value::CommitTimestamp;
 use crate::bigdecimal::BigDecimal;
+use crate::value::CommitTimestamp;
 
 /// A Statement is a SQL query with named parameters.
 ///

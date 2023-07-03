@@ -14,8 +14,8 @@ use time::{Date, OffsetDateTime};
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::StructType;
 
-use crate::value::CommitTimestamp;
 use crate::bigdecimal::{BigDecimal, ParseBigDecimalError};
+use crate::value::CommitTimestamp;
 
 #[derive(Clone)]
 pub struct Row {
@@ -211,7 +211,9 @@ impl TryFromValue for Vec<u8> {
 impl TryFromValue for BigDecimal {
     fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
-            Kind::StringValue(s) => Ok(BigDecimal::from_str(s).map_err(|e| Error::BigDecimalParseError(field.name.to_string(), e))?),
+            Kind::StringValue(s) => {
+                Ok(BigDecimal::from_str(s).map_err(|e| Error::BigDecimalParseError(field.name.to_string(), e))?)
+            }
             v => kind_to_error(v, field),
         }
     }
@@ -443,11 +445,20 @@ mod tests {
         assert_eq!(decimal.to_f64().unwrap(), 100.999999999999);
         assert_eq!(struct_data[0].struct_field, "aaa");
         assert_eq!(struct_data[0].struct_field_time, now);
-        assert_eq!(struct_data[0].big_decimal, BigDecimal::from_str("-99999999999999999999999999999.999999999").unwrap());
+        assert_eq!(
+            struct_data[0].big_decimal,
+            BigDecimal::from_str("-99999999999999999999999999999.999999999").unwrap()
+        );
         assert_eq!(struct_data[1].struct_field, "bbb");
         assert_eq!(struct_data[1].struct_field_time, now);
         assert_eq!(struct_data[1].commit_timestamp.timestamp, now);
-        assert_eq!(struct_data[1].big_decimal, BigDecimal::from_str("99999999999999999999999999999.999999999").unwrap());
-        assert_eq!(struct_data[1].big_decimal.clone().add(&struct_data[0].big_decimal), BigDecimal::zero());
+        assert_eq!(
+            struct_data[1].big_decimal,
+            BigDecimal::from_str("99999999999999999999999999999.999999999").unwrap()
+        );
+        assert_eq!(
+            struct_data[1].big_decimal.clone().add(&struct_data[0].big_decimal),
+            BigDecimal::zero()
+        );
     }
 }
