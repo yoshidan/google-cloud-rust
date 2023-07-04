@@ -1,3 +1,4 @@
+use bigdecimal::BigDecimal;
 use std::collections::HashMap;
 
 use serial_test::serial;
@@ -5,6 +6,7 @@ use time::OffsetDateTime;
 
 use common::*;
 use google_cloud_spanner::key::Key;
+use google_cloud_spanner::reader::AsyncIterator;
 use google_cloud_spanner::row::Row;
 use google_cloud_spanner::statement::Statement;
 use google_cloud_spanner::transaction_ro::ReadOnlyTransaction;
@@ -319,4 +321,42 @@ async fn test_read_multi_row() {
         .await
         .unwrap();
     assert_eq!(2, all_rows(row).await.unwrap().len());
+}
+
+#[tokio::test]
+#[serial]
+async fn test_big_decimal() {
+    let client = create_data_client().await;
+    let mut tx = client.read_only_transaction().await.unwrap();
+    let stmt = Statement::new(
+        "SELECT
+                cast(\"-99999999999999999999999999999.999999999\" as numeric),
+                cast(\"-99999999999999999999999999999\" as numeric),
+                cast(\"-0.999999999\" as numeric),
+                 cast(\"0\" as numeric),
+                 cast(\"0.999999999\" as numeric),
+                 cast(\"99999999999999999999999999999\" as numeric),
+                 cast(\"99999999999999999999999999999.999999999\" as numeric)",
+    );
+    let mut iter = tx.query(stmt).await.unwrap();
+    let row = iter.next().await.unwrap().unwrap();
+    assert_eq!(
+        "-99999999999999999999999999999.999999999",
+        row.column::<BigDecimal>(0).unwrap().to_string()
+    );
+    assert_eq!(
+        "-99999999999999999999999999999",
+        row.column::<BigDecimal>(1).unwrap().to_string()
+    );
+    assert_eq!("-0.999999999", row.column::<BigDecimal>(2).unwrap().to_string());
+    assert_eq!("0", row.column::<BigDecimal>(3).unwrap().to_string());
+    assert_eq!("0.999999999", row.column::<BigDecimal>(4).unwrap().to_string());
+    assert_eq!(
+        "99999999999999999999999999999",
+        row.column::<BigDecimal>(5).unwrap().to_string()
+    );
+    assert_eq!(
+        "99999999999999999999999999999.999999999",
+        row.column::<BigDecimal>(6).unwrap().to_string()
+    );
 }
