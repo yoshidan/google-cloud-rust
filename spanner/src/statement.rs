@@ -11,7 +11,8 @@ use time::{Date, OffsetDateTime};
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::{StructType, Type, TypeAnnotationCode, TypeCode};
 
-use crate::value::{CommitTimestamp, SpannerNumeric};
+use crate::bigdecimal::BigDecimal;
+use crate::value::CommitTimestamp;
 
 /// A Statement is a SQL query with named parameters.
 ///
@@ -196,9 +197,9 @@ impl ToKind for Vec<u8> {
     }
 }
 
-impl ToKind for SpannerNumeric {
+impl ToKind for BigDecimal {
     fn to_kind(&self) -> Kind {
-        self.as_str().to_string().to_kind()
+        self.to_string().to_kind()
     }
     fn get_type() -> Type {
         single_type(TypeCode::Numeric)

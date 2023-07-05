@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 use std::num::ParseIntError;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use base64::prelude::*;
@@ -13,7 +14,8 @@ use time::{Date, OffsetDateTime};
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::StructType;
 
-use crate::value::{CommitTimestamp, SpannerNumeric};
+use crate::bigdecimal::{BigDecimal, ParseBigDecimalError};
+use crate::value::CommitTimestamp;
 
 #[derive(Clone)]
 pub struct Row {
@@ -46,6 +48,8 @@ pub enum Error {
     InvalidStructColumnIndex(usize),
     #[error("No column found in struct: name={0}")]
     NoColumnFoundInStruct(String),
+    #[error("Failed to parse as BigDecimal field={0}")]
+    BigDecimalParseError(String, #[source] ParseBigDecimalError),
 }
 
 impl Row {
@@ -204,10 +208,12 @@ impl TryFromValue for Vec<u8> {
     }
 }
 
-impl TryFromValue for SpannerNumeric {
+impl TryFromValue for BigDecimal {
     fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
         match as_ref(item, field)? {
-            Kind::StringValue(s) => Ok(SpannerNumeric::new(s.to_string())),
+            Kind::StringValue(s) => {
+                Ok(BigDecimal::from_str(s).map_err(|e| Error::BigDecimalParseError(field.name.to_string(), e))?)
+            }
             v => kind_to_error(v, field),
         }
     }
@@ -313,6 +319,8 @@ pub fn kind_to_error<'a, T>(v: &'a value::Kind, field: &'a Field) -> Result<T, E
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+    use std::ops::Add;
+    use std::str::FromStr;
     use std::sync::Arc;
 
     use prost_types::Value;
@@ -320,6 +328,7 @@ mod tests {
 
     use google_cloud_googleapis::spanner::v1::struct_type::Field;
 
+    use crate::bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive, Zero};
     use crate::row::{Error, Row, Struct as RowStruct, TryFromStruct};
     use crate::statement::{Kinds, ToKind, ToStruct, Types};
     use crate::value::CommitTimestamp;
@@ -328,6 +337,7 @@ mod tests {
         pub struct_field: String,
         pub struct_field_time: OffsetDateTime,
         pub commit_timestamp: CommitTimestamp,
+        pub big_decimal: BigDecimal,
     }
 
     impl TryFromStruct for TestStruct {
@@ -336,6 +346,7 @@ mod tests {
                 struct_field: s.column_by_name("struct_field")?,
                 struct_field_time: s.column_by_name("struct_field_time")?,
                 commit_timestamp: s.column_by_name("commit_timestamp")?,
+                big_decimal: s.column_by_name("big_decimal")?,
             })
         }
     }
@@ -347,6 +358,7 @@ mod tests {
                 ("struct_field_time", self.struct_field_time.to_kind()),
                 // value from DB is timestamp. it's not string 'spanner.commit_timestamp()'.
                 ("commit_timestamp", OffsetDateTime::from(self.commit_timestamp).to_kind()),
+                ("big_decimal", self.big_decimal.to_kind()),
             ]
         }
 
@@ -355,6 +367,7 @@ mod tests {
                 ("struct_field", String::get_type()),
                 ("struct_field_time", OffsetDateTime::get_type()),
                 ("commit_timestamp", CommitTimestamp::get_type()),
+                ("big_decimal", BigDecimal::get_type()),
             ]
         }
     }
@@ -365,6 +378,7 @@ mod tests {
         index.insert("value".to_string(), 0);
         index.insert("array".to_string(), 1);
         index.insert("struct".to_string(), 2);
+        index.insert("decimal".to_string(), 3);
 
         let now = OffsetDateTime::now_utc();
         let row = Row {
@@ -381,6 +395,10 @@ mod tests {
                 Field {
                     name: "struct".to_string(),
                     r#type: Some(Vec::<TestStruct>::get_type()),
+                },
+                Field {
+                    name: "decimal".to_string(),
+                    r#type: Some(BigDecimal::get_type()),
                 },
             ]),
             values: vec![
@@ -399,15 +417,20 @@ mod tests {
                                 struct_field: "aaa".to_string(),
                                 struct_field_time: now,
                                 commit_timestamp: CommitTimestamp { timestamp: now },
+                                big_decimal: BigDecimal::from_str("-99999999999999999999999999999.999999999").unwrap(),
                             },
                             TestStruct {
                                 struct_field: "bbb".to_string(),
                                 struct_field_time: now,
                                 commit_timestamp: CommitTimestamp { timestamp: now },
+                                big_decimal: BigDecimal::from_str("99999999999999999999999999999.999999999").unwrap(),
                             },
                         ]
                         .to_kind(),
                     ),
+                },
+                Value {
+                    kind: Some(BigDecimal::from_f64(100.999999999999).unwrap().to_kind()),
                 },
             ],
         };
@@ -415,13 +438,27 @@ mod tests {
         let value = row.column_by_name::<String>("value").unwrap();
         let array = row.column_by_name::<Vec<i64>>("array").unwrap();
         let struct_data = row.column_by_name::<Vec<TestStruct>>("struct").unwrap();
+        let decimal = row.column_by_name::<BigDecimal>("decimal").unwrap();
         assert_eq!(value, "aaa");
         assert_eq!(array[0], 10);
         assert_eq!(array[1], 100);
+        assert_eq!(decimal.to_f64().unwrap(), 100.999999999999);
         assert_eq!(struct_data[0].struct_field, "aaa");
         assert_eq!(struct_data[0].struct_field_time, now);
+        assert_eq!(
+            struct_data[0].big_decimal,
+            BigDecimal::from_str("-99999999999999999999999999999.999999999").unwrap()
+        );
         assert_eq!(struct_data[1].struct_field, "bbb");
         assert_eq!(struct_data[1].struct_field_time, now);
         assert_eq!(struct_data[1].commit_timestamp.timestamp, now);
+        assert_eq!(
+            struct_data[1].big_decimal,
+            BigDecimal::from_str("99999999999999999999999999999.999999999").unwrap()
+        );
+        assert_eq!(
+            struct_data[1].big_decimal.clone().add(&struct_data[0].big_decimal),
+            BigDecimal::zero()
+        );
     }
 }

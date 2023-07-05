@@ -1,12 +1,13 @@
+use google_cloud_spanner::bigdecimal::{BigDecimal, Zero};
 use serde::{Deserialize, Serialize};
 use serial_test::serial;
+use std::str::FromStr;
 use time::{Date, OffsetDateTime};
 
 use google_cloud_spanner::client::{Client, ClientConfig, Error};
 use google_cloud_spanner::mutation::insert_struct;
 use google_cloud_spanner::reader::AsyncIterator;
 use google_cloud_spanner::statement::Statement;
-use google_cloud_spanner::value::SpannerNumeric;
 use google_cloud_spanner_derive::{Query, Table};
 
 #[derive(Table, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -61,8 +62,8 @@ pub struct User {
     pub nullable_bool: Option<bool>,
     pub not_null_byte_array: Vec<u8>,
     pub nullable_byte_array: Option<Vec<u8>>,
-    pub not_null_numeric: SpannerNumeric,
-    pub nullable_numeric: Option<SpannerNumeric>,
+    pub not_null_numeric: BigDecimal,
+    pub nullable_numeric: Option<BigDecimal>,
     pub not_null_timestamp: OffsetDateTime,
     pub nullable_timestamp: Option<OffsetDateTime>,
     pub not_null_date: Date,
@@ -89,7 +90,7 @@ impl Default for User {
             nullable_bool: Default::default(),
             not_null_byte_array: Default::default(),
             nullable_byte_array: Default::default(),
-            not_null_numeric: Default::default(),
+            not_null_numeric: BigDecimal::zero(),
             nullable_numeric: Default::default(),
             nullable_timestamp: Default::default(),
             nullable_date: Default::default(),
@@ -122,7 +123,7 @@ async fn test_table_derive() -> Result<(), Error> {
     let user_id = format!("user{now}");
     let user = User {
         user_id: user_id.clone(),
-        not_null_numeric: SpannerNumeric::new("-99999999999999999999999999999.999999999"),
+        not_null_numeric: BigDecimal::from_str("-99999999999999999999999999999.999999999").unwrap(),
         ..Default::default()
     };
     client.apply(vec![insert_struct("User", user)]).await?;
@@ -134,7 +135,7 @@ async fn test_table_derive() -> Result<(), Error> {
     if let Some(row) = reader.next().await? {
         let v: User = row.try_into()?;
         assert_eq!(v.user_id, user_id);
-        assert_eq!(v.not_null_numeric.as_str(), "-99999999999999999999999999999.999999999");
+        assert_eq!(&v.not_null_numeric.to_string(), "-99999999999999999999999999999.999999999");
         assert!(v.updated_at.unix_timestamp() >= now);
         let json_string = serde_json::to_string(&v).unwrap();
         let des = serde_json::from_str::<User>(json_string.as_str()).unwrap();
