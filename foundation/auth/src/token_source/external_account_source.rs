@@ -59,14 +59,16 @@ impl TokenSource for ExternalAccountTokenSource {
             ("subject_token", &subject_token),
             ("requested_token_type", "urn:ietf:params:oauth:token-type:access_token"),
         ];
-        let plain_text = format!("{}:{}", self.client_id.unwrap_or_empty(), self.client_secret.unwrap_or_empty());
-        let auth_header = format!("Basic: {}", BASE64_STANDARD.encode(plain_text));
 
-        let it = self
-            .client
-            .post(&self.token_url_external)
-            .header(reqwest::header::AUTHORIZATION, auth_header)
-            .form(&sts_request)
+        let mut builder = self.client.post(&self.token_url_external);
+
+        if self.client_id.is_some() && self.client_secret.is_some() {
+            let plain_text = format!("{}:{}", self.client_id.unwrap(), self.client_secret.unwrap());
+            let auth_header = format!("Basic: {}", BASE64_STANDARD.encode(plain_text));
+            builder = builder.header(reqwest::header::AUTHORIZATION, auth_header)
+        }
+
+        let it = builder.form(&sts_request)
             .send()
             .await?
             .json::<InternalToken>()
