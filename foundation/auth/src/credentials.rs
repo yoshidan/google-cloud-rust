@@ -24,6 +24,15 @@ pub struct CredentialSource {
     regional_cred_verification_url: String,
     cred_verification_url: String,
     format: Format,
+
+    imdsv2_session_token_url: Option<String>,
+    executable: Option<ExecutionConfig>,
+}
+
+impl CredentialSource {
+    pub async fn subject_token(&self) -> Result<String, Error> {
+        todo!("implements")
+    }
 }
 
 #[allow(dead_code)]
@@ -126,4 +135,18 @@ impl CredentialsFile {
             None => Err(Error::NoPrivateKeyFound),
         }
     }
+}
+
+#[allow(dead_code)]
+#[derive(Deserialize, Clone)]
+pub struct ServiceAccountImpersonationInfo {
+    pub(crate) token_lifetime_seconds: i32,
+}
+
+#[allow(dead_code)]
+#[derive(Deserialize, Clone)]
+pub struct ExecutableConfig {
+    command: String,
+    timeout_millis: Option<i32>,
+    output_file: String,
 }

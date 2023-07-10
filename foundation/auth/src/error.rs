@@ -38,4 +38,7 @@ pub enum Error {
 
     #[error("invalid authentication token")]
     InvalidToken,
+
+    #[error("No Credentials Source ")]
+    NoCredentialsSource,
 }

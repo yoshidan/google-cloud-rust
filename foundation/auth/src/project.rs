@@ -4,6 +4,7 @@ use crate::credentials::CredentialsFile;
 use crate::misc::EMPTY;
 use crate::token_source::authorized_user_token_source::UserAccountTokenSource;
 use crate::token_source::compute_token_source::ComputeTokenSource;
+use crate::token_source::external_account_source::ExternalAccountTokenSource;
 use crate::token_source::reuse_token_source::ReuseTokenSource;
 use crate::token_source::service_account_token_source::OAuth2ServiceAccountTokenSource;
 use crate::token_source::service_account_token_source::ServiceAccountTokenSource;
@@ -12,6 +13,7 @@ use crate::{credentials, error};
 
 pub(crate) const SERVICE_ACCOUNT_KEY: &str = "service_account";
 const USER_CREDENTIALS_KEY: &str = "authorized_user";
+const EXTERNAL_ACCOUNT_KEY: &str = "external_account";
 
 #[derive(Debug, Clone, Default)]
 pub struct Config<'a> {
@@ -138,7 +140,10 @@ fn credentials_from_json_with_params(
         }
         USER_CREDENTIALS_KEY => Ok(Box::new(UserAccountTokenSource::new(credentials)?)),
         //TODO support GDC https://console.developers.google.com,
-        //TODO support external account
+        EXTERNAL_ACCOUNT_KEY => Ok(Box::new(ExternalAccountTokenSource::new(
+            config.scopes_to_string(" ").as_str(),
+            credentials,
+        )?)),
         _ => Err(error::Error::UnsupportedAccountType(credentials.tp.to_string())),
     }
 }
