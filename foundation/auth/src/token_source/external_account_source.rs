@@ -7,6 +7,7 @@ use crate::token_source::{default_http_client, InternalToken, TokenSource};
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use serde_json::json;
+use std::collections::HashMap;
 use time::OffsetDateTime;
 
 #[allow(dead_code)]
@@ -15,33 +16,38 @@ pub struct ExternalAccountTokenSource {
     audience: Option<String>,
     subject_token_type: Option<String>,
     token_url_external: Option<String>,
-    token_info_url: Option<String>,
-    service_account_impersonation_url: Option<String>,
-    service_account_impersonation_lifetime_seconds: Option<i32>,
-    client_secret: Option<String>,
-    client_id: Option<String>,
     credential_source: CredentialSource,
-    quota_project_id: Option<String>,
-    workforce_pool_user_project: Option<String>,
     scopes: String,
+    auth_header: Option<String>,
+    workforce_options: Option<String>,
     client: reqwest::Client,
 }
 
 impl ExternalAccountTokenSource {
     pub(crate) fn new(scopes: &str, cred: &credentials::CredentialsFile) -> Result<ExternalAccountTokenSource, Error> {
+        let auth_header = if cred.client_id.is_some() && cred.client_secret.is_some() {
+            let plain_text = format!("{}:{}", cred.client_id.unwrap(), cred.client_secret.unwrap());
+            Some(format!("Basic: {}", BASE64_STANDARD.encode(plain_text)))
+        } else {
+            None
+        };
+        // Do not pass workforce_pool_user_project when client authentication is used.
+        // The client ID is sufficient for determining the user project.
+        let workforce_options = if cred.workforce_pool_user_project.is_some() && cred.client_id.is_none() {
+            let mut option = HashMap::with_capacity(1);
+            option.insert("userProject", cred.workforce_pool_user_project.unwrap());
+            Some(serde_json::to_string(&option)?)
+        } else {
+            None
+        };
         Ok(ExternalAccountTokenSource {
             audience: cred.audience.clone(),
             subject_token_type: cred.subject_token_type.clone(),
             token_url_external: cred.token_url_external.clone(),
-            token_info_url: cred.token_info_url.clone(),
-            service_account_impersonation_url: cred.service_account_impersonation_url.clone(),
-            service_account_impersonation_lifetime_seconds: None, //TODO impersonate token source
-            client_id: cred.client_id.clone(),
-            client_secret: cred.client_secret.clone(),
             credential_source: cred.credential_source.clone().ok_or(Error::NoCredentialsSource)?,
-            quota_project_id: cred.quota_project_id.clone(),
-            workforce_pool_user_project: None, //TODO workforce identity
             scopes: scopes.to_string(),
+            auth_header,
+            workforce_options,
             client: default_http_client(),
         })
     }
@@ -50,29 +56,25 @@ impl ExternalAccountTokenSource {
 #[async_trait]
 impl TokenSource for ExternalAccountTokenSource {
     async fn token(&self) -> Result<Token, Error> {
-        let subject_token = self.credential_source.subject_token().await?;
-        let sts_request = [
+        let mut builder = self.client.post(&self.token_url_external);
+
+        if let Some(auth_header) = &self.auth_header {
+            builder = builder.header(reqwest::header::AUTHORIZATION, auth_header);
+        }
+
+        let mut sts_request = [
             ("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange"),
             ("audience", self.audience.as_str()),
             ("scope", self.scopes.as_str()),
             ("subject_token_type", self.subject_token_type.unwrap_or_empty()),
-            ("subject_token", &subject_token),
+            ("subject_token", &self.credential_source.subject_token().await?),
             ("requested_token_type", "urn:ietf:params:oauth:token-type:access_token"),
         ];
-
-        let mut builder = self.client.post(&self.token_url_external);
-
-        if self.client_id.is_some() && self.client_secret.is_some() {
-            let plain_text = format!("{}:{}", self.client_id.unwrap(), self.client_secret.unwrap());
-            let auth_header = format!("Basic: {}", BASE64_STANDARD.encode(plain_text));
-            builder = builder.header(reqwest::header::AUTHORIZATION, auth_header)
+        if let Some(options) = &self.workforce_options {
+            sts_request.push(("options", options));
         }
 
-        let it = builder.form(&sts_request)
-            .send()
-            .await?
-            .json::<InternalToken>()
-            .await?;
+        let it = builder.form(&sts_request).send().await?.json::<InternalToken>().await?;
         Ok(it.to_token(OffsetDateTime::now_utc()))
     }
 }

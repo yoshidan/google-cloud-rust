@@ -3,6 +3,8 @@ use serde::Deserialize;
 use tokio::fs;
 
 use crate::error::Error;
+use crate::subject_token_source::aws_subject_token_source::AWSSubjectTokenSource;
+use crate::subject_token_source::SubjectTokenSource;
 
 const CREDENTIALS_FILE: &str = "application_default_credentials.json";
 
@@ -30,8 +32,16 @@ pub struct CredentialSource {
 }
 
 impl CredentialSource {
-    pub async fn subject_token(&self) -> Result<String, Error> {
-        todo!("implements")
+    pub(crate) async fn subject_token(&self) -> Result<String, Error> {
+        if self.environment_id.len() > 3 && self.environment_id.starts_with("aws") {
+            if self.environment_id != "aws1" {
+                return Err(Error::UnsupportedAWSVersion(self.environment_id.clone()));
+            }
+            AWSSubjectTokenSource::try_from(&self)?.subject_token().await
+        } else {
+            //TODO support file, url and executable
+            return Err(Error::UnsupportedSubjectTokenSource);
+        }
     }
 }
 
@@ -63,6 +73,7 @@ pub struct CredentialsFile {
     pub service_account_impersonation_url: Option<String>,
     pub credential_source: Option<CredentialSource>,
     pub quota_project_id: Option<String>,
+    pub workforce_pool_user_project: Option<String>,
 }
 
 #[allow(dead_code)]

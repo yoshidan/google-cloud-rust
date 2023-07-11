@@ -41,4 +41,10 @@ pub enum Error {
 
     #[error("No Credentials Source ")]
     NoCredentialsSource,
+
+    #[error("aws version {} is not supported in the current build")]
+    UnsupportedAWSVersion(String),
+
+    #[error("Unsupported Subject Token Source")]
+    UnsupportedSubjectTokenSource,
 }
