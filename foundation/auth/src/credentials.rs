@@ -3,35 +3,46 @@ use serde::Deserialize;
 use tokio::fs;
 
 use crate::error::Error;
-use crate::misc::UnwrapOrEmpty;
-use crate::subject_token_source::aws_subject_token_source::AWSSubjectTokenSource;
-use crate::subject_token_source::SubjectTokenSource;
 
 const CREDENTIALS_FILE: &str = "application_default_credentials.json";
 
 #[allow(dead_code)]
-#[derive(Deserialize, Clone)]
-pub(crate) struct Format {
-    tp: String,
-    subject_token_field_name: String,
+#[derive(Deserialize, Clone, Debug)]
+pub struct ServiceAccountImpersonationInfo {
+    pub token_lifetime_seconds: i32,
 }
 
 #[allow(dead_code)]
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
+pub struct ExecutableConfig {
+    pub command: String,
+    pub timeout_millis: Option<i32>,
+    pub output_file: String,
+}
+
+#[allow(dead_code)]
+#[derive(Deserialize, Clone, Debug)]
+pub struct Format {
+    pub tp: String,
+    pub subject_token_field_name: String,
+}
+
+#[allow(dead_code)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct CredentialSource {
-    pub(crate) file: Option<String>,
+    pub file: Option<String>,
 
-    pub(crate) url: Option<String>,
-    pub(crate) headers: Option<std::collections::HashMap<String, String>>,
+    pub url: Option<String>,
+    pub headers: Option<std::collections::HashMap<String, String>>,
 
-    pub(crate) executable: Option<ExecutionConfig>,
+    pub executable: Option<ExecutableConfig>,
 
-    pub(crate) environment_id: Option<String>,
-    pub(crate) region_url: Option<String>,
-    pub(crate) regional_cred_verification_url: Option<String>,
-    pub(crate) cred_verification_url: Option<String>,
-    pub(crate) imdsv2_session_token_url: Option<String>,
-    pub(crate) format: Option<Format>,
+    pub environment_id: Option<String>,
+    pub region_url: Option<String>,
+    pub regional_cred_verification_url: Option<String>,
+    pub cred_verification_url: Option<String>,
+    pub imdsv2_session_token_url: Option<String>,
+    pub format: Option<Format>,
 }
 
 #[allow(dead_code)]
@@ -63,35 +74,6 @@ pub struct CredentialsFile {
     pub credential_source: Option<CredentialSource>,
     pub quota_project_id: Option<String>,
     pub workforce_pool_user_project: Option<String>,
-}
-
-impl CredentialsFile {
-    pub(crate) async fn subject_token_source(&self) -> Result<Box<dyn SubjectTokenSource>, Error> {
-        let source = self.credential_source.ok_or(Error::NoCredentialsSource)?;
-        let environment_id = &source.environment_id.unwrap_or_empty();
-        if environment_id.len() > 3 && environment_id.starts_with("aws") {
-            if environment_id != "aws1" {
-                return Err(Error::UnsupportedAWSVersion(environment_id.clone()));
-            }
-            let ts = AWSSubjectTokenSource::new(self.audience.clone(), source.clone()).await?;
-            Ok(Box::new(ts))
-        } else {
-            //TODO support file, url and executable
-            return Err(Error::UnsupportedSubjectTokenSource);
-        }
-    }
-}
-
-
-
-#[allow(dead_code)]
-#[derive(Deserialize, Clone)]
-pub struct Credentials {
-    client_id: String,
-    client_secret: String,
-    redirect_urls: Vec<String>,
-    auth_uri: String,
-    token_uri: String,
 }
 
 impl CredentialsFile {
@@ -154,18 +136,4 @@ impl CredentialsFile {
             None => Err(Error::NoPrivateKeyFound),
         }
     }
-}
-
-#[allow(dead_code)]
-#[derive(Deserialize, Clone)]
-pub struct ServiceAccountImpersonationInfo {
-    pub(crate) token_lifetime_seconds: i32,
-}
-
-#[allow(dead_code)]
-#[derive(Deserialize, Clone)]
-pub struct ExecutableConfig {
-    command: String,
-    timeout_millis: Option<i32>,
-    output_file: String,
 }

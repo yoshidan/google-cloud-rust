@@ -84,7 +84,7 @@ pub async fn create_token_source_from_credentials(
     credentials: &CredentialsFile,
     config: &Config<'_>,
 ) -> Result<Box<dyn TokenSource>, error::Error> {
-    let ts = credentials_from_json_with_params(credentials, config)?;
+    let ts = credentials_from_json_with_params(credentials, config).await?;
     let token = ts.token().await?;
     Ok(Box::new(ReuseTokenSource::new(ts, token)))
 }
@@ -111,9 +111,9 @@ pub async fn create_token_source(config: Config<'_>) -> Result<Box<dyn TokenSour
     create_token_source_from_project(&project, config).await
 }
 
-fn credentials_from_json_with_params(
+async fn credentials_from_json_with_params(
     credentials: &CredentialsFile,
-    config: &Config,
+    config: &Config<'_>,
 ) -> Result<Box<dyn TokenSource>, error::Error> {
     match credentials.tp.as_str() {
         SERVICE_ACCOUNT_KEY => {
@@ -140,10 +140,10 @@ fn credentials_from_json_with_params(
         }
         USER_CREDENTIALS_KEY => Ok(Box::new(UserAccountTokenSource::new(credentials)?)),
         //TODO support GDC https://console.developers.google.com,
-        EXTERNAL_ACCOUNT_KEY => Ok(Box::new(ExternalAccountTokenSource::new(
-            config.scopes_to_string(" ").as_str(),
-            credentials,
-        )?)),
+        #[cfg(feature = "external-account")]
+        EXTERNAL_ACCOUNT_KEY => Ok(Box::new(
+            ExternalAccountTokenSource::new(config.scopes_to_string(" ").as_str(), credentials).await?,
+        )),
         _ => Err(error::Error::UnsupportedAccountType(credentials.tp.to_string())),
     }
 }

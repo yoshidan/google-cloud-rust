@@ -39,21 +39,7 @@ pub enum Error {
     #[error("invalid authentication token")]
     InvalidToken,
 
-    #[error("No Credentials Source ")]
-    NoCredentialsSource,
-
-    #[error("aws version {} is not supported in the current build")]
-    UnsupportedAWSVersion(String),
-
-    #[error("Unsupported Subject Token Source")]
-    UnsupportedSubjectTokenSource,
-
-    #[error("Invalid Region URL: {0}")]
-    InvalidRegionURL(Option<String>),
-
-    #[error("Invalid Cred Verification Region URL: {0}")]
-    InvalidCredVerificationURL(Option<String>),
-
-    #[error("Invalid imds v2 session token URL: {0}")]
-    InvalidIMDSv2SessionTokenURL(Option<String>),
+    #[cfg(feature = "external-account")]
+    #[error(transparent)]
+    ExternalAccountSource(#[from] crate::token_source::external_account_source::error::Error),
 }
