@@ -47,4 +47,13 @@ pub enum Error {
 
     #[error("Unsupported Subject Token Source")]
     UnsupportedSubjectTokenSource,
+
+    #[error("Invalid Region URL: {0}")]
+    InvalidRegionURL(Option<String>),
+
+    #[error("Invalid Cred Verification Region URL: {0}")]
+    InvalidCredVerificationURL(Option<String>),
+
+    #[error("Invalid imds v2 session token URL: {0}")]
+    InvalidIMDSv2SessionTokenURL(Option<String>),
 }

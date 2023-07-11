@@ -9,6 +9,7 @@ use base64::Engine;
 use serde_json::json;
 use std::collections::HashMap;
 use time::OffsetDateTime;
+use crate::subject_token_source::SubjectTokenSource;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -20,11 +21,12 @@ pub struct ExternalAccountTokenSource {
     scopes: String,
     auth_header: Option<String>,
     workforce_options: Option<String>,
+    subject_token_source: Box<dyn SubjectTokenSource>,
     client: reqwest::Client,
 }
 
 impl ExternalAccountTokenSource {
-    pub(crate) fn new(scopes: &str, cred: &credentials::CredentialsFile) -> Result<ExternalAccountTokenSource, Error> {
+    pub(crate) async fn new(scopes: &str, cred: &credentials::CredentialsFile) -> Result<ExternalAccountTokenSource, Error> {
         let auth_header = if cred.client_id.is_some() && cred.client_secret.is_some() {
             let plain_text = format!("{}:{}", cred.client_id.unwrap(), cred.client_secret.unwrap());
             Some(format!("Basic: {}", BASE64_STANDARD.encode(plain_text)))
@@ -48,6 +50,7 @@ impl ExternalAccountTokenSource {
             scopes: scopes.to_string(),
             auth_header,
             workforce_options,
+            subject_token_source: cred.subject_token_source().await?,
             client: default_http_client(),
         })
     }
@@ -67,7 +70,7 @@ impl TokenSource for ExternalAccountTokenSource {
             ("audience", self.audience.as_str()),
             ("scope", self.scopes.as_str()),
             ("subject_token_type", self.subject_token_type.unwrap_or_empty()),
-            ("subject_token", &self.credential_source.subject_token().await?),
+            ("subject_token", &self.subject_token_source.subject_token().await?),
             ("requested_token_type", "urn:ietf:params:oauth:token-type:access_token"),
         ];
         if let Some(options) = &self.workforce_options {
