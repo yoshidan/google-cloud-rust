@@ -62,6 +62,7 @@ impl ExternalAccountTokenSource {
 #[async_trait]
 impl TokenSource for ExternalAccountTokenSource {
     async fn token(&self) -> Result<Token, crate::error::Error> {
+        tracing::debug!("start external account token url={}", self.token_url);
         let mut builder = self.client.post(&self.token_url);
 
         if let Some(auth_header) = &self.auth_header {
@@ -80,8 +81,14 @@ impl TokenSource for ExternalAccountTokenSource {
         if let Some(options) = &self.workforce_options {
             sts_request.push(("options", options));
         }
-
-        let it = builder.form(&sts_request).send().await?.json::<InternalToken>().await?;
+        let response = builder.form(&sts_request).send().await?;
+        if !response.status().is_success() {
+            let status = response.status().as_u16();
+            let body = response.text().await?;
+            tracing::debug!("error body = {:?}", body);
+            return Err(Error::UnexpectedStatusOnToken(status).into());
+        }
+        let it = response.json::<InternalToken>().await?;
         Ok(it.to_token(OffsetDateTime::now_utc()))
     }
 }

@@ -126,7 +126,12 @@ impl AWSSubjectTokenSource {
 
         // sign
         let mut signing_key = format!("AWS4{}", self.credentials.secret_access_key).into_bytes();
-        for input in [self.region.as_str(), service_name, AWS_REQUEST_TYPE, string_to_sign.as_str()] {
+        for input in [
+            self.region.as_str(),
+            service_name,
+            AWS_REQUEST_TYPE,
+            string_to_sign.as_str(),
+        ] {
             let mut mac = hmac::Hmac::<Sha256>::new_from_slice(&signing_key)?;
             mac.update(input.as_bytes());
             let result = mac.finalize();
@@ -183,13 +188,14 @@ impl SubjectTokenSource for AWSSubjectTokenSource {
             headers: aws_headers,
         };
         let result = serde_json::to_string(&aws_request)?;
+        tracing::debug!("subject token={}", result);
         Ok(utf8_percent_encode(&result, NON_ALPHANUMERIC).to_string())
     }
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "PascalCase")]
 struct AWSSecurityCredentials {
-    #[serde(rename = "AccessKeyID")]
     access_key_id: String,
     secret_access_key: String,
     token: Option<String>,
@@ -248,7 +254,7 @@ async fn get_aws_session_token(imds_v2_session_token_url: &Option<String>) -> Re
         .send()
         .await?;
     if !response.status().is_success() {
-        return Err(Error::UnexpectedStatusOnGetSessionToken(response.status().as_u16()))
+        return Err(Error::UnexpectedStatusOnGetSessionToken(response.status().as_u16()));
     }
     Ok(response.text().await.map(Some)?)
 }
@@ -275,7 +281,7 @@ async fn get_security_credentials(
     }
     let response = builder.send().await?;
     if !response.status().is_success() {
-        return Err(Error::UnexpectedStatusOnGetRoleName(response.status().as_u16()))
+        return Err(Error::UnexpectedStatusOnGetRoleName(response.status().as_u16()));
     }
     let role_name = response.text().await?;
 
@@ -283,15 +289,13 @@ async fn get_security_credentials(
     tracing::debug!("start get_security_credentials by role url = {:?}", url);
 
     // get metadata security credentials
-    let mut builder = client
-        .get(url)
-        .header("Content-Type", "application/json");
+    let mut builder = client.get(url).header("Content-Type", "application/json");
     if let Some(token) = temporary_session_token {
         builder = builder.header(AWS_IMDS_V2_SESSION_TOKEN_HEADER, token);
     }
     let response = builder.send().await?;
     if !response.status().is_success() {
-        return Err(Error::UnexpectedStatusOnGetCredentials(response.status().as_u16()))
+        return Err(Error::UnexpectedStatusOnGetCredentials(response.status().as_u16()));
     }
     let cred: AWSSecurityCredentials = response.json().await?;
     Ok(cred)
@@ -312,7 +316,7 @@ async fn get_region(temporary_session_token: &Option<String>, url: &Option<Strin
     }
     let response = builder.send().await?;
     if !response.status().is_success() {
-        return Err(Error::UnexpectedStatusOnGetRegion(response.status().as_u16()))
+        return Err(Error::UnexpectedStatusOnGetRegion(response.status().as_u16()));
     }
     let body = response.bytes().await?;
 

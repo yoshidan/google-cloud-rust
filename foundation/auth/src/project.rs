@@ -165,7 +165,7 @@ async fn credentials_from_json_with_params(
 #[cfg(test)]
 mod test {
     use crate::error::Error;
-    use crate::project::{Config, create_token_source};
+    use crate::project::{create_token_source, Config};
     use crate::token::Token;
 
     #[tokio::test]
@@ -174,13 +174,13 @@ mod test {
             .add_directive("google_cloud_auth=trace".parse().unwrap());
         let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
 
-        let result = run().await ;
+        let result = run().await;
         match result {
             Ok(token) => tracing::info!("token = {:?}", token),
-            Err(err) => tracing::error!("error = {}, {:?}", err, err)
+            Err(err) => tracing::error!("error = {}, {:?}", err, err),
         }
     }
-    async fn run() -> Result<Token, Error>{
+    async fn run() -> Result<Token, Error> {
         let config = Config {
             audience: None,
             scopes: Some(&[
