@@ -43,6 +43,6 @@ pub enum Error {
     TimeParse(#[from] time::error::Parse),
 
     #[cfg(feature = "external-account")]
-    #[error(transparent)]
+    #[error("external account error : {0}")]
     ExternalAccountSource(#[from] crate::token_source::external_account_source::error::Error),
 }
