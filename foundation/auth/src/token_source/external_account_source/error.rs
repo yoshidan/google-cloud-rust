@@ -41,8 +41,8 @@ pub enum Error {
     #[error("Missing Regional Cred Verification URL")]
     MissingRegionalCredVerificationURL,
 
-    #[error("Missing External Token URL")]
-    MissingExternalTokenURL,
+    #[error("Missing Token URL")]
+    MissingTokenURL,
 
     #[error("Missing Subject Token Type")]
     MissingSubjectTokenType,

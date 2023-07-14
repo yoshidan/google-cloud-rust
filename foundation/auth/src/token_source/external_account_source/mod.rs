@@ -21,7 +21,7 @@ mod subject_token_source;
 pub struct ExternalAccountTokenSource {
     audience: String,
     subject_token_type: String,
-    token_url_external: String,
+    token_url: String,
     scopes: String,
     auth_header: Option<String>,
     workforce_options: Option<String>,
@@ -49,7 +49,7 @@ impl ExternalAccountTokenSource {
         Ok(ExternalAccountTokenSource {
             audience: cred.audience.clone().unwrap_or_empty(),
             subject_token_type: cred.subject_token_type.clone().ok_or(Error::MissingSubjectTokenType)?,
-            token_url_external: cred.token_url_external.clone().ok_or(Error::MissingExternalTokenURL)?,
+            token_url: cred.token_url.clone().ok_or(Error::MissingTokenURL)?,
             scopes: scopes.to_string(),
             auth_header,
             workforce_options,
@@ -62,7 +62,7 @@ impl ExternalAccountTokenSource {
 #[async_trait]
 impl TokenSource for ExternalAccountTokenSource {
     async fn token(&self) -> Result<Token, crate::error::Error> {
-        let mut builder = self.client.post(&self.token_url_external);
+        let mut builder = self.client.post(&self.token_url);
 
         if let Some(auth_header) = &self.auth_header {
             builder = builder.header(reqwest::header::AUTHORIZATION, auth_header);

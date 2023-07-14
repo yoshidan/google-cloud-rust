@@ -97,7 +97,7 @@ impl AWSSubjectTokenSource {
             .split('.')
             .map(|v| v.to_string())
             .collect();
-        let service_name = &service_name[0];
+        let service_name = service_name[0].as_str();
         let credential_scope = format!("{}/{}/{}/{}", date_stamp, &self.region, service_name, AWS_REQUEST_TYPE);
 
         // canonicalize headers
@@ -126,8 +126,7 @@ impl AWSSubjectTokenSource {
 
         // sign
         let mut signing_key = format!("AWS4{}", self.credentials.secret_access_key).into_bytes();
-        let signing_input = vec![&self.region, service_name, AWS_REQUEST_TYPE, &string_to_sign];
-        for input in signing_input {
+        for input in [self.region.as_str(), service_name, AWS_REQUEST_TYPE, string_to_sign.as_str()] {
             let mut mac = hmac::Hmac::<Sha256>::new_from_slice(&signing_key)?;
             mac.update(input.as_bytes());
             let result = mac.finalize();

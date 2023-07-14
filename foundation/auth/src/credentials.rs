@@ -68,7 +68,7 @@ pub struct CredentialsFile {
     // External Account fields
     pub audience: Option<String>,
     pub subject_token_type: Option<String>,
-    pub token_url_external: Option<String>,
+    pub token_url: Option<String>,
     pub token_info_url: Option<String>,
     pub service_account_impersonation_url: Option<String>,
     pub service_account_impersonation: Option<ServiceAccountImpersonationInfo>,
