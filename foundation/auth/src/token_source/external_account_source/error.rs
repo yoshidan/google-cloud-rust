@@ -50,18 +50,18 @@ pub enum Error {
     #[error(transparent)]
     InvalidHashLength(#[from] sha2::digest::InvalidLength),
 
-    #[error("get role name error : status={0}")]
+    #[error("failed to get role name : status={0}")]
     UnexpectedStatusOnGetRoleName(u16),
 
-    #[error("get session token error : status={0}")]
+    #[error("failed to get session token : status={0}")]
     UnexpectedStatusOnGetSessionToken(u16),
 
-    #[error("get credentials error : status={0}")]
+    #[error("failed to get credentials : status={0}")]
     UnexpectedStatusOnGetCredentials(u16),
 
-    #[error("get region error : status={0}")]
+    #[error("failed to get region  : status={0}")]
     UnexpectedStatusOnGetRegion(u16),
 
-    #[error("token : status={0}")]
-    UnexpectedStatusOnToken(u16),
+    #[error("failed to token : status={0}, detail={1}")]
+    UnexpectedStatusOnToken(u16, String),
 }

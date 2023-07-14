@@ -84,9 +84,8 @@ impl TokenSource for ExternalAccountTokenSource {
         let response = builder.form(&sts_request).send().await?;
         if !response.status().is_success() {
             let status = response.status().as_u16();
-            let body = response.text().await?;
-            tracing::debug!("error body = {:?}", body);
-            return Err(Error::UnexpectedStatusOnToken(status).into());
+            let detail = response.text().await?;
+            return Err(Error::UnexpectedStatusOnToken(status, detail).into());
         }
         let it = response.json::<InternalToken>().await?;
         Ok(it.to_token(OffsetDateTime::now_utc()))

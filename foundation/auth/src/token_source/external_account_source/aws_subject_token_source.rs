@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use time::OffsetDateTime;
 
-use time::macros::format_description;
+use time::macros::{datetime, format_description};
 use url::Url;
 
 use crate::credentials::CredentialSource;
@@ -89,7 +89,7 @@ impl AWSSubjectTokenSource {
         now: &OffsetDateTime,
         headers: &[(&str, &str)],
     ) -> Result<String, Error> {
-        let date_stamp = now.format(&format_description!("[year][month][day]"))?;
+        let date_stamp_short = now.format(&format_description!("[year][month][day]"))?;
         let service_name: Vec<String> = self
             .subject_token_url
             .host_str()
@@ -98,7 +98,7 @@ impl AWSSubjectTokenSource {
             .map(|v| v.to_string())
             .collect();
         let service_name = service_name[0].as_str();
-        let credential_scope = format!("{}/{}/{}/{}", date_stamp, &self.region, service_name, AWS_REQUEST_TYPE);
+        let credential_scope = format!("{}/{}/{}/{}", date_stamp_short, &self.region, service_name, AWS_REQUEST_TYPE);
 
         // canonicalize headers
         let (header_keys, header_values) = canonical_headers(headers);
@@ -118,15 +118,18 @@ impl AWSSubjectTokenSource {
         let data_hash = hex::encode(Sha256::digest(vec![])); // hash for empty body
         let request_string = format!(
             "{}\n{}\n{}\n{}\n{}\n{}",
-            method, path, query, header_keys, header_values, data_hash
+            method, path, query, header_values, header_keys, data_hash
         );
+        tracing::info!("request_string = {} ", request_string);
         let request_hash = hex::encode(Sha256::digest(request_string.as_bytes()));
-        let date_stamp = now.format(&format_description!("[year][month][day]T[hour][minute][second]Z"))?;
-        let string_to_sign = format!("{}\n{}\n{}\n{}", AWS_ALGORITHM, date_stamp, credential_scope, request_hash);
+        let date_stamp_long = now.format(&format_description!("[year][month][day]T[hour][minute][second]Z"))?;
+        let string_to_sign = format!("{}\n{}\n{}\n{}", AWS_ALGORITHM, date_stamp_long, credential_scope, request_hash);
+        tracing::info!("string_to_sign = {} ", string_to_sign);
 
         // sign
         let mut signing_key = format!("AWS4{}", self.credentials.secret_access_key).into_bytes();
         for input in [
+            date_stamp_short.as_str(),
             self.region.as_str(),
             service_name,
             AWS_REQUEST_TYPE,
@@ -136,6 +139,7 @@ impl AWSSubjectTokenSource {
             mac.update(input.as_bytes());
             let result = mac.finalize();
             signing_key = result.into_bytes().to_vec();
+            tracing::info!("signing_key = {:?} ", hex::encode(&signing_key));
         }
 
         Ok(format!(
@@ -152,7 +156,7 @@ impl AWSSubjectTokenSource {
 #[async_trait]
 impl SubjectTokenSource for AWSSubjectTokenSource {
     async fn subject_token(&self) -> Result<String, Error> {
-        let now = OffsetDateTime::now_utc();
+        let now = datetime!(2022-01-01 00:00:00).assume_utc();
         let format_date = now.format(&format_description!("[year][month][day]T[hour][minute][second]Z"))?;
         let mut sorted_headers: Vec<(&str, &str)> = vec![
             ("host", self.subject_token_url.host_str().unwrap_or("")),
@@ -331,7 +335,7 @@ fn canonical_headers<'a>(sorted_headers: &[(&'a str, &'a str)]) -> (String, Stri
     let mut keys = Vec::with_capacity(sorted_headers.len());
     for header in sorted_headers {
         keys.push(header.0);
-        full_headers.push(format!("{}:{}", header.0, header.1));
+        full_headers.push(format!("{}:{}\n", header.0, header.1));
     }
-    (keys.join(";"), full_headers.join("\n"))
+    (keys.join(";"), full_headers.join(""))
 }

@@ -39,7 +39,7 @@ impl ImpersonateTokenSource {
 impl TokenSource for ImpersonateTokenSource {
     async fn token(&self) -> Result<Token, Error> {
         let body = ImpersonateTokenRequest {
-            lifetime: format!("{}", self.lifetime.unwrap_or(3600)),
+            lifetime: format!("{}s", self.lifetime.unwrap_or(3600)),
             scope: self.scopes.clone(),
             delegates: self.delegates.clone(),
         };
@@ -54,9 +54,13 @@ impl TokenSource for ImpersonateTokenSource {
                 format!("{} {}", auth_token.token_type, auth_token.access_token),
             )
             .send()
-            .await?
-            .json::<ImpersonateTokenResponse>()
             .await?;
+        let response = if !response.status().is_success() {
+          tracing::error!("error = {}", response.text().await?);
+            return Err(Error::NoHomeDirectoryFound)
+        }else {
+            response.json::<ImpersonateTokenResponse>().await?
+        };
 
         tracing::debug!("impersonate token success : expiry={:?}", response.expire_time);
         let expiry = time::OffsetDateTime::parse(&response.expire_time, &Rfc3339)?;
@@ -76,6 +80,7 @@ struct ImpersonateTokenRequest {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ImpersonateTokenResponse {
     pub access_token: String,
     pub expire_time: String,
