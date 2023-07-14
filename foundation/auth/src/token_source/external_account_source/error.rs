@@ -49,4 +49,16 @@ pub enum Error {
 
     #[error(transparent)]
     InvalidHashLength(#[from] sha2::digest::InvalidLength),
+
+    #[error("status={0}")]
+    UnexpectedStatusOnGetRoleName(u16),
+
+    #[error("status={0}")]
+    UnexpectedStatusOnGetSessionToken(u16),
+
+    #[error("status={0}")]
+    UnexpectedStatusOnGetCredentials(u16),
+
+    #[error("status={0}")]
+    UnexpectedStatusOnGetRegion(u16),
 }

@@ -247,6 +247,9 @@ async fn get_aws_session_token(imds_v2_session_token_url: &Option<String>) -> Re
         .header("X-aws-ec2-metadata-token-ttl-seconds", "300")
         .send()
         .await?;
+    if !response.status().is_success() {
+        return Err(Error::UnexpectedStatusOnGetSessionToken(response.status().as_u16()))
+    }
     Ok(response.text().await.map(Some)?)
 }
 
@@ -270,7 +273,11 @@ async fn get_security_credentials(
     if let Some(token) = temporary_session_token {
         builder = builder.header(AWS_IMDS_V2_SESSION_TOKEN_HEADER, token);
     }
-    let role_name = builder.send().await?.text().await?;
+    let response = builder.send().await?;
+    if !response.status().is_success() {
+        return Err(Error::UnexpectedStatusOnGetRoleName(response.status().as_u16()))
+    }
+    let role_name = response.text().await?;
 
     let url = format!("{}/{}", url, role_name);
     tracing::debug!("start get_security_credentials by role url = {:?}", url);
@@ -282,9 +289,11 @@ async fn get_security_credentials(
     if let Some(token) = temporary_session_token {
         builder = builder.header(AWS_IMDS_V2_SESSION_TOKEN_HEADER, token);
     }
-    let body = builder.send().await?.text().await?;
-    tracing::trace!("credentials message = {:?}", body);
-    let cred: AWSSecurityCredentials = serde_json::from_str(&body)?;
+    let response = builder.send().await?;
+    if !response.status().is_success() {
+        return Err(Error::UnexpectedStatusOnGetCredentials(response.status().as_u16()))
+    }
+    let cred: AWSSecurityCredentials = response.json().await?;
     Ok(cred)
 }
 
@@ -301,7 +310,11 @@ async fn get_region(temporary_session_token: &Option<String>, url: &Option<Strin
     if let Some(token) = temporary_session_token {
         builder = builder.header(AWS_IMDS_V2_SESSION_TOKEN_HEADER, token);
     }
-    let body = builder.send().await?.bytes().await?;
+    let response = builder.send().await?;
+    if !response.status().is_success() {
+        return Err(Error::UnexpectedStatusOnGetRegion(response.status().as_u16()))
+    }
+    let body = response.bytes().await?;
 
     // This endpoint will return the region in format: us-east-2b.
     // Only the us-east-2 part should be used.
