@@ -7,7 +7,7 @@ use base64::Engine;
 
 use time::OffsetDateTime;
 
-use crate::credentials::{CredentialSource, CredentialsFile};
+use crate::credentials::CredentialsFile;
 use crate::misc::UnwrapOrEmpty;
 use crate::token::Token;
 use crate::token_source::external_account_source::error::Error;
@@ -22,7 +22,6 @@ pub struct ExternalAccountTokenSource {
     audience: String,
     subject_token_type: String,
     token_url_external: String,
-    credential_source: CredentialSource,
     scopes: String,
     auth_header: Option<String>,
     workforce_options: Option<String>,
@@ -51,7 +50,6 @@ impl ExternalAccountTokenSource {
             audience: cred.audience.clone().unwrap_or_empty(),
             subject_token_type: cred.subject_token_type.clone().ok_or(Error::MissingSubjectTokenType)?,
             token_url_external: cred.token_url_external.clone().ok_or(Error::MissingExternalTokenURL)?,
-            credential_source: cred.credential_source.clone().ok_or(Error::NoCredentialsSource)?,
             scopes: scopes.to_string(),
             auth_header,
             workforce_options,

@@ -39,6 +39,9 @@ pub enum Error {
     #[error("invalid authentication token")]
     InvalidToken,
 
+    #[error(transparent)]
+    TimeParse(#[from] time::error::Parse),
+
     #[cfg(feature = "external-account")]
     #[error(transparent)]
     ExternalAccountSource(#[from] crate::token_source::external_account_source::error::Error),

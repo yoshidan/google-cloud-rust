@@ -71,6 +71,7 @@ pub struct CredentialsFile {
     pub token_url_external: Option<String>,
     pub token_info_url: Option<String>,
     pub service_account_impersonation_url: Option<String>,
+    pub service_account_impersonation: Option<ServiceAccountImpersonationInfo>,
     pub credential_source: Option<CredentialSource>,
     pub quota_project_id: Option<String>,
     pub workforce_pool_user_project: Option<String>,
