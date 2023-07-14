@@ -261,6 +261,7 @@ async fn get_security_credentials(
             token: var(AWS_SESSION_TOKEN).ok(),
         });
     }
+    tracing::debug!("start get_security_credentials url = {:?}", url);
 
     // get metadata role name
     let url = url.as_ref().ok_or(Error::MissingSecurityCredentialsURL)?;
@@ -271,14 +272,19 @@ async fn get_security_credentials(
     }
     let role_name = builder.send().await?.text().await?;
 
+    let url = format!("{}/{}", url, role_name);
+    tracing::debug!("start get_security_credentials by role url = {:?}", url);
+
     // get metadata security credentials
     let mut builder = client
-        .get(format!("{}/{}", url, role_name))
+        .get(url)
         .header("Content-Type", "application/json");
     if let Some(token) = temporary_session_token {
         builder = builder.header(AWS_IMDS_V2_SESSION_TOKEN_HEADER, token);
     }
-    let cred: AWSSecurityCredentials = builder.send().await?.json().await?;
+    let body = builder.send().await?.text().await?;
+    tracing::trace!("credentials message = {:?}", body);
+    let cred: AWSSecurityCredentials = serde_json::from_str(&body)?;
     Ok(cred)
 }
 
