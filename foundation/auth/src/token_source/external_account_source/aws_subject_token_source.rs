@@ -83,7 +83,7 @@ impl AWSSubjectTokenSource {
         })
     }
 
-    fn generate_authentication(
+    fn create_auth_header(
         &self,
         method: &str,
         now: &OffsetDateTime,
@@ -151,12 +151,8 @@ impl AWSSubjectTokenSource {
             hex::encode(signing_key)
         ))
     }
-}
 
-#[async_trait]
-impl SubjectTokenSource for AWSSubjectTokenSource {
-    async fn subject_token(&self) -> Result<String, Error> {
-        let now = OffsetDateTime::now_utc();
+    fn create_subject_token(&self, now: OffsetDateTime) -> Result<String, Error> {
         let format_date = now.format(&format_description!("[year][month][day]T[hour][minute][second]Z"))?;
         let mut sorted_headers: Vec<(&str, &str)> = vec![
             ("host", self.subject_token_url.host_str().unwrap_or("")),
@@ -173,7 +169,7 @@ impl SubjectTokenSource for AWSSubjectTokenSource {
             sorted_headers.push(("x-goog-cloud-target-resource", target_resource));
         }
         let method = "POST";
-        let authorization = self.generate_authentication(method, &now, &sorted_headers)?;
+        let authorization = self.create_auth_header(method, &now, &sorted_headers)?;
 
         let mut aws_headers = Vec::with_capacity(sorted_headers.len() + 1);
         aws_headers.push(AWSRequestHeader {
@@ -192,8 +188,14 @@ impl SubjectTokenSource for AWSSubjectTokenSource {
             headers: aws_headers,
         };
         let result = serde_json::to_string(&aws_request)?;
-        tracing::debug!("subject token={}", result);
         Ok(utf8_percent_encode(&result, NON_ALPHANUMERIC).to_string())
+    }
+}
+
+#[async_trait]
+impl SubjectTokenSource for AWSSubjectTokenSource {
+    async fn subject_token(&self) -> Result<String, Error> {
+        self.create_subject_token(OffsetDateTime::now_utc())
     }
 }
 
@@ -335,4 +337,58 @@ fn canonical_headers<'a>(sorted_headers: &[(&'a str, &'a str)]) -> (String, Stri
         full_headers.push(format!("{}:{}\n", header.0, header.1));
     }
     (keys.join(";"), full_headers.join(""))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::credentials::{CredentialSource, CredentialsFile};
+    use crate::token_source::external_account_source::aws_subject_token_source::{
+        AWSSecurityCredentials, AWSSubjectTokenSource,
+    };
+    use time::macros::datetime;
+    use url::Url;
+
+    #[test]
+    fn test_create_subject_token() {
+        let cred = r#"{
+            "type": "external_account",
+            "audience": "//iam.googleapis.com/projects/myprojectnumber/locations/global/workloadIdentityPools/aws-test/providers/aws-test",
+            "subject_token_type": "urn:ietf:params:aws:token-type:aws4_request",
+            "service_account_impersonation_url": "https://iamcredentials.googleapis.com/test",
+            "token_url": "https://sts.googleapis.com/v1/token",
+            "credential_source": {
+                "environment_id": "aws1",
+                "region_url": "http://169.254.169.254/latest/meta-data/placement/availability-zone",
+                "url": "http://169.254.169.254/latest/meta-data/iam/security-credentials",
+                "regional_cred_verification_url": "https://sts.{region}.amazonaws.com?Action=GetCallerIdentity&Version=2011-06-15"
+            }
+        }"#;
+        let region = "ap-northeast-1b".to_string();
+        let cred: CredentialsFile = serde_json::from_str(cred).unwrap();
+        let url = cred.credential_source.unwrap().regional_cred_verification_url.unwrap();
+        let subject_token_url = Url::parse(&url.replace("{region}", &region)).unwrap();
+
+        let source = AWSSubjectTokenSource {
+            subject_token_url,
+            target_resource: cred.audience,
+            credentials: AWSSecurityCredentials {
+                access_key_id: "AccessKeyId".to_string(),
+                secret_access_key: "SecretAccessKey".to_string(),
+                token: Some("SecurityToken".to_string()),
+            },
+            region,
+        };
+
+        let now = datetime!(2022-12-31 00:00:00).assume_utc();
+        match source.create_subject_token(now) {
+            Ok(token) => {
+                let gen_by_golang = "%7B%22url%22%3A%22https%3A%2F%2Fsts%2Eap%2Dnortheast%2D1b%2Eamazonaws%2Ecom%2F%3FAction%3DGetCallerIdentity%26Version%3D2011%2D06%2D15%22%2C%22method%22%3A%22POST%22%2C%22headers%22%3A%5B%7B%22key%22%3A%22Authorization%22%2C%22value%22%3A%22AWS4%2DHMAC%2DSHA256%20Credential%3DAccessKeyId%2F20221231%2Fap%2Dnortheast%2D1b%2Fsts%2Faws4%5Frequest%2C%20SignedHeaders%3Dhost%3Bx%2Damz%2Ddate%3Bx%2Damz%2Dsecurity%2Dtoken%3Bx%2Dgoog%2Dcloud%2Dtarget%2Dresource%2C%20Signature%3D168a40df8b7c11fb0588a13cada1443e31e4736de702232f9a2177b26edda21c%22%7D%2C%7B%22key%22%3A%22host%22%2C%22value%22%3A%22sts%2Eap%2Dnortheast%2D1b%2Eamazonaws%2Ecom%22%7D%2C%7B%22key%22%3A%22x%2Damz%2Ddate%22%2C%22value%22%3A%2220221231T000000Z%22%7D%2C%7B%22key%22%3A%22x%2Damz%2Dsecurity%2Dtoken%22%2C%22value%22%3A%22SecurityToken%22%7D%2C%7B%22key%22%3A%22x%2Dgoog%2Dcloud%2Dtarget%2Dresource%22%2C%22value%22%3A%22%2F%2Fiam%2Egoogleapis%2Ecom%2Fprojects%2Fmyprojectnumber%2Flocations%2Fglobal%2FworkloadIdentityPools%2Faws%2Dtest%2Fproviders%2Faws%2Dtest%22%7D%5D%7D";
+                assert_eq!(token, gen_by_golang);
+            }
+            Err(err) => {
+                tracing::error!("error={},{:?}", err, err);
+                unreachable!();
+            }
+        }
+    }
 }
