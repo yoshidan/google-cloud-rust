@@ -62,7 +62,6 @@ impl ExternalAccountTokenSource {
 #[async_trait]
 impl TokenSource for ExternalAccountTokenSource {
     async fn token(&self) -> Result<Token, crate::error::Error> {
-        tracing::debug!("start external account token url={}", self.token_url);
         let mut builder = self.client.post(&self.token_url);
 
         if let Some(auth_header) = &self.auth_header {
@@ -85,7 +84,7 @@ impl TokenSource for ExternalAccountTokenSource {
         if !response.status().is_success() {
             let status = response.status().as_u16();
             let detail = response.text().await?;
-            return Err(Error::UnexpectedStatusOnToken(status, detail).into());
+            return Err(Error::UnexpectedStatusOnGetSubjectToken(status, detail).into());
         }
         let it = response.json::<InternalToken>().await?;
         Ok(it.to_token(OffsetDateTime::now_utc()))

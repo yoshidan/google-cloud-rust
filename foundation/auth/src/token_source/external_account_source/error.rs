@@ -14,7 +14,7 @@ pub enum Error {
     #[error("No Credentials Source ")]
     NoCredentialsSource,
 
-    #[error("aws version {0} is not supported in the current build")]
+    #[error("AWS version {0} is not supported in the current build")]
     UnsupportedAWSVersion(String),
 
     #[error("Unsupported Subject Token Source")]
@@ -62,6 +62,6 @@ pub enum Error {
     #[error("failed to get region  : status={0}")]
     UnexpectedStatusOnGetRegion(u16),
 
-    #[error("failed to token : status={0}, detail={1}")]
-    UnexpectedStatusOnToken(u16, String),
+    #[error("failed to get subject token: status={0}, detail={1}")]
+    UnexpectedStatusOnGetSubjectToken(u16, String),
 }

@@ -156,7 +156,7 @@ impl AWSSubjectTokenSource {
 #[async_trait]
 impl SubjectTokenSource for AWSSubjectTokenSource {
     async fn subject_token(&self) -> Result<String, Error> {
-        let now = datetime!(2022-01-01 00:00:00).assume_utc();
+        let now = OffsetDateTime::now_utc();
         let format_date = now.format(&format_description!("[year][month][day]T[hour][minute][second]Z"))?;
         let mut sorted_headers: Vec<(&str, &str)> = vec![
             ("host", self.subject_token_url.host_str().unwrap_or("")),
@@ -274,7 +274,6 @@ async fn get_security_credentials(
             token: var(AWS_SESSION_TOKEN).ok(),
         });
     }
-    tracing::debug!("start get_security_credentials url = {:?}", url);
 
     // get metadata role name
     let url = url.as_ref().ok_or(Error::MissingSecurityCredentialsURL)?;
@@ -289,10 +288,8 @@ async fn get_security_credentials(
     }
     let role_name = response.text().await?;
 
-    let url = format!("{}/{}", url, role_name);
-    tracing::debug!("start get_security_credentials by role url = {:?}", url);
-
     // get metadata security credentials
+    let url = format!("{}/{}", url, role_name);
     let mut builder = client.get(url).header("Content-Type", "application/json");
     if let Some(token) = temporary_session_token {
         builder = builder.header(AWS_IMDS_V2_SESSION_TOKEN_HEADER, token);

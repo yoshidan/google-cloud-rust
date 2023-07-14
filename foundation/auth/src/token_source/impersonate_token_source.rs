@@ -56,13 +56,12 @@ impl TokenSource for ImpersonateTokenSource {
             .send()
             .await?;
         let response = if !response.status().is_success() {
-          tracing::error!("error = {}", response.text().await?);
-            return Err(Error::NoHomeDirectoryFound)
-        }else {
+            let status = response.status().as_u16();
+            return Err(Error::UnexpectedImpersonateTokenResponse(status, response.text().await?));
+        } else {
             response.json::<ImpersonateTokenResponse>().await?
         };
 
-        tracing::debug!("impersonate token success : expiry={:?}", response.expire_time);
         let expiry = time::OffsetDateTime::parse(&response.expire_time, &Rfc3339)?;
         Ok(Token {
             access_token: response.access_token,
