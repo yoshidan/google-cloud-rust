@@ -39,7 +39,7 @@ ctor = "0.1"
 serial_test = "0.9"
 
 [features]
-default = ["default-tls", "external-account"]
+default = ["default-tls"]
 default-tls = ["reqwest/default-tls"]
 rustls-tls = ["reqwest/rustls-tls"]
 external-account = ["sha2", "path-clean", "url", "percent-encoding", "hmac", "hex"]
