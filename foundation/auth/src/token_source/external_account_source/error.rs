@@ -5,8 +5,8 @@ pub enum Error {
     #[error("Invalid Region URL: {0}")]
     InvalidRegionURL(String),
 
-    #[error("Invalid Cred Verification Region URL: {0}")]
-    InvalidCredVerificationURL(String),
+    #[error("Invalid Security Credentials URL: {0}")]
+    InvalidSecurityCredentialsURL(String),
 
     #[error("Invalid imds v2 session token URL: {0}")]
     InvalidIMDSv2SessionTokenURL(String),

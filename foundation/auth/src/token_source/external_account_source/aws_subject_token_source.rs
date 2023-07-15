@@ -50,7 +50,7 @@ impl AWSSubjectTokenSource {
         }
         // Not value.cred_verification_url but value.url
         if !validate_metadata_server(&value.url) {
-            return Err(Error::InvalidCredVerificationURL(value.url.unwrap_or_empty()));
+            return Err(Error::InvalidSecurityCredentialsURL(value.url.unwrap_or_empty()));
         }
         if !validate_metadata_server(&value.imdsv2_session_token_url) {
             return Err(Error::InvalidIMDSv2SessionTokenURL(
