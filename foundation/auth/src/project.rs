@@ -4,7 +4,6 @@ use crate::credentials::CredentialsFile;
 use crate::misc::EMPTY;
 use crate::token_source::authorized_user_token_source::UserAccountTokenSource;
 use crate::token_source::compute_token_source::ComputeTokenSource;
-use crate::token_source::external_account_source::ExternalAccountTokenSource;
 use crate::token_source::impersonate_token_source::ImpersonateTokenSource;
 use crate::token_source::reuse_token_source::ReuseTokenSource;
 use crate::token_source::service_account_token_source::OAuth2ServiceAccountTokenSource;
@@ -142,7 +141,7 @@ async fn credentials_from_json_with_params(
         USER_CREDENTIALS_KEY => Ok(Box::new(UserAccountTokenSource::new(credentials)?)),
         #[cfg(feature = "external-account")]
         EXTERNAL_ACCOUNT_KEY => {
-            let ts = ExternalAccountTokenSource::new(config.scopes_to_string(" ").as_str(), credentials).await?;
+            let ts = crate::token_source::external_account_source::ExternalAccountTokenSource::ExternalAccountTokenSource::new(config.scopes_to_string(" ").as_str(), credentials).await?;
             if let Some(impersonation_url) = &credentials.service_account_impersonation_url {
                 let url = impersonation_url.clone();
                 let mut scopes = config.scopes.map(|v| v.to_vec()).unwrap_or(vec![]);
