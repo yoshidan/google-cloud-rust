@@ -141,7 +141,7 @@ async fn credentials_from_json_with_params(
         USER_CREDENTIALS_KEY => Ok(Box::new(UserAccountTokenSource::new(credentials)?)),
         #[cfg(feature = "external-account")]
         EXTERNAL_ACCOUNT_KEY => {
-            let ts = crate::token_source::external_account_source::ExternalAccountTokenSource::ExternalAccountTokenSource::new(config.scopes_to_string(" ").as_str(), credentials).await?;
+            let ts = crate::token_source::external_account_source::ExternalAccountTokenSource::new(config.scopes_to_string(" ").as_str(), credentials).await?;
             if let Some(impersonation_url) = &credentials.service_account_impersonation_url {
                 let url = impersonation_url.clone();
                 let mut scopes = config.scopes.map(|v| v.to_vec()).unwrap_or(vec![]);
