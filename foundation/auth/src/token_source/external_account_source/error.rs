@@ -50,18 +50,18 @@ pub enum Error {
     #[error(transparent)]
     InvalidHashLength(#[from] sha2::digest::InvalidLength),
 
-    #[error("failed to get role name : status={0}")]
+    #[error("Failed to get role name. No IAM role may be attached to instance : status={0}")]
     UnexpectedStatusOnGetRoleName(u16),
 
-    #[error("failed to get session token : status={0}")]
+    #[error("Failed to get session token : status={0}")]
     UnexpectedStatusOnGetSessionToken(u16),
 
-    #[error("failed to get credentials : status={0}")]
+    #[error("Failed to get credentials : status={0}")]
     UnexpectedStatusOnGetCredentials(u16),
 
-    #[error("failed to get region  : status={0}")]
+    #[error("Failed to get region : status={0}")]
     UnexpectedStatusOnGetRegion(u16),
 
-    #[error("failed to get subject token: status={0}, detail={1}")]
+    #[error("Failed to get subject token: status={0}, detail={1}")]
     UnexpectedStatusOnGetSubjectToken(u16, String),
 }

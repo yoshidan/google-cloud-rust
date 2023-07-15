@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use async_trait::async_trait;
 use hmac::Mac;
 use path_clean::PathClean;
-use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
+use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -100,13 +100,8 @@ impl AWSSubjectTokenSource {
         let service_name = service_name[0].as_str();
         let credential_scope = format!("{}/{}/{}/{}", date_stamp_short, &self.region, service_name, AWS_REQUEST_TYPE);
 
-        // canonicalize headers
         let (header_keys, header_values) = canonical_headers(headers);
-
-        // canonicalize query
         let query = self.subject_token_url.query().unwrap_or_default();
-
-        // canonicalize path
         let path = self.subject_token_url.path();
         let path = if path.is_empty() {
             "/".to_string()
@@ -120,11 +115,9 @@ impl AWSSubjectTokenSource {
             "{}\n{}\n{}\n{}\n{}\n{}",
             method, path, query, header_values, header_keys, data_hash
         );
-        tracing::info!("request_string = {} ", request_string);
         let request_hash = hex::encode(Sha256::digest(request_string.as_bytes()));
         let date_stamp_long = now.format(&format_description!("[year][month][day]T[hour][minute][second]Z"))?;
         let string_to_sign = format!("{}\n{}\n{}\n{}", AWS_ALGORITHM, date_stamp_long, credential_scope, request_hash);
-        tracing::info!("string_to_sign = {} ", string_to_sign);
 
         // sign
         let mut signing_key = format!("AWS4{}", self.credentials.secret_access_key).into_bytes();
@@ -139,7 +132,6 @@ impl AWSSubjectTokenSource {
             mac.update(input.as_bytes());
             let result = mac.finalize();
             signing_key = result.into_bytes().to_vec();
-            tracing::info!("signing_key = {:?} ", hex::encode(&signing_key));
         }
 
         Ok(format!(
@@ -292,7 +284,7 @@ async fn get_security_credentials(
 
     // get metadata security credentials
     let url = format!("{}/{}", url, role_name);
-    let mut builder = client.get(url).header("Content-Type", "application/json");
+    let mut builder = client.get(url);
     if let Some(token) = temporary_session_token {
         builder = builder.header(AWS_IMDS_V2_SESSION_TOKEN_HEADER, token);
     }
@@ -345,11 +337,11 @@ mod tests {
     use crate::token_source::external_account_source::aws_subject_token_source::{
         AWSSecurityCredentials, AWSSubjectTokenSource,
     };
-    use time::macros::datetime;
+    use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
+    use time::macros::{datetime, format_description};
     use url::Url;
 
-    #[test]
-    fn test_create_subject_token() {
+    fn create_token_source() -> AWSSubjectTokenSource {
         let cred = r#"{
             "type": "external_account",
             "audience": "//iam.googleapis.com/projects/myprojectnumber/locations/global/workloadIdentityPools/aws-test/providers/aws-test",
@@ -368,7 +360,7 @@ mod tests {
         let url = cred.credential_source.unwrap().regional_cred_verification_url.unwrap();
         let subject_token_url = Url::parse(&url.replace("{region}", &region)).unwrap();
 
-        let source = AWSSubjectTokenSource {
+        AWSSubjectTokenSource {
             subject_token_url,
             target_resource: cred.audience,
             credentials: AWSSecurityCredentials {
@@ -377,13 +369,34 @@ mod tests {
                 token: Some("SecurityToken".to_string()),
             },
             region,
-        };
+        }
+    }
+    #[test]
+    fn test_create_auth_header() {
+        let source = create_token_source();
+        let now = datetime!(2022-12-31 00:00:00).assume_utc();
+        let format_date = now
+            .format(&format_description!("[year][month][day]T[hour][minute][second]Z"))
+            .unwrap();
+        let sorted_headers: Vec<(&str, &str)> = vec![
+            ("host", source.subject_token_url.host_str().unwrap_or("")),
+            ("x-amz-date", &format_date),
+            ("x-amz-security-token", source.credentials.token.as_ref().unwrap()),
+            ("x-goog-cloud-target-resource", source.target_resource.as_ref().unwrap()),
+        ];
+        let actual = source.create_auth_header("POST", &now, &sorted_headers).unwrap();
+        let expected = "AWS4-HMAC-SHA256 Credential=AccessKeyId/20221231/ap-northeast-1b/sts/aws4_request, SignedHeaders=host;x-amz-date;x-amz-security-token;x-goog-cloud-target-resource, Signature=168a40df8b7c11fb0588a13cada1443e31e4736de702232f9a2177b26edda21c";
+        assert_eq!(actual, expected);
+    }
 
+    #[test]
+    fn test_create_subject_token() {
+        let source = create_token_source();
         let now = datetime!(2022-12-31 00:00:00).assume_utc();
         match source.create_subject_token(now) {
             Ok(token) => {
-                let gen_by_golang = "%7B%22url%22%3A%22https%3A%2F%2Fsts%2Eap%2Dnortheast%2D1b%2Eamazonaws%2Ecom%2F%3FAction%3DGetCallerIdentity%26Version%3D2011%2D06%2D15%22%2C%22method%22%3A%22POST%22%2C%22headers%22%3A%5B%7B%22key%22%3A%22Authorization%22%2C%22value%22%3A%22AWS4%2DHMAC%2DSHA256%20Credential%3DAccessKeyId%2F20221231%2Fap%2Dnortheast%2D1b%2Fsts%2Faws4%5Frequest%2C%20SignedHeaders%3Dhost%3Bx%2Damz%2Ddate%3Bx%2Damz%2Dsecurity%2Dtoken%3Bx%2Dgoog%2Dcloud%2Dtarget%2Dresource%2C%20Signature%3D168a40df8b7c11fb0588a13cada1443e31e4736de702232f9a2177b26edda21c%22%7D%2C%7B%22key%22%3A%22host%22%2C%22value%22%3A%22sts%2Eap%2Dnortheast%2D1b%2Eamazonaws%2Ecom%22%7D%2C%7B%22key%22%3A%22x%2Damz%2Ddate%22%2C%22value%22%3A%2220221231T000000Z%22%7D%2C%7B%22key%22%3A%22x%2Damz%2Dsecurity%2Dtoken%22%2C%22value%22%3A%22SecurityToken%22%7D%2C%7B%22key%22%3A%22x%2Dgoog%2Dcloud%2Dtarget%2Dresource%22%2C%22value%22%3A%22%2F%2Fiam%2Egoogleapis%2Ecom%2Fprojects%2Fmyprojectnumber%2Flocations%2Fglobal%2FworkloadIdentityPools%2Faws%2Dtest%2Fproviders%2Faws%2Dtest%22%7D%5D%7D";
-                assert_eq!(token, gen_by_golang);
+                let expected = "%7B%22url%22%3A%22https%3A%2F%2Fsts%2Eap%2Dnortheast%2D1b%2Eamazonaws%2Ecom%2F%3FAction%3DGetCallerIdentity%26Version%3D2011%2D06%2D15%22%2C%22method%22%3A%22POST%22%2C%22headers%22%3A%5B%7B%22key%22%3A%22Authorization%22%2C%22value%22%3A%22AWS4%2DHMAC%2DSHA256%20Credential%3DAccessKeyId%2F20221231%2Fap%2Dnortheast%2D1b%2Fsts%2Faws4%5Frequest%2C%20SignedHeaders%3Dhost%3Bx%2Damz%2Ddate%3Bx%2Damz%2Dsecurity%2Dtoken%3Bx%2Dgoog%2Dcloud%2Dtarget%2Dresource%2C%20Signature%3D168a40df8b7c11fb0588a13cada1443e31e4736de702232f9a2177b26edda21c%22%7D%2C%7B%22key%22%3A%22host%22%2C%22value%22%3A%22sts%2Eap%2Dnortheast%2D1b%2Eamazonaws%2Ecom%22%7D%2C%7B%22key%22%3A%22x%2Damz%2Ddate%22%2C%22value%22%3A%2220221231T000000Z%22%7D%2C%7B%22key%22%3A%22x%2Damz%2Dsecurity%2Dtoken%22%2C%22value%22%3A%22SecurityToken%22%7D%2C%7B%22key%22%3A%22x%2Dgoog%2Dcloud%2Dtarget%2Dresource%22%2C%22value%22%3A%22%2F%2Fiam%2Egoogleapis%2Ecom%2Fprojects%2Fmyprojectnumber%2Flocations%2Fglobal%2FworkloadIdentityPools%2Faws%2Dtest%2Fproviders%2Faws%2Dtest%22%7D%5D%7D";
+                assert_eq!(token, expected);
             }
             Err(err) => {
                 tracing::error!("error={},{:?}", err, err);
