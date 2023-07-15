@@ -148,11 +148,7 @@ async fn credentials_from_json_with_params(
                 let mut scopes = config.scopes.map(|v| v.to_vec()).unwrap_or(vec![]);
                 scopes.push("https://www.googleapis.com/auth/cloud-platform");
                 let scopes = scopes.iter().map(|e| e.to_string()).collect();
-                let lifetime = credentials
-                    .service_account_impersonation
-                    .as_ref()
-                    .map(|e| e.token_lifetime_seconds);
-                let ts = ImpersonateTokenSource::new(url, vec![], scopes, lifetime, Box::new(ts));
+                let ts = ImpersonateTokenSource::new(url, vec![], scopes, Box::new(ts));
                 Ok(Box::new(ts))
             } else {
                 Ok(Box::new(ts))

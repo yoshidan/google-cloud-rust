@@ -1,10 +1,8 @@
-use std::collections::HashMap;
 use std::fmt::Debug;
 
 use async_trait::async_trait;
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
-
 use time::OffsetDateTime;
 
 use crate::credentials::CredentialsFile;
@@ -24,7 +22,6 @@ pub struct ExternalAccountTokenSource {
     token_url: String,
     scopes: String,
     auth_header: Option<String>,
-    workforce_options: Option<String>,
     subject_token_source: Box<dyn subject_token_source::SubjectTokenSource>,
     client: reqwest::Client,
 }
@@ -37,22 +34,12 @@ impl ExternalAccountTokenSource {
         } else {
             None
         };
-        // Do not pass workforce_pool_user_project when client authentication is used.
-        // The client ID is sufficient for determining the user project.
-        let workforce_options = if cred.workforce_pool_user_project.is_some() && cred.client_id.is_none() {
-            let mut option = HashMap::with_capacity(1);
-            option.insert("userProject", cred.workforce_pool_user_project.as_ref().unwrap());
-            Some(serde_json::to_string(&option)?)
-        } else {
-            None
-        };
         Ok(ExternalAccountTokenSource {
             audience: cred.audience.clone().unwrap_or_empty(),
             subject_token_type: cred.subject_token_type.clone().ok_or(Error::MissingSubjectTokenType)?,
-            token_url: cred.token_url.clone().ok_or(Error::MissingTokenURL)?,
+            token_url: cred.token_url_external.clone().ok_or(Error::MissingTokenURL)?,
             scopes: scopes.to_string(),
             auth_header,
-            workforce_options,
             subject_token_source: subject_token_source(cred).await?,
             client: default_http_client(),
         })
@@ -69,7 +56,7 @@ impl TokenSource for ExternalAccountTokenSource {
         }
 
         let subject_token = self.subject_token_source.subject_token().await?;
-        let mut sts_request = vec![
+        let sts_request = vec![
             ("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange"),
             ("audience", &self.audience),
             ("scope", &self.scopes),
@@ -77,9 +64,6 @@ impl TokenSource for ExternalAccountTokenSource {
             ("subject_token", &subject_token),
             ("requested_token_type", "urn:ietf:params:oauth:token-type:access_token"),
         ];
-        if let Some(options) = &self.workforce_options {
-            sts_request.push(("options", options));
-        }
         let response = builder.form(&sts_request).send().await?;
         if !response.status().is_success() {
             let status = response.status().as_u16();

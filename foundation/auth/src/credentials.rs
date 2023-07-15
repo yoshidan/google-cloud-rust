@@ -8,41 +8,26 @@ const CREDENTIALS_FILE: &str = "application_default_credentials.json";
 
 #[allow(dead_code)]
 #[derive(Deserialize, Clone, Debug)]
-pub struct ServiceAccountImpersonationInfo {
-    pub token_lifetime_seconds: i32,
-}
-
-#[allow(dead_code)]
-#[derive(Deserialize, Clone, Debug)]
-pub struct ExecutableConfig {
-    pub command: String,
-    pub timeout_millis: Option<i32>,
-    pub output_file: String,
-}
-
-#[allow(dead_code)]
-#[derive(Deserialize, Clone, Debug)]
 pub struct Format {
-    pub tp: String,
-    pub subject_token_field_name: String,
+    tp: String,
+    subject_token_field_name: String,
 }
 
 #[allow(dead_code)]
 #[derive(Deserialize, Clone, Debug)]
 pub struct CredentialSource {
-    pub file: Option<String>,
+    file: Option<String>,
 
-    pub url: Option<String>,
-    pub headers: Option<std::collections::HashMap<String, String>>,
+    pub(crate) url: Option<String>,
 
-    pub executable: Option<ExecutableConfig>,
+    headers: Option<std::collections::HashMap<String, String>>,
 
-    pub environment_id: Option<String>,
-    pub region_url: Option<String>,
-    pub regional_cred_verification_url: Option<String>,
-    pub cred_verification_url: Option<String>,
-    pub imdsv2_session_token_url: Option<String>,
-    pub format: Option<Format>,
+    pub(crate) environment_id: Option<String>,
+    pub(crate) region_url: Option<String>,
+    pub(crate) regional_cred_verification_url: Option<String>,
+    cred_verification_url: Option<String>,
+    pub(crate) imdsv2_session_token_url: Option<String>,
+    format: Option<Format>,
 }
 
 #[allow(dead_code)]
@@ -68,13 +53,12 @@ pub struct CredentialsFile {
     // External Account fields
     pub audience: Option<String>,
     pub subject_token_type: Option<String>,
-    pub token_url: Option<String>,
+    #[serde(rename = "token_url")]
+    pub token_url_external: Option<String>,
     pub token_info_url: Option<String>,
     pub service_account_impersonation_url: Option<String>,
-    pub service_account_impersonation: Option<ServiceAccountImpersonationInfo>,
     pub credential_source: Option<CredentialSource>,
     pub quota_project_id: Option<String>,
-    pub workforce_pool_user_project: Option<String>,
 }
 
 impl CredentialsFile {

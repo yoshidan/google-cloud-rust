@@ -5,13 +5,11 @@ use std::path::PathBuf;
 use async_trait::async_trait;
 use hmac::Mac;
 use path_clean::PathClean;
-use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
-
+use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use time::macros::format_description;
 use time::OffsetDateTime;
-
-use time::macros::{datetime, format_description};
 use url::Url;
 
 use crate::credentials::CredentialSource;
@@ -333,13 +331,13 @@ fn canonical_headers<'a>(sorted_headers: &[(&'a str, &'a str)]) -> (String, Stri
 
 #[cfg(test)]
 mod tests {
-    use crate::credentials::{CredentialSource, CredentialsFile};
+    use time::macros::{datetime, format_description};
+    use url::Url;
+
+    use crate::credentials::CredentialsFile;
     use crate::token_source::external_account_source::aws_subject_token_source::{
         AWSSecurityCredentials, AWSSubjectTokenSource,
     };
-    use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
-    use time::macros::{datetime, format_description};
-    use url::Url;
 
     fn create_token_source() -> AWSSubjectTokenSource {
         let cred = r#"{

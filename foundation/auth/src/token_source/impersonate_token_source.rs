@@ -9,7 +9,6 @@ use crate::token_source::{default_http_client, TokenSource};
 #[derive(Debug)]
 pub struct ImpersonateTokenSource {
     target: Box<dyn TokenSource>,
-    lifetime: Option<i32>,
     scopes: Vec<String>,
     delegates: Vec<String>,
     url: String,
@@ -17,15 +16,8 @@ pub struct ImpersonateTokenSource {
 }
 
 impl ImpersonateTokenSource {
-    pub(crate) fn new(
-        url: String,
-        delegates: Vec<String>,
-        scopes: Vec<String>,
-        lifetime: Option<i32>,
-        target: Box<dyn TokenSource>,
-    ) -> Self {
+    pub(crate) fn new(url: String, delegates: Vec<String>, scopes: Vec<String>, target: Box<dyn TokenSource>) -> Self {
         ImpersonateTokenSource {
-            lifetime,
             target,
             scopes,
             delegates,
@@ -39,7 +31,7 @@ impl ImpersonateTokenSource {
 impl TokenSource for ImpersonateTokenSource {
     async fn token(&self) -> Result<Token, Error> {
         let body = ImpersonateTokenRequest {
-            lifetime: format!("{}s", self.lifetime.unwrap_or(3600)),
+            lifetime: "3600s".to_string(),
             scope: self.scopes.clone(),
             delegates: self.delegates.clone(),
         };
