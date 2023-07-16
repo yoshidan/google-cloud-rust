@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-pubsub"
-version = "0.17.0"
+version = "0.17.1"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/pubsub"
@@ -35,7 +35,10 @@ ctor = "0.1.21"
 futures-util = "0.3"
 
 [features]
-default = ["auth"]
+default = ["auth", "default-tls"]
+default-tls = ["google-cloud-auth?/default-tls"]
+rustls-tls = ["google-cloud-auth?/rustls-tls"]
+external-account = ["google-cloud-auth?/external-account"]
 trace = []
 bytes = ["google-cloud-googleapis/bytes"]
 auth = ["google-cloud-auth"]

@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-spanner"
-version = "0.22.0"
+version = "0.22.1"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/spanner"
@@ -38,6 +38,9 @@ ctor = "0.1"
 google-cloud-auth = { path="../foundation/auth", default-features=false, features=["rustls-tls"]}
 
 [features]
-default = ["serde", "auth"]
+default = ["serde", "auth", "default-tls"]
 trace = []
 auth = ["google-cloud-auth"]
+default-tls = ["google-cloud-auth?/default-tls"]
+rustls-tls = ["google-cloud-auth?/rustls-tls"]
+external-account = ["google-cloud-auth?/external-account"]

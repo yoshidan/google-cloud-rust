@@ -5,7 +5,7 @@ pub const AUDIENCE: &str = "https://pubsub.googleapis.com/";
 pub const PUBSUB: &str = "pubsub.googleapis.com";
 pub const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
-    "https://www.googleapis.com/auth/pubsub.data",
+    "https://www.googleapis.com/auth/pubsub",
 ];
 
 #[derive(Debug)]

@@ -181,6 +181,9 @@ mod test {
             scopes: Some(&[
                 "https://www.googleapis.com/auth/cloud-platform",
                 "https://www.googleapis.com/auth/spanner.data",
+                "https://www.googleapis.com/auth/pubsub",
+                "https://www.googleapis.com/auth/cloud-platform",
+                "https://www.googleapis.com/auth/devstorage.full_control",
             ]),
             sub: None,
         };

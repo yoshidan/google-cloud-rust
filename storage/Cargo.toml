@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-storage"
-version = "0.12.0"
+version = "0.12.1"
 edition = "2021"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/storage"
@@ -45,7 +45,8 @@ google-cloud-auth = { path = "../foundation/auth", default-features=false }
 
 [features]
 default = ["default-tls", "auth"]
-default-tls = ["reqwest/default-tls"]
-rustls-tls = ["reqwest/rustls-tls"]
+default-tls = ["reqwest/default-tls","google-cloud-auth?/default-tls"]
+rustls-tls = ["reqwest/rustls-tls","google-cloud-auth?/default-tls"]
 trace = []
 auth = ["google-cloud-auth", "google-cloud-metadata"]
+external-account = ["google-cloud-auth?/external-account"]
