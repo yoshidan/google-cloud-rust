@@ -42,7 +42,7 @@ base64-serde = "0.7"
 [features]
 default = ["default-tls", "auth"]
 default-tls = ["reqwest/default-tls","google-cloud-auth?/default-tls"]
-rustls-tls = ["reqwest/rustls-tls","google-cloud-auth?/default-tls"]
+rustls-tls = ["reqwest/rustls-tls","google-cloud-auth?/rustls-tls"]
 trace = []
 auth = ["google-cloud-auth"]
 external-account = ["google-cloud-auth?/external-account"]
