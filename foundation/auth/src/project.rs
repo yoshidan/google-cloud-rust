@@ -4,7 +4,6 @@ use crate::credentials::CredentialsFile;
 use crate::misc::EMPTY;
 use crate::token_source::authorized_user_token_source::UserAccountTokenSource;
 use crate::token_source::compute_token_source::ComputeTokenSource;
-use crate::token_source::impersonate_token_source::ImpersonateTokenSource;
 use crate::token_source::reuse_token_source::ReuseTokenSource;
 use crate::token_source::service_account_token_source::OAuth2ServiceAccountTokenSource;
 use crate::token_source::service_account_token_source::ServiceAccountTokenSource;
@@ -13,6 +12,7 @@ use crate::{credentials, error};
 
 pub(crate) const SERVICE_ACCOUNT_KEY: &str = "service_account";
 const USER_CREDENTIALS_KEY: &str = "authorized_user";
+#[cfg(feature = "external-account")]
 const EXTERNAL_ACCOUNT_KEY: &str = "external_account";
 
 #[derive(Debug, Clone, Default)]
@@ -141,13 +141,22 @@ async fn credentials_from_json_with_params(
         USER_CREDENTIALS_KEY => Ok(Box::new(UserAccountTokenSource::new(credentials)?)),
         #[cfg(feature = "external-account")]
         EXTERNAL_ACCOUNT_KEY => {
-            let ts = crate::token_source::external_account_source::ExternalAccountTokenSource::new(config.scopes_to_string(" ").as_str(), credentials).await?;
+            let ts = crate::token_source::external_account_source::ExternalAccountTokenSource::new(
+                config.scopes_to_string(" ").as_str(),
+                credentials,
+            )
+            .await?;
             if let Some(impersonation_url) = &credentials.service_account_impersonation_url {
                 let url = impersonation_url.clone();
                 let mut scopes = config.scopes.map(|v| v.to_vec()).unwrap_or(vec![]);
                 scopes.push("https://www.googleapis.com/auth/cloud-platform");
                 let scopes = scopes.iter().map(|e| e.to_string()).collect();
-                let ts = ImpersonateTokenSource::new(url, vec![], scopes, Box::new(ts));
+                let ts = crate::token_source::impersonate_token_source::ImpersonateTokenSource::new(
+                    url,
+                    vec![],
+                    scopes,
+                    Box::new(ts),
+                );
                 Ok(Box::new(ts))
             } else {
                 Ok(Box::new(ts))

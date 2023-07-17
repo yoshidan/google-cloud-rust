@@ -16,6 +16,7 @@ pub struct ImpersonateTokenSource {
 }
 
 impl ImpersonateTokenSource {
+    #[allow(dead_code)]
     pub(crate) fn new(url: String, delegates: Vec<String>, scopes: Vec<String>, target: Box<dyn TokenSource>) -> Self {
         ImpersonateTokenSource {
             target,
