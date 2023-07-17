@@ -86,7 +86,7 @@ impl ClientConfig {
 pub enum Error {
     #[error(transparent)]
     GAX(#[from] google_cloud_gax::conn::Error),
-    #[error("invalid project_id")]
+    #[error("Project ID was not found")]
     ProjectIdNotFound,
 }
 
