@@ -165,39 +165,3 @@ async fn credentials_from_json_with_params(
         _ => Err(error::Error::UnsupportedAccountType(credentials.tp.to_string())),
     }
 }
-
-#[cfg(test)]
-mod test {
-    use crate::error::Error;
-    use crate::project::{create_token_source, Config};
-    use crate::token::Token;
-
-    #[tokio::test]
-    async fn test_aws() {
-        let filter = tracing_subscriber::filter::EnvFilter::from_default_env()
-            .add_directive("google_cloud_auth=trace".parse().unwrap());
-        let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
-
-        let result = run().await;
-        match result {
-            Ok(token) => tracing::info!("token = {:?}", token),
-            Err(err) => tracing::error!("error = {}, {:?}", err, err),
-        }
-    }
-    async fn run() -> Result<Token, Error> {
-        let config = Config {
-            audience: None,
-            scopes: Some(&[
-                "https://www.googleapis.com/auth/cloud-platform",
-                "https://www.googleapis.com/auth/spanner.data",
-                "https://www.googleapis.com/auth/pubsub",
-                "https://www.googleapis.com/auth/cloud-platform",
-                "https://www.googleapis.com/auth/devstorage.full_control",
-            ]),
-            sub: None,
-        };
-        let ts = create_token_source(config).await?;
-        tracing::info!("token_source = {:?}", ts);
-        ts.token().await
-    }
-}
