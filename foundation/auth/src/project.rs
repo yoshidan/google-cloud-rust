@@ -142,8 +142,8 @@ async fn credentials_from_json_with_params(
         #[cfg(feature = "external-account")]
         EXTERNAL_ACCOUNT_KEY => {
             let ts = crate::token_source::external_account_source::ExternalAccountTokenSource::new(
-                config.scopes_to_string(" ").as_str(),
-                credentials,
+                config.scopes_to_string(" "),
+                credentials.clone(),
             )
             .await?;
             if let Some(impersonation_url) = &credentials.service_account_impersonation_url {

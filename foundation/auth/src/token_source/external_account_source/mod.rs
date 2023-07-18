@@ -5,10 +5,11 @@ use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use time::OffsetDateTime;
 
-use crate::credentials::CredentialsFile;
+use crate::credentials::{CredentialSource, CredentialsFile};
 use crate::misc::UnwrapOrEmpty;
 use crate::token::Token;
 use crate::token_source::external_account_source::error::Error;
+use crate::token_source::external_account_source::subject_token_source::SubjectTokenSource;
 use crate::token_source::{default_http_client, InternalToken, TokenSource};
 
 mod aws_subject_token_source;
@@ -17,30 +18,35 @@ mod subject_token_source;
 
 #[derive(Debug)]
 pub struct ExternalAccountTokenSource {
-    audience: String,
+    source: CredentialSource,
     subject_token_type: String,
-    token_url: String,
-    scopes: String,
+    url: String,
+    audience: Option<String>,
     auth_header: Option<String>,
-    subject_token_source: Box<dyn subject_token_source::SubjectTokenSource>,
+    scopes: String,
     client: reqwest::Client,
 }
 
 impl ExternalAccountTokenSource {
-    pub(crate) async fn new(scopes: &str, cred: &CredentialsFile) -> Result<ExternalAccountTokenSource, Error> {
-        let auth_header = if cred.client_id.is_some() && cred.client_secret.is_some() {
-            let plain_text = format!("{}:{}", cred.client_id.as_ref().unwrap(), cred.client_secret.as_ref().unwrap());
+    pub(crate) async fn new(scopes: String, credentials: CredentialsFile) -> Result<ExternalAccountTokenSource, Error> {
+        let auth_header = if credentials.client_id.is_some() && credentials.client_secret.is_some() {
+            let plain_text = format!(
+                "{}:{}",
+                credentials.client_id.as_ref().unwrap(),
+                credentials.client_secret.as_ref().unwrap()
+            );
             Some(format!("Basic: {}", BASE64_STANDARD.encode(plain_text)))
         } else {
             None
         };
+        let subject_token_type = credentials.subject_token_type.ok_or(Error::MissingSubjectTokenType)?;
         Ok(ExternalAccountTokenSource {
-            audience: cred.audience.clone().unwrap_or_empty(),
-            subject_token_type: cred.subject_token_type.clone().ok_or(Error::MissingSubjectTokenType)?,
-            token_url: cred.token_url_external.clone().ok_or(Error::MissingTokenURL)?,
-            scopes: scopes.to_string(),
+            source: credentials.credential_source.ok_or(Error::NoCredentialsSource)?,
+            subject_token_type,
+            url: credentials.token_url_external.ok_or(Error::MissingTokenURL)?,
+            audience: credentials.audience,
             auth_header,
-            subject_token_source: subject_token_source(cred).await?,
+            scopes,
             client: default_http_client(),
         })
     }
@@ -49,16 +55,22 @@ impl ExternalAccountTokenSource {
 #[async_trait]
 impl TokenSource for ExternalAccountTokenSource {
     async fn token(&self) -> Result<Token, crate::error::Error> {
-        let mut builder = self.client.post(&self.token_url);
+        let subject_token_source = subject_token_source(self.audience.clone(), self.source.clone()).await?;
 
+        let mut builder = self.client.post(&self.url);
         if let Some(auth_header) = &self.auth_header {
             builder = builder.header(reqwest::header::AUTHORIZATION, auth_header);
         }
 
-        let subject_token = self.subject_token_source.subject_token().await?;
+        let audience = match self.audience.as_ref() {
+            Some(audience) => audience.as_ref(),
+            None => "",
+        };
+
+        let subject_token = subject_token_source.subject_token().await?;
         let sts_request = vec![
             ("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange"),
-            ("audience", &self.audience),
+            ("audience", audience),
             ("scope", &self.scopes),
             ("subject_token_type", &self.subject_token_type),
             ("subject_token", &subject_token),
@@ -75,21 +87,17 @@ impl TokenSource for ExternalAccountTokenSource {
     }
 }
 
-pub(crate) async fn subject_token_source(
-    credentials: &CredentialsFile,
-) -> Result<Box<dyn subject_token_source::SubjectTokenSource>, Error> {
-    let source = credentials
-        .credential_source
-        .as_ref()
-        .ok_or(Error::NoCredentialsSource)?;
+async fn subject_token_source(
+    audience: Option<String>,
+    source: CredentialSource,
+) -> Result<impl subject_token_source::SubjectTokenSource, Error> {
     let environment_id = &source.environment_id.unwrap_or_empty();
     if environment_id.len() > 3 && environment_id.starts_with("aws") {
         if environment_id != "aws1" {
             return Err(Error::UnsupportedAWSVersion(environment_id.clone()));
         }
-        let ts =
-            aws_subject_token_source::AWSSubjectTokenSource::new(credentials.audience.clone(), source.clone()).await?;
-        Ok(Box::new(ts))
+        let ts = aws_subject_token_source::AWSSubjectTokenSource::new(audience, source).await?;
+        Ok(ts)
     } else {
         //TODO support file, url and executable
         Err(Error::UnsupportedSubjectTokenSource)
