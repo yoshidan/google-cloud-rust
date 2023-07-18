@@ -90,7 +90,7 @@ impl TokenSource for ExternalAccountTokenSource {
 async fn subject_token_source(
     audience: Option<String>,
     source: CredentialSource,
-) -> Result<impl subject_token_source::SubjectTokenSource, Error> {
+) -> Result<impl SubjectTokenSource, Error> {
     let environment_id = &source.environment_id.unwrap_or_empty();
     if environment_id.len() > 3 && environment_id.starts_with("aws") {
         if environment_id != "aws1" {
