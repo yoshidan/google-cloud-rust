@@ -73,7 +73,7 @@ pub struct CredentialsFile {
     pub token_info_url: Option<String>,
     pub service_account_impersonation_url: Option<String>,
     pub service_account_impersonation: Option<ServiceAccountImpersonationInfo>,
-    pub delegates: Vec<String>,
+    pub delegates: Option<Vec<String>>,
     pub credential_source: Option<CredentialSource>,
     pub quota_project_id: Option<String>,
     pub workforce_pool_user_project: Option<String>,

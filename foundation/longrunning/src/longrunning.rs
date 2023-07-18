@@ -19,7 +19,7 @@ impl<T: prost::Message + Default> Operation<T> {
         Self {
             client,
             inner,
-            _marker: PhantomData::default(),
+            _marker: PhantomData,
         }
     }
 
