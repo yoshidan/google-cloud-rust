@@ -8,26 +8,41 @@ const CREDENTIALS_FILE: &str = "application_default_credentials.json";
 
 #[allow(dead_code)]
 #[derive(Deserialize, Clone, Debug)]
+pub struct ServiceAccountImpersonationInfo {
+    pub(crate) token_lifetime_seconds: i32,
+}
+
+#[allow(dead_code)]
+#[derive(Deserialize, Clone, Debug)]
+pub struct ExecutableConfig {
+    pub(crate) command: String,
+    pub(crate) timeout_millis: Option<i32>,
+    pub(crate) output_file: String,
+}
+
+#[allow(dead_code)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct Format {
-    tp: String,
-    subject_token_field_name: String,
+    pub(crate) tp: String,
+    pub(crate) subject_token_field_name: String,
 }
 
 #[allow(dead_code)]
 #[derive(Deserialize, Clone, Debug)]
 pub struct CredentialSource {
-    file: Option<String>,
+    pub(crate) file: Option<String>,
 
     pub(crate) url: Option<String>,
+    pub(crate) headers: Option<std::collections::HashMap<String, String>>,
 
-    headers: Option<std::collections::HashMap<String, String>>,
+    pub(crate) executable: Option<ExecutableConfig>,
 
     pub(crate) environment_id: Option<String>,
     pub(crate) region_url: Option<String>,
     pub(crate) regional_cred_verification_url: Option<String>,
-    cred_verification_url: Option<String>,
+    pub(crate) cred_verification_url: Option<String>,
     pub(crate) imdsv2_session_token_url: Option<String>,
-    format: Option<Format>,
+    pub(crate) format: Option<Format>,
 }
 
 #[allow(dead_code)]
@@ -57,8 +72,11 @@ pub struct CredentialsFile {
     pub token_url_external: Option<String>,
     pub token_info_url: Option<String>,
     pub service_account_impersonation_url: Option<String>,
+    pub service_account_impersonation: Option<ServiceAccountImpersonationInfo>,
+    pub delegates: Vec<String>,
     pub credential_source: Option<CredentialSource>,
     pub quota_project_id: Option<String>,
+    pub workforce_pool_user_project: Option<String>,
 }
 
 impl CredentialsFile {

@@ -12,17 +12,25 @@ pub struct ImpersonateTokenSource {
     scopes: Vec<String>,
     delegates: Vec<String>,
     url: String,
+    lifetime: Option<i32>,
     client: reqwest::Client,
 }
 
 impl ImpersonateTokenSource {
     #[allow(dead_code)]
-    pub(crate) fn new(url: String, delegates: Vec<String>, scopes: Vec<String>, target: Box<dyn TokenSource>) -> Self {
+    pub(crate) fn new(
+        url: String,
+        delegates: Vec<String>,
+        scopes: Vec<String>,
+        lifetime: Option<i32>,
+        target: Box<dyn TokenSource>,
+    ) -> Self {
         ImpersonateTokenSource {
             target,
             scopes,
             delegates,
             url,
+            lifetime,
             client: default_http_client(),
         }
     }
@@ -32,7 +40,7 @@ impl ImpersonateTokenSource {
 impl TokenSource for ImpersonateTokenSource {
     async fn token(&self) -> Result<Token, Error> {
         let body = ImpersonateTokenRequest {
-            lifetime: "3600s".to_string(),
+            lifetime: format!("{}s", self.lifetime.unwrap_or(3600)),
             scope: self.scopes.clone(),
             delegates: self.delegates.clone(),
         };
