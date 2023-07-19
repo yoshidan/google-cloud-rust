@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Formatter};
 
 use async_trait::async_trait;
 use base64::prelude::BASE64_STANDARD;
@@ -16,7 +16,6 @@ mod aws_subject_token_source;
 pub mod error;
 mod subject_token_source;
 
-#[derive(Debug)]
 pub struct ExternalAccountTokenSource {
     source: CredentialSource,
     subject_token_type: String,
@@ -25,6 +24,12 @@ pub struct ExternalAccountTokenSource {
     auth_header: Option<String>,
     scopes: String,
     client: reqwest::Client,
+}
+
+impl Debug for ExternalAccountTokenSource {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ExternalAccountTokenSource").finish()
+    }
 }
 
 impl ExternalAccountTokenSource {

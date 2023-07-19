@@ -34,15 +34,6 @@ pub struct AWSSubjectTokenSource {
     region: String,
 }
 
-impl Debug for AWSSubjectTokenSource {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("AWSSubjectTokenSource")
-            .field("target_resource", &self.target_resource)
-            .field("region", &self.region)
-            .finish_non_exhaustive()
-    }
-}
-
 impl AWSSubjectTokenSource {
     pub async fn new(audience: Option<String>, value: CredentialSource) -> Result<Self, Error> {
         if !validate_metadata_server(&value.region_url) {

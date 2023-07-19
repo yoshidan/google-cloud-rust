@@ -7,13 +7,13 @@ use crate::error::Error;
 const CREDENTIALS_FILE: &str = "application_default_credentials.json";
 
 #[allow(dead_code)]
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone)]
 pub struct ServiceAccountImpersonationInfo {
     pub(crate) token_lifetime_seconds: i32,
 }
 
 #[allow(dead_code)]
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone)]
 pub struct ExecutableConfig {
     pub(crate) command: String,
     pub(crate) timeout_millis: Option<i32>,
@@ -21,14 +21,14 @@ pub struct ExecutableConfig {
 }
 
 #[allow(dead_code)]
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone)]
 pub struct Format {
     pub(crate) tp: String,
     pub(crate) subject_token_field_name: String,
 }
 
 #[allow(dead_code)]
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone)]
 pub struct CredentialSource {
     pub(crate) file: Option<String>,
 
