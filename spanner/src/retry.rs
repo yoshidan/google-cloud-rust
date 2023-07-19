@@ -97,7 +97,7 @@ where
     fn condition(&self) -> TransactionCondition<E> {
         TransactionCondition {
             inner: CodeCondition::new(self.inner.codes.clone()),
-            _marker: PhantomData::default(),
+            _marker: PhantomData,
         }
     }
 }

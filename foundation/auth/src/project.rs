@@ -12,6 +12,8 @@ use crate::{credentials, error};
 
 pub(crate) const SERVICE_ACCOUNT_KEY: &str = "service_account";
 const USER_CREDENTIALS_KEY: &str = "authorized_user";
+#[cfg(feature = "external-account")]
+const EXTERNAL_ACCOUNT_KEY: &str = "external_account";
 
 #[derive(Debug, Clone, Default)]
 pub struct Config<'a> {
@@ -82,7 +84,7 @@ pub async fn create_token_source_from_credentials(
     credentials: &CredentialsFile,
     config: &Config<'_>,
 ) -> Result<Box<dyn TokenSource>, error::Error> {
-    let ts = credentials_from_json_with_params(credentials, config)?;
+    let ts = credentials_from_json_with_params(credentials, config).await?;
     let token = ts.token().await?;
     Ok(Box::new(ReuseTokenSource::new(ts, token)))
 }
@@ -109,9 +111,9 @@ pub async fn create_token_source(config: Config<'_>) -> Result<Box<dyn TokenSour
     create_token_source_from_project(&project, config).await
 }
 
-fn credentials_from_json_with_params(
+async fn credentials_from_json_with_params(
     credentials: &CredentialsFile,
-    config: &Config,
+    config: &Config<'_>,
 ) -> Result<Box<dyn TokenSource>, error::Error> {
     match credentials.tp.as_str() {
         SERVICE_ACCOUNT_KEY => {
@@ -137,8 +139,34 @@ fn credentials_from_json_with_params(
             }
         }
         USER_CREDENTIALS_KEY => Ok(Box::new(UserAccountTokenSource::new(credentials)?)),
-        //TODO support GDC https://console.developers.google.com,
-        //TODO support external account
+        #[cfg(feature = "external-account")]
+        EXTERNAL_ACCOUNT_KEY => {
+            let ts = crate::token_source::external_account_source::ExternalAccountTokenSource::new(
+                config.scopes_to_string(" "),
+                credentials.clone(),
+            )
+            .await?;
+            if let Some(impersonation_url) = &credentials.service_account_impersonation_url {
+                let url = impersonation_url.clone();
+                let mut scopes = config.scopes.map(|v| v.to_vec()).unwrap_or(vec![]);
+                scopes.push("https://www.googleapis.com/auth/cloud-platform");
+                let scopes = scopes.iter().map(|e| e.to_string()).collect();
+                let lifetime = credentials
+                    .service_account_impersonation
+                    .clone()
+                    .map(|v| v.token_lifetime_seconds);
+                let ts = crate::token_source::impersonate_token_source::ImpersonateTokenSource::new(
+                    url,
+                    vec![],
+                    scopes,
+                    lifetime,
+                    Box::new(ts),
+                );
+                Ok(Box::new(ts))
+            } else {
+                Ok(Box::new(ts))
+            }
+        }
         _ => Err(error::Error::UnsupportedAccountType(credentials.tp.to_string())),
     }
 }

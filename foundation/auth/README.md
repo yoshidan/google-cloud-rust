@@ -61,7 +61,7 @@ preferring the first location found:
 
 https://cloud.google.com/iam/docs/workload-identity-federation
 
-- [ ] AWS
+- [x] AWS
 - [ ] Azure Active Directory
 - [ ] On-premises Active Directory
 - [ ] Okta

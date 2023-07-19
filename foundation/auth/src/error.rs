@@ -38,4 +38,14 @@ pub enum Error {
 
     #[error("invalid authentication token")]
     InvalidToken,
+
+    #[error(transparent)]
+    TimeParse(#[from] time::error::Parse),
+
+    #[cfg(feature = "external-account")]
+    #[error("external account error : {0}")]
+    ExternalAccountSource(#[from] crate::token_source::external_account_source::error::Error),
+
+    #[error("unexpected impersonation token response : status={0}, detail={1}")]
+    UnexpectedImpersonateTokenResponse(u16, String),
 }

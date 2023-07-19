@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-auth"
-version = "0.11.0"
+version = "0.12.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/foundation/auth"
@@ -25,6 +25,13 @@ google-cloud-token = { version = "0.1.1", path = "../token" }
 base64 = "0.21"
 time = "0.3"
 
+url = { version="2.4", optional = true }
+path-clean = { version="1.0", optional = true }
+sha2 = {version = "0.10", optional = true}
+percent-encoding = { version="2.3", optional = true }
+hmac = { version = "0.12", optional = true }
+hex = { version = "0.4", optional = true }
+
 [dev-dependencies]
 tokio = { version = "1.20", features = ["test-util", "rt-multi-thread", "macros"]}
 tracing-subscriber = {version="0.3", features=["env-filter","std"]}
@@ -35,3 +42,4 @@ serial_test = "0.9"
 default = ["default-tls"]
 default-tls = ["reqwest/default-tls"]
 rustls-tls = ["reqwest/rustls-tls"]
+external-account = ["sha2", "path-clean", "url", "percent-encoding", "hmac", "hex"]

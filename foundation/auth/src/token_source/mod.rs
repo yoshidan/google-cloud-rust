@@ -10,15 +10,19 @@ use crate::token::Token;
 pub mod authorized_user_token_source;
 pub mod compute_identity_source;
 pub mod compute_token_source;
+pub mod impersonate_token_source;
 pub mod reuse_token_source;
 pub mod service_account_token_source;
+
+#[cfg(feature = "external-account")]
+pub mod external_account_source;
 
 #[async_trait]
 pub trait TokenSource: Send + Sync + Debug {
     async fn token(&self) -> Result<Token, Error>;
 }
 
-fn default_http_client() -> reqwest::Client {
+pub(crate) fn default_http_client() -> reqwest::Client {
     reqwest::Client::builder()
         .timeout(Duration::from_secs(3))
         .build()
