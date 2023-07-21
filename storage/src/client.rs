@@ -192,7 +192,7 @@ impl Client {
                 let default_sign_by = &self
                     .default_sign_by
                     .clone()
-                    .ok_or(SignedURLError::InvalidOption("No default google_access_id is found"))?;
+                    .ok_or(SignedURLError::InvalidOption("No default sign_by is found"))?;
 
                 default_sign_by.to_owned()
             }
