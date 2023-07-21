@@ -238,6 +238,8 @@ skip = [
     { name = "rustls-webpki", version = "=0.100.1" },
     { name = "regex-automata", version = "=0.1.10" },
     { name = "hashbrown", version = "=0.14.0" },
+    { name = "bitflags", version = "=1.3.2" },
+    { name = "fastrand", version = "=1.9.0" },
 ]
 # Similarly to `skip` allows you to skip certain crates during duplicate
 # detection. Unlike skip, it also includes the entire tree of transitive
