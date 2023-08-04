@@ -384,6 +384,13 @@ pub struct ReadSession {
     /// metadata from the table which might be incomplete or stale.
     #[prost(int64, tag = "12")]
     pub estimated_total_bytes_scanned: i64,
+    /// Output only. A pre-projected estimate of the total physical size of files
+    /// (in bytes) that this session will scan when all streams are consumed. This
+    /// estimate is independent of the selected columns and can be based on
+    /// incomplete or stale metadata from the table.  This field is only set for
+    /// BigLake tables.
+    #[prost(int64, tag = "15")]
+    pub estimated_total_physical_file_size: i64,
     /// Output only. An estimate on the number of rows present in this session's
     /// streams. This estimate is based on metadata from the table which might be
     /// incomplete or stale.
@@ -478,6 +485,14 @@ pub mod read_session {
         /// Restricted to a maximum length for 1 MB.
         #[prost(string, tag = "2")]
         pub row_restriction: ::prost::alloc::string::String,
+        /// Optional. Specifies a table sampling percentage. Specifically, the query
+        /// planner will use TABLESAMPLE SYSTEM (sample_percentage PERCENT). The
+        /// sampling percentage is applied at the data block granularity. It will
+        /// randomly choose for each data block whether to read the rows in that data
+        /// block. For more details, see
+        /// <https://cloud.google.com/bigquery/docs/table-sampling>)
+        #[prost(double, optional, tag = "5")]
+        pub sample_percentage: ::core::option::Option<f64>,
         #[prost(oneof = "table_read_options::OutputFormatSerializationOptions", tags = "3, 4")]
         pub output_format_serialization_options:
             ::core::option::Option<table_read_options::OutputFormatSerializationOptions>,
@@ -889,19 +904,24 @@ pub struct CreateWriteStreamRequest {
 }
 /// Request message for `AppendRows`.
 ///
-/// Due to the nature of AppendRows being a bidirectional streaming RPC, certain
-/// parts of the AppendRowsRequest need only be specified for the first request
-/// sent each time the gRPC network connection is opened/reopened.
+/// Because AppendRows is a bidirectional streaming RPC, certain parts of the
+/// AppendRowsRequest need only be specified for the first request before
+/// switching table destinations. You can also switch table destinations within
+/// the same connection for the default stream.
 ///
 /// The size of a single AppendRowsRequest must be less than 10 MB in size.
 /// Requests larger than this return an error, typically `INVALID_ARGUMENT`.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AppendRowsRequest {
-    /// Required. The write_stream identifies the target of the append operation,
-    /// and only needs to be specified as part of the first request on the gRPC
-    /// connection. If provided for subsequent requests, it must match the value of
-    /// the first request.
+    /// Required. The write_stream identifies the append operation. It must be
+    /// provided in the following scenarios:
+    ///
+    /// * In the first request to an AppendRows connection.
+    ///
+    /// * In all subsequent requests to an AppendRows connection, if you use the
+    /// same connection to write to multiple tables or change the input schema for
+    /// default streams.
     ///
     /// For explicitly created write streams, the format is:
     ///
@@ -910,6 +930,22 @@ pub struct AppendRowsRequest {
     /// For the special default stream, the format is:
     ///
     /// * `projects/{project}/datasets/{dataset}/tables/{table}/streams/_default`.
+    ///
+    /// An example of a possible sequence of requests with write_stream fields
+    /// within a single connection:
+    ///
+    /// * r1: {write_stream: stream_name_1}
+    ///
+    /// * r2: {write_stream: /*omit*/}
+    ///
+    /// * r3: {write_stream: /*omit*/}
+    ///
+    /// * r4: {write_stream: stream_name_2}
+    ///
+    /// * r5: {write_stream: stream_name_2}
+    ///
+    /// The destination changed in request_4, so the write_stream field must be
+    /// populated in all subsequent requests in this stream.
     #[prost(string, tag = "1")]
     pub write_stream: ::prost::alloc::string::String,
     /// If present, the write is only performed if the next append offset is same
@@ -959,9 +995,14 @@ pub mod append_rows_request {
     #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct ProtoData {
-        /// Proto schema used to serialize the data.  This value only needs to be
-        /// provided as part of the first request on a gRPC network connection,
-        /// and will be ignored for subsequent requests on the connection.
+        /// The protocol buffer schema used to serialize the data. Provide this value
+        /// whenever:
+        ///
+        /// * You send the first request of an RPC connection.
+        ///
+        /// * You change the input schema.
+        ///
+        /// * You specify a new destination table.
         #[prost(message, optional, tag = "1")]
         pub writer_schema: ::core::option::Option<super::ProtoSchema>,
         /// Serialized row data in protobuf message format.
@@ -971,10 +1012,9 @@ pub mod append_rows_request {
         #[prost(message, optional, tag = "2")]
         pub rows: ::core::option::Option<super::ProtoRows>,
     }
-    /// An enum to indicate how to interpret missing values. Missing values are
-    /// fields present in user schema but missing in rows. A missing value can
-    /// represent a NULL or a column default value defined in BigQuery table
-    /// schema.
+    /// An enum to indicate how to interpret missing values of fields that are
+    /// present in user schema but missing in rows. A missing value can represent a
+    /// NULL or a column default value defined in BigQuery table schema.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum MissingValueInterpretation {
@@ -1209,6 +1249,17 @@ pub mod storage_error {
         OffsetAlreadyExists = 8,
         /// Offset out of range.
         OffsetOutOfRange = 9,
+        /// Customer-managed encryption key (CMEK) not provided for CMEK-enabled
+        /// data.
+        CmekNotProvided = 10,
+        /// Customer-managed encryption key (CMEK) was incorrectly provided.
+        InvalidCmekProvided = 11,
+        /// There is an encryption error while using customer-managed encryption key.
+        CmekEncryptionError = 12,
+        /// Key Management Service (KMS) service returned an error.
+        KmsServiceError = 13,
+        /// Permission denied while using customer-managed encryption key.
+        KmsPermissionDenied = 14,
     }
     impl StorageErrorCode {
         /// String value of the enum field names used in the ProtoBuf definition.
@@ -1227,6 +1278,11 @@ pub mod storage_error {
                 StorageErrorCode::SchemaMismatchExtraFields => "SCHEMA_MISMATCH_EXTRA_FIELDS",
                 StorageErrorCode::OffsetAlreadyExists => "OFFSET_ALREADY_EXISTS",
                 StorageErrorCode::OffsetOutOfRange => "OFFSET_OUT_OF_RANGE",
+                StorageErrorCode::CmekNotProvided => "CMEK_NOT_PROVIDED",
+                StorageErrorCode::InvalidCmekProvided => "INVALID_CMEK_PROVIDED",
+                StorageErrorCode::CmekEncryptionError => "CMEK_ENCRYPTION_ERROR",
+                StorageErrorCode::KmsServiceError => "KMS_SERVICE_ERROR",
+                StorageErrorCode::KmsPermissionDenied => "KMS_PERMISSION_DENIED",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1242,6 +1298,11 @@ pub mod storage_error {
                 "SCHEMA_MISMATCH_EXTRA_FIELDS" => Some(Self::SchemaMismatchExtraFields),
                 "OFFSET_ALREADY_EXISTS" => Some(Self::OffsetAlreadyExists),
                 "OFFSET_OUT_OF_RANGE" => Some(Self::OffsetOutOfRange),
+                "CMEK_NOT_PROVIDED" => Some(Self::CmekNotProvided),
+                "INVALID_CMEK_PROVIDED" => Some(Self::InvalidCmekProvided),
+                "CMEK_ENCRYPTION_ERROR" => Some(Self::CmekEncryptionError),
+                "KMS_SERVICE_ERROR" => Some(Self::KmsServiceError),
+                "KMS_PERMISSION_DENIED" => Some(Self::KmsPermissionDenied),
                 _ => None,
             }
         }

@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-bigquery"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/bigquery"
@@ -13,7 +13,7 @@ documentation = "https://docs.rs/google-cloud-bigquery/latest/google_cloud_bigqu
 [dependencies]
 async-trait = "0.1"
 google-cloud-token = { version = "0.1.1", path = "../foundation/token" }
-google-cloud-googleapis = { version="0.10.0", path = "../googleapis", features=["bigquery"]}
+google-cloud-googleapis = { version="0.11.0", path = "../googleapis", features=["bigquery"]}
 google-cloud-gax = { version = "0.15.0", path = "../foundation/gax"}
 thiserror = "1.0"
 tracing = "0.1"
