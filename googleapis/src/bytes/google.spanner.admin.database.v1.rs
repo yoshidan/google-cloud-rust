@@ -861,6 +861,14 @@ pub struct Database {
     /// Output only. The dialect of the Cloud Spanner Database.
     #[prost(enumeration = "DatabaseDialect", tag = "10")]
     pub database_dialect: i32,
+    /// Whether drop protection is enabled for this database. Defaults to false,
+    /// if not set.
+    #[prost(bool, tag = "11")]
+    pub enable_drop_protection: bool,
+    /// Output only. If true, the database is being updated. If false, there are no
+    /// ongoing update operations for the database.
+    #[prost(bool, tag = "12")]
+    pub reconciling: bool,
 }
 /// Nested message and enum types in `Database`.
 pub mod database {
@@ -999,6 +1007,40 @@ pub struct GetDatabaseRequest {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
+/// The request for
+/// \[UpdateDatabase][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabase\].
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateDatabaseRequest {
+    /// Required. The database to update.
+    /// The `name` field of the database is of the form
+    /// `projects/<project>/instances/<instance>/databases/<database>`.
+    #[prost(message, optional, tag = "1")]
+    pub database: ::core::option::Option<Database>,
+    /// Required. The list of fields to update. Currently, only
+    /// `enable_drop_protection` field can be updated.
+    #[prost(message, optional, tag = "2")]
+    pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
+}
+/// Metadata type for the operation returned by
+/// \[UpdateDatabase][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabase\].
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateDatabaseMetadata {
+    /// The request for
+    /// \[UpdateDatabase][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabase\].
+    #[prost(message, optional, tag = "1")]
+    pub request: ::core::option::Option<UpdateDatabaseRequest>,
+    /// The progress of the
+    /// \[UpdateDatabase][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabase\]
+    /// operation.
+    #[prost(message, optional, tag = "2")]
+    pub progress: ::core::option::Option<OperationProgress>,
+    /// The time at which this operation was cancelled. If set, this operation is
+    /// in the process of undoing itself (which is best-effort).
+    #[prost(message, optional, tag = "3")]
+    pub cancel_time: ::core::option::Option<::prost_types::Timestamp>,
+}
 /// Enqueues the given DDL statements to be applied, in order but not
 /// necessarily all at once, to the database schema at some point (or
 /// points) in the future. The server checks that the statements
@@ -1046,6 +1088,29 @@ pub struct UpdateDatabaseDdlRequest {
     #[prost(string, tag = "3")]
     pub operation_id: ::prost::alloc::string::String,
 }
+/// Action information extracted from a DDL statement. This proto is used to
+/// display the brief info of the DDL statement for the operation
+/// \[UpdateDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabaseDdl\].
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DdlStatementActionInfo {
+    /// The action for the DDL statement, e.g. CREATE, ALTER, DROP, GRANT, etc.
+    /// This field is a non-empty string.
+    #[prost(string, tag = "1")]
+    pub action: ::prost::alloc::string::String,
+    /// The entity type for the DDL statement, e.g. TABLE, INDEX, VIEW, etc.
+    /// This field can be empty string for some DDL statement,
+    /// e.g. for statement "ANALYZE", `entity_type` = "".
+    #[prost(string, tag = "2")]
+    pub entity_type: ::prost::alloc::string::String,
+    /// The entity name(s) being operated on the DDL statement.
+    /// E.g.
+    /// 1. For statement "CREATE TABLE t1(...)", `entity_names` = \["t1"\].
+    /// 2. For statement "GRANT ROLE r1, r2 ...", `entity_names` = ["r1", "r2"].
+    /// 3. For statement "ANALYZE", `entity_names` = [].
+    #[prost(string, repeated, tag = "3")]
+    pub entity_names: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
 /// Metadata type for the operation returned by
 /// \[UpdateDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabaseDdl\].
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1063,21 +1128,24 @@ pub struct UpdateDatabaseDdlMetadata {
     /// timestamp for the statement `statements\[i\]`.
     #[prost(message, repeated, tag = "3")]
     pub commit_timestamps: ::prost::alloc::vec::Vec<::prost_types::Timestamp>,
-    /// Output only. When true, indicates that the operation is throttled e.g
+    /// Output only. When true, indicates that the operation is throttled e.g.
     /// due to resource constraints. When resources become available the operation
     /// will resume and this field will be false again.
     #[prost(bool, tag = "4")]
     pub throttled: bool,
     /// The progress of the
-    /// \[UpdateDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabaseDdl\] operations.
-    /// Currently, only index creation statements will have a continuously
-    /// updating progress.
-    /// For non-index creation statements, `progress\[i\]` will have start time
-    /// and end time populated with commit timestamp of operation,
-    /// as well as a progress of 100% once the operation has completed.
-    /// `progress\[i\]` is the operation progress for `statements\[i\]`.
+    /// \[UpdateDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabaseDdl\]
+    /// operations. All DDL statements will have continuously updating progress,
+    /// and `progress\[i\]` is the operation progress for `statements\[i\]`. Also,
+    /// `progress\[i\]` will have start time and end time populated with commit
+    /// timestamp of operation, as well as a progress of 100% once the operation
+    /// has completed.
     #[prost(message, repeated, tag = "5")]
     pub progress: ::prost::alloc::vec::Vec<OperationProgress>,
+    /// The brief action info for the DDL statements.
+    /// `actions\[i\]` is the brief info for `statements\[i\]`.
+    #[prost(message, repeated, tag = "6")]
+    pub actions: ::prost::alloc::vec::Vec<DdlStatementActionInfo>,
 }
 /// The request for \[DropDatabase][google.spanner.admin.database.v1.DatabaseAdmin.DropDatabase\].
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1639,6 +1707,72 @@ pub mod database_admin_client {
                     GrpcMethod::new(
                         "google.spanner.admin.database.v1.DatabaseAdmin",
                         "GetDatabase",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Updates a Cloud Spanner database. The returned
+        /// [long-running operation][google.longrunning.Operation] can be used to track
+        /// the progress of updating the database. If the named database does not
+        /// exist, returns `NOT_FOUND`.
+        ///
+        /// While the operation is pending:
+        ///
+        ///   * The database's
+        ///     [reconciling][google.spanner.admin.database.v1.Database.reconciling]
+        ///     field is set to true.
+        ///   * Cancelling the operation is best-effort. If the cancellation succeeds,
+        ///     the operation metadata's
+        ///     [cancel_time][google.spanner.admin.database.v1.UpdateDatabaseMetadata.cancel_time]
+        ///     is set, the updates are reverted, and the operation terminates with a
+        ///     `CANCELLED` status.
+        ///   * New UpdateDatabase requests will return a `FAILED_PRECONDITION` error
+        ///     until the pending operation is done (returns successfully or with
+        ///     error).
+        ///   * Reading the database via the API continues to give the pre-request
+        ///     values.
+        ///
+        /// Upon completion of the returned operation:
+        ///
+        ///   * The new values are in effect and readable via the API.
+        ///   * The database's
+        ///     [reconciling][google.spanner.admin.database.v1.Database.reconciling]
+        ///     field becomes false.
+        ///
+        /// The returned [long-running operation][google.longrunning.Operation] will
+        /// have a name of the format
+        /// `projects/<project>/instances/<instance>/databases/<database>/operations/<operation_id>`
+        /// and can be used to track the database modification. The
+        /// [metadata][google.longrunning.Operation.metadata] field type is
+        /// [UpdateDatabaseMetadata][google.spanner.admin.database.v1.UpdateDatabaseMetadata].
+        /// The [response][google.longrunning.Operation.response] field type is
+        /// [Database][google.spanner.admin.database.v1.Database], if successful.
+        pub async fn update_database(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UpdateDatabaseRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::super::super::super::super::longrunning::Operation>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.admin.database.v1.DatabaseAdmin/UpdateDatabase",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "google.spanner.admin.database.v1.DatabaseAdmin",
+                        "UpdateDatabase",
                     ),
                 );
             self.inner.unary(req, path, codec).await

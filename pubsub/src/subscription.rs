@@ -12,9 +12,9 @@ use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::seek_request::Target;
 use google_cloud_googleapis::pubsub::v1::{
-    BigQueryConfig, CreateSnapshotRequest, DeadLetterPolicy, DeleteSnapshotRequest, DeleteSubscriptionRequest,
-    ExpirationPolicy, GetSnapshotRequest, GetSubscriptionRequest, PullRequest, PushConfig, RetryPolicy, SeekRequest,
-    Snapshot, Subscription as InternalSubscription, UpdateSubscriptionRequest,
+    BigQueryConfig, CloudStorageConfig, CreateSnapshotRequest, DeadLetterPolicy, DeleteSnapshotRequest,
+    DeleteSubscriptionRequest, ExpirationPolicy, GetSnapshotRequest, GetSubscriptionRequest, PullRequest, PushConfig,
+    RetryPolicy, SeekRequest, Snapshot, Subscription as InternalSubscription, UpdateSubscriptionRequest,
 };
 
 use crate::apiv1::subscriber_client::SubscriberClient;
@@ -37,6 +37,7 @@ pub struct SubscriptionConfig {
     pub enable_exactly_once_delivery: bool,
     pub bigquery_config: Option<BigQueryConfig>,
     pub state: i32,
+    pub cloud_storage_config: Option<CloudStorageConfig>,
 }
 impl From<InternalSubscription> for SubscriptionConfig {
     fn from(f: InternalSubscription) -> Self {
@@ -60,6 +61,7 @@ impl From<InternalSubscription> for SubscriptionConfig {
                 .map(|v| std::time::Duration::new(v.seconds as u64, v.nanos as u32)),
             enable_exactly_once_delivery: f.enable_exactly_once_delivery,
             state: f.state,
+            cloud_storage_config: f.cloud_storage_config,
         }
     }
 }
@@ -180,6 +182,7 @@ impl Subscription {
                     topic: fqtn.to_string(),
                     push_config: cfg.push_config,
                     bigquery_config: cfg.bigquery_config,
+                    cloud_storage_config: cfg.cloud_storage_config,
                     ack_deadline_seconds: cfg.ack_deadline_seconds,
                     labels: cfg.labels,
                     enable_message_ordering: cfg.enable_message_ordering,

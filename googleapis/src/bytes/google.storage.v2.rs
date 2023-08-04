@@ -43,7 +43,7 @@ pub struct CreateBucketRequest {
     pub parent: ::prost::alloc::string::String,
     /// Properties of the new bucket being inserted.
     /// The name of the bucket is specified in the `bucket_id` field. Populating
-    /// `bucket.name` field will result in an error.
+    /// `bucket.name` field will be ignored.
     /// The project of the bucket must be specified in the `bucket.project` field.
     /// This field must be in `projects/{projectIdentifier}` format,
     /// {projectIdentifier} can be the project ID or project number. The `parent`
@@ -458,9 +458,9 @@ pub struct ReadObjectResponse {
     /// generate more data.
     #[prost(message, optional, tag = "1")]
     pub checksummed_data: ::core::option::Option<ChecksummedData>,
-    /// The checksums of the complete object. The client should compute one of
-    /// these checksums over the downloaded object and compare it against the value
-    /// provided here.
+    /// The checksums of the complete object. If the object is downloaded in full,
+    /// the client should compute one of these checksums over the downloaded object
+    /// and compare it against the value provided here.
     #[prost(message, optional, tag = "2")]
     pub object_checksums: ::core::option::Option<ObjectChecksums>,
     /// If read_offset and or read_limit was specified on the
@@ -534,7 +534,7 @@ pub struct WriteObjectRequest {
     #[prost(int64, tag = "3")]
     pub write_offset: i64,
     /// Checksums for the complete object. If the checksums computed by the service
-    /// don't match the specifified checksums the call will fail. May only be
+    /// don't match the specified checksums the call will fail. May only be
     /// provided in the first or last request (either with first_message, or
     /// finish_write set).
     #[prost(message, optional, tag = "6")]
@@ -1215,6 +1215,7 @@ pub mod service_constants {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Bucket {
     /// Immutable. The name of the bucket.
+    /// Format: `projects/{project}/buckets/{bucket}`
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// Output only. The user-chosen part of the bucket name. The `{bucket}`
@@ -1879,9 +1880,8 @@ pub struct Object {
     /// \[<https://tools.ietf.org/html/rfc7231#section-3.1.3.2\][RFC> 7231 §3.1.3.2].
     #[prost(string, tag = "11")]
     pub content_language: ::prost::alloc::string::String,
-    /// Output only. The deletion time of the object. Will be returned if and only
-    /// if this version of the object has been deleted. Attempting to set or update
-    /// this field will result in a
+    /// Output only. If this object is noncurrent, this is the time when the object
+    /// became noncurrent. Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
     #[prost(message, optional, tag = "12")]
     pub delete_time: ::core::option::Option<::prost_types::Timestamp>,
@@ -2760,6 +2760,8 @@ pub mod storage_client {
         ///     persisted offset. Even though the data isn't written, it may still
         ///     incur a performance cost over resuming at the correct write offset.
         ///     This behavior can make client-side handling simpler in some cases.
+        ///   - Clients must only send data that is a multiple of 256 KiB per message,
+        ///     unless the object is being finished with `finish_write` set to `true`.
         ///
         /// The service will not view the object as complete until the client has
         /// sent a `WriteObjectRequest` with `finish_write` set to `true`. Sending any
@@ -2771,6 +2773,7 @@ pub mod storage_client {
         /// Attempting to resume an already finalized object will result in an OK
         /// status, with a WriteObjectResponse containing the finalized object's
         /// metadata.
+        ///
         pub async fn write_object(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
