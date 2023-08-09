@@ -23,7 +23,7 @@ use crate::http::bigquery_table_client::BigqueryTableClient;
 use crate::http::bigquery_tabledata_client::BigqueryTabledataClient;
 use crate::http::job::get_query_results::GetQueryResultsRequest;
 use crate::http::job::query::QueryRequest;
-use crate::http::job::JobReference;
+use crate::http::job::{is_script, is_select_query, JobConfiguration, JobReference, JobStatistics, JobType};
 use crate::http::table::TableReference;
 use crate::query::{QueryOption, QueryResult};
 use crate::storage;
@@ -91,6 +91,9 @@ impl ClientConfig {
     }
 }
 
+use crate::http::job::get::GetJobRequest;
+use crate::http::job::list::ListJobsRequest;
+use crate::http::model::HolidayRegion::De;
 #[cfg(feature = "auth")]
 pub use google_cloud_auth;
 
@@ -139,6 +142,22 @@ impl ClientConfig {
             sub: None,
         }
     }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum QueryError {
+    #[error(transparent)]
+    Storage(#[from] storage::Error),
+    #[error(transparent)]
+    JobHttp(#[from] http::error::Error),
+    #[error("job has no destination table to read : job={0:?}")]
+    NoDestinationTable(JobReference),
+    #[error("failed to resolve table for script job: no child jobs found : job={0:?}")]
+    NoChildJobs(JobReference),
+    #[error("job type must be query: job={0:?}, jobType={1:?}")]
+    InvalidJobType(JobReference, String),
+    #[error(transparent)]
+    RunQuery(#[from] query::run::Error),
 }
 
 #[derive(Clone)]
@@ -243,11 +262,7 @@ impl Client {
     ///         let col2 = row.column::<Option<String>>(1);
     ///     }
     /// }
-    pub async fn query<T>(
-        &self,
-        project_id: &str,
-        request: QueryRequest,
-    ) -> Result<query::Iterator<T>, query::run::Error>
+    pub async fn query<T>(&self, project_id: &str, request: QueryRequest) -> Result<query::Iterator<T>, QueryError>
     where
         T: http::query::value::StructDecodable + storage::value::StructDecodable,
     {
@@ -282,7 +297,7 @@ impl Client {
         project_id: &str,
         request: QueryRequest,
         option: QueryOption,
-    ) -> Result<query::Iterator<T>, query::run::Error>
+    ) -> Result<query::Iterator<T>, QueryError>
     where
         T: http::query::value::StructDecodable + storage::value::StructDecodable,
     {
@@ -303,7 +318,29 @@ impl Client {
                 true,
             )
         };
-        //TODO use storage api after job complete and page size is 1
+
+        //use storage api instead of rest API
+        if option.enable_storage_read && (page_token.is_none() || page_token.as_ref().unwrap().is_empty()) {
+            tracing::trace!("use storage read api for query {:?}", result.job_reference);
+            let job = self
+                .job_client
+                .get(
+                    &result.job_reference.project_id,
+                    &result.job_reference.job_id,
+                    &GetJobRequest {
+                        location: result.job_reference.location.clone(),
+                    },
+                )
+                .await?;
+            let iter = self
+                .new_storage_row_iterator_from_job::<T>(job.job_reference, job.statistics, job.configuration)
+                .await?;
+            return Ok(query::Iterator {
+                inner: QueryResult::Storage(iter),
+                total_size: total_rows,
+            });
+        }
+
         let http_query_iterator = http::query::Iterator {
             client: self.job_client.clone(),
             project_id: result.job_reference.project_id,
@@ -325,6 +362,56 @@ impl Client {
             inner: QueryResult::Http(http_query_iterator),
             total_size: total_rows,
         })
+    }
+
+    async fn new_storage_row_iterator_from_job<T>(
+        &self,
+        mut job: JobReference,
+        mut statistics: Option<JobStatistics>,
+        mut config: JobConfiguration,
+    ) -> Result<storage::Iterator<T>, QueryError>
+    where
+        T: http::query::value::StructDecodable + storage::value::StructDecodable,
+    {
+        loop {
+            tracing::trace!("check child job result {:?}, {:?}, {:?}", job, statistics, config);
+            let query_config = match &config.job {
+                JobType::Query(config) => config,
+                _ => return Err(QueryError::InvalidJobType(job.clone(), config.job_type.clone())),
+            };
+            if let Some(dst) = &query_config.destination_table {
+                return Ok(self.read_table(dst, None).await?);
+            }
+            if !is_script(&statistics, &config) {
+                return Err(QueryError::NoDestinationTable(job.clone()));
+            }
+            let children = self
+                .job_client
+                .list(
+                    &job.project_id,
+                    &ListJobsRequest {
+                        parent_job_id: job.job_id.to_string(),
+                        ..Default::default()
+                    },
+                )
+                .await?;
+
+            let mut found = false;
+            for j in children.into_iter() {
+                if !is_select_query(&j.statistics, &j.configuration) {
+                    continue;
+                }
+                job = j.job_reference;
+                statistics = j.statistics;
+                config = j.configuration;
+                found = true;
+                break;
+            }
+            if !found {
+                break;
+            }
+        }
+        return Err(QueryError::NoChildJobs(job.clone()));
     }
 
     async fn wait_for_query(

@@ -495,6 +495,8 @@ pub struct Job {
     pub status: JobStatus,
 }
 
+impl Job {}
+
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum JobState {
@@ -1163,4 +1165,30 @@ pub enum TrainingType {
     SingleTraining,
     /// Hyperparameter tuning training.
     HparamTuning,
+}
+
+pub fn is_select_query(statistics: &Option<JobStatistics>, config: &JobConfiguration) -> bool {
+    has_statement_type(statistics, config, "SELECT")
+}
+pub fn is_script(statistics: &Option<JobStatistics>, config: &JobConfiguration) -> bool {
+    has_statement_type(statistics, config, "SCRIPT")
+}
+fn has_statement_type(statistics: &Option<JobStatistics>, config: &JobConfiguration, statement_type: &str) -> bool {
+    match config.job {
+        JobType::Query(_) => {}
+        _ => return false,
+    }
+    let statistics = match &statistics {
+        Some(v) => v,
+        None => return false,
+    };
+    let query = match &statistics.query {
+        Some(v) => v,
+        None => return false,
+    };
+    let stmt = match &query.statement_type {
+        Some(v) => v,
+        None => return false,
+    };
+    return stmt == statement_type;
 }

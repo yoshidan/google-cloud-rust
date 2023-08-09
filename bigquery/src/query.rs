@@ -8,15 +8,30 @@ use crate::http::tabledata::list::Tuple;
 use crate::query::row::RowType;
 use crate::{http, storage};
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct QueryOption {
     /// Exponential back off retry setting
     pub(crate) retry: ExponentialBuilder,
+    /// true: use storage api is page token is empty
+    pub(crate) enable_storage_read: bool,
+}
+
+impl Default for QueryOption {
+    fn default() -> Self {
+        Self {
+            enable_storage_read: true,
+            retry: ExponentialBuilder::default()
+        }
+    }
 }
 
 impl QueryOption {
     pub fn with_retry(mut self, builder: ExponentialBuilder) -> Self {
         self.retry = builder;
+        self
+    }
+    pub fn with_enable_storage_read(mut self, value: bool) -> Self {
+        self.enable_storage_read = value;
         self
     }
 }
