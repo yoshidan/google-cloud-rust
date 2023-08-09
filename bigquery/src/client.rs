@@ -2,6 +2,7 @@ use backon::{ExponentialBuilder, Retryable};
 use core::time::Duration;
 use std::borrow::Cow;
 use std::collections::VecDeque;
+use std::marker::PhantomData;
 use std::sync::Arc;
 
 use google_cloud_gax::conn::{ConnectionOptions, Environment};
@@ -24,7 +25,7 @@ use crate::http::job::get_query_results::GetQueryResultsRequest;
 use crate::http::job::query::QueryRequest;
 use crate::http::job::JobReference;
 use crate::http::table::TableReference;
-use crate::query::QueryOption;
+use crate::query::{QueryOption, QueryResult};
 use crate::storage;
 use crate::{http, query};
 
@@ -236,13 +237,20 @@ impl Client {
     ///         query: "SELECT * FROM dataset.table".to_string(),
     ///         ..Default::default()
     ///     };
-    ///     let mut iter = client.query(project_id, request).await.unwrap();
-    ///     while let Some(row) = iter.next::<Row>().await.unwrap() {
+    ///     let mut iter = client.query::<Row>(project_id, request).await.unwrap();
+    ///     while let Some(row) = iter.next().await.unwrap() {
     ///         let col1 = row.column::<String>(0);
     ///         let col2 = row.column::<Option<String>>(1);
     ///     }
     /// }
-    pub async fn query(&self, project_id: &str, request: QueryRequest) -> Result<query::Iterator, query::run::Error> {
+    pub async fn query<T>(
+        &self,
+        project_id: &str,
+        request: QueryRequest,
+    ) -> Result<query::Iterator<T>, query::run::Error>
+    where
+        T: http::query::value::StructDecodable + storage::value::StructDecodable,
+    {
         let builder = ExponentialBuilder::default().with_max_times(usize::MAX);
         self.query_with_option(project_id, request, QueryOption::default().with_retry(builder))
             .await
@@ -263,18 +271,21 @@ impl Client {
     ///     };
     ///     let retry = ExponentialBuilder::default().with_max_times(10);
     ///     let option = QueryOption::default().with_retry(retry);
-    ///     let mut iter = client.query_with_option(project_id, request, option).await.unwrap();
-    ///     while let Some(row) = iter.next::<Row>().await.unwrap() {
+    ///     let mut iter = client.query_with_option::<Row>(project_id, request, option).await.unwrap();
+    ///     while let Some(row) = iter.next().await.unwrap() {
     ///         let col1 = row.column::<String>(0);
     ///         let col2 = row.column::<Option<String>>(1);
     ///     }
     /// }
-    pub async fn query_with_option(
+    pub async fn query_with_option<T>(
         &self,
         project_id: &str,
         request: QueryRequest,
         option: QueryOption,
-    ) -> Result<query::Iterator, query::run::Error> {
+    ) -> Result<query::Iterator<T>, query::run::Error>
+    where
+        T: http::query::value::StructDecodable + storage::value::StructDecodable,
+    {
         let result = self.job_client.query(project_id, &request).await?;
         let (total_rows, page_token, rows, force_first_fetch) = if result.job_complete {
             (
@@ -292,7 +303,8 @@ impl Client {
                 true,
             )
         };
-        Ok(query::Iterator {
+        //TODO use storage api after job complete and page size is 1
+        let http_query_iterator = http::query::Iterator {
             client: self.job_client.clone(),
             project_id: result.job_reference.project_id,
             job_id: result.job_reference.job_id,
@@ -307,6 +319,11 @@ impl Client {
             chunk: VecDeque::from(rows),
             total_size: total_rows,
             force_first_fetch,
+            _marker: PhantomData,
+        };
+        Ok(query::Iterator {
+            inner: QueryResult::Http(http_query_iterator),
+            total_size: total_rows,
         })
     }
 
@@ -457,7 +474,6 @@ mod tests {
     use crate::http::job::query::QueryRequest;
     use crate::http::table::TableReference;
     use crate::query;
-    use crate::storage::row::Row;
 
     #[ctor::ctor]
     fn init() {
@@ -474,7 +490,7 @@ mod tests {
     async fn test_query() {
         let (client, project_id) = create_client().await;
         let mut iterator = client
-            .query(
+            .query::<query::row::Row>(
                 &project_id,
                 QueryRequest {
                     max_results: Some(2),
@@ -510,9 +526,7 @@ mod tests {
 
         assert_eq!(1, iterator.total_size);
 
-        while let Some(row) = iterator.next::<query::row::Row>().await.unwrap() {
-            let v: &str = row.column(0).unwrap();
-            assert_eq!(v, "A");
+        while let Some(row) = iterator.next().await.unwrap() {
             let v: String = row.column(0).unwrap();
             assert_eq!(v, "A");
             let v: OffsetDateTime = row.column(1).unwrap();
@@ -525,7 +539,7 @@ mod tests {
             assert_eq!(v, time::macros::date!(2023 - 09 - 01));
             let v: Time = row.column(5).unwrap();
             assert_eq!(v, time::macros::time!(15:30:01));
-            let v: Option<&str> = row.column(6).unwrap();
+            let v: Option<String> = row.column(6).unwrap();
             assert!(v.is_none());
             let v: Option<OffsetDateTime> = row.column(6).unwrap();
             assert!(v.is_none());
@@ -548,7 +562,7 @@ mod tests {
             let v: Option<Vec<u8>> = row.column(6).unwrap();
             assert!(v.is_none());
 
-            let v: Vec<&str> = row.column(7).unwrap();
+            let v: Vec<String> = row.column(7).unwrap();
             assert_eq!(v, vec!["A", "B"]);
             let v: Vec<OffsetDateTime> = row.column(8).unwrap();
             assert_eq!(v[0].unix_timestamp_nanos(), 1230219000000019000);
@@ -606,7 +620,7 @@ mod tests {
         let (client, project_id) = create_client().await;
         let mut data_as_row: Vec<TestData> = vec![];
         let mut iterator_as_row = client
-            .query(
+            .query::<query::row::Row>(
                 &project_id,
                 QueryRequest {
                     max_results: Some(1),
@@ -616,7 +630,7 @@ mod tests {
             )
             .await
             .unwrap();
-        while let Some(row) = iterator_as_row.next::<query::row::Row>().await.unwrap() {
+        while let Some(row) = iterator_as_row.next().await.unwrap() {
             data_as_row.push(TestData {
                 col_string: row.column(0).unwrap(),
                 col_number: row.column(1).unwrap(),
@@ -631,7 +645,7 @@ mod tests {
         }
         let mut data_as_struct: Vec<TestData> = vec![];
         let mut iterator_as_struct = client
-            .query(
+            .query::<TestData>(
                 &project_id,
                 QueryRequest {
                     query: "SELECT * FROM rust_test_job.table_data_1686707863".to_string(),
@@ -640,7 +654,7 @@ mod tests {
             )
             .await
             .unwrap();
-        while let Some(row) = iterator_as_struct.next::<TestData>().await.unwrap() {
+        while let Some(row) = iterator_as_struct.next().await.unwrap() {
             data_as_struct.push(row);
         }
         assert_eq!(iterator_as_struct.total_size, 3);
@@ -674,7 +688,10 @@ mod tests {
             }),
             ..Default::default()
         };
-        let mut iterator_as_row = client.read_table::<Row>(&table, Some(option)).await.unwrap();
+        let mut iterator_as_row = client
+            .read_table::<crate::storage::row::Row>(&table, Some(option))
+            .await
+            .unwrap();
         let mut data_as_row: Vec<TestData> = vec![];
         let mut data_as_struct: Vec<TestData> = vec![];
         let mut finish1 = false;
@@ -732,7 +749,7 @@ mod tests {
         let (client, project_id) = create_client().await;
         let mut data: Vec<TestData> = vec![];
         let mut iter = client
-            .query(
+            .query::<TestData>(
                 &project_id,
                 QueryRequest {
                     timeout_ms: Some(5), // pass wait_for_query
@@ -744,7 +761,7 @@ mod tests {
             )
             .await
             .unwrap();
-        while let Some(row) = iter.next::<TestData>().await.unwrap() {
+        while let Some(row) = iter.next().await.unwrap() {
             data.push(row);
         }
         assert_eq!(iter.total_size, 10000);
