@@ -47,8 +47,8 @@
 //!         query: "SELECT * FROM dataset.table".to_string(),
 //!         ..Default::default()
 //!     };
-//!     let mut iter = client.query(project_id, request).await.unwrap();
-//!     while let Some(row) = iter.next::<Row>().await.unwrap() {
+//!     let mut iter = client.query::<Row>(project_id, request).await.unwrap();
+//!     while let Some(row) = iter.next().await.unwrap() {
 //!         let col1 = row.column::<String>(0);
 //!         let col2 = row.column::<Option<String>>(1);
 //!     }

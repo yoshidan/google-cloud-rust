@@ -68,7 +68,7 @@ pub mod row {
     }
 
     impl Row {
-        pub fn column<'a, T: super::value::Decodable<'a>>(&'a self, index: usize) -> Result<T, Error> {
+        pub fn column<T: super::value::Decodable>(&self, index: usize) -> Result<T, Error> {
             let cell: &Cell = self.inner.get(index).ok_or(Error::UnexpectedColumnIndex(index))?;
             Ok(T::decode(&cell.v)?)
         }
@@ -111,16 +111,16 @@ pub mod value {
         ParseBigDecimal(#[from] bigdecimal::ParseBigDecimalError),
     }
 
-    pub trait Decodable<'a>: Sized {
-        fn decode(value: &'a Value) -> Result<Self, Error>;
+    pub trait Decodable: Sized {
+        fn decode(value: &Value) -> Result<Self, Error>;
     }
 
     pub trait StructDecodable: Sized {
         fn decode(value: Tuple) -> Result<Self, Error>;
     }
 
-    impl<'a, T: StructDecodable> Decodable<'a> for T {
-        fn decode(value: &'a Value) -> Result<Self, Error> {
+    impl<T: StructDecodable> Decodable for T {
+        fn decode(value: &Value) -> Result<Self, Error> {
             match value {
                 Value::Struct(v) => T::decode(v.clone()),
                 Value::Null => Err(Error::UnexpectedNullValue),
@@ -129,20 +129,8 @@ pub mod value {
         }
     }
 
-    /*
-    impl<'a> Decodable<'a> for &'a str {
-        fn decode(value: &'a Value) -> Result<Self, Error> {
-            match value {
-                Value::String(v) => Ok(v.as_str()),
-                Value::Null => Err(Error::UnexpectedNullValue),
-                _ => Err(Error::InvalidType),
-            }
-        }
-    }
-     */
-
-    impl<'a> Decodable<'a> for String {
-        fn decode(value: &'a Value) -> Result<Self, Error> {
+    impl Decodable for String {
+        fn decode(value: &Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => Ok(v.to_string()),
                 Value::Null => Err(Error::UnexpectedNullValue),
@@ -151,8 +139,8 @@ pub mod value {
         }
     }
 
-    impl<'a> Decodable<'a> for Vec<u8> {
-        fn decode(value: &'a Value) -> Result<Self, Error> {
+    impl Decodable for Vec<u8> {
+        fn decode(value: &Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => Ok(BASE64_STANDARD.decode(v)?),
                 Value::Null => Err(Error::UnexpectedNullValue),
@@ -161,8 +149,8 @@ pub mod value {
         }
     }
 
-    impl<'a> Decodable<'a> for bool {
-        fn decode(value: &'a Value) -> Result<Self, Error> {
+    impl Decodable for bool {
+        fn decode(value: &Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => Ok(v.parse::<bool>().map_err(|_| Error::FromString(v.clone()))?),
                 Value::Null => Err(Error::UnexpectedNullValue),
@@ -171,8 +159,8 @@ pub mod value {
         }
     }
 
-    impl<'a> Decodable<'a> for f64 {
-        fn decode(value: &'a Value) -> Result<Self, Error> {
+    impl Decodable for f64 {
+        fn decode(value: &Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => Ok(v.parse::<f64>().map_err(|_| Error::FromString(v.clone()))?),
                 Value::Null => Err(Error::UnexpectedNullValue),
@@ -181,8 +169,8 @@ pub mod value {
         }
     }
 
-    impl<'a> Decodable<'a> for i64 {
-        fn decode(value: &'a Value) -> Result<Self, Error> {
+    impl Decodable for i64 {
+        fn decode(value: &Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => Ok(v.parse::<i64>().map_err(|_| Error::FromString(v.clone()))?),
                 Value::Null => Err(Error::UnexpectedNullValue),
@@ -191,8 +179,8 @@ pub mod value {
         }
     }
 
-    impl<'a> Decodable<'a> for BigDecimal {
-        fn decode(value: &'a Value) -> Result<Self, Error> {
+    impl Decodable for BigDecimal {
+        fn decode(value: &Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => Ok(BigDecimal::from_str(v)?),
                 Value::Null => Err(Error::UnexpectedNullValue),
@@ -201,8 +189,8 @@ pub mod value {
         }
     }
 
-    impl<'a> Decodable<'a> for OffsetDateTime {
-        fn decode(value: &'a Value) -> Result<Self, Error> {
+    impl Decodable for OffsetDateTime {
+        fn decode(value: &Value) -> Result<Self, Error> {
             let f = f64::decode(value)?;
             let sec = f.trunc();
             // Timestamps in BigQuery have microsecond precision, so we must
@@ -214,8 +202,8 @@ pub mod value {
         }
     }
 
-    impl<'a> Decodable<'a> for Date {
-        fn decode(value: &'a Value) -> Result<Self, Error> {
+    impl Decodable for Date {
+        fn decode(value: &Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => Ok(Date::parse(v, format_description!("[year]-[month]-[day]"))?),
                 Value::Null => Err(Error::UnexpectedNullValue),
@@ -224,8 +212,8 @@ pub mod value {
         }
     }
 
-    impl<'a> Decodable<'a> for Time {
-        fn decode(value: &'a Value) -> Result<Self, Error> {
+    impl Decodable for Time {
+        fn decode(value: &Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => Ok(Time::parse(v, format_description!("[hour]:[minute]:[second]"))?),
                 Value::Null => Err(Error::UnexpectedNullValue),
@@ -234,11 +222,11 @@ pub mod value {
         }
     }
 
-    impl<'a, T> Decodable<'a> for Vec<T>
+    impl<T> Decodable for Vec<T>
     where
-        T: Decodable<'a>,
+        T: Decodable,
     {
-        fn decode(value: &'a Value) -> Result<Self, Error> {
+        fn decode(value: &Value) -> Result<Self, Error> {
             match value {
                 Value::Array(v) => {
                     let mut result = Vec::with_capacity(v.len());
@@ -253,11 +241,11 @@ pub mod value {
         }
     }
 
-    impl<'a, T> Decodable<'a> for Option<T>
+    impl<T> Decodable for Option<T>
     where
-        T: Decodable<'a>,
+        T: Decodable,
     {
-        fn decode(value: &'a Value) -> Result<Self, Error> {
+        fn decode(value: &Value) -> Result<Self, Error> {
             match value {
                 Value::Null => Ok(None),
                 _ => Ok(Some(T::decode(value)?)),

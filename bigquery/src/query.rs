@@ -71,8 +71,8 @@ pub mod row {
     }
 
     impl Row {
-        pub fn column<'a, T: http::query::value::Decodable<'a> + storage::value::Decodable>(
-            &'a self,
+        pub fn column<T: http::query::value::Decodable + storage::value::Decodable>(
+            &self,
             index: usize,
         ) -> Result<T, Error> {
             Ok(match &self.inner {
