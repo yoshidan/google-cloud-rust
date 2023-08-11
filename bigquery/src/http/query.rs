@@ -82,7 +82,10 @@ pub mod row {
 }
 
 pub mod value {
+    use std::num::ParseIntError;
+    use std::ops::AddAssign;
     use std::str::FromStr;
+    use std::time::Duration;
 
     use base64::prelude::BASE64_STANDARD;
     use base64::Engine;
@@ -109,6 +112,8 @@ pub mod value {
         ParseDateTime(#[from] time::error::Parse),
         #[error(transparent)]
         ParseBigDecimal(#[from] bigdecimal::ParseBigDecimalError),
+        #[error(transparent)]
+        ParseTime(#[from] ParseIntError),
     }
 
     pub trait Decodable: Sized {
@@ -215,7 +220,15 @@ pub mod value {
     impl Decodable for Time {
         fn decode(value: &Value) -> Result<Self, Error> {
             match value {
-                Value::String(v) => Ok(Time::parse(v, format_description!("[hour]:[minute]:[second]"))?),
+                Value::String(v) => {
+                    let split: Vec<&str> = v.split(".").collect();
+                    let mut time = Time::parse(split[0], format_description!("[hour]:[minute]:[second]"))?;
+                    if split.len() > 1 {
+                        let micro: u64 = split[1].parse()?;
+                        time.add_assign(Duration::from_micros(micro))
+                    }
+                    Ok(time)
+                }
                 Value::Null => Err(Error::UnexpectedNullValue),
                 _ => Err(Error::InvalidType),
             }

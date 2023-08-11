@@ -266,8 +266,7 @@ impl Client {
     where
         T: http::query::value::StructDecodable + storage::value::StructDecodable,
     {
-        let builder = ExponentialBuilder::default().with_max_times(usize::MAX);
-        self.query_with_option(project_id, request, QueryOption::default().with_retry(builder))
+        self.query_with_option(project_id, request, QueryOption::default())
             .await
     }
 
@@ -548,9 +547,10 @@ impl ReadTableOption {
 
 #[cfg(test)]
 mod tests {
-
     use bigdecimal::BigDecimal;
     use serial_test::serial;
+    use std::ops::AddAssign;
+    use std::time::Duration;
     use time::macros::datetime;
     use time::{Date, OffsetDateTime, Time};
 
@@ -561,6 +561,7 @@ mod tests {
     use crate::http::job::query::QueryRequest;
     use crate::http::table::TableReference;
     use crate::query;
+    use crate::query::QueryOption;
 
     #[ctor::ctor]
     fn init() {
@@ -574,10 +575,22 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_query() {
+    async fn test_query_from_storage() {
+        let option = QueryOption::default().with_enable_storage_read(true);
+        test_query(option).await
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_query_from_rest() {
+        let option = QueryOption::default();
+        test_query(option).await
+    }
+
+    async fn test_query(option: QueryOption) {
         let (client, project_id) = create_client().await;
         let mut iterator = client
-            .query::<query::row::Row>(
+            .query_with_option::<query::row::Row>(
                 &project_id,
                 QueryRequest {
                     max_results: Some(2),
@@ -594,7 +607,7 @@ mod tests {
                         [100,200],
                         [0.432899,0.432900],
                         [DATE(2023,9,1),DATE(2023,9,2)],
-                        [TIME(15, 30, 01),TIME(15, 30, 02)],
+                        [TIME_ADD(TIME(15,30,1), INTERVAL 10 MICROSECOND),TIME(0, 0, 0),TIME(23,59,59)],
                         b'test',
                         true,
                         [b'test',b'test2'],
@@ -607,6 +620,7 @@ mod tests {
                     ".to_string(),
                     ..Default::default()
                 },
+                option,
             )
             .await
             .unwrap();
@@ -662,8 +676,11 @@ mod tests {
             assert_eq!(v[0], time::macros::date!(2023 - 09 - 01));
             assert_eq!(v[1], time::macros::date!(2023 - 09 - 02));
             let v: Vec<Time> = row.column(12).unwrap();
-            assert_eq!(v[0], time::macros::time!(15:30:01));
-            assert_eq!(v[1], time::macros::time!(15:30:02));
+            let mut tm = time::macros::time!(15:30:01);
+            tm.add_assign(Duration::from_micros(10));
+            assert_eq!(v[0], tm);
+            assert_eq!(v[1], time::macros::time!(0:0:0));
+            assert_eq!(v[2], time::macros::time!(23:59:59));
 
             let v: Vec<u8> = row.column(13).unwrap();
             assert_eq!(v, b"test");
@@ -703,17 +720,28 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_query_table() {
+    async fn test_query_table_from_storage() {
+        test_query_table(None, QueryOption::default().with_enable_storage_read(true)).await
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_query_table_from_rest() {
+        test_query_table(Some(1), QueryOption::default()).await
+    }
+
+    async fn test_query_table(max_results: Option<i64>, option: QueryOption) {
         let (client, project_id) = create_client().await;
         let mut data_as_row: Vec<TestData> = vec![];
         let mut iterator_as_row = client
-            .query::<query::row::Row>(
+            .query_with_option::<query::row::Row>(
                 &project_id,
                 QueryRequest {
-                    max_results: Some(1),
+                    max_results,
                     query: "SELECT * FROM rust_test_job.table_data_1686707863".to_string(),
                     ..Default::default()
                 },
+                option,
             )
             .await
             .unwrap();
@@ -787,10 +815,10 @@ mod tests {
             tokio::select! {
                 row = iterator_as_struct.next() => {
                     if let Some(row) = row.unwrap() {
-                    tracing::info!("read struct some");
+                        tracing::info!("read struct some");
                         data_as_struct.push(row);
                     }else {
-                    tracing::info!("read struct none");
+                        tracing::info!("read struct none");
                         finish1 = true;
                         if finish1 && finish2 {
                             break;
@@ -832,19 +860,30 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_query_job_incomplete() {
+    async fn test_query_job_incomplete_from_storage() {
+        test_query_job_incomplete(None, QueryOption::default().with_enable_storage_read(true)).await
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_query_job_incomplete_from_rest() {
+        test_query_job_incomplete(Some(4999), QueryOption::default()).await
+    }
+
+    async fn test_query_job_incomplete(max_results: Option<i64>, option: QueryOption) {
         let (client, project_id) = create_client().await;
         let mut data: Vec<TestData> = vec![];
         let mut iter = client
-            .query::<TestData>(
+            .query_with_option::<TestData>(
                 &project_id,
                 QueryRequest {
                     timeout_ms: Some(5), // pass wait_for_query
                     use_query_cache: Some(false),
-                    max_results: Some(4999),
+                    max_results,
                     query: "SELECT * FROM rust_test_job.table_data_10000v2".to_string(),
                     ..Default::default()
                 },
+                option,
             )
             .await
             .unwrap();

@@ -19,8 +19,8 @@ pub struct QueryOption {
 impl Default for QueryOption {
     fn default() -> Self {
         Self {
-            enable_storage_read: true,
-            retry: ExponentialBuilder::default()
+            enable_storage_read: false,
+            retry: ExponentialBuilder::default().with_max_times(usize::MAX),
         }
     }
 }
