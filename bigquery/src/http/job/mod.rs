@@ -1190,5 +1190,5 @@ fn has_statement_type(statistics: &Option<JobStatistics>, config: &JobConfigurat
         Some(v) => v,
         None => return false,
     };
-    return stmt == statement_type;
+    stmt == statement_type
 }

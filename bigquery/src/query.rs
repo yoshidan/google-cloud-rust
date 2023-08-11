@@ -1,11 +1,5 @@
 pub use backon::*;
-use std::collections::VecDeque;
 
-use crate::http::bigquery_job_client::BigqueryJobClient;
-use crate::http::error::Error as HttpError;
-use crate::http::job::get_query_results::GetQueryResultsRequest;
-use crate::http::tabledata::list::Tuple;
-use crate::query::row::RowType;
 use crate::{http, storage};
 
 #[derive(Debug, Clone)]
@@ -64,7 +58,7 @@ impl<T: http::query::value::StructDecodable + storage::value::StructDecodable> I
 }
 
 pub mod row {
-    use crate::http::tabledata::list::{Cell, Tuple};
+    use crate::http::tabledata::list::Tuple;
     use crate::{http, storage};
     use arrow::array::ArrayRef;
 

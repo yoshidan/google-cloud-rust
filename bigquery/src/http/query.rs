@@ -221,7 +221,7 @@ pub mod value {
         fn decode(value: &Value) -> Result<Self, Error> {
             match value {
                 Value::String(v) => {
-                    let split: Vec<&str> = v.split(".").collect();
+                    let split: Vec<&str> = v.split('.').collect();
                     let mut time = Time::parse(split[0], format_description!("[hour]:[minute]:[second]"))?;
                     if split.len() > 1 {
                         let micro: u64 = split[1].parse()?;

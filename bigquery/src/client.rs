@@ -93,7 +93,7 @@ impl ClientConfig {
 
 use crate::http::job::get::GetJobRequest;
 use crate::http::job::list::ListJobsRequest;
-use crate::http::model::HolidayRegion::De;
+
 #[cfg(feature = "auth")]
 pub use google_cloud_auth;
 
@@ -284,7 +284,7 @@ impl Client {
     ///         ..Default::default()
     ///     };
     ///     let retry = ExponentialBuilder::default().with_max_times(10);
-    ///     let option = QueryOption::default().with_retry(retry);
+    ///     let option = QueryOption::default().with_retry(retry).with_enable_storage_read(true);
     ///     let mut iter = client.query_with_option::<Row>(project_id, request, option).await.unwrap();
     ///     while let Some(row) = iter.next().await.unwrap() {
     ///         let col1 = row.column::<String>(0);
@@ -410,7 +410,7 @@ impl Client {
                 break;
             }
         }
-        return Err(QueryError::NoChildJobs(job.clone()));
+        Err(QueryError::NoChildJobs(job.clone()))
     }
 
     async fn wait_for_query(
@@ -741,7 +741,7 @@ mod tests {
                     query: "SELECT * FROM rust_test_job.table_data_1686707863".to_string(),
                     ..Default::default()
                 },
-                option,
+                option.clone(),
             )
             .await
             .unwrap();
@@ -760,12 +760,13 @@ mod tests {
         }
         let mut data_as_struct: Vec<TestData> = vec![];
         let mut iterator_as_struct = client
-            .query::<TestData>(
+            .query_with_option::<TestData>(
                 &project_id,
                 QueryRequest {
                     query: "SELECT * FROM rust_test_job.table_data_1686707863".to_string(),
                     ..Default::default()
                 },
+                option,
             )
             .await
             .unwrap();
