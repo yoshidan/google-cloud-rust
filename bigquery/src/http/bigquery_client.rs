@@ -104,10 +104,10 @@ pub(crate) mod test {
     use google_cloud_token::TokenSourceProvider;
 
     use crate::http::bigquery_client::{BigqueryClient, SCOPES};
+    use crate::http::query;
+    use crate::http::query::value::Decodable as QueryDecodable;
     use crate::http::table::{TableFieldMode, TableFieldSchema, TableFieldType, TableSchema};
     use crate::http::tabledata::list::Tuple;
-    use crate::query;
-    use crate::query::value::Decodable as QueryDecodable;
     use crate::storage;
     use crate::storage::array::ArrayRef;
     use crate::storage::value::Decodable as StorageDecodable;

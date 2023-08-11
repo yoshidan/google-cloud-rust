@@ -318,7 +318,15 @@ pub mod value {
             match col.data_type() {
                 DataType::Time64(TimeUnit::Microsecond) => {
                     let micros = downcast::<Time64MicrosecondArray>(col)?.value(row_no);
-                    Ok(Time::from_hms_micro(0, 0, 0, micros as u32)?)
+                    // ex) TIME(15, 30, 01) is 55801000000
+                    // ex) TIME_ADD(TIME(15, 30, 01), INTERVAL 10 MICROSECOND) is 55801000010
+                    let hour = micros / 3600_000000;
+                    let rest_micros = micros % 3600_000000;
+                    let minute = rest_micros / 60_000000;
+                    let rest_micros = rest_micros % 60_000000;
+                    let secs = rest_micros / 1_000_000;
+                    let rest_micros = rest_micros % 1_000_000;
+                    Ok(Time::from_hms_micro(hour as u8, minute as u8, secs as u8, rest_micros as u32)?)
                 }
                 _ => Err(Error::InvalidDataType(col.data_type().clone(), "Time")),
             }

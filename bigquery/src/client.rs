@@ -2,6 +2,7 @@ use backon::{ExponentialBuilder, Retryable};
 use core::time::Duration;
 use std::borrow::Cow;
 use std::collections::VecDeque;
+use std::marker::PhantomData;
 use std::sync::Arc;
 
 use google_cloud_gax::conn::{ConnectionOptions, Environment};
@@ -22,9 +23,9 @@ use crate::http::bigquery_table_client::BigqueryTableClient;
 use crate::http::bigquery_tabledata_client::BigqueryTabledataClient;
 use crate::http::job::get_query_results::GetQueryResultsRequest;
 use crate::http::job::query::QueryRequest;
-use crate::http::job::JobReference;
+use crate::http::job::{is_script, is_select_query, JobConfiguration, JobReference, JobStatistics, JobType};
 use crate::http::table::TableReference;
-use crate::query::QueryOption;
+use crate::query::{QueryOption, QueryResult};
 use crate::storage;
 use crate::{http, query};
 
@@ -90,6 +91,9 @@ impl ClientConfig {
     }
 }
 
+use crate::http::job::get::GetJobRequest;
+use crate::http::job::list::ListJobsRequest;
+
 #[cfg(feature = "auth")]
 pub use google_cloud_auth;
 
@@ -138,6 +142,22 @@ impl ClientConfig {
             sub: None,
         }
     }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum QueryError {
+    #[error(transparent)]
+    Storage(#[from] storage::Error),
+    #[error(transparent)]
+    JobHttp(#[from] http::error::Error),
+    #[error("job has no destination table to read : job={0:?}")]
+    NoDestinationTable(JobReference),
+    #[error("failed to resolve table for script job: no child jobs found : job={0:?}")]
+    NoChildJobs(JobReference),
+    #[error("job type must be query: job={0:?}, jobType={1:?}")]
+    InvalidJobType(JobReference, String),
+    #[error(transparent)]
+    RunQuery(#[from] query::run::Error),
 }
 
 #[derive(Clone)]
@@ -236,15 +256,17 @@ impl Client {
     ///         query: "SELECT * FROM dataset.table".to_string(),
     ///         ..Default::default()
     ///     };
-    ///     let mut iter = client.query(project_id, request).await.unwrap();
-    ///     while let Some(row) = iter.next::<Row>().await.unwrap() {
+    ///     let mut iter = client.query::<Row>(project_id, request).await.unwrap();
+    ///     while let Some(row) = iter.next().await.unwrap() {
     ///         let col1 = row.column::<String>(0);
     ///         let col2 = row.column::<Option<String>>(1);
     ///     }
     /// }
-    pub async fn query(&self, project_id: &str, request: QueryRequest) -> Result<query::Iterator, query::run::Error> {
-        let builder = ExponentialBuilder::default().with_max_times(usize::MAX);
-        self.query_with_option(project_id, request, QueryOption::default().with_retry(builder))
+    pub async fn query<T>(&self, project_id: &str, request: QueryRequest) -> Result<query::Iterator<T>, QueryError>
+    where
+        T: http::query::value::StructDecodable + storage::value::StructDecodable,
+    {
+        self.query_with_option(project_id, request, QueryOption::default())
             .await
     }
 
@@ -262,19 +284,22 @@ impl Client {
     ///         ..Default::default()
     ///     };
     ///     let retry = ExponentialBuilder::default().with_max_times(10);
-    ///     let option = QueryOption::default().with_retry(retry);
-    ///     let mut iter = client.query_with_option(project_id, request, option).await.unwrap();
-    ///     while let Some(row) = iter.next::<Row>().await.unwrap() {
+    ///     let option = QueryOption::default().with_retry(retry).with_enable_storage_read(true);
+    ///     let mut iter = client.query_with_option::<Row>(project_id, request, option).await.unwrap();
+    ///     while let Some(row) = iter.next().await.unwrap() {
     ///         let col1 = row.column::<String>(0);
     ///         let col2 = row.column::<Option<String>>(1);
     ///     }
     /// }
-    pub async fn query_with_option(
+    pub async fn query_with_option<T>(
         &self,
         project_id: &str,
         request: QueryRequest,
         option: QueryOption,
-    ) -> Result<query::Iterator, query::run::Error> {
+    ) -> Result<query::Iterator<T>, QueryError>
+    where
+        T: http::query::value::StructDecodable + storage::value::StructDecodable,
+    {
         let result = self.job_client.query(project_id, &request).await?;
         let (total_rows, page_token, rows, force_first_fetch) = if result.job_complete {
             (
@@ -292,7 +317,30 @@ impl Client {
                 true,
             )
         };
-        Ok(query::Iterator {
+
+        //use storage api instead of rest API
+        if option.enable_storage_read && (page_token.is_none() || page_token.as_ref().unwrap().is_empty()) {
+            tracing::trace!("use storage read api for query {:?}", result.job_reference);
+            let job = self
+                .job_client
+                .get(
+                    &result.job_reference.project_id,
+                    &result.job_reference.job_id,
+                    &GetJobRequest {
+                        location: result.job_reference.location.clone(),
+                    },
+                )
+                .await?;
+            let iter = self
+                .new_storage_row_iterator_from_job::<T>(job.job_reference, job.statistics, job.configuration)
+                .await?;
+            return Ok(query::Iterator {
+                inner: QueryResult::Storage(iter),
+                total_size: total_rows,
+            });
+        }
+
+        let http_query_iterator = http::query::Iterator {
             client: self.job_client.clone(),
             project_id: result.job_reference.project_id,
             job_id: result.job_reference.job_id,
@@ -307,7 +355,62 @@ impl Client {
             chunk: VecDeque::from(rows),
             total_size: total_rows,
             force_first_fetch,
+            _marker: PhantomData,
+        };
+        Ok(query::Iterator {
+            inner: QueryResult::Http(http_query_iterator),
+            total_size: total_rows,
         })
+    }
+
+    async fn new_storage_row_iterator_from_job<T>(
+        &self,
+        mut job: JobReference,
+        mut statistics: Option<JobStatistics>,
+        mut config: JobConfiguration,
+    ) -> Result<storage::Iterator<T>, QueryError>
+    where
+        T: http::query::value::StructDecodable + storage::value::StructDecodable,
+    {
+        loop {
+            tracing::trace!("check child job result {:?}, {:?}, {:?}", job, statistics, config);
+            let query_config = match &config.job {
+                JobType::Query(config) => config,
+                _ => return Err(QueryError::InvalidJobType(job.clone(), config.job_type.clone())),
+            };
+            if let Some(dst) = &query_config.destination_table {
+                return Ok(self.read_table(dst, None).await?);
+            }
+            if !is_script(&statistics, &config) {
+                return Err(QueryError::NoDestinationTable(job.clone()));
+            }
+            let children = self
+                .job_client
+                .list(
+                    &job.project_id,
+                    &ListJobsRequest {
+                        parent_job_id: job.job_id.to_string(),
+                        ..Default::default()
+                    },
+                )
+                .await?;
+
+            let mut found = false;
+            for j in children.into_iter() {
+                if !is_select_query(&j.statistics, &j.configuration) {
+                    continue;
+                }
+                job = j.job_reference;
+                statistics = j.statistics;
+                config = j.configuration;
+                found = true;
+                break;
+            }
+            if !found {
+                break;
+            }
+        }
+        Err(QueryError::NoChildJobs(job.clone()))
     }
 
     async fn wait_for_query(
@@ -444,9 +547,10 @@ impl ReadTableOption {
 
 #[cfg(test)]
 mod tests {
-
     use bigdecimal::BigDecimal;
     use serial_test::serial;
+    use std::ops::AddAssign;
+    use std::time::Duration;
     use time::macros::datetime;
     use time::{Date, OffsetDateTime, Time};
 
@@ -457,7 +561,7 @@ mod tests {
     use crate::http::job::query::QueryRequest;
     use crate::http::table::TableReference;
     use crate::query;
-    use crate::storage::row::Row;
+    use crate::query::QueryOption;
 
     #[ctor::ctor]
     fn init() {
@@ -471,10 +575,22 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_query() {
+    async fn test_query_from_storage() {
+        let option = QueryOption::default().with_enable_storage_read(true);
+        test_query(option).await
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_query_from_rest() {
+        let option = QueryOption::default();
+        test_query(option).await
+    }
+
+    async fn test_query(option: QueryOption) {
         let (client, project_id) = create_client().await;
         let mut iterator = client
-            .query(
+            .query_with_option::<query::row::Row>(
                 &project_id,
                 QueryRequest {
                     max_results: Some(2),
@@ -491,7 +607,7 @@ mod tests {
                         [100,200],
                         [0.432899,0.432900],
                         [DATE(2023,9,1),DATE(2023,9,2)],
-                        [TIME(15, 30, 01),TIME(15, 30, 02)],
+                        [TIME_ADD(TIME(15,30,1), INTERVAL 10 MICROSECOND),TIME(0, 0, 0),TIME(23,59,59)],
                         b'test',
                         true,
                         [b'test',b'test2'],
@@ -504,15 +620,14 @@ mod tests {
                     ".to_string(),
                     ..Default::default()
                 },
+                option,
             )
             .await
             .unwrap();
 
         assert_eq!(1, iterator.total_size);
 
-        while let Some(row) = iterator.next::<query::row::Row>().await.unwrap() {
-            let v: &str = row.column(0).unwrap();
-            assert_eq!(v, "A");
+        while let Some(row) = iterator.next().await.unwrap() {
             let v: String = row.column(0).unwrap();
             assert_eq!(v, "A");
             let v: OffsetDateTime = row.column(1).unwrap();
@@ -525,7 +640,7 @@ mod tests {
             assert_eq!(v, time::macros::date!(2023 - 09 - 01));
             let v: Time = row.column(5).unwrap();
             assert_eq!(v, time::macros::time!(15:30:01));
-            let v: Option<&str> = row.column(6).unwrap();
+            let v: Option<String> = row.column(6).unwrap();
             assert!(v.is_none());
             let v: Option<OffsetDateTime> = row.column(6).unwrap();
             assert!(v.is_none());
@@ -548,7 +663,7 @@ mod tests {
             let v: Option<Vec<u8>> = row.column(6).unwrap();
             assert!(v.is_none());
 
-            let v: Vec<&str> = row.column(7).unwrap();
+            let v: Vec<String> = row.column(7).unwrap();
             assert_eq!(v, vec!["A", "B"]);
             let v: Vec<OffsetDateTime> = row.column(8).unwrap();
             assert_eq!(v[0].unix_timestamp_nanos(), 1230219000000019000);
@@ -561,8 +676,11 @@ mod tests {
             assert_eq!(v[0], time::macros::date!(2023 - 09 - 01));
             assert_eq!(v[1], time::macros::date!(2023 - 09 - 02));
             let v: Vec<Time> = row.column(12).unwrap();
-            assert_eq!(v[0], time::macros::time!(15:30:01));
-            assert_eq!(v[1], time::macros::time!(15:30:02));
+            let mut tm = time::macros::time!(15:30:01);
+            tm.add_assign(Duration::from_micros(10));
+            assert_eq!(v[0], tm);
+            assert_eq!(v[1], time::macros::time!(0:0:0));
+            assert_eq!(v[2], time::macros::time!(23:59:59));
 
             let v: Vec<u8> = row.column(13).unwrap();
             assert_eq!(v, b"test");
@@ -602,21 +720,32 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_query_table() {
+    async fn test_query_table_from_storage() {
+        test_query_table(None, QueryOption::default().with_enable_storage_read(true)).await
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_query_table_from_rest() {
+        test_query_table(Some(1), QueryOption::default()).await
+    }
+
+    async fn test_query_table(max_results: Option<i64>, option: QueryOption) {
         let (client, project_id) = create_client().await;
         let mut data_as_row: Vec<TestData> = vec![];
         let mut iterator_as_row = client
-            .query(
+            .query_with_option::<query::row::Row>(
                 &project_id,
                 QueryRequest {
-                    max_results: Some(1),
+                    max_results,
                     query: "SELECT * FROM rust_test_job.table_data_1686707863".to_string(),
                     ..Default::default()
                 },
+                option.clone(),
             )
             .await
             .unwrap();
-        while let Some(row) = iterator_as_row.next::<query::row::Row>().await.unwrap() {
+        while let Some(row) = iterator_as_row.next().await.unwrap() {
             data_as_row.push(TestData {
                 col_string: row.column(0).unwrap(),
                 col_number: row.column(1).unwrap(),
@@ -631,16 +760,17 @@ mod tests {
         }
         let mut data_as_struct: Vec<TestData> = vec![];
         let mut iterator_as_struct = client
-            .query(
+            .query_with_option::<TestData>(
                 &project_id,
                 QueryRequest {
                     query: "SELECT * FROM rust_test_job.table_data_1686707863".to_string(),
                     ..Default::default()
                 },
+                option,
             )
             .await
             .unwrap();
-        while let Some(row) = iterator_as_struct.next::<TestData>().await.unwrap() {
+        while let Some(row) = iterator_as_struct.next().await.unwrap() {
             data_as_struct.push(row);
         }
         assert_eq!(iterator_as_struct.total_size, 3);
@@ -674,7 +804,10 @@ mod tests {
             }),
             ..Default::default()
         };
-        let mut iterator_as_row = client.read_table::<Row>(&table, Some(option)).await.unwrap();
+        let mut iterator_as_row = client
+            .read_table::<crate::storage::row::Row>(&table, Some(option))
+            .await
+            .unwrap();
         let mut data_as_row: Vec<TestData> = vec![];
         let mut data_as_struct: Vec<TestData> = vec![];
         let mut finish1 = false;
@@ -683,10 +816,10 @@ mod tests {
             tokio::select! {
                 row = iterator_as_struct.next() => {
                     if let Some(row) = row.unwrap() {
-                    tracing::info!("read struct some");
+                        tracing::info!("read struct some");
                         data_as_struct.push(row);
                     }else {
-                    tracing::info!("read struct none");
+                        tracing::info!("read struct none");
                         finish1 = true;
                         if finish1 && finish2 {
                             break;
@@ -728,23 +861,34 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_query_job_incomplete() {
+    async fn test_query_job_incomplete_from_storage() {
+        test_query_job_incomplete(None, QueryOption::default().with_enable_storage_read(true)).await
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_query_job_incomplete_from_rest() {
+        test_query_job_incomplete(Some(4999), QueryOption::default()).await
+    }
+
+    async fn test_query_job_incomplete(max_results: Option<i64>, option: QueryOption) {
         let (client, project_id) = create_client().await;
         let mut data: Vec<TestData> = vec![];
         let mut iter = client
-            .query(
+            .query_with_option::<TestData>(
                 &project_id,
                 QueryRequest {
                     timeout_ms: Some(5), // pass wait_for_query
                     use_query_cache: Some(false),
-                    max_results: Some(4999),
+                    max_results,
                     query: "SELECT * FROM rust_test_job.table_data_10000v2".to_string(),
                     ..Default::default()
                 },
+                option,
             )
             .await
             .unwrap();
-        while let Some(row) = iter.next::<TestData>().await.unwrap() {
+        while let Some(row) = iter.next().await.unwrap() {
             data.push(row);
         }
         assert_eq!(iter.total_size, 10000);

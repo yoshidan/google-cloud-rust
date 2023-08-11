@@ -16,6 +16,7 @@ pub mod dataset;
 pub mod error;
 pub mod job;
 pub mod model;
+pub mod query;
 pub mod routine;
 pub mod row_access_policy;
 pub mod table;

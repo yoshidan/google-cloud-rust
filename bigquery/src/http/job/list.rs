@@ -47,7 +47,7 @@ pub struct JobOverview {
     /// A result object that will be present only if the job has failed.
     pub error_result: Option<ErrorProto>,
     /// Output only. Information about the job, including starting time and ending time of the job.
-    pub statistics: JobStatistics,
+    pub statistics: Option<JobStatistics>,
     /// Required. Describes the job configuration.
     pub configuration: JobConfiguration,
     /// [Full-projection-only] Describes the status of this job.
