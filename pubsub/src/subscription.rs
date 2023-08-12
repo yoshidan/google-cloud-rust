@@ -348,15 +348,7 @@ impl Subscription {
 
         // spawn a separate subscriber task for each connection in the pool
         for _ in 0..self.pool_size() {
-            let cancel = cancel.clone();
-            let fqsn = self.fqsn.clone();
-            let subc = self.subc.clone();
-            let tx = tx.clone();
-            let opt = opt.clone();
-
-            tokio::spawn(async move {
-                Subscriber::start(cancel, fqsn, subc, tx, opt);
-            });
+            Subscriber::start(cancel.clone(), self.fqsn.clone(), self.subc.clone(), tx.clone(), opt.clone());
         }
 
         Ok(MessageStream { queue: rx, cancel })
