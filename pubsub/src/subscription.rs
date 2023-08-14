@@ -1,4 +1,3 @@
-use std::cmp::min;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
@@ -80,19 +79,10 @@ pub struct SubscriptionConfigToUpdate {
     pub retry_policy: Option<RetryPolicy>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SubscribeConfig {
     enable_multiple_subscriber: bool,
     subscriber_config: SubscriberConfig,
-}
-
-impl Default for SubscribeConfig {
-    fn default() -> Self {
-        Self {
-            enable_multiple_subscriber: false,
-            subscriber_config: SubscriberConfig::default(),
-        }
-    }
 }
 
 impl SubscribeConfig {
@@ -105,7 +95,6 @@ impl SubscribeConfig {
         self
     }
 }
-
 
 #[derive(Debug, Clone)]
 pub struct ReceiveConfig {
@@ -389,11 +378,17 @@ impl Subscription {
         let opt = opt.unwrap_or_default();
         let subscribers = if opt.enable_multiple_subscriber {
             self.pool_size()
-        }else {
-           1
+        } else {
+            1
         };
         for _ in 0..subscribers {
-            Subscriber::start(cancel.clone(), self.fqsn.clone(), self.subc.clone(), tx.clone(), Some(opt.subscriber_config.clone()));
+            Subscriber::start(
+                cancel.clone(),
+                self.fqsn.clone(),
+                self.subc.clone(),
+                tx.clone(),
+                Some(opt.subscriber_config.clone()),
+            );
         }
 
         Ok(MessageStream { queue: rx, cancel })
