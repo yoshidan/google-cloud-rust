@@ -401,7 +401,7 @@ pub enum TableFieldType {
     Bool,
     Bigdecimal,
     Int64,
-    Flaat64,
+    Float64,
     Struct,
 }
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
