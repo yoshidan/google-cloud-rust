@@ -230,7 +230,6 @@ deny = [
 
 # Certain crates/versions that will be skipped when doing duplicate detection.
 skip = [
-    { name = "base64", version = "0.13" },
     { name = "regex-syntax", version = "=0.6.29" },
     { name = "regex-automata", version = "=0.1.10" },
 ]
