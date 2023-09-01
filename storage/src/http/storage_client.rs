@@ -1036,15 +1036,13 @@ impl StorageClient {
                 let builder = objects::upload::build(self.v1_upload_endpoint.as_str(), &self.http, req, media, data);
                 let builder = self.with_headers(builder).await?;
                 let mut request = builder.build()?;
-                // In the case of 0 bytes, Content-Length=0 must be explicitly specified.
+                // In the case of not streamed and 0 bytes, Content-Length=0 must be explicitly specified.
                 if !request.headers().contains_key(CONTENT_LENGTH) {
-                    if let Some(body) = request.body() {
-                        if let Some(ref_bytes) = body.as_bytes() {
-                            if ref_bytes.is_empty() {
-                                request
-                                    .headers_mut()
-                                    .insert(CONTENT_LENGTH, HeaderValue::from_static("0"));
-                            }
+                    if let Some(Some(is_empty)) = request.body().map(|b| b.as_bytes().map(|b| b.is_empty())) {
+                        if is_empty {
+                            request
+                                .headers_mut()
+                                .insert(CONTENT_LENGTH, HeaderValue::from_static("0"));
                         }
                     }
                 }
@@ -1971,11 +1969,10 @@ mod test {
 
         // let stream= reqwest::Client::default().get("https://avatars.githubusercontent.com/u/958174?s=96&v=4").send().await.unwrap().bytes_stream();
         let source = vec!["hello", " ", "world"];
-        let size = source.iter().map(|x| x.len() as u64).sum();
+        let size: u64 = source.iter().map(|x| x.len() as u64).sum();
         let chunks: Vec<Result<_, ::std::io::Error>> = source.clone().into_iter().map(Ok).collect();
         let stream = futures_util::stream::iter(chunks);
         let mut media = Media::new(file_name);
-        media.content_length = Some(size);
         let upload_type = UploadType::Simple(media);
         let uploaded = client
             .upload_streamed_object(
