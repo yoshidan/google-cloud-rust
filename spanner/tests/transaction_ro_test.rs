@@ -1,8 +1,9 @@
 use bigdecimal::BigDecimal;
 use std::collections::HashMap;
+use std::ops::Add;
 
 use serial_test::serial;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 
 use common::*;
 use google_cloud_spanner::key::Key;
@@ -92,7 +93,10 @@ async fn test_complex_query() {
         .apply(vec![
             create_user_mutation(user_id_1, &now),
             create_user_item_mutation(user_id_1, 1),
+            create_user_item_history_mutation(user_id_1, 1, &now),
             create_user_item_mutation(user_id_1, 2),
+            create_user_item_history_mutation(user_id_1, 2, &now.add(Duration::seconds(-1))),
+            create_user_item_history_mutation(user_id_1, 2, &now),
             create_user_character_mutation(user_id_1, 10),
             create_user_character_mutation(user_id_1, 20),
         ])
@@ -102,7 +106,13 @@ async fn test_complex_query() {
     let mut tx = data_client.read_only_transaction().await.unwrap();
     let mut stmt = Statement::new(
         "SELECT *,
-        ARRAY(SELECT AS STRUCT * FROM UserItem WHERE UserId = p.UserId ORDER BY ItemID) as UserItem,
+        ARRAY(
+            SELECT AS STRUCT
+                *,
+                ARRAY(SELECT AS STRUCT * FROM UserItemHistory uih WHERE ui.UserId = uih.UserID AND ui.ItemId = uih.ItemId ORDER BY uih.UsedAt) as UserItemHistory
+            FROM UserItem ui WHERE ui.UserId = p.UserId
+            ORDER BY ui.ItemID
+        ) as UserItem,
         ARRAY(SELECT AS STRUCT * FROM UserCharacter WHERE UserId = p.UserId ORDER BY CharacterID) as UserCharacter,
         FROM User p WHERE UserId = @UserId;
     ",
@@ -120,16 +130,30 @@ async fn test_complex_query() {
         .unwrap();
     assert_user_row(&row, user_id_1, &now, &ts);
 
-    let mut user_items = row.column_by_name::<Vec<UserItem>>("UserItem").unwrap();
+    let mut user_items = row.column_by_name::<Vec<UserItemWithHistory>>("UserItem").unwrap();
     let first_item = user_items.pop().unwrap();
     assert_eq!(first_item.user_id, user_id_1);
     assert_eq!(first_item.item_id, 2);
     assert_eq!(first_item.quantity, 100);
+    assert_eq!(first_item.user_item_history.len(), 2);
     assert_ne!(OffsetDateTime::from(first_item.updated_at).to_string(), now.to_string());
+    assert_eq!(first_item.user_item_history[0].user_id, user_id_1);
+    assert_eq!(first_item.user_item_history[0].item_id, first_item.item_id);
+    assert_ne!(
+        &(first_item.user_item_history[0].used_at).to_string(),
+        &(first_item.user_item_history[1].used_at).to_string()
+    );
+    assert_eq!(first_item.user_item_history[1].user_id, user_id_1);
+    assert_eq!(first_item.user_item_history[1].item_id, first_item.item_id);
+    assert_eq!(&(first_item.user_item_history[1].used_at).to_string(), &now.to_string());
     let second_item = user_items.pop().unwrap();
     assert_eq!(second_item.user_id, user_id_1);
     assert_eq!(second_item.item_id, 1);
     assert_eq!(second_item.quantity, 100);
+    assert_eq!(second_item.user_item_history.len(), 1);
+    assert_eq!(second_item.user_item_history[0].user_id, user_id_1);
+    assert_eq!(second_item.user_item_history[0].item_id, second_item.item_id);
+    assert_eq!(&(second_item.user_item_history[0].used_at).to_string(), &now.to_string());
     assert_ne!(OffsetDateTime::from(second_item.updated_at).to_string(), now.to_string());
     assert!(user_items.is_empty());
 

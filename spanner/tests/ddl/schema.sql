@@ -29,6 +29,13 @@ CREATE TABLE UserItem
     UpdatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true)
 ) PRIMARY KEY(UserId, ItemId), INTERLEAVE IN PARENT User ON DELETE CASCADE;
 
+CREATE TABLE UserItemHistory
+(
+    UserId STRING(36) NOT NULL,
+    ItemId INT64 NOT NULL,
+    UsedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY(UserId, ItemId, UsedAt), INTERLEAVE IN PARENT UserItem ON DELETE CASCADE;
+
 CREATE TABLE UserCharacter
 (
     UserId STRING(36) NOT NULL,
