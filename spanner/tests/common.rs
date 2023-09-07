@@ -54,6 +54,42 @@ impl TryFromStruct for UserItem {
     }
 }
 
+pub struct UserItemWithHistory {
+    pub user_id: String,
+    pub item_id: i64,
+    pub quantity: i64,
+    pub updated_at: CommitTimestamp,
+    pub user_item_history: Vec<UserItemHistory>,
+}
+
+impl TryFromStruct for UserItemWithHistory {
+    fn try_from_struct(s: Struct<'_>) -> Result<Self, RowError> {
+        Ok(UserItemWithHistory {
+            user_id: s.column_by_name("UserId")?,
+            item_id: s.column_by_name("ItemId")?,
+            quantity: s.column_by_name("Quantity")?,
+            updated_at: s.column_by_name("UpdatedAt")?,
+            user_item_history: s.column_by_name("UserItemHistory")?,
+        })
+    }
+}
+
+pub struct UserItemHistory {
+    pub user_id: String,
+    pub item_id: i64,
+    pub used_at: CommitTimestamp,
+}
+
+impl TryFromStruct for UserItemHistory {
+    fn try_from_struct(s: Struct<'_>) -> Result<Self, RowError> {
+        Ok(UserItemHistory {
+            user_id: s.column_by_name("UserId")?,
+            item_id: s.column_by_name("ItemId")?,
+            used_at: s.column_by_name("UsedAt")?,
+        })
+    }
+}
+
 #[allow(dead_code)]
 pub fn user_columns() -> Vec<&'static str> {
     vec![
@@ -136,6 +172,15 @@ pub fn create_user_item_mutation(user_id: &str, item_id: i64) -> Mutation {
         "UserItem",
         &["UserId", "ItemId", "Quantity", "UpdatedAt"],
         &[&user_id, &item_id, &100, &CommitTimestamp::new()],
+    )
+}
+
+#[allow(dead_code)]
+pub fn create_user_item_history_mutation(user_id: &str, item_id: i64, used_at: &OffsetDateTime) -> Mutation {
+    insert_or_update(
+        "UserItemHistory",
+        &["UserId", "ItemId", "UsedAt"],
+        &[&user_id, &item_id, used_at],
     )
 }
 
