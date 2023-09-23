@@ -2,6 +2,7 @@ use std::fmt::Debug;
 use std::time::Duration;
 
 use async_trait::async_trait;
+use jsonwebtoken;
 use serde::Deserialize;
 
 use crate::error::Error;
@@ -29,23 +30,51 @@ pub(crate) fn default_http_client() -> reqwest::Client {
         .unwrap()
 }
 
-#[allow(dead_code)]
 #[derive(Clone, Deserialize)]
 struct InternalToken {
     pub access_token: String,
     pub token_type: String,
     pub expires_in: Option<i64>,
-    pub id_token: Option<String>,
 }
 
 impl InternalToken {
     fn to_token(&self, now: time::OffsetDateTime) -> Token {
-        //TODO support use ID token
         Token {
             access_token: self.access_token.clone(),
             token_type: self.token_type.clone(),
             expiry: self.expires_in.map(|s| now + time::Duration::seconds(s)),
         }
+    }
+}
+
+#[derive(Clone, Deserialize)]
+struct InternalIdToken {
+    pub id_token: String,
+}
+
+#[derive(Deserialize)]
+struct ExpClaim {
+    exp: i64,
+}
+
+impl InternalIdToken {
+    fn to_token(&self) -> Result<Token, Error> {
+        Ok(Token {
+            access_token: self.id_token.clone(),
+            token_type: "Bearer".into(),
+            expiry: time::OffsetDateTime::from_unix_timestamp(self.get_exp()?).ok(),
+        })
+    }
+
+    fn get_exp(&self) -> Result<i64, Error> {
+        let mut validation = jsonwebtoken::Validation::default();
+        validation.insecure_disable_signature_validation();
+        let decoding_key = jsonwebtoken::DecodingKey::from_secret(b"");
+        Ok(
+            jsonwebtoken::decode::<ExpClaim>(self.id_token.as_str(), &decoding_key, &validation)?
+                .claims
+                .exp,
+        )
     }
 }
 

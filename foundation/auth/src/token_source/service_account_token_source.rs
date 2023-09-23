@@ -9,7 +9,7 @@ use crate::credentials;
 use crate::error::Error;
 use crate::misc::UnwrapOrEmpty;
 use crate::token::{Token, TOKEN_URL};
-use crate::token_source::{default_http_client, InternalToken, TokenSource};
+use crate::token_source::{default_http_client, InternalIdToken, InternalToken, TokenSource};
 
 #[derive(Clone, Serialize)]
 struct Claims<'a> {
@@ -192,23 +192,25 @@ impl TokenSource for OAuth2ServiceAccountTokenSource {
             ("assertion", request_token.as_str()),
         ];
 
-        let it = self
-            .client
-            .post(self.token_url.as_str())
-            .form(&form)
-            .send()
-            .await?
-            .json::<InternalToken>()
-            .await?;
-
-        Ok(if self.use_id_token {
-            let mut token = it.to_token(iat);
-            token.access_token = it
-                .id_token
-                .ok_or_else(|| Error::DeserializeError("ID token missing from response".into()))?;
-            token
-        } else {
-            it.to_token(iat)
-        })
+        match self.use_id_token {
+            true => Ok(self
+                .client
+                .post(self.token_url.as_str())
+                .form(&form)
+                .send()
+                .await?
+                .json::<InternalIdToken>()
+                .await?
+                .to_token()?),
+            false => Ok(self
+                .client
+                .post(self.token_url.as_str())
+                .form(&form)
+                .send()
+                .await?
+                .json::<InternalToken>()
+                .await?
+                .to_token(iat)),
+        }
     }
 }

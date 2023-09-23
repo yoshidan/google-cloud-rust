@@ -25,6 +25,10 @@ impl std::fmt::Debug for IdTokenSourceConfig {
 }
 
 impl IdTokenSourceConfig {
+    pub fn new() -> IdTokenSourceConfig {
+        IdTokenSourceConfig::default()
+    }
+
     pub fn with_credentials(mut self, creds: CredentialsFile) -> Self {
         self.credentials = creds.into();
         self
