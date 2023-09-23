@@ -23,6 +23,7 @@ pub struct ExecutableConfig {
 #[allow(dead_code)]
 #[derive(Deserialize, Clone)]
 pub struct Format {
+    #[serde(rename(deserialize = "type"))]
     pub(crate) tp: String,
     pub(crate) subject_token_field_name: String,
 }
