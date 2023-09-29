@@ -20,7 +20,7 @@ tracing = "0.1"
 reqwest = { version = "0.11", features = ["json", "stream", "multipart"], default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version="1.20", features=["macros"] }
+tokio = { version="1.32", features=["macros"] }
 time = { version = "0.3", features = ["std", "macros", "formatting", "parsing", "serde"] }
 arrow = { version="44.0", default-features = false, features = ["ipc"] }
 base64 = "0.21"
@@ -31,10 +31,10 @@ backon = "0.4"
 google-cloud-auth = { optional = true, version = "0.12", path="../foundation/auth", default-features=false }
 
 [dev-dependencies]
-tokio = { version="1.20", features=["rt-multi-thread"] }
+tokio = { version="1.32", features=["rt-multi-thread"] }
 serial_test = "0.9"
-tracing-subscriber = "0.3.11"
-ctor = "0.1.22"
+tracing-subscriber = "0.3.17"
+ctor = "0.1.26"
 tokio-util =  {version ="0.7", features = ["codec"] }
 google-cloud-auth = { path = "../foundation/auth", default-features=false }
 base64-serde = "0.7"

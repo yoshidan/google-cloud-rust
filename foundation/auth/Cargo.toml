@@ -19,7 +19,7 @@ thiserror = "1.0"
 async-trait = "0.1"
 home = "0.5"
 urlencoding = "2.1"
-tokio = { version = "1.20", features = ["fs"]}
+tokio = { version = "1.32", features = ["fs"]}
 google-cloud-metadata = { version = "0.3.2", path = "../metadata" }
 google-cloud-token = { version = "0.1.1", path = "../token" }
 base64 = "0.21"
@@ -33,7 +33,7 @@ hmac = { version = "0.12", optional = true }
 hex = { version = "0.4", optional = true }
 
 [dev-dependencies]
-tokio = { version = "1.20", features = ["test-util", "rt-multi-thread", "macros"]}
+tokio = { version = "1.32", features = ["test-util", "rt-multi-thread", "macros"]}
 tracing-subscriber = {version="0.3", features=["env-filter","std"]}
 ctor = "0.1"
 serial_test = "0.9"
