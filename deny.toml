@@ -230,14 +230,13 @@ deny = [
 
 # Certain crates/versions that will be skipped when doing duplicate detection.
 skip = [
-    { name = "regex-syntax", version = "=0.6.29" },
-    { name = "regex-automata", version = "=0.1.10" },
 ]
 # Similarly to `skip` allows you to skip certain crates during duplicate
 # detection. Unlike skip, it also includes the entire tree of transitive
 # dependencies starting at the specified crate, up to a certain depth, which is
 # by default infinite.
 skip-tree = [
+    { name = "regex-automata" },
     { name = "windows-sys" },
     { name = "reqwest" },
 ]

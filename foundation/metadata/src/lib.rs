@@ -45,8 +45,7 @@ async fn test_on_gce() -> Result<bool, Error> {
     let url = format!("http://{METADATA_IP}");
 
     let response = client.get(&url).send().await;
-    if response.is_ok() {
-        let response = response.unwrap();
+    if let Ok(response) = response {
         if response.status().is_success() {
             let on_gce = match response.headers().get(METADATA_FLAVOR_KEY) {
                 None => false,
