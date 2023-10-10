@@ -80,7 +80,7 @@ impl Publisher {
     pub(crate) fn new(fqtn: String, pubc: PublisherClient, config: Option<PublisherConfig>) -> Self {
         let config = config.unwrap_or_default();
         let (sender, receiver) = async_channel::unbounded::<Reserved>();
-        let mut receivers = Vec::with_capacity(1 + config.workers);
+        let mut receivers = Vec::with_capacity(config.workers * 2);
         let mut ordering_senders = Vec::with_capacity(config.workers);
 
         // for non-ordering key message
