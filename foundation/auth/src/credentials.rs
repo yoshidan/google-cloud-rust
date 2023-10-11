@@ -7,13 +7,15 @@ use crate::error::Error;
 const CREDENTIALS_FILE: &str = "application_default_credentials.json";
 
 #[allow(dead_code)]
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, PartialEq)]
+#[cfg_attr(test, derive(Debug))]
 pub struct ServiceAccountImpersonationInfo {
     pub(crate) token_lifetime_seconds: i32,
 }
 
 #[allow(dead_code)]
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, PartialEq)]
+#[cfg_attr(test, derive(Debug))]
 pub struct ExecutableConfig {
     pub(crate) command: String,
     pub(crate) timeout_millis: Option<i32>,
@@ -21,7 +23,8 @@ pub struct ExecutableConfig {
 }
 
 #[allow(dead_code)]
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, PartialEq)]
+#[cfg_attr(test, derive(Debug))]
 pub struct Format {
     #[serde(rename(deserialize = "type"))]
     pub(crate) tp: String,
@@ -29,7 +32,8 @@ pub struct Format {
 }
 
 #[allow(dead_code)]
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, PartialEq)]
+#[cfg_attr(test, derive(Debug))]
 pub struct CredentialSource {
     pub(crate) file: Option<String>,
 
@@ -47,7 +51,8 @@ pub struct CredentialSource {
 }
 
 #[allow(dead_code)]
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, PartialEq)]
+#[cfg_attr(test, derive(Debug))]
 pub struct CredentialsFile {
     #[serde(rename(deserialize = "type"))]
     pub tp: String,
@@ -98,6 +103,10 @@ impl CredentialsFile {
         Ok(serde_json::from_slice(credentials_json.as_slice())?)
     }
 
+    pub async fn new_from_str(str: &str) -> Result<Self, Error> {
+        Ok(serde_json::from_str(str)?)
+    }
+
     async fn json_from_env() -> Result<Vec<u8>, ()> {
         let credentials = std::env::var("GOOGLE_APPLICATION_CREDENTIALS_JSON")
             .map_err(|_| ())
@@ -139,5 +148,150 @@ impl CredentialsFile {
             Some(key) => Ok(jsonwebtoken::EncodingKey::from_rsa_pem(key.as_bytes())?),
             None => Err(Error::NoPrivateKeyFound),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::File;
+    use std::io::Write;
+    use tempfile::tempdir;
+
+    const CREDENTIALS_FILE_CONTENT: &str = r#"{
+  "type": "service_account",
+  "project_id": "fake_project_id",
+  "private_key_id": "fake_private_key_id",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nfake_private_key\n-----END PRIVATE KEY-----\n",
+  "client_email": "fake@fake_project_id.iam.gserviceaccount.com",
+  "client_id": "123456789010111213141516171819",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/fake%40fake_project_id.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}"#;
+
+    #[tokio::test]
+    async fn test_credentials_file_new_from_file() {
+        // setup:
+        let temp_credentials_dir = tempdir().expect("Cannot create temporary directory");
+        let temp_credentials_path = temp_credentials_dir.path().join(CREDENTIALS_FILE);
+        let mut credentials_file = File::create(&temp_credentials_path).expect("Cannot create temporary file");
+        credentials_file
+            .write_all(CREDENTIALS_FILE_CONTENT.as_bytes())
+            .expect("Cannot write content to file");
+
+        // execute:
+        let credentials_file_result =
+            CredentialsFile::new_from_file(temp_credentials_path.to_string_lossy().to_string()).await;
+
+        // verify:
+        let expected_credentials_file: CredentialsFile =
+            serde_json::from_str(CREDENTIALS_FILE_CONTENT).expect("Credentials file JSON deserialization not working");
+        match credentials_file_result {
+            Err(_) => panic!(),
+            Ok(cf) => assert_eq!(expected_credentials_file, cf),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_credentials_file_new_from_str() {
+        // execute:
+        let credentials_file_result = CredentialsFile::new_from_str(CREDENTIALS_FILE_CONTENT).await;
+
+        // verify:
+        let expected_credentials_file: CredentialsFile =
+            serde_json::from_str(CREDENTIALS_FILE_CONTENT).expect("Credentials file JSON deserialization not working");
+        match credentials_file_result {
+            Err(_) => panic!(),
+            Ok(cf) => assert_eq!(expected_credentials_file, cf),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_credentials_file_new_from_env_var_json() {
+        // setup:
+        temp_env::async_with_vars(
+            [
+                ("GOOGLE_APPLICATION_CREDENTIALS_JSON", Some(CREDENTIALS_FILE_CONTENT)),
+                ("GOOGLE_APPLICATION_CREDENTIALS", None), // make sure file env is not interfering
+            ],
+            async {
+                // execute:
+                let credentials_file_result = CredentialsFile::new().await;
+
+                // verify:
+                let expected_credentials_file: CredentialsFile = serde_json::from_str(CREDENTIALS_FILE_CONTENT)
+                    .expect("Credentials file JSON deserialization not working");
+                match credentials_file_result {
+                    Err(_) => panic!(),
+                    Ok(cf) => assert_eq!(expected_credentials_file, cf),
+                }
+            },
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_credentials_file_new_from_env_var_json_base_64_encoded() {
+        // setup:
+        temp_env::async_with_vars(
+            [
+                (
+                    "GOOGLE_APPLICATION_CREDENTIALS_JSON",
+                    Some(base64::engine::general_purpose::STANDARD.encode(CREDENTIALS_FILE_CONTENT)),
+                ),
+                ("GOOGLE_APPLICATION_CREDENTIALS", None), // make sure file env is not interfering
+            ],
+            async {
+                // execute:
+                let credentials_file_result = CredentialsFile::new().await;
+
+                // verify:
+                let expected_credentials_file: CredentialsFile = serde_json::from_str(CREDENTIALS_FILE_CONTENT)
+                    .expect("Credentials file JSON deserialization not working");
+                match credentials_file_result {
+                    Err(_) => panic!(),
+                    Ok(cf) => assert_eq!(expected_credentials_file, cf),
+                }
+            },
+        )
+        .await
+    }
+
+    #[tokio::test]
+    async fn test_credentials_file_new_env_var_file() {
+        // setup:
+        let temp_credentials_dir = tempdir().expect("Cannot create temporary directory");
+        let temp_credentials_path = temp_credentials_dir.path().join(CREDENTIALS_FILE);
+        let mut credentials_file = File::create(&temp_credentials_path).expect("Cannot create temporary file");
+
+        temp_env::async_with_vars(
+            [
+                (
+                    "GOOGLE_APPLICATION_CREDENTIALS",
+                    Some(temp_credentials_path.to_string_lossy().to_string()),
+                ),
+                ("GOOGLE_APPLICATION_CREDENTIALS_JSON", None), // make sure file env is not interfering
+            ],
+            async {
+                credentials_file
+                    .write_all(CREDENTIALS_FILE_CONTENT.as_bytes())
+                    .expect("Cannot write content to file");
+
+                // execute:
+                let credentials_file_result = CredentialsFile::new().await;
+
+                // verify:
+                let expected_credentials_file: CredentialsFile = serde_json::from_str(CREDENTIALS_FILE_CONTENT)
+                    .expect("Credentials file JSON deserialization not working");
+                match credentials_file_result {
+                    Err(_) => panic!(),
+                    Ok(cf) => assert_eq!(expected_credentials_file, cf),
+                }
+            },
+        )
+        .await
     }
 }
