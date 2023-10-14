@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-metadata"
-version = "0.3.2"
+version = "0.3.3"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/foundation/metadata"

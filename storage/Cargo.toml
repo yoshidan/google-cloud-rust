@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-storage"
-version = "0.13.1"
+version = "0.13.2"
 edition = "2021"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/storage"
@@ -33,7 +33,7 @@ futures-util = "0.3"
 bytes = "1.5"
 
 google-cloud-metadata = { optional = true, version = "0.3", path = "../foundation/metadata" }
-google-cloud-auth = { optional = true, version = "0.12", path="../foundation/auth", default-features=false }
+google-cloud-auth = { optional = true, version = "0.13", path="../foundation/auth", default-features=false }
 
 [dev-dependencies]
 tokio = { version="1.32", features=["rt-multi-thread"] }
