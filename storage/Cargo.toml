@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-storage"
-version = "0.13.2"
+version = "0.14.0"
 edition = "2021"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/storage"
@@ -32,7 +32,7 @@ percent-encoding = "2.3"
 futures-util = "0.3"
 bytes = "1.5"
 
-google-cloud-metadata = { optional = true, version = "0.3", path = "../foundation/metadata" }
+google-cloud-metadata = { optional = true, version = "0.4", path = "../foundation/metadata" }
 google-cloud-auth = { optional = true, version = "0.13", path="../foundation/auth", default-features=false }
 
 [dev-dependencies]
