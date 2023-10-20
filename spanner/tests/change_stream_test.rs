@@ -1,3 +1,4 @@
+use std::env;
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -155,7 +156,14 @@ async fn query_change_record(tx: &mut ReadOnlyTransaction, now: OffsetDateTime, 
 #[serial]
 async fn test_read_change_stream() {
     // Create Change Stream
-    let db = "projects/atl-dev1/instances/test-instance/databases/local-database";
+    let project = match env::var("CHANGE_STREAM_DB") {
+        Ok(v) => v,
+        Err(_) => {
+            tracing::warn!("No project was found: test change stream");
+            return;
+        }
+    };
+    let db = format!("projects/{}/instances/test-instance/databases/local-database", project);
     let admin_client = admin::client::Client::new(AdminClientConfig {
         environment: create_environment().await,
     })
@@ -182,7 +190,7 @@ async fn test_read_change_stream() {
         environment: create_environment().await,
         ..Default::default()
     };
-    let client = Client::new(db, config).await.unwrap();
+    let client = Client::new(db.clone(), config).await.unwrap();
     let mut tx = client.single().await.unwrap();
     let mut row = query_change_record(&mut tx, now, None).await;
     let mut tasks = vec![];

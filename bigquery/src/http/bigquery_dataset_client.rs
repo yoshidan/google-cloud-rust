@@ -73,16 +73,11 @@ mod test {
 
     use serial_test::serial;
 
-    use crate::http::bigquery_client::test::create_client;
+    use crate::http::bigquery_client::test::{create_client, dataset_name};
     use crate::http::bigquery_dataset_client::BigqueryDatasetClient;
     use crate::http::dataset::list::ListDatasetsRequest;
     use crate::http::dataset::{Access, Dataset, DatasetReference, SpecialGroup, StorageBillingModel};
     use crate::http::types::{Collation, EncryptionConfiguration};
-
-    #[ctor::ctor]
-    fn init() {
-        let _ = tracing_subscriber::fmt::try_init();
-    }
 
     #[tokio::test]
     #[serial]
@@ -90,18 +85,12 @@ mod test {
         let (client, project) = create_client().await;
         let client = BigqueryDatasetClient::new(Arc::new(client));
 
-        // minimum dataset
-        let mut ds1 = Dataset::default();
-        ds1.dataset_reference.dataset_id = "rust_test_empty".to_string();
-        ds1.dataset_reference.project_id = project.clone();
-        ds1 = client.create(&ds1).await.unwrap();
-
         // full prop dataset
         let mut labels = HashMap::new();
         labels.insert("key".to_string(), "value".to_string());
         let ds2 = Dataset {
             dataset_reference: DatasetReference {
-                dataset_id: "rust_test_full".to_string(),
+                dataset_id: dataset_name("crud_full"),
                 project_id: project.to_string(),
             },
             friendly_name: Some("gcr_test_friendly_name".to_string()),
@@ -128,6 +117,12 @@ mod test {
             ..Default::default()
         };
         let ds2 = client.create(&ds2).await.unwrap();
+
+        // minimum dataset
+        let mut ds1 = Dataset::default();
+        ds1.dataset_reference.dataset_id = dataset_name("crud_empty");
+        ds1.dataset_reference.project_id = project.clone();
+        ds1 = client.create(&ds1).await.unwrap();
 
         // test get
         let mut res1 = client

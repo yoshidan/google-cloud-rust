@@ -83,7 +83,7 @@ mod test {
     use serial_test::serial;
     use time::OffsetDateTime;
 
-    use crate::http::bigquery_client::test::{create_client, create_table_schema, TestData};
+    use crate::http::bigquery_client::test::{create_client, create_table_schema, dataset_name, TestData};
     use crate::http::bigquery_table_client::BigqueryTableClient;
     use crate::http::bigquery_tabledata_client::BigqueryTabledataClient;
     use crate::http::table::Table;
@@ -91,20 +91,16 @@ mod test {
     use crate::http::tabledata::list;
     use crate::http::tabledata::list::FetchDataRequest;
 
-    #[ctor::ctor]
-    fn init() {
-        let _ = tracing_subscriber::fmt::try_init();
-    }
-
     #[tokio::test]
     #[serial]
     pub async fn table_data() {
+        let dataset = dataset_name("table");
         let (client, project) = create_client().await;
         let client = Arc::new(client);
         let table_client = BigqueryTableClient::new(client.clone());
         let client = BigqueryTabledataClient::new(client.clone());
         let mut table1 = Table::default();
-        table1.table_reference.dataset_id = "rust_test_table".to_string();
+        table1.table_reference.dataset_id = dataset.to_string();
         table1.table_reference.project_id = project.to_string();
         table1.table_reference.table_id = format!("table_data_{}", OffsetDateTime::now_utc().unix_timestamp());
         table1.schema = Some(create_table_schema());

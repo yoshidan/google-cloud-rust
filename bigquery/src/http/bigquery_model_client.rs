@@ -74,23 +74,19 @@ mod test {
     use serial_test::serial;
     use time::OffsetDateTime;
 
-    use crate::http::bigquery_client::test::create_client;
+    use crate::http::bigquery_client::test::{create_client, dataset_name};
     use crate::http::bigquery_job_client::BigqueryJobClient;
     use crate::http::bigquery_model_client::BigqueryModelClient;
     use crate::http::job::get::GetJobRequest;
     use crate::http::job::query::QueryRequest;
-    use crate::http::job::{Job, JobConfiguration, JobConfigurationQuery, JobState, JobType};
+    use crate::http::job::{Job, JobConfiguration, JobConfigurationQuery, JobState, JobType, TrainingType};
     use crate::http::model::list::ListModelsRequest;
     use crate::http::model::ModelType;
-
-    #[ctor::ctor]
-    fn init() {
-        let _ = tracing_subscriber::fmt::try_init();
-    }
 
     #[tokio::test]
     #[serial]
     pub async fn crud_model() {
+        let dataset = dataset_name("model");
         let (client, project) = create_client().await;
         let job_client = BigqueryJobClient::new(Arc::new(client.clone()));
         let client = BigqueryModelClient::new(Arc::new(client));
@@ -98,7 +94,7 @@ mod test {
         // create model
         let model_id = format!("penguins_model_{}", OffsetDateTime::now_utc().unix_timestamp());
         let mut job1 = Job::default();
-        job1.job_reference.job_id = format!("rust_test_model_job_{}", OffsetDateTime::now_utc().unix_timestamp());
+        job1.job_reference.job_id = format!("test_model_job_{}", OffsetDateTime::now_utc().unix_timestamp());
         job1.job_reference.project_id = project.to_string();
         job1.job_reference.location = Some("US".to_string());
         job1.configuration = JobConfiguration {
@@ -106,7 +102,7 @@ mod test {
                 use_legacy_sql: Some(false),
                 query: format!(
                     "
-                    CREATE OR REPLACE MODEL `rust_test_model_us.{}`
+                    CREATE OR REPLACE MODEL `{}.{}`
                     OPTIONS (model_type='linear_reg', input_label_cols=['body_mass_g']) AS
                         SELECT
                             *
@@ -116,7 +112,7 @@ mod test {
                             body_mass_g IS NOT NULL
                         LIMIT 100
                     ",
-                    model_id
+                    dataset, model_id
                 ),
                 ..Default::default()
             }),
@@ -139,6 +135,10 @@ mod test {
             tracing::info!("current job status.state = {:?}", job.status.state);
             assert!(elapsed < 20, "model creation timedout");
         }
+        let statistics = job.statistics.unwrap().query.unwrap().ml_statistics;
+        let ml = statistics.unwrap();
+        assert_eq!(ml.training_type, TrainingType::SingleTraining);
+        assert_eq!(ml.model_type, ModelType::LinearRegression);
 
         // predict
         let result = job_client
@@ -148,7 +148,7 @@ mod test {
                     max_results: None,
                     query: format!(
                         "
-                    SELECT * FROM  ML.PREDICT(MODEL `rust_test_model_us.{}`, (
+                    SELECT * FROM  ML.PREDICT(MODEL `{}.{}`, (
                         SELECT
                             *
                         FROM
@@ -157,7 +157,7 @@ mod test {
                             body_mass_g IS NOT NULL
                         AND island = 'Biscoe' LIMIT 10))
                     ",
-                        model_id
+                        dataset, model_id
                     ),
                     ..Default::default()
                 },
@@ -168,7 +168,7 @@ mod test {
 
         // list / get / patch / delete
         let models = client
-            .list(&project, "rust_test_model_us", &ListModelsRequest::default())
+            .list(&project, &dataset, &ListModelsRequest::default())
             .await
             .unwrap();
         assert!(!models.is_empty());

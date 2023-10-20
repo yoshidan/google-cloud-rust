@@ -104,31 +104,27 @@ mod test {
 
     use serial_test::serial;
 
-    use crate::http::bigquery_client::test::create_client;
+    use crate::http::bigquery_client::test::{create_client, dataset_name};
     use crate::http::bigquery_row_access_policy_client::BigqueryRowAccessPolicyClient;
     use crate::http::row_access_policy::list::ListRowAccessPoliciesRequest;
     use crate::http::table::get_iam_policy::GetIamPolicyRequest;
     use crate::http::table::TableReference;
 
-    #[ctor::ctor]
-    fn init() {
-        let _ = tracing_subscriber::fmt::try_init();
-    }
-
     #[tokio::test]
     #[serial]
     pub async fn test_policy() {
         /*
-        CREATE ROW ACCESS POLICY test_policy ON `rust_test_job.rust_test_load_result_iam` GRANT TO ('allAuthenticatedUsers') FILTER USING (string_field_1='test');
-        CREATE ROW ACCESS POLICY test_policy2 ON `rust_test_job.rust_test_load_result_iam` GRANT TO ('allAuthenticatedUsers') FILTER USING (string_field_1='testhoge');
+        CREATE ROW ACCESS POLICY test_policy ON `dataset.external_data` GRANT TO ('allAuthenticatedUsers') FILTER USING (string_field_1='value1');
+        CREATE ROW ACCESS POLICY test_policy2 ON `dataset.external_data` GRANT TO ('allAuthenticatedUsers') FILTER USING (string_field_1='value2');
          */
+        let dataset = dataset_name("rls");
         let (client, project) = create_client().await;
         let client = BigqueryRowAccessPolicyClient::new(Arc::new(client));
 
         let table1 = TableReference {
-            dataset_id: "rust_test_job".to_string(),
+            dataset_id: dataset.to_string(),
             project_id: project.to_string(),
-            table_id: "rust_test_load_result_iam".to_string(),
+            table_id: "external_data".to_string(),
         };
 
         // iam
@@ -142,8 +138,8 @@ mod test {
             .await
             .unwrap();
         assert_eq!(policies.len(), 2);
-        assert_eq!(policies[0].filter_predicate, "string_field_1 = 'test'");
-        assert_eq!(policies[1].filter_predicate, "string_field_1 = 'testhoge'");
+        assert_eq!(policies[0].filter_predicate, "string_field_1 = 'value1'");
+        assert_eq!(policies[1].filter_predicate, "string_field_1 = 'value2'");
         for p in policies {
             let r = p.row_access_policy_reference;
             let p = client

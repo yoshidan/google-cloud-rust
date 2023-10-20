@@ -151,20 +151,20 @@ mod test {
     use serial_test::serial;
     use time::OffsetDateTime;
 
-    use crate::http::bigquery_client::test::{create_client, create_table_schema, TestData};
+    use crate::http::bigquery_client::test::{bucket_name, create_client, create_table_schema, dataset_name, TestData};
     use crate::http::bigquery_job_client::BigqueryJobClient;
     use crate::http::bigquery_table_client::BigqueryTableClient;
     use crate::http::bigquery_tabledata_client::BigqueryTabledataClient;
     use crate::http::job::cancel::CancelJobRequest;
-    use crate::http::job::get::GetJobRequest;
+
     use crate::http::job::get_query_results::GetQueryResultsRequest;
     use crate::http::job::query::QueryRequest;
     use crate::http::job::{
         CreateDisposition, Job, JobConfiguration, JobConfigurationExtract, JobConfigurationExtractSource,
         JobConfigurationLoad, JobConfigurationQuery, JobConfigurationSourceTable, JobConfigurationTableCopy, JobState,
-        JobType, OperationType, TrainingType, WriteDisposition,
+        JobType, OperationType, WriteDisposition,
     };
-    use crate::http::model::ModelType;
+
     use crate::http::table::{DestinationFormat, SourceFormat, Table, TableReference};
     use crate::http::tabledata::insert_all::{InsertAllRequest, Row};
 
@@ -180,7 +180,7 @@ mod test {
         let client = BigqueryJobClient::new(Arc::new(client));
 
         let mut job1 = Job::default();
-        job1.job_reference.job_id = format!("rust_test_{}", OffsetDateTime::now_utc().unix_timestamp());
+        job1.job_reference.job_id = format!("test_{}", OffsetDateTime::now_utc().unix_timestamp());
         job1.job_reference.project_id = project.to_string();
         job1.job_reference.location = Some("asia-northeast1".to_string());
         job1.configuration = JobConfiguration {
@@ -202,19 +202,20 @@ mod test {
     #[tokio::test]
     #[serial]
     pub async fn create_job() {
+        let dataset = dataset_name("job");
         let (client, project) = create_client().await;
         let client = Arc::new(client);
         let client = BigqueryJobClient::new(client);
 
         // query job
         let mut job1 = Job::default();
-        job1.job_reference.job_id = format!("rust_test_query_{}", OffsetDateTime::now_utc().unix_timestamp());
+        job1.job_reference.job_id = format!("test_query_{}", OffsetDateTime::now_utc().unix_timestamp());
         job1.job_reference.project_id = project.to_string();
-        job1.job_reference.location = Some("asia-northeast1".to_string());
+        job1.job_reference.location = Some("us-central1".to_string());
         job1.configuration = JobConfiguration {
             job: JobType::Query(JobConfigurationQuery {
                 use_legacy_sql: Some(false),
-                query: "SELECT * FROM rust_test_job.table_data_1681472944".to_string(),
+                query: "SELECT 1".to_string(),
                 ..Default::default()
             }),
             ..Default::default()
@@ -228,14 +229,15 @@ mod test {
             "SELECT"
         );
 
+        let bucket_name = bucket_name(&project, "job");
         // load job
         let mut job1 = Job::default();
-        job1.job_reference.job_id = format!("rust_test_load_{}", OffsetDateTime::now_utc().unix_timestamp());
+        job1.job_reference.job_id = format!("test_load_{}", OffsetDateTime::now_utc().unix_timestamp());
         job1.job_reference.project_id = project.to_string();
-        job1.job_reference.location = Some("asia-northeast1".to_string());
+        job1.job_reference.location = Some("us-central1".to_string());
         job1.configuration = JobConfiguration {
             job: JobType::Load(JobConfigurationLoad {
-                source_uris: vec!["gs://rust-bq-test/external_data.csv".to_string()],
+                source_uris: vec![format!("gs://{}/external_data.csv", bucket_name)],
                 source_format: Some(SourceFormat::Csv),
                 field_delimiter: Some("|".to_string()),
                 encoding: Some("UTF-8".to_string()),
@@ -244,8 +246,8 @@ mod test {
                 write_disposition: Some(WriteDisposition::WriteTruncate),
                 destination_table: TableReference {
                     project_id: project.to_string(),
-                    dataset_id: "rust_test_job".to_string(),
-                    table_id: "rust_test_load_result".to_string(),
+                    dataset_id: dataset.clone(),
+                    table_id: "external_data".to_string(),
                 },
                 ..Default::default()
             }),
@@ -258,20 +260,20 @@ mod test {
 
         // copy job
         let mut job2 = Job::default();
-        job2.job_reference.job_id = format!("rust_test_copy_{}", OffsetDateTime::now_utc().unix_timestamp());
+        job2.job_reference.job_id = format!("test_copy_{}", OffsetDateTime::now_utc().unix_timestamp());
         job2.job_reference.project_id = project.to_string();
-        job2.job_reference.location = Some("asia-northeast1".to_string());
+        job2.job_reference.location = Some("us-central1".to_string());
         job2.configuration = JobConfiguration {
             job: JobType::Copy(JobConfigurationTableCopy {
                 source_table: JobConfigurationSourceTable::SourceTable(TableReference {
                     project_id: project.to_string(),
-                    dataset_id: "rust_test_job".to_string(),
-                    table_id: "rust_test_load_result".to_string(),
+                    dataset_id: dataset.clone(),
+                    table_id: "external_data".to_string(),
                 }),
                 destination_table: TableReference {
                     project_id: project.to_string(),
-                    dataset_id: "rust_test_job".to_string(),
-                    table_id: "rust_test_load_result_copy".to_string(),
+                    dataset_id: dataset.clone(),
+                    table_id: "external_data_copy".to_string(),
                 },
                 create_disposition: Some(CreateDisposition::CreateIfNeeded),
                 write_disposition: Some(WriteDisposition::WriteTruncate),
@@ -287,17 +289,17 @@ mod test {
 
         // extract table job
         let mut job3 = Job::default();
-        job3.job_reference.job_id = format!("rust_test_extract_{}", OffsetDateTime::now_utc().unix_timestamp());
+        job3.job_reference.job_id = format!("test_extract_{}", OffsetDateTime::now_utc().unix_timestamp());
         job3.job_reference.project_id = project.to_string();
-        job3.job_reference.location = Some("asia-northeast1".to_string());
+        job3.job_reference.location = Some("us-central1".to_string());
         job3.configuration = JobConfiguration {
             job: JobType::Extract(JobConfigurationExtract {
-                destination_uris: vec!["gs://rust-bq-test/extracted_data.json".to_string()],
+                destination_uris: vec![format!("gs://{}/extracted_data.json", project)],
                 destination_format: Some(DestinationFormat::NewlineDelimitedJson),
                 source: JobConfigurationExtractSource::SourceTable(TableReference {
                     project_id: project.to_string(),
-                    dataset_id: "rust_test_job".to_string(),
-                    table_id: "rust_test_load_result".to_string(),
+                    dataset_id: dataset.clone(),
+                    table_id: "external_data_copy".to_string(),
                 }),
                 ..Default::default()
             }),
@@ -325,6 +327,7 @@ mod test {
     #[tokio::test]
     #[serial]
     pub async fn query() {
+        let dataset = dataset_name("job_temp");
         let (client, project) = create_client().await;
         let client = Arc::new(client);
         let table_client = BigqueryTableClient::new(client.clone());
@@ -332,7 +335,7 @@ mod test {
 
         // insert test data
         let mut table1 = Table::default();
-        table1.table_reference.dataset_id = "rust_test_job".to_string();
+        table1.table_reference.dataset_id = dataset.clone();
         table1.table_reference.project_id = project.to_string();
         table1.table_reference.table_id = format!("table_data_{}", OffsetDateTime::now_utc().unix_timestamp());
         table1.schema = Some(create_table_schema());
@@ -360,7 +363,7 @@ mod test {
                 project.as_str(),
                 &QueryRequest {
                     max_results: Some(2),
-                    query: format!("SELECT * FROM rust_test_job.{}", ref1.table_id.as_str()),
+                    query: format!("SELECT * FROM {}.{}", ref1.dataset_id.as_str(), ref1.table_id.as_str()),
                     ..Default::default()
                 },
             )
@@ -403,7 +406,7 @@ mod test {
                 &QueryRequest {
                     dry_run: Some(true),
                     max_results: Some(10),
-                    query: format!("SELECT * FROM rust_test_job.{}", ref1.table_id.as_str()),
+                    query: format!("SELECT * FROM {}.{}", ref1.dataset_id.as_str(), ref1.table_id.as_str()),
                     ..Default::default()
                 },
             )
@@ -418,28 +421,5 @@ mod test {
             .delete(&ref1.project_id, &ref1.dataset_id, &ref1.table_id)
             .await
             .unwrap();
-    }
-
-    #[tokio::test]
-    #[serial]
-    pub async fn get_model_training_result() {
-        let (client, project) = create_client().await;
-        let client = Arc::new(client);
-        let client = BigqueryJobClient::new(client);
-        let job = client
-            .get(
-                project.as_str(),
-                "bquxjob_2314a540_187c62eab1d",
-                &GetJobRequest {
-                    location: Some("US".to_string()),
-                },
-            )
-            .await
-            .unwrap();
-        let statistics = job.statistics.unwrap().query.unwrap().ml_statistics;
-        let ml = statistics.unwrap();
-        assert_eq!(ml.training_type, TrainingType::SingleTraining);
-        assert_eq!(ml.model_type, ModelType::LogisticRegression);
-        assert_eq!(ml.max_iterations, Some(15));
     }
 }

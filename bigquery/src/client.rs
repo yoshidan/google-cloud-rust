@@ -551,15 +551,16 @@ mod tests {
     use serial_test::serial;
     use std::ops::AddAssign;
     use std::time::Duration;
-    use time::macros::datetime;
+
     use time::{Date, OffsetDateTime, Time};
 
     use google_cloud_googleapis::cloud::bigquery::storage::v1::read_session::TableReadOptions;
 
     use crate::client::{Client, ClientConfig, ReadTableOption};
-    use crate::http::bigquery_client::test::TestData;
+    use crate::http::bigquery_client::test::{create_table_schema, dataset_name, TestData};
     use crate::http::job::query::QueryRequest;
-    use crate::http::table::TableReference;
+    use crate::http::table::{Table, TableReference};
+    use crate::http::tabledata::insert_all::{InsertAllRequest, Row};
     use crate::query;
     use crate::query::QueryOption;
 
@@ -730,15 +731,38 @@ mod tests {
         test_query_table(Some(1), QueryOption::default()).await
     }
 
+    async fn insert(client: &Client, project: &str, dataset: &str, table: &str, size: usize, now: &OffsetDateTime) {
+        let mut table1 = Table::default();
+        table1.table_reference.dataset_id = dataset.to_string();
+        table1.table_reference.project_id = project.to_string();
+        table1.table_reference.table_id = table.to_string();
+        table1.schema = Some(create_table_schema());
+        let _table1 = client.table_client.create(&table1).await.unwrap();
+        let mut req = InsertAllRequest::<TestData>::default();
+        for i in 0..size {
+            req.rows.push(Row {
+                insert_id: None,
+                json: TestData::default(i, *now + Duration::from_secs(i as u64)),
+            });
+        }
+        client.tabledata().insert(project, dataset, table, &req).await.unwrap();
+    }
+
     async fn test_query_table(max_results: Option<i64>, option: QueryOption) {
+        let dataset = dataset_name("table");
         let (client, project_id) = create_client().await;
+        let now = OffsetDateTime::now_utc();
+        let table = format!("test_query_table_{}", now.unix_timestamp());
+        insert(&client, &project_id, &dataset, &table, 3, &now).await;
+
+        // query
         let mut data_as_row: Vec<TestData> = vec![];
         let mut iterator_as_row = client
             .query_with_option::<query::row::Row>(
                 &project_id,
                 QueryRequest {
                     max_results,
-                    query: "SELECT * FROM rust_test_job.table_data_1686707863".to_string(),
+                    query: format!("SELECT * FROM {}.{}", dataset, table),
                     ..Default::default()
                 },
                 option.clone(),
@@ -763,7 +787,7 @@ mod tests {
             .query_with_option::<TestData>(
                 &project_id,
                 QueryRequest {
-                    query: "SELECT * FROM rust_test_job.table_data_1686707863".to_string(),
+                    query: format!("SELECT * FROM {}.{}", dataset, table),
                     ..Default::default()
                 },
                 option,
@@ -778,22 +802,23 @@ mod tests {
         assert_eq!(data_as_struct.len(), 3);
         assert_eq!(data_as_row.len(), 3);
 
-        for (i, d) in data_as_struct.iter().enumerate() {
-            assert_data(i, d.clone());
-        }
-        for (i, d) in data_as_row.iter().enumerate() {
-            assert_data(i, d.clone());
-        }
+        assert_data(&now, data_as_struct);
+        assert_data(&now, data_as_row);
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_read_table() {
+        let dataset = dataset_name("table");
         let (client, project_id) = create_client().await;
+        let now = OffsetDateTime::now_utc();
+        let table = format!("test_read_table_{}", now.unix_timestamp());
+        insert(&client, &project_id, &dataset, &table, 3, &now).await;
+
         let table = TableReference {
             project_id,
-            dataset_id: "rust_test_job".to_string(),
-            table_id: "table_data_1686707863".to_string(),
+            dataset_id: dataset.to_string(),
+            table_id: table.to_string(),
         };
         let mut iterator_as_struct = client.read_table::<TestData>(&table, None).await.unwrap();
 
@@ -853,10 +878,8 @@ mod tests {
         assert_eq!(data_as_struct.len(), 3);
         assert_eq!(data_as_row.len(), 1);
 
-        for (i, d) in data_as_struct.iter().enumerate() {
-            assert_data(i, d.clone());
-        }
-        assert_data(0, data_as_row[0].clone());
+        assert_data(&now, data_as_struct);
+        assert_data(&now, data_as_row);
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -872,16 +895,22 @@ mod tests {
     }
 
     async fn test_query_job_incomplete(max_results: Option<i64>, option: QueryOption) {
+        let dataset = dataset_name("table");
         let (client, project_id) = create_client().await;
-        let mut data: Vec<TestData> = vec![];
+        let now = OffsetDateTime::now_utc();
+        let table = format!("test_query_job_incomplete_{}", now.unix_timestamp());
+        const SIZE: usize = 10000;
+        insert(&client, &project_id, &dataset, &table, SIZE, &now).await;
+
+        let mut data: Vec<query::row::Row> = vec![];
         let mut iter = client
-            .query_with_option::<TestData>(
+            .query_with_option::<query::row::Row>(
                 &project_id,
                 QueryRequest {
                     timeout_ms: Some(5), // pass wait_for_query
                     use_query_cache: Some(false),
                     max_results,
-                    query: "SELECT * FROM rust_test_job.table_data_10000v2".to_string(),
+                    query: format!("SELECT 1 FROM {}.{}", dataset, table),
                     ..Default::default()
                 },
                 option,
@@ -891,18 +920,13 @@ mod tests {
         while let Some(row) = iter.next().await.unwrap() {
             data.push(row);
         }
-        assert_eq!(iter.total_size, 10000);
-        assert_eq!(data.len(), 10000);
+        assert_eq!(iter.total_size, SIZE as i64);
+        assert_eq!(data.len(), SIZE);
     }
 
-    fn assert_data(index: usize, d: TestData) {
-        let now = if index == 0 {
-            datetime!(2023-06-14 01:57:43.438086 UTC)
-        } else if index == 1 {
-            datetime!(2023-06-14 01:57:43.438296 UTC)
-        } else {
-            datetime!(2023-06-14 01:57:43.438410 UTC)
-        };
-        assert_eq!(TestData::default(index, now), d);
+    fn assert_data(now: &OffsetDateTime, data: Vec<TestData>) {
+        for (i, d) in data.iter().enumerate() {
+            assert_eq!(&TestData::default(i, *now + Duration::from_secs(i as u64)), d);
+        }
     }
 }

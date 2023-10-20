@@ -173,7 +173,7 @@ mod test {
     use serial_test::serial;
     use time::OffsetDateTime;
 
-    use crate::http::bigquery_client::test::create_client;
+    use crate::http::bigquery_client::test::{bucket_name, create_client, dataset_name};
     use crate::http::bigquery_table_client::BigqueryTableClient;
     use crate::http::table::get_iam_policy::GetIamPolicyRequest;
     use crate::http::table::list::ListTablesRequest;
@@ -185,20 +185,16 @@ mod test {
     };
     use crate::http::types::{Bindings, Policy};
 
-    #[ctor::ctor]
-    fn init() {
-        let _ = tracing_subscriber::fmt::try_init();
-    }
-
     #[tokio::test]
     #[serial]
     pub async fn crud_table() {
+        let dataset = dataset_name("table");
         let (client, project) = create_client().await;
         let client = BigqueryTableClient::new(Arc::new(client));
 
         // empty
         let mut table1 = Table::default();
-        table1.table_reference.dataset_id = "rust_test_table".to_string();
+        table1.table_reference.dataset_id = dataset.to_string();
         table1.table_reference.project_id = project.to_string();
         table1.table_reference.table_id = "table1".to_string();
         table1.schema = Some(TableSchema {
@@ -278,7 +274,7 @@ mod test {
         view.table_reference.project_id = table1.table_reference.project_id.to_string();
         view.table_reference.table_id = "view1".to_string();
         view.view = Some(ViewDefinition {
-            query: "SELECT col1 FROM rust_test_table.table1".to_string(),
+            query: format!("SELECT col1 FROM {}.table1", dataset),
             ..Default::default()
         });
         let _view = client.create(&view).await.unwrap();
@@ -316,7 +312,7 @@ mod test {
         mv.table_reference.project_id = table1.table_reference.project_id.to_string();
         mv.table_reference.table_id = "materialized_view1".to_string();
         mv.materialized_view = Some(MaterializedViewDefinition {
-            query: "SELECT col2 FROM rust_test_table.table1".to_string(),
+            query: format!("SELECT col2 FROM {}.table1", dataset),
             refresh_interval_ms: Some(3600000),
             ..Default::default()
         });
@@ -343,16 +339,17 @@ mod test {
     #[tokio::test]
     #[serial]
     pub async fn external_table() {
+        let dataset = dataset_name("table");
         let (client, project) = create_client().await;
         let client = BigqueryTableClient::new(Arc::new(client));
 
         // CSV
         let mut table = Table::default();
-        table.table_reference.dataset_id = "rust_test_external_table".to_string();
+        table.table_reference.dataset_id = dataset.to_string();
         table.table_reference.project_id = project.to_string();
-        table.table_reference.table_id = format!("csv_table_{}", OffsetDateTime::now_utc().unix_timestamp());
+        table.table_reference.table_id = format!("external_data_{}", OffsetDateTime::now_utc().unix_timestamp());
         table.external_data_configuration = Some(ExternalDataConfiguration {
-            source_uris: vec!["gs://rust-bq-test/external_data.csv".to_string()],
+            source_uris: vec![format!("gs://{}/external_data.csv", bucket_name(&project, "job"))],
             autodetect: true,
             source_format: SourceFormat::Csv,
             csv_options: Some(CsvOptions {
