@@ -1324,7 +1324,7 @@ impl StorageClient {
 }
 
 #[cfg(test)]
-mod test {
+pub(crate) mod test {
     use std::collections::HashMap;
 
     use bytes::Buf;
@@ -1345,12 +1345,15 @@ mod test {
     use crate::http::buckets::delete::DeleteBucketRequest;
     use crate::http::buckets::get::GetBucketRequest;
     use crate::http::buckets::get_iam_policy::GetIamPolicyRequest;
-    use crate::http::buckets::insert::{BucketCreationConfig, InsertBucketParam, InsertBucketRequest};
+    use crate::http::buckets::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
+    use crate::http::buckets::insert::{
+        BucketCreationConfig, InsertBucketParam, InsertBucketRequest, RetentionPolicyCreationConfig,
+    };
     use crate::http::buckets::list::ListBucketsRequest;
     use crate::http::buckets::patch::{BucketPatchConfig, PatchBucketRequest};
     use crate::http::buckets::set_iam_policy::SetIamPolicyRequest;
     use crate::http::buckets::test_iam_permissions::TestIamPermissionsRequest;
-    use crate::http::buckets::Binding;
+    use crate::http::buckets::{lifecycle, Billing, Binding, Cors, IamConfiguration, Lifecycle, Website};
     use crate::http::default_object_access_controls::delete::DeleteDefaultObjectAccessControlRequest;
     use crate::http::default_object_access_controls::get::GetDefaultObjectAccessControlRequest;
     use crate::http::default_object_access_controls::insert::InsertDefaultObjectAccessControlRequest;
@@ -1387,10 +1390,16 @@ mod test {
 
     #[ctor::ctor]
     fn init() {
-        let _ = tracing_subscriber::fmt().try_init();
+        let filter = tracing_subscriber::filter::EnvFilter::from_default_env()
+            .add_directive("google_cloud_storage=trace".parse().unwrap());
+        let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
     }
 
-    async fn client() -> (StorageClient, String) {
+    pub fn bucket_name(project: &str, name: &str) -> String {
+        format!("{}_gcrgcs_{}", project, name)
+    }
+
+    async fn client() -> (StorageClient, String, String) {
         let tsp = DefaultTokenSourceProvider::new(Config {
             audience: None,
             scopes: Some(&SCOPES),
@@ -1401,31 +1410,38 @@ mod test {
         let cred = tsp.source_credentials.clone();
         let ts = tsp.token_source();
         let client = StorageClient::new(ts, "https://storage.googleapis.com", reqwest::Client::new());
-        (client, cred.unwrap().project_id.unwrap())
+        let cred = cred.unwrap();
+        (client, cred.project_id.unwrap(), cred.client_email.unwrap())
     }
 
     #[tokio::test]
     #[serial]
     pub async fn list_buckets() {
-        let (client, project) = client().await;
+        let (client, project, _) = client().await;
         let buckets = client
             .list_buckets(&ListBucketsRequest {
-                project,
+                project: project.clone(),
                 max_results: None,
                 page_token: None,
-                prefix: Some("rust-iam-test".to_string()),
+                prefix: Some(bucket_name(&project, "object")),
                 projection: None,
             })
             .await
             .unwrap();
-        assert_eq!(1, buckets.items.len());
+        assert_eq!(2, buckets.items.len());
     }
 
     #[tokio::test]
     #[serial]
     pub async fn crud_bucket() {
-        let (client, project) = client().await;
-        let name = format!("rust-test-insert-{}", time::OffsetDateTime::now_utc().unix_timestamp());
+        let (client, project, email) = client().await;
+        let name = bucket_name(
+            &project,
+            &format!("crud_bucket-{}", time::OffsetDateTime::now_utc().unix_timestamp()),
+        );
+        let mut labels = HashMap::new();
+        labels.insert("labelkey".to_string(), "labelvalue".to_string());
+
         let bucket = client
             .insert_bucket(&InsertBucketRequest {
                 name,
@@ -1436,6 +1452,43 @@ mod test {
                 bucket: BucketCreationConfig {
                     location: "ASIA-NORTHEAST1".to_string(),
                     storage_class: Some("STANDARD".to_string()),
+                    default_event_based_hold: true,
+                    labels: Some(labels),
+                    website: Some(Website {
+                        main_page_suffix: "_suffix".to_string(),
+                        not_found_page: "notfound.html".to_string(),
+                    }),
+                    iam_configuration: Some(IamConfiguration {
+                        uniform_bucket_level_access: Some(UniformBucketLevelAccess {
+                            enabled: false,
+                            locked_time: None,
+                        }),
+                        public_access_prevention: Some(PublicAccessPrevention::Enforced),
+                    }),
+                    billing: Some(Billing { requester_pays: false }),
+                    retention_policy: Some(RetentionPolicyCreationConfig {
+                        retention_period: 10000,
+                    }),
+                    cors: Some(vec![Cors {
+                        origin: vec!["*".to_string()],
+                        method: vec!["GET".to_string(), "HEAD".to_string()],
+                        response_header: vec!["200".to_string()],
+                        max_age_seconds: 100,
+                    }]),
+                    lifecycle: Some(Lifecycle {
+                        rule: vec![lifecycle::Rule {
+                            action: Some(lifecycle::rule::Action {
+                                r#type: lifecycle::rule::ActionType::Delete,
+                                storage_class: None,
+                            }),
+                            condition: Some(lifecycle::rule::Condition {
+                                age: 365,
+                                is_live: Some(true),
+                                ..Default::default()
+                            }),
+                        }],
+                    }),
+                    rpo: None,
                     ..Default::default()
                 },
             })
@@ -1452,12 +1505,13 @@ mod test {
 
         assert_eq!(found.location.as_str(), "ASIA-NORTHEAST1");
 
+        let entity = format!("user-{}", email);
         let patched = client
             .patch_bucket(&PatchBucketRequest {
                 bucket: bucket.name.to_string(),
                 metadata: Some(BucketPatchConfig {
                     default_object_acl: Some(vec![ObjectAccessControlCreationConfig {
-                        entity: "allAuthenticatedUsers".to_string(),
+                        entity: entity.to_string(),
                         role: ObjectACLRole::READER,
                     }]),
                     ..Default::default()
@@ -1469,7 +1523,7 @@ mod test {
 
         let default_object_acl = patched.default_object_acl.unwrap();
         assert_eq!(default_object_acl.len(), 1);
-        assert_eq!(default_object_acl[0].entity.as_str(), "allAuthenticatedUsers");
+        assert_eq!(default_object_acl[0].entity.as_str(), entity);
         assert_eq!(default_object_acl[0].role, ObjectACLRole::READER);
         assert_eq!(found.storage_class.as_str(), patched.storage_class.as_str());
         assert_eq!(found.location.as_str(), patched.location.as_str());
@@ -1486,8 +1540,8 @@ mod test {
     #[tokio::test]
     #[serial]
     async fn set_get_test_iam() {
-        let bucket_name = "rust-iam-test";
-        let (client, _project) = client().await;
+        let (client, project, email) = client().await;
+        let bucket_name = bucket_name(&project, "test_iam");
         let mut policy = client
             .get_iam_policy(&GetIamPolicyRequest {
                 resource: bucket_name.to_string(),
@@ -1497,7 +1551,7 @@ mod test {
             .unwrap();
         policy.bindings.push(Binding {
             role: "roles/storage.objectViewer".to_string(),
-            members: vec!["allAuthenticatedUsers".to_string()],
+            members: vec![format!("serviceAccount:{}", email)],
             condition: None,
         });
 
@@ -1524,22 +1578,15 @@ mod test {
     #[tokio::test]
     #[serial]
     pub async fn crud_default_object_controls() {
-        let bucket_name = "rust-default-object-acl-test";
-        let (client, _project) = client().await;
+        let (client, project, email) = client().await;
+        let bucket_name = bucket_name(&project, "default_object_acl");
+        let entity = format!("user-{}", email);
 
         client
-            .delete_default_object_access_control(&DeleteDefaultObjectAccessControlRequest {
-                bucket: bucket_name.to_string(),
-                entity: "allAuthenticatedUsers".to_string(),
-            })
-            .await
-            .unwrap();
-
-        let _post = client
             .insert_default_object_access_control(&InsertDefaultObjectAccessControlRequest {
                 bucket: bucket_name.to_string(),
                 object_access_control: ObjectAccessControlCreationConfig {
-                    entity: "allAuthenticatedUsers".to_string(),
+                    entity: entity.to_string(),
                     role: ObjectACLRole::READER,
                 },
             })
@@ -1549,11 +1596,11 @@ mod test {
         let found = client
             .get_default_object_access_control(&GetDefaultObjectAccessControlRequest {
                 bucket: bucket_name.to_string(),
-                entity: "allAuthenticatedUsers".to_string(),
+                entity: entity.to_string(),
             })
             .await
             .unwrap();
-        assert_eq!(found.entity, "allAuthenticatedUsers");
+        assert_eq!(found.entity, entity);
         assert_eq!(found.role, ObjectACLRole::READER);
 
         let acls = client
@@ -1564,20 +1611,29 @@ mod test {
             .await
             .unwrap();
         assert!(acls.items.is_some());
-        assert_eq!(1, acls.items.unwrap().len());
+        assert_eq!(4, acls.items.unwrap().len());
+
+        client
+            .delete_default_object_access_control(&DeleteDefaultObjectAccessControlRequest {
+                bucket: bucket_name.to_string(),
+                entity: entity.to_string(),
+            })
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
     #[serial]
     pub async fn crud_bucket_access_controls() {
-        let bucket_name = "rust-bucket-acl-test";
-        let (client, _project) = client().await;
+        let (client, project, email) = client().await;
+        let bucket_name = bucket_name(&project, "bucket_acl");
 
-        let _post = client
+        let entity = format!("user-{}", email);
+        client
             .insert_bucket_access_control(&InsertBucketAccessControlRequest {
                 bucket: bucket_name.to_string(),
                 acl: BucketAccessControlCreationConfig {
-                    entity: "allAuthenticatedUsers".to_string(),
+                    entity: entity.to_string(),
                     role: BucketACLRole::READER,
                 },
             })
@@ -1587,11 +1643,11 @@ mod test {
         let found = client
             .get_bucket_access_control(&GetBucketAccessControlRequest {
                 bucket: bucket_name.to_string(),
-                entity: "allAuthenticatedUsers".to_string(),
+                entity: entity.to_string(),
             })
             .await
             .unwrap();
-        assert_eq!(found.entity, "allAuthenticatedUsers");
+        assert_eq!(found.entity, entity);
         assert_eq!(found.role, BucketACLRole::READER);
 
         let acls = client
@@ -1600,12 +1656,12 @@ mod test {
             })
             .await
             .unwrap();
-        assert_eq!(5, acls.items.len());
+        assert_eq!(4, acls.items.len());
 
         client
             .delete_bucket_access_control(&DeleteBucketAccessControlRequest {
                 bucket: bucket_name.to_string(),
-                entity: "allAuthenticatedUsers".to_string(),
+                entity: entity.to_string(),
             })
             .await
             .unwrap();
@@ -1614,17 +1670,19 @@ mod test {
     #[tokio::test]
     #[serial]
     pub async fn crud_object_access_controls() {
-        let bucket_name = "rust-default-object-acl-test";
+        let (client, project, email) = client().await;
+        let bucket_name = bucket_name(&project, "object_acl");
         let object_name = "test.txt";
-        let (client, _project) = client().await;
 
-        let _post = client
+        let entity = format!("user-{}", email);
+
+        client
             .insert_object_access_control(&InsertObjectAccessControlRequest {
                 bucket: bucket_name.to_string(),
                 object: object_name.to_string(),
                 generation: None,
                 acl: ObjectAccessControlCreationConfig {
-                    entity: "allAuthenticatedUsers".to_string(),
+                    entity: entity.to_string(),
                     role: ObjectACLRole::READER,
                 },
             })
@@ -1634,13 +1692,13 @@ mod test {
         let found = client
             .get_object_access_control(&GetObjectAccessControlRequest {
                 bucket: bucket_name.to_string(),
-                entity: "allAuthenticatedUsers".to_string(),
+                entity: entity.to_string(),
                 object: object_name.to_string(),
                 generation: None,
             })
             .await
             .unwrap();
-        assert_eq!(found.entity, "allAuthenticatedUsers");
+        assert_eq!(found.entity, entity);
         assert_eq!(found.role, ObjectACLRole::READER);
 
         let acls = client
@@ -1651,13 +1709,13 @@ mod test {
             })
             .await
             .unwrap();
-        assert_eq!(2, acls.items.len());
+        assert_eq!(5, acls.items.len());
 
         client
             .delete_object_access_control(&DeleteObjectAccessControlRequest {
                 bucket: bucket_name.to_string(),
                 object: object_name.to_string(),
-                entity: "allAuthenticatedUsers".to_string(),
+                entity: entity.to_string(),
                 generation: None,
             })
             .await
@@ -1667,8 +1725,8 @@ mod test {
     #[tokio::test]
     #[serial]
     pub async fn crud_notification() {
-        let bucket_name = "rust-bucket-test";
-        let (client, project) = client().await;
+        let (client, project, _) = client().await;
+        let bucket_name = bucket_name(&project, "notification");
 
         let notifications = client
             .list_notifications(&ListNotificationsRequest {
@@ -1714,13 +1772,12 @@ mod test {
     #[tokio::test]
     #[serial]
     pub async fn crud_hmac_key() {
-        let _key_name = "rust-hmac-test";
-        let (client, project_id) = client().await;
+        let (client, project_id, email) = client().await;
 
         let post = client
             .create_hmac_key(&CreateHmacKeyRequest {
                 project_id: project_id.clone(),
-                service_account_email: format!("spanner@{project_id}.iam.gserviceaccount.com"),
+                service_account_email: email,
             })
             .await
             .unwrap();
@@ -1769,9 +1826,9 @@ mod test {
 
     #[tokio::test]
     #[serial]
-    pub async fn metadata() {
-        let bucket_name = "rust-object-test";
-        let (client, _project) = client().await;
+    pub async fn crud_object_with_metadata() {
+        let (client, project, _) = client().await;
+        let bucket_name = bucket_name(&project, "object");
         let mut metadata = HashMap::<String, String>::new();
         metadata.insert("key1".to_string(), "value1".to_string());
         let uploaded = client
@@ -1834,8 +1891,8 @@ mod test {
     #[tokio::test]
     #[serial]
     pub async fn crud_object() {
-        let bucket_name = "rust-object-test";
-        let (client, _project) = client().await;
+        let (client, project, _) = client().await;
+        let bucket_name = bucket_name(&project, "object");
 
         let objects = client
             .list_objects(&ListObjectsRequest {
@@ -1963,9 +2020,9 @@ mod test {
     #[tokio::test]
     #[serial]
     pub async fn streamed_object() {
-        let bucket_name = "rust-object-test";
+        let (client, project, _) = client().await;
+        let bucket_name = bucket_name(&project, "object");
         let file_name = format!("stream_{}", time::OffsetDateTime::now_utc().unix_timestamp());
-        let (client, _project) = client().await;
 
         // let stream= reqwest::Client::default().get("https://avatars.githubusercontent.com/u/958174?s=96&v=4").send().await.unwrap().bytes_stream();
         let source = vec!["hello", " ", "world"];
@@ -2045,9 +2102,9 @@ mod test {
     #[tokio::test]
     #[serial]
     pub async fn resumable_simple_upload() {
-        let bucket_name = "rust-object-test";
+        let (client, project, _) = client().await;
+        let bucket_name = bucket_name(&project, "object");
         let file_name = format!("resumable_{}", time::OffsetDateTime::now_utc().unix_timestamp());
-        let (client, _project) = client().await;
 
         let mut media = Media::new(file_name.clone());
         media.content_type = "text/plain".into();
@@ -2080,9 +2137,9 @@ mod test {
     #[tokio::test]
     #[serial]
     pub async fn resumable_multiple_chunk_upload() {
-        let bucket_name = "rust-object-test";
+        let (client, project, _) = client().await;
+        let bucket_name = bucket_name(&project, "object");
         let file_name = format!("resumable_multiple_chunk{}", time::OffsetDateTime::now_utc().unix_timestamp());
-        let (client, _project) = client().await;
 
         let metadata = Object {
             name: file_name.to_string(),
@@ -2150,9 +2207,9 @@ mod test {
     #[tokio::test]
     #[serial]
     pub async fn resumable_upload_cancel() {
-        let bucket_name = "rust-object-test";
+        let (client, project, _) = client().await;
+        let bucket_name = bucket_name(&project, "object");
         let file_name = format!("resumable_cancel{}", time::OffsetDateTime::now_utc().unix_timestamp());
-        let (client, _project) = client().await;
 
         let metadata = Object {
             name: file_name.to_string(),
@@ -2180,12 +2237,12 @@ mod test {
     #[tokio::test]
     #[serial]
     pub async fn resumable_multiple_chunk_upload_unknown() {
-        let bucket_name = "rust-object-test";
+        let (client, project, _) = client().await;
+        let bucket_name = bucket_name(&project, "object");
         let file_name = format!(
             "resumable_multiple_chunk_unknown{}",
             time::OffsetDateTime::now_utc().unix_timestamp()
         );
-        let (client, _project) = client().await;
 
         let metadata = Object {
             name: file_name.to_string(),

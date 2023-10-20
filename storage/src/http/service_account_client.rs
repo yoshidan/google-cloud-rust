@@ -62,27 +62,27 @@ mod test {
 
     use crate::http::service_account_client::ServiceAccountClient;
 
-    #[ctor::ctor]
-    fn init() {
-        let _ = tracing_subscriber::fmt::try_init();
-    }
-
-    async fn client() -> ServiceAccountClient {
-        let ts = DefaultTokenSourceProvider::new(Config {
+    async fn client() -> (ServiceAccountClient, String) {
+        let tsp = DefaultTokenSourceProvider::new(Config {
             audience: None,
             scopes: Some(&["https://www.googleapis.com/auth/cloud-platform"]),
             sub: None,
         })
         .await
-        .unwrap()
-        .token_source();
-        ServiceAccountClient::new(ts, "https://iamcredentials.googleapis.com", Client::default())
+        .unwrap();
+        let email = tsp.source_credentials.clone().unwrap().client_email.unwrap();
+        let ts = tsp.token_source();
+        (
+            ServiceAccountClient::new(ts, "https://iamcredentials.googleapis.com", Client::default()),
+            email,
+        )
     }
 
+    /// IAM Service Account Credentials API is required
     #[tokio::test]
     #[serial]
     pub async fn sign_blob_test() {
-        let client = client().await;
+        let (client, email) = client().await;
         let body = vec![
             71, 79, 79, 71, 52, 45, 82, 83, 65, 45, 83, 72, 65, 50, 53, 54, 10, 50, 48, 50, 50, 48, 55, 48, 57, 84, 50,
             51, 52, 56, 48, 56, 90, 10, 50, 48, 50, 50, 48, 55, 48, 57, 47, 97, 117, 116, 111, 47, 115, 116, 111, 114,
@@ -92,10 +92,7 @@ mod test {
             56, 98, 50, 56, 101, 55, 48, 98, 101,
         ];
         let data = client
-            .sign_blob(
-                "projects/-/serviceAccounts/rust-storage-test@atl-dev1.iam.gserviceaccount.com",
-                &body,
-            )
+            .sign_blob(&format!("projects/-/serviceAccounts/{}", email), &body)
             .await
             .unwrap();
         assert_eq!(256, data.len());

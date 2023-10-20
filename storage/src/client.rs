@@ -245,25 +245,13 @@ impl Client {
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashMap;
 
     use serial_test::serial;
-    use time::OffsetDateTime;
 
     use crate::client::{Client, ClientConfig};
-    use crate::http::buckets::delete::DeleteBucketRequest;
-    use crate::http::buckets::iam_configuration::{PublicAccessPrevention, UniformBucketLevelAccess};
-    use crate::http::buckets::insert::{
-        BucketCreationConfig, InsertBucketParam, InsertBucketRequest, RetentionPolicyCreationConfig,
-    };
-    use crate::http::buckets::list::ListBucketsRequest;
-    use crate::http::buckets::{lifecycle, Billing, Cors, IamConfiguration, Lifecycle, Website};
-    use crate::sign::{SignedURLMethod, SignedURLOptions};
 
-    #[ctor::ctor]
-    fn init() {
-        let _ = tracing_subscriber::fmt::try_init();
-    }
+    use crate::http::storage_client::test::bucket_name;
+    use crate::sign::{SignedURLMethod, SignedURLOptions};
 
     async fn create_client() -> (Client, String) {
         let config = ClientConfig::default().with_auth().await.unwrap();
@@ -273,105 +261,9 @@ mod test {
 
     #[tokio::test]
     #[serial]
-    async fn test_buckets() {
-        let prefix = Some("rust-bucket-test".to_string());
-        let (client, project) = create_client().await;
-        let result = client
-            .list_buckets(&ListBucketsRequest {
-                project,
-                prefix,
-                ..Default::default()
-            })
-            .await
-            .unwrap();
-        assert_eq!(result.items.len(), 1);
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn test_create_bucket() {
-        let mut labels = HashMap::new();
-        labels.insert("labelkey".to_string(), "labelvalue".to_string());
-        let config = BucketCreationConfig {
-            location: "ASIA-NORTHEAST1".to_string(),
-            storage_class: Some("STANDARD".to_string()),
-            default_event_based_hold: true,
-            labels: Some(labels),
-            website: Some(Website {
-                main_page_suffix: "_suffix".to_string(),
-                not_found_page: "notfound.html".to_string(),
-            }),
-            iam_configuration: Some(IamConfiguration {
-                uniform_bucket_level_access: Some(UniformBucketLevelAccess {
-                    enabled: true,
-                    locked_time: None,
-                }),
-                public_access_prevention: Some(PublicAccessPrevention::Enforced),
-            }),
-            billing: Some(Billing { requester_pays: false }),
-            retention_policy: Some(RetentionPolicyCreationConfig {
-                retention_period: 10000,
-            }),
-            cors: Some(vec![Cors {
-                origin: vec!["*".to_string()],
-                method: vec!["GET".to_string(), "HEAD".to_string()],
-                response_header: vec!["200".to_string()],
-                max_age_seconds: 100,
-            }]),
-            lifecycle: Some(Lifecycle {
-                rule: vec![lifecycle::Rule {
-                    action: Some(lifecycle::rule::Action {
-                        r#type: lifecycle::rule::ActionType::Delete,
-                        storage_class: None,
-                    }),
-                    condition: Some(lifecycle::rule::Condition {
-                        age: 365,
-                        is_live: Some(true),
-                        ..Default::default()
-                    }),
-                }],
-            }),
-            rpo: None,
-            ..Default::default()
-        };
-
-        let (client, project) = create_client().await;
-        let bucket_name = format!("rust-test-{}", OffsetDateTime::now_utc().unix_timestamp());
-        let req = InsertBucketRequest {
-            name: bucket_name.clone(),
-            param: InsertBucketParam {
-                project,
-                ..Default::default()
-            },
-            bucket: config,
-        };
-        let result = client.insert_bucket(&req).await.unwrap();
-        client
-            .delete_bucket(&DeleteBucketRequest {
-                bucket: result.name.to_string(),
-                ..Default::default()
-            })
-            .await
-            .unwrap();
-        assert_eq!(result.name, bucket_name);
-        assert_eq!(result.storage_class, req.bucket.storage_class.unwrap());
-        assert_eq!(result.location, req.bucket.location);
-        assert!(result.iam_configuration.is_some());
-        assert!(
-            result
-                .iam_configuration
-                .unwrap()
-                .uniform_bucket_level_access
-                .unwrap()
-                .enabled
-        );
-    }
-
-    #[tokio::test]
-    #[serial]
     async fn test_sign() {
-        let (client, _) = create_client().await;
-        let bucket_name = "rust-object-test";
+        let (client, project) = create_client().await;
+        let bucket_name = bucket_name(&project, "object");
         let data = "aiueo";
         let content_type = "application/octet-stream";
 
@@ -382,7 +274,7 @@ mod test {
             ..SignedURLOptions::default()
         };
         let url = client
-            .signed_url(bucket_name, "signed_uploadtest", None, None, option)
+            .signed_url(&bucket_name, "signed_uploadtest", None, None, option)
             .await
             .unwrap();
         println!("uploading={url:?}");
@@ -400,7 +292,7 @@ mod test {
             ..SignedURLOptions::default()
         };
         let url = client
-            .signed_url(bucket_name, "signed_uploadtest", None, None, option)
+            .signed_url(&bucket_name, "signed_uploadtest", None, None, option)
             .await
             .unwrap();
         println!("downloading={url:?}");
@@ -419,8 +311,8 @@ mod test {
     #[tokio::test]
     #[serial]
     async fn test_sign_with_overwrites() {
-        let (client, _) = create_client().await;
-        let bucket_name = "rust-object-test";
+        let (client, project) = create_client().await;
+        let bucket_name = bucket_name(&project, "object");
         let data = "aiueo";
         let content_type = "application/octet-stream";
         let overwritten_gai = client.default_google_access_id.as_ref().unwrap();
@@ -434,7 +326,7 @@ mod test {
         };
         let url = client
             .signed_url(
-                bucket_name,
+                &bucket_name,
                 "signed_uploadtest",
                 Some(overwritten_gai.to_owned()),
                 Some(overwritten_sign_by.to_owned()),
@@ -459,7 +351,7 @@ mod test {
 
         let url = client
             .signed_url(
-                bucket_name,
+                &bucket_name,
                 "signed_uploadtest",
                 Some(overwritten_gai.to_owned()),
                 Some(overwritten_sign_by.to_owned()),

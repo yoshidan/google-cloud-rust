@@ -333,14 +333,10 @@ mod test {
 
     use serial_test::serial;
 
+    use crate::http::storage_client::test::bucket_name;
     use google_cloud_auth::credentials::CredentialsFile;
 
     use crate::sign::{create_signed_buffer, SignedURLOptions};
-
-    #[ctor::ctor]
-    fn init() {
-        let _ = tracing_subscriber::fmt::try_init();
-    }
 
     #[tokio::test]
     #[serial]
@@ -357,8 +353,13 @@ mod test {
             query_parameters: param,
             ..Default::default()
         };
-        let (signed_buffer, _builder) =
-            create_signed_buffer("rust-object-test", "test1", &google_access_id, &opts).unwrap();
+        let (signed_buffer, _builder) = create_signed_buffer(
+            &bucket_name(&file.project_id.unwrap(), "object"),
+            "test1",
+            &google_access_id,
+            &opts,
+        )
+        .unwrap();
         assert_eq!(signed_buffer.len(), 134)
     }
 }
