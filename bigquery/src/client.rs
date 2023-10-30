@@ -811,7 +811,7 @@ mod tests {
     async fn test_read_table() {
         let dataset = dataset_name("table");
         let (client, project_id) = create_client().await;
-        let now = OffsetDateTime::now_utc();
+        let now = OffsetDateTime::from_unix_timestamp(1698639898).unwrap();
         let table = format!("test_read_table_{}", now.unix_timestamp());
         insert(&client, &project_id, &dataset, &table, 3, &now).await;
 
