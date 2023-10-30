@@ -751,7 +751,7 @@ mod tests {
     async fn test_query_table(max_results: Option<i64>, option: QueryOption) {
         let dataset = dataset_name("table");
         let (client, project_id) = create_client().await;
-        let now = OffsetDateTime::now_utc();
+        let now = OffsetDateTime::from_unix_timestamp(OffsetDateTime::now_utc().unix_timestamp()).unwrap();
         let table = format!("test_query_table_{}", now.unix_timestamp());
         insert(&client, &project_id, &dataset, &table, 3, &now).await;
 
@@ -811,7 +811,7 @@ mod tests {
     async fn test_read_table() {
         let dataset = dataset_name("table");
         let (client, project_id) = create_client().await;
-        let now = OffsetDateTime::from_unix_timestamp(1698639898).unwrap();
+        let now = OffsetDateTime::from_unix_timestamp(OffsetDateTime::now_utc().unix_timestamp()).unwrap();
         let table = format!("test_read_table_{}", now.unix_timestamp());
         insert(&client, &project_id, &dataset, &table, 3, &now).await;
 
