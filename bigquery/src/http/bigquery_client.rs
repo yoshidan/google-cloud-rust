@@ -114,6 +114,21 @@ pub(crate) mod test {
 
     base64_serde_type!(Base64Standard, STANDARD);
 
+    #[ctor::ctor]
+    fn init() {
+        let filter = tracing_subscriber::filter::EnvFilter::from_default_env()
+            .add_directive("google_cloud_bigquery=trace".parse().unwrap());
+        let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
+    }
+
+    pub fn dataset_name(name: &str) -> String {
+        format!("gcrbq_{}", name)
+    }
+
+    pub fn bucket_name(project: &str, name: &str) -> String {
+        format!("{}_gcrbq_{}", project, name)
+    }
+
     pub async fn create_client() -> (BigqueryClient, String) {
         let tsp = DefaultTokenSourceProvider::new(Config {
             audience: None,

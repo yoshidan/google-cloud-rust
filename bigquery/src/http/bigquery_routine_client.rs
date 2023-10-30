@@ -82,7 +82,7 @@ mod test {
     use serial_test::serial;
     use time::OffsetDateTime;
 
-    use crate::http::bigquery_client::test::create_client;
+    use crate::http::bigquery_client::test::{create_client, dataset_name};
     use crate::http::bigquery_routine_client::BigqueryRoutineClient;
     use crate::http::routine::list::ListRoutinesRequest;
     use crate::http::routine::{Argument, ArgumentKind, Language, Routine, RoutineReference, RoutineType};
@@ -91,6 +91,7 @@ mod test {
     #[tokio::test]
     #[serial]
     pub async fn crud_routine() {
+        let dataset = dataset_name("job");
         let (client, project) = create_client().await;
         let client = BigqueryRoutineClient::new(Arc::new(client));
         let _f1 = client
@@ -98,7 +99,7 @@ mod test {
                 etag: "".to_string(),
                 routine_reference: RoutineReference {
                     project_id: project.to_string(),
-                    dataset_id: "rust_test_routine".to_string(),
+                    dataset_id: dataset.to_string(),
                     routine_id: format!("AddFourAndDivide{}", OffsetDateTime::now_utc().unix_timestamp()),
                 },
                 routine_type: RoutineType::ScalarFunction,
@@ -135,14 +136,14 @@ mod test {
                 etag: "".to_string(),
                 routine_reference: RoutineReference {
                     project_id: project.to_string(),
-                    dataset_id: "rust_test_routine".to_string(),
+                    dataset_id: dataset.clone(),
                     routine_id: format!("ExternalTable{}", OffsetDateTime::now_utc().unix_timestamp()),
                 },
                 routine_type: RoutineType::TableValuedFunction,
                 language: Some(Language::Sql),
                 definition_body: format!(
-                    "SELECT * FROM `{}.rust_test_external_table.csv_table` WHERE string_field_0 = x",
-                    project
+                    "SELECT * FROM `{}.{}.external_data` WHERE string_field_0 = x",
+                    project, dataset,
                 ),
                 arguments: Some(vec![Argument {
                     name: Some("x".to_string()),
@@ -162,7 +163,7 @@ mod test {
                 etag: "".to_string(),
                 routine_reference: RoutineReference {
                     project_id: project.to_string(),
-                    dataset_id: "rust_test_routine".to_string(),
+                    dataset_id: dataset.to_string(),
                     routine_id: format!("Procedure{}", OffsetDateTime::now_utc().unix_timestamp()),
                 },
                 routine_type: RoutineType::Procedure,
@@ -170,9 +171,9 @@ mod test {
                     "
             DECLARE id STRING;
             SET id = GENERATE_UUID();
-            INSERT INTO `{}.rust_test_external_table.csv_table` VALUES(id, name)
+            INSERT INTO `{}.{}.external_data` VALUES(id, name)
             ",
-                    project
+                    project, dataset,
                 ),
                 arguments: Some(vec![Argument {
                     name: Some("name".to_string()),
@@ -188,7 +189,7 @@ mod test {
             .unwrap();
 
         let all = client
-            .list(project.as_str(), "rust_test_routine", &ListRoutinesRequest::default())
+            .list(project.as_str(), &dataset, &ListRoutinesRequest::default())
             .await
             .unwrap();
         for f in all {
