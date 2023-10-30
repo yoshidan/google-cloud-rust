@@ -156,13 +156,7 @@ async fn query_change_record(tx: &mut ReadOnlyTransaction, now: OffsetDateTime, 
 #[serial]
 async fn test_read_change_stream() {
     // Create Change Stream
-    let project = match env::var("CHANGE_STREAM_DB") {
-        Ok(v) => v,
-        Err(_) => {
-            tracing::warn!("No project was found: test change stream");
-            return;
-        }
-    };
+    let (_, project) = ClientConfig::default().with_auth().await.unwrap();
     let db = format!("projects/{}/instances/test-instance/databases/local-database", project);
     let admin_client = admin::client::Client::new(AdminClientConfig {
         environment: create_environment().await,
