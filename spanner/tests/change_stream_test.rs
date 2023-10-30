@@ -1,4 +1,3 @@
-use std::env;
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -156,7 +155,8 @@ async fn query_change_record(tx: &mut ReadOnlyTransaction, now: OffsetDateTime, 
 #[serial]
 async fn test_read_change_stream() {
     // Create Change Stream
-    let (_, project) = ClientConfig::default().with_auth().await.unwrap();
+    let cred = google_cloud_auth::credentials::CredentialsFile::new().await.unwrap();
+    let project = cred.project_id.unwrap();
     let db = format!("projects/{}/instances/test-instance/databases/local-database", project);
     let admin_client = admin::client::Client::new(AdminClientConfig {
         environment: create_environment().await,
