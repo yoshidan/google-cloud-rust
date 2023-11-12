@@ -36,7 +36,17 @@ pub struct ArrowSerializationOptions {
 /// Nested message and enum types in `ArrowSerializationOptions`.
 pub mod arrow_serialization_options {
     /// Compression codec's supported by Arrow.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum CompressionCodec {
         /// If unspecified no compression will be used.
@@ -224,7 +234,17 @@ pub struct TableFieldSchema {
 }
 /// Nested message and enum types in `TableFieldSchema`.
 pub mod table_field_schema {
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum Type {
         /// Illegal value
@@ -308,7 +328,17 @@ pub mod table_field_schema {
             }
         }
     }
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum Mode {
         /// Illegal value
@@ -493,9 +523,13 @@ pub mod read_session {
         /// <https://cloud.google.com/bigquery/docs/table-sampling>)
         #[prost(double, optional, tag = "5")]
         pub sample_percentage: ::core::option::Option<f64>,
-        #[prost(oneof = "table_read_options::OutputFormatSerializationOptions", tags = "3, 4")]
-        pub output_format_serialization_options:
-            ::core::option::Option<table_read_options::OutputFormatSerializationOptions>,
+        #[prost(
+            oneof = "table_read_options::OutputFormatSerializationOptions",
+            tags = "3, 4"
+        )]
+        pub output_format_serialization_options: ::core::option::Option<
+            table_read_options::OutputFormatSerializationOptions,
+        >,
     }
     /// Nested message and enum types in `TableReadOptions`.
     pub mod table_read_options {
@@ -574,7 +608,17 @@ pub struct WriteStream {
 /// Nested message and enum types in `WriteStream`.
 pub mod write_stream {
     /// Type enum of the stream.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum Type {
         /// Unknown type.
@@ -612,7 +656,17 @@ pub mod write_stream {
         }
     }
     /// Mode enum of the stream.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum WriteMode {
         /// Unknown type.
@@ -980,7 +1034,10 @@ pub struct AppendRowsRequest {
         map = "string, enumeration(append_rows_request::MissingValueInterpretation)",
         tag = "7"
     )]
-    pub missing_value_interpretations: ::std::collections::HashMap<::prost::alloc::string::String, i32>,
+    pub missing_value_interpretations: ::std::collections::HashMap<
+        ::prost::alloc::string::String,
+        i32,
+    >,
     /// Input rows. The `writer_schema` field must be specified at the initial
     /// request and currently, it will be ignored if specified in following
     /// requests. Following requests must have data in the same format as the
@@ -1015,7 +1072,17 @@ pub mod append_rows_request {
     /// An enum to indicate how to interpret missing values of fields that are
     /// present in user schema but missing in rows. A missing value can represent a
     /// NULL or a column default value defined in BigQuery table schema.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum MissingValueInterpretation {
         /// Invalid missing value interpretation. Requests with this value will be
@@ -1034,7 +1101,9 @@ pub mod append_rows_request {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                MissingValueInterpretation::Unspecified => "MISSING_VALUE_INTERPRETATION_UNSPECIFIED",
+                MissingValueInterpretation::Unspecified => {
+                    "MISSING_VALUE_INTERPRETATION_UNSPECIFIED"
+                }
                 MissingValueInterpretation::NullValue => "NULL_VALUE",
                 MissingValueInterpretation::DefaultValue => "DEFAULT_VALUE",
             }
@@ -1222,7 +1291,17 @@ pub struct StorageError {
 /// Nested message and enum types in `StorageError`.
 pub mod storage_error {
     /// Error code for `StorageError`.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum StorageErrorCode {
         /// Default error.
@@ -1275,7 +1354,9 @@ pub mod storage_error {
                 StorageErrorCode::InvalidStreamType => "INVALID_STREAM_TYPE",
                 StorageErrorCode::InvalidStreamState => "INVALID_STREAM_STATE",
                 StorageErrorCode::StreamFinalized => "STREAM_FINALIZED",
-                StorageErrorCode::SchemaMismatchExtraFields => "SCHEMA_MISMATCH_EXTRA_FIELDS",
+                StorageErrorCode::SchemaMismatchExtraFields => {
+                    "SCHEMA_MISMATCH_EXTRA_FIELDS"
+                }
                 StorageErrorCode::OffsetAlreadyExists => "OFFSET_ALREADY_EXISTS",
                 StorageErrorCode::OffsetOutOfRange => "OFFSET_OUT_OF_RANGE",
                 StorageErrorCode::CmekNotProvided => "CMEK_NOT_PROVIDED",
@@ -1325,7 +1406,17 @@ pub struct RowError {
 /// Nested message and enum types in `RowError`.
 pub mod row_error {
     /// Error code for `RowError`.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum RowErrorCode {
         /// Default error.
@@ -1357,8 +1448,8 @@ pub mod row_error {
 /// Generated client implementations.
 pub mod big_query_read_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
-    use tonic::codegen::http::Uri;
     use tonic::codegen::*;
+    use tonic::codegen::http::Uri;
     /// BigQuery Read API.
     ///
     /// The Read API can be used to read data from BigQuery.
@@ -1392,15 +1483,22 @@ pub mod big_query_read_client {
             let inner = tonic::client::Grpc::with_origin(inner, origin);
             Self { inner }
         }
-        pub fn with_interceptor<F>(inner: T, interceptor: F) -> BigQueryReadClient<InterceptedService<T, F>>
+        pub fn with_interceptor<F>(
+            inner: T,
+            interceptor: F,
+        ) -> BigQueryReadClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
                 http::Request<tonic::body::BoxBody>,
-                Response = http::Response<<T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody>,
+                Response = http::Response<
+                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                >,
             >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error: Into<StdError> + Send + Sync,
+            <T as tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+            >>::Error: Into<StdError> + Send + Sync,
         {
             BigQueryReadClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -1458,18 +1556,27 @@ pub mod big_query_read_client {
             &mut self,
             request: impl tonic::IntoRequest<super::CreateReadSessionRequest>,
         ) -> std::result::Result<tonic::Response<super::ReadSession>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.bigquery.storage.v1.BigQueryRead/CreateReadSession",
             );
             let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "google.cloud.bigquery.storage.v1.BigQueryRead",
-                "CreateReadSession",
-            ));
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "google.cloud.bigquery.storage.v1.BigQueryRead",
+                        "CreateReadSession",
+                    ),
+                );
             self.inner.unary(req, path, codec).await
         }
         /// Reads rows from the stream in the format prescribed by the ReadSession.
@@ -1482,16 +1589,31 @@ pub mod big_query_read_client {
         pub async fn read_rows(
             &mut self,
             request: impl tonic::IntoRequest<super::ReadRowsRequest>,
-        ) -> std::result::Result<tonic::Response<tonic::codec::Streaming<super::ReadRowsResponse>>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::ReadRowsResponse>>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.cloud.bigquery.storage.v1.BigQueryRead/ReadRows");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.cloud.bigquery.storage.v1.BigQueryRead/ReadRows",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
-                .insert(GrpcMethod::new("google.cloud.bigquery.storage.v1.BigQueryRead", "ReadRows"));
+                .insert(
+                    GrpcMethod::new(
+                        "google.cloud.bigquery.storage.v1.BigQueryRead",
+                        "ReadRows",
+                    ),
+                );
             self.inner.server_streaming(req, path, codec).await
         }
         /// Splits a given `ReadStream` into two `ReadStream` objects. These
@@ -1509,18 +1631,31 @@ pub mod big_query_read_client {
         pub async fn split_read_stream(
             &mut self,
             request: impl tonic::IntoRequest<super::SplitReadStreamRequest>,
-        ) -> std::result::Result<tonic::Response<super::SplitReadStreamResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::SplitReadStreamResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.cloud.bigquery.storage.v1.BigQueryRead/SplitReadStream");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.cloud.bigquery.storage.v1.BigQueryRead/SplitReadStream",
+            );
             let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "google.cloud.bigquery.storage.v1.BigQueryRead",
-                "SplitReadStream",
-            ));
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "google.cloud.bigquery.storage.v1.BigQueryRead",
+                        "SplitReadStream",
+                    ),
+                );
             self.inner.unary(req, path, codec).await
         }
     }
@@ -1528,8 +1663,8 @@ pub mod big_query_read_client {
 /// Generated client implementations.
 pub mod big_query_write_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
-    use tonic::codegen::http::Uri;
     use tonic::codegen::*;
+    use tonic::codegen::http::Uri;
     /// BigQuery Write API.
     ///
     /// The Write API can be used to write data to BigQuery.
@@ -1566,15 +1701,22 @@ pub mod big_query_write_client {
             let inner = tonic::client::Grpc::with_origin(inner, origin);
             Self { inner }
         }
-        pub fn with_interceptor<F>(inner: T, interceptor: F) -> BigQueryWriteClient<InterceptedService<T, F>>
+        pub fn with_interceptor<F>(
+            inner: T,
+            interceptor: F,
+        ) -> BigQueryWriteClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
                 http::Request<tonic::body::BoxBody>,
-                Response = http::Response<<T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody>,
+                Response = http::Response<
+                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                >,
             >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error: Into<StdError> + Send + Sync,
+            <T as tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+            >>::Error: Into<StdError> + Send + Sync,
         {
             BigQueryWriteClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -1619,18 +1761,27 @@ pub mod big_query_write_client {
             &mut self,
             request: impl tonic::IntoRequest<super::CreateWriteStreamRequest>,
         ) -> std::result::Result<tonic::Response<super::WriteStream>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.bigquery.storage.v1.BigQueryWrite/CreateWriteStream",
             );
             let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "google.cloud.bigquery.storage.v1.BigQueryWrite",
-                "CreateWriteStream",
-            ));
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "google.cloud.bigquery.storage.v1.BigQueryWrite",
+                        "CreateWriteStream",
+                    ),
+                );
             self.inner.unary(req, path, codec).await
         }
         /// Appends data to the given stream.
@@ -1667,17 +1818,31 @@ pub mod big_query_write_client {
         pub async fn append_rows(
             &mut self,
             request: impl tonic::IntoStreamingRequest<Message = super::AppendRowsRequest>,
-        ) -> std::result::Result<tonic::Response<tonic::codec::Streaming<super::AppendRowsResponse>>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::AppendRowsResponse>>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.cloud.bigquery.storage.v1.BigQueryWrite/AppendRows");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.cloud.bigquery.storage.v1.BigQueryWrite/AppendRows",
+            );
             let mut req = request.into_streaming_request();
             req.extensions_mut()
-                .insert(GrpcMethod::new("google.cloud.bigquery.storage.v1.BigQueryWrite", "AppendRows"));
+                .insert(
+                    GrpcMethod::new(
+                        "google.cloud.bigquery.storage.v1.BigQueryWrite",
+                        "AppendRows",
+                    ),
+                );
             self.inner.streaming(req, path, codec).await
         }
         /// Gets information about a write stream.
@@ -1685,17 +1850,27 @@ pub mod big_query_write_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetWriteStreamRequest>,
         ) -> std::result::Result<tonic::Response<super::WriteStream>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.cloud.bigquery.storage.v1.BigQueryWrite/GetWriteStream");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.cloud.bigquery.storage.v1.BigQueryWrite/GetWriteStream",
+            );
             let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "google.cloud.bigquery.storage.v1.BigQueryWrite",
-                "GetWriteStream",
-            ));
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "google.cloud.bigquery.storage.v1.BigQueryWrite",
+                        "GetWriteStream",
+                    ),
+                );
             self.inner.unary(req, path, codec).await
         }
         /// Finalize a write stream so that no new data can be appended to the
@@ -1703,19 +1878,31 @@ pub mod big_query_write_client {
         pub async fn finalize_write_stream(
             &mut self,
             request: impl tonic::IntoRequest<super::FinalizeWriteStreamRequest>,
-        ) -> std::result::Result<tonic::Response<super::FinalizeWriteStreamResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::FinalizeWriteStreamResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.bigquery.storage.v1.BigQueryWrite/FinalizeWriteStream",
             );
             let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "google.cloud.bigquery.storage.v1.BigQueryWrite",
-                "FinalizeWriteStream",
-            ));
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "google.cloud.bigquery.storage.v1.BigQueryWrite",
+                        "FinalizeWriteStream",
+                    ),
+                );
             self.inner.unary(req, path, codec).await
         }
         /// Atomically commits a group of `PENDING` streams that belong to the same
@@ -1727,19 +1914,31 @@ pub mod big_query_write_client {
         pub async fn batch_commit_write_streams(
             &mut self,
             request: impl tonic::IntoRequest<super::BatchCommitWriteStreamsRequest>,
-        ) -> std::result::Result<tonic::Response<super::BatchCommitWriteStreamsResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::BatchCommitWriteStreamsResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.bigquery.storage.v1.BigQueryWrite/BatchCommitWriteStreams",
             );
             let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "google.cloud.bigquery.storage.v1.BigQueryWrite",
-                "BatchCommitWriteStreams",
-            ));
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "google.cloud.bigquery.storage.v1.BigQueryWrite",
+                        "BatchCommitWriteStreams",
+                    ),
+                );
             self.inner.unary(req, path, codec).await
         }
         /// Flushes rows to a BUFFERED stream.
@@ -1753,16 +1952,31 @@ pub mod big_query_write_client {
         pub async fn flush_rows(
             &mut self,
             request: impl tonic::IntoRequest<super::FlushRowsRequest>,
-        ) -> std::result::Result<tonic::Response<super::FlushRowsResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::FlushRowsResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.cloud.bigquery.storage.v1.BigQueryWrite/FlushRows");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.cloud.bigquery.storage.v1.BigQueryWrite/FlushRows",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
-                .insert(GrpcMethod::new("google.cloud.bigquery.storage.v1.BigQueryWrite", "FlushRows"));
+                .insert(
+                    GrpcMethod::new(
+                        "google.cloud.bigquery.storage.v1.BigQueryWrite",
+                        "FlushRows",
+                    ),
+                );
             self.inner.unary(req, path, codec).await
         }
     }
