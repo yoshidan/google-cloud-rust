@@ -43,7 +43,7 @@ pub struct CreateBucketRequest {
     pub parent: ::prost::alloc::string::String,
     /// Properties of the new bucket being inserted.
     /// The name of the bucket is specified in the `bucket_id` field. Populating
-    /// `bucket.name` field will be ignored.
+    /// `bucket.name` field will result in an error.
     /// The project of the bucket must be specified in the `bucket.project` field.
     /// This field must be in `projects/{projectIdentifier}` format,
     /// {projectIdentifier} can be the project ID or project number. The `parent`
@@ -326,6 +326,48 @@ pub struct DeleteObjectRequest {
     #[prost(message, optional, tag = "10")]
     pub common_object_request_params: ::core::option::Option<CommonObjectRequestParams>,
 }
+/// Message for restoring an object.
+/// `bucket`, `object`, and `generation` **must** be set.
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RestoreObjectRequest {
+    /// Required. Name of the bucket in which the object resides.
+    #[prost(string, tag = "1")]
+    pub bucket: ::prost::alloc::string::String,
+    /// Required. The name of the object to restore.
+    #[prost(string, tag = "2")]
+    pub object: ::prost::alloc::string::String,
+    /// Required. The specific revision of the object to restore.
+    #[prost(int64, tag = "3")]
+    pub generation: i64,
+    /// Makes the operation conditional on whether the object's current generation
+    /// matches the given value. Setting to 0 makes the operation succeed only if
+    /// there are no live versions of the object.
+    #[prost(int64, optional, tag = "4")]
+    pub if_generation_match: ::core::option::Option<i64>,
+    /// Makes the operation conditional on whether the object's live generation
+    /// does not match the given value. If no live object exists, the precondition
+    /// fails. Setting to 0 makes the operation succeed only if there is a live
+    /// version of the object.
+    #[prost(int64, optional, tag = "5")]
+    pub if_generation_not_match: ::core::option::Option<i64>,
+    /// Makes the operation conditional on whether the object's current
+    /// metageneration matches the given value.
+    #[prost(int64, optional, tag = "6")]
+    pub if_metageneration_match: ::core::option::Option<i64>,
+    /// Makes the operation conditional on whether the object's current
+    /// metageneration does not match the given value.
+    #[prost(int64, optional, tag = "7")]
+    pub if_metageneration_not_match: ::core::option::Option<i64>,
+    /// If false or unset, the bucket's default object ACL will be used.
+    /// If true, copy the source object's access controls.
+    /// Return an error if bucket has UBLA enabled.
+    #[prost(bool, optional, tag = "9")]
+    pub copy_source_acl: ::core::option::Option<bool>,
+    /// A set of parameters common to Storage API requests concerning an object.
+    #[prost(message, optional, tag = "8")]
+    pub common_object_request_params: ::core::option::Option<CommonObjectRequestParams>,
+}
 /// Message for canceling an in-progress resumable upload.
 /// `upload_id` **must** be set.
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -419,6 +461,9 @@ pub struct GetObjectRequest {
     /// latest version, the default).
     #[prost(int64, tag = "3")]
     pub generation: i64,
+    /// If true, return the soft-deleted version of this object.
+    #[prost(bool, optional, tag = "11")]
+    pub soft_deleted: ::core::option::Option<bool>,
     /// Makes the operation conditional on whether the object's current generation
     /// matches the given value. Setting to 0 makes the operation succeed only if
     /// there are no live versions of the object.
@@ -606,6 +651,113 @@ pub mod write_object_response {
         Resource(super::Object),
     }
 }
+/// Request message for BidiWriteObject.
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BidiWriteObjectRequest {
+    /// Required. The offset from the beginning of the object at which the data
+    /// should be written.
+    ///
+    /// In the first `WriteObjectRequest` of a `WriteObject()` action, it
+    /// indicates the initial offset for the `Write()` call. The value **must** be
+    /// equal to the `persisted_size` that a call to `QueryWriteStatus()` would
+    /// return (0 if this is the first write to the object).
+    ///
+    /// On subsequent calls, this value **must** be no larger than the sum of the
+    /// first `write_offset` and the sizes of all `data` chunks sent previously on
+    /// this stream.
+    ///
+    /// An invalid value will cause an error.
+    #[prost(int64, tag = "3")]
+    pub write_offset: i64,
+    /// Checksums for the complete object. If the checksums computed by the service
+    /// don't match the specified checksums the call will fail. May only be
+    /// provided in the first or last request (either with first_message, or
+    /// finish_write set).
+    #[prost(message, optional, tag = "6")]
+    pub object_checksums: ::core::option::Option<ObjectChecksums>,
+    /// For each BidiWriteObjectRequest where state_lookup is `true` or the client
+    /// closes the stream, the service will send a BidiWriteObjectResponse
+    /// containing the current persisted size. The persisted size sent in responses
+    /// covers all the bytes the server has persisted thus far and can be used to
+    /// decide what data is safe for the client to drop. Note that the object's
+    /// current size reported by the BidiWriteObjectResponse may lag behind the
+    /// number of bytes written by the client.
+    #[prost(bool, tag = "7")]
+    pub state_lookup: bool,
+    /// Persists data written on the stream, up to and including the current
+    /// message, to permanent storage. This option should be used sparingly as it
+    /// may reduce performance. Ongoing writes will periodically be persisted on
+    /// the server even when `flush` is not set.
+    #[prost(bool, tag = "8")]
+    pub flush: bool,
+    /// If `true`, this indicates that the write is complete. Sending any
+    /// `WriteObjectRequest`s subsequent to one in which `finish_write` is `true`
+    /// will cause an error.
+    /// For a non-resumable write (where the upload_id was not set in the first
+    /// message), it is an error not to set this field in the final message of the
+    /// stream.
+    #[prost(bool, tag = "9")]
+    pub finish_write: bool,
+    /// A set of parameters common to Storage API requests concerning an object.
+    #[prost(message, optional, tag = "10")]
+    pub common_object_request_params: ::core::option::Option<CommonObjectRequestParams>,
+    /// The first message of each stream should set one of the following.
+    #[prost(oneof = "bidi_write_object_request::FirstMessage", tags = "1, 2")]
+    pub first_message: ::core::option::Option<bidi_write_object_request::FirstMessage>,
+    /// A portion of the data for the object.
+    #[prost(oneof = "bidi_write_object_request::Data", tags = "4")]
+    pub data: ::core::option::Option<bidi_write_object_request::Data>,
+}
+/// Nested message and enum types in `BidiWriteObjectRequest`.
+pub mod bidi_write_object_request {
+    /// The first message of each stream should set one of the following.
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum FirstMessage {
+        /// For resumable uploads. This should be the `upload_id` returned from a
+        /// call to `StartResumableWriteResponse`.
+        #[prost(string, tag = "1")]
+        UploadId(::prost::alloc::string::String),
+        /// For non-resumable uploads. Describes the overall upload, including the
+        /// destination bucket and object name, preconditions, etc.
+        #[prost(message, tag = "2")]
+        WriteObjectSpec(super::WriteObjectSpec),
+    }
+    /// A portion of the data for the object.
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Data {
+        /// The data to insert. If a crc32c checksum is provided that doesn't match
+        /// the checksum computed by the service, the request will fail.
+        #[prost(message, tag = "4")]
+        ChecksummedData(super::ChecksummedData),
+    }
+}
+/// Response message for BidiWriteObject.
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BidiWriteObjectResponse {
+    /// The response will set one of the following.
+    #[prost(oneof = "bidi_write_object_response::WriteStatus", tags = "1, 2")]
+    pub write_status: ::core::option::Option<bidi_write_object_response::WriteStatus>,
+}
+/// Nested message and enum types in `BidiWriteObjectResponse`.
+pub mod bidi_write_object_response {
+    /// The response will set one of the following.
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum WriteStatus {
+        /// The total number of bytes that have been processed for the given object
+        /// from all `WriteObject` calls. Only set if the upload has not finalized.
+        #[prost(int64, tag = "1")]
+        PersistedSize(i64),
+        /// A resource containing the metadata for the uploaded object. Only set if
+        /// the upload has finalized.
+        #[prost(message, tag = "2")]
+        Resource(super::Object),
+    }
+}
 /// Request message for ListObjects.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -663,6 +815,16 @@ pub struct ListObjectsRequest {
     /// lexicographic_end (exclusive).
     #[prost(string, tag = "11")]
     pub lexicographic_end: ::prost::alloc::string::String,
+    /// Optional. If true, only list all soft-deleted versions of the object.
+    /// Soft delete policy is required to set this option.
+    #[prost(bool, tag = "12")]
+    pub soft_deleted: bool,
+    /// Optional. Filter results to objects and prefixes that match this glob
+    /// pattern. See [List Objects Using
+    /// Glob](<https://cloud.google.com/storage/docs/json_api/v1/objects/list#list-objects-and-prefixes-using-glob>)
+    /// for the full syntax.
+    #[prost(string, tag = "14")]
+    pub match_glob: ::prost::alloc::string::String,
 }
 /// Request object for `QueryWriteStatus`.
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1234,8 +1396,6 @@ pub struct Bucket {
     #[prost(string, tag = "3")]
     pub project: ::prost::alloc::string::String,
     /// Output only. The metadata generation of this bucket.
-    /// Attempting to set or update this field will result in a
-    /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
     #[prost(int64, tag = "4")]
     pub metageneration: i64,
     /// Immutable. The location of the bucket. Object data for objects in the
@@ -1263,7 +1423,7 @@ pub struct Bucket {
     /// replication. "ASYNC_TURBO" enables turbo replication, valid for dual-region
     /// buckets only. If rpo is not specified when the bucket is created, it
     /// defaults to "DEFAULT". For more information, see
-    /// <https://cloud.google.com/storage/docs/turbo-replication.>
+    /// <https://cloud.google.com/storage/docs/availability-durability#turbo-replication.>
     #[prost(string, tag = "27")]
     pub rpo: ::prost::alloc::string::String,
     /// Access controls on the bucket.
@@ -1282,8 +1442,6 @@ pub struct Bucket {
     #[prost(message, optional, tag = "10")]
     pub lifecycle: ::core::option::Option<bucket::Lifecycle>,
     /// Output only. The creation time of the bucket.
-    /// Attempting to set or update this field will result in a
-    /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
     #[prost(message, optional, tag = "11")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
     /// The bucket's \[<https://www.w3.org/TR/cors/\][Cross-Origin> Resource Sharing]
@@ -1291,8 +1449,6 @@ pub struct Bucket {
     #[prost(message, repeated, tag = "12")]
     pub cors: ::prost::alloc::vec::Vec<bucket::Cors>,
     /// Output only. The modification time of the bucket.
-    /// Attempting to set or update this field will result in a
-    /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
     #[prost(message, optional, tag = "13")]
     pub update_time: ::core::option::Option<::prost_types::Timestamp>,
     /// The default value for event-based hold on newly created objects in this
@@ -1364,6 +1520,10 @@ pub struct Bucket {
     /// Autoclass feature will be disabled and have no effect on the bucket.
     #[prost(message, optional, tag = "28")]
     pub autoclass: ::core::option::Option<bucket::Autoclass>,
+    /// Optional. The bucket's soft delete policy. The soft delete policy prevents
+    /// soft-deleted objects from being permanently deleted.
+    #[prost(message, optional, tag = "31")]
+    pub soft_delete_policy: ::core::option::Option<bucket::SoftDeletePolicy>,
 }
 /// Nested message and enum types in `Bucket`.
 pub mod bucket {
@@ -1588,6 +1748,19 @@ pub mod bucket {
         #[prost(message, optional, tag = "4")]
         pub retention_duration: ::core::option::Option<::prost_types::Duration>,
     }
+    /// Soft delete policy properties of a bucket.
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct SoftDeletePolicy {
+        /// The period of time that soft-deleted objects in the bucket must be
+        /// retained and cannot be permanently deleted. The duration must be greater
+        /// than or equal to 7 days and less than 1 year.
+        #[prost(message, optional, tag = "1")]
+        pub retention_duration: ::core::option::Option<::prost_types::Duration>,
+        /// Time from which the policy was effective. This is service-provided.
+        #[prost(message, optional, tag = "2")]
+        pub effective_time: ::core::option::Option<::prost_types::Timestamp>,
+    }
     /// Properties of a bucket related to versioning.
     /// For more on Cloud Storage versioning, see
     /// <https://cloud.google.com/storage/docs/object-versioning.>
@@ -1641,6 +1814,19 @@ pub mod bucket {
         /// to the bucket creation time.
         #[prost(message, optional, tag = "2")]
         pub toggle_time: ::core::option::Option<::prost_types::Timestamp>,
+        /// An object in an Autoclass bucket will eventually cool down to the
+        /// terminal storage class if there is no access to the object.
+        /// The only valid values are NEARLINE and ARCHIVE.
+        #[prost(string, optional, tag = "3")]
+        pub terminal_storage_class: ::core::option::Option<
+            ::prost::alloc::string::String,
+        >,
+        /// Output only. Latest instant at which the autoclass terminal storage class
+        /// was updated.
+        #[prost(message, optional, tag = "4")]
+        pub terminal_storage_class_update_time: ::core::option::Option<
+            ::prost_types::Timestamp,
+        >,
     }
 }
 /// An access-control entry.
@@ -1701,7 +1887,7 @@ pub struct BucketAccessControl {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ChecksummedData {
-    /// The data.
+    /// Optional. The data.
     #[prost(bytes = "bytes", tag = "1")]
     pub content: ::prost::bytes::Bytes,
     /// If set, the CRC32C digest of the content field.
@@ -1837,15 +2023,13 @@ pub struct Object {
     #[prost(string, tag = "27")]
     pub etag: ::prost::alloc::string::String,
     /// Immutable. The content generation of this object. Used for object
-    /// versioning. Attempting to set or update this field will result in a
-    /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
+    /// versioning.
     #[prost(int64, tag = "3")]
     pub generation: i64,
     /// Output only. The version of the metadata for this generation of this
     /// object. Used for preconditions and for detecting changes in metadata. A
     /// metageneration number is only meaningful in the context of a particular
-    /// generation of a particular object. Attempting to set or update this field
-    /// will result in a \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
+    /// generation of a particular object.
     #[prost(int64, tag = "4")]
     pub metageneration: i64,
     /// Storage class of the object.
@@ -1853,8 +2037,6 @@ pub struct Object {
     pub storage_class: ::prost::alloc::string::String,
     /// Output only. Content-Length of the object data in bytes, matching
     /// \[<https://tools.ietf.org/html/rfc7230#section-3.3.2\][RFC> 7230 §3.3.2].
-    /// Attempting to set or update this field will result in a
-    /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
     #[prost(int64, tag = "6")]
     pub size: i64,
     /// Content-Encoding of the object data, matching
@@ -1881,8 +2063,7 @@ pub struct Object {
     #[prost(string, tag = "11")]
     pub content_language: ::prost::alloc::string::String,
     /// Output only. If this object is noncurrent, this is the time when the object
-    /// became noncurrent. Attempting to set or update this field will result in a
-    /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
+    /// became noncurrent.
     #[prost(message, optional, tag = "12")]
     pub delete_time: ::core::option::Option<::prost_types::Timestamp>,
     /// Content-Type of the object data, matching
@@ -1892,14 +2073,10 @@ pub struct Object {
     #[prost(string, tag = "13")]
     pub content_type: ::prost::alloc::string::String,
     /// Output only. The creation time of the object.
-    /// Attempting to set or update this field will result in a
-    /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
     #[prost(message, optional, tag = "14")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
     /// Output only. Number of underlying components that make up this object.
-    /// Components are accumulated by compose operations. Attempting to set or
-    /// update this field will result in a
-    /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
+    /// Components are accumulated by compose operations.
     #[prost(int32, tag = "15")]
     pub component_count: i32,
     /// Output only. Hashes for the data part of this object. This field is used
@@ -1912,8 +2089,6 @@ pub struct Object {
     /// such as modifying custom metadata, as well as changes made by Cloud Storage
     /// on behalf of a requester, such as changing the storage class based on an
     /// Object Lifecycle Configuration.
-    /// Attempting to set or update this field will result in a
-    /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
     #[prost(message, optional, tag = "17")]
     pub update_time: ::core::option::Option<::prost_types::Timestamp>,
     /// Cloud KMS Key used to encrypt this object, if the object is encrypted by
@@ -1922,8 +2097,6 @@ pub struct Object {
     pub kms_key: ::prost::alloc::string::String,
     /// Output only. The time at which the object's storage class was last changed.
     /// When the object is initially created, it will be set to time_created.
-    /// Attempting to set or update this field will result in a
-    /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
     #[prost(message, optional, tag = "19")]
     pub update_storage_class_time: ::core::option::Option<::prost_types::Timestamp>,
     /// Whether an object is under temporary hold. While this flag is set to true,
@@ -1962,8 +2135,7 @@ pub struct Object {
     #[prost(bool, optional, tag = "23")]
     pub event_based_hold: ::core::option::Option<bool>,
     /// Output only. The owner of the object. This will always be the uploader of
-    /// the object. Attempting to set or update this field will result in a
-    /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
+    /// the object.
     #[prost(message, optional, tag = "24")]
     pub owner: ::core::option::Option<Owner>,
     /// Metadata of Customer-Supplied Encryption Key, if the object is encrypted by
@@ -2320,8 +2492,8 @@ pub mod storage_client {
         }
         /// Gets the IAM policy for a specified bucket or object.
         /// The `resource` field in the request should be
-        /// projects/_/buckets/<bucket_name> for a bucket or
-        /// projects/_/buckets/<bucket_name>/objects/<object_name> for an object.
+        /// `projects/_/buckets/{bucket}` for a bucket or
+        /// `projects/_/buckets/{bucket}/objects/{object}` for an object.
         pub async fn get_iam_policy(
             &mut self,
             request: impl tonic::IntoRequest<
@@ -2351,8 +2523,8 @@ pub mod storage_client {
         }
         /// Updates an IAM policy for the specified bucket or object.
         /// The `resource` field in the request should be
-        /// projects/_/buckets/<bucket_name> for a bucket or
-        /// projects/_/buckets/<bucket_name>/objects/<object_name> for an object.
+        /// `projects/_/buckets/{bucket}` for a bucket or
+        /// `projects/_/buckets/{bucket}/objects/{object}` for an object.
         pub async fn set_iam_policy(
             &mut self,
             request: impl tonic::IntoRequest<
@@ -2383,8 +2555,8 @@ pub mod storage_client {
         /// Tests a set of permissions on the given bucket or object to see which, if
         /// any, are held by the caller.
         /// The `resource` field in the request should be
-        /// projects/_/buckets/<bucket_name> for a bucket or
-        /// projects/_/buckets/<bucket_name>/objects/<object_name> for an object.
+        /// `projects/_/buckets/{bucket}` for a bucket or
+        /// `projects/_/buckets/{bucket}/objects/{object}` for an object.
         pub async fn test_iam_permissions(
             &mut self,
             request: impl tonic::IntoRequest<
@@ -2610,6 +2782,29 @@ pub mod storage_client {
                 .insert(GrpcMethod::new("google.storage.v2.Storage", "DeleteObject"));
             self.inner.unary(req, path, codec).await
         }
+        /// Restores a soft-deleted object.
+        pub async fn restore_object(
+            &mut self,
+            request: impl tonic::IntoRequest<super::RestoreObjectRequest>,
+        ) -> std::result::Result<tonic::Response<super::Object>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/RestoreObject",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("google.storage.v2.Storage", "RestoreObject"));
+            self.inner.unary(req, path, codec).await
+        }
         /// Cancels an in-progress resumable upload.
         ///
         /// Any attempts to write to the resumable upload after cancelling the upload
@@ -2774,6 +2969,9 @@ pub mod storage_client {
         /// status, with a WriteObjectResponse containing the finalized object's
         /// metadata.
         ///
+        /// Alternatively, the BidiWriteObject operation may be used to write an
+        /// object with controls over flushing and the ability to fetch the ability to
+        /// determine the current persisted size.
         pub async fn write_object(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
@@ -2800,6 +2998,48 @@ pub mod storage_client {
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.storage.v2.Storage", "WriteObject"));
             self.inner.client_streaming(req, path, codec).await
+        }
+        /// Stores a new object and metadata.
+        ///
+        /// This is similar to the WriteObject call with the added support for
+        /// manual flushing of persisted state, and the ability to determine current
+        /// persisted size without closing the stream.
+        ///
+        /// The client may specify one or both of the `state_lookup` and `flush` fields
+        /// in each BidiWriteObjectRequest. If `flush` is specified, the data written
+        /// so far will be persisted to storage. If `state_lookup` is specified, the
+        /// service will respond with a BidiWriteObjectResponse that contains the
+        /// persisted size. If both `flush` and `state_lookup` are specified, the flush
+        /// will always occur before a `state_lookup`, so that both may be set in the
+        /// same request and the returned state will be the state of the object
+        /// post-flush. When the stream is closed, a BidiWriteObjectResponse will
+        /// always be sent to the client, regardless of the value of `state_lookup`.
+        pub async fn bidi_write_object(
+            &mut self,
+            request: impl tonic::IntoStreamingRequest<
+                Message = super::BidiWriteObjectRequest,
+            >,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::BidiWriteObjectResponse>>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.storage.v2.Storage/BidiWriteObject",
+            );
+            let mut req = request.into_streaming_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("google.storage.v2.Storage", "BidiWriteObject"));
+            self.inner.streaming(req, path, codec).await
         }
         /// Retrieves a list of objects matching the criteria.
         pub async fn list_objects(

@@ -568,11 +568,12 @@ pub mod schema_service_client {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MessageStoragePolicy {
-    /// A list of IDs of GCP regions where messages that are published to the topic
-    /// may be persisted in storage. Messages published by publishers running in
-    /// non-allowed GCP regions (or running outside of GCP altogether) will be
-    /// routed for storage in one of the allowed regions. An empty list means that
-    /// no regions are allowed, and is not a valid configuration.
+    /// A list of IDs of Google Cloud regions where messages that are published
+    /// to the topic may be persisted in storage. Messages published by publishers
+    /// running in non-allowed Google Cloud regions (or running outside of Google
+    /// Cloud altogether) are routed for storage in one of the allowed regions.
+    /// An empty list means that no regions are allowed, and is not a valid
+    /// configuration.
     #[prost(string, repeated, tag = "1")]
     pub allowed_persistence_regions: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
@@ -1734,8 +1735,8 @@ pub struct CreateSnapshotRequest {
     /// in the request, the server will assign a random name for this snapshot on
     /// the same project as the subscription. Note that for REST API requests, you
     /// must specify a name.  See the [resource name
-    /// rules](<https://cloud.google.com/pubsub/docs/admin#resource_names>). Format
-    /// is `projects/{project}/snapshots/{snap}`.
+    /// rules](<https://cloud.google.com/pubsub/docs/pubsub-basics#resource_names>).
+    /// Format is `projects/{project}/snapshots/{snap}`.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// Required. The subscription whose backlog the snapshot retains.
@@ -1964,7 +1965,7 @@ pub mod publisher_client {
             self
         }
         /// Creates the given topic with the given name. See the [resource name rules]
-        /// (https://cloud.google.com/pubsub/docs/admin#resource_names).
+        /// (https://cloud.google.com/pubsub/docs/pubsub-basics#resource_names).
         pub async fn create_topic(
             &mut self,
             request: impl tonic::IntoRequest<super::Topic>,
@@ -2196,16 +2197,16 @@ pub mod subscriber_client {
             self
         }
         /// Creates a subscription to a given topic. See the [resource name rules]
-        /// (https://cloud.google.com/pubsub/docs/admin#resource_names).
+        /// (https://cloud.google.com/pubsub/docs/pubsub-basics#resource_names).
         /// If the subscription already exists, returns `ALREADY_EXISTS`.
         /// If the corresponding topic doesn't exist, returns `NOT_FOUND`.
         ///
         /// If the name is not provided in the request, the server will assign a random
         /// name for this subscription on the same project as the topic, conforming
         /// to the [resource name format]
-        /// (https://cloud.google.com/pubsub/docs/admin#resource_names). The generated
-        /// name is populated in the returned Subscription object. Note that for REST
-        /// API requests, you must specify a name in the request.
+        /// (https://cloud.google.com/pubsub/docs/pubsub-basics#resource_names). The
+        /// generated name is populated in the returned Subscription object. Note that
+        /// for REST API requests, you must specify a name in the request.
         pub async fn create_subscription(
             &mut self,
             request: impl tonic::IntoRequest<super::Subscription>,
@@ -2433,7 +2434,7 @@ pub mod subscriber_client {
         /// the request, the server will assign a random
         /// name for this snapshot on the same project as the subscription, conforming
         /// to the [resource name format]
-        /// (https://cloud.google.com/pubsub/docs/admin#resource_names). The
+        /// (https://cloud.google.com/pubsub/docs/pubsub-basics#resource_names). The
         /// generated name is populated in the returned Snapshot object. Note that for
         /// REST API requests, you must specify a name in the request.
         pub async fn create_snapshot(
