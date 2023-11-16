@@ -1,5 +1,4 @@
 use crate::grpc::apiv1::artifact_registry_client::Client as ArtifactRegistryGrpcClient;
-use crate::sign::SignBy;
 use google_cloud_gax::conn::{ConnectionManager, ConnectionOptions, Environment, Error};
 use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
 use std::ops::{Deref, DerefMut};
@@ -7,13 +6,10 @@ use std::time::Duration;
 
 #[derive(Debug)]
 pub struct ClientConfig {
-    pub http: Option<reqwest::Client>,
     pub artifact_registry_endpoint: String,
-    pub service_account_endpoint: String,
     pub token_source_provider: Box<dyn TokenSourceProvider>,
-    pub default_google_access_id: Option<String>,
-    pub default_sign_by: Option<SignBy>,
-    pub project_id: Option<String>,
+    pub timeout: Option<Duration>,
+    pub connect_timeout: Option<Duration>,
 }
 
 #[cfg(feature = "auth")]
@@ -36,22 +32,6 @@ impl ClientConfig {
     }
 
     async fn with_token_source(mut self, ts: google_cloud_auth::token::DefaultTokenSourceProvider) -> Self {
-        match &ts.source_credentials {
-            // Credential file is used.
-            Some(cred) => {
-                self.project_id = cred.project_id.clone();
-                if let Some(pk) = &cred.private_key {
-                    self.default_sign_by = Some(PrivateKey(pk.clone().into_bytes()));
-                }
-                self.default_google_access_id = cred.client_email.clone();
-            }
-            // On Google Cloud
-            None => {
-                self.project_id = Some(google_cloud_metadata::project_id().await);
-                self.default_sign_by = Some(SignBy::SignBytes);
-                self.default_google_access_id = google_cloud_metadata::email("default").await.ok();
-            }
-        }
         self.token_source_provider = Box::new(ts);
         self
     }
@@ -68,19 +48,15 @@ impl ClientConfig {
 impl Default for ClientConfig {
     fn default() -> Self {
         Self {
-            http: None,
             artifact_registry_endpoint: ARTIFACT_REGISTRY.to_string(),
             token_source_provider: Box::new(NopeTokenSourceProvider {}),
-            service_account_endpoint: "https://iamcredentials.googleapis.com".to_string(),
-            default_google_access_id: None,
-            default_sign_by: None,
-            project_id: None,
+            timeout: Some(Duration::from_secs(30)),
+            connect_timeout: Some(Duration::from_secs(30)),
         }
     }
 }
 
 use crate::grpc::apiv1::{ARTIFACT_REGISTRY, AUDIENCE, SCOPES};
-use crate::sign::SignBy::PrivateKey;
 #[cfg(feature = "auth")]
 pub use google_cloud_auth;
 use google_cloud_googleapis::devtools::artifact_registry::v1::artifact_registry_client::ArtifactRegistryClient;
@@ -94,12 +70,12 @@ pub struct Client {
 impl Client {
     pub async fn new(config: ClientConfig) -> Result<Self, Error> {
         let conn_options = ConnectionOptions {
-            timeout: Some(Duration::from_secs(30)),
-            connect_timeout: Some(Duration::from_secs(30)),
+            timeout: config.timeout,
+            connect_timeout: config.connect_timeout,
         };
         let conn_pool = ConnectionManager::new(
             1,
-            ARTIFACT_REGISTRY,
+            config.artifact_registry_endpoint,
             AUDIENCE,
             &Environment::GoogleCloud(config.token_source_provider),
             &conn_options,
