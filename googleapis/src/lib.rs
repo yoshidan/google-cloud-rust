@@ -55,6 +55,16 @@ pub mod storage {
 }
 
 #[path = ""]
+pub mod devtools {
+    #[cfg(feature = "artifact-registry")]
+    #[path = ""]
+    pub mod artifact_registry {
+        #[path = "google.devtools.artifactregistry.v1.rs"]
+        pub mod v1;
+    }
+}
+
+#[path = ""]
 pub mod cloud {
     #[cfg(feature = "bigquery")]
     #[path = ""]
