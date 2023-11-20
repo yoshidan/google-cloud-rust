@@ -113,9 +113,10 @@ mod tests {
     use google_cloud_gax::conn::ConnectionManager;
     use google_cloud_googleapis::devtools::artifact_registry::v1::artifact_registry_client::ArtifactRegistryClient;
     use google_cloud_googleapis::devtools::artifact_registry::v1::repository::Format;
-    use google_cloud_googleapis::devtools::artifact_registry::v1::{CreateRepositoryRequest, Repository};
+    use google_cloud_googleapis::devtools::artifact_registry::v1::{CreateRepositoryRequest, DeleteRepositoryRequest, GetRepositoryRequest, ListRepositoriesRequest, Repository, UpdateRepositoryRequest};
     use serial_test::serial;
     use std::time::{SystemTime, UNIX_EPOCH};
+    use prost_types::FieldMask;
     use tracing::log::LevelFilter::Off;
 
     async fn new_client() -> (Client, String) {
@@ -150,8 +151,44 @@ mod tests {
         let mut created_repository = client.create_repository(create_request.clone(), None).await.unwrap();
         let result = created_repository.wait(None).await.unwrap().unwrap();
         assert_eq!(
-            format!("{}/{}", create_request.parent, create_request.repository_id),
+            format!("{}/repositories/{}", create_request.parent, create_request.repository_id),
             result.name
         );
+
+        // get
+        let get_request = GetRepositoryRequest {
+            name: result.name.to_string(),
+        };
+        let get_repository = client.get_repository(get_request.clone(), None).await.unwrap();
+        assert_eq!(get_repository.name, get_request.name);
+
+        // update
+        let update_request = UpdateRepositoryRequest {
+            repository: Some(Repository {
+                description: "update test".to_string(),
+                ..get_repository.clone()
+            }),
+            update_mask: Some(FieldMask {
+                paths: vec!["description".to_string()]
+            }),
+        };
+        let update_repository = client.update_repository(update_request.clone(), None).await.unwrap();
+        assert_eq!(update_repository.description, update_request.repository.unwrap().description);
+
+        // list
+        let list_request = ListRepositoriesRequest {
+            parent: create_request.parent.to_string(),
+            page_size: 0,
+            page_token: "".to_string(),
+        };
+        let list_result = client.list_repositories(list_request, None).await.unwrap();
+        assert!( list_result.repositories.len() >= 1);
+
+        // delete
+        let delete_request = DeleteRepositoryRequest {
+            name: get_repository.name.to_string(),
+        };
+        client.delete_repository(delete_request, None).await.unwrap();
+
     }
 }
