@@ -8,9 +8,11 @@ use google_cloud_googleapis::devtools::artifact_registry::v1::{
     DeleteVersionRequest, DockerImage, File, GetDockerImageRequest, GetFileRequest, GetMavenArtifactRequest,
     GetNpmPackageRequest, GetPackageRequest, GetProjectSettingsRequest, GetPythonPackageRequest, GetRepositoryRequest,
     GetTagRequest, GetVersionRequest, ImportAptArtifactsRequest, ImportAptArtifactsResponse, ImportYumArtifactsRequest,
-    ListDockerImagesRequest, ListFilesRequest, ListMavenArtifactsRequest, ListNpmPackagesRequest, ListPackagesRequest,
-    ListPythonPackagesRequest, ListRepositoriesRequest, ListTagsRequest, ListVersionsRequest, MavenArtifact,
-    NpmPackage, Package, ProjectSettings, PythonPackage, Repository, Tag, UpdateProjectSettingsRequest,
+    ListDockerImagesRequest, ListDockerImagesResponse, ListFilesRequest, ListFilesResponse, ListMavenArtifactsRequest,
+    ListMavenArtifactsResponse, ListNpmPackagesRequest, ListNpmPackagesResponse, ListPackagesRequest,
+    ListPackagesResponse, ListPythonPackagesRequest, ListPythonPackagesResponse, ListRepositoriesRequest,
+    ListRepositoriesResponse, ListTagsRequest, ListTagsResponse, ListVersionsRequest, ListVersionsResponse,
+    MavenArtifact, NpmPackage, Package, ProjectSettings, PythonPackage, Repository, Tag, UpdateProjectSettingsRequest,
     UpdateRepositoryRequest, UpdateTagRequest, Version, YumArtifact,
 };
 use google_cloud_googleapis::iam::v1::{GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest};
@@ -171,7 +173,7 @@ impl Client {
         &mut self,
         req: ListRepositoriesRequest,
         retry: Option<RetrySetting>,
-    ) -> Result<Vec<Repository>, Status> {
+    ) -> Result<ListRepositoriesResponse, Status> {
         let setting = retry.unwrap_or_else(default_setting);
 
         invoke_fn(
@@ -181,7 +183,7 @@ impl Client {
                 client
                     .list_repositories(request)
                     .await
-                    .map(|r| r.into_inner().repositories)
+                    .map(|r| r.into_inner())
                     .map_err(|e| (e, client))
             },
             &mut self.inner,
@@ -337,7 +339,7 @@ impl Client {
         &mut self,
         req: ListDockerImagesRequest,
         retry: Option<RetrySetting>,
-    ) -> Result<Vec<DockerImage>, Status> {
+    ) -> Result<ListDockerImagesResponse, Status> {
         let setting = retry.unwrap_or_else(default_setting);
 
         invoke_fn(
@@ -347,7 +349,7 @@ impl Client {
                 client
                     .list_docker_images(request)
                     .await
-                    .map(|r| r.into_inner().docker_images)
+                    .map(|r| r.into_inner())
                     .map_err(|e| (e, client))
             },
             &mut self.inner,
@@ -445,7 +447,7 @@ impl Client {
         &mut self,
         req: ListFilesRequest,
         retry: Option<RetrySetting>,
-    ) -> Result<Vec<File>, Status> {
+    ) -> Result<ListFilesResponse, Status> {
         let setting = retry.unwrap_or_else(default_setting);
 
         invoke_fn(
@@ -455,7 +457,7 @@ impl Client {
                 client
                     .list_files(request)
                     .await
-                    .map(|d| d.into_inner().files)
+                    .map(|d| d.into_inner())
                     .map_err(|e| (e, client))
             },
             &mut self.inner,
@@ -499,7 +501,7 @@ impl Client {
         &mut self,
         req: ListMavenArtifactsRequest,
         retry: Option<RetrySetting>,
-    ) -> Result<Vec<MavenArtifact>, Status> {
+    ) -> Result<ListMavenArtifactsResponse, Status> {
         let setting = retry.unwrap_or_else(default_setting);
 
         invoke_fn(
@@ -509,7 +511,7 @@ impl Client {
                 client
                     .list_maven_artifacts(request)
                     .await
-                    .map(|d| d.into_inner().maven_artifacts)
+                    .map(|d| d.into_inner())
                     .map_err(|e| (e, client))
             },
             &mut self.inner,
@@ -553,7 +555,7 @@ impl Client {
         &mut self,
         req: ListNpmPackagesRequest,
         retry: Option<RetrySetting>,
-    ) -> Result<Vec<NpmPackage>, Status> {
+    ) -> Result<ListNpmPackagesResponse, Status> {
         let setting = retry.unwrap_or_else(default_setting);
 
         invoke_fn(
@@ -563,7 +565,7 @@ impl Client {
                 client
                     .list_npm_packages(request)
                     .await
-                    .map(|d| d.into_inner().npm_packages)
+                    .map(|d| d.into_inner())
                     .map_err(|e| (e, client))
             },
             &mut self.inner,
@@ -634,7 +636,7 @@ impl Client {
         &mut self,
         req: ListPackagesRequest,
         retry: Option<RetrySetting>,
-    ) -> Result<Vec<Package>, Status> {
+    ) -> Result<ListPackagesResponse, Status> {
         let setting = retry.unwrap_or_else(default_setting);
 
         invoke_fn(
@@ -644,7 +646,7 @@ impl Client {
                 client
                     .list_packages(request)
                     .await
-                    .map(|r| r.into_inner().packages)
+                    .map(|r| r.into_inner())
                     .map_err(|e| (e, client))
             },
             &mut self.inner,
@@ -738,7 +740,7 @@ impl Client {
         &mut self,
         req: ListTagsRequest,
         retry: Option<RetrySetting>,
-    ) -> Result<Vec<Tag>, Status> {
+    ) -> Result<ListTagsResponse, Status> {
         let setting = retry.unwrap_or_else(default_setting);
 
         invoke_fn(
@@ -748,7 +750,7 @@ impl Client {
                 client
                     .list_tags(request)
                     .await
-                    .map(|o| o.into_inner().tags)
+                    .map(|o| o.into_inner())
                     .map_err(|e| (e, client))
             },
             &mut self.inner,
@@ -850,7 +852,7 @@ impl Client {
         &mut self,
         req: ListVersionsRequest,
         retry: Option<RetrySetting>,
-    ) -> Result<Vec<Version>, Status> {
+    ) -> Result<ListVersionsResponse, Status> {
         let setting = retry.unwrap_or_else(default_setting);
 
         invoke_fn(
@@ -860,7 +862,7 @@ impl Client {
                 client
                     .list_versions(request)
                     .await
-                    .map(|r| r.into_inner().versions)
+                    .map(|r| r.into_inner())
                     .map_err(|e| (e, client))
             },
             &mut self.inner,
@@ -877,7 +879,7 @@ impl Client {
         &mut self,
         req: ListPythonPackagesRequest,
         retry: Option<RetrySetting>,
-    ) -> Result<Vec<PythonPackage>, Status> {
+    ) -> Result<ListPythonPackagesResponse, Status> {
         let setting = retry.unwrap_or_else(default_setting);
 
         invoke_fn(
@@ -887,7 +889,7 @@ impl Client {
                 client
                     .list_python_packages(request)
                     .await
-                    .map(|r| r.into_inner().python_packages)
+                    .map(|r| r.into_inner())
                     .map_err(|e| (e, client))
             },
             &mut self.inner,
