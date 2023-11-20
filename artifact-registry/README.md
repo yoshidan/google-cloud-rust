@@ -28,7 +28,7 @@ from a metadata server.
 This is also described in [google-cloud-auth](https://github.com/yoshidan/google-cloud-rust/blob/main/foundation/auth/README.md)
 
 ```rust
-use google_artifact_registry::client::{Client, ClientConfig};
+use google_cloud_artifact_registry::client::{Client, ClientConfig};
 
 async fn run() {
     let config = ClientConfig::default().with_auth().await.unwrap();
@@ -44,7 +44,7 @@ you can parse your own version of the 'credentials-file' and use it like that:
 ```rust
 use google_cloud_auth::credentials::CredentialsFile;
 // or google_artifact_registry::client::google_cloud_auth::credentials::CredentialsFile
-use google_artifact_registry::client::{Client, ClientConfig};
+use google_cloud_artifact_registry::client::{Client, ClientConfig};
 
 async fn run(cred: CredentialsFile) {
     let config = ClientConfig::default().with_credentials(cred).await.unwrap();

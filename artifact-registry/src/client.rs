@@ -113,10 +113,13 @@ mod tests {
     use google_cloud_gax::conn::ConnectionManager;
     use google_cloud_googleapis::devtools::artifact_registry::v1::artifact_registry_client::ArtifactRegistryClient;
     use google_cloud_googleapis::devtools::artifact_registry::v1::repository::Format;
-    use google_cloud_googleapis::devtools::artifact_registry::v1::{CreateRepositoryRequest, DeleteRepositoryRequest, GetRepositoryRequest, ListRepositoriesRequest, Repository, UpdateRepositoryRequest};
+    use google_cloud_googleapis::devtools::artifact_registry::v1::{
+        CreateRepositoryRequest, DeleteRepositoryRequest, GetRepositoryRequest, ListRepositoriesRequest, Repository,
+        UpdateRepositoryRequest,
+    };
+    use prost_types::FieldMask;
     use serial_test::serial;
     use std::time::{SystemTime, UNIX_EPOCH};
-    use prost_types::FieldMask;
     use tracing::log::LevelFilter::Off;
 
     async fn new_client() -> (Client, String) {
@@ -169,7 +172,7 @@ mod tests {
                 ..get_repository.clone()
             }),
             update_mask: Some(FieldMask {
-                paths: vec!["description".to_string()]
+                paths: vec!["description".to_string()],
             }),
         };
         let update_repository = client.update_repository(update_request.clone(), None).await.unwrap();
@@ -182,13 +185,12 @@ mod tests {
             page_token: "".to_string(),
         };
         let list_result = client.list_repositories(list_request, None).await.unwrap();
-        assert!( list_result.repositories.len() >= 1);
+        assert!(list_result.repositories.len() >= 1);
 
         // delete
         let delete_request = DeleteRepositoryRequest {
             name: get_repository.name.to_string(),
         };
         client.delete_repository(delete_request, None).await.unwrap();
-
     }
 }
