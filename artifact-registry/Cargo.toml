@@ -1,5 +1,5 @@
 [package]
-name = "google-artifact-registry"
+name = "google-cloud-artifact-registry"
 version = "0.1.0"
 edition = "2021"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
@@ -12,24 +12,15 @@ documentation = "https://docs.rs/google-artifact-registry/latest/google_artifact
 
 [dependencies]
 google-cloud-token = { version = "0.1.1", path = "../foundation/token" }
-reqwest = "0.11.22"
-
-google-cloud-metadata = { optional = true, version = "0.4", path = "../foundation/metadata" }
 google-cloud-auth = { optional = true, version = "0.13", path="../foundation/auth", default-features=false }
 google-cloud-googleapis = { version="0.11.0", path = "../googleapis", features=["artifact-registry"]}
 google-cloud-gax = { version = "0.16.0", path = "../foundation/gax"}
 google-cloud-longrunning = { version = "0.16.0", path = "../foundation/longrunning" }
-tracing = "0.1.40"
+tracing = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0.50"
-base64 = "0.21.5"
-once_cell = "1.18.0"
-regex = "1.10.2"
-sha2 = "0.10.8"
-time = "0.3.30"
-url = "2.4.1"
-prost-types = "0.11.9"
+prost-types = "0.11"
 
 [dev-dependencies]
 tokio = { version="1.32", features=["rt-multi-thread"] }
@@ -38,12 +29,11 @@ tracing-subscriber = { version="0.3.17", features=["env-filter"]}
 ctor = "0.1.26"
 tokio-util =  {version ="0.7", features = ["codec"] }
 google-cloud-auth = { path = "../foundation/auth", default-features=false }
-uuid = { version = "1.5.0", features = ["v4"] }
 
 [features]
 default = ["default-tls", "auth"]
-default-tls = ["reqwest/default-tls","google-cloud-auth?/default-tls"]
-rustls-tls = ["reqwest/rustls-tls","google-cloud-auth?/rustls-tls"]
+default-tls = ["google-cloud-auth?/default-tls"]
+rustls-tls = ["google-cloud-auth?/rustls-tls"]
 trace = []
-auth = ["google-cloud-auth", "google-cloud-metadata"]
+auth = ["google-cloud-auth"]
 external-account = ["google-cloud-auth?/external-account"]

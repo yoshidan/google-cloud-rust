@@ -4,6 +4,11 @@ use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
 use std::ops::{Deref, DerefMut};
 use std::time::Duration;
 
+use crate::grpc::apiv1::{ARTIFACT_REGISTRY, AUDIENCE, SCOPES};
+
+use google_cloud_googleapis::devtools::artifact_registry::v1::artifact_registry_client::ArtifactRegistryClient;
+use google_cloud_longrunning::autogen::operations_client::OperationsClient;
+
 #[derive(Debug)]
 pub struct ClientConfig {
     pub artifact_registry_endpoint: String,
@@ -11,6 +16,9 @@ pub struct ClientConfig {
     pub timeout: Option<Duration>,
     pub connect_timeout: Option<Duration>,
 }
+
+#[cfg(feature = "auth")]
+pub use google_cloud_auth;
 
 #[cfg(feature = "auth")]
 impl ClientConfig {
@@ -55,12 +63,6 @@ impl Default for ClientConfig {
         }
     }
 }
-
-use crate::grpc::apiv1::{ARTIFACT_REGISTRY, AUDIENCE, SCOPES};
-#[cfg(feature = "auth")]
-pub use google_cloud_auth;
-use google_cloud_googleapis::devtools::artifact_registry::v1::artifact_registry_client::ArtifactRegistryClient;
-use google_cloud_longrunning::autogen::operations_client::OperationsClient;
 
 #[derive(Clone)]
 pub struct Client {
