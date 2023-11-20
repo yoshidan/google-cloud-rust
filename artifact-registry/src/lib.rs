@@ -78,7 +78,7 @@
 //!         )
 //!         .await
 //!     {
-//!         Ok(r) => println!("Created repository {:?}", r),
+//!         Ok(mut r) => println!("Created repository {:?}", r.wait(None).await.unwrap()),
 //!         Err(err) => panic!("err: {:?}", err),
 //!     };
 //!
@@ -120,9 +120,9 @@
 //!         )
 //!         .await
 //!     {
-//!         Ok(repositories) => {
+//!         Ok(response) => {
 //!             println!("List repositories");
-//!             for r in repositories {
+//!             for r in response.repositories {
 //!                 println!("- {:?}", r);
 //!             }
 //!         }
@@ -245,9 +245,9 @@
 //!         )
 //!         .await
 //!     {
-//!         Ok(images) => {
+//!         Ok(response) => {
 //!             println!("Docker images for repository `repository-for-documentation`: ");
-//!             for image in images {
+//!             for image in response.docker_images {
 //!                 println!("- Image: {:?}", image);
 //!             }
 //!         }
