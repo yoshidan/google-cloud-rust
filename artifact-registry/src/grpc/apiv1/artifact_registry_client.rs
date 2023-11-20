@@ -115,26 +115,19 @@ impl Client {
         &mut self,
         req: CreateRepositoryRequest,
         retry: Option<RetrySetting>,
-    ) -> Result<Repository, Status> {
+    ) -> Result<Operation<Repository>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
 
-        match invoke_fn(
+        invoke_fn(
             Some(setting),
             |client| async {
                 let request = create_request(format!("parent={}", req.parent), req.clone());
-                client
-                    .create_repository(request)
-                    .await
-                    .map(|d| Operation::new(self.lro_client.clone(), d.into_inner()))
-                    .map_err(|e| (e, client))
+                client.create_repository(request).await.map_err(|e| (e, client))
             },
             &mut self.inner,
         )
         .await
-        {
-            Ok(mut operation) => Ok(operation.wait(None).await?.unwrap()), // TODO(benjaminch): better handle it
-            Err(e) => Err(e),
-        }
+        .map(|d| Operation::new(self.lro_client.clone(), d.into_inner()))
     }
 
     /// Get repository
@@ -393,26 +386,19 @@ impl Client {
         &mut self,
         req: ImportAptArtifactsRequest,
         retry: Option<RetrySetting>,
-    ) -> Result<ImportAptArtifactsResponse, Status> {
+    ) -> Result<Operation<ImportAptArtifactsResponse>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
 
-        match invoke_fn(
+        invoke_fn(
             Some(setting),
             |client| async {
                 let request = create_request(format!("parent={}", req.parent), req.clone());
-                client
-                    .import_apt_artifacts(request)
-                    .await
-                    .map(|d| Operation::new(self.lro_client.clone(), d.into_inner()))
-                    .map_err(|e| (e, client))
+                client.import_apt_artifacts(request).await.map_err(|e| (e, client))
             },
             &mut self.inner,
         )
         .await
-        {
-            Ok(mut operation) => Ok(operation.wait(None).await?.unwrap()), // TODO(benjaminch): better handle it
-            Err(e) => Err(e),
-        }
+        .map(|d| Operation::new(self.lro_client.clone(), d.into_inner()))
     }
 
     /// File get
@@ -933,25 +919,17 @@ impl Client {
         &mut self,
         req: ImportYumArtifactsRequest,
         retry: Option<RetrySetting>,
-    ) -> Result<YumArtifact, Status> {
+    ) -> Result<Operation<YumArtifact>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
-
-        match invoke_fn(
+        invoke_fn(
             Some(setting),
             |client| async {
                 let request = create_request(format!("parent={}", req.parent), req.clone());
-                client
-                    .import_yum_artifacts(request)
-                    .await
-                    .map(|d| Operation::new(self.lro_client.clone(), d.into_inner()))
-                    .map_err(|e| (e, client))
+                client.import_yum_artifacts(request).await.map_err(|e| (e, client))
             },
             &mut self.inner,
         )
         .await
-        {
-            Ok(mut operation) => Ok(operation.wait(None).await?.unwrap()), // TODO(benjaminch): better handle it
-            Err(e) => Err(e),
-        }
+        .map(|d| Operation::new(self.lro_client.clone(), d.into_inner()))
     }
 }

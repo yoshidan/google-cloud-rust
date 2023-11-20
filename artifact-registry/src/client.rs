@@ -105,3 +105,53 @@ impl DerefMut for Client {
         &mut self.artifact_registry_client
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::client::{Client, ClientConfig};
+    use crate::grpc::apiv1::AUDIENCE;
+    use google_cloud_gax::conn::ConnectionManager;
+    use google_cloud_googleapis::devtools::artifact_registry::v1::artifact_registry_client::ArtifactRegistryClient;
+    use google_cloud_googleapis::devtools::artifact_registry::v1::repository::Format;
+    use google_cloud_googleapis::devtools::artifact_registry::v1::{CreateRepositoryRequest, Repository};
+    use serial_test::serial;
+    use std::time::{SystemTime, UNIX_EPOCH};
+    use tracing::log::LevelFilter::Off;
+
+    async fn new_client() -> (Client, String) {
+        let cred = google_cloud_auth::credentials::CredentialsFile::new().await.unwrap();
+        let project = cred.project_id.clone().unwrap();
+        let config = ClientConfig::default().with_credentials(cred).await.unwrap();
+        (Client::new(config).await.unwrap(), project)
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_crud_repository() {
+        let (mut client, project) = new_client().await;
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let repository_id = format!("gcrar{now}");
+
+        // create
+        let create_request = CreateRepositoryRequest {
+            parent: format!("projects/{project}/locations/us-central1"),
+            repository_id,
+            repository: Some(Repository {
+                name: "".to_string(),
+                format: Format::Docker as i32,
+                description: "test repository".to_string(),
+                labels: Default::default(),
+                create_time: None,
+                update_time: None,
+                kms_key_name: "".to_string(),
+                format_config: None,
+            }),
+        };
+        let mut created_repository = client.create_repository(create_request.clone(), None).await.unwrap();
+        let result = created_repository.wait(None).await.unwrap().unwrap();
+        assert_eq!(
+            format!("{}/{}", create_request.parent, create_request.repository_id),
+            result.name
+        );
+    }
+}
