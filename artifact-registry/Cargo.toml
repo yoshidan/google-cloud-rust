@@ -11,22 +11,22 @@ description = "Google Cloud Platform Artifact Registry client library."
 documentation = "https://docs.rs/google-cloud-artifact-registry/latest/google_cloud_artifact_registry/"
 
 [dependencies]
-google-cloud-token = { version = "0.1.1", path = "../foundation/token" }
+google-cloud-token = { version = "0.1.2", path = "../foundation/token" }
 google-cloud-auth = { optional = true, version = "0.13", path="../foundation/auth", default-features=false }
-google-cloud-googleapis = { version="0.11.0", path = "../googleapis", features=["artifact-registry"]}
+google-cloud-googleapis = { version="0.11.1", path = "../googleapis", features=["artifact-registry"]}
 google-cloud-gax = { version = "0.16.0", path = "../foundation/gax"}
 google-cloud-longrunning = { version = "0.16.0", path = "../foundation/longrunning" }
 tracing = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-thiserror = "1.0.50"
+thiserror = "1.0"
 prost-types = "0.11"
 
 [dev-dependencies]
 tokio = { version="1.32", features=["rt-multi-thread"] }
 serial_test = "0.9"
 tracing-subscriber = { version="0.3.17", features=["env-filter"]}
-ctor = "0.1.26"
+ctor = "0.1"
 tokio-util =  {version ="0.7", features = ["codec"] }
 google-cloud-auth = { path = "../foundation/auth", default-features=false }
 
