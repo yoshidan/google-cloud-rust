@@ -8,7 +8,7 @@ keywords = ["gcp", "artifacts-registry","googleapis","google-cloud-rust"]
 license = "MIT"
 readme = "README.md"
 description = "Google Cloud Platform Artifact Registry client library."
-documentation = "https://docs.rs/google-artifact-registry/latest/google_artifact_registry/"
+documentation = "https://docs.rs/google-cloud-artifact-registry/latest/google_cloud_artifact_registry/"
 
 [dependencies]
 google-cloud-token = { version = "0.1.1", path = "../foundation/token" }

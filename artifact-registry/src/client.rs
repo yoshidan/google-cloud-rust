@@ -109,9 +109,7 @@ impl DerefMut for Client {
 #[cfg(test)]
 mod tests {
     use crate::client::{Client, ClientConfig};
-    use crate::grpc::apiv1::AUDIENCE;
-    use google_cloud_gax::conn::ConnectionManager;
-    use google_cloud_googleapis::devtools::artifact_registry::v1::artifact_registry_client::ArtifactRegistryClient;
+
     use google_cloud_googleapis::devtools::artifact_registry::v1::repository::Format;
     use google_cloud_googleapis::devtools::artifact_registry::v1::{
         CreateRepositoryRequest, DeleteRepositoryRequest, GetRepositoryRequest, ListRepositoriesRequest, Repository,
@@ -120,13 +118,17 @@ mod tests {
     use prost_types::FieldMask;
     use serial_test::serial;
     use std::time::{SystemTime, UNIX_EPOCH};
-    use tracing::log::LevelFilter::Off;
 
     async fn new_client() -> (Client, String) {
         let cred = google_cloud_auth::credentials::CredentialsFile::new().await.unwrap();
         let project = cred.project_id.clone().unwrap();
         let config = ClientConfig::default().with_credentials(cred).await.unwrap();
         (Client::new(config).await.unwrap(), project)
+    }
+
+    #[ctor::ctor]
+    fn init() {
+        let _ = tracing_subscriber::fmt().try_init();
     }
 
     #[tokio::test]
@@ -185,7 +187,7 @@ mod tests {
             page_token: "".to_string(),
         };
         let list_result = client.list_repositories(list_request, None).await.unwrap();
-        assert!(list_result.repositories.len() >= 1);
+        assert!(!list_result.repositories.is_empty());
 
         // delete
         let delete_request = DeleteRepositoryRequest {
