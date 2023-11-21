@@ -4,6 +4,11 @@ use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
 use std::ops::{Deref, DerefMut};
 use std::time::Duration;
 
+use crate::grpc::apiv1::{ARTIFACT_REGISTRY, AUDIENCE, SCOPES};
+
+use google_cloud_googleapis::devtools::artifact_registry::v1::artifact_registry_client::ArtifactRegistryClient;
+use google_cloud_longrunning::autogen::operations_client::OperationsClient;
+
 #[derive(Debug)]
 pub struct ClientConfig {
     pub artifact_registry_endpoint: String,
@@ -11,6 +16,9 @@ pub struct ClientConfig {
     pub timeout: Option<Duration>,
     pub connect_timeout: Option<Duration>,
 }
+
+#[cfg(feature = "auth")]
+pub use google_cloud_auth;
 
 #[cfg(feature = "auth")]
 impl ClientConfig {
@@ -56,12 +64,6 @@ impl Default for ClientConfig {
     }
 }
 
-use crate::grpc::apiv1::{ARTIFACT_REGISTRY, AUDIENCE, SCOPES};
-#[cfg(feature = "auth")]
-pub use google_cloud_auth;
-use google_cloud_googleapis::devtools::artifact_registry::v1::artifact_registry_client::ArtifactRegistryClient;
-use google_cloud_longrunning::autogen::operations_client::OperationsClient;
-
 #[derive(Clone)]
 pub struct Client {
     artifact_registry_client: ArtifactRegistryGrpcClient,
@@ -101,5 +103,96 @@ impl Deref for Client {
 impl DerefMut for Client {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.artifact_registry_client
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::client::{Client, ClientConfig};
+
+    use google_cloud_googleapis::devtools::artifact_registry::v1::repository::Format;
+    use google_cloud_googleapis::devtools::artifact_registry::v1::{
+        CreateRepositoryRequest, DeleteRepositoryRequest, GetRepositoryRequest, ListRepositoriesRequest, Repository,
+        UpdateRepositoryRequest,
+    };
+    use prost_types::FieldMask;
+    use serial_test::serial;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    async fn new_client() -> (Client, String) {
+        let cred = google_cloud_auth::credentials::CredentialsFile::new().await.unwrap();
+        let project = cred.project_id.clone().unwrap();
+        let config = ClientConfig::default().with_credentials(cred).await.unwrap();
+        (Client::new(config).await.unwrap(), project)
+    }
+
+    #[ctor::ctor]
+    fn init() {
+        let _ = tracing_subscriber::fmt().try_init();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_crud_repository() {
+        let (mut client, project) = new_client().await;
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let repository_id = format!("gcrar{now}");
+
+        // create
+        let create_request = CreateRepositoryRequest {
+            parent: format!("projects/{project}/locations/us-central1"),
+            repository_id,
+            repository: Some(Repository {
+                name: "".to_string(),
+                format: Format::Docker as i32,
+                description: "test repository".to_string(),
+                labels: Default::default(),
+                create_time: None,
+                update_time: None,
+                kms_key_name: "".to_string(),
+                format_config: None,
+            }),
+        };
+        let mut created_repository = client.create_repository(create_request.clone(), None).await.unwrap();
+        let result = created_repository.wait(None).await.unwrap().unwrap();
+        assert_eq!(
+            format!("{}/repositories/{}", create_request.parent, create_request.repository_id),
+            result.name
+        );
+
+        // get
+        let get_request = GetRepositoryRequest {
+            name: result.name.to_string(),
+        };
+        let get_repository = client.get_repository(get_request.clone(), None).await.unwrap();
+        assert_eq!(get_repository.name, get_request.name);
+
+        // update
+        let update_request = UpdateRepositoryRequest {
+            repository: Some(Repository {
+                description: "update test".to_string(),
+                ..get_repository.clone()
+            }),
+            update_mask: Some(FieldMask {
+                paths: vec!["description".to_string()],
+            }),
+        };
+        let update_repository = client.update_repository(update_request.clone(), None).await.unwrap();
+        assert_eq!(update_repository.description, update_request.repository.unwrap().description);
+
+        // list
+        let list_request = ListRepositoriesRequest {
+            parent: create_request.parent.to_string(),
+            page_size: 0,
+            page_token: "".to_string(),
+        };
+        let list_result = client.list_repositories(list_request, None).await.unwrap();
+        assert!(!list_result.repositories.is_empty());
+
+        // delete
+        let delete_request = DeleteRepositoryRequest {
+            name: get_repository.name.to_string(),
+        };
+        client.delete_repository(delete_request, None).await.unwrap();
     }
 }

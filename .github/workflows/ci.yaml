@@ -179,3 +179,29 @@ jobs:
         env:
           RUSTFLAGS: "-A dead_code -A unused"
         run: cargo test --release --all-features --manifest-path bigquery/Cargo.toml
+  artifact-registry:
+    name: artifact-registry
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'safe to test') || ${{ github.event_name }} == 'push'
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{github.event.pull_request.head.repo.full_name}}
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v0.6.0
+        with:
+          service_account_key: ${{ secrets.STORAGE_CREDENTIALS }}
+          export_default_credentials: true
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: dtolnay/rust-toolchain@stable
+      - name: test
+        env:
+          RUSTFLAGS: "-A dead_code -A unused"
+        run: cargo test --release --all-features --manifest-path artifact-registry/Cargo.toml
