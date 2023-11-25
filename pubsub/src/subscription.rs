@@ -201,6 +201,11 @@ impl Subscription {
         parts.join("/")
     }
 
+    #[allow(private_interfaces)]
+    pub fn get_client(&self) -> SubscriberClient {
+        self.subc.clone()
+    }
+
     /// create creates the subscription.
     pub async fn create(&self, fqtn: &str, cfg: SubscriptionConfig, retry: Option<RetrySetting>) -> Result<(), Status> {
         self.subc

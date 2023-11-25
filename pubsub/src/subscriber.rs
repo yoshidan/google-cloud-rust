@@ -63,6 +63,16 @@ impl ReceivedMessage {
         .await
     }
 
+    pub async fn modify_ack_deadline(&self, ack_deadline_seconds: i32) -> Result<(), Status> {
+        modify_ack_deadline(
+            &self.subscriber_client,
+            self.subscription.to_string(),
+            vec![self.ack_id.to_string()],
+            ack_deadline_seconds,
+        )
+        .await
+    }
+
     /// The approximate number of times that Cloud Pub/Sub has attempted to deliver
     /// the associated message to a subscriber.
     ///
@@ -270,19 +280,23 @@ async fn handle_message(
     size
 }
 
-async fn nack(subscriber_client: &SubscriberClient, subscription: String, ack_ids: Vec<String>) -> Result<(), Status> {
+async fn modify_ack_deadline(subscriber_client: &SubscriberClient, subscription: String, ack_ids: Vec<String>, ack_deadline_seconds: i32) -> Result<(), Status> {
     if ack_ids.is_empty() {
         return Ok(());
     }
     let req = ModifyAckDeadlineRequest {
         subscription,
-        ack_deadline_seconds: 0,
+        ack_deadline_seconds,
         ack_ids,
     };
     subscriber_client
         .modify_ack_deadline(req, None)
         .await
         .map(|e| e.into_inner())
+}
+
+async fn nack(subscriber_client: &SubscriberClient, subscription: String, ack_ids: Vec<String>) -> Result<(), Status> {
+    modify_ack_deadline(subscriber_client, subscription, ack_ids, 0).await
 }
 
 pub(crate) async fn ack(
