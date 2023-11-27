@@ -280,7 +280,12 @@ async fn handle_message(
     size
 }
 
-async fn modify_ack_deadline(subscriber_client: &SubscriberClient, subscription: String, ack_ids: Vec<String>, ack_deadline_seconds: i32) -> Result<(), Status> {
+async fn modify_ack_deadline(
+    subscriber_client: &SubscriberClient,
+    subscription: String,
+    ack_ids: Vec<String>,
+    ack_deadline_seconds: i32,
+) -> Result<(), Status> {
     if ack_ids.is_empty() {
         return Ok(());
     }
