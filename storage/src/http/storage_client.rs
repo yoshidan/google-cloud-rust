@@ -1283,10 +1283,15 @@ impl StorageClient {
 
     async fn with_headers(&self, builder: RequestBuilder) -> Result<RequestBuilder, Error> {
         let token = self.ts.token().await.map_err(Error::TokenSource)?;
-        Ok(builder
+        let builder = builder
             .header("X-Goog-Api-Client", "rust")
-            .header(reqwest::header::USER_AGENT, "google-cloud-storage")
-            .header(reqwest::header::AUTHORIZATION, token))
+            .header(reqwest::header::USER_AGENT, "google-cloud-storage");
+        if !token.is_empty() {
+            Ok(builder.header(reqwest::header::AUTHORIZATION, token))
+        } else {
+            tracing::trace!("Use anonymous access due to lack of token");
+            Ok(builder)
+        }
     }
 
     async fn send_request<T>(&self, request: Request) -> Result<T, Error>

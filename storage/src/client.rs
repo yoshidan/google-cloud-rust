@@ -35,6 +35,14 @@ impl Default for ClientConfig {
     }
 }
 
+impl ClientConfig {
+    pub fn anonymous(mut self) -> Self {
+        self.token_source_provider = Box::new(AnonymousTokenSourceProvider {});
+        self
+    }
+}
+
+use crate::token_source::AnonymousTokenSourceProvider;
 #[cfg(feature = "auth")]
 pub use google_cloud_auth;
 
@@ -249,6 +257,7 @@ mod test {
     use serial_test::serial;
 
     use crate::client::{Client, ClientConfig};
+    use crate::http::buckets::get::GetBucketRequest;
 
     use crate::http::storage_client::test::bucket_name;
     use crate::sign::{SignedURLMethod, SignedURLOptions};
@@ -370,5 +379,23 @@ mod test {
             .await
             .unwrap();
         assert_eq!(result, data);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_anonymous() {
+        let project = ClientConfig::default().with_auth().await.unwrap().project_id.unwrap();
+        let bucket = bucket_name(&project, "anonymous");
+
+        let config = ClientConfig::default().anonymous();
+        let client = Client::new(config);
+        let result = client
+            .get_bucket(&GetBucketRequest {
+                bucket: bucket.clone(),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        assert_eq!(result.name, bucket);
     }
 }
