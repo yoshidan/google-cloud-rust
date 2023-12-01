@@ -33,9 +33,9 @@ impl ServiceAccountClient {
         let request = match &self.ts {
             Some(ts) => {
                 let token = ts.token().await.map_err(Error::TokenSource)?;
-                request .header(reqwest::header::AUTHORIZATION, token)
-            },
-            None => request
+                request.header(reqwest::header::AUTHORIZATION, token)
+            }
+            None => request,
         };
         let response = request.send().await?;
         let response = check_response_status(response).await?;

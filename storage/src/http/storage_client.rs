@@ -1289,8 +1289,8 @@ impl StorageClient {
             Some(ts) => {
                 let token = ts.token().await.map_err(Error::TokenSource)?;
                 builder.header(reqwest::header::AUTHORIZATION, token)
-            },
-            None => builder
+            }
+            None => builder,
         };
         Ok(builder)
     }
