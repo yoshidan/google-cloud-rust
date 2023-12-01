@@ -12,7 +12,7 @@ documentation = "https://docs.rs/google-cloud-storage/latest/google_cloud_storag
 
 [dependencies]
 google-cloud-token = { version = "0.1.1", path = "../foundation/token" }
-rsa = "0.9"
+pkcs8 = {version="0.10", features=["pem"]}
 thiserror = "1.0"
 time = { version = "0.3", features = ["std", "macros", "formatting", "parsing", "serde"] }
 base64 = "0.21"

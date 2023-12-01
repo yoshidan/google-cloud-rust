@@ -1,9 +1,12 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
+use std::ops::Deref;
 use std::time::Duration;
 
 use base64::prelude::*;
 use once_cell::sync::Lazy;
+use pkcs8::der::pem::PemLabel;
+use pkcs8::SecretDocument;
 use regex::Regex;
 use sha2::{Digest, Sha256};
 use time::format_description::well_known::iso8601::{EncodedConfig, TimePrecision};
@@ -324,6 +327,35 @@ fn validate_options(opts: &SignedURLOptions) -> Result<(), SignedURLError> {
         return Err(InvalidOption("storage: expires must be within seven days from now"));
     }
     Ok(())
+}
+
+pub struct RsaKeyPair {
+    inner: ring::signature::RsaKeyPair,
+}
+
+impl PemLabel for RsaKeyPair {
+    const PEM_LABEL: &'static str = "PRIVATE KEY";
+}
+
+impl TryFrom<&Vec<u8>> for RsaKeyPair {
+    type Error = SignedURLError;
+
+    fn try_from(pem: &Vec<u8>) -> Result<Self, Self::Error> {
+        let str = String::from_utf8_lossy(pem);
+        let (label, doc) = SecretDocument::from_pem(&str).map_err(|v| SignedURLError::CertError(v.to_string()))?;
+        Self::validate_pem_label(label).map_err(|_| SignedURLError::CertError(label.to_string()))?;
+        let key_pair = ring::signature::RsaKeyPair::from_pkcs8(doc.as_bytes())
+            .map_err(|e| SignedURLError::CertError(e.to_string()))?;
+        Ok(Self { inner: key_pair })
+    }
+}
+
+impl Deref for RsaKeyPair {
+    type Target = ring::signature::RsaKeyPair;
+
+    fn deref(&self) -> &ring::signature::RsaKeyPair {
+        &self.inner
+    }
 }
 
 #[cfg(test)]

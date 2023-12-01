@@ -1,14 +1,13 @@
 use std::ops::Deref;
 
 use ring::{rand, signature};
-use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey};
 
 use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
 
 use crate::http::service_account_client::ServiceAccountClient;
 use crate::http::storage_client::StorageClient;
 use crate::sign::SignBy::PrivateKey;
-use crate::sign::{create_signed_buffer, SignBy, SignedURLError, SignedURLOptions};
+use crate::sign::{create_signed_buffer, RsaKeyPair, SignBy, SignedURLError, SignedURLOptions};
 
 #[derive(Debug)]
 pub struct ClientConfig {
@@ -221,15 +220,7 @@ impl Client {
                 if private_key.is_empty() {
                     return Err(SignedURLError::InvalidOption("No keys present"));
                 }
-
-                let str = String::from_utf8_lossy(private_key);
-                let pkcs = rsa::RsaPrivateKey::from_pkcs8_pem(str.as_ref())
-                    .map_err(|e| SignedURLError::CertError(e.to_string()))?;
-                let der = pkcs
-                    .to_pkcs8_der()
-                    .map_err(|e| SignedURLError::CertError(e.to_string()))?;
-                let key_pair = ring::signature::RsaKeyPair::from_pkcs8(der.as_bytes())
-                    .map_err(|e| SignedURLError::CertError(e.to_string()))?;
+                let key_pair = &RsaKeyPair::try_from(private_key)?;
                 let mut signed = vec![0; key_pair.public().modulus_len()];
                 key_pair
                     .sign(
