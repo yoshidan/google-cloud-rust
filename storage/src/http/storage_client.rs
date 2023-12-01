@@ -68,14 +68,14 @@ pub const SCOPES: [&str; 2] = [
 
 #[derive(Clone)]
 pub struct StorageClient {
-    ts: Arc<dyn TokenSource>,
+    ts: Option<Arc<dyn TokenSource>>,
     v1_endpoint: String,
     v1_upload_endpoint: String,
     http: Client,
 }
 
 impl StorageClient {
-    pub(crate) fn new(ts: Arc<dyn TokenSource>, endpoint: &str, http: Client) -> Self {
+    pub(crate) fn new(ts: Option<Arc<dyn TokenSource>>, endpoint: &str, http: Client) -> Self {
         Self {
             ts,
             v1_endpoint: format!("{endpoint}/storage/v1"),
@@ -1282,11 +1282,17 @@ impl StorageClient {
     }
 
     async fn with_headers(&self, builder: RequestBuilder) -> Result<RequestBuilder, Error> {
-        let token = self.ts.token().await.map_err(Error::TokenSource)?;
-        Ok(builder
+        let builder = builder
             .header("X-Goog-Api-Client", "rust")
-            .header(reqwest::header::USER_AGENT, "google-cloud-storage")
-            .header(reqwest::header::AUTHORIZATION, token))
+            .header(reqwest::header::USER_AGENT, "google-cloud-storage");
+        let builder = match &self.ts {
+            Some(ts) => {
+                let token = ts.token().await.map_err(Error::TokenSource)?;
+                builder.header(reqwest::header::AUTHORIZATION, token)
+            }
+            None => builder,
+        };
+        Ok(builder)
     }
 
     async fn send_request<T>(&self, request: Request) -> Result<T, Error>
@@ -1409,7 +1415,7 @@ pub(crate) mod test {
         .unwrap();
         let cred = tsp.source_credentials.clone();
         let ts = tsp.token_source();
-        let client = StorageClient::new(ts, "https://storage.googleapis.com", reqwest::Client::new());
+        let client = StorageClient::new(Some(ts), "https://storage.googleapis.com", reqwest::Client::new());
         let cred = cred.unwrap();
         (client, cred.project_id.unwrap(), cred.client_email.unwrap())
     }

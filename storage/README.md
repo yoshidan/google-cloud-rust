@@ -51,6 +51,19 @@ async fn run(cred: CredentialsFile) {
 }
 ```
 
+### Anonymous Access
+
+To provide [anonymous access without authentication](https://cloud.google.com/storage/docs/authentication), do the following.
+
+```rust
+use google_cloud_storage::client::{ClientConfig, Client};
+
+async fn run() {
+    let config = ClientConfig::default().anonymous();
+    let client = Client::new(config);
+}
+```
+
 ### Usage
 
 ```rust

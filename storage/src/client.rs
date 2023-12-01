@@ -1,21 +1,20 @@
 use std::ops::Deref;
 
 use ring::{rand, signature};
-use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey};
 
 use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
 
 use crate::http::service_account_client::ServiceAccountClient;
 use crate::http::storage_client::StorageClient;
 use crate::sign::SignBy::PrivateKey;
-use crate::sign::{create_signed_buffer, SignBy, SignedURLError, SignedURLOptions};
+use crate::sign::{create_signed_buffer, RsaKeyPair, SignBy, SignedURLError, SignedURLOptions};
 
 #[derive(Debug)]
 pub struct ClientConfig {
     pub http: Option<reqwest::Client>,
     pub storage_endpoint: String,
     pub service_account_endpoint: String,
-    pub token_source_provider: Box<dyn TokenSourceProvider>,
+    pub token_source_provider: Option<Box<dyn TokenSourceProvider>>,
     pub default_google_access_id: Option<String>,
     pub default_sign_by: Option<SignBy>,
     pub project_id: Option<String>,
@@ -26,12 +25,19 @@ impl Default for ClientConfig {
         Self {
             http: None,
             storage_endpoint: "https://storage.googleapis.com".to_string(),
-            token_source_provider: Box::new(NopeTokenSourceProvider {}),
+            token_source_provider: Some(Box::new(NopeTokenSourceProvider {})),
             service_account_endpoint: "https://iamcredentials.googleapis.com".to_string(),
             default_google_access_id: None,
             default_sign_by: None,
             project_id: None,
         }
+    }
+}
+
+impl ClientConfig {
+    pub fn anonymous(mut self) -> Self {
+        self.token_source_provider = None;
+        self
     }
 }
 
@@ -74,7 +80,7 @@ impl ClientConfig {
                 self.default_google_access_id = google_cloud_metadata::email("default").await.ok();
             }
         }
-        self.token_source_provider = Box::new(ts);
+        self.token_source_provider = Some(Box::new(ts));
         self
     }
 
@@ -112,7 +118,13 @@ impl Default for Client {
 impl Client {
     /// New client
     pub fn new(config: ClientConfig) -> Self {
-        let ts = config.token_source_provider.token_source();
+        let ts = match config.token_source_provider {
+            Some(tsp) => Some(tsp.token_source()),
+            None => {
+                tracing::trace!("Use anonymous access due to lack of token");
+                None
+            }
+        };
         let http = config.http.unwrap_or_default();
 
         let service_account_client =
@@ -208,16 +220,8 @@ impl Client {
                 if private_key.is_empty() {
                     return Err(SignedURLError::InvalidOption("No keys present"));
                 }
-
-                let str = String::from_utf8_lossy(private_key);
-                let pkcs = rsa::RsaPrivateKey::from_pkcs8_pem(str.as_ref())
-                    .map_err(|e| SignedURLError::CertError(e.to_string()))?;
-                let der = pkcs
-                    .to_pkcs8_der()
-                    .map_err(|e| SignedURLError::CertError(e.to_string()))?;
-                let key_pair = ring::signature::RsaKeyPair::from_pkcs8(der.as_ref())
-                    .map_err(|e| SignedURLError::CertError(e.to_string()))?;
-                let mut signed = vec![0; key_pair.public_modulus_len()];
+                let key_pair = &RsaKeyPair::try_from(private_key)?;
+                let mut signed = vec![0; key_pair.public().modulus_len()];
                 key_pair
                     .sign(
                         &signature::RSA_PKCS1_SHA256,
@@ -249,6 +253,7 @@ mod test {
     use serial_test::serial;
 
     use crate::client::{Client, ClientConfig};
+    use crate::http::buckets::get::GetBucketRequest;
 
     use crate::http::storage_client::test::bucket_name;
     use crate::sign::{SignedURLMethod, SignedURLOptions};
@@ -370,5 +375,23 @@ mod test {
             .await
             .unwrap();
         assert_eq!(result, data);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_anonymous() {
+        let project = ClientConfig::default().with_auth().await.unwrap().project_id.unwrap();
+        let bucket = bucket_name(&project, "anonymous");
+
+        let config = ClientConfig::default().anonymous();
+        let client = Client::new(config);
+        let result = client
+            .get_bucket(&GetBucketRequest {
+                bucket: bucket.clone(),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        assert_eq!(result.name, bucket);
     }
 }

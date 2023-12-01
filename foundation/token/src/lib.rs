@@ -19,6 +19,6 @@ pub struct NopeTokenSourceProvider {}
 
 impl TokenSourceProvider for NopeTokenSourceProvider {
     fn token_source(&self) -> Arc<dyn TokenSource> {
-        panic!("This is dummy token source provider. you can use 'google_cloud_default' crate")
+        panic!("This is dummy token source provider. you can use 'google_cloud_auth' crate")
     }
 }
