@@ -15,7 +15,7 @@ pub struct ClientConfig {
     pub http: Option<reqwest::Client>,
     pub storage_endpoint: String,
     pub service_account_endpoint: String,
-    pub token_source_provider: Box<dyn TokenSourceProvider>,
+    pub token_source_provider: Option<Box<dyn TokenSourceProvider>>,
     pub default_google_access_id: Option<String>,
     pub default_sign_by: Option<SignBy>,
     pub project_id: Option<String>,
@@ -26,7 +26,7 @@ impl Default for ClientConfig {
         Self {
             http: None,
             storage_endpoint: "https://storage.googleapis.com".to_string(),
-            token_source_provider: Box::new(NopeTokenSourceProvider {}),
+            token_source_provider: Some(Box::new(NopeTokenSourceProvider {})),
             service_account_endpoint: "https://iamcredentials.googleapis.com".to_string(),
             default_google_access_id: None,
             default_sign_by: None,
@@ -37,12 +37,11 @@ impl Default for ClientConfig {
 
 impl ClientConfig {
     pub fn anonymous(mut self) -> Self {
-        self.token_source_provider = Box::new(AnonymousTokenSourceProvider {});
+        self.token_source_provider = None;
         self
     }
 }
 
-use crate::token_source::AnonymousTokenSourceProvider;
 #[cfg(feature = "auth")]
 pub use google_cloud_auth;
 
@@ -82,7 +81,7 @@ impl ClientConfig {
                 self.default_google_access_id = google_cloud_metadata::email("default").await.ok();
             }
         }
-        self.token_source_provider = Box::new(ts);
+        self.token_source_provider = Some(Box::new(ts));
         self
     }
 
@@ -120,7 +119,13 @@ impl Default for Client {
 impl Client {
     /// New client
     pub fn new(config: ClientConfig) -> Self {
-        let ts = config.token_source_provider.token_source();
+        let ts = match config.token_source_provider {
+            Some(tsp) => Some(tsp.token_source()),
+            None => {
+                tracing::trace!("Use anonymous access due to lack of token");
+                None
+            }
+        };
         let http = config.http.unwrap_or_default();
 
         let service_account_client =

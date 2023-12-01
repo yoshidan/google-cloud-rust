@@ -6,13 +6,13 @@ use crate::http::{check_response_status, Error};
 
 #[derive(Clone)]
 pub struct ServiceAccountClient {
-    ts: Arc<dyn TokenSource>,
+    ts: Option<Arc<dyn TokenSource>>,
     v1_endpoint: String,
     http: reqwest::Client,
 }
 
 impl ServiceAccountClient {
-    pub(crate) fn new(ts: Arc<dyn TokenSource>, endpoint: &str, http: reqwest::Client) -> Self {
+    pub(crate) fn new(ts: Option<Arc<dyn TokenSource>>, endpoint: &str, http: reqwest::Client) -> Self {
         Self {
             ts,
             v1_endpoint: format!("{endpoint}/v1"),
@@ -24,14 +24,19 @@ impl ServiceAccountClient {
     pub async fn sign_blob(&self, name: &str, payload: &[u8]) -> Result<Vec<u8>, Error> {
         let url = format!("{}/{}:signBlob", self.v1_endpoint, name);
         let request = SignBlobRequest { payload };
-        let token = self.ts.token().await.map_err(Error::TokenSource)?;
         let request = self
             .http
             .post(url)
             .json(&request)
             .header("X-Goog-Api-Client", "rust")
-            .header(reqwest::header::USER_AGENT, "google-cloud-storage")
-            .header(reqwest::header::AUTHORIZATION, token);
+            .header(reqwest::header::USER_AGENT, "google-cloud-storage");
+        let request = match &self.ts {
+            Some(ts) => {
+                let token = ts.token().await.map_err(Error::TokenSource)?;
+                request .header(reqwest::header::AUTHORIZATION, token)
+            },
+            None => request
+        };
         let response = request.send().await?;
         let response = check_response_status(response).await?;
         Ok(response.json::<SignBlobResponse>().await?.signed_blob)
@@ -73,7 +78,7 @@ mod test {
         let email = tsp.source_credentials.clone().unwrap().client_email.unwrap();
         let ts = tsp.token_source();
         (
-            ServiceAccountClient::new(ts, "https://iamcredentials.googleapis.com", Client::default()),
+            ServiceAccountClient::new(Some(ts), "https://iamcredentials.googleapis.com", Client::default()),
             email,
         )
     }
