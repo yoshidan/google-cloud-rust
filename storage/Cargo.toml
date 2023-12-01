@@ -12,13 +12,13 @@ documentation = "https://docs.rs/google-cloud-storage/latest/google_cloud_storag
 
 [dependencies]
 google-cloud-token = { version = "0.1.1", path = "../foundation/token" }
-rsa = "0.6"
+rsa = "0.9"
 thiserror = "1.0"
 time = { version = "0.3", features = ["std", "macros", "formatting", "parsing", "serde"] }
 base64 = "0.21"
 regex = "1.9"
 sha2 = "0.10"
-ring = "0.16"
+ring = "0.17"
 tokio = { version="1.32", features=["macros"] }
 async-stream = "0.3"
 once_cell = "1.18"
