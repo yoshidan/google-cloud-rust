@@ -93,7 +93,7 @@ mod test {
 
     #[tokio::test]
     #[serial]
-    pub async fn table_data() {
+    pub async fn insert_all() {
         let dataset = dataset_name("table");
         let (client, project) = create_client().await;
         let client = Arc::new(client);
@@ -141,24 +141,32 @@ mod test {
             .unwrap();
         assert!(res2.insert_errors.is_none());
 
+        table_client
+            .delete(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str())
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn read_all() {
+        let dataset = dataset_name("job");
+        let (client, project) = create_client().await;
+        let client = Arc::new(client);
+        let client = BigqueryTabledataClient::new(client.clone());
+
         // fetch
         let mut fetch_request = FetchDataRequest {
-            max_results: Some(1),
+            max_results: Some(500),
             ..Default::default()
         };
         let mut data: Vec<list::Tuple> = vec![];
         loop {
             let result = client
-                .read(
-                    ref1.project_id.as_str(),
-                    ref1.dataset_id.as_str(),
-                    ref1.table_id.as_str(),
-                    &fetch_request,
-                )
+                .read(project.as_str(), dataset.as_str(), "reading_data", &fetch_request)
                 .await
                 .unwrap();
             if let Some(rows) = result.rows {
-                println!("{:?}", rows);
                 data.extend(rows);
             }
             if result.page_token.is_none() {
@@ -166,10 +174,6 @@ mod test {
             }
             fetch_request.page_token = result.page_token
         }
-        assert_eq!(data.len(), 2, "{:?}", data.pop());
-        table_client
-            .delete(ref1.project_id.as_str(), ref1.dataset_id.as_str(), ref1.table_id.as_str())
-            .await
-            .unwrap();
+        assert_eq!(data.len(), 1000, "{:?}", data.pop());
     }
 }
