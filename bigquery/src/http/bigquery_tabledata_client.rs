@@ -163,12 +163,7 @@ mod test {
         let mut data: Vec<list::Tuple> = vec![];
         loop {
             let result = client
-                .read(
-                    project.as_str(),
-                    dataset.as_str(),
-                    "reading_data",
-                    &fetch_request,
-                )
+                .read(project.as_str(), dataset.as_str(), "reading_data", &fetch_request)
                 .await
                 .unwrap();
             if let Some(rows) = result.rows {
