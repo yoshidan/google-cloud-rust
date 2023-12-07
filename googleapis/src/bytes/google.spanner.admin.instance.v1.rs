@@ -271,6 +271,90 @@ pub mod instance_config {
         }
     }
 }
+/// Autoscaling config for an instance.
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AutoscalingConfig {
+    /// Required. Autoscaling limits for an instance.
+    #[prost(message, optional, tag = "1")]
+    pub autoscaling_limits: ::core::option::Option<
+        autoscaling_config::AutoscalingLimits,
+    >,
+    /// Required. The autoscaling targets for an instance.
+    #[prost(message, optional, tag = "2")]
+    pub autoscaling_targets: ::core::option::Option<
+        autoscaling_config::AutoscalingTargets,
+    >,
+}
+/// Nested message and enum types in `AutoscalingConfig`.
+pub mod autoscaling_config {
+    /// The autoscaling limits for the instance. Users can define the minimum and
+    /// maximum compute capacity allocated to the instance, and the autoscaler will
+    /// only scale within that range. Users can either use nodes or processing
+    /// units to specify the limits, but should use the same unit to set both the
+    /// min_limit and max_limit.
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct AutoscalingLimits {
+        /// The minimum compute capacity for the instance.
+        #[prost(oneof = "autoscaling_limits::MinLimit", tags = "1, 2")]
+        pub min_limit: ::core::option::Option<autoscaling_limits::MinLimit>,
+        /// The maximum compute capacity for the instance. The maximum compute
+        /// capacity should be less than or equal to 10X the minimum compute
+        /// capacity.
+        #[prost(oneof = "autoscaling_limits::MaxLimit", tags = "3, 4")]
+        pub max_limit: ::core::option::Option<autoscaling_limits::MaxLimit>,
+    }
+    /// Nested message and enum types in `AutoscalingLimits`.
+    pub mod autoscaling_limits {
+        /// The minimum compute capacity for the instance.
+        #[allow(clippy::derive_partial_eq_without_eq)]
+        #[derive(Clone, PartialEq, ::prost::Oneof)]
+        pub enum MinLimit {
+            /// Minimum number of nodes allocated to the instance. If set, this number
+            /// should be greater than or equal to 1.
+            #[prost(int32, tag = "1")]
+            MinNodes(i32),
+            /// Minimum number of processing units allocated to the instance. If set,
+            /// this number should be multiples of 1000.
+            #[prost(int32, tag = "2")]
+            MinProcessingUnits(i32),
+        }
+        /// The maximum compute capacity for the instance. The maximum compute
+        /// capacity should be less than or equal to 10X the minimum compute
+        /// capacity.
+        #[allow(clippy::derive_partial_eq_without_eq)]
+        #[derive(Clone, PartialEq, ::prost::Oneof)]
+        pub enum MaxLimit {
+            /// Maximum number of nodes allocated to the instance. If set, this number
+            /// should be greater than or equal to min_nodes.
+            #[prost(int32, tag = "3")]
+            MaxNodes(i32),
+            /// Maximum number of processing units allocated to the instance. If set,
+            /// this number should be multiples of 1000 and be greater than or equal to
+            /// min_processing_units.
+            #[prost(int32, tag = "4")]
+            MaxProcessingUnits(i32),
+        }
+    }
+    /// The autoscaling targets for an instance.
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct AutoscalingTargets {
+        /// Required. The target high priority cpu utilization percentage that the
+        /// autoscaler should be trying to achieve for the instance. This number is
+        /// on a scale from 0 (no utilization) to 100 (full utilization). The valid
+        /// range is [10, 90] inclusive.
+        #[prost(int32, tag = "1")]
+        pub high_priority_cpu_utilization_percent: i32,
+        /// Required. The target storage utilization percentage that the autoscaler
+        /// should be trying to achieve for the instance. This number is on a scale
+        /// from 0 (no utilization) to 100 (full utilization). The valid range is
+        /// [10, 100] inclusive.
+        #[prost(int32, tag = "2")]
+        pub storage_utilization_percent: i32,
+    }
+}
 /// An isolated set of Cloud Spanner resources on which databases can be hosted.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -292,8 +376,12 @@ pub struct Instance {
     #[prost(string, tag = "3")]
     pub display_name: ::prost::alloc::string::String,
     /// The number of nodes allocated to this instance. At most one of either
-    /// node_count or processing_units should be present in the message. This
-    /// may be zero in API responses for instances that are not yet in state
+    /// node_count or processing_units should be present in the message.
+    ///
+    /// Users can set the node_count field to specify the target number of nodes
+    /// allocated to the instance.
+    ///
+    /// This may be zero in API responses for instances that are not yet in state
     /// `READY`.
     ///
     /// See [the
@@ -302,14 +390,25 @@ pub struct Instance {
     #[prost(int32, tag = "5")]
     pub node_count: i32,
     /// The number of processing units allocated to this instance. At most one of
-    /// processing_units or node_count should be present in the message. This may
-    /// be zero in API responses for instances that are not yet in state `READY`.
+    /// processing_units or node_count should be present in the message.
+    ///
+    /// Users can set the processing_units field to specify the target number of
+    /// processing units allocated to the instance.
+    ///
+    /// This may be zero in API responses for instances that are not yet in state
+    /// `READY`.
     ///
     /// See [the
     /// documentation](<https://cloud.google.com/spanner/docs/compute-capacity>)
     /// for more information about nodes and processing units.
     #[prost(int32, tag = "9")]
     pub processing_units: i32,
+    /// Optional. The autoscaling configuration. Autoscaling is enabled if this
+    /// field is set. When autoscaling is enabled, node_count and processing_units
+    /// are treated as OUTPUT_ONLY fields and reflect the current compute capacity
+    /// allocated to the instance.
+    #[prost(message, optional, tag = "17")]
+    pub autoscaling_config: ::core::option::Option<AutoscalingConfig>,
     /// Output only. The current instance state. For
     /// \[CreateInstance][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstance\],
     /// the state must be either omitted or set to `CREATING`. For

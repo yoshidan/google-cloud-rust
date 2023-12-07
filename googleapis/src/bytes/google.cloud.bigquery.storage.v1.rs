@@ -1038,6 +1038,17 @@ pub struct AppendRowsRequest {
         ::prost::alloc::string::String,
         i32,
     >,
+    /// Optional. Default missing value interpretation for all columns in the
+    /// table. When a value is specified on an `AppendRowsRequest`, it is applied
+    /// to all requests on the connection from that point forward, until a
+    /// subsequent `AppendRowsRequest` sets it to a different value.
+    /// `missing_value_interpretation` can override
+    /// `default_missing_value_interpretation`. For example, if you want to write
+    /// `NULL` instead of using default values for some columns, you can set
+    /// `default_missing_value_interpretation` to `DEFAULT_VALUE` and at the same
+    /// time, set `missing_value_interpretations` to `NULL_VALUE` on those columns.
+    #[prost(enumeration = "append_rows_request::MissingValueInterpretation", tag = "8")]
+    pub default_missing_value_interpretation: i32,
     /// Input rows. The `writer_schema` field must be specified at the initial
     /// request and currently, it will be ignored if specified in following
     /// requests. Following requests must have data in the same format as the
@@ -1335,7 +1346,8 @@ pub mod storage_error {
         InvalidCmekProvided = 11,
         /// There is an encryption error while using customer-managed encryption key.
         CmekEncryptionError = 12,
-        /// Key Management Service (KMS) service returned an error.
+        /// Key Management Service (KMS) service returned an error, which can be
+        /// retried.
         KmsServiceError = 13,
         /// Permission denied while using customer-managed encryption key.
         KmsPermissionDenied = 14,
