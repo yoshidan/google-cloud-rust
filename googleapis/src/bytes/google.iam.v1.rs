@@ -312,7 +312,7 @@ pub struct AuditLogConfig {
     /// Specifies the identities that do not cause logging for this type of
     /// permission.
     /// Follows the same format of
-    /// \[Binding.members][google.iam.v1.Binding.members\].
+    /// [Binding.members][google.iam.v1.Binding.members].
     #[prost(string, repeated, tag = "2")]
     pub exempted_members: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }

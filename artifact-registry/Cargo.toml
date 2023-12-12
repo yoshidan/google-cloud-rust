@@ -13,14 +13,14 @@ documentation = "https://docs.rs/google-cloud-artifact-registry/latest/google_cl
 [dependencies]
 google-cloud-token = { version = "0.1.2", path = "../foundation/token" }
 google-cloud-auth = { optional = true, version = "0.13", path="../foundation/auth", default-features=false }
-google-cloud-googleapis = { version="0.11.1", path = "../googleapis", features=["artifact-registry"]}
+google-cloud-googleapis = { version="0.12.0", path = "../googleapis", features=["artifact-registry"]}
 google-cloud-gax = { version = "0.16.0", path = "../foundation/gax"}
 google-cloud-longrunning = { version = "0.16.0", path = "../foundation/longrunning" }
 tracing = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
-prost-types = "0.11"
+prost-types = "0.12"
 
 [dev-dependencies]
 tokio = { version="1.32", features=["rt-multi-thread"] }

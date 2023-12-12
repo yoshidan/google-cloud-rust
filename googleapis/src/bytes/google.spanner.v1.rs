@@ -1,4 +1,4 @@
-/// The response for \[Commit][google.spanner.v1.Spanner.Commit\].
+/// The response for [Commit][google.spanner.v1.Spanner.Commit].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CommitResponse {
@@ -7,7 +7,7 @@ pub struct CommitResponse {
     pub commit_timestamp: ::core::option::Option<::prost_types::Timestamp>,
     /// The statistics about this Commit. Not returned by default.
     /// For more information, see
-    /// \[CommitRequest.return_commit_stats][google.spanner.v1.CommitRequest.return_commit_stats\].
+    /// [CommitRequest.return_commit_stats][google.spanner.v1.CommitRequest.return_commit_stats].
     #[prost(message, optional, tag = "2")]
     pub commit_stats: ::core::option::Option<commit_response::CommitStats>,
 }
@@ -21,9 +21,9 @@ pub mod commit_response {
         /// `mutation_count` value can help you maximize the number of mutations
         /// in a transaction and minimize the number of API round trips. You can
         /// also monitor this value to prevent transactions from exceeding the system
-        /// \[limit\](<https://cloud.google.com/spanner/quotas#limits_for_creating_reading_updating_and_deleting_data>).
+        /// [limit](<https://cloud.google.com/spanner/quotas#limits_for_creating_reading_updating_and_deleting_data>).
         /// If the number of mutations exceeds the limit, the server returns
-        /// \[INVALID_ARGUMENT\](<https://cloud.google.com/spanner/docs/reference/rest/v1/Code#ENUM_VALUES.INVALID_ARGUMENT>).
+        /// [INVALID_ARGUMENT](<https://cloud.google.com/spanner/docs/reference/rest/v1/Code#ENUM_VALUES.INVALID_ARGUMENT>).
         #[prost(int64, tag = "1")]
         pub mutation_count: i64,
     }
@@ -36,7 +36,7 @@ pub mod commit_response {
 /// Keys are represented by lists, where the ith value in the list
 /// corresponds to the ith component of the table or index primary key.
 /// Individual values are encoded as described
-/// \[here][google.spanner.v1.TypeCode\].
+/// [here][google.spanner.v1.TypeCode].
 ///
 /// For example, consider the following table definition:
 ///
@@ -47,8 +47,8 @@ pub mod commit_response {
 ///
 /// The following keys name rows in this table:
 ///
-///      ["Bob", "2014-09-23"]
-///      ["Alfred", "2015-06-12"]
+///      \["Bob", "2014-09-23"\]
+///      \["Alfred", "2015-06-12"\]
 ///
 /// Since the `UserEvents` table's `PRIMARY KEY` clause names two
 /// columns, each `UserEvents` key has two elements; the first is the
@@ -59,8 +59,8 @@ pub mod commit_response {
 /// sort order. For example, the following range returns all events for
 /// user `"Bob"` that occurred in the year 2015:
 ///
-///      "start_closed": ["Bob", "2015-01-01"]
-///      "end_closed": ["Bob", "2015-12-31"]
+///      "start_closed": \["Bob", "2015-01-01"\]
+///      "end_closed": \["Bob", "2015-12-31"\]
 ///
 /// Start and end keys can omit trailing key components. This affects the
 /// inclusion and exclusion of rows that exactly match the provided key
@@ -71,7 +71,7 @@ pub mod commit_response {
 /// For example, the following range includes all events for `"Bob"` that
 /// occurred during and after the year 2000:
 ///
-///      "start_closed": ["Bob", "2000-01-01"]
+///      "start_closed": \["Bob", "2000-01-01"\]
 ///      "end_closed": \["Bob"\]
 ///
 /// The next example retrieves all events for `"Bob"`:
@@ -82,12 +82,12 @@ pub mod commit_response {
 /// To retrieve events before the year 2000:
 ///
 ///      "start_closed": \["Bob"\]
-///      "end_open": ["Bob", "2000-01-01"]
+///      "end_open": \["Bob", "2000-01-01"\]
 ///
 /// The following range includes all rows in the table:
 ///
-///      "start_closed": []
-///      "end_closed": []
+///      "start_closed": \[\]
+///      "end_closed": \[\]
 ///
 /// This range returns all users whose `UserName` begins with any
 /// character from A to C:
@@ -168,10 +168,10 @@ pub struct KeySet {
     /// A list of specific keys. Entries in `keys` should have exactly as
     /// many elements as there are columns in the primary or index key
     /// with which this `KeySet` is used.  Individual key values are
-    /// encoded as described \[here][google.spanner.v1.TypeCode\].
+    /// encoded as described [here][google.spanner.v1.TypeCode].
     #[prost(message, repeated, tag = "1")]
     pub keys: ::prost::alloc::vec::Vec<::prost_types::ListValue>,
-    /// A list of key ranges. See \[KeyRange][google.spanner.v1.KeyRange\] for more information about
+    /// A list of key ranges. See [KeyRange][google.spanner.v1.KeyRange] for more information about
     /// key range specifications.
     #[prost(message, repeated, tag = "2")]
     pub ranges: ::prost::alloc::vec::Vec<KeyRange>,
@@ -183,7 +183,7 @@ pub struct KeySet {
 }
 /// A modification to one or more Cloud Spanner rows.  Mutations can be
 /// applied to a Cloud Spanner database by sending them in a
-/// \[Commit][google.spanner.v1.Spanner.Commit\] call.
+/// [Commit][google.spanner.v1.Spanner.Commit] call.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Mutation {
@@ -193,15 +193,15 @@ pub struct Mutation {
 }
 /// Nested message and enum types in `Mutation`.
 pub mod mutation {
-    /// Arguments to \[insert][google.spanner.v1.Mutation.insert\], \[update][google.spanner.v1.Mutation.update\], \[insert_or_update][google.spanner.v1.Mutation.insert_or_update\], and
-    /// \[replace][google.spanner.v1.Mutation.replace\] operations.
+    /// Arguments to [insert][google.spanner.v1.Mutation.insert], [update][google.spanner.v1.Mutation.update], [insert_or_update][google.spanner.v1.Mutation.insert_or_update], and
+    /// [replace][google.spanner.v1.Mutation.replace] operations.
     #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Write {
         /// Required. The table whose rows will be written.
         #[prost(string, tag = "1")]
         pub table: ::prost::alloc::string::String,
-        /// The names of the columns in \[table][google.spanner.v1.Mutation.Write.table\] to be written.
+        /// The names of the columns in [table][google.spanner.v1.Mutation.Write.table] to be written.
         ///
         /// The list of columns must contain enough columns to allow
         /// Cloud Spanner to derive values for all primary key columns in the
@@ -211,22 +211,22 @@ pub mod mutation {
         /// The values to be written. `values` can contain more than one
         /// list of values. If it does, then multiple rows are written, one
         /// for each entry in `values`. Each list in `values` must have
-        /// exactly as many entries as there are entries in \[columns][google.spanner.v1.Mutation.Write.columns\]
+        /// exactly as many entries as there are entries in [columns][google.spanner.v1.Mutation.Write.columns]
         /// above. Sending multiple lists is equivalent to sending multiple
         /// `Mutation`s, each containing one `values` entry and repeating
-        /// \[table][google.spanner.v1.Mutation.Write.table\] and \[columns][google.spanner.v1.Mutation.Write.columns\]. Individual values in each list are
-        /// encoded as described \[here][google.spanner.v1.TypeCode\].
+        /// [table][google.spanner.v1.Mutation.Write.table] and [columns][google.spanner.v1.Mutation.Write.columns]. Individual values in each list are
+        /// encoded as described [here][google.spanner.v1.TypeCode].
         #[prost(message, repeated, tag = "3")]
         pub values: ::prost::alloc::vec::Vec<::prost_types::ListValue>,
     }
-    /// Arguments to \[delete][google.spanner.v1.Mutation.delete\] operations.
+    /// Arguments to [delete][google.spanner.v1.Mutation.delete] operations.
     #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Delete {
         /// Required. The table whose rows will be deleted.
         #[prost(string, tag = "1")]
         pub table: ::prost::alloc::string::String,
-        /// Required. The primary keys of the rows within \[table][google.spanner.v1.Mutation.Delete.table\] to delete.  The
+        /// Required. The primary keys of the rows within [table][google.spanner.v1.Mutation.Delete.table] to delete.  The
         /// primary keys must be specified in the order in which they appear in the
         /// `PRIMARY KEY()` clause of the table's equivalent DDL statement (the DDL
         /// statement used to create the table).
@@ -247,18 +247,18 @@ pub mod mutation {
         /// already exist, the transaction fails with error `NOT_FOUND`.
         #[prost(message, tag = "2")]
         Update(Write),
-        /// Like \[insert][google.spanner.v1.Mutation.insert\], except that if the row already exists, then
+        /// Like [insert][google.spanner.v1.Mutation.insert], except that if the row already exists, then
         /// its column values are overwritten with the ones provided. Any
         /// column values not explicitly written are preserved.
         ///
-        /// When using \[insert_or_update][google.spanner.v1.Mutation.insert_or_update\], just as when using \[insert][google.spanner.v1.Mutation.insert\], all `NOT
+        /// When using [insert_or_update][google.spanner.v1.Mutation.insert_or_update], just as when using [insert][google.spanner.v1.Mutation.insert], all `NOT
         /// NULL` columns in the table must be given a value. This holds true
         /// even when the row already exists and will therefore actually be updated.
         #[prost(message, tag = "3")]
         InsertOrUpdate(Write),
-        /// Like \[insert][google.spanner.v1.Mutation.insert\], except that if the row already exists, it is
+        /// Like [insert][google.spanner.v1.Mutation.insert], except that if the row already exists, it is
         /// deleted, and the column values provided are inserted
-        /// instead. Unlike \[insert_or_update][google.spanner.v1.Mutation.insert_or_update\], this means any values not
+        /// instead. Unlike [insert_or_update][google.spanner.v1.Mutation.insert_or_update], this means any values not
         /// explicitly written become `NULL`.
         ///
         /// In an interleaved table, if you create the child table with the
@@ -273,16 +273,16 @@ pub mod mutation {
         Delete(Delete),
     }
 }
-/// Node information for nodes appearing in a \[QueryPlan.plan_nodes][google.spanner.v1.QueryPlan.plan_nodes\].
+/// Node information for nodes appearing in a [QueryPlan.plan_nodes][google.spanner.v1.QueryPlan.plan_nodes].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PlanNode {
-    /// The `PlanNode`'s index in [node list]\[google.spanner.v1.QueryPlan.plan_nodes\].
+    /// The `PlanNode`'s index in [node list][google.spanner.v1.QueryPlan.plan_nodes].
     #[prost(int32, tag = "1")]
     pub index: i32,
     /// Used to determine the type of node. May be needed for visualizing
     /// different kinds of nodes differently. For example, If the node is a
-    /// \[SCALAR][google.spanner.v1.PlanNode.Kind.SCALAR\] node, it will have a condensed representation
+    /// [SCALAR][google.spanner.v1.PlanNode.Kind.SCALAR] node, it will have a condensed representation
     /// which can be used to directly embed a description of the node in its
     /// parent.
     #[prost(enumeration = "plan_node::Kind", tag = "2")]
@@ -293,7 +293,7 @@ pub struct PlanNode {
     /// List of child node `index`es and their relationship to this parent.
     #[prost(message, repeated, tag = "4")]
     pub child_links: ::prost::alloc::vec::Vec<plan_node::ChildLink>,
-    /// Condensed representation for \[SCALAR][google.spanner.v1.PlanNode.Kind.SCALAR\] nodes.
+    /// Condensed representation for [SCALAR][google.spanner.v1.PlanNode.Kind.SCALAR] nodes.
     #[prost(message, optional, tag = "5")]
     pub short_representation: ::core::option::Option<plan_node::ShortRepresentation>,
     /// Attributes relevant to the node contained in a group of key-value pairs.
@@ -316,7 +316,7 @@ pub struct PlanNode {
 /// Nested message and enum types in `PlanNode`.
 pub mod plan_node {
     /// Metadata associated with a parent-child relationship appearing in a
-    /// \[PlanNode][google.spanner.v1.PlanNode\].
+    /// [PlanNode][google.spanner.v1.PlanNode].
     #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct ChildLink {
@@ -329,7 +329,7 @@ pub mod plan_node {
         /// with the output variable.
         #[prost(string, tag = "2")]
         pub r#type: ::prost::alloc::string::String,
-        /// Only present if the child node is \[SCALAR][google.spanner.v1.PlanNode.Kind.SCALAR\] and corresponds
+        /// Only present if the child node is [SCALAR][google.spanner.v1.PlanNode.Kind.SCALAR] and corresponds
         /// to an output variable of the parent node. The field carries the name of
         /// the output variable.
         /// For example, a `TableScan` operator that reads rows from a table will
@@ -341,7 +341,7 @@ pub mod plan_node {
         pub variable: ::prost::alloc::string::String,
     }
     /// Condensed representation of a node and its subtree. Only present for
-    /// `SCALAR` \[PlanNode(s)][google.spanner.v1.PlanNode\].
+    /// `SCALAR` [PlanNode(s)][google.spanner.v1.PlanNode].
     #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct ShortRepresentation {
@@ -356,7 +356,7 @@ pub mod plan_node {
         #[prost(map = "string, int32", tag = "2")]
         pub subqueries: ::std::collections::HashMap<::prost::alloc::string::String, i32>,
     }
-    /// The kind of \[PlanNode][google.spanner.v1.PlanNode\]. Distinguishes between the two different kinds of
+    /// The kind of [PlanNode][google.spanner.v1.PlanNode]. Distinguishes between the two different kinds of
     /// nodes that can appear in a query plan.
     #[derive(
         Clone,
@@ -411,7 +411,7 @@ pub mod plan_node {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryPlan {
     /// The nodes in the query plan. Plan nodes are returned in pre-order starting
-    /// with the plan root. Each \[PlanNode][google.spanner.v1.PlanNode\]'s `id` corresponds to its index in
+    /// with the plan root. Each [PlanNode][google.spanner.v1.PlanNode]'s `id` corresponds to its index in
     /// `plan_nodes`.
     #[prost(message, repeated, tag = "1")]
     pub plan_nodes: ::prost::alloc::vec::Vec<PlanNode>,
@@ -445,7 +445,7 @@ pub struct QueryPlan {
 ///
 ///       Queries on change streams must be performed with the snapshot read-only
 ///       transaction mode, specifying a strong read. Please see
-///       \[TransactionOptions.ReadOnly.strong][google.spanner.v1.TransactionOptions.ReadOnly.strong\]
+///       [TransactionOptions.ReadOnly.strong][google.spanner.v1.TransactionOptions.ReadOnly.strong]
 ///       for more details.
 ///
 ///    3. Partitioned DML. This type of transaction is used to execute
@@ -476,16 +476,16 @@ pub struct QueryPlan {
 /// and cause less contention. Cloud Spanner attempts to keep read locks
 /// active as long as the transaction continues to do reads, and the
 /// transaction has not been terminated by
-/// \[Commit][google.spanner.v1.Spanner.Commit\] or
-/// \[Rollback][google.spanner.v1.Spanner.Rollback\]. Long periods of
+/// [Commit][google.spanner.v1.Spanner.Commit] or
+/// [Rollback][google.spanner.v1.Spanner.Rollback]. Long periods of
 /// inactivity at the client may cause Cloud Spanner to release a
 /// transaction's locks and abort it.
 ///
 /// Conceptually, a read-write transaction consists of zero or more
 /// reads or SQL statements followed by
-/// \[Commit][google.spanner.v1.Spanner.Commit\]. At any time before
-/// \[Commit][google.spanner.v1.Spanner.Commit\], the client can send a
-/// \[Rollback][google.spanner.v1.Spanner.Rollback\] request to abort the
+/// [Commit][google.spanner.v1.Spanner.Commit]. At any time before
+/// [Commit][google.spanner.v1.Spanner.Commit], the client can send a
+/// [Rollback][google.spanner.v1.Spanner.Rollback] request to abort the
 /// transaction.
 ///
 /// Semantics:
@@ -547,8 +547,8 @@ pub struct QueryPlan {
 /// need to worry about this in practice.
 ///
 /// Snapshot read-only transactions do not need to call
-/// \[Commit][google.spanner.v1.Spanner.Commit\] or
-/// \[Rollback][google.spanner.v1.Spanner.Rollback\] (and in fact are not
+/// [Commit][google.spanner.v1.Spanner.Commit] or
+/// [Rollback][google.spanner.v1.Spanner.Rollback] (and in fact are not
 /// permitted to do so).
 ///
 /// To execute a snapshot transaction, the client specifies a timestamp
@@ -583,7 +583,7 @@ pub struct QueryPlan {
 /// the strong read timestamp bound.
 ///
 /// See
-/// \[TransactionOptions.ReadOnly.strong][google.spanner.v1.TransactionOptions.ReadOnly.strong\].
+/// [TransactionOptions.ReadOnly.strong][google.spanner.v1.TransactionOptions.ReadOnly.strong].
 ///
 /// Exact staleness:
 ///
@@ -605,9 +605,9 @@ pub struct QueryPlan {
 /// boundedly stale reads usually return fresher results.
 ///
 /// See
-/// \[TransactionOptions.ReadOnly.read_timestamp][google.spanner.v1.TransactionOptions.ReadOnly.read_timestamp\]
+/// [TransactionOptions.ReadOnly.read_timestamp][google.spanner.v1.TransactionOptions.ReadOnly.read_timestamp]
 /// and
-/// \[TransactionOptions.ReadOnly.exact_staleness][google.spanner.v1.TransactionOptions.ReadOnly.exact_staleness\].
+/// [TransactionOptions.ReadOnly.exact_staleness][google.spanner.v1.TransactionOptions.ReadOnly.exact_staleness].
 ///
 /// Bounded staleness:
 ///
@@ -637,9 +637,9 @@ pub struct QueryPlan {
 /// read-only transactions.
 ///
 /// See
-/// \[TransactionOptions.ReadOnly.max_staleness][google.spanner.v1.TransactionOptions.ReadOnly.max_staleness\]
+/// [TransactionOptions.ReadOnly.max_staleness][google.spanner.v1.TransactionOptions.ReadOnly.max_staleness]
 /// and
-/// \[TransactionOptions.ReadOnly.min_read_timestamp][google.spanner.v1.TransactionOptions.ReadOnly.min_read_timestamp\].
+/// [TransactionOptions.ReadOnly.min_read_timestamp][google.spanner.v1.TransactionOptions.ReadOnly.min_read_timestamp].
 ///
 /// Old read timestamps and garbage collection:
 ///
@@ -678,7 +678,7 @@ pub struct QueryPlan {
 ///
 /// In addition, if TransactionOptions.read_only.return_read_timestamp is set
 /// to true, a special value of 2^63 - 2 will be returned in the
-/// \[Transaction][google.spanner.v1.Transaction\] message that describes the
+/// [Transaction][google.spanner.v1.Transaction] message that describes the
 /// transaction, instead of a valid read timestamp. This special value should be
 /// discarded and not used for any subsequent queries.
 ///
@@ -822,7 +822,7 @@ pub mod transaction_options {
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct ReadOnly {
         /// If true, the Cloud Spanner-selected read timestamp is included in
-        /// the \[Transaction][google.spanner.v1.Transaction\] message that describes
+        /// the [Transaction][google.spanner.v1.Transaction] message that describes
         /// the transaction.
         #[prost(bool, tag = "6")]
         pub return_read_timestamp: bool,
@@ -928,10 +928,10 @@ pub mod transaction_options {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Transaction {
     /// `id` may be used to identify the transaction in subsequent
-    /// \[Read][google.spanner.v1.Spanner.Read\],
-    /// \[ExecuteSql][google.spanner.v1.Spanner.ExecuteSql\],
-    /// \[Commit][google.spanner.v1.Spanner.Commit\], or
-    /// \[Rollback][google.spanner.v1.Spanner.Rollback\] calls.
+    /// [Read][google.spanner.v1.Spanner.Read],
+    /// [ExecuteSql][google.spanner.v1.Spanner.ExecuteSql],
+    /// [Commit][google.spanner.v1.Spanner.Commit], or
+    /// [Rollback][google.spanner.v1.Spanner.Rollback] calls.
     ///
     /// Single-use read-only transactions do not have IDs, because
     /// single-use transactions do not support multiple requests.
@@ -939,7 +939,7 @@ pub struct Transaction {
     pub id: ::prost::bytes::Bytes,
     /// For snapshot read-only transactions, the read timestamp chosen
     /// for the transaction. Not returned by default: see
-    /// \[TransactionOptions.ReadOnly.return_read_timestamp][google.spanner.v1.TransactionOptions.ReadOnly.return_read_timestamp\].
+    /// [TransactionOptions.ReadOnly.return_read_timestamp][google.spanner.v1.TransactionOptions.ReadOnly.return_read_timestamp].
     ///
     /// A timestamp in RFC3339 UTC \"Zulu\" format, accurate to nanoseconds.
     /// Example: `"2014-10-02T15:01:23.045123456Z"`.
@@ -947,10 +947,10 @@ pub struct Transaction {
     pub read_timestamp: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// This message is used to select the transaction in which a
-/// \[Read][google.spanner.v1.Spanner.Read\] or
-/// \[ExecuteSql][google.spanner.v1.Spanner.ExecuteSql\] call runs.
+/// [Read][google.spanner.v1.Spanner.Read] or
+/// [ExecuteSql][google.spanner.v1.Spanner.ExecuteSql] call runs.
 ///
-/// See \[TransactionOptions][google.spanner.v1.TransactionOptions\] for more
+/// See [TransactionOptions][google.spanner.v1.TransactionOptions] for more
 /// information about transactions.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -977,8 +977,8 @@ pub mod transaction_selector {
         Id(::prost::bytes::Bytes),
         /// Begin a new transaction and execute this read or SQL query in
         /// it. The transaction ID of the new transaction is returned in
-        /// \[ResultSetMetadata.transaction][google.spanner.v1.ResultSetMetadata.transaction\],
-        /// which is a \[Transaction][google.spanner.v1.Transaction\].
+        /// [ResultSetMetadata.transaction][google.spanner.v1.ResultSetMetadata.transaction],
+        /// which is a [Transaction][google.spanner.v1.Transaction].
         #[prost(message, tag = "3")]
         Begin(super::TransactionOptions),
     }
@@ -988,34 +988,34 @@ pub mod transaction_selector {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Type {
-    /// Required. The \[TypeCode][google.spanner.v1.TypeCode\] for this type.
+    /// Required. The [TypeCode][google.spanner.v1.TypeCode] for this type.
     #[prost(enumeration = "TypeCode", tag = "1")]
     pub code: i32,
-    /// If \[code][google.spanner.v1.Type.code\] == \[ARRAY][google.spanner.v1.TypeCode.ARRAY\], then `array_element_type`
+    /// If [code][google.spanner.v1.Type.code] == [ARRAY][google.spanner.v1.TypeCode.ARRAY], then `array_element_type`
     /// is the type of the array elements.
     #[prost(message, optional, boxed, tag = "2")]
     pub array_element_type: ::core::option::Option<::prost::alloc::boxed::Box<Type>>,
-    /// If \[code][google.spanner.v1.Type.code\] == \[STRUCT][google.spanner.v1.TypeCode.STRUCT\], then `struct_type`
+    /// If [code][google.spanner.v1.Type.code] == [STRUCT][google.spanner.v1.TypeCode.STRUCT], then `struct_type`
     /// provides type information for the struct's fields.
     #[prost(message, optional, tag = "3")]
     pub struct_type: ::core::option::Option<StructType>,
-    /// The \[TypeAnnotationCode][google.spanner.v1.TypeAnnotationCode\] that disambiguates SQL type that Spanner will
+    /// The [TypeAnnotationCode][google.spanner.v1.TypeAnnotationCode] that disambiguates SQL type that Spanner will
     /// use to represent values of this type during query processing. This is
-    /// necessary for some type codes because a single \[TypeCode][google.spanner.v1.TypeCode\] can be mapped
-    /// to different SQL types depending on the SQL dialect. \[type_annotation][google.spanner.v1.Type.type_annotation\]
+    /// necessary for some type codes because a single [TypeCode][google.spanner.v1.TypeCode] can be mapped
+    /// to different SQL types depending on the SQL dialect. [type_annotation][google.spanner.v1.Type.type_annotation]
     /// typically is not needed to process the content of a value (it doesn't
     /// affect serialization) and clients can ignore it on the read path.
     #[prost(enumeration = "TypeAnnotationCode", tag = "4")]
     pub type_annotation: i32,
 }
-/// `StructType` defines the fields of a \[STRUCT][google.spanner.v1.TypeCode.STRUCT\] type.
+/// `StructType` defines the fields of a [STRUCT][google.spanner.v1.TypeCode.STRUCT] type.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StructType {
     /// The list of fields that make up this struct. Order is
     /// significant, because values of this struct type are represented as
     /// lists, where the order of field values matches the order of
-    /// fields in the \[StructType][google.spanner.v1.StructType\]. In turn, the order of fields
+    /// fields in the [StructType][google.spanner.v1.StructType]. In turn, the order of fields
     /// matches the order of columns in a read request, or the order of
     /// fields in the `SELECT` clause of a query.
     #[prost(message, repeated, tag = "1")]
@@ -1041,7 +1041,7 @@ pub mod struct_type {
         pub r#type: ::core::option::Option<super::Type>,
     }
 }
-/// `TypeCode` is used as part of \[Type][google.spanner.v1.Type\] to
+/// `TypeCode` is used as part of [Type][google.spanner.v1.Type] to
 /// indicate the type of a Cloud Spanner value.
 ///
 /// Each legal value of a type can be encoded to or decoded from a JSON
@@ -1078,19 +1078,19 @@ pub enum TypeCode {
     Bytes = 7,
     /// Encoded as `list`, where the list elements are represented
     /// according to
-    /// \[array_element_type][google.spanner.v1.Type.array_element_type\].
+    /// [array_element_type][google.spanner.v1.Type.array_element_type].
     Array = 8,
     /// Encoded as `list`, where list element `i` is represented according
-    /// to \[struct_type.fields[i]][google.spanner.v1.StructType.fields\].
+    /// to \[struct_type.fields[i\]][google.spanner.v1.StructType.fields].
     Struct = 9,
     /// Encoded as `string`, in decimal format or scientific notation format.
     /// <br>Decimal format:
-    /// <br>`\[+-]Digits[.[Digits]\]` or
-    /// <br>`\[+-][Digits\].Digits`
+    /// <br>`\[+-\]Digits\[.[Digits]\]` or
+    /// <br>`[+-][Digits].Digits`
     ///
     /// Scientific notation:
-    /// <br>`\[+-]Digits[.[Digits]][ExponentIndicator[+-]Digits\]` or
-    /// <br>`\[+-][Digits].Digits[ExponentIndicator[+-]Digits\]`
+    /// <br>`\[+-\]Digits\[.[Digits\]][ExponentIndicator\[+-\]Digits]` or
+    /// <br>`[+-][Digits].Digits\[ExponentIndicator[+-\]Digits]`
     /// <br>(ExponentIndicator is `"e"` or `"E"`)
     Numeric = 10,
     /// Encoded as a JSON-formatted `string` as described in RFC 7159. The
@@ -1143,7 +1143,7 @@ impl TypeCode {
         }
     }
 }
-/// `TypeAnnotationCode` is used as a part of \[Type][google.spanner.v1.Type\] to
+/// `TypeAnnotationCode` is used as a part of [Type][google.spanner.v1.Type] to
 /// disambiguate SQL types that should be used for a given Cloud Spanner value.
 /// Disambiguation is needed because the same Cloud Spanner type can be mapped to
 /// different SQL types depending on SQL dialect. TypeAnnotationCode doesn't
@@ -1154,17 +1154,17 @@ pub enum TypeAnnotationCode {
     /// Not specified.
     Unspecified = 0,
     /// PostgreSQL compatible NUMERIC type. This annotation needs to be applied to
-    /// \[Type][google.spanner.v1.Type\] instances having \[NUMERIC][google.spanner.v1.TypeCode.NUMERIC\]
+    /// [Type][google.spanner.v1.Type] instances having [NUMERIC][google.spanner.v1.TypeCode.NUMERIC]
     /// type code to specify that values of this type should be treated as
     /// PostgreSQL NUMERIC values. Currently this annotation is always needed for
-    /// \[NUMERIC][google.spanner.v1.TypeCode.NUMERIC\] when a client interacts with PostgreSQL-enabled
+    /// [NUMERIC][google.spanner.v1.TypeCode.NUMERIC] when a client interacts with PostgreSQL-enabled
     /// Spanner databases.
     PgNumeric = 2,
     /// PostgreSQL compatible JSONB type. This annotation needs to be applied to
-    /// \[Type][google.spanner.v1.Type\] instances having \[JSON][google.spanner.v1.TypeCode.JSON\]
+    /// [Type][google.spanner.v1.Type] instances having [JSON][google.spanner.v1.TypeCode.JSON]
     /// type code to specify that values of this type should be treated as
     /// PostgreSQL JSONB values. Currently this annotation is always needed for
-    /// \[JSON][google.spanner.v1.TypeCode.JSON\] when a client interacts with PostgreSQL-enabled
+    /// [JSON][google.spanner.v1.TypeCode.JSON] when a client interacts with PostgreSQL-enabled
     /// Spanner databases.
     PgJsonb = 3,
 }
@@ -1190,8 +1190,8 @@ impl TypeAnnotationCode {
         }
     }
 }
-/// Results from \[Read][google.spanner.v1.Spanner.Read\] or
-/// \[ExecuteSql][google.spanner.v1.Spanner.ExecuteSql\].
+/// Results from [Read][google.spanner.v1.Spanner.Read] or
+/// [ExecuteSql][google.spanner.v1.Spanner.ExecuteSql].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResultSet {
@@ -1199,21 +1199,21 @@ pub struct ResultSet {
     #[prost(message, optional, tag = "1")]
     pub metadata: ::core::option::Option<ResultSetMetadata>,
     /// Each element in `rows` is a row whose format is defined by
-    /// \[metadata.row_type][google.spanner.v1.ResultSetMetadata.row_type\]. The ith element
+    /// [metadata.row_type][google.spanner.v1.ResultSetMetadata.row_type]. The ith element
     /// in each row matches the ith field in
-    /// \[metadata.row_type][google.spanner.v1.ResultSetMetadata.row_type\]. Elements are
+    /// [metadata.row_type][google.spanner.v1.ResultSetMetadata.row_type]. Elements are
     /// encoded based on type as described
-    /// \[here][google.spanner.v1.TypeCode\].
+    /// [here][google.spanner.v1.TypeCode].
     #[prost(message, repeated, tag = "2")]
     pub rows: ::prost::alloc::vec::Vec<::prost_types::ListValue>,
     /// Query plan and execution statistics for the SQL statement that
     /// produced this result set. These can be requested by setting
-    /// \[ExecuteSqlRequest.query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode\].
+    /// [ExecuteSqlRequest.query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode].
     /// DML statements always produce stats containing the number of rows
     /// modified, unless executed using the
-    /// \[ExecuteSqlRequest.QueryMode.PLAN][google.spanner.v1.ExecuteSqlRequest.QueryMode.PLAN\] \[ExecuteSqlRequest.query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode\].
+    /// [ExecuteSqlRequest.QueryMode.PLAN][google.spanner.v1.ExecuteSqlRequest.QueryMode.PLAN] [ExecuteSqlRequest.query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode].
     /// Other fields may or may not be populated, based on the
-    /// \[ExecuteSqlRequest.query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode\].
+    /// [ExecuteSqlRequest.query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode].
     #[prost(message, optional, tag = "3")]
     pub stats: ::core::option::Option<ResultSetStats>,
 }
@@ -1231,14 +1231,14 @@ pub struct PartialResultSet {
     /// be split into many `PartialResultSet` messages to accommodate
     /// large rows and/or large values. Every N complete values defines a
     /// row, where N is equal to the number of entries in
-    /// \[metadata.row_type.fields][google.spanner.v1.StructType.fields\].
+    /// [metadata.row_type.fields][google.spanner.v1.StructType.fields].
     ///
     /// Most values are encoded based on type as described
-    /// \[here][google.spanner.v1.TypeCode\].
+    /// [here][google.spanner.v1.TypeCode].
     ///
     /// It is possible that the last value in values is "chunked",
     /// meaning that the rest of the value is sent in subsequent
-    /// `PartialResultSet`(s). This is denoted by the \[chunked_value][google.spanner.v1.PartialResultSet.chunked_value\]
+    /// `PartialResultSet`(s). This is denoted by the [chunked_value][google.spanner.v1.PartialResultSet.chunked_value]
     /// field. Two or more chunked values can be merged to form a
     /// complete value as follows:
     ///
@@ -1257,16 +1257,16 @@ pub struct PartialResultSet {
     ///      "foo", "bar" => "foobar"
     ///
     ///      # Lists of non-strings are concatenated.
-    ///      [2, 3], \[4\] => [2, 3, 4]
+    ///      \[2, 3\], \[4\] => \[2, 3, 4\]
     ///
     ///      # Lists are concatenated, but the last and first elements are merged
     ///      # because they are strings.
-    ///      ["a", "b"], ["c", "d"] => ["a", "bc", "d"]
+    ///      \["a", "b"\], \["c", "d"\] => \["a", "bc", "d"\]
     ///
     ///      # Lists are concatenated, but the last and first elements are merged
     ///      # because they are lists. Recursively, the last and first elements
     ///      # of the inner lists are merged because they are strings.
-    ///      ["a", ["b", "c"]], \[["d"\], "e"] => ["a", ["b", "cd"], "e"]
+    ///      \["a", ["b", "c"]\], \[["d"\], "e"] => \["a", ["b", "cd"\], "e"]
     ///
     ///      # Non-overlapping object fields are combined.
     ///      {"a": "1"}, {"b": "2"} => {"a": "1", "b": 2"}
@@ -1283,7 +1283,7 @@ pub struct PartialResultSet {
     ///
     ///      {
     ///        "metadata": { ... }
-    ///        "values": ["Hello", "W"]
+    ///        "values": \["Hello", "W"\]
     ///        "chunked_value": true
     ///        "resume_token": "Af65..."
     ///      }
@@ -1302,7 +1302,7 @@ pub struct PartialResultSet {
     /// field value `"World" = "W" + "orl" + "d"`.
     #[prost(message, repeated, tag = "2")]
     pub values: ::prost::alloc::vec::Vec<::prost_types::Value>,
-    /// If true, then the final value in \[values][google.spanner.v1.PartialResultSet.values\] is chunked, and must
+    /// If true, then the final value in [values][google.spanner.v1.PartialResultSet.values] is chunked, and must
     /// be combined with more values from subsequent `PartialResultSet`s
     /// to obtain a complete field value.
     #[prost(bool, tag = "3")]
@@ -1316,14 +1316,14 @@ pub struct PartialResultSet {
     pub resume_token: ::prost::bytes::Bytes,
     /// Query plan and execution statistics for the statement that produced this
     /// streaming result set. These can be requested by setting
-    /// \[ExecuteSqlRequest.query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode\] and are sent
+    /// [ExecuteSqlRequest.query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode] and are sent
     /// only once with the last response in the stream.
     /// This field will also be present in the last response for DML
     /// statements.
     #[prost(message, optional, tag = "5")]
     pub stats: ::core::option::Option<ResultSetStats>,
 }
-/// Metadata about a \[ResultSet][google.spanner.v1.ResultSet\] or \[PartialResultSet][google.spanner.v1.PartialResultSet\].
+/// Metadata about a [ResultSet][google.spanner.v1.ResultSet] or [PartialResultSet][google.spanner.v1.PartialResultSet].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResultSetMetadata {
@@ -1354,11 +1354,11 @@ pub struct ResultSetMetadata {
     #[prost(message, optional, tag = "3")]
     pub undeclared_parameters: ::core::option::Option<StructType>,
 }
-/// Additional statistics about a \[ResultSet][google.spanner.v1.ResultSet\] or \[PartialResultSet][google.spanner.v1.PartialResultSet\].
+/// Additional statistics about a [ResultSet][google.spanner.v1.ResultSet] or [PartialResultSet][google.spanner.v1.PartialResultSet].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResultSetStats {
-    /// \[QueryPlan][google.spanner.v1.QueryPlan\] for the query associated with this result.
+    /// [QueryPlan][google.spanner.v1.QueryPlan] for the query associated with this result.
     #[prost(message, optional, tag = "1")]
     pub query_plan: ::core::option::Option<QueryPlan>,
     /// Aggregated statistics from the execution of the query. Only present when
@@ -1391,7 +1391,7 @@ pub mod result_set_stats {
         RowCountLowerBound(i64),
     }
 }
-/// The request for \[CreateSession][google.spanner.v1.Spanner.CreateSession\].
+/// The request for [CreateSession][google.spanner.v1.Spanner.CreateSession].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateSessionRequest {
@@ -1402,7 +1402,7 @@ pub struct CreateSessionRequest {
     #[prost(message, optional, tag = "2")]
     pub session: ::core::option::Option<Session>,
 }
-/// The request for \[BatchCreateSessions][google.spanner.v1.Spanner.BatchCreateSessions\].
+/// The request for [BatchCreateSessions][google.spanner.v1.Spanner.BatchCreateSessions].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BatchCreateSessionsRequest {
@@ -1416,11 +1416,11 @@ pub struct BatchCreateSessionsRequest {
     /// The API may return fewer than the requested number of sessions. If a
     /// specific number of sessions are desired, the client can make additional
     /// calls to BatchCreateSessions (adjusting
-    /// \[session_count][google.spanner.v1.BatchCreateSessionsRequest.session_count\] as necessary).
+    /// [session_count][google.spanner.v1.BatchCreateSessionsRequest.session_count] as necessary).
     #[prost(int32, tag = "3")]
     pub session_count: i32,
 }
-/// The response for \[BatchCreateSessions][google.spanner.v1.Spanner.BatchCreateSessions\].
+/// The response for [BatchCreateSessions][google.spanner.v1.Spanner.BatchCreateSessions].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BatchCreateSessionsResponse {
@@ -1438,9 +1438,9 @@ pub struct Session {
     /// The labels for the session.
     ///
     ///   * Label keys must be between 1 and 63 characters long and must conform to
-    ///     the following regular expression: `\[a-z]([-a-z0-9]*[a-z0-9\])?`.
+    ///     the following regular expression: `[a-z](\[-a-z0-9\]*[a-z0-9])?`.
     ///   * Label values must be between 0 and 63 characters long and must conform
-    ///     to the regular expression `(\[a-z]([-a-z0-9]*[a-z0-9\])?)?`.
+    ///     to the regular expression `([a-z](\[-a-z0-9\]*[a-z0-9])?)?`.
     ///   * No more than 64 labels can be associated with a given session.
     ///
     /// See <https://goo.gl/xmQnxf> for more information on and examples of labels.
@@ -1460,7 +1460,7 @@ pub struct Session {
     #[prost(string, tag = "5")]
     pub creator_role: ::prost::alloc::string::String,
 }
-/// The request for \[GetSession][google.spanner.v1.Spanner.GetSession\].
+/// The request for [GetSession][google.spanner.v1.Spanner.GetSession].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetSessionRequest {
@@ -1468,7 +1468,7 @@ pub struct GetSessionRequest {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
-/// The request for \[ListSessions][google.spanner.v1.Spanner.ListSessions\].
+/// The request for [ListSessions][google.spanner.v1.Spanner.ListSessions].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListSessionsRequest {
@@ -1480,8 +1480,8 @@ pub struct ListSessionsRequest {
     #[prost(int32, tag = "2")]
     pub page_size: i32,
     /// If non-empty, `page_token` should contain a
-    /// \[next_page_token][google.spanner.v1.ListSessionsResponse.next_page_token\] from a previous
-    /// \[ListSessionsResponse][google.spanner.v1.ListSessionsResponse\].
+    /// [next_page_token][google.spanner.v1.ListSessionsResponse.next_page_token] from a previous
+    /// [ListSessionsResponse][google.spanner.v1.ListSessionsResponse].
     #[prost(string, tag = "3")]
     pub page_token: ::prost::alloc::string::String,
     /// An expression for filtering the results of the request. Filter rules are
@@ -1497,7 +1497,7 @@ pub struct ListSessionsRequest {
     #[prost(string, tag = "4")]
     pub filter: ::prost::alloc::string::String,
 }
-/// The response for \[ListSessions][google.spanner.v1.Spanner.ListSessions\].
+/// The response for [ListSessions][google.spanner.v1.Spanner.ListSessions].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListSessionsResponse {
@@ -1505,12 +1505,12 @@ pub struct ListSessionsResponse {
     #[prost(message, repeated, tag = "1")]
     pub sessions: ::prost::alloc::vec::Vec<Session>,
     /// `next_page_token` can be sent in a subsequent
-    /// \[ListSessions][google.spanner.v1.Spanner.ListSessions\] call to fetch more of the matching
+    /// [ListSessions][google.spanner.v1.Spanner.ListSessions] call to fetch more of the matching
     /// sessions.
     #[prost(string, tag = "2")]
     pub next_page_token: ::prost::alloc::string::String,
 }
-/// The request for \[DeleteSession][google.spanner.v1.Spanner.DeleteSession\].
+/// The request for [DeleteSession][google.spanner.v1.Spanner.DeleteSession].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteSessionRequest {
@@ -1554,7 +1554,7 @@ pub struct RequestOptions {
 /// Nested message and enum types in `RequestOptions`.
 pub mod request_options {
     /// The relative priority for requests. Note that priority is not applicable
-    /// for \[BeginTransaction][google.spanner.v1.Spanner.BeginTransaction\].
+    /// for [BeginTransaction][google.spanner.v1.Spanner.BeginTransaction].
     ///
     /// The priority acts as a hint to the Cloud Spanner scheduler and does not
     /// guarantee priority or order of execution. For example:
@@ -1616,8 +1616,8 @@ pub mod request_options {
         }
     }
 }
-/// The request for \[ExecuteSql][google.spanner.v1.Spanner.ExecuteSql\] and
-/// \[ExecuteStreamingSql][google.spanner.v1.Spanner.ExecuteStreamingSql\].
+/// The request for [ExecuteSql][google.spanner.v1.Spanner.ExecuteSql] and
+/// [ExecuteStreamingSql][google.spanner.v1.Spanner.ExecuteStreamingSql].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExecuteSqlRequest {
@@ -1656,25 +1656,25 @@ pub struct ExecuteSqlRequest {
     pub params: ::core::option::Option<::prost_types::Struct>,
     /// It is not always possible for Cloud Spanner to infer the right SQL type
     /// from a JSON value.  For example, values of type `BYTES` and values
-    /// of type `STRING` both appear in \[params][google.spanner.v1.ExecuteSqlRequest.params\] as JSON strings.
+    /// of type `STRING` both appear in [params][google.spanner.v1.ExecuteSqlRequest.params] as JSON strings.
     ///
     /// In these cases, `param_types` can be used to specify the exact
     /// SQL type for some or all of the SQL statement parameters. See the
-    /// definition of \[Type][google.spanner.v1.Type\] for more information
+    /// definition of [Type][google.spanner.v1.Type] for more information
     /// about SQL types.
     #[prost(map = "string, message", tag = "5")]
     pub param_types: ::std::collections::HashMap<::prost::alloc::string::String, Type>,
     /// If this request is resuming a previously interrupted SQL statement
     /// execution, `resume_token` should be copied from the last
-    /// \[PartialResultSet][google.spanner.v1.PartialResultSet\] yielded before the interruption. Doing this
+    /// [PartialResultSet][google.spanner.v1.PartialResultSet] yielded before the interruption. Doing this
     /// enables the new SQL statement execution to resume where the last one left
     /// off. The rest of the request parameters must exactly match the
     /// request that yielded this token.
     #[prost(bytes = "bytes", tag = "6")]
     pub resume_token: ::prost::bytes::Bytes,
     /// Used to control the amount of debugging information returned in
-    /// \[ResultSetStats][google.spanner.v1.ResultSetStats\]. If \[partition_token][google.spanner.v1.ExecuteSqlRequest.partition_token\] is set, \[query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode\] can only
-    /// be set to \[QueryMode.NORMAL][google.spanner.v1.ExecuteSqlRequest.QueryMode.NORMAL\].
+    /// [ResultSetStats][google.spanner.v1.ResultSetStats]. If [partition_token][google.spanner.v1.ExecuteSqlRequest.partition_token] is set, [query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode] can only
+    /// be set to [QueryMode.NORMAL][google.spanner.v1.ExecuteSqlRequest.QueryMode.NORMAL].
     #[prost(enumeration = "execute_sql_request::QueryMode", tag = "7")]
     pub query_mode: i32,
     /// If present, results will be restricted to the specified partition
@@ -1812,7 +1812,7 @@ pub mod execute_sql_request {
         }
     }
 }
-/// The request for \[ExecuteBatchDml][google.spanner.v1.Spanner.ExecuteBatchDml\].
+/// The request for [ExecuteBatchDml][google.spanner.v1.Spanner.ExecuteBatchDml].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExecuteBatchDmlRequest {
@@ -1873,11 +1873,11 @@ pub mod execute_batch_dml_request {
         pub params: ::core::option::Option<::prost_types::Struct>,
         /// It is not always possible for Cloud Spanner to infer the right SQL type
         /// from a JSON value.  For example, values of type `BYTES` and values
-        /// of type `STRING` both appear in \[params][google.spanner.v1.ExecuteBatchDmlRequest.Statement.params\] as JSON strings.
+        /// of type `STRING` both appear in [params][google.spanner.v1.ExecuteBatchDmlRequest.Statement.params] as JSON strings.
         ///
         /// In these cases, `param_types` can be used to specify the exact
         /// SQL type for some or all of the SQL statement parameters. See the
-        /// definition of \[Type][google.spanner.v1.Type\] for more information
+        /// definition of [Type][google.spanner.v1.Type] for more information
         /// about SQL types.
         #[prost(map = "string, message", tag = "3")]
         pub param_types: ::std::collections::HashMap<
@@ -1886,40 +1886,40 @@ pub mod execute_batch_dml_request {
         >,
     }
 }
-/// The response for \[ExecuteBatchDml][google.spanner.v1.Spanner.ExecuteBatchDml\]. Contains a list
-/// of \[ResultSet][google.spanner.v1.ResultSet\] messages, one for each DML statement that has successfully
+/// The response for [ExecuteBatchDml][google.spanner.v1.Spanner.ExecuteBatchDml]. Contains a list
+/// of [ResultSet][google.spanner.v1.ResultSet] messages, one for each DML statement that has successfully
 /// executed, in the same order as the statements in the request. If a statement
 /// fails, the status in the response body identifies the cause of the failure.
 ///
 /// To check for DML statements that failed, use the following approach:
 ///
-/// 1. Check the status in the response message. The \[google.rpc.Code][google.rpc.Code\] enum
+/// 1. Check the status in the response message. The [google.rpc.Code][google.rpc.Code] enum
 ///     value `OK` indicates that all statements were executed successfully.
 /// 2. If the status was not `OK`, check the number of result sets in the
-///     response. If the response contains `N` \[ResultSet][google.spanner.v1.ResultSet\] messages, then
+///     response. If the response contains `N` [ResultSet][google.spanner.v1.ResultSet] messages, then
 ///     statement `N+1` in the request failed.
 ///
 /// Example 1:
 ///
 /// * Request: 5 DML statements, all executed successfully.
-/// * Response: 5 \[ResultSet][google.spanner.v1.ResultSet\] messages, with the status `OK`.
+/// * Response: 5 [ResultSet][google.spanner.v1.ResultSet] messages, with the status `OK`.
 ///
 /// Example 2:
 ///
 /// * Request: 5 DML statements. The third statement has a syntax error.
-/// * Response: 2 \[ResultSet][google.spanner.v1.ResultSet\] messages, and a syntax error (`INVALID_ARGUMENT`)
-///    status. The number of \[ResultSet][google.spanner.v1.ResultSet\] messages indicates that the third
+/// * Response: 2 [ResultSet][google.spanner.v1.ResultSet] messages, and a syntax error (`INVALID_ARGUMENT`)
+///    status. The number of [ResultSet][google.spanner.v1.ResultSet] messages indicates that the third
 ///    statement failed, and the fourth and fifth statements were not executed.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExecuteBatchDmlResponse {
-    /// One \[ResultSet][google.spanner.v1.ResultSet\] for each statement in the request that ran successfully,
-    /// in the same order as the statements in the request. Each \[ResultSet][google.spanner.v1.ResultSet\] does
-    /// not contain any rows. The \[ResultSetStats][google.spanner.v1.ResultSetStats\] in each \[ResultSet][google.spanner.v1.ResultSet\] contain
+    /// One [ResultSet][google.spanner.v1.ResultSet] for each statement in the request that ran successfully,
+    /// in the same order as the statements in the request. Each [ResultSet][google.spanner.v1.ResultSet] does
+    /// not contain any rows. The [ResultSetStats][google.spanner.v1.ResultSetStats] in each [ResultSet][google.spanner.v1.ResultSet] contain
     /// the number of rows modified by the statement.
     ///
-    /// Only the first \[ResultSet][google.spanner.v1.ResultSet\] in the response contains valid
-    /// \[ResultSetMetadata][google.spanner.v1.ResultSetMetadata\].
+    /// Only the first [ResultSet][google.spanner.v1.ResultSet] in the response contains valid
+    /// [ResultSetMetadata][google.spanner.v1.ResultSetMetadata].
     #[prost(message, repeated, tag = "1")]
     pub result_sets: ::prost::alloc::vec::Vec<ResultSet>,
     /// If all DML statements are executed successfully, the status is `OK`.
@@ -1951,7 +1951,7 @@ pub struct PartitionOptions {
     #[prost(int64, tag = "2")]
     pub max_partitions: i64,
 }
-/// The request for \[PartitionQuery][google.spanner.v1.Spanner.PartitionQuery\]
+/// The request for [PartitionQuery][google.spanner.v1.Spanner.PartitionQuery]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PartitionQueryRequest {
@@ -1970,7 +1970,7 @@ pub struct PartitionQueryRequest {
     /// then unions all results.
     ///
     /// This must not contain DML commands, such as INSERT, UPDATE, or
-    /// DELETE. Use \[ExecuteStreamingSql][google.spanner.v1.Spanner.ExecuteStreamingSql\] with a
+    /// DELETE. Use [ExecuteStreamingSql][google.spanner.v1.Spanner.ExecuteStreamingSql] with a
     /// PartitionedDml transaction for large, partition-friendly DML operations.
     #[prost(string, tag = "3")]
     pub sql: ::prost::alloc::string::String,
@@ -1990,11 +1990,11 @@ pub struct PartitionQueryRequest {
     pub params: ::core::option::Option<::prost_types::Struct>,
     /// It is not always possible for Cloud Spanner to infer the right SQL type
     /// from a JSON value.  For example, values of type `BYTES` and values
-    /// of type `STRING` both appear in \[params][google.spanner.v1.PartitionQueryRequest.params\] as JSON strings.
+    /// of type `STRING` both appear in [params][google.spanner.v1.PartitionQueryRequest.params] as JSON strings.
     ///
     /// In these cases, `param_types` can be used to specify the exact
     /// SQL type for some or all of the SQL query parameters. See the
-    /// definition of \[Type][google.spanner.v1.Type\] for more information
+    /// definition of [Type][google.spanner.v1.Type] for more information
     /// about SQL types.
     #[prost(map = "string, message", tag = "5")]
     pub param_types: ::std::collections::HashMap<::prost::alloc::string::String, Type>,
@@ -2002,7 +2002,7 @@ pub struct PartitionQueryRequest {
     #[prost(message, optional, tag = "6")]
     pub partition_options: ::core::option::Option<PartitionOptions>,
 }
-/// The request for \[PartitionRead][google.spanner.v1.Spanner.PartitionRead\]
+/// The request for [PartitionRead][google.spanner.v1.Spanner.PartitionRead]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PartitionReadRequest {
@@ -2016,19 +2016,19 @@ pub struct PartitionReadRequest {
     /// Required. The name of the table in the database to be read.
     #[prost(string, tag = "3")]
     pub table: ::prost::alloc::string::String,
-    /// If non-empty, the name of an index on \[table][google.spanner.v1.PartitionReadRequest.table\]. This index is
-    /// used instead of the table primary key when interpreting \[key_set][google.spanner.v1.PartitionReadRequest.key_set\]
-    /// and sorting result rows. See \[key_set][google.spanner.v1.PartitionReadRequest.key_set\] for further information.
+    /// If non-empty, the name of an index on [table][google.spanner.v1.PartitionReadRequest.table]. This index is
+    /// used instead of the table primary key when interpreting [key_set][google.spanner.v1.PartitionReadRequest.key_set]
+    /// and sorting result rows. See [key_set][google.spanner.v1.PartitionReadRequest.key_set] for further information.
     #[prost(string, tag = "4")]
     pub index: ::prost::alloc::string::String,
-    /// The columns of \[table][google.spanner.v1.PartitionReadRequest.table\] to be returned for each row matching
+    /// The columns of [table][google.spanner.v1.PartitionReadRequest.table] to be returned for each row matching
     /// this request.
     #[prost(string, repeated, tag = "5")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// Required. `key_set` identifies the rows to be yielded. `key_set` names the
-    /// primary keys of the rows in \[table][google.spanner.v1.PartitionReadRequest.table\] to be yielded, unless \[index][google.spanner.v1.PartitionReadRequest.index\]
-    /// is present. If \[index][google.spanner.v1.PartitionReadRequest.index\] is present, then \[key_set][google.spanner.v1.PartitionReadRequest.key_set\] instead names
-    /// index keys in \[index][google.spanner.v1.PartitionReadRequest.index\].
+    /// primary keys of the rows in [table][google.spanner.v1.PartitionReadRequest.table] to be yielded, unless [index][google.spanner.v1.PartitionReadRequest.index]
+    /// is present. If [index][google.spanner.v1.PartitionReadRequest.index] is present, then [key_set][google.spanner.v1.PartitionReadRequest.key_set] instead names
+    /// index keys in [index][google.spanner.v1.PartitionReadRequest.index].
     ///
     /// It is not an error for the `key_set` to name rows that do not
     /// exist in the database. Read yields nothing for nonexistent rows.
@@ -2049,8 +2049,8 @@ pub struct Partition {
     #[prost(bytes = "bytes", tag = "1")]
     pub partition_token: ::prost::bytes::Bytes,
 }
-/// The response for \[PartitionQuery][google.spanner.v1.Spanner.PartitionQuery\]
-/// or \[PartitionRead][google.spanner.v1.Spanner.PartitionRead\]
+/// The response for [PartitionQuery][google.spanner.v1.Spanner.PartitionQuery]
+/// or [PartitionRead][google.spanner.v1.Spanner.PartitionRead]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PartitionResponse {
@@ -2061,8 +2061,8 @@ pub struct PartitionResponse {
     #[prost(message, optional, tag = "2")]
     pub transaction: ::core::option::Option<Transaction>,
 }
-/// The request for \[Read][google.spanner.v1.Spanner.Read\] and
-/// \[StreamingRead][google.spanner.v1.Spanner.StreamingRead\].
+/// The request for [Read][google.spanner.v1.Spanner.Read] and
+/// [StreamingRead][google.spanner.v1.Spanner.StreamingRead].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ReadRequest {
@@ -2076,23 +2076,23 @@ pub struct ReadRequest {
     /// Required. The name of the table in the database to be read.
     #[prost(string, tag = "3")]
     pub table: ::prost::alloc::string::String,
-    /// If non-empty, the name of an index on \[table][google.spanner.v1.ReadRequest.table\]. This index is
-    /// used instead of the table primary key when interpreting \[key_set][google.spanner.v1.ReadRequest.key_set\]
-    /// and sorting result rows. See \[key_set][google.spanner.v1.ReadRequest.key_set\] for further information.
+    /// If non-empty, the name of an index on [table][google.spanner.v1.ReadRequest.table]. This index is
+    /// used instead of the table primary key when interpreting [key_set][google.spanner.v1.ReadRequest.key_set]
+    /// and sorting result rows. See [key_set][google.spanner.v1.ReadRequest.key_set] for further information.
     #[prost(string, tag = "4")]
     pub index: ::prost::alloc::string::String,
-    /// Required. The columns of \[table][google.spanner.v1.ReadRequest.table\] to be returned for each row matching
+    /// Required. The columns of [table][google.spanner.v1.ReadRequest.table] to be returned for each row matching
     /// this request.
     #[prost(string, repeated, tag = "5")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// Required. `key_set` identifies the rows to be yielded. `key_set` names the
-    /// primary keys of the rows in \[table][google.spanner.v1.ReadRequest.table\] to be yielded, unless \[index][google.spanner.v1.ReadRequest.index\]
-    /// is present. If \[index][google.spanner.v1.ReadRequest.index\] is present, then \[key_set][google.spanner.v1.ReadRequest.key_set\] instead names
-    /// index keys in \[index][google.spanner.v1.ReadRequest.index\].
+    /// primary keys of the rows in [table][google.spanner.v1.ReadRequest.table] to be yielded, unless [index][google.spanner.v1.ReadRequest.index]
+    /// is present. If [index][google.spanner.v1.ReadRequest.index] is present, then [key_set][google.spanner.v1.ReadRequest.key_set] instead names
+    /// index keys in [index][google.spanner.v1.ReadRequest.index].
     ///
-    /// If the \[partition_token][google.spanner.v1.ReadRequest.partition_token\] field is empty, rows are yielded
-    /// in table primary key order (if \[index][google.spanner.v1.ReadRequest.index\] is empty) or index key order
-    /// (if \[index][google.spanner.v1.ReadRequest.index\] is non-empty).  If the \[partition_token][google.spanner.v1.ReadRequest.partition_token\] field is not
+    /// If the [partition_token][google.spanner.v1.ReadRequest.partition_token] field is empty, rows are yielded
+    /// in table primary key order (if [index][google.spanner.v1.ReadRequest.index] is empty) or index key order
+    /// (if [index][google.spanner.v1.ReadRequest.index] is non-empty).  If the [partition_token][google.spanner.v1.ReadRequest.partition_token] field is not
     /// empty, rows will be yielded in an unspecified order.
     ///
     /// It is not an error for the `key_set` to name rows that do not
@@ -2106,7 +2106,7 @@ pub struct ReadRequest {
     pub limit: i64,
     /// If this request is resuming a previously interrupted read,
     /// `resume_token` should be copied from the last
-    /// \[PartialResultSet][google.spanner.v1.PartialResultSet\] yielded before the interruption. Doing this
+    /// [PartialResultSet][google.spanner.v1.PartialResultSet] yielded before the interruption. Doing this
     /// enables the new read to resume where the last read left off. The
     /// rest of the request parameters must exactly match the request
     /// that yielded this token.
@@ -2129,7 +2129,7 @@ pub struct ReadRequest {
     #[prost(bool, tag = "15")]
     pub data_boost_enabled: bool,
 }
-/// The request for \[BeginTransaction][google.spanner.v1.Spanner.BeginTransaction\].
+/// The request for [BeginTransaction][google.spanner.v1.Spanner.BeginTransaction].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BeginTransactionRequest {
@@ -2147,7 +2147,7 @@ pub struct BeginTransactionRequest {
     #[prost(message, optional, tag = "3")]
     pub request_options: ::core::option::Option<RequestOptions>,
 }
-/// The request for \[Commit][google.spanner.v1.Spanner.Commit\].
+/// The request for [Commit][google.spanner.v1.Spanner.Commit].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CommitRequest {
@@ -2160,7 +2160,7 @@ pub struct CommitRequest {
     #[prost(message, repeated, tag = "4")]
     pub mutations: ::prost::alloc::vec::Vec<Mutation>,
     /// If `true`, then statistics related to the transaction will be included in
-    /// the \[CommitResponse][google.spanner.v1.CommitResponse.commit_stats\]. Default value is
+    /// the [CommitResponse][google.spanner.v1.CommitResponse.commit_stats]. Default value is
     /// `false`.
     #[prost(bool, tag = "5")]
     pub return_commit_stats: bool,
@@ -2187,13 +2187,13 @@ pub mod commit_request {
         /// instance, due to retries in the application, or in the
         /// transport library), it is possible that the mutations are
         /// executed more than once. If this is undesirable, use
-        /// \[BeginTransaction][google.spanner.v1.Spanner.BeginTransaction\] and
-        /// \[Commit][google.spanner.v1.Spanner.Commit\] instead.
+        /// [BeginTransaction][google.spanner.v1.Spanner.BeginTransaction] and
+        /// [Commit][google.spanner.v1.Spanner.Commit] instead.
         #[prost(message, tag = "3")]
         SingleUseTransaction(super::TransactionOptions),
     }
 }
-/// The request for \[Rollback][google.spanner.v1.Spanner.Rollback\].
+/// The request for [Rollback][google.spanner.v1.Spanner.Rollback].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RollbackRequest {

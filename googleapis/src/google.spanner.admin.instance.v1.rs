@@ -97,7 +97,7 @@ pub mod replica_info {
 pub struct InstanceConfig {
     /// A unique identifier for the instance configuration.  Values
     /// are of the form
-    /// `projects/<project>/instanceConfigs/\[a-z][-a-z0-9\]*`.
+    /// `projects/<project>/instanceConfigs/[a-z][-a-z0-9]*`.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// The name of this instance configuration as it appears in UIs.
@@ -129,7 +129,7 @@ pub struct InstanceConfig {
     /// firewall, load balancing, etc.).
     ///
     ///   * Label keys must be between 1 and 63 characters long and must conform to
-    ///     the following regular expression: `\[a-z][a-z0-9_-\]{0,62}`.
+    ///     the following regular expression: `[a-z][a-z0-9_-]{0,62}`.
     ///   * Label values must be between 0 and 63 characters long and must conform
     ///     to the regular expression `\[a-z0-9_-\]{0,63}`.
     ///   * No more than 64 labels can be associated with a given resource.
@@ -244,14 +244,14 @@ pub mod instance_config {
 pub struct Instance {
     /// Required. A unique identifier for the instance, which cannot be changed
     /// after the instance is created. Values are of the form
-    /// `projects/<project>/instances/\[a-z][-a-z0-9]*[a-z0-9\]`. The final
+    /// `projects/<project>/instances/[a-z][-a-z0-9]*\[a-z0-9\]`. The final
     /// segment of the name must be between 2 and 64 characters in length.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// Required. The name of the instance's configuration. Values are of the form
     /// `projects/<project>/instanceConfigs/<configuration>`. See
-    /// also \[InstanceConfig][google.spanner.admin.instance.v1.InstanceConfig\] and
-    /// \[ListInstanceConfigs][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigs\].
+    /// also [InstanceConfig][google.spanner.admin.instance.v1.InstanceConfig] and
+    /// [ListInstanceConfigs][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigs].
     #[prost(string, tag = "2")]
     pub config: ::prost::alloc::string::String,
     /// Required. The descriptive name for this instance as it appears in UIs.
@@ -278,9 +278,9 @@ pub struct Instance {
     #[prost(int32, tag = "9")]
     pub processing_units: i32,
     /// Output only. The current instance state. For
-    /// \[CreateInstance][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstance\],
+    /// [CreateInstance][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstance],
     /// the state must be either omitted or set to `CREATING`. For
-    /// \[UpdateInstance][google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstance\],
+    /// [UpdateInstance][google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstance],
     /// the state must be either omitted or set to `READY`.
     #[prost(enumeration = "instance::State", tag = "6")]
     pub state: i32,
@@ -292,7 +292,7 @@ pub struct Instance {
     /// firewall, load balancing, etc.).
     ///
     ///   * Label keys must be between 1 and 63 characters long and must conform to
-    ///     the following regular expression: `\[a-z][a-z0-9_-\]{0,62}`.
+    ///     the following regular expression: `[a-z][a-z0-9_-]{0,62}`.
     ///   * Label values must be between 0 and 63 characters long and must conform
     ///     to the regular expression `\[a-z0-9_-\]{0,63}`.
     ///   * No more than 64 labels can be associated with a given resource.
@@ -357,7 +357,7 @@ pub mod instance {
     }
 }
 /// The request for
-/// \[ListInstanceConfigs][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigs\].
+/// [ListInstanceConfigs][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigs].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListInstanceConfigsRequest {
@@ -371,14 +371,14 @@ pub struct ListInstanceConfigsRequest {
     #[prost(int32, tag = "2")]
     pub page_size: i32,
     /// If non-empty, `page_token` should contain a
-    /// \[next_page_token][google.spanner.admin.instance.v1.ListInstanceConfigsResponse.next_page_token\]
+    /// [next_page_token][google.spanner.admin.instance.v1.ListInstanceConfigsResponse.next_page_token]
     /// from a previous
-    /// \[ListInstanceConfigsResponse][google.spanner.admin.instance.v1.ListInstanceConfigsResponse\].
+    /// [ListInstanceConfigsResponse][google.spanner.admin.instance.v1.ListInstanceConfigsResponse].
     #[prost(string, tag = "3")]
     pub page_token: ::prost::alloc::string::String,
 }
 /// The response for
-/// \[ListInstanceConfigs][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigs\].
+/// [ListInstanceConfigs][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigs].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListInstanceConfigsResponse {
@@ -386,13 +386,13 @@ pub struct ListInstanceConfigsResponse {
     #[prost(message, repeated, tag = "1")]
     pub instance_configs: ::prost::alloc::vec::Vec<InstanceConfig>,
     /// `next_page_token` can be sent in a subsequent
-    /// \[ListInstanceConfigs][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigs\]
+    /// [ListInstanceConfigs][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigs]
     /// call to fetch more of the matching instance configurations.
     #[prost(string, tag = "2")]
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request for
-/// \[GetInstanceConfigRequest][google.spanner.admin.instance.v1.InstanceAdmin.GetInstanceConfig\].
+/// [GetInstanceConfigRequest][google.spanner.admin.instance.v1.InstanceAdmin.GetInstanceConfig].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetInstanceConfigRequest {
@@ -402,7 +402,7 @@ pub struct GetInstanceConfigRequest {
     pub name: ::prost::alloc::string::String,
 }
 /// The request for
-/// \[CreateInstanceConfigRequest][InstanceAdmin.CreateInstanceConfigRequest\].
+/// [CreateInstanceConfigRequest][InstanceAdmin.CreateInstanceConfigRequest].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateInstanceConfigRequest {
@@ -411,7 +411,7 @@ pub struct CreateInstanceConfigRequest {
     #[prost(string, tag = "1")]
     pub parent: ::prost::alloc::string::String,
     /// Required. The ID of the instance config to create.  Valid identifiers are
-    /// of the form `custom-\[-a-z0-9]*[a-z0-9\]` and must be between 2 and 64
+    /// of the form `custom-\[-a-z0-9\]*[a-z0-9]` and must be between 2 and 64
     /// characters in length. The `custom-` prefix is required to avoid name
     /// conflicts with Google managed configurations.
     #[prost(string, tag = "2")]
@@ -429,22 +429,22 @@ pub struct CreateInstanceConfigRequest {
     pub validate_only: bool,
 }
 /// The request for
-/// \[UpdateInstanceConfigRequest][InstanceAdmin.UpdateInstanceConfigRequest\].
+/// [UpdateInstanceConfigRequest][InstanceAdmin.UpdateInstanceConfigRequest].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateInstanceConfigRequest {
     /// Required. The user instance config to update, which must always include the
     /// instance config name. Otherwise, only fields mentioned in
-    /// \[update_mask][google.spanner.admin.instance.v1.UpdateInstanceConfigRequest.update_mask\]
+    /// [update_mask][google.spanner.admin.instance.v1.UpdateInstanceConfigRequest.update_mask]
     /// need be included. To prevent conflicts of concurrent updates,
-    /// \[etag][google.spanner.admin.instance.v1.InstanceConfig.reconciling\] can
+    /// [etag][google.spanner.admin.instance.v1.InstanceConfig.reconciling] can
     /// be used.
     #[prost(message, optional, tag = "1")]
     pub instance_config: ::core::option::Option<InstanceConfig>,
     /// Required. A mask specifying which fields in
-    /// \[InstanceConfig][google.spanner.admin.instance.v1.InstanceConfig\] should be
+    /// [InstanceConfig][google.spanner.admin.instance.v1.InstanceConfig] should be
     /// updated. The field mask must always be specified; this prevents any future
-    /// fields in \[InstanceConfig][google.spanner.admin.instance.v1.InstanceConfig\]
+    /// fields in [InstanceConfig][google.spanner.admin.instance.v1.InstanceConfig]
     /// from being erased accidentally by clients that do not know about them. Only
     /// display_name and labels can be updated.
     #[prost(message, optional, tag = "2")]
@@ -455,7 +455,7 @@ pub struct UpdateInstanceConfigRequest {
     pub validate_only: bool,
 }
 /// The request for
-/// \[DeleteInstanceConfigRequest][InstanceAdmin.DeleteInstanceConfigRequest\].
+/// [DeleteInstanceConfigRequest][InstanceAdmin.DeleteInstanceConfigRequest].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteInstanceConfigRequest {
@@ -479,7 +479,7 @@ pub struct DeleteInstanceConfigRequest {
     pub validate_only: bool,
 }
 /// The request for
-/// \[ListInstanceConfigOperations][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigOperations\].
+/// [ListInstanceConfigOperations][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigOperations].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListInstanceConfigOperationsRequest {
@@ -495,14 +495,14 @@ pub struct ListInstanceConfigOperationsRequest {
     /// must be one of: `<`, `>`, `<=`, `>=`, `!=`, `=`, or `:`.
     /// Colon `:` is the contains operator. Filter rules are not case sensitive.
     ///
-    /// The following fields in the \[Operation][google.longrunning.Operation\]
+    /// The following fields in the [Operation][google.longrunning.Operation]
     /// are eligible for filtering:
     ///
     ///    * `name` - The name of the long-running operation
     ///    * `done` - False if the operation is in progress, else true.
     ///    * `metadata.@type` - the type of metadata. For example, the type string
     ///       for
-    ///       \[CreateInstanceConfigMetadata][google.spanner.admin.instance.v1.CreateInstanceConfigMetadata\]
+    ///       [CreateInstanceConfigMetadata][google.spanner.admin.instance.v1.CreateInstanceConfigMetadata]
     ///       is
     ///       `type.googleapis.com/google.spanner.admin.instance.v1.CreateInstanceConfigMetadata`.
     ///    * `metadata.<field_name>` - any field in metadata.value.
@@ -526,7 +526,7 @@ pub struct ListInstanceConfigOperationsRequest {
     ///      `(metadata.progress.start_time < \"2021-03-28T14:50:00Z\") AND` \
     ///      `(error:*)` - Return operations where:
     ///      * The operation's metadata type is
-    ///      \[CreateInstanceConfigMetadata][google.spanner.admin.instance.v1.CreateInstanceConfigMetadata\].
+    ///      [CreateInstanceConfigMetadata][google.spanner.admin.instance.v1.CreateInstanceConfigMetadata].
     ///      * The instance config name contains "custom-config".
     ///      * The operation started before 2021-03-28T14:50:00Z.
     ///      * The operation resulted in an error.
@@ -537,33 +537,33 @@ pub struct ListInstanceConfigOperationsRequest {
     #[prost(int32, tag = "3")]
     pub page_size: i32,
     /// If non-empty, `page_token` should contain a
-    /// \[next_page_token][google.spanner.admin.instance.v1.ListInstanceConfigOperationsResponse.next_page_token\]
+    /// [next_page_token][google.spanner.admin.instance.v1.ListInstanceConfigOperationsResponse.next_page_token]
     /// from a previous
-    /// \[ListInstanceConfigOperationsResponse][google.spanner.admin.instance.v1.ListInstanceConfigOperationsResponse\]
+    /// [ListInstanceConfigOperationsResponse][google.spanner.admin.instance.v1.ListInstanceConfigOperationsResponse]
     /// to the same `parent` and with the same `filter`.
     #[prost(string, tag = "4")]
     pub page_token: ::prost::alloc::string::String,
 }
 /// The response for
-/// \[ListInstanceConfigOperations][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigOperations\].
+/// [ListInstanceConfigOperations][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigOperations].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListInstanceConfigOperationsResponse {
     /// The list of matching instance config [long-running
-    /// operations]\[google.longrunning.Operation\]. Each operation's name will be
+    /// operations][google.longrunning.Operation]. Each operation's name will be
     /// prefixed by the instance config's name. The operation's
-    /// \[metadata][google.longrunning.Operation.metadata\] field type
+    /// [metadata][google.longrunning.Operation.metadata] field type
     /// `metadata.type_url` describes the type of the metadata.
     #[prost(message, repeated, tag = "1")]
     pub operations: ::prost::alloc::vec::Vec<super::super::super::super::longrunning::Operation>,
     /// `next_page_token` can be sent in a subsequent
-    /// \[ListInstanceConfigOperations][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigOperations\]
+    /// [ListInstanceConfigOperations][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigOperations]
     /// call to fetch more of the matching metadata.
     #[prost(string, tag = "2")]
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request for
-/// \[GetInstance][google.spanner.admin.instance.v1.InstanceAdmin.GetInstance\].
+/// [GetInstance][google.spanner.admin.instance.v1.InstanceAdmin.GetInstance].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetInstanceRequest {
@@ -572,14 +572,14 @@ pub struct GetInstanceRequest {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// If field_mask is present, specifies the subset of
-    /// \[Instance][google.spanner.admin.instance.v1.Instance\] fields that should be
+    /// [Instance][google.spanner.admin.instance.v1.Instance] fields that should be
     /// returned. If absent, all
-    /// \[Instance][google.spanner.admin.instance.v1.Instance\] fields are returned.
+    /// [Instance][google.spanner.admin.instance.v1.Instance] fields are returned.
     #[prost(message, optional, tag = "2")]
     pub field_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
 /// The request for
-/// \[CreateInstance][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstance\].
+/// [CreateInstance][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstance].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateInstanceRequest {
@@ -588,7 +588,7 @@ pub struct CreateInstanceRequest {
     #[prost(string, tag = "1")]
     pub parent: ::prost::alloc::string::String,
     /// Required. The ID of the instance to create.  Valid identifiers are of the
-    /// form `\[a-z][-a-z0-9]*[a-z0-9\]` and must be between 2 and 64 characters in
+    /// form `[a-z][-a-z0-9]*\[a-z0-9\]` and must be between 2 and 64 characters in
     /// length.
     #[prost(string, tag = "2")]
     pub instance_id: ::prost::alloc::string::String,
@@ -598,7 +598,7 @@ pub struct CreateInstanceRequest {
     pub instance: ::core::option::Option<Instance>,
 }
 /// The request for
-/// \[ListInstances][google.spanner.admin.instance.v1.InstanceAdmin.ListInstances\].
+/// [ListInstances][google.spanner.admin.instance.v1.InstanceAdmin.ListInstances].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListInstancesRequest {
@@ -611,9 +611,9 @@ pub struct ListInstancesRequest {
     #[prost(int32, tag = "2")]
     pub page_size: i32,
     /// If non-empty, `page_token` should contain a
-    /// \[next_page_token][google.spanner.admin.instance.v1.ListInstancesResponse.next_page_token\]
+    /// [next_page_token][google.spanner.admin.instance.v1.ListInstancesResponse.next_page_token]
     /// from a previous
-    /// \[ListInstancesResponse][google.spanner.admin.instance.v1.ListInstancesResponse\].
+    /// [ListInstancesResponse][google.spanner.admin.instance.v1.ListInstancesResponse].
     #[prost(string, tag = "3")]
     pub page_token: ::prost::alloc::string::String,
     /// An expression for filtering the results of the request. Filter rules are
@@ -639,7 +639,7 @@ pub struct ListInstancesRequest {
     pub filter: ::prost::alloc::string::String,
 }
 /// The response for
-/// \[ListInstances][google.spanner.admin.instance.v1.InstanceAdmin.ListInstances\].
+/// [ListInstances][google.spanner.admin.instance.v1.InstanceAdmin.ListInstances].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListInstancesResponse {
@@ -647,32 +647,32 @@ pub struct ListInstancesResponse {
     #[prost(message, repeated, tag = "1")]
     pub instances: ::prost::alloc::vec::Vec<Instance>,
     /// `next_page_token` can be sent in a subsequent
-    /// \[ListInstances][google.spanner.admin.instance.v1.InstanceAdmin.ListInstances\]
+    /// [ListInstances][google.spanner.admin.instance.v1.InstanceAdmin.ListInstances]
     /// call to fetch more of the matching instances.
     #[prost(string, tag = "2")]
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request for
-/// \[UpdateInstance][google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstance\].
+/// [UpdateInstance][google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstance].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateInstanceRequest {
     /// Required. The instance to update, which must always include the instance
     /// name.  Otherwise, only fields mentioned in
-    /// \[field_mask][google.spanner.admin.instance.v1.UpdateInstanceRequest.field_mask\]
+    /// [field_mask][google.spanner.admin.instance.v1.UpdateInstanceRequest.field_mask]
     /// need be included.
     #[prost(message, optional, tag = "1")]
     pub instance: ::core::option::Option<Instance>,
     /// Required. A mask specifying which fields in
-    /// \[Instance][google.spanner.admin.instance.v1.Instance\] should be updated.
+    /// [Instance][google.spanner.admin.instance.v1.Instance] should be updated.
     /// The field mask must always be specified; this prevents any future fields in
-    /// \[Instance][google.spanner.admin.instance.v1.Instance\] from being erased
+    /// [Instance][google.spanner.admin.instance.v1.Instance] from being erased
     /// accidentally by clients that do not know about them.
     #[prost(message, optional, tag = "2")]
     pub field_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
 /// The request for
-/// \[DeleteInstance][google.spanner.admin.instance.v1.InstanceAdmin.DeleteInstance\].
+/// [DeleteInstance][google.spanner.admin.instance.v1.InstanceAdmin.DeleteInstance].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteInstanceRequest {
@@ -682,7 +682,7 @@ pub struct DeleteInstanceRequest {
     pub name: ::prost::alloc::string::String,
 }
 /// Metadata type for the operation returned by
-/// \[CreateInstance][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstance\].
+/// [CreateInstance][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstance].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateInstanceMetadata {
@@ -690,7 +690,7 @@ pub struct CreateInstanceMetadata {
     #[prost(message, optional, tag = "1")]
     pub instance: ::core::option::Option<Instance>,
     /// The time at which the
-    /// \[CreateInstance][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstance\]
+    /// [CreateInstance][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstance]
     /// request was received.
     #[prost(message, optional, tag = "2")]
     pub start_time: ::core::option::Option<::prost_types::Timestamp>,
@@ -704,7 +704,7 @@ pub struct CreateInstanceMetadata {
     pub end_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// Metadata type for the operation returned by
-/// \[UpdateInstance][google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstance\].
+/// [UpdateInstance][google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstance].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateInstanceMetadata {
@@ -712,7 +712,7 @@ pub struct UpdateInstanceMetadata {
     #[prost(message, optional, tag = "1")]
     pub instance: ::core::option::Option<Instance>,
     /// The time at which
-    /// \[UpdateInstance][google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstance\]
+    /// [UpdateInstance][google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstance]
     /// request was received.
     #[prost(message, optional, tag = "2")]
     pub start_time: ::core::option::Option<::prost_types::Timestamp>,
@@ -726,7 +726,7 @@ pub struct UpdateInstanceMetadata {
     pub end_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// Metadata type for the operation returned by
-/// \[CreateInstanceConfig][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstanceConfig\].
+/// [CreateInstanceConfig][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstanceConfig].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateInstanceConfigMetadata {
@@ -734,7 +734,7 @@ pub struct CreateInstanceConfigMetadata {
     #[prost(message, optional, tag = "1")]
     pub instance_config: ::core::option::Option<InstanceConfig>,
     /// The progress of the
-    /// \[CreateInstanceConfig][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstanceConfig\]
+    /// [CreateInstanceConfig][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstanceConfig]
     /// operation.
     #[prost(message, optional, tag = "2")]
     pub progress: ::core::option::Option<OperationProgress>,
@@ -743,7 +743,7 @@ pub struct CreateInstanceConfigMetadata {
     pub cancel_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// Metadata type for the operation returned by
-/// \[UpdateInstanceConfig][google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstanceConfig\].
+/// [UpdateInstanceConfig][google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstanceConfig].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateInstanceConfigMetadata {
@@ -751,7 +751,7 @@ pub struct UpdateInstanceConfigMetadata {
     #[prost(message, optional, tag = "1")]
     pub instance_config: ::core::option::Option<InstanceConfig>,
     /// The progress of the
-    /// \[UpdateInstanceConfig][google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstanceConfig\]
+    /// [UpdateInstanceConfig][google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstanceConfig]
     /// operation.
     #[prost(message, optional, tag = "2")]
     pub progress: ::core::option::Option<OperationProgress>,
