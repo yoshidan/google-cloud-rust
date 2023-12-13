@@ -61,7 +61,7 @@ pub struct Expr {
 /// * A year and month value, with a zero day, such as a credit card expiration
 /// date
 ///
-/// Related types are \[google.type.TimeOfDay][google.type.TimeOfDay\] and
+/// Related types are [google.type.TimeOfDay][google.type.TimeOfDay] and
 /// `google.protobuf.Timestamp`.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]

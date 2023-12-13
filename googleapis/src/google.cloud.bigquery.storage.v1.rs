@@ -193,10 +193,10 @@ pub struct TableFieldSchema {
     /// Values of this NUMERIC or BIGNUMERIC field must be in this range when:
     ///
     /// * Precision (P) and scale (S) are specified:
-    ///    [-10^(P-S) + 10^(-S), 10^(P-S) - 10^(-S)]
+    ///    \[-10^(P-S) + 10^(-S), 10^(P-S) - 10^(-S)\]
     /// * Precision (P) is specified but not scale (and thus scale is
     ///    interpreted to be equal to zero):
-    ///    [-10^P + 1, 10^P - 1].
+    ///    \[-10^P + 1, 10^P - 1\].
     ///
     /// Acceptable values for precision and scale if both are specified:
     ///
@@ -217,7 +217,7 @@ pub struct TableFieldSchema {
     /// Optional. See documentation for precision.
     #[prost(int64, tag = "9")]
     pub scale: i64,
-    /// Optional. A SQL expression to specify the [default value]
+    /// Optional. A SQL expression to specify the \[default value\]
     /// (<https://cloud.google.com/bigquery/docs/default-values>) for this field.
     #[prost(string, tag = "10")]
     pub default_value_expression: ::prost::alloc::string::String,

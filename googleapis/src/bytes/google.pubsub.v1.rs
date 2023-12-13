@@ -612,7 +612,7 @@ pub struct Topic {
     /// must not start with `"goog"`.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
-    /// See [Creating and managing labels]
+    /// See \[Creating and managing labels\]
     /// (<https://cloud.google.com/pubsub/docs/labels>).
     #[prost(map = "string, string", tag = "2")]
     pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
@@ -650,7 +650,7 @@ pub struct Topic {
 /// Note that client libraries represent this object differently
 /// depending on the language. See the corresponding [client library
 /// documentation](<https://cloud.google.com/pubsub/docs/reference/libraries>) for
-/// more information. See [quotas and limits]
+/// more information. See \[quotas and limits\]
 /// (<https://cloud.google.com/pubsub/quotas>) for more information about message
 /// limits.
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -901,7 +901,7 @@ pub struct Subscription {
     /// Indicates whether to retain acknowledged messages. If true, then
     /// messages are not expunged from the subscription's backlog, even if they are
     /// acknowledged, until they fall out of the `message_retention_duration`
-    /// window. This must be true if you would like to [`Seek` to a timestamp]
+    /// window. This must be true if you would like to \[`Seek` to a timestamp\]
     /// (<https://cloud.google.com/pubsub/docs/replay-overview#seek_to_a_time>) in
     /// the past to replay previously-acknowledged messages.
     #[prost(bool, tag = "7")]
@@ -1259,7 +1259,7 @@ pub mod big_query_config {
         /// - Pub/Sub SA has not been granted the [appropriate BigQuery IAM
         /// permissions](<https://cloud.google.com/pubsub/docs/create-subscription#assign_bigquery_service_account>)
         /// - bigquery.googleapis.com API is not enabled for the project
-        /// (\[instructions\](<https://cloud.google.com/service-usage/docs/enable-disable>))
+        /// ([instructions](<https://cloud.google.com/service-usage/docs/enable-disable>))
         PermissionDenied = 2,
         /// Cannot write to the BigQuery table because it does not exist.
         NotFound = 3,
@@ -1767,7 +1767,7 @@ pub struct UpdateSnapshotRequest {
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
 /// A snapshot resource. Snapshots are used in
-/// \[Seek\](<https://cloud.google.com/pubsub/docs/replay-overview>)
+/// [Seek](<https://cloud.google.com/pubsub/docs/replay-overview>)
 /// operations, which allow you to manage message acknowledgments in bulk. That
 /// is, you can set the acknowledgment state of messages in an existing
 /// subscription to the state captured by a snapshot.
@@ -1792,7 +1792,7 @@ pub struct Snapshot {
     /// snapshot that would expire in less than 1 hour after creation.
     #[prost(message, optional, tag = "3")]
     pub expire_time: ::core::option::Option<::prost_types::Timestamp>,
-    /// See [Creating and managing labels]
+    /// See \[Creating and managing labels\]
     /// (<https://cloud.google.com/pubsub/docs/labels>).
     #[prost(map = "string, string", tag = "4")]
     pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,

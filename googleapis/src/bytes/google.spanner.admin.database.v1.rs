@@ -132,7 +132,7 @@ impl DatabaseDialect {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Backup {
-    /// Required for the \[CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup\] operation.
+    /// Required for the [CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup] operation.
     /// Name of the database from which this backup was
     /// created. This needs to be in the same instance as the backup.
     /// Values are of the form
@@ -145,7 +145,7 @@ pub struct Backup {
     /// backup.
     #[prost(message, optional, tag = "9")]
     pub version_time: ::core::option::Option<::prost_types::Timestamp>,
-    /// Required for the \[CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup\]
+    /// Required for the [CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup]
     /// operation. The expiration time of the backup, with microseconds
     /// granularity that must be at least 6 hours and at most 366 days
     /// from the time the CreateBackup request is processed. Once the `expire_time`
@@ -153,12 +153,12 @@ pub struct Backup {
     /// Spanner to free the resources used by the backup.
     #[prost(message, optional, tag = "3")]
     pub expire_time: ::core::option::Option<::prost_types::Timestamp>,
-    /// Output only for the \[CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup\] operation.
-    /// Required for the \[UpdateBackup][google.spanner.admin.database.v1.DatabaseAdmin.UpdateBackup\] operation.
+    /// Output only for the [CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup] operation.
+    /// Required for the [UpdateBackup][google.spanner.admin.database.v1.DatabaseAdmin.UpdateBackup] operation.
     ///
     /// A globally unique identifier for the backup which cannot be
     /// changed. Values are of the form
-    /// `projects/<project>/instances/<instance>/backups/\[a-z][a-z0-9_\-]*[a-z0-9\]`
+    /// `projects/<project>/instances/<instance>/backups/[a-z][a-z0-9_\-]*\[a-z0-9\]`
     /// The final segment of the name must be between 2 and 60 characters
     /// in length.
     ///
@@ -168,7 +168,7 @@ pub struct Backup {
     /// `projects/<project>/instances/<instance>`.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
-    /// Output only. The time the \[CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup\]
+    /// Output only. The time the [CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup]
     /// request is received. If the request does not specify `version_time`, the
     /// `version_time` of the backup will be equivalent to the `create_time`.
     #[prost(message, optional, tag = "4")]
@@ -258,7 +258,7 @@ pub mod backup {
         }
     }
 }
-/// The request for \[CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup\].
+/// The request for [CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateBackupRequest {
@@ -281,13 +281,13 @@ pub struct CreateBackupRequest {
     /// Optional. The encryption configuration used to encrypt the backup. If this field is
     /// not specified, the backup will use the same
     /// encryption configuration as the database by default, namely
-    /// \[encryption_type][google.spanner.admin.database.v1.CreateBackupEncryptionConfig.encryption_type\] =
+    /// [encryption_type][google.spanner.admin.database.v1.CreateBackupEncryptionConfig.encryption_type] =
     /// `USE_DATABASE_ENCRYPTION`.
     #[prost(message, optional, tag = "4")]
     pub encryption_config: ::core::option::Option<CreateBackupEncryptionConfig>,
 }
 /// Metadata type for the operation returned by
-/// \[CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup\].
+/// [CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateBackupMetadata {
@@ -298,25 +298,25 @@ pub struct CreateBackupMetadata {
     #[prost(string, tag = "2")]
     pub database: ::prost::alloc::string::String,
     /// The progress of the
-    /// \[CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup\] operation.
+    /// [CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup] operation.
     #[prost(message, optional, tag = "3")]
     pub progress: ::core::option::Option<OperationProgress>,
     /// The time at which cancellation of this operation was received.
-    /// \[Operations.CancelOperation][google.longrunning.Operations.CancelOperation\]
+    /// [Operations.CancelOperation][google.longrunning.Operations.CancelOperation]
     /// starts asynchronous cancellation on a long-running operation. The server
     /// makes a best effort to cancel the operation, but success is not guaranteed.
     /// Clients can use
-    /// \[Operations.GetOperation][google.longrunning.Operations.GetOperation\] or
+    /// [Operations.GetOperation][google.longrunning.Operations.GetOperation] or
     /// other methods to check whether the cancellation succeeded or whether the
     /// operation completed despite cancellation. On successful cancellation,
     /// the operation is not deleted; instead, it becomes an operation with
-    /// an \[Operation.error][google.longrunning.Operation.error\] value with a
-    /// \[google.rpc.Status.code][google.rpc.Status.code\] of 1,
+    /// an [Operation.error][google.longrunning.Operation.error] value with a
+    /// [google.rpc.Status.code][google.rpc.Status.code] of 1,
     /// corresponding to `Code.CANCELLED`.
     #[prost(message, optional, tag = "4")]
     pub cancel_time: ::core::option::Option<::prost_types::Timestamp>,
 }
-/// The request for \[CopyBackup][google.spanner.admin.database.v1.DatabaseAdmin.CopyBackup\].
+/// The request for [CopyBackup][google.spanner.admin.database.v1.DatabaseAdmin.CopyBackup].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CopyBackupRequest {
@@ -347,13 +347,13 @@ pub struct CopyBackupRequest {
     /// Optional. The encryption configuration used to encrypt the backup. If this field is
     /// not specified, the backup will use the same
     /// encryption configuration as the source backup by default, namely
-    /// \[encryption_type][google.spanner.admin.database.v1.CopyBackupEncryptionConfig.encryption_type\] =
+    /// [encryption_type][google.spanner.admin.database.v1.CopyBackupEncryptionConfig.encryption_type] =
     /// `USE_CONFIG_DEFAULT_OR_BACKUP_ENCRYPTION`.
     #[prost(message, optional, tag = "5")]
     pub encryption_config: ::core::option::Option<CopyBackupEncryptionConfig>,
 }
 /// Metadata type for the google.longrunning.Operation returned by
-/// \[CopyBackup][google.spanner.admin.database.v1.DatabaseAdmin.CopyBackup\].
+/// [CopyBackup][google.spanner.admin.database.v1.DatabaseAdmin.CopyBackup].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CopyBackupMetadata {
@@ -368,25 +368,25 @@ pub struct CopyBackupMetadata {
     #[prost(string, tag = "2")]
     pub source_backup: ::prost::alloc::string::String,
     /// The progress of the
-    /// \[CopyBackup][google.spanner.admin.database.v1.DatabaseAdmin.CopyBackup\] operation.
+    /// [CopyBackup][google.spanner.admin.database.v1.DatabaseAdmin.CopyBackup] operation.
     #[prost(message, optional, tag = "3")]
     pub progress: ::core::option::Option<OperationProgress>,
     /// The time at which cancellation of CopyBackup operation was received.
-    /// \[Operations.CancelOperation][google.longrunning.Operations.CancelOperation\]
+    /// [Operations.CancelOperation][google.longrunning.Operations.CancelOperation]
     /// starts asynchronous cancellation on a long-running operation. The server
     /// makes a best effort to cancel the operation, but success is not guaranteed.
     /// Clients can use
-    /// \[Operations.GetOperation][google.longrunning.Operations.GetOperation\] or
+    /// [Operations.GetOperation][google.longrunning.Operations.GetOperation] or
     /// other methods to check whether the cancellation succeeded or whether the
     /// operation completed despite cancellation. On successful cancellation,
     /// the operation is not deleted; instead, it becomes an operation with
-    /// an \[Operation.error][google.longrunning.Operation.error\] value with a
-    /// \[google.rpc.Status.code][google.rpc.Status.code\] of 1,
+    /// an [Operation.error][google.longrunning.Operation.error] value with a
+    /// [google.rpc.Status.code][google.rpc.Status.code] of 1,
     /// corresponding to `Code.CANCELLED`.
     #[prost(message, optional, tag = "4")]
     pub cancel_time: ::core::option::Option<::prost_types::Timestamp>,
 }
-/// The request for \[UpdateBackup][google.spanner.admin.database.v1.DatabaseAdmin.UpdateBackup\].
+/// The request for [UpdateBackup][google.spanner.admin.database.v1.DatabaseAdmin.UpdateBackup].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateBackupRequest {
@@ -404,7 +404,7 @@ pub struct UpdateBackupRequest {
     #[prost(message, optional, tag = "2")]
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
-/// The request for \[GetBackup][google.spanner.admin.database.v1.DatabaseAdmin.GetBackup\].
+/// The request for [GetBackup][google.spanner.admin.database.v1.DatabaseAdmin.GetBackup].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetBackupRequest {
@@ -414,7 +414,7 @@ pub struct GetBackupRequest {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
-/// The request for \[DeleteBackup][google.spanner.admin.database.v1.DatabaseAdmin.DeleteBackup\].
+/// The request for [DeleteBackup][google.spanner.admin.database.v1.DatabaseAdmin.DeleteBackup].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteBackupRequest {
@@ -424,7 +424,7 @@ pub struct DeleteBackupRequest {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
-/// The request for \[ListBackups][google.spanner.admin.database.v1.DatabaseAdmin.ListBackups\].
+/// The request for [ListBackups][google.spanner.admin.database.v1.DatabaseAdmin.ListBackups].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListBackupsRequest {
@@ -440,7 +440,7 @@ pub struct ListBackupsRequest {
     /// must be one of: `<`, `>`, `<=`, `>=`, `!=`, `=`, or `:`.
     /// Colon `:` is the contains operator. Filter rules are not case sensitive.
     ///
-    /// The following fields in the \[Backup][google.spanner.admin.database.v1.Backup\] are eligible for filtering:
+    /// The following fields in the [Backup][google.spanner.admin.database.v1.Backup] are eligible for filtering:
     ///
     ///    * `name`
     ///    * `database`
@@ -474,13 +474,13 @@ pub struct ListBackupsRequest {
     #[prost(int32, tag = "3")]
     pub page_size: i32,
     /// If non-empty, `page_token` should contain a
-    /// \[next_page_token][google.spanner.admin.database.v1.ListBackupsResponse.next_page_token\] from a
-    /// previous \[ListBackupsResponse][google.spanner.admin.database.v1.ListBackupsResponse\] to the same `parent` and with the same
+    /// [next_page_token][google.spanner.admin.database.v1.ListBackupsResponse.next_page_token] from a
+    /// previous [ListBackupsResponse][google.spanner.admin.database.v1.ListBackupsResponse] to the same `parent` and with the same
     /// `filter`.
     #[prost(string, tag = "4")]
     pub page_token: ::prost::alloc::string::String,
 }
-/// The response for \[ListBackups][google.spanner.admin.database.v1.DatabaseAdmin.ListBackups\].
+/// The response for [ListBackups][google.spanner.admin.database.v1.DatabaseAdmin.ListBackups].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListBackupsResponse {
@@ -489,13 +489,13 @@ pub struct ListBackupsResponse {
     #[prost(message, repeated, tag = "1")]
     pub backups: ::prost::alloc::vec::Vec<Backup>,
     /// `next_page_token` can be sent in a subsequent
-    /// \[ListBackups][google.spanner.admin.database.v1.DatabaseAdmin.ListBackups\] call to fetch more
+    /// [ListBackups][google.spanner.admin.database.v1.DatabaseAdmin.ListBackups] call to fetch more
     /// of the matching backups.
     #[prost(string, tag = "2")]
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request for
-/// \[ListBackupOperations][google.spanner.admin.database.v1.DatabaseAdmin.ListBackupOperations\].
+/// [ListBackupOperations][google.spanner.admin.database.v1.DatabaseAdmin.ListBackupOperations].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListBackupOperationsRequest {
@@ -511,13 +511,13 @@ pub struct ListBackupOperationsRequest {
     /// must be one of: `<`, `>`, `<=`, `>=`, `!=`, `=`, or `:`.
     /// Colon `:` is the contains operator. Filter rules are not case sensitive.
     ///
-    /// The following fields in the \[operation][google.longrunning.Operation\]
+    /// The following fields in the [operation][google.longrunning.Operation]
     /// are eligible for filtering:
     ///
     ///    * `name` - The name of the long-running operation
     ///    * `done` - False if the operation is in progress, else true.
     ///    * `metadata.@type` - the type of metadata. For example, the type string
-    ///       for \[CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata\] is
+    ///       for [CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata] is
     ///       `type.googleapis.com/google.spanner.admin.database.v1.CreateBackupMetadata`.
     ///    * `metadata.<field_name>` - any field in metadata.value.
     ///       `metadata.@type` must be specified first if filtering on metadata
@@ -535,14 +535,14 @@ pub struct ListBackupOperationsRequest {
     ///    * `done:true` - The operation is complete.
     ///    * `(metadata.@type=type.googleapis.com/google.spanner.admin.database.v1.CreateBackupMetadata) AND` \
     ///       `metadata.database:prod` - Returns operations where:
-    ///       * The operation's metadata type is \[CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata\].
+    ///       * The operation's metadata type is [CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata].
     ///       * The database the backup was taken from has a name containing the
     ///       string "prod".
     ///    * `(metadata.@type=type.googleapis.com/google.spanner.admin.database.v1.CreateBackupMetadata) AND` \
     ///      `(metadata.name:howl) AND` \
     ///      `(metadata.progress.start_time < \"2018-03-28T14:50:00Z\") AND` \
     ///      `(error:*)` - Returns operations where:
-    ///      * The operation's metadata type is \[CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata\].
+    ///      * The operation's metadata type is [CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata].
     ///      * The backup name contains the string "howl".
     ///      * The operation started before 2018-03-28T14:50:00Z.
     ///      * The operation resulted in an error.
@@ -550,7 +550,7 @@ pub struct ListBackupOperationsRequest {
     ///      `(metadata.source_backup:test) AND` \
     ///      `(metadata.progress.start_time < \"2022-01-18T14:50:00Z\") AND` \
     ///      `(error:*)` - Returns operations where:
-    ///      * The operation's metadata type is \[CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata\].
+    ///      * The operation's metadata type is [CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata].
     ///      * The source backup of the copied backup name contains the string
     ///      "test".
     ///      * The operation started before 2022-01-18T14:50:00Z.
@@ -562,10 +562,10 @@ pub struct ListBackupOperationsRequest {
     ///      `(metadata.source_backup:test_bkp)) AND` \
     ///      `(error:*)` - Returns operations where:
     ///      * The operation's metadata matches either of criteria:
-    ///        * The operation's metadata type is \[CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata\] AND the
+    ///        * The operation's metadata type is [CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata] AND the
     ///        database the backup was taken from has name containing string
     ///        "test_db"
-    ///        * The operation's metadata type is \[CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata\] AND the
+    ///        * The operation's metadata type is [CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata] AND the
     ///        backup the backup was copied from has name containing string
     ///        "test_bkp"
     ///      * The operation resulted in an error.
@@ -576,21 +576,21 @@ pub struct ListBackupOperationsRequest {
     #[prost(int32, tag = "3")]
     pub page_size: i32,
     /// If non-empty, `page_token` should contain a
-    /// \[next_page_token][google.spanner.admin.database.v1.ListBackupOperationsResponse.next_page_token\]
-    /// from a previous \[ListBackupOperationsResponse][google.spanner.admin.database.v1.ListBackupOperationsResponse\] to the
+    /// [next_page_token][google.spanner.admin.database.v1.ListBackupOperationsResponse.next_page_token]
+    /// from a previous [ListBackupOperationsResponse][google.spanner.admin.database.v1.ListBackupOperationsResponse] to the
     /// same `parent` and with the same `filter`.
     #[prost(string, tag = "4")]
     pub page_token: ::prost::alloc::string::String,
 }
 /// The response for
-/// \[ListBackupOperations][google.spanner.admin.database.v1.DatabaseAdmin.ListBackupOperations\].
+/// [ListBackupOperations][google.spanner.admin.database.v1.DatabaseAdmin.ListBackupOperations].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListBackupOperationsResponse {
     /// The list of matching backup [long-running
-    /// operations]\[google.longrunning.Operation\]. Each operation's name will be
+    /// operations][google.longrunning.Operation]. Each operation's name will be
     /// prefixed by the backup's name. The operation's
-    /// \[metadata][google.longrunning.Operation.metadata\] field type
+    /// [metadata][google.longrunning.Operation.metadata] field type
     /// `metadata.type_url` describes the type of the metadata. Operations returned
     /// include those that are pending or have completed/failed/canceled within the
     /// last 7 days. Operations returned are ordered by
@@ -601,7 +601,7 @@ pub struct ListBackupOperationsResponse {
         super::super::super::super::longrunning::Operation,
     >,
     /// `next_page_token` can be sent in a subsequent
-    /// \[ListBackupOperations][google.spanner.admin.database.v1.DatabaseAdmin.ListBackupOperations\]
+    /// [ListBackupOperations][google.spanner.admin.database.v1.DatabaseAdmin.ListBackupOperations]
     /// call to fetch more of the matching metadata.
     #[prost(string, tag = "2")]
     pub next_page_token: ::prost::alloc::string::String,
@@ -615,12 +615,12 @@ pub struct BackupInfo {
     pub backup: ::prost::alloc::string::String,
     /// The backup contains an externally consistent copy of `source_database` at
     /// the timestamp specified by `version_time`. If the
-    /// \[CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup\] request did not specify
+    /// [CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup] request did not specify
     /// `version_time`, the `version_time` of the backup is equivalent to the
     /// `create_time`.
     #[prost(message, optional, tag = "4")]
     pub version_time: ::core::option::Option<::prost_types::Timestamp>,
-    /// The time the \[CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup\] request was
+    /// The time the [CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup] request was
     /// received.
     #[prost(message, optional, tag = "2")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
@@ -637,7 +637,7 @@ pub struct CreateBackupEncryptionConfig {
     pub encryption_type: i32,
     /// Optional. The Cloud KMS key that will be used to protect the backup.
     /// This field should be set only when
-    /// \[encryption_type][google.spanner.admin.database.v1.CreateBackupEncryptionConfig.encryption_type\] is
+    /// [encryption_type][google.spanner.admin.database.v1.CreateBackupEncryptionConfig.encryption_type] is
     /// `CUSTOMER_MANAGED_ENCRYPTION`. Values are of the form
     /// `projects/<project>/locations/<location>/keyRings/<key_ring>/cryptoKeys/<kms_key_name>`.
     #[prost(string, tag = "2")]
@@ -663,7 +663,7 @@ pub mod create_backup_encryption_config {
         Unspecified = 0,
         /// Use the same encryption configuration as the database. This is the
         /// default option when
-        /// \[encryption_config][google.spanner.admin.database.v1.CreateBackupEncryptionConfig\] is empty.
+        /// [encryption_config][google.spanner.admin.database.v1.CreateBackupEncryptionConfig] is empty.
         /// For example, if the database is using `Customer_Managed_Encryption`, the
         /// backup will be using the same Cloud KMS key as the database.
         UseDatabaseEncryption = 1,
@@ -709,7 +709,7 @@ pub struct CopyBackupEncryptionConfig {
     pub encryption_type: i32,
     /// Optional. The Cloud KMS key that will be used to protect the backup.
     /// This field should be set only when
-    /// \[encryption_type][google.spanner.admin.database.v1.CopyBackupEncryptionConfig.encryption_type\] is
+    /// [encryption_type][google.spanner.admin.database.v1.CopyBackupEncryptionConfig.encryption_type] is
     /// `CUSTOMER_MANAGED_ENCRYPTION`. Values are of the form
     /// `projects/<project>/locations/<location>/keyRings/<key_ring>/cryptoKeys/<kms_key_name>`.
     #[prost(string, tag = "2")]
@@ -733,8 +733,8 @@ pub mod copy_backup_encryption_config {
     pub enum EncryptionType {
         /// Unspecified. Do not use.
         Unspecified = 0,
-        /// This is the default option for \[CopyBackup][google.spanner.admin.database.v1.DatabaseAdmin.CopyBackup\]
-        /// when \[encryption_config][google.spanner.admin.database.v1.CopyBackupEncryptionConfig\] is not specified.
+        /// This is the default option for [CopyBackup][google.spanner.admin.database.v1.DatabaseAdmin.CopyBackup]
+        /// when [encryption_config][google.spanner.admin.database.v1.CopyBackupEncryptionConfig] is not specified.
         /// For example, if the source backup is using `Customer_Managed_Encryption`,
         /// the backup will be using the same Cloud KMS key as the source backup.
         UseConfigDefaultOrBackupEncryption = 1,
@@ -839,7 +839,7 @@ pub struct Database {
     /// Output only. The period in which Cloud Spanner retains all versions of data
     /// for the database. This is the same as the value of version_retention_period
     /// database option set using
-    /// \[UpdateDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabaseDdl\]. Defaults to 1 hour,
+    /// [UpdateDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabaseDdl]. Defaults to 1 hour,
     /// if not set.
     #[prost(string, tag = "6")]
     pub version_retention_period: ::prost::alloc::string::String,
@@ -928,7 +928,7 @@ pub mod database {
         }
     }
 }
-/// The request for \[ListDatabases][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabases\].
+/// The request for [ListDatabases][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabases].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListDatabasesRequest {
@@ -941,12 +941,12 @@ pub struct ListDatabasesRequest {
     #[prost(int32, tag = "3")]
     pub page_size: i32,
     /// If non-empty, `page_token` should contain a
-    /// \[next_page_token][google.spanner.admin.database.v1.ListDatabasesResponse.next_page_token\] from a
-    /// previous \[ListDatabasesResponse][google.spanner.admin.database.v1.ListDatabasesResponse\].
+    /// [next_page_token][google.spanner.admin.database.v1.ListDatabasesResponse.next_page_token] from a
+    /// previous [ListDatabasesResponse][google.spanner.admin.database.v1.ListDatabasesResponse].
     #[prost(string, tag = "4")]
     pub page_token: ::prost::alloc::string::String,
 }
-/// The response for \[ListDatabases][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabases\].
+/// The response for [ListDatabases][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabases].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListDatabasesResponse {
@@ -954,12 +954,12 @@ pub struct ListDatabasesResponse {
     #[prost(message, repeated, tag = "1")]
     pub databases: ::prost::alloc::vec::Vec<Database>,
     /// `next_page_token` can be sent in a subsequent
-    /// \[ListDatabases][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabases\] call to fetch more
+    /// [ListDatabases][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabases] call to fetch more
     /// of the matching databases.
     #[prost(string, tag = "2")]
     pub next_page_token: ::prost::alloc::string::String,
 }
-/// The request for \[CreateDatabase][google.spanner.admin.database.v1.DatabaseAdmin.CreateDatabase\].
+/// The request for [CreateDatabase][google.spanner.admin.database.v1.DatabaseAdmin.CreateDatabase].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateDatabaseRequest {
@@ -969,7 +969,7 @@ pub struct CreateDatabaseRequest {
     pub parent: ::prost::alloc::string::String,
     /// Required. A `CREATE DATABASE` statement, which specifies the ID of the
     /// new database.  The database ID must conform to the regular expression
-    /// `\[a-z][a-z0-9_\-]*[a-z0-9\]` and be between 2 and 30 characters in length.
+    /// `[a-z][a-z0-9_\-]*\[a-z0-9\]` and be between 2 and 30 characters in length.
     /// If the database ID is a reserved word or if it contains a hyphen, the
     /// database ID must be enclosed in backticks (`` ` ``).
     #[prost(string, tag = "2")]
@@ -990,7 +990,7 @@ pub struct CreateDatabaseRequest {
     pub database_dialect: i32,
 }
 /// Metadata type for the operation returned by
-/// \[CreateDatabase][google.spanner.admin.database.v1.DatabaseAdmin.CreateDatabase\].
+/// [CreateDatabase][google.spanner.admin.database.v1.DatabaseAdmin.CreateDatabase].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateDatabaseMetadata {
@@ -998,7 +998,7 @@ pub struct CreateDatabaseMetadata {
     #[prost(string, tag = "1")]
     pub database: ::prost::alloc::string::String,
 }
-/// The request for \[GetDatabase][google.spanner.admin.database.v1.DatabaseAdmin.GetDatabase\].
+/// The request for [GetDatabase][google.spanner.admin.database.v1.DatabaseAdmin.GetDatabase].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetDatabaseRequest {
@@ -1008,7 +1008,7 @@ pub struct GetDatabaseRequest {
     pub name: ::prost::alloc::string::String,
 }
 /// The request for
-/// \[UpdateDatabase][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabase\].
+/// [UpdateDatabase][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabase].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateDatabaseRequest {
@@ -1023,16 +1023,16 @@ pub struct UpdateDatabaseRequest {
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
 /// Metadata type for the operation returned by
-/// \[UpdateDatabase][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabase\].
+/// [UpdateDatabase][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabase].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateDatabaseMetadata {
     /// The request for
-    /// \[UpdateDatabase][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabase\].
+    /// [UpdateDatabase][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabase].
     #[prost(message, optional, tag = "1")]
     pub request: ::core::option::Option<UpdateDatabaseRequest>,
     /// The progress of the
-    /// \[UpdateDatabase][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabase\]
+    /// [UpdateDatabase][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabase]
     /// operation.
     #[prost(message, optional, tag = "2")]
     pub progress: ::core::option::Option<OperationProgress>,
@@ -1053,9 +1053,9 @@ pub struct UpdateDatabaseMetadata {
 /// subsequent statements in the batch are automatically cancelled.
 ///
 /// Each batch of statements is assigned a name which can be used with
-/// the \[Operations][google.longrunning.Operations\] API to monitor
+/// the [Operations][google.longrunning.Operations] API to monitor
 /// progress. See the
-/// \[operation_id][google.spanner.admin.database.v1.UpdateDatabaseDdlRequest.operation_id\] field for more
+/// [operation_id][google.spanner.admin.database.v1.UpdateDatabaseDdlRequest.operation_id] field for more
 /// details.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1069,28 +1069,28 @@ pub struct UpdateDatabaseDdlRequest {
     /// If empty, the new update request is assigned an
     /// automatically-generated operation ID. Otherwise, `operation_id`
     /// is used to construct the name of the resulting
-    /// \[Operation][google.longrunning.Operation\].
+    /// [Operation][google.longrunning.Operation].
     ///
     /// Specifying an explicit operation ID simplifies determining
     /// whether the statements were executed in the event that the
-    /// \[UpdateDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabaseDdl\] call is replayed,
-    /// or the return value is otherwise lost: the \[database][google.spanner.admin.database.v1.UpdateDatabaseDdlRequest.database\] and
+    /// [UpdateDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabaseDdl] call is replayed,
+    /// or the return value is otherwise lost: the [database][google.spanner.admin.database.v1.UpdateDatabaseDdlRequest.database] and
     /// `operation_id` fields can be combined to form the
-    /// \[name][google.longrunning.Operation.name\] of the resulting
-    /// \[longrunning.Operation][google.longrunning.Operation\]: `<database>/operations/<operation_id>`.
+    /// [name][google.longrunning.Operation.name] of the resulting
+    /// [longrunning.Operation][google.longrunning.Operation]: `<database>/operations/<operation_id>`.
     ///
     /// `operation_id` should be unique within the database, and must be
-    /// a valid identifier: `\[a-z][a-z0-9_\]*`. Note that
+    /// a valid identifier: `[a-z][a-z0-9_]*`. Note that
     /// automatically-generated operation IDs always begin with an
     /// underscore. If the named operation already exists,
-    /// \[UpdateDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabaseDdl\] returns
+    /// [UpdateDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabaseDdl] returns
     /// `ALREADY_EXISTS`.
     #[prost(string, tag = "3")]
     pub operation_id: ::prost::alloc::string::String,
 }
 /// Action information extracted from a DDL statement. This proto is used to
 /// display the brief info of the DDL statement for the operation
-/// \[UpdateDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabaseDdl\].
+/// [UpdateDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabaseDdl].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DdlStatementActionInfo {
@@ -1106,13 +1106,13 @@ pub struct DdlStatementActionInfo {
     /// The entity name(s) being operated on the DDL statement.
     /// E.g.
     /// 1. For statement "CREATE TABLE t1(...)", `entity_names` = \["t1"\].
-    /// 2. For statement "GRANT ROLE r1, r2 ...", `entity_names` = ["r1", "r2"].
-    /// 3. For statement "ANALYZE", `entity_names` = [].
+    /// 2. For statement "GRANT ROLE r1, r2 ...", `entity_names` = \["r1", "r2"\].
+    /// 3. For statement "ANALYZE", `entity_names` = \[\].
     #[prost(string, repeated, tag = "3")]
     pub entity_names: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// Metadata type for the operation returned by
-/// \[UpdateDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabaseDdl\].
+/// [UpdateDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabaseDdl].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateDatabaseDdlMetadata {
@@ -1134,7 +1134,7 @@ pub struct UpdateDatabaseDdlMetadata {
     #[prost(bool, tag = "4")]
     pub throttled: bool,
     /// The progress of the
-    /// \[UpdateDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabaseDdl\]
+    /// [UpdateDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabaseDdl]
     /// operations. All DDL statements will have continuously updating progress,
     /// and `progress\[i\]` is the operation progress for `statements\[i\]`. Also,
     /// `progress\[i\]` will have start time and end time populated with commit
@@ -1147,7 +1147,7 @@ pub struct UpdateDatabaseDdlMetadata {
     #[prost(message, repeated, tag = "6")]
     pub actions: ::prost::alloc::vec::Vec<DdlStatementActionInfo>,
 }
-/// The request for \[DropDatabase][google.spanner.admin.database.v1.DatabaseAdmin.DropDatabase\].
+/// The request for [DropDatabase][google.spanner.admin.database.v1.DatabaseAdmin.DropDatabase].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DropDatabaseRequest {
@@ -1155,7 +1155,7 @@ pub struct DropDatabaseRequest {
     #[prost(string, tag = "1")]
     pub database: ::prost::alloc::string::String,
 }
-/// The request for \[GetDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.GetDatabaseDdl\].
+/// The request for [GetDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.GetDatabaseDdl].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetDatabaseDdlRequest {
@@ -1165,7 +1165,7 @@ pub struct GetDatabaseDdlRequest {
     #[prost(string, tag = "1")]
     pub database: ::prost::alloc::string::String,
 }
-/// The response for \[GetDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.GetDatabaseDdl\].
+/// The response for [GetDatabaseDdl][google.spanner.admin.database.v1.DatabaseAdmin.GetDatabaseDdl].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetDatabaseDdlResponse {
@@ -1175,7 +1175,7 @@ pub struct GetDatabaseDdlResponse {
     pub statements: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// The request for
-/// \[ListDatabaseOperations][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabaseOperations\].
+/// [ListDatabaseOperations][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabaseOperations].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListDatabaseOperationsRequest {
@@ -1191,13 +1191,13 @@ pub struct ListDatabaseOperationsRequest {
     /// must be one of: `<`, `>`, `<=`, `>=`, `!=`, `=`, or `:`.
     /// Colon `:` is the contains operator. Filter rules are not case sensitive.
     ///
-    /// The following fields in the \[Operation][google.longrunning.Operation\]
+    /// The following fields in the [Operation][google.longrunning.Operation]
     /// are eligible for filtering:
     ///
     ///    * `name` - The name of the long-running operation
     ///    * `done` - False if the operation is in progress, else true.
     ///    * `metadata.@type` - the type of metadata. For example, the type string
-    ///       for \[RestoreDatabaseMetadata][google.spanner.admin.database.v1.RestoreDatabaseMetadata\] is
+    ///       for [RestoreDatabaseMetadata][google.spanner.admin.database.v1.RestoreDatabaseMetadata] is
     ///       `type.googleapis.com/google.spanner.admin.database.v1.RestoreDatabaseMetadata`.
     ///    * `metadata.<field_name>` - any field in metadata.value.
     ///       `metadata.@type` must be specified first, if filtering on metadata
@@ -1219,7 +1219,7 @@ pub struct ListDatabaseOperationsRequest {
     ///      `(metadata.name:restored_howl) AND` \
     ///      `(metadata.progress.start_time < \"2018-03-28T14:50:00Z\") AND` \
     ///      `(error:*)` - Return operations where:
-    ///      * The operation's metadata type is \[RestoreDatabaseMetadata][google.spanner.admin.database.v1.RestoreDatabaseMetadata\].
+    ///      * The operation's metadata type is [RestoreDatabaseMetadata][google.spanner.admin.database.v1.RestoreDatabaseMetadata].
     ///      * The database is restored from a backup.
     ///      * The backup name contains "backup_howl".
     ///      * The restored database's name contains "restored_howl".
@@ -1232,34 +1232,34 @@ pub struct ListDatabaseOperationsRequest {
     #[prost(int32, tag = "3")]
     pub page_size: i32,
     /// If non-empty, `page_token` should contain a
-    /// \[next_page_token][google.spanner.admin.database.v1.ListDatabaseOperationsResponse.next_page_token\]
-    /// from a previous \[ListDatabaseOperationsResponse][google.spanner.admin.database.v1.ListDatabaseOperationsResponse\] to the
+    /// [next_page_token][google.spanner.admin.database.v1.ListDatabaseOperationsResponse.next_page_token]
+    /// from a previous [ListDatabaseOperationsResponse][google.spanner.admin.database.v1.ListDatabaseOperationsResponse] to the
     /// same `parent` and with the same `filter`.
     #[prost(string, tag = "4")]
     pub page_token: ::prost::alloc::string::String,
 }
 /// The response for
-/// \[ListDatabaseOperations][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabaseOperations\].
+/// [ListDatabaseOperations][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabaseOperations].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListDatabaseOperationsResponse {
     /// The list of matching database [long-running
-    /// operations]\[google.longrunning.Operation\]. Each operation's name will be
+    /// operations][google.longrunning.Operation]. Each operation's name will be
     /// prefixed by the database's name. The operation's
-    /// \[metadata][google.longrunning.Operation.metadata\] field type
+    /// [metadata][google.longrunning.Operation.metadata] field type
     /// `metadata.type_url` describes the type of the metadata.
     #[prost(message, repeated, tag = "1")]
     pub operations: ::prost::alloc::vec::Vec<
         super::super::super::super::longrunning::Operation,
     >,
     /// `next_page_token` can be sent in a subsequent
-    /// \[ListDatabaseOperations][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabaseOperations\]
+    /// [ListDatabaseOperations][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabaseOperations]
     /// call to fetch more of the matching metadata.
     #[prost(string, tag = "2")]
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request for
-/// \[RestoreDatabase][google.spanner.admin.database.v1.DatabaseAdmin.RestoreDatabase\].
+/// [RestoreDatabase][google.spanner.admin.database.v1.DatabaseAdmin.RestoreDatabase].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RestoreDatabaseRequest {
@@ -1280,7 +1280,7 @@ pub struct RestoreDatabaseRequest {
     /// resources in Cloud KMS used to encrypt/decrypt the database to restore to.
     /// If this field is not specified, the restored database will use
     /// the same encryption configuration as the backup by default, namely
-    /// \[encryption_type][google.spanner.admin.database.v1.RestoreDatabaseEncryptionConfig.encryption_type\] =
+    /// [encryption_type][google.spanner.admin.database.v1.RestoreDatabaseEncryptionConfig.encryption_type] =
     /// `USE_CONFIG_DEFAULT_OR_BACKUP_ENCRYPTION`.
     #[prost(message, optional, tag = "4")]
     pub encryption_config: ::core::option::Option<RestoreDatabaseEncryptionConfig>,
@@ -1312,7 +1312,7 @@ pub struct RestoreDatabaseEncryptionConfig {
     pub encryption_type: i32,
     /// Optional. The Cloud KMS key that will be used to encrypt/decrypt the restored
     /// database. This field should be set only when
-    /// \[encryption_type][google.spanner.admin.database.v1.RestoreDatabaseEncryptionConfig.encryption_type\] is
+    /// [encryption_type][google.spanner.admin.database.v1.RestoreDatabaseEncryptionConfig.encryption_type] is
     /// `CUSTOMER_MANAGED_ENCRYPTION`. Values are of the form
     /// `projects/<project>/locations/<location>/keyRings/<key_ring>/cryptoKeys/<kms_key_name>`.
     #[prost(string, tag = "2")]
@@ -1337,7 +1337,7 @@ pub mod restore_database_encryption_config {
         /// Unspecified. Do not use.
         Unspecified = 0,
         /// This is the default option when
-        /// \[encryption_config][google.spanner.admin.database.v1.RestoreDatabaseEncryptionConfig\] is not specified.
+        /// [encryption_config][google.spanner.admin.database.v1.RestoreDatabaseEncryptionConfig] is not specified.
         UseConfigDefaultOrBackupEncryption = 1,
         /// Use Google default encryption.
         GoogleDefaultEncryption = 2,
@@ -1377,7 +1377,7 @@ pub mod restore_database_encryption_config {
     }
 }
 /// Metadata type for the long-running operation returned by
-/// \[RestoreDatabase][google.spanner.admin.database.v1.DatabaseAdmin.RestoreDatabase\].
+/// [RestoreDatabase][google.spanner.admin.database.v1.DatabaseAdmin.RestoreDatabase].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RestoreDatabaseMetadata {
@@ -1388,21 +1388,21 @@ pub struct RestoreDatabaseMetadata {
     #[prost(enumeration = "RestoreSourceType", tag = "2")]
     pub source_type: i32,
     /// The progress of the
-    /// \[RestoreDatabase][google.spanner.admin.database.v1.DatabaseAdmin.RestoreDatabase\]
+    /// [RestoreDatabase][google.spanner.admin.database.v1.DatabaseAdmin.RestoreDatabase]
     /// operation.
     #[prost(message, optional, tag = "4")]
     pub progress: ::core::option::Option<OperationProgress>,
     /// The time at which cancellation of this operation was received.
-    /// \[Operations.CancelOperation][google.longrunning.Operations.CancelOperation\]
+    /// [Operations.CancelOperation][google.longrunning.Operations.CancelOperation]
     /// starts asynchronous cancellation on a long-running operation. The server
     /// makes a best effort to cancel the operation, but success is not guaranteed.
     /// Clients can use
-    /// \[Operations.GetOperation][google.longrunning.Operations.GetOperation\] or
+    /// [Operations.GetOperation][google.longrunning.Operations.GetOperation] or
     /// other methods to check whether the cancellation succeeded or whether the
     /// operation completed despite cancellation. On successful cancellation,
     /// the operation is not deleted; instead, it becomes an operation with
-    /// an \[Operation.error][google.longrunning.Operation.error\] value with a
-    /// \[google.rpc.Status.code][google.rpc.Status.code\] of 1, corresponding to `Code.CANCELLED`.
+    /// an [Operation.error][google.longrunning.Operation.error] value with a
+    /// [google.rpc.Status.code][google.rpc.Status.code] of 1, corresponding to `Code.CANCELLED`.
     #[prost(message, optional, tag = "5")]
     pub cancel_time: ::core::option::Option<::prost_types::Timestamp>,
     /// If exists, the name of the long-running operation that will be used to
@@ -1412,21 +1412,21 @@ pub struct RestoreDatabaseMetadata {
     /// `projects/<project>/instances/<instance>/databases/<database>/operations/<operation>`
     /// where the <database> is the name of database being created and restored to.
     /// The metadata type of the  long-running operation is
-    /// \[OptimizeRestoredDatabaseMetadata][google.spanner.admin.database.v1.OptimizeRestoredDatabaseMetadata\]. This long-running operation will be
+    /// [OptimizeRestoredDatabaseMetadata][google.spanner.admin.database.v1.OptimizeRestoredDatabaseMetadata]. This long-running operation will be
     /// automatically created by the system after the RestoreDatabase long-running
     /// operation completes successfully. This operation will not be created if the
     /// restore was not successful.
     #[prost(string, tag = "6")]
     pub optimize_database_operation_name: ::prost::alloc::string::String,
     /// Information about the source used to restore the database, as specified by
-    /// `source` in \[RestoreDatabaseRequest][google.spanner.admin.database.v1.RestoreDatabaseRequest\].
+    /// `source` in [RestoreDatabaseRequest][google.spanner.admin.database.v1.RestoreDatabaseRequest].
     #[prost(oneof = "restore_database_metadata::SourceInfo", tags = "3")]
     pub source_info: ::core::option::Option<restore_database_metadata::SourceInfo>,
 }
 /// Nested message and enum types in `RestoreDatabaseMetadata`.
 pub mod restore_database_metadata {
     /// Information about the source used to restore the database, as specified by
-    /// `source` in \[RestoreDatabaseRequest][google.spanner.admin.database.v1.RestoreDatabaseRequest\].
+    /// `source` in [RestoreDatabaseRequest][google.spanner.admin.database.v1.RestoreDatabaseRequest].
     #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum SourceInfo {
@@ -1461,7 +1461,7 @@ pub struct DatabaseRole {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
-/// The request for \[ListDatabaseRoles][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabaseRoles\].
+/// The request for [ListDatabaseRoles][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabaseRoles].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListDatabaseRolesRequest {
@@ -1475,12 +1475,12 @@ pub struct ListDatabaseRolesRequest {
     #[prost(int32, tag = "2")]
     pub page_size: i32,
     /// If non-empty, `page_token` should contain a
-    /// \[next_page_token][google.spanner.admin.database.v1.ListDatabaseRolesResponse.next_page_token\] from a
-    /// previous \[ListDatabaseRolesResponse][google.spanner.admin.database.v1.ListDatabaseRolesResponse\].
+    /// [next_page_token][google.spanner.admin.database.v1.ListDatabaseRolesResponse.next_page_token] from a
+    /// previous [ListDatabaseRolesResponse][google.spanner.admin.database.v1.ListDatabaseRolesResponse].
     #[prost(string, tag = "3")]
     pub page_token: ::prost::alloc::string::String,
 }
-/// The response for \[ListDatabaseRoles][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabaseRoles\].
+/// The response for [ListDatabaseRoles][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabaseRoles].
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListDatabaseRolesResponse {
@@ -1488,7 +1488,7 @@ pub struct ListDatabaseRolesResponse {
     #[prost(message, repeated, tag = "1")]
     pub database_roles: ::prost::alloc::vec::Vec<DatabaseRole>,
     /// `next_page_token` can be sent in a subsequent
-    /// \[ListDatabaseRoles][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabaseRoles\]
+    /// [ListDatabaseRoles][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabaseRoles]
     /// call to fetch more of the matching roles.
     #[prost(string, tag = "2")]
     pub next_page_token: ::prost::alloc::string::String,
