@@ -24,6 +24,8 @@ pub struct ClientConfig {
     pub environment: Environment,
     /// Overriding service endpoint
     pub endpoint: String,
+    /// gRPC connection option
+    pub connection_option: ConnectionOptions,
 }
 
 /// ClientConfigs created by default will prefer to use `PUBSUB_EMULATOR_HOST`
@@ -39,6 +41,7 @@ impl Default for ClientConfig {
             },
             project_id: default_project_id,
             endpoint: PUBSUB.to_string(),
+            connection_option: ConnectionOptions::default(),
         }
     }
 }
@@ -111,7 +114,7 @@ impl Client {
                 pool_size,
                 config.endpoint.as_str(),
                 &config.environment,
-                &ConnectionOptions::default(),
+                &config.connection_option,
             )
             .await?,
         );
@@ -120,7 +123,7 @@ impl Client {
                 pool_size,
                 config.endpoint.as_str(),
                 &config.environment,
-                &ConnectionOptions::default(),
+                &config.connection_option,
             )
             .await?,
         );
