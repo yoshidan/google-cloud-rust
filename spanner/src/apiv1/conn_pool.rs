@@ -30,6 +30,11 @@ impl ConnectionManager {
         self.inner.num()
     }
 
+    // #[derive(Clone)]
+    // pub struct Client {
+    //     inner: StorageClient<Channel>,
+    // }
+    // Storageでも同じように、Clientを作るための構造体を作って返せば良さそう。
     pub fn conn(&self) -> Client {
         let conn = self.inner.conn();
         Client::new(SpannerClient::new(conn))

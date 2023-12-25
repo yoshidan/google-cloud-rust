@@ -1,19 +1,19 @@
-use std::ops::Deref;
+use std::{env::var, ops::Deref};
 
+use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
 use ring::{rand, signature};
 use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey};
 
-use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
-
 use crate::http::service_account_client::ServiceAccountClient;
-use crate::http::storage_client::StorageClient;
+use crate::http::storage_client::{StorageClient, StorageEndPoint};
 use crate::sign::SignBy::PrivateKey;
 use crate::sign::{create_signed_buffer, SignBy, SignedURLError, SignedURLOptions};
 
 #[derive(Debug)]
 pub struct ClientConfig {
     pub http: Option<reqwest::Client>,
-    pub storage_endpoint: String,
+    // pub environment: Environment,
+    pub storage_endpoint: StorageEndPoint,
     pub service_account_endpoint: String,
     pub token_source_provider: Box<dyn TokenSourceProvider>,
     pub default_google_access_id: Option<String>,
@@ -23,9 +23,15 @@ pub struct ClientConfig {
 
 impl Default for ClientConfig {
     fn default() -> Self {
+        let emulator = var("GCS_EMULATOR_HOST").ok();
+        let storage_endpoint = match emulator {
+            Some(host) => StorageEndPoint::Emulator(host),
+            None => StorageEndPoint::GoogleCloud("https://storage.googleapis.com".to_string()),
+        };
+
         Self {
             http: None,
-            storage_endpoint: "https://storage.googleapis.com".to_string(),
+            storage_endpoint,
             token_source_provider: Box::new(NopeTokenSourceProvider {}),
             service_account_endpoint: "https://iamcredentials.googleapis.com".to_string(),
             default_google_access_id: None,
@@ -75,6 +81,7 @@ impl ClientConfig {
             }
         }
         self.token_source_provider = Box::new(ts);
+        // self.environment = Environment::GoogleCloud(Box::new(ts));
         self
     }
 
@@ -117,7 +124,7 @@ impl Client {
 
         let service_account_client =
             ServiceAccountClient::new(ts.clone(), config.service_account_endpoint.as_str(), http.clone());
-        let storage_client = StorageClient::new(ts, config.storage_endpoint.as_str(), http);
+        let storage_client = StorageClient::new(ts, config.storage_endpoint, http);
 
         Self {
             default_google_access_id: config.default_google_access_id,
@@ -198,6 +205,7 @@ impl Client {
             }
         };
 
+        // optsにemulatorのhttpを差し込む
         let (signed_buffer, mut builder) = create_signed_buffer(bucket, object, &google_access_id, &opts)?;
         tracing::trace!("signed_buffer={:?}", String::from_utf8_lossy(&signed_buffer));
 

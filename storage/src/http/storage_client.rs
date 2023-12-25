@@ -74,12 +74,26 @@ pub struct StorageClient {
     http: Client,
 }
 
+#[derive(Clone, Debug)]
+pub enum StorageEndPoint {
+    Emulator(String),
+    GoogleCloud(String),
+}
+
 impl StorageClient {
-    pub(crate) fn new(ts: Arc<dyn TokenSource>, endpoint: &str, http: Client) -> Self {
+    pub(crate) fn new(ts: Arc<dyn TokenSource>, endpoint: StorageEndPoint, http: Client) -> Self {
+        let v1_endpoint = match endpoint.clone() {
+            StorageEndPoint::Emulator(endpoint) => endpoint.to_string(),
+            StorageEndPoint::GoogleCloud(endpoint) => format!("{endpoint}/storage/v1"),
+        };
+        let v1_upload_endpoint = match endpoint {
+            StorageEndPoint::Emulator(endpoint) => format!("{endpoint}/upload/storage/v1"),
+            StorageEndPoint::GoogleCloud(endpoint) => format!("{endpoint}/upload/storage/v1"),
+        };
         Self {
             ts,
-            v1_endpoint: format!("{endpoint}/storage/v1"),
-            v1_upload_endpoint: format!("{endpoint}/upload/storage/v1"),
+            v1_endpoint,
+            v1_upload_endpoint,
             http,
         }
     }
@@ -1409,7 +1423,11 @@ pub(crate) mod test {
         .unwrap();
         let cred = tsp.source_credentials.clone();
         let ts = tsp.token_source();
-        let client = StorageClient::new(ts, "https://storage.googleapis.com", reqwest::Client::new());
+        let client = StorageClient::new(
+            ts,
+            super::StorageEndPoint::GoogleCloud("https://storage.googleapis.com".to_string()),
+            reqwest::Client::new(),
+        );
         let cred = cred.unwrap();
         (client, cred.project_id.unwrap(), cred.client_email.unwrap())
     }

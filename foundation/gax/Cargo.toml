@@ -4,7 +4,7 @@ version = "0.16.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/foundation/gax"
-keywords = ["gcp","googleapis","google-cloud-rust"]
+keywords = ["gcp", "googleapis", "google-cloud-rust"]
 license = "MIT"
 readme = "README.md"
 description = "Google Cloud Platform gRPC retry library."
@@ -12,7 +12,7 @@ description = "Google Cloud Platform gRPC retry library."
 [dependencies]
 tracing = "0.1"
 tokio = { version = "1.32", features = ["macros"] }
-tonic = { version = "0.9", features = ["prost", "tls-webpki-roots"] }
+tonic = { version = "0.10.2", features = ["prost", "tls-webpki-roots"] }
 thiserror = "1.0"
 tower = { version = "0.4", features = ["filter"] }
 http = "0.2"

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::env::var;
 use std::fmt::{Debug, Formatter};
 use std::time::Duration;
 
@@ -52,6 +53,12 @@ const HOST: &str = "storage.googleapis.com";
 impl URLStyle for PathStyle {
     fn host(&self, _bucket: &str) -> String {
         //TODO emulator support
+        // gcs emulator対応実装する
+        let emulator = var("GCS_EMULATOR_HOST").ok();
+        if let Some(host) = emulator {
+            dbg!(&host);
+            return host;
+        }
         HOST.to_string()
     }
 

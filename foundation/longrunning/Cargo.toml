@@ -4,7 +4,7 @@ version = "0.16.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/foundation/longrunning"
-keywords = ["gcp","longrunning","googleapis","google-cloud-rust"]
+keywords = ["gcp", "longrunning", "googleapis", "google-cloud-rust"]
 license = "MIT"
 readme = "README.md"
 description = "Google Cloud Platform longrunning library."
@@ -12,5 +12,5 @@ description = "Google Cloud Platform longrunning library."
 [dependencies]
 google-cloud-googleapis = { version = "0.11.0", path = "../../googleapis" }
 google-cloud-gax = { version = "0.16.0", path = "../gax" }
-tonic = { version = "0.9", features = ["tls", "prost"] }
-prost = "0.11"
+tonic = { version = "0.10.2", features = ["tls", "prost"] }
+prost = "0.12.3"
