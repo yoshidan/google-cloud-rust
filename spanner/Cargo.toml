@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-spanner"
-version = "0.24.0"
+version = "0.25.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/spanner"
@@ -24,8 +24,8 @@ tokio-util = "0.7"
 bigdecimal = { version="0.3", features=["serde"] }
 
 google-cloud-token = { version = "0.1.1", path = "../foundation/token" }
-google-cloud-longrunning = { version = "0.16.0", path = "../foundation/longrunning" }
-google-cloud-gax = { version = "0.16.0", path = "../foundation/gax" }
+google-cloud-longrunning = { version = "0.17.0", path = "../foundation/longrunning" }
+google-cloud-gax = { version = "0.17.0", path = "../foundation/gax" }
 google-cloud-googleapis = { version = "0.12.0", path = "../googleapis", features = ["spanner"]}
 
 google-cloud-auth = { optional = true, version = "0.13", path="../foundation/auth", default-features=false }
