@@ -288,6 +288,7 @@ mod tests {
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 
     use crate::client::{Client, ClientConfig};
+    use crate::publisher::PublisherConfig;
     use crate::subscriber::SubscriberConfig;
     use crate::subscription::{ReceiveConfig, SubscriptionConfig};
 
@@ -462,5 +463,52 @@ mod tests {
         if let Environment::GoogleCloud(_) = config.environment {
             unreachable!()
         }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_publish_ordering_in_gcp() {
+        let client = Client::new(ClientConfig::default().with_auth().await.unwrap())
+            .await
+            .unwrap();
+        let topic = client.topic("test-topic2");
+        let publisher = topic.new_publisher(Some(PublisherConfig {
+            flush_interval: Duration::from_secs(10),
+            workers: 1,
+            ..Default::default()
+        }));
+        let awaiter = publisher
+            .publish(PubsubMessage {
+                data: "message1".into(),
+                ordering_key: "key1".to_string(),
+                ..Default::default()
+            })
+            .await;
+        let awaiter2 = publisher
+            .publish(PubsubMessage {
+                data: "message2".into(),
+                ordering_key: "key2".to_string(),
+                ..Default::default()
+            })
+            .await;
+        let awaiter3 = publisher
+            .publish(PubsubMessage {
+                data: "message3".into(),
+                ordering_key: "key3".to_string(),
+                ..Default::default()
+            })
+            .await;
+        let awaiter4 = publisher
+            .publish(PubsubMessage {
+                data: "message4".into(),
+                ordering_key: "key3".to_string(),
+                ..Default::default()
+            })
+            .await;
+
+        awaiter.get().await.unwrap();
+        awaiter2.get().await.unwrap();
+        awaiter3.get().await.unwrap();
+        awaiter4.get().await.unwrap();
     }
 }

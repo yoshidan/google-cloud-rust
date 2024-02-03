@@ -1,3 +1,4 @@
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -222,7 +223,7 @@ impl Tasks {
         bundle_size: usize,
     ) -> JoinHandle<()> {
         tokio::spawn(async move {
-            let mut bundle = Vec::<ReservedMessage>::with_capacity(bundle_size);
+            let mut bundle = MessageBundle::new(bundle_size);
             while !receiver.is_closed() {
                 let result = match timeout(flush_interval, &mut receiver.recv()).await {
                     Ok(result) => result,
@@ -230,24 +231,30 @@ impl Tasks {
                     Err(_e) => {
                         if !bundle.is_empty() {
                             tracing::trace!("elapsed: flush buffer : {}", topic);
-                            Self::flush(&mut client, topic.as_str(), bundle, retry.clone()).await;
-                            bundle = Vec::new();
+                            for value in bundle.replace() {
+                                Self::flush(&mut client, topic.as_str(), value, retry.clone()).await;
+                            }
                         }
                         continue;
                     }
                 };
                 match result {
-                    Ok(reserved) => {
-                        match reserved {
-                            Reserved::Single(message) => bundle.push(message),
-                            Reserved::Multi(messages) => bundle.extend(messages),
+                    Ok(reserved) => match reserved {
+                        Reserved::Single(message) => {
+                            if let Some(messages) = bundle.push(message) {
+                                tracing::trace!("maximum buffer for single message {} : {}", messages.len(), topic);
+                                Self::flush(&mut client, topic.as_str(), messages, retry.clone()).await;
+                            }
                         }
-                        if bundle.len() >= bundle_size {
-                            tracing::trace!("maximum buffer {} : {}", bundle.len(), topic);
-                            Self::flush(&mut client, topic.as_str(), bundle, retry.clone()).await;
-                            bundle = Vec::new();
+                        Reserved::Multi(messages) => {
+                            for message in messages {
+                                if let Some(messages) = bundle.push(message) {
+                                    tracing::trace!("maximum buffer for multi message {} : {}", messages.len(), topic);
+                                    Self::flush(&mut client, topic.as_str(), messages, retry.clone()).await;
+                                }
+                            }
                         }
-                    }
+                    },
                     //closed
                     Err(_e) => break,
                 };
@@ -256,7 +263,9 @@ impl Tasks {
             tracing::trace!("stop publisher : {}", topic);
             if !bundle.is_empty() {
                 tracing::trace!("flush rest buffer : {}", topic);
-                Self::flush(&mut client, topic.as_str(), bundle, retry.clone()).await;
+                for (_, value) in bundle.inner {
+                    Self::flush(&mut client, topic.as_str(), value, retry.clone()).await;
+                }
             }
         })
     }
@@ -310,6 +319,58 @@ impl Tasks {
         if let Some(tasks) = self.inner.take() {
             for task in tasks {
                 let _ = task.await;
+            }
+        }
+    }
+}
+
+struct MessageBundle {
+    inner: HashMap<String, Vec<ReservedMessage>>,
+    limit: usize,
+}
+
+impl MessageBundle {
+    fn new(limit: usize) -> Self {
+        Self {
+            inner: HashMap::new(),
+            limit,
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
+    fn replace(&mut self) -> Vec<Vec<ReservedMessage>> {
+        let mut result = vec![];
+        for v in self.inner.values_mut() {
+            if !v.is_empty() {
+                let empty = vec![];
+                result.push(std::mem::replace(v, empty));
+            }
+        }
+        result
+    }
+
+    fn push(&mut self, message: ReservedMessage) -> Option<Vec<ReservedMessage>> {
+        match self.inner.get_mut(&message.message.ordering_key) {
+            Some(m) => {
+                m.push(message);
+                if m.len() >= self.limit {
+                    // Move entry and reuse to suppress hash recalculation
+                    let empty = vec![];
+                    Some(std::mem::replace(m, empty))
+                } else {
+                    None
+                }
+            }
+            None => {
+                if self.limit == 1 {
+                    Some(vec![message])
+                } else {
+                    self.inner.insert(message.message.ordering_key.clone(), vec![message]);
+                    None
+                }
             }
         }
     }
