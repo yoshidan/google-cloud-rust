@@ -231,9 +231,12 @@ impl Tasks {
                     Err(_e) => {
                         if !bundle.is_empty() {
                             tracing::trace!("elapsed: flush buffer : {}", topic);
-                            for value in bundle.replace() {
+                            for value in bundle.into_values() {
                                 Self::flush(&mut client, topic.as_str(), value, retry.clone()).await;
                             }
+                            // As the number of ordering keys increases, the memory increases and is cleared when the timeout occurs.
+                            // Since the timeout occurs when the number of times a key is published is stable, we judge that clearing the key at this timing will not affect performance.
+                            bundle = MessageBundle::new(bundle_size);
                         }
                         continue;
                     }
@@ -341,12 +344,11 @@ impl MessageBundle {
         self.inner.is_empty()
     }
 
-    fn replace(&mut self) -> Vec<Vec<ReservedMessage>> {
+    fn into_values(mut self) -> Vec<Vec<ReservedMessage>> {
         let mut result = vec![];
-        for v in self.inner.values_mut() {
+        for v in self.inner.into_values() {
             if !v.is_empty() {
-                let empty = vec![];
-                result.push(std::mem::replace(v, empty));
+                result.push(v);
             }
         }
         result

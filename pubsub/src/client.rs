@@ -457,58 +457,144 @@ mod tests {
         assert_eq!(1, snapshots_after.len() - snapshots.len());
     }
 
+}
+
+#[cfg(test)]
+#[ignore]
+mod tests_in_gcp {
+    use std::time::Duration;
+    use serial_test::serial;
+    use google_cloud_gax::conn::Environment;
+    use google_cloud_googleapis::pubsub::v1::PubsubMessage;
+    use crate::client::{Client, ClientConfig};
+    use crate::publisher::PublisherConfig;
+
+    fn make_msg(key: &str) -> PubsubMessage {
+        PubsubMessage {
+            data: if key.is_empty() {
+                "empty".into()
+            } else {
+                key.into()
+            },
+            ordering_key: key.into(),
+            ..Default::default()
+        }
+    }
+
     #[tokio::test]
     async fn test_with_auth() {
         let config = ClientConfig::default().with_auth().await.unwrap();
-        if let Environment::GoogleCloud(_) = config.environment {
+        if let Environment::Emulator(_) = config.environment {
             unreachable!()
         }
     }
 
     #[tokio::test]
     #[serial]
-    async fn test_publish_ordering_in_gcp() {
+    async fn test_publish_ordering_in_gcp_flush_buffer() {
         let client = Client::new(ClientConfig::default().with_auth().await.unwrap())
             .await
             .unwrap();
         let topic = client.topic("test-topic2");
         let publisher = topic.new_publisher(Some(PublisherConfig {
-            flush_interval: Duration::from_secs(10),
+            flush_interval: Duration::from_secs(3),
             workers: 1,
             ..Default::default()
         }));
-        let awaiter = publisher
-            .publish(PubsubMessage {
-                data: "message1".into(),
-                ordering_key: "key1".to_string(),
-                ..Default::default()
-            })
-            .await;
-        let awaiter2 = publisher
-            .publish(PubsubMessage {
-                data: "message2".into(),
-                ordering_key: "key2".to_string(),
-                ..Default::default()
-            })
-            .await;
-        let awaiter3 = publisher
-            .publish(PubsubMessage {
-                data: "message3".into(),
-                ordering_key: "key3".to_string(),
-                ..Default::default()
-            })
-            .await;
-        let awaiter4 = publisher
-            .publish(PubsubMessage {
-                data: "message4".into(),
-                ordering_key: "key3".to_string(),
-                ..Default::default()
-            })
-            .await;
 
-        awaiter.get().await.unwrap();
-        awaiter2.get().await.unwrap();
-        awaiter3.get().await.unwrap();
-        awaiter4.get().await.unwrap();
+        let mut awaiters = vec![];
+        for key in ["", "key1", "key2", "key3", "key3"] {
+            awaiters.push(publisher.publish(make_msg(key)).await);
+        }
+        for awaiter in awaiters.into_iter() {
+           tracing::info!("msg id {}", awaiter.get().await.unwrap());
+        }
+
+        // check same key
+        let mut awaiters = vec![];
+        for key in ["", "key1", "key2", "key3", "key3"] {
+            awaiters.push(publisher.publish(make_msg(key)).await);
+        }
+        for awaiter in awaiters.into_iter() {
+            tracing::info!("msg id {}", awaiter.get().await.unwrap());
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_publish_ordering_in_gcp_limit_exceed() {
+        let client = Client::new(ClientConfig::default().with_auth().await.unwrap())
+            .await
+            .unwrap();
+        let topic = client.topic("test-topic2");
+        let publisher = topic.new_publisher(Some(PublisherConfig {
+            flush_interval: Duration::from_secs(30),
+            workers: 1,
+            bundle_size: 2,
+            ..Default::default()
+        }));
+
+        let msg_fn = |key: &str| {
+            PubsubMessage {
+                data: if key.is_empty() {
+                    "empty".into()
+                } else {
+                    key.into()
+                },
+                ordering_key: key.into(),
+                ..Default::default()
+            }
+        };
+
+        let mut awaiters = vec![];
+        for key in ["", "key1", "key2", "key3", "key1", "key2", "key3", ""] {
+            awaiters.push(publisher.publish(make_msg(key)).await);
+        }
+        for awaiter in awaiters.into_iter() {
+            tracing::info!("msg id {}", awaiter.get().await.unwrap());
+        }
+
+        // check same key twice
+        let mut awaiters = vec![];
+        for key in ["", "key1", "key2", "key3", "key1", "key2", "key3", ""] {
+            awaiters.push(publisher.publish(make_msg(key)).await);
+        }
+        for awaiter in awaiters.into_iter() {
+            tracing::info!("msg id {}", awaiter.get().await.unwrap());
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_publish_ordering_in_gcp_bulk() {
+        let client = Client::new(ClientConfig::default().with_auth().await.unwrap())
+            .await
+            .unwrap();
+        let topic = client.topic("test-topic2");
+        let publisher = topic.new_publisher(Some(PublisherConfig {
+            flush_interval: Duration::from_secs(30),
+            workers: 2,
+            bundle_size: 2,
+            ..Default::default()
+        }));
+
+        let msg_fn = |key: &str| {
+            PubsubMessage {
+                data: key.into(),
+                ordering_key: key.into(),
+                ..Default::default()
+            }
+        };
+
+        let msgs = ["", "", "key1", "key1", "key2", "key2", "key3", "key3"].map(make_msg).to_vec();
+        for awaiter in publisher.publish_bulk(msgs).await.into_iter() {
+            tracing::info!("msg id {}", awaiter.get().await.unwrap());
+        }
+
+        // check same key twice
+        let msgs = ["", "", "key1", "key1", "key2", "key2", "key3", "key3"].map(make_msg).to_vec();
+        for awaiter in publisher.publish_bulk(msgs).await.into_iter() {
+            tracing::info!("msg id {}", awaiter.get().await.unwrap());
+        }
     }
 }
