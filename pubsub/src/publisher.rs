@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 
 use std::sync::Arc;
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 
 use async_channel::Receiver;
 use tokio::sync::oneshot;
@@ -224,7 +224,7 @@ impl Tasks {
         bundle_size: usize,
     ) -> JoinHandle<()> {
         tokio::spawn(async move {
-            //TODO enabled manage task by ordering_key
+            //TODO enable manage task by ordering_key
             let mut bundle = MessageBundle::new();
             while !receiver.is_closed() {
                 let result = match timeout(flush_interval, &mut receiver.recv()).await {
@@ -241,7 +241,6 @@ impl Tasks {
                         continue;
                     }
                 };
-                let _now = SystemTime::now();
                 match result {
                     Ok(reserved) => {
                         match reserved {
