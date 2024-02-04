@@ -201,7 +201,6 @@ impl Subscription {
         parts.join("/")
     }
 
-    #[allow(private_interfaces)]
     pub fn get_client(&self) -> SubscriberClient {
         self.subc.clone()
     }
