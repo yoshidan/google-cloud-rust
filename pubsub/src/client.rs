@@ -467,7 +467,11 @@ mod tests_in_gcp {
 
     fn make_msg(key: &str) -> PubsubMessage {
         PubsubMessage {
-            data: if key.is_empty() { "empty".into() } else { key.into() },
+            data: if key.is_empty() {
+                "empty".into()
+            } else {
+                key.to_string().into()
+            },
             ordering_key: key.into(),
             ..Default::default()
         }
