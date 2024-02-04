@@ -1,6 +1,7 @@
 use std::collections::HashMap;
+
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use async_channel::Receiver;
 use tokio::sync::oneshot;
@@ -222,7 +223,7 @@ impl Tasks {
         bundle_size: usize,
     ) -> JoinHandle<()> {
         tokio::spawn(async move {
-            let mut bundle = MessageBundle::new(bundle_size);
+            let mut bundle = MessageBundle::new(bundle_size, flush_interval);
             while !receiver.is_closed() {
                 let result = match timeout(flush_interval, &mut receiver.recv()).await {
                     Ok(result) => result,
@@ -235,28 +236,39 @@ impl Tasks {
                             }
                             // As the number of ordering keys increases, the memory increases and is cleared when the timeout occurs.
                             // Since the timeout occurs when the number of times a key is published is stable, we judge that clearing the key at this timing will not affect performance.
-                            bundle = MessageBundle::new(bundle_size);
+                            bundle = MessageBundle::new(bundle_size, flush_interval);
                         }
                         continue;
                     }
                 };
+                let now = SystemTime::now();
                 match result {
-                    Ok(reserved) => match reserved {
-                        Reserved::Single(message) => {
-                            if let Some(messages) = bundle.push(message) {
-                                tracing::trace!("maximum buffer for single message {} : {}", messages.len(), topic);
-                                Self::flush(&mut client, topic.as_str(), messages, retry.clone()).await;
+                    Ok(reserved) => {
+                        let (ordering_key, messages) = match reserved {
+                            Reserved::Single(message) => {
+                                let ordering_key = message.message.ordering_key.clone();
+                                let messages = bundle.push(&ordering_key, vec![message], now);
+                                (ordering_key, messages)
                             }
-                        }
-                        Reserved::Multi(messages) => {
-                            for message in messages {
-                                if let Some(messages) = bundle.push(message) {
-                                    tracing::trace!("maximum buffer for multi message {} : {}", messages.len(), topic);
-                                    Self::flush(&mut client, topic.as_str(), messages, retry.clone()).await;
+                            Reserved::Multi(messages) => {
+                                if let Some(first) = messages.first() {
+                                    let ordering_key = first.message.ordering_key.clone();
+                                    let messages = bundle.push(&ordering_key, messages, now);
+                                    (ordering_key, messages)
+                                } else {
+                                    continue;
                                 }
                             }
+                        };
+                        if let Some(messages) = messages {
+                            tracing::trace!("maximum buffer for single message {} : {}", messages.len(), topic);
+                            Self::flush(&mut client, topic.as_str(), messages, retry.clone()).await;
                         }
-                    },
+                        for others in bundle.elapsed(&ordering_key, now) {
+                            tracing::trace!("others timeout by single message {} : {}", others.len(), topic);
+                            Self::flush(&mut client, topic.as_str(), others, retry.clone()).await;
+                        }
+                    }
                     //closed
                     Err(_e) => break,
                 };
@@ -266,7 +278,7 @@ impl Tasks {
             if !bundle.is_empty() {
                 tracing::trace!("flush rest buffer : {}", topic);
                 for (_, value) in bundle.inner {
-                    Self::flush(&mut client, topic.as_str(), value, retry.clone()).await;
+                    Self::flush(&mut client, topic.as_str(), value.0, retry.clone()).await;
                 }
             }
         })
@@ -327,15 +339,17 @@ impl Tasks {
 }
 
 struct MessageBundle {
-    inner: HashMap<String, Vec<ReservedMessage>>,
+    inner: HashMap<String, (Vec<ReservedMessage>, SystemTime)>,
     limit: usize,
+    timeout: Duration,
 }
 
 impl MessageBundle {
-    fn new(limit: usize) -> Self {
+    fn new(limit: usize, timeout: Duration) -> Self {
         Self {
             inner: HashMap::new(),
             limit,
+            timeout,
         }
     }
 
@@ -346,34 +360,55 @@ impl MessageBundle {
     fn into_values(self) -> Vec<Vec<ReservedMessage>> {
         let mut result = vec![];
         for v in self.inner.into_values() {
-            if !v.is_empty() {
-                result.push(v);
+            if !v.0.is_empty() {
+                result.push(v.0);
             }
         }
         result
     }
 
-    fn push(&mut self, message: ReservedMessage) -> Option<Vec<ReservedMessage>> {
-        match self.inner.get_mut(&message.message.ordering_key) {
+    fn push(
+        &mut self,
+        ordering_key: &str,
+        message: Vec<ReservedMessage>,
+        now: SystemTime,
+    ) -> Option<Vec<ReservedMessage>> {
+        match self.inner.get_mut(ordering_key) {
             Some(m) => {
-                m.push(message);
-                if m.len() >= self.limit {
+                m.0.extend(message);
+                m.1 = now;
+                if m.0.len() >= self.limit {
                     // Move entry and reuse to suppress hash recalculation
                     let empty = vec![];
-                    Some(std::mem::replace(m, empty))
+                    Some(std::mem::replace(&mut m.0, empty))
                 } else {
                     None
                 }
             }
             None => {
-                if self.limit == 1 {
-                    Some(vec![message])
+                if self.limit <= message.len() {
+                    Some(message)
                 } else {
-                    self.inner.insert(message.message.ordering_key.clone(), vec![message]);
+                    self.inner.insert(ordering_key.to_string(), (message, now));
                     None
                 }
             }
         }
+    }
+
+    fn elapsed(&mut self, ignore: &str, now: SystemTime) -> Vec<Vec<ReservedMessage>> {
+        // others messages
+        let mut result = vec![];
+        for (k, v) in &mut self.inner {
+            if k == ignore {
+                continue;
+            }
+            if !v.0.is_empty() && now.duration_since(v.1).unwrap() >= self.timeout {
+                let empty = (vec![], now);
+                result.push(std::mem::replace(v, empty).0);
+            }
+        }
+        result
     }
 }
 
@@ -381,6 +416,7 @@ impl MessageBundle {
 mod tests {
     use crate::publisher::{MessageBundle, ReservedMessage};
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
+    use std::time::{Duration, SystemTime};
     use tokio::sync::oneshot;
 
     fn msg(key: &str) -> ReservedMessage {
@@ -399,14 +435,15 @@ mod tests {
         // --------------
         // limit
         // --------------
-        let mut bundle = MessageBundle::new(1);
+        let now = SystemTime::now();
+        let mut bundle = MessageBundle::new(1, Duration::from_secs(1));
         for key in ["", "key1", "key2", "key3"] {
             // should send
-            let target = bundle.push(msg(key)).unwrap();
+            let target = bundle.push(key, vec![msg(key)], now).unwrap();
             assert_eq!(1, target.len());
             assert!(bundle.inner.get(key).is_none());
             // should send
-            let target = bundle.push(msg(key)).unwrap();
+            let target = bundle.push(key, vec![msg(key)], now).unwrap();
             assert_eq!(1, target.len());
             assert!(bundle.inner.get(key).is_none());
         }
@@ -415,46 +452,48 @@ mod tests {
         // not limit
         // --------------
         let limit = 3;
-        let mut bundle = MessageBundle::new(limit);
+        let now = SystemTime::now();
+        let mut bundle = MessageBundle::new(limit, Duration::from_secs(1));
         for key in ["", "key1", "key2", "key3"] {
             // should not send
-            let target = bundle.push(msg(key));
+            let target = bundle.push(key, vec![msg(key)], now);
             assert!(target.is_none());
-            assert_eq!(1, bundle.inner.get(key).unwrap().len());
+            assert_eq!(1, bundle.inner.get(key).unwrap().0.len());
             // should not send
-            let target = bundle.push(msg(key));
+            let target = bundle.push(key, vec![msg(key)], now);
             assert!(target.is_none());
-            assert_eq!(2, bundle.inner.get(key).unwrap().len());
+            assert_eq!(2, bundle.inner.get(key).unwrap().0.len());
             // should send
-            let target = bundle.push(msg(key)).unwrap();
+            let target = bundle.push(key, vec![msg(key)], now).unwrap();
             assert_eq!(limit, target.len());
             // key1 is empty record (hash structure is kept)
-            assert_eq!(0, bundle.inner.get(key).unwrap().len());
+            assert_eq!(0, bundle.inner.get(key).unwrap().0.len());
 
             // check twice
             // should not send
-            let target = bundle.push(msg(key));
+            let target = bundle.push(key, vec![msg(key)], now);
             assert!(target.is_none());
-            assert_eq!(1, bundle.inner.get(key).unwrap().len());
+            assert_eq!(1, bundle.inner.get(key).unwrap().0.len());
             // should not send
-            let target = bundle.push(msg(key));
+            let target = bundle.push(key, vec![msg(key)], now);
             assert!(target.is_none());
-            assert_eq!(2, bundle.inner.get(key).unwrap().len());
+            assert_eq!(2, bundle.inner.get(key).unwrap().0.len());
             // should send
-            let target = bundle.push(msg(key)).unwrap();
+            let target = bundle.push(key, vec![msg(key)], now).unwrap();
             assert_eq!(limit, target.len());
             // key1 is empty record (hash structure is kept)
-            assert_eq!(0, bundle.inner.get(key).unwrap().len());
+            assert_eq!(0, bundle.inner.get(key).unwrap().0.len());
         }
     }
 
     #[test]
     fn test_message_bundle_into_values() {
-        let mut bundle = MessageBundle::new(4);
+        let now = SystemTime::now();
+        let mut bundle = MessageBundle::new(4, Duration::from_secs(1));
         for key in ["", "key1", "key2", "key3"] {
-            bundle.push(msg(key));
-            bundle.push(msg(key));
-            bundle.push(msg(key));
+            bundle.push(key, vec![msg(key)], now);
+            bundle.push(key, vec![msg(key)], now);
+            bundle.push(key, vec![msg(key)], now);
         }
         let values = bundle.into_values();
         assert_eq!(4, values.len());
