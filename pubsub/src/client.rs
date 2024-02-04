@@ -496,7 +496,7 @@ mod tests_in_gcp {
         let topic = client.topic("test-topic2");
         let publisher = topic.new_publisher(Some(PublisherConfig {
             flush_interval: Duration::from_secs(3),
-            workers: 1,
+            workers: 3,
             ..Default::default()
         }));
 
@@ -529,7 +529,7 @@ mod tests_in_gcp {
         let publisher = topic.new_publisher(Some(PublisherConfig {
             flush_interval: Duration::from_secs(30),
             workers: 1,
-            bundle_size: 2,
+            bundle_size: 8,
             ..Default::default()
         }));
 
@@ -562,7 +562,7 @@ mod tests_in_gcp {
         let publisher = topic.new_publisher(Some(PublisherConfig {
             flush_interval: Duration::from_secs(30),
             workers: 2,
-            bundle_size: 2,
+            bundle_size: 8,
             ..Default::default()
         }));
 
