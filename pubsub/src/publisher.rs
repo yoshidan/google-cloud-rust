@@ -1,4 +1,3 @@
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -344,7 +343,7 @@ impl MessageBundle {
         self.inner.is_empty()
     }
 
-    fn into_values(mut self) -> Vec<Vec<ReservedMessage>> {
+    fn into_values(self) -> Vec<Vec<ReservedMessage>> {
         let mut result = vec![];
         for v in self.inner.into_values() {
             if !v.is_empty() {
@@ -373,6 +372,99 @@ impl MessageBundle {
                     self.inner.insert(message.message.ordering_key.clone(), vec![message]);
                     None
                 }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::publisher::{MessageBundle, ReservedMessage};
+    use google_cloud_googleapis::pubsub::v1::PubsubMessage;
+    use tokio::sync::oneshot;
+
+    fn msg(key: &str) -> ReservedMessage {
+        let (sender, _) = oneshot::channel();
+        ReservedMessage {
+            producer: sender,
+            message: PubsubMessage {
+                ordering_key: key.to_string(),
+                ..Default::default()
+            },
+        }
+    }
+
+    #[test]
+    fn test_message_bundle_push() {
+        // --------------
+        // limit
+        // --------------
+        let mut bundle = MessageBundle::new(1);
+        for key in ["", "key1", "key2", "key3"] {
+            // should send
+            let target = bundle.push(msg(key)).unwrap();
+            assert_eq!(1, target.len());
+            assert!(bundle.inner.get(key).is_none());
+            // should send
+            let target = bundle.push(msg(key)).unwrap();
+            assert_eq!(1, target.len());
+            assert!(bundle.inner.get(key).is_none());
+        }
+
+        // --------------
+        // not limit
+        // --------------
+        let limit = 3;
+        let mut bundle = MessageBundle::new(limit);
+        for key in ["", "key1", "key2", "key3"] {
+            // should not send
+            let target = bundle.push(msg(key));
+            assert!(target.is_none());
+            assert_eq!(1, bundle.inner.get(key).unwrap().len());
+            // should not send
+            let target = bundle.push(msg(key));
+            assert!(target.is_none());
+            assert_eq!(2, bundle.inner.get(key).unwrap().len());
+            // should send
+            let target = bundle.push(msg(key)).unwrap();
+            assert_eq!(limit, target.len());
+            // key1 is empty record (hash structure is kept)
+            assert_eq!(0, bundle.inner.get(key).unwrap().len());
+
+            // check twice
+            // should not send
+            let target = bundle.push(msg(key));
+            assert!(target.is_none());
+            assert_eq!(1, bundle.inner.get(key).unwrap().len());
+            // should not send
+            let target = bundle.push(msg(key));
+            assert!(target.is_none());
+            assert_eq!(2, bundle.inner.get(key).unwrap().len());
+            // should send
+            let target = bundle.push(msg(key)).unwrap();
+            assert_eq!(limit, target.len());
+            // key1 is empty record (hash structure is kept)
+            assert_eq!(0, bundle.inner.get(key).unwrap().len());
+        }
+    }
+
+    #[test]
+    fn test_message_bundle_into_values() {
+        let mut bundle = MessageBundle::new(4);
+        for key in ["", "key1", "key2", "key3"] {
+            bundle.push(msg(key));
+            bundle.push(msg(key));
+            bundle.push(msg(key));
+        }
+        let values = bundle.into_values();
+        assert_eq!(4, values.len());
+        for v in values {
+            assert_eq!(3, v.len());
+
+            // Ensure same key
+            let key = v.first().unwrap().message.ordering_key.clone();
+            for vv in v {
+                assert_eq!(key, vv.message.ordering_key)
             }
         }
     }
