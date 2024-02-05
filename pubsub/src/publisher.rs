@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::ops::{Deref, DerefMut};
+
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -222,7 +224,8 @@ impl Tasks {
         bundle_size: usize,
     ) -> JoinHandle<()> {
         tokio::spawn(async move {
-            let mut bundle = Vec::<ReservedMessage>::with_capacity(bundle_size);
+            //TODO enable manage task by ordering_key
+            let mut bundle = MessageBundle::new();
             while !receiver.is_closed() {
                 let result = match timeout(flush_interval, &mut receiver.recv()).await {
                     Ok(result) => result,
@@ -230,8 +233,10 @@ impl Tasks {
                     Err(_e) => {
                         if !bundle.is_empty() {
                             tracing::trace!("elapsed: flush buffer : {}", topic);
-                            Self::flush(&mut client, topic.as_str(), bundle, retry.clone()).await;
-                            bundle = Vec::new();
+                            for value in bundle.key_by() {
+                                Self::flush(&mut client, topic.as_str(), value, retry.clone()).await;
+                            }
+                            bundle = MessageBundle::new();
                         }
                         continue;
                     }
@@ -243,9 +248,11 @@ impl Tasks {
                             Reserved::Multi(messages) => bundle.extend(messages),
                         }
                         if bundle.len() >= bundle_size {
-                            tracing::trace!("maximum buffer {} : {}", bundle.len(), topic);
-                            Self::flush(&mut client, topic.as_str(), bundle, retry.clone()).await;
-                            bundle = Vec::new();
+                            tracing::trace!("bundle size max: {}", topic);
+                            for value in bundle.key_by() {
+                                Self::flush(&mut client, topic.as_str(), value, retry.clone()).await;
+                            }
+                            bundle = MessageBundle::new();
                         }
                     }
                     //closed
@@ -256,7 +263,9 @@ impl Tasks {
             tracing::trace!("stop publisher : {}", topic);
             if !bundle.is_empty() {
                 tracing::trace!("flush rest buffer : {}", topic);
-                Self::flush(&mut client, topic.as_str(), bundle, retry.clone()).await;
+                for value in bundle.key_by() {
+                    Self::flush(&mut client, topic.as_str(), value, retry.clone()).await;
+                }
             }
         })
     }
@@ -310,6 +319,86 @@ impl Tasks {
         if let Some(tasks) = self.inner.take() {
             for task in tasks {
                 let _ = task.await;
+            }
+        }
+    }
+}
+
+struct MessageBundle {
+    inner: Vec<ReservedMessage>,
+}
+
+impl MessageBundle {
+    fn new() -> Self {
+        Self { inner: vec![] }
+    }
+
+    fn key_by(self) -> Vec<Vec<ReservedMessage>> {
+        let mut values = HashMap::<String, Vec<ReservedMessage>>::new();
+        for v in self.inner {
+            let key = v.message.ordering_key.to_string();
+            match values.get_mut(&key) {
+                Some(e) => {
+                    e.push(v);
+                }
+                None => {
+                    values.insert(key, vec![v]);
+                }
+            }
+        }
+        let mut result = Vec::with_capacity(values.len());
+        for (_, v) in values.into_iter() {
+            result.push(v);
+        }
+        result
+    }
+}
+
+impl Deref for MessageBundle {
+    type Target = Vec<ReservedMessage>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl DerefMut for MessageBundle {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::publisher::{MessageBundle, ReservedMessage};
+    use google_cloud_googleapis::pubsub::v1::PubsubMessage;
+    use tokio::sync::oneshot;
+
+    fn msg(key: &str) -> ReservedMessage {
+        let (sender, _) = oneshot::channel();
+        ReservedMessage {
+            producer: sender,
+            message: PubsubMessage {
+                ordering_key: key.to_string(),
+                ..Default::default()
+            },
+        }
+    }
+
+    #[test]
+    fn test_message_bundle_key_by() {
+        let mut bundle = MessageBundle::new();
+        for key in ["", "a", "b", "c", "A", "", "D", "a"] {
+            bundle.push(msg(key));
+        }
+        let msgs = bundle.key_by();
+        assert_eq!(6, msgs.len());
+        for msg in msgs {
+            let key = msg.first().unwrap().message.ordering_key.clone();
+            if key == "a" || key.is_empty() {
+                assert_eq!(2, msg.len());
+            } else {
+                assert_eq!(1, msg.len());
             }
         }
     }

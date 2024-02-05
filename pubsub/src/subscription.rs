@@ -201,7 +201,6 @@ impl Subscription {
         parts.join("/")
     }
 
-    #[allow(private_interfaces)]
     pub fn get_client(&self) -> SubscriberClient {
         self.subc.clone()
     }
@@ -1020,7 +1019,7 @@ mod tests {
         ack_all(&messages).await;
         assert_eq!(messages.len(), 1);
 
-        let message_publish_time = messages.get(0).unwrap().message.publish_time.to_owned().unwrap();
+        let message_publish_time = messages.first().unwrap().message.publish_time.to_owned().unwrap();
 
         // rewind to a timestamp where message was just published
         subscription
@@ -1032,7 +1031,7 @@ mod tests {
         let messages = subscription.pull(100, None).await.unwrap();
         ack_all(&messages).await;
         assert_eq!(messages.len(), 1);
-        let seek_message_publish_time = messages.get(0).unwrap().message.publish_time.to_owned().unwrap();
+        let seek_message_publish_time = messages.first().unwrap().message.publish_time.to_owned().unwrap();
         assert_eq!(seek_message_publish_time, message_publish_time);
 
         // cleanup
