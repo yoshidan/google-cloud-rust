@@ -11,7 +11,7 @@ use crate::sign::{create_signed_buffer, RsaKeyPair, SignBy, SignedURLError, Sign
 
 #[derive(Debug)]
 pub struct ClientConfig {
-    pub http: Option<reqwest::Client>,
+    pub http: Option<reqwest_middleware::ClientWithMiddleware>,
     pub storage_endpoint: String,
     pub service_account_endpoint: String,
     pub token_source_provider: Option<Box<dyn TokenSourceProvider>>,
@@ -125,7 +125,9 @@ impl Client {
                 None
             }
         };
-        let http = config.http.unwrap_or_default();
+        let http = config
+            .http
+            .unwrap_or_else(|| reqwest_middleware::ClientBuilder::new(reqwest::Client::default()).build());
 
         let service_account_client =
             ServiceAccountClient::new(ts.clone(), config.service_account_endpoint.as_str(), http.clone());

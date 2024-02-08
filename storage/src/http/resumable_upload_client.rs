@@ -1,7 +1,8 @@
 use std::fmt;
 
 use reqwest::header::{CONTENT_LENGTH, CONTENT_RANGE};
-use reqwest::{Body, Client, Response};
+use reqwest::{Body, Response};
+use reqwest_middleware::ClientWithMiddleware as Client;
 
 use crate::http::{check_response_status, objects::Object, Error};
 

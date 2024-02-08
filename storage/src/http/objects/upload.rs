@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use reqwest::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use reqwest::multipart::{Form, Part};
-use reqwest::{Client, RequestBuilder};
+use reqwest_middleware::{ClientWithMiddleware as Client, RequestBuilder};
 
 use crate::http::object_access_controls::{PredefinedObjectAcl, Projection};
 use crate::http::objects::{Encryption, Object};

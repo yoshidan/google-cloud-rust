@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use reqwest::{Client, RequestBuilder};
+use reqwest_middleware::{ClientWithMiddleware as Client, RequestBuilder};
 
 use crate::http::bucket_access_controls::{BucketAccessControl, PredefinedBucketAcl};
 use crate::http::buckets::insert::RetentionPolicyCreationConfig;

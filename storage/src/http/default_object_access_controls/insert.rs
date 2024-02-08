@@ -1,4 +1,4 @@
-use reqwest::{Client, RequestBuilder};
+use reqwest_middleware::{ClientWithMiddleware as Client, RequestBuilder};
 
 use crate::http::object_access_controls::insert::ObjectAccessControlCreationConfig;
 use crate::http::Escape;

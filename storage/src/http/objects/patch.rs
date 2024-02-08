@@ -1,4 +1,4 @@
-use reqwest::{Client, RequestBuilder};
+use reqwest_middleware::{ClientWithMiddleware as Client, RequestBuilder};
 
 use crate::http::bucket_access_controls::PredefinedBucketAcl;
 use crate::http::object_access_controls::Projection;
