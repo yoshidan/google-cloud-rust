@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use futures_util::{Stream, TryStream, TryStreamExt};
 use reqwest::header::{HeaderValue, CONTENT_LENGTH, LOCATION};
-use reqwest::{Body, Client, Request, RequestBuilder};
+use reqwest::{Body, Request};
+use reqwest_middleware::RequestBuilder;
 
 use google_cloud_token::TokenSource;
 
@@ -71,11 +72,15 @@ pub struct StorageClient {
     ts: Option<Arc<dyn TokenSource>>,
     v1_endpoint: String,
     v1_upload_endpoint: String,
-    http: Client,
+    http: reqwest_middleware::ClientWithMiddleware,
 }
 
 impl StorageClient {
-    pub(crate) fn new(ts: Option<Arc<dyn TokenSource>>, endpoint: &str, http: Client) -> Self {
+    pub(crate) fn new(
+        ts: Option<Arc<dyn TokenSource>>,
+        endpoint: &str,
+        http: reqwest_middleware::ClientWithMiddleware,
+    ) -> Self {
         Self {
             ts,
             v1_endpoint: format!("{endpoint}/storage/v1"),
@@ -1415,7 +1420,11 @@ pub(crate) mod test {
         .unwrap();
         let cred = tsp.source_credentials.clone();
         let ts = tsp.token_source();
-        let client = StorageClient::new(Some(ts), "https://storage.googleapis.com", reqwest::Client::new());
+        let client = StorageClient::new(
+            Some(ts),
+            "https://storage.googleapis.com",
+            reqwest_middleware::ClientBuilder::new(reqwest::Client::default()).build(),
+        );
         let cred = cred.unwrap();
         (client, cred.project_id.unwrap(), cred.client_email.unwrap())
     }

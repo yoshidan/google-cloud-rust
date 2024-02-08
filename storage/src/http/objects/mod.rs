@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use reqwest::RequestBuilder;
+use reqwest_middleware::RequestBuilder;
+
 use time::OffsetDateTime;
 
 use crate::http::object_access_controls::ObjectAccessControl;

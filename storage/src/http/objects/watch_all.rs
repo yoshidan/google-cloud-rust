@@ -1,4 +1,4 @@
-use reqwest::{Client, RequestBuilder};
+use reqwest_middleware::{ClientWithMiddleware as Client, RequestBuilder};
 
 use crate::http::channels::WatchableChannel;
 use crate::http::object_access_controls::Projection;
