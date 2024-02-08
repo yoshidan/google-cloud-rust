@@ -64,6 +64,42 @@ async fn run() {
 }
 ```
 
+### Passing a custom reqwest middleware cliemt
+
+```rust
+use google_cloud_storage::client::Client;
+use google_cloud_storage::client::ClientConfig;
+use google_cloud_storage::http::Error;
+use reqwest_middleware::ClientBuilder;
+use reqwest_retry::policies::ExponentialBackoff;
+use reqwest_retry::RetryTransientMiddleware;
+use retry_policies::Jitter;
+
+async fn run() -> Result<(), Error> {
+    let retry_policy = ExponentialBackoff::builder()
+        .base(2)
+        .jitter(Jitter::Full)
+        .build_with_max_retries(3);
+
+    let mid_client = ClientBuilder::new(reqwest::Client::default())
+        // reqwest-retry already comes with a default retry stategy that matches http standards
+        // override it only if you need a custom one due to non standard behaviour
+        .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+        .build();
+
+    Client::new(
+        ClientConfig {
+            http: Some(mid_client),
+            ..Default::default()
+        }
+        .with_auth()
+        .await?,
+    );
+
+    Ok(())
+}
+```
+
 ### Usage
 
 ```rust

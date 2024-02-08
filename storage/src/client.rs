@@ -9,6 +9,35 @@ use crate::http::storage_client::StorageClient;
 use crate::sign::SignBy::PrivateKey;
 use crate::sign::{create_signed_buffer, RsaKeyPair, SignBy, SignedURLError, SignedURLOptions};
 
+///
+/// #### Example building a client configuration with a custom retry strategy as middleware:
+/// ```rust
+/// #   use google_cloud_storage::client::Client;
+/// #   use google_cloud_storage::client::ClientConfig;
+/// #   use reqwest_middleware::ClientBuilder;
+/// #   use reqwest_retry::policies::ExponentialBackoff;
+/// #   use reqwest_retry::RetryTransientMiddleware;
+/// #   use retry_policies::Jitter;
+///
+/// async fn configuration_with_exponential_backoff_retry_strategy() -> ClientConfig {
+///   let retry_policy = ExponentialBackoff::builder()
+///      .base(2)
+///      .jitter(Jitter::Full)
+///      .build_with_max_retries(3);
+///
+///   let mid_client = ClientBuilder::new(reqwest::Client::default())
+///      // reqwest-retry already comes with a default retry stategy that matches http standards
+///      // override it only if you need a custom one due to non standard behaviour
+///      .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+///      .build();
+///
+///   ClientConfig {
+///      http: Some(mid_client),
+///      ..Default::default()
+///   }
+/// }
+///
+/// ```
 #[derive(Debug)]
 pub struct ClientConfig {
     pub http: Option<reqwest_middleware::ClientWithMiddleware>,

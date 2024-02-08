@@ -55,6 +55,8 @@ tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 ctor = "0.1.26"
 tokio-util = { version = "0.7", features = ["codec"] }
 google-cloud-auth = { path = "../foundation/auth", default-features = false }
+reqwest-retry = "0.3.0"
+retry-policies = "0.2.1"
 
 [features]
 default = ["default-tls", "auth"]
