@@ -8,11 +8,15 @@ use crate::http::{check_response_status, Error};
 pub struct ServiceAccountClient {
     ts: Option<Arc<dyn TokenSource>>,
     v1_endpoint: String,
-    http: reqwest::Client,
+    http: reqwest_middleware::ClientWithMiddleware,
 }
 
 impl ServiceAccountClient {
-    pub(crate) fn new(ts: Option<Arc<dyn TokenSource>>, endpoint: &str, http: reqwest::Client) -> Self {
+    pub(crate) fn new(
+        ts: Option<Arc<dyn TokenSource>>,
+        endpoint: &str,
+        http: reqwest_middleware::ClientWithMiddleware,
+    ) -> Self {
         Self {
             ts,
             v1_endpoint: format!("{endpoint}/v1"),
@@ -59,6 +63,7 @@ struct SignBlobResponse {
 #[cfg(test)]
 mod test {
     use reqwest::Client;
+    use reqwest_middleware::ClientBuilder;
     use serial_test::serial;
 
     use google_cloud_auth::project::Config;
@@ -78,7 +83,11 @@ mod test {
         let email = tsp.source_credentials.clone().unwrap().client_email.unwrap();
         let ts = tsp.token_source();
         (
-            ServiceAccountClient::new(Some(ts), "https://iamcredentials.googleapis.com", Client::default()),
+            ServiceAccountClient::new(
+                Some(ts),
+                "https://iamcredentials.googleapis.com",
+                ClientBuilder::new(Client::default()).build(),
+            ),
             email,
         )
     }
