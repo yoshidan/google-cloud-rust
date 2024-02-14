@@ -27,6 +27,8 @@ base64 = "0.21"
 bigdecimal = { version="0.3", features=["serde"] }
 num-bigint = "0.4"
 backon = "0.4"
+reqwest-middleware = "0.2"
+anyhow = "1.0"
 
 google-cloud-auth = { optional = true, version = "0.13", path="../foundation/auth", default-features=false }
 

@@ -10,9 +10,22 @@ pub enum Error {
     #[error(transparent)]
     HttpClient(#[from] reqwest::Error),
 
+    /// An error from the HTTP client.
+    #[error(transparent)]
+    HttpMiddleware(anyhow::Error),
+
     /// An error from a token source.
     #[error("token source failed: {0}")]
     TokenSource(Box<dyn std::error::Error + Send + Sync>),
+}
+
+impl From<reqwest_middleware::Error> for Error {
+    fn from(error: reqwest_middleware::Error) -> Self {
+        match error {
+            reqwest_middleware::Error::Reqwest(err) => Error::HttpClient(err),
+            reqwest_middleware::Error::Middleware(err) => Error::HttpMiddleware(err),
+        }
+    }
 }
 
 #[derive(Debug, serde::Deserialize)]

@@ -33,7 +33,7 @@ const JOB_RETRY_REASONS: [&str; 3] = ["backendError", "rateLimitExceeded", "inte
 
 #[derive(Debug)]
 pub struct ClientConfig {
-    http: reqwest::Client,
+    http: reqwest_middleware::ClientWithMiddleware,
     bigquery_endpoint: Cow<'static, str>,
     token_source_provider: Box<dyn TokenSourceProvider>,
     environment: Environment,
@@ -65,7 +65,7 @@ impl ClientConfig {
         grpc_token_source_provider: Box<dyn TokenSourceProvider>,
     ) -> Self {
         Self {
-            http: reqwest::Client::default(),
+            http: reqwest_middleware::ClientBuilder::new(reqwest::Client::default()).build(),
             bigquery_endpoint: "https://bigquery.googleapis.com".into(),
             token_source_provider: http_token_source_provider,
             environment: Environment::GoogleCloud(grpc_token_source_provider),
@@ -81,7 +81,7 @@ impl ClientConfig {
         self.streaming_read_config = value;
         self
     }
-    pub fn with_http_client(mut self, value: reqwest::Client) -> Self {
+    pub fn with_http_client(mut self, value: reqwest_middleware::ClientWithMiddleware) -> Self {
         self.http = value;
         self
     }

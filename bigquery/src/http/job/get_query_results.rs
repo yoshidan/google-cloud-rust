@@ -1,4 +1,4 @@
-use reqwest::{Client, RequestBuilder};
+use reqwest_middleware::{ClientWithMiddleware as Client, RequestBuilder};
 
 use crate::http::job::JobReference;
 use crate::http::table::TableSchema;

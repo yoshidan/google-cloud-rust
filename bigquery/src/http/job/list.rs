@@ -1,4 +1,4 @@
-use reqwest::{Client, RequestBuilder};
+use reqwest_middleware::{ClientWithMiddleware as Client, RequestBuilder};
 
 use crate::http::job::{JobConfiguration, JobReference, JobState, JobStatistics, JobStatus};
 use crate::http::types::ErrorProto;
