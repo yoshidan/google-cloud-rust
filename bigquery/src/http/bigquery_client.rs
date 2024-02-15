@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use reqwest::{Client, RequestBuilder, Response};
+use reqwest::Response;
+use reqwest_middleware::{ClientWithMiddleware as Client, RequestBuilder};
 
 use google_cloud_token::TokenSource;
 
@@ -139,7 +140,12 @@ pub(crate) mod test {
         .unwrap();
         let cred = tsp.source_credentials.clone();
         let ts = tsp.token_source();
-        let client = BigqueryClient::new(ts, "https://bigquery.googleapis.com", reqwest::Client::new(), false);
+        let client = BigqueryClient::new(
+            ts,
+            "https://bigquery.googleapis.com",
+            reqwest_middleware::ClientBuilder::new(reqwest::Client::new()).build(),
+            false,
+        );
         (client, cred.unwrap().project_id.unwrap())
     }
 

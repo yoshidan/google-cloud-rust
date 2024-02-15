@@ -32,7 +32,7 @@ pub enum Error {
 
     /// An error from one of the middleware used.
     #[error(transparent)]
-    HttpMiddleware(#[from] anyhow::Error),
+    HttpMiddleware(anyhow::Error),
 
     /// An error from a token source.
     #[error("token source failed: {0}")]

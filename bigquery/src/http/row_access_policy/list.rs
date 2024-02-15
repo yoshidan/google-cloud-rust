@@ -1,4 +1,4 @@
-use reqwest::{Client, RequestBuilder};
+use reqwest_middleware::{ClientWithMiddleware as Client, RequestBuilder};
 use time::OffsetDateTime;
 
 use crate::http::row_access_policy::RowAccessPolicyReference;
