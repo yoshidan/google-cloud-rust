@@ -148,6 +148,9 @@ impl Publisher {
         Awaiter::new(consumer)
     }
 
+    /// Publish a message to the topic asynchronously, from synchronous code.
+    /// This method blocks until the message is sent to the publisher channel.
+    /// The actual publishing to the server is done asynchronously.
     pub fn publish_blocking(&self, message: PubsubMessage) -> Awaiter {
         let (producer, consumer) = oneshot::channel();
         if message.ordering_key.is_empty() {
