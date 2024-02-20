@@ -148,6 +148,23 @@ impl Publisher {
         Awaiter::new(consumer)
     }
 
+    /// Publish a message to the topic asynchronously, from synchronous code.
+    /// This method blocks until the message is sent to the publisher channel.
+    /// The actual publishing to the server is done asynchronously.
+    pub fn publish_blocking(&self, message: PubsubMessage) -> Awaiter {
+        let (producer, consumer) = oneshot::channel();
+        if message.ordering_key.is_empty() {
+            let _ = self
+                .sender
+                .send_blocking(Reserved::Single(ReservedMessage { producer, message }));
+        } else {
+            let key = message.ordering_key.as_str().to_usize();
+            let index = key % self.ordering_senders.len();
+            let _ = self.ordering_senders[index].send_blocking(Reserved::Single(ReservedMessage { producer, message }));
+        }
+        Awaiter::new(consumer)
+    }
+
     /// publish_bulk publishes msg to the topic asynchronously. Messages are batched and
     /// sent according to the topic's PublisherConfig. Publish never blocks.
     ///
