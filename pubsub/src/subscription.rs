@@ -341,6 +341,8 @@ impl Subscription {
 
     /// pull get message synchronously.
     /// It blocks until at least one message is available.
+    ///
+    /// NOTE: this is the recommended function to use when receiving messages from a subscription with exactly-once delivery.
     pub async fn pull(&self, max_messages: i32, retry: Option<RetrySetting>) -> Result<Vec<ReceivedMessage>, Status> {
         #[allow(deprecated)]
         let req = PullRequest {
@@ -366,6 +368,9 @@ impl Subscription {
 
     /// subscribe creates a `Stream` of `ReceivedMessage`
     /// Terminates the underlying `Subscriber` when dropped.
+    ///
+    /// NOTE: for subscriptions with exactly-once delivery,
+    /// use `pull` instead.
     /// ```no_test
     /// use google_cloud_pubsub::client::Client;
     /// use google_cloud_pubsub::subscription::Subscription;
