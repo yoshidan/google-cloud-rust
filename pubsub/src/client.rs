@@ -458,16 +458,16 @@ mod tests {
 
 #[cfg(test)]
 mod tests_in_gcp {
-    use std::collections::{HashMap, HashSet};
-    use std::sync::{Arc, Mutex};
     use crate::client::{Client, ClientConfig};
     use crate::publisher::PublisherConfig;
     use google_cloud_gax::conn::Environment;
+    use google_cloud_gax::grpc::codegen::tokio_stream::StreamExt;
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
     use serial_test::serial;
+    use std::collections::HashMap;
+
     use std::time::Duration;
     use tokio_util::sync::CancellationToken;
-    use google_cloud_gax::grpc::codegen::tokio_stream::StreamExt;
 
     fn make_msg(key: &str) -> PubsubMessage {
         PubsubMessage {
@@ -609,10 +609,14 @@ mod tests_in_gcp {
                     tracing::info!("finish publisher");
                     return;
                 }
-                publisher.publish_blocking(PubsubMessage {
-                    data: "msg".into(),
-                    ..Default::default()
-                }).get().await.unwrap();
+                publisher
+                    .publish_blocking(PubsubMessage {
+                        data: "msg".into(),
+                        ..Default::default()
+                    })
+                    .get()
+                    .await
+                    .unwrap();
             }
         });
 
@@ -631,21 +635,20 @@ mod tests_in_gcp {
                 message.ack().await.unwrap();
             }
             tracing::info!("finish subscriber");
-            return msgs;
+            msgs
         });
 
         tokio::time::sleep(Duration::from_secs(30)).await;
 
         // check redelivered messages
         ctx.cancel();
-        let _ = pub_task.await.unwrap();
+        pub_task.await.unwrap();
         let received_msgs = sub_task.await.unwrap();
-        assert!(received_msgs.len() > 0);
+        assert!(!received_msgs.is_empty());
 
         tracing::info!("Number of received messages = {}", received_msgs.len());
-        for (msg_id , count) in received_msgs {
+        for (msg_id, count) in received_msgs {
             assert_eq!(count, 1, "msg_id = {msg_id}, count = {count}");
         }
     }
-
 }
