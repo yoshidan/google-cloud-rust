@@ -21,7 +21,7 @@ parking_lot = "0.12"
 base64 = "0.21"
 serde = { version = "1.0", optional = true, features = ["derive"] }
 tokio-util = "0.7"
-bigdecimal = { version="0.3", features=["serde"] }
+bigdecimal = { version="0.4", features=["serde"] }
 
 google-cloud-token = { version = "0.1.1", path = "../foundation/token" }
 google-cloud-longrunning = { version = "0.17.0", path = "../foundation/longrunning" }

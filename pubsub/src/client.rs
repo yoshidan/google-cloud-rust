@@ -461,9 +461,13 @@ mod tests_in_gcp {
     use crate::client::{Client, ClientConfig};
     use crate::publisher::PublisherConfig;
     use google_cloud_gax::conn::Environment;
+    use google_cloud_gax::grpc::codegen::tokio_stream::StreamExt;
     use google_cloud_googleapis::pubsub::v1::PubsubMessage;
     use serial_test::serial;
+    use std::collections::HashMap;
+
     use std::time::Duration;
+    use tokio_util::sync::CancellationToken;
 
     fn make_msg(key: &str) -> PubsubMessage {
         PubsubMessage {
@@ -579,6 +583,72 @@ mod tests_in_gcp {
             .to_vec();
         for awaiter in publisher.publish_bulk(msgs).await.into_iter() {
             tracing::info!("msg id {}", awaiter.get().await.unwrap());
+        }
+    }
+    #[tokio::test]
+    #[serial]
+    #[ignore]
+    async fn test_subscribe_exactly_once_delivery() {
+        let client = Client::new(ClientConfig::default().with_auth().await.unwrap())
+            .await
+            .unwrap();
+
+        // Check if the subscription is exactly_once_delivery
+        let subscription = client.subscription("eod-test");
+        let config = subscription.config(None).await.unwrap().1;
+        assert!(config.enable_exactly_once_delivery);
+
+        // publish message
+        let ctx = CancellationToken::new();
+        let ctx_pub = ctx.clone();
+        let publisher = client.topic("eod-test").new_publisher(None);
+        let pub_task = tokio::spawn(async move {
+            tracing::info!("start publisher");
+            loop {
+                if ctx_pub.is_cancelled() {
+                    tracing::info!("finish publisher");
+                    return;
+                }
+                publisher
+                    .publish_blocking(PubsubMessage {
+                        data: "msg".into(),
+                        ..Default::default()
+                    })
+                    .get()
+                    .await
+                    .unwrap();
+            }
+        });
+
+        // subscribe message
+        let ctx_sub = ctx.clone();
+        let sub_task = tokio::spawn(async move {
+            tracing::info!("start subscriber");
+            let mut stream = subscription.subscribe(None).await.unwrap();
+            let mut msgs = HashMap::new();
+            while let Some(message) = stream.next().await {
+                if ctx_sub.is_cancelled() {
+                    break;
+                }
+                let msg_id = &message.message.message_id;
+                *msgs.entry(msg_id.clone()).or_insert(0) += 1;
+                message.ack().await.unwrap();
+            }
+            tracing::info!("finish subscriber");
+            msgs
+        });
+
+        tokio::time::sleep(Duration::from_secs(30)).await;
+
+        // check redelivered messages
+        ctx.cancel();
+        pub_task.await.unwrap();
+        let received_msgs = sub_task.await.unwrap();
+        assert!(!received_msgs.is_empty());
+
+        tracing::info!("Number of received messages = {}", received_msgs.len());
+        for (msg_id, count) in received_msgs {
+            assert_eq!(count, 1, "msg_id = {msg_id}, count = {count}");
         }
     }
 }
