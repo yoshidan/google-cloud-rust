@@ -12,7 +12,7 @@ use google_cloud_googleapis::spanner::v1::{
 };
 
 use crate::key::{Key, KeySet};
-use crate::reader::{AsyncIterator, RowIterator, StatementReader, TableReader};
+use crate::reader::{Reader, RowIterator, StatementReader, TableReader};
 use crate::row::Row;
 use crate::session::ManagedSession;
 use crate::statement::Statement;
@@ -53,7 +53,6 @@ pub struct QueryOptions {
     /// If cancel safe is required, such as when tokio::select is used, set to false.
     /// ```
     /// use time::{Duration, OffsetDateTime};
-    /// use google_cloud_spanner::reader::AsyncIterator;
     /// use google_cloud_spanner::client::Client;
     /// use google_cloud_spanner::key::Key;
     /// use google_cloud_spanner::statement::Statement;
@@ -119,7 +118,7 @@ impl Transaction {
     /// retrieving the resulting rows.
     ///
     /// query returns only row data, without a query plan or execution statistics.
-    pub async fn query(&mut self, statement: Statement) -> Result<RowIterator<'_>, Status> {
+    pub async fn query(&mut self, statement: Statement) -> Result<RowIterator<'_, impl Reader>, Status> {
         self.query_with_option(statement, QueryOptions::default()).await
     }
 
@@ -131,7 +130,7 @@ impl Transaction {
         &mut self,
         statement: Statement,
         options: QueryOptions,
-    ) -> Result<RowIterator<'_>, Status> {
+    ) -> Result<RowIterator<'_, impl Reader>, Status> {
         let request = ExecuteSqlRequest {
             session: self.session.as_ref().unwrap().session.name.to_string(),
             transaction: Some(self.transaction_selector.clone()),
@@ -149,10 +148,10 @@ impl Transaction {
             data_boost_enabled: false,
         };
         let session = self.session.as_mut().unwrap().deref_mut();
-        let reader = Box::new(StatementReader {
+        let reader = StatementReader {
             enable_resume: options.enable_resume,
             request,
-        });
+        };
         RowIterator::new(session, reader, Some(options.call_options)).await
     }
 
@@ -160,7 +159,6 @@ impl Transaction {
     /// ```
     /// use google_cloud_spanner::key::Key;
     /// use google_cloud_spanner::client::{Client, Error};
-    /// use google_cloud_spanner::reader::AsyncIterator;
     ///
     /// #[tokio::main]
     /// async fn run(client: Client) -> Result<(), Error> {
@@ -182,7 +180,7 @@ impl Transaction {
         table: &str,
         columns: &[&str],
         key_set: impl Into<KeySet>,
-    ) -> Result<RowIterator<'_>, Status> {
+    ) -> Result<RowIterator<'_, impl Reader>, Status> {
         self.read_with_option(table, columns, key_set, ReadOptions::default())
             .await
     }
@@ -194,7 +192,7 @@ impl Transaction {
         columns: &[&str],
         key_set: impl Into<KeySet>,
         options: ReadOptions,
-    ) -> Result<RowIterator<'_>, Status> {
+    ) -> Result<RowIterator<'_, impl Reader>, Status> {
         let request = ReadRequest {
             session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
@@ -210,7 +208,7 @@ impl Transaction {
         };
 
         let session = self.as_mut_session();
-        let reader = Box::new(TableReader { request });
+        let reader = TableReader { request };
         RowIterator::new(session, reader, Some(options.call_options)).await
     }
 

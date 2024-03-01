@@ -1,7 +1,6 @@
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
-use async_trait::async_trait;
 use prost_types::{value::Kind, Value};
 
 use google_cloud_gax::grpc::{Code, Response, Status, Streaming};
@@ -12,19 +11,12 @@ use crate::row::Row;
 use crate::session::SessionHandle;
 use crate::transaction::CallOptions;
 
-#[async_trait]
-pub trait AsyncIterator {
-    fn column_metadata(&self, column_name: &str) -> Option<(usize, Field)>;
-    async fn next(&mut self) -> Result<Option<Row>, Status>;
-}
-
-#[async_trait]
-pub trait Reader {
-    async fn read(
+pub trait Reader: Send + Sync {
+    fn read(
         &self,
         session: &mut SessionHandle,
         option: Option<CallOptions>,
-    ) -> Result<Response<Streaming<PartialResultSet>>, Status>;
+    ) -> impl std::future::Future<Output = Result<Response<Streaming<PartialResultSet>>, Status>> + Send;
 
     fn update_token(&mut self, resume_token: Vec<u8>);
 
@@ -36,7 +28,6 @@ pub struct StatementReader {
     pub request: ExecuteSqlRequest,
 }
 
-#[async_trait]
 impl Reader for StatementReader {
     async fn read(
         &self,
@@ -46,7 +37,7 @@ impl Reader for StatementReader {
         let option = option.unwrap_or_default();
         let client = &mut session.spanner_client;
         let result = client.execute_streaming_sql(self.request.clone(), option.retry).await;
-        return session.invalidate_if_needed(result).await;
+        session.invalidate_if_needed(result).await
     }
 
     fn update_token(&mut self, resume_token: Vec<u8>) {
@@ -62,7 +53,6 @@ pub struct TableReader {
     pub request: ReadRequest,
 }
 
-#[async_trait]
 impl Reader for TableReader {
     async fn read(
         &self,
@@ -72,7 +62,7 @@ impl Reader for TableReader {
         let option = option.unwrap_or_default();
         let client = &mut session.spanner_client;
         let result = client.streaming_read(self.request.clone(), option.retry).await;
-        return session.invalidate_if_needed(result).await;
+        session.invalidate_if_needed(result).await
     }
 
     fn update_token(&mut self, resume_token: Vec<u8>) {
@@ -187,20 +177,26 @@ impl ResultSet {
     }
 }
 
-pub struct RowIterator<'a> {
+pub struct RowIterator<'a, T>
+where
+    T: Reader,
+{
     streaming: Streaming<PartialResultSet>,
     session: &'a mut SessionHandle,
-    reader: Box<dyn Reader + Sync + Send>,
+    reader: T,
     rs: ResultSet,
     reader_option: Option<CallOptions>,
 }
 
-impl<'a> RowIterator<'a> {
+impl<'a, T> RowIterator<'a, T>
+where
+    T: Reader,
+{
     pub(crate) async fn new(
         session: &'a mut SessionHandle,
-        reader: Box<dyn Reader + Sync + Send>,
+        reader: T,
         option: Option<CallOptions>,
-    ) -> Result<RowIterator<'a>, Status> {
+    ) -> Result<RowIterator<'a, T>, Status> {
         let streaming = reader.read(session, option).await?.into_inner();
         let rs = ResultSet {
             fields: Arc::new(vec![]),
@@ -217,7 +213,7 @@ impl<'a> RowIterator<'a> {
         })
     }
 
-    pub fn set_call_options(&mut self, option: CallOptions) {
+    pub(crate) fn set_call_options(&mut self, option: CallOptions) {
         self.reader_option = Some(option);
     }
 
@@ -251,11 +247,8 @@ impl<'a> RowIterator<'a> {
             None => Ok(false),
         }
     }
-}
 
-#[async_trait]
-impl<'a> AsyncIterator for RowIterator<'a> {
-    fn column_metadata(&self, column_name: &str) -> Option<(usize, Field)> {
+    pub fn column_metadata(&self, column_name: &str) -> Option<(usize, Field)> {
         for (i, val) in self.rs.fields.iter().enumerate() {
             if val.name == column_name {
                 return Some((i, val.clone()));
@@ -266,7 +259,7 @@ impl<'a> AsyncIterator for RowIterator<'a> {
 
     /// next returns the next result.
     /// Its second return value is None if there are no more results.
-    async fn next(&mut self) -> Result<Option<Row>, Status> {
+    pub async fn next(&mut self) -> Result<Option<Row>, Status> {
         loop {
             let row = self.rs.next();
             if row.is_some() {

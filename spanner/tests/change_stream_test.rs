@@ -14,7 +14,7 @@ use google_cloud_spanner::admin;
 use google_cloud_spanner::admin::AdminClientConfig;
 use google_cloud_spanner::client::{Client, ClientConfig};
 
-use google_cloud_spanner::reader::{AsyncIterator, RowIterator};
+use google_cloud_spanner::reader::{Reader, RowIterator};
 use google_cloud_spanner::row::{Error, Row, Struct, TryFromStruct};
 use google_cloud_spanner::statement::Statement;
 use google_cloud_spanner::transaction::QueryOptions;
@@ -120,7 +120,11 @@ async fn create_environment() -> Environment {
     GoogleCloud(Box::new(ts))
 }
 
-async fn query_change_record(tx: &mut ReadOnlyTransaction, now: OffsetDateTime, token: Option<String>) -> RowIterator {
+async fn query_change_record(
+    tx: &mut ReadOnlyTransaction,
+    now: OffsetDateTime,
+    token: Option<String>,
+) -> RowIterator<'_, impl Reader> {
     let query = format!(
         "
         SELECT ChangeRecord FROM READ_UserItemChangeStream (

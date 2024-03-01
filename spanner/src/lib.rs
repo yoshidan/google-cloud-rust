@@ -13,7 +13,6 @@
 //! use google_cloud_spanner::client::Client;
 //! use google_cloud_spanner::mutation::insert_or_update;
 //! use google_cloud_spanner::statement::Statement;
-//! use google_cloud_spanner::reader::AsyncIterator;
 //! use google_cloud_spanner::value::CommitTimestamp;
 //! use google_cloud_spanner::client::Error;
 //! use google_cloud_spanner::client::ClientConfig;
@@ -262,7 +261,6 @@
 //! ```
 //! use google_cloud_spanner::key::Key;
 //! use google_cloud_spanner::client::Client;
-//! use google_cloud_spanner::reader::AsyncIterator;
 //! use google_cloud_spanner::client::Error;
 //!
 //! #[tokio::main]
@@ -358,7 +356,6 @@
 //! use google_cloud_spanner::client::{Client, Error};
 //! use google_cloud_spanner::statement::Statement;
 //! use google_cloud_spanner::key::Key;
-//! use google_cloud_spanner::reader::AsyncIterator;
 //!
 //! async fn run(client: Client) -> Result<(), Error> {
 //!     let mut tx = client.read_only_transaction().await?;
@@ -512,7 +509,6 @@
 //! use google_cloud_spanner::value::Timestamp;
 //! use google_cloud_spanner::client::Error;
 //! use google_cloud_spanner::client::Client;
-//! use google_cloud_spanner::reader::AsyncIterator;
 //!
 //! async fn run(client: Client) ->Result<(Option<Timestamp>,()), Error> {
 //!     client.read_write_transaction(|tx| {
@@ -585,7 +581,6 @@
 //! use google_cloud_spanner::value::Timestamp;
 //! use google_cloud_spanner::client::Error;
 //! use google_cloud_spanner::client::Client;
-//! use google_cloud_spanner::reader::AsyncIterator;
 //! use google_cloud_spanner::transaction_rw::ReadWriteTransaction;
 //! use google_cloud_googleapis::spanner::v1::execute_batch_dml_request::Statement;
 //! use google_cloud_spanner::retry::TransactionRetry;

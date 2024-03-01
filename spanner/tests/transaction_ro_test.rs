@@ -7,7 +7,6 @@ use time::{Duration, OffsetDateTime};
 
 use common::*;
 use google_cloud_spanner::key::Key;
-use google_cloud_spanner::reader::AsyncIterator;
 use google_cloud_spanner::row::Row;
 use google_cloud_spanner::statement::Statement;
 use google_cloud_spanner::transaction_ro::ReadOnlyTransaction;

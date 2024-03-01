@@ -15,7 +15,6 @@
 //! use time::OffsetDateTime;
 //! use google_cloud_spanner::client::{Client,Error};
 //! use google_cloud_spanner::mutation::insert_struct;
-//! use google_cloud_spanner::reader::AsyncIterator;
 //! use google_cloud_spanner::statement::Statement;
 //! use google_cloud_spanner_derive::Table;
 //!
@@ -125,7 +124,6 @@
 //!
 //!```
 //! use google_cloud_spanner::transaction::Transaction;
-//! use google_cloud_spanner::reader::AsyncIterator;
 //! use google_cloud_spanner::client::{Client, Error};
 //! use google_cloud_spanner::statement::Statement;
 //! use google_cloud_spanner_derive::{Table, Query};

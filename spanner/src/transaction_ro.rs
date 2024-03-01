@@ -276,8 +276,8 @@ impl BatchReadOnlyTransaction {
         &mut self,
         partition: Partition<T>,
         option: Option<CallOptions>,
-    ) -> Result<RowIterator<'_>, Status> {
+    ) -> Result<RowIterator<'_, T>, Status> {
         let session = self.as_mut_session();
-        RowIterator::new(session, Box::new(partition.reader), option).await
+        RowIterator::new(session, partition.reader, option).await
     }
 }
