@@ -234,7 +234,6 @@ impl Client {
     /// use google_cloud_spanner::client::{Client, Error};
     /// use google_cloud_spanner::statement::Statement;
     /// use google_cloud_spanner::key::Key;
-    /// use google_cloud_spanner::reader::AsyncIterator;
     ///
     /// async fn run(client: Client) -> Result<(), Error>{
     ///     let mut tx = client.read_only_transaction().await?;
@@ -461,7 +460,6 @@ impl Client {
     /// use google_cloud_spanner::value::Timestamp;
     /// use google_cloud_spanner::client::Error;
     /// use google_cloud_spanner::client::Client;
-    /// use google_cloud_spanner::reader::AsyncIterator;
     ///
     /// #[tokio::main]
     /// async fn run(client: Client) ->  Result<(Option<Timestamp>,()), Error>{
@@ -547,7 +545,6 @@ impl Client {
     /// use google_cloud_spanner::value::Timestamp;
     /// use google_cloud_spanner::client::Error;
     /// use google_cloud_spanner::client::Client;
-    /// use google_cloud_spanner::reader::AsyncIterator;
     /// use google_cloud_spanner::transaction_rw::ReadWriteTransaction;
     /// use google_cloud_googleapis::spanner::v1::execute_batch_dml_request::Statement;
     /// use google_cloud_spanner::retry::TransactionRetry;

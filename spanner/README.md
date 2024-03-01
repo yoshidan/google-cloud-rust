@@ -23,7 +23,6 @@ Create `Client` and call transaction API same as [Google Cloud Go](https://githu
  use google_cloud_spanner::client::Client;
  use google_cloud_spanner::mutation::insert;
  use google_cloud_spanner::statement::Statement;
- use google_cloud_spanner::reader::AsyncIterator;
  use google_cloud_spanner::value::CommitTimestamp;
  use google_cloud_spanner::client::Error;
 
