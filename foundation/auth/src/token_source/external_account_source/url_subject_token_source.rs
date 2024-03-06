@@ -39,19 +39,19 @@ impl UrlSubjectTokenSource {
         }
 
         let body = response.text_with_charset("utf-8").await?;
-        let limit = body.chars().take(1 << 20).collect::<String>(); // Limiting the response body to 1MB
+        let body = body.chars().take(1 << 20).collect::<String>(); // Limiting the response body to 1MB
 
         let format_type = self.format.tp.as_str();
         match format_type {
             "json" => {
-                let data: Value = serde_json::from_str(&limit).map_err(Error::JsonError)?;
+                let data: Value = serde_json::from_str(&body).map_err(Error::JsonError)?;
                 if let Some(token) = data[&self.format.subject_token_field_name].as_str() {
                     Ok(token.to_string())
                 } else {
                     Err(Error::MissingSubjectTokenFieldName)
                 }
             }
-            "text" | "" => Ok(limit),
+            "text" | "" => Ok(body),
             _ => Err(Error::UnsupportedFormatType),
         }
     }
