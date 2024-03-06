@@ -15,6 +15,7 @@ use crate::token_source::{default_http_client, InternalToken, TokenSource};
 mod aws_subject_token_source;
 pub mod error;
 mod subject_token_source;
+mod url_subject_token_source;
 
 pub struct ExternalAccountTokenSource {
     source: CredentialSource,
@@ -95,16 +96,19 @@ impl TokenSource for ExternalAccountTokenSource {
 async fn subject_token_source(
     audience: Option<String>,
     source: CredentialSource,
-) -> Result<impl SubjectTokenSource, Error> {
+) -> Result<Box<dyn SubjectTokenSource>, Error> {
     let environment_id = &source.environment_id.unwrap_or_empty();
     if environment_id.len() > 3 && environment_id.starts_with("aws") {
         if environment_id != "aws1" {
             return Err(Error::UnsupportedAWSVersion(environment_id.clone()));
         }
         let ts = aws_subject_token_source::AWSSubjectTokenSource::new(audience, source).await?;
-        Ok(ts)
+        Ok(Box::new(ts))
+    } else if let Some(_) = source.url {
+        let ts = url_subject_token_source::UrlSubjectTokenSource::new(source).await?;
+        Ok(Box::new(ts))
     } else {
-        //TODO support file, url and executable
+        // TODO: support file and executable type
         Err(Error::UnsupportedSubjectTokenSource)
     }
 }
