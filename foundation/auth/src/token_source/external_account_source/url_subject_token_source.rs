@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use reqwest::Client;
 use serde_json::Value;
 use std::collections::HashMap;
 use url::Url;
@@ -26,7 +25,7 @@ impl UrlSubjectTokenSource {
     }
 
     async fn create_subject_token(&self) -> Result<String, Error> {
-        let client = Client::new();
+        let client = default_http_client();
         let mut request = client.get(self.url.clone());
 
         for (key, val) in &self.headers {
@@ -43,7 +42,6 @@ impl UrlSubjectTokenSource {
         let limit = body.chars().take(1 << 20).collect::<String>(); // Limiting the response body to 1MB
 
         let format_type = self.format.tp.as_str();
-
         match format_type {
             "json" => {
                 let data: Value = serde_json::from_str(&limit).map_err(Error::JsonError)?;
