@@ -213,7 +213,7 @@ where
         })
     }
 
-    pub(crate) fn set_call_options(&mut self, option: CallOptions) {
+    pub fn set_call_options(&mut self, option: CallOptions) {
         self.reader_option = Some(option);
     }
 
