@@ -83,7 +83,7 @@ pub struct SubscriptionConfigToUpdate {
 pub struct SubscribeConfig {
     enable_multiple_subscriber: bool,
     channel_capacity: Option<usize>,
-    subscriber_config: SubscriberConfig,
+    subscriber_config: Option<SubscriberConfig>,
 }
 
 impl SubscribeConfig {
@@ -92,7 +92,7 @@ impl SubscribeConfig {
         self
     }
     pub fn with_subscriber_config(mut self, v: SubscriberConfig) -> Self {
-        self.subscriber_config = v;
+        self.subscriber_config = Some(v);
         self
     }
     pub fn with_channel_capacity(mut self, v: usize) -> Self {
@@ -105,14 +105,14 @@ impl SubscribeConfig {
 pub struct ReceiveConfig {
     pub worker_count: usize,
     pub channel_capacity: Option<usize>,
-    pub subscriber_config: SubscriberConfig,
+    pub subscriber_config: Option<SubscriberConfig>,
 }
 
 impl Default for ReceiveConfig {
     fn default() -> Self {
         Self {
             worker_count: 10,
-            subscriber_config: SubscriberConfig::default(),
+            subscriber_config: None,
             channel_capacity: None,
         }
     }
@@ -385,6 +385,7 @@ impl Subscription {
         let opt = opt.unwrap_or_default();
         let (tx, rx) = create_channel(opt.channel_capacity);
         let cancel = CancellationToken::new();
+        let sub_opt = self.unwrap_subscribe_config(opt.subscriber_config).await?;
 
         // spawn a separate subscriber task for each connection in the pool
         let subscribers = if opt.enable_multiple_subscriber {
@@ -398,7 +399,7 @@ impl Subscription {
                 self.fqsn.clone(),
                 self.subc.clone(),
                 tx.clone(),
-                Some(opt.subscriber_config.clone()),
+                sub_opt.clone(),
             );
         }
 
@@ -420,9 +421,10 @@ impl Subscription {
         let op = config.unwrap_or_default();
         let mut receivers = Vec::with_capacity(op.worker_count);
         let mut senders = Vec::with_capacity(receivers.len());
+        let sub_opt = self.unwrap_subscribe_config(op.subscriber_config).await?;
 
         if self
-            .config(op.subscriber_config.retry_setting.clone())
+            .config(sub_opt.retry_setting.clone())
             .await?
             .1
             .enable_message_ordering
@@ -444,13 +446,7 @@ impl Subscription {
         let subscribers: Vec<Subscriber> = senders
             .into_iter()
             .map(|queue| {
-                Subscriber::start(
-                    cancel.clone(),
-                    self.fqsn.clone(),
-                    self.subc.clone(),
-                    queue,
-                    Some(op.subscriber_config.clone()),
-                )
+                Subscriber::start(cancel.clone(), self.fqsn.clone(), self.subc.clone(), queue, sub_opt.clone())
             })
             .collect();
 
@@ -601,6 +597,21 @@ impl Subscription {
         };
         let _ = self.subc.delete_snapshot(req, retry).await?;
         Ok(())
+    }
+
+    async fn unwrap_subscribe_config(&self, cfg: Option<SubscriberConfig>) -> Result<SubscriberConfig, Status> {
+        if let Some(cfg) = cfg {
+            return Ok(cfg);
+        }
+        let cfg = self.config(None).await?;
+        let mut default_cfg = SubscriberConfig {
+            stream_ack_deadline_seconds: cfg.1.ack_deadline_seconds,
+            ..Default::default()
+        };
+        if cfg.1.enable_exactly_once_delivery {
+            default_cfg.max_outstanding_messages = 5;
+        }
+        Ok(default_cfg)
     }
 }
 

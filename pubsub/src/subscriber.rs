@@ -90,7 +90,21 @@ pub struct SubscriberConfig {
     /// ping interval for Bi Directional Streaming
     pub ping_interval: Duration,
     pub retry_setting: Option<RetrySetting>,
+    /// It is important for exactly_once_delivery
+    /// The ack deadline to use for the stream. This must be provided in
+    /// the first request on the stream, but it can also be updated on subsequent
+    /// requests from client to server. The minimum deadline you can specify is 10
+    /// seconds. The maximum deadline you can specify is 600 seconds (10 minutes).
     pub stream_ack_deadline_seconds: i32,
+    /// Flow control settings for the maximum number of outstanding messages. When
+    /// there are `max_outstanding_messages` or more currently sent to the
+    /// streaming pull client that have not yet been acked or nacked, the server
+    /// stops sending more messages. The sending of messages resumes once the
+    /// number of outstanding messages is less than this value. If the value is
+    /// <= 0, there is no limit to the number of outstanding messages. This
+    /// property can only be set on the initial StreamingPullRequest. If it is set
+    /// on a subsequent request, the stream will be aborted with status
+    /// `INVALID_ARGUMENT`.
     pub max_outstanding_messages: i64,
     pub max_outstanding_bytes: i64,
 }
@@ -101,7 +115,7 @@ impl Default for SubscriberConfig {
             ping_interval: std::time::Duration::from_secs(10),
             retry_setting: Some(default_retry_setting()),
             stream_ack_deadline_seconds: 60,
-            max_outstanding_messages: 1000,
+            max_outstanding_messages: 50,
             max_outstanding_bytes: 1000 * 1000 * 1000,
         }
     }
@@ -119,10 +133,8 @@ impl Subscriber {
         subscription: String,
         client: SubscriberClient,
         queue: async_channel::Sender<ReceivedMessage>,
-        opt: Option<SubscriberConfig>,
+        config: SubscriberConfig,
     ) -> Self {
-        let config = opt.unwrap_or_default();
-
         let (ping_sender, ping_receiver) = async_channel::unbounded();
 
         // ping request
