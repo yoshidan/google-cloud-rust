@@ -1,3 +1,4 @@
+use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
@@ -605,7 +606,7 @@ impl Subscription {
         }
         let cfg = self.config(None).await?;
         let mut default_cfg = SubscriberConfig {
-            stream_ack_deadline_seconds: cfg.1.ack_deadline_seconds,
+            stream_ack_deadline_seconds: max(min(cfg.1.ack_deadline_seconds, 600), 10),
             ..Default::default()
         };
         if cfg.1.enable_exactly_once_delivery {
