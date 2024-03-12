@@ -20,6 +20,9 @@ pub enum Error {
     #[error("Unsupported Subject Token Source")]
     UnsupportedSubjectTokenSource,
 
+    #[error("Unsupported Format Type")]
+    UnsupportedFormatType,
+
     #[error(transparent)]
     HttpError(#[from] reqwest::Error),
 
@@ -46,6 +49,15 @@ pub enum Error {
 
     #[error("Missing Subject Token Type")]
     MissingSubjectTokenType,
+
+    #[error("Missing Headers")]
+    MissingHeaders,
+
+    #[error("Missing Format")]
+    MissingFormat,
+
+    #[error("Missing Subject Token Field Name")]
+    MissingSubjectTokenFieldName,
 
     #[error(transparent)]
     InvalidHashLength(#[from] sha2::digest::InvalidLength),
