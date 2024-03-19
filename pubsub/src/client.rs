@@ -325,10 +325,10 @@ mod tests {
         let config = ReceiveConfig {
             worker_count: 2,
             channel_capacity: None,
-            subscriber_config: SubscriberConfig {
+            subscriber_config: Some(SubscriberConfig {
                 ping_interval: Duration::from_secs(1),
                 ..Default::default()
-            },
+            }),
         };
         let cancel_receiver = cancellation_token.clone();
         let (s, mut r) = tokio::sync::mpsc::channel(100);
@@ -631,6 +631,8 @@ mod tests_in_gcp {
                     break;
                 }
                 let msg_id = &message.message.message_id;
+                // heavy task
+                tokio::time::sleep(Duration::from_secs(1)).await;
                 *msgs.entry(msg_id.clone()).or_insert(0) += 1;
                 message.ack().await.unwrap();
             }
@@ -638,7 +640,7 @@ mod tests_in_gcp {
             msgs
         });
 
-        tokio::time::sleep(Duration::from_secs(30)).await;
+        tokio::time::sleep(Duration::from_secs(60)).await;
 
         // check redelivered messages
         ctx.cancel();
