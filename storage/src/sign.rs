@@ -172,7 +172,7 @@ pub(crate) fn create_signed_buffer(
     opts: &SignedURLOptions,
 ) -> Result<(Vec<u8>, Url), SignedURLError> {
     validate_options(opts)?;
-    let start_time: OffsetDateTime = opts.start_time.unwrap_or_else(|| SystemTime::now()).into();
+    let start_time: OffsetDateTime = opts.start_time.unwrap_or_else(SystemTime::now).into();
 
     let headers = v4_sanitize_headers(&opts.headers);
     // create base url
