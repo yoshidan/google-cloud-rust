@@ -176,7 +176,7 @@ impl TokenSource for OAuth2ServiceAccountTokenSource {
         let iat = OffsetDateTime::now_utc();
         let exp = iat + time::Duration::hours(1);
 
-        let request_token = Claims {
+        let claims = Claims {
             iss: self.email.as_ref(),
             sub: self.sub.as_ref().map(|s| s.as_ref()),
             scope: Some(self.scopes.as_ref()),
@@ -184,8 +184,8 @@ impl TokenSource for OAuth2ServiceAccountTokenSource {
             exp: exp.unix_timestamp(),
             iat: iat.unix_timestamp(),
             private_claims: &self.private_claims,
-        }
-        .token(&self.pk, &self.pk_id)?;
+        };
+        let request_token = claims.token(&self.pk, &self.pk_id)?;
 
         let form = [
             ("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer"),
@@ -193,15 +193,23 @@ impl TokenSource for OAuth2ServiceAccountTokenSource {
         ];
 
         match self.use_id_token {
-            true => Ok(self
-                .client
-                .post(self.token_url.as_str())
-                .form(&form)
-                .send()
-                .await?
-                .json::<InternalIdToken>()
-                .await?
-                .to_token()?),
+            true => {
+                let audience = claims
+                    .private_claims
+                    .get("target_audience")
+                    .ok_or(Error::NoTargetAudienceFound)?
+                    .as_str()
+                    .ok_or(Error::NoTargetAudienceFound)?;
+                Ok(self
+                    .client
+                    .post(self.token_url.as_str())
+                    .form(&form)
+                    .send()
+                    .await?
+                    .json::<InternalIdToken>()
+                    .await?
+                    .to_token(audience)?)
+            }
             false => Ok(self
                 .client
                 .post(self.token_url.as_str())

@@ -48,4 +48,7 @@ pub enum Error {
 
     #[error("unexpected impersonation token response : status={0}, detail={1}")]
     UnexpectedImpersonateTokenResponse(u16, String),
+
+    #[error("No target_audience Found in the private claims")]
+    NoTargetAudienceFound,
 }

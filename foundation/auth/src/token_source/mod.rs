@@ -58,17 +58,18 @@ struct ExpClaim {
 }
 
 impl InternalIdToken {
-    fn to_token(&self) -> Result<Token, Error> {
+    fn to_token(&self, audience: &str) -> Result<Token, Error> {
         Ok(Token {
             access_token: self.id_token.clone(),
             token_type: "Bearer".into(),
-            expiry: time::OffsetDateTime::from_unix_timestamp(self.get_exp()?).ok(),
+            expiry: time::OffsetDateTime::from_unix_timestamp(self.get_exp(audience)?).ok(),
         })
     }
 
-    fn get_exp(&self) -> Result<i64, Error> {
+    fn get_exp(&self, audience: &str) -> Result<i64, Error> {
         let mut validation = jsonwebtoken::Validation::default();
         validation.insecure_disable_signature_validation();
+        validation.set_audience(&[audience]);
         let decoding_key = jsonwebtoken::DecodingKey::from_secret(b"");
         Ok(
             jsonwebtoken::decode::<ExpClaim>(self.id_token.as_str(), &decoding_key, &validation)?
