@@ -138,12 +138,6 @@ impl Deref for Client {
     }
 }
 
-impl Default for Client {
-    fn default() -> Self {
-        Self::new(ClientConfig::default())
-    }
-}
-
 impl Client {
     /// New client
     pub fn new(config: ClientConfig) -> Self {

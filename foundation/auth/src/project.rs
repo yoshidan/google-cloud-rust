@@ -105,7 +105,7 @@ pub async fn create_token_source_from_project(
 }
 
 /// create_token_source creates the token source
-/// use [DefaultTokenSourceProvider](crate::token::DefaultTokenSourceProvider) instead.
+/// use [DefaultTokenSourceProvider](crate::token::DefaultTokenSourceProvider) or impl [TokenSourceProvider](google_cloud_token::TokenSourceProvider) instead.
 #[deprecated(note = "Use DefaultTokenSourceProvider instead")]
 pub async fn create_token_source(config: Config<'_>) -> Result<Box<dyn TokenSource>, error::Error> {
     let project = project().await?;
