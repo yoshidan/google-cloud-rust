@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::ops::Deref;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use base64::prelude::*;
 use once_cell::sync::Lazy;
@@ -88,9 +88,14 @@ pub struct SignedURLOptions {
     /// Required.
     pub method: SignedURLMethod,
 
-    /// Expires is the expiration time on the signed URL. It must be
-    /// a datetime in the future. For SigningSchemeV4, the expiration may be no
-    /// more than seven days in the future.
+    /// StartTime is the time at which the signed URL starts being valid.
+    /// Defaults to the current time.
+    /// Optional.
+    pub start_time: Option<std::time::SystemTime>,
+
+    /// Expires is the duration of time, beginning at StartTime, within which
+    /// the signed URL is valid. For SigningSchemeV4, the duration may be no
+    /// more than 604800 seconds (7 days).
     /// Required.
     pub expires: std::time::Duration,
 
@@ -136,6 +141,7 @@ impl Default for SignedURLOptions {
     fn default() -> Self {
         Self {
             method: SignedURLMethod::GET,
+            start_time: None,
             expires: std::time::Duration::from_secs(600),
             content_type: None,
             headers: vec![],
@@ -165,8 +171,8 @@ pub(crate) fn create_signed_buffer(
     google_access_id: &str,
     opts: &SignedURLOptions,
 ) -> Result<(Vec<u8>, Url), SignedURLError> {
-    let now = OffsetDateTime::now_utc();
     validate_options(opts)?;
+    let start_time: OffsetDateTime = opts.start_time.unwrap_or_else(SystemTime::now).into();
 
     let headers = v4_sanitize_headers(&opts.headers);
     // create base url
@@ -199,10 +205,10 @@ pub(crate) fn create_signed_buffer(
         .set_time_precision(TimePrecision::Second { decimal_digits: None })
         .encode();
 
-    let timestamp = now.format(&Iso8601::<CONFIG>).unwrap();
+    let timestamp = start_time.format(&Iso8601::<CONFIG>).unwrap();
     let credential_scope = format!(
         "{}/auto/storage/goog4_request",
-        now.format(format_description!("[year][month][day]")).unwrap()
+        start_time.format(format_description!("[year][month][day]")).unwrap()
     );
 
     // append query parameters

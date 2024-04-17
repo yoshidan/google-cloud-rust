@@ -54,7 +54,7 @@ impl ClientConfig {
     pub async fn with_auth(mut self) -> Result<Self, google_cloud_auth::error::Error> {
         if let Environment::GoogleCloud(_) = self.environment {
             let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new(Self::auth_config()).await?;
-            self.project_id = ts.project_id.clone();
+            self.project_id = self.project_id.or(ts.project_id.clone());
             self.environment = Environment::GoogleCloud(Box::new(ts))
         }
         Ok(self)
@@ -70,7 +70,7 @@ impl ClientConfig {
                 Box::new(credentials),
             )
             .await?;
-            self.project_id = ts.project_id.clone();
+            self.project_id = self.project_id.or(ts.project_id.clone());
             self.environment = Environment::GoogleCloud(Box::new(ts))
         }
         Ok(self)
