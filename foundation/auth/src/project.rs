@@ -105,7 +105,7 @@ pub async fn create_token_source_from_project(
 }
 
 /// [Deprecated] create_token_source creates the token source
-/// use `google_cloud_auth:bridge::DefaultTokenSourceProvider` instead.
+/// use `google_cloud_auth::token::DefaultTokenSourceProvider` or impl `google_cloud_token::TokenSourceProvider` instead.
 pub async fn create_token_source(config: Config<'_>) -> Result<Box<dyn TokenSource>, error::Error> {
     let project = project().await?;
     create_token_source_from_project(&project, config).await
