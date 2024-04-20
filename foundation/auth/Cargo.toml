@@ -11,7 +11,7 @@ description = "Google Cloud Platform server application authentication library."
 
 [dependencies]
 tracing = "0.1"
-reqwest = { version = "0.11", features = ["json"], default-features = false }
+reqwest = { version = "0.12.4", features = ["json"], default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
 jsonwebtoken = { version = "9.2.0" }
