@@ -43,4 +43,5 @@ temp-env = { version = "0.3.6", features = ["async_closure"] }
 default = ["default-tls"]
 default-tls = ["reqwest/default-tls"]
 rustls-tls = ["reqwest/rustls-tls"]
+hickory-dns = ["reqwest/hickory-dns"]
 external-account = ["sha2", "path-clean", "url", "percent-encoding", "hmac", "hex"]

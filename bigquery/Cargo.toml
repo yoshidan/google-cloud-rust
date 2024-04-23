@@ -45,6 +45,7 @@ base64-serde = "0.7"
 default = ["default-tls", "auth"]
 default-tls = ["reqwest/default-tls","google-cloud-auth?/default-tls"]
 rustls-tls = ["reqwest/rustls-tls","google-cloud-auth?/rustls-tls"]
+hickory-dns = ["reqwest/hickory-dns", "google-cloud-auth?/hickory-dns"]
 trace = []
 auth = ["google-cloud-auth"]
 external-account = ["google-cloud-auth?/external-account"]
