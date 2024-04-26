@@ -47,7 +47,7 @@ impl ComputeIdentitySource {
 
         Ok(ComputeIdentitySource {
             token_url: format!(
-                "http://{}/computeMetadata/v1/instance/service-accounts/default/identity?audience={}",
+                "http://{}/computeMetadata/v1/instance/service-accounts/default/identity?audience={}&format=full",
                 host,
                 encode(audience)
             ),
