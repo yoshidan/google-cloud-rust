@@ -42,11 +42,12 @@ impl ComputeIdentitySource {
         // Only used to extract the expiry without checking the signature.
         let mut validation = Validation::default();
         validation.insecure_disable_signature_validation();
+        validation.set_audience(&[audience]);
         let decoding_key = jsonwebtoken::DecodingKey::from_secret(b"");
 
         Ok(ComputeIdentitySource {
             token_url: format!(
-                "http://{}/computeMetadata/v1/instance/service-accounts/default/identity?audience={}",
+                "http://{}/computeMetadata/v1/instance/service-accounts/default/identity?audience={}&format=full",
                 host,
                 encode(audience)
             ),
