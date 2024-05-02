@@ -110,7 +110,8 @@ mod tests {
     use serial_test::serial;
 
     use google_cloud_googleapis::cloud::kms::v1::{
-        CreateKeyRingRequest, GenerateRandomBytesRequest, GetKeyRingRequest, ListKeyRingsRequest, ProtectionLevel,
+        CreateKeyRingRequest, DestroyCryptoKeyVersionRequest, GenerateRandomBytesRequest, GetKeyRingRequest,
+        ListKeyRingsRequest, ProtectionLevel,
     };
 
     use crate::client::{Client, ClientConfig};
@@ -163,6 +164,17 @@ mod tests {
         };
         let list_result = client.list_key_rings(list_request, None).await.unwrap();
         assert!(!list_result.key_rings.is_empty());
+
+        // delete
+        client
+            .destroy_crypto_key_version(
+                DestroyCryptoKeyVersionRequest {
+                    name: created_key_ring.name.to_string(),
+                },
+                None,
+            )
+            .await
+            .unwrap();
     }
 
     #[tokio::test]

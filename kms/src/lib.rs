@@ -110,6 +110,6 @@
 //!         }
 //!         Err(err) => panic!("err: {:?}", err),
 //!     }
-//!
+//!}
 pub mod client;
 pub mod grpc;
