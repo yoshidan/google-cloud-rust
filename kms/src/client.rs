@@ -105,13 +105,11 @@ impl DerefMut for Client {
 
 #[cfg(test)]
 mod tests {
-    use std::time::{SystemTime, UNIX_EPOCH};
 
     use serial_test::serial;
 
     use google_cloud_googleapis::cloud::kms::v1::{
-        CreateKeyRingRequest, DestroyCryptoKeyVersionRequest, GenerateRandomBytesRequest, GetKeyRingRequest,
-        ListKeyRingsRequest, ProtectionLevel,
+        CreateKeyRingRequest, GenerateRandomBytesRequest, GetKeyRingRequest, ListKeyRingsRequest, ProtectionLevel,
     };
 
     use crate::client::{Client, ClientConfig};
@@ -132,8 +130,7 @@ mod tests {
     #[serial]
     async fn test_key_ring() {
         let (mut client, project) = new_client().await;
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
-        let key_ring_id = format!("gcpkmskr{now:}");
+        let key_ring_id = "gcpkmskr1714619260".to_string();
 
         // create
         let create_request = CreateKeyRingRequest {
@@ -141,16 +138,17 @@ mod tests {
             key_ring_id: key_ring_id.clone(),
             key_ring: None,
         };
+        /* KeyRing can not be deleted.
         let created_key_ring = client.create_key_ring(create_request.clone(), None).await.unwrap();
         assert_eq!(
             format!("{}/keyRings/{}", create_request.parent, create_request.key_ring_id),
             created_key_ring.name
         );
+         */
 
+        let key_ring = format!("{}/keyRings/{}", create_request.parent, create_request.key_ring_id);
         // get
-        let get_request = GetKeyRingRequest {
-            name: created_key_ring.name.clone(),
-        };
+        let get_request = GetKeyRingRequest { name: key_ring };
         let get_key_ring = client.get_key_ring(get_request.clone(), None).await.unwrap();
         assert_eq!(get_key_ring.name, get_request.name);
 
@@ -164,17 +162,6 @@ mod tests {
         };
         let list_result = client.list_key_rings(list_request, None).await.unwrap();
         assert!(!list_result.key_rings.is_empty());
-
-        // delete
-        client
-            .destroy_crypto_key_version(
-                DestroyCryptoKeyVersionRequest {
-                    name: created_key_ring.name.to_string(),
-                },
-                None,
-            )
-            .await
-            .unwrap();
     }
 
     #[tokio::test]
