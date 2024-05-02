@@ -17,7 +17,7 @@ google-cloud-googleapis = { version="0.12.0", path = "../googleapis", features=[
 google-cloud-gax = { version = "0.17.0", path = "../foundation/gax"}
 thiserror = "1.0"
 tracing = "0.1"
-reqwest = { version = "0.11", features = ["json", "stream", "multipart"], default-features = false }
+reqwest = { version = "0.12.4", features = ["json", "stream", "multipart", "charset"], default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version="1.32", features=["macros"] }
@@ -27,7 +27,7 @@ base64 = "0.21"
 bigdecimal = { version="0.4", features=["serde"] }
 num-bigint = "0.4"
 backon = "0.4"
-reqwest-middleware = "0.2"
+reqwest-middleware = { version = "0.3", features = ["json", "multipart"] }
 anyhow = "1.0"
 
 google-cloud-auth = { optional = true, version = "0.14", path="../foundation/auth", default-features=false }
