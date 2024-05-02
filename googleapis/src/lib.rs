@@ -75,4 +75,11 @@ pub mod cloud {
             pub mod v1;
         }
     }
+
+    #[cfg(feature = "kms")]
+    #[path = ""]
+    pub mod kms {
+        #[path = "google.cloud.kms.v1.rs"]
+        pub mod v1;
+    }
 }

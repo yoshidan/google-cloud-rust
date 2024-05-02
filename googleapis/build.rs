@@ -38,6 +38,9 @@ fn generate(config: prost_build::Config, out_dir: impl AsRef<std::path::Path>) {
                 "googleapis/google/devtools/artifactregistry/v1/version.proto",
                 "googleapis/google/spanner/admin/database/v1/spanner_database_admin.proto",
                 "googleapis/google/spanner/admin/instance/v1/spanner_instance_admin.proto",
+                "googleapis/google/cloud/kms/v1/service.proto",
+                "googleapis/google/cloud/kms/v1/resources.proto",
+                "googleapis/google/cloud/kms/v1/ekm_service.proto",
             ],
             &["googleapis"], // specify the root location to search proto dependencies
         )

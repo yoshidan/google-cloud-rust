@@ -13,4 +13,5 @@ members = [
     "bigquery",
     "spanner-derive",
     "artifact-registry",
+    "kms"
 ]
