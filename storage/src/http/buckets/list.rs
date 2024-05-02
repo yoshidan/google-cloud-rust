@@ -20,7 +20,7 @@ pub struct ListBucketsRequest {
     /// Set of properties to return. Defaults to `NO_ACL`.
     pub projection: Option<Projection>,
     /// A glob pattern used to filter results (for example, foo*bar).
-    pub match_glob: Option<String>
+    pub match_glob: Option<String>,
 }
 
 /// The result of a call to Buckets.ListBuckets

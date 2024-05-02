@@ -1440,6 +1440,7 @@ pub(crate) mod test {
                 page_token: None,
                 prefix: Some(bucket_name(&project, "object")),
                 projection: None,
+                match_glob: None,
             })
             .await
             .unwrap();
