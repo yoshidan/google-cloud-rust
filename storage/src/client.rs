@@ -96,11 +96,11 @@ impl ClientConfig {
         match &ts.source_credentials {
             // Credential file is used.
             Some(cred) => {
-                self.project_id = cred.project_id.clone();
+                self.project_id.clone_from(&cred.project_id);
                 if let Some(pk) = &cred.private_key {
                     self.default_sign_by = Some(PrivateKey(pk.clone().into_bytes()));
                 }
-                self.default_google_access_id = cred.client_email.clone();
+                self.default_google_access_id.clone_from(&cred.client_email);
             }
             // On Google Cloud
             None => {
