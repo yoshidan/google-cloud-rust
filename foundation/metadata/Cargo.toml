@@ -12,7 +12,7 @@ description = "Google Cloud Platform rust client."
 [dependencies]
 tokio = { version = "1.32", features = ["sync", "net", "parking_lot"] }
 # this crate uses http only
-reqwest = { version = "0.11" , default-features = false }
+reqwest = { version = "0.12.4" , default-features = false }
 thiserror = "1.0"
 
 [dev-dependencies]
