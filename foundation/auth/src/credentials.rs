@@ -138,7 +138,7 @@ impl CredentialsFile {
             }
         }?;
 
-        let credentials_json = fs::read(path).await?;
+        let credentials_json = fs::read(path).await.map_err(Error::CredentialsIOError)?;
 
         Ok(credentials_json)
     }
