@@ -1,21 +1,21 @@
 use std::ops::{Deref, DerefMut};
-use std::time::Duration;
+use std::sync::Arc;
 
 #[cfg(feature = "auth")]
 pub use google_cloud_auth;
-use google_cloud_gax::conn::{ConnectionManager, ConnectionOptions, Environment, Error};
+use google_cloud_gax::conn::{ConnectionOptions, Environment, Error};
 use google_cloud_googleapis::cloud::kms::v1::key_management_service_client::KeyManagementServiceClient;
 use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
 
+use crate::grpc::apiv1::conn_pool::{ConnectionManager, KMS, SCOPES};
 use crate::grpc::apiv1::kms_client::Client as KmsGrpcClient;
-use crate::grpc::apiv1::{AUDIENCE, KMS, SCOPES};
 
 #[derive(Debug)]
 pub struct ClientConfig {
-    pub kms_endpoint: String,
+    pub endpoint: String,
     pub token_source_provider: Box<dyn TokenSourceProvider>,
-    pub timeout: Option<Duration>,
-    pub connect_timeout: Option<Duration>,
+    pub pool_size: Option<usize>,
+    pub connection_option: ConnectionOptions,
 }
 
 #[cfg(feature = "auth")]
@@ -54,10 +54,10 @@ impl ClientConfig {
 impl Default for ClientConfig {
     fn default() -> Self {
         Self {
-            kms_endpoint: KMS.to_string(),
+            endpoint: KMS.to_string(),
             token_source_provider: Box::new(NopeTokenSourceProvider {}),
-            timeout: Some(Duration::from_secs(30)),
-            connect_timeout: Some(Duration::from_secs(30)),
+            pool_size: Some(1),
+            connection_option: ConnectionOptions::default(),
         }
     }
 }
@@ -69,22 +69,16 @@ pub struct Client {
 
 impl Client {
     pub async fn new(config: ClientConfig) -> Result<Self, Error> {
-        let conn_options = ConnectionOptions {
-            timeout: config.timeout,
-            connect_timeout: config.connect_timeout,
-        };
-        let conn_pool = ConnectionManager::new(
-            1,
-            config.kms_endpoint,
-            AUDIENCE,
+        let pool_size = config.pool_size.unwrap_or_default();
+        let cm = ConnectionManager::new(
+            pool_size,
+            config.endpoint.as_str(),
             &Environment::GoogleCloud(config.token_source_provider),
-            &conn_options,
+            &config.connection_option,
         )
         .await?;
-        let conn = conn_pool.conn();
-
         Ok(Self {
-            kms_client: KmsGrpcClient::new(KeyManagementServiceClient::new(conn)),
+            kms_client: KmsGrpcClient::new(Arc::new(cm)),
         })
     }
 }
@@ -94,12 +88,6 @@ impl Deref for Client {
 
     fn deref(&self) -> &Self::Target {
         &self.kms_client
-    }
-}
-
-impl DerefMut for Client {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.kms_client
     }
 }
 
@@ -155,13 +143,25 @@ mod tests {
         // list
         let list_request = ListKeyRingsRequest {
             parent: create_request.parent.to_string(),
-            page_size: 0,
+            page_size: 1,
             page_token: "".to_string(),
             filter: "".to_string(),
             order_by: "".to_string(),
         };
         let list_result = client.list_key_rings(list_request, None).await.unwrap();
-        assert!(!list_result.key_rings.is_empty());
+        assert_eq!(1, list_result.key_rings.len());
+
+        let list_request = ListKeyRingsRequest {
+            parent: create_request.parent.to_string(),
+            page_size: 1,
+            page_token: list_result.next_page_token.to_string(),
+            filter: "".to_string(),
+            order_by: "".to_string(),
+        };
+        let list_result2 = client.list_key_rings(list_request, None).await.unwrap();
+        assert_eq!(1, list_result2.key_rings.len());
+
+        assert_ne!(list_result.key_rings[0].name, list_result2.key_rings[0].name);
     }
 
     #[tokio::test]
