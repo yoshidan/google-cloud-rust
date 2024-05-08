@@ -1,10 +1,10 @@
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 use std::sync::Arc;
 
 #[cfg(feature = "auth")]
 pub use google_cloud_auth;
 use google_cloud_gax::conn::{ConnectionOptions, Environment, Error};
-use google_cloud_googleapis::cloud::kms::v1::key_management_service_client::KeyManagementServiceClient;
+
 use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
 
 use crate::grpc::apiv1::conn_pool::{ConnectionManager, KMS, SCOPES};
@@ -98,7 +98,7 @@ mod tests {
 
     use google_cloud_googleapis::cloud::kms::v1::{
         AsymmetricSignRequest, CreateKeyRingRequest, DecryptRequest, EncryptRequest, GenerateRandomBytesRequest,
-        GetKeyRingRequest, ListKeyRingsRequest, ProtectionLevel,
+        GetKeyRingRequest, GetPublicKeyRequest, ListKeyRingsRequest, MacSignRequest, MacVerifyRequest, ProtectionLevel,
     };
 
     use crate::client::{Client, ClientConfig};
@@ -118,7 +118,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_key_ring() {
-        let (mut client, project) = new_client().await;
+        let (client, project) = new_client().await;
         let key_ring_id = "gcpkmskr1714619260".to_string();
 
         // create
@@ -168,7 +168,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_generate_random_bytes() {
-        let (mut client, project) = new_client().await;
+        let (client, project) = new_client().await;
 
         // create
         let create_request = GenerateRandomBytesRequest {
@@ -211,6 +211,16 @@ mod tests {
         let signature = client.asymmetric_sign(request.clone(), None).await.unwrap();
         assert!(!signature.signature.is_empty());
     }
+    #[tokio::test]
+    #[serial]
+    async fn test_get_pubkey() {
+        let (client, project) = new_client().await;
+        let request = GetPublicKeyRequest{
+            name: format!("projects/{project}/locations/asia-northeast1/keyRings/gcr_test/cryptoKeys/eth-sign/cryptoKeyVersions/1"),
+        };
+        let pubkey = client.get_public_key(request.clone(), None).await.unwrap();
+        assert!(!pubkey.pem.is_empty());
+    }
 
     #[tokio::test]
     #[serial]
@@ -226,7 +236,7 @@ mod tests {
             plaintext_crc32c: None,
             additional_authenticated_data_crc32c: None,
         };
-        let encrypted = client.encrypt(request.clone(), None).await.unwrap();
+        let encrypted = client.encrypt(request, None).await.unwrap();
 
         let request = DecryptRequest {
             name: key,
@@ -237,5 +247,32 @@ mod tests {
         };
         let raw = client.decrypt(request.clone(), None).await.unwrap();
         assert_eq!(data.to_vec(), raw.plaintext);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_mac_sign_verify() {
+        let (client, project) = new_client().await;
+
+        let key = format!(
+            "projects/{project}/locations/asia-northeast1/keyRings/gcr_test/cryptoKeys/mac-test/cryptoKeyVersions/1"
+        );
+        let data = [1, 2, 3, 4, 5];
+        let request = MacSignRequest {
+            name: key.clone(),
+            data: data.to_vec(),
+            data_crc32c: None,
+        };
+        let signature = client.mac_sign(request, None).await.unwrap();
+
+        let request = MacVerifyRequest {
+            name: key,
+            data: data.to_vec(),
+            data_crc32c: None,
+            mac: signature.mac,
+            mac_crc32c: signature.mac_crc32c,
+        };
+        let raw = client.mac_verify(request, None).await.unwrap();
+        assert!(raw.success);
     }
 }

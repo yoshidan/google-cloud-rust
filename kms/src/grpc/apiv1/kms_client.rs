@@ -2,11 +2,11 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::grpc::apiv1::conn_pool::ConnectionManager;
-use google_cloud_gax::conn::Channel;
+
 use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::{Code, Status};
-use google_cloud_gax::retry::{invoke, invoke_fn, RetrySetting};
-use google_cloud_googleapis::cloud::kms::v1::key_management_service_client::KeyManagementServiceClient;
+use google_cloud_gax::retry::{invoke, RetrySetting};
+
 use google_cloud_googleapis::cloud::kms::v1::CreateCryptoKeyVersionRequest;
 use google_cloud_googleapis::cloud::kms::v1::CreateKeyRingRequest;
 use google_cloud_googleapis::cloud::kms::v1::CryptoKey;
@@ -25,9 +25,9 @@ use google_cloud_googleapis::cloud::kms::v1::ListCryptoKeysResponse;
 use google_cloud_googleapis::cloud::kms::v1::ListKeyRingsRequest;
 use google_cloud_googleapis::cloud::kms::v1::ListKeyRingsResponse;
 use google_cloud_googleapis::cloud::kms::v1::{
-    AsymmetricDecryptRequest, AsymmetricDecryptResponse, AsymmetricSignRequest, AsymmetricSignResponse,
-    CreateCryptoKeyRequest, DecryptRequest, DecryptResponse, EncryptRequest, EncryptResponse, GetPublicKeyRequest,
-    MacSignRequest, MacSignResponse, MacVerifyRequest, MacVerifyResponse, PublicKey,
+    AsymmetricSignRequest, AsymmetricSignResponse, CreateCryptoKeyRequest, DecryptRequest, DecryptResponse,
+    EncryptRequest, EncryptResponse, GetPublicKeyRequest, MacSignRequest, MacSignResponse, MacVerifyRequest,
+    MacVerifyResponse, PublicKey,
 };
 
 fn default_setting() -> RetrySetting {
@@ -298,25 +298,6 @@ impl Client {
         let action = || async {
             let request = create_request(format!("name={}", req.name), req.clone());
             self.cm.conn().asymmetric_sign(request).await
-        };
-        invoke(Some(retry.unwrap_or_else(default_setting)), action)
-            .await
-            .map(|r| r.into_inner())
-    }
-
-    /// AsymmetricDecrypt
-    ///
-    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.AsymmetricDecrypt
-    ///
-    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn asymmetric_decrypt(
-        &self,
-        req: AsymmetricDecryptRequest,
-        retry: Option<RetrySetting>,
-    ) -> Result<AsymmetricDecryptResponse, Status> {
-        let action = || async {
-            let request = create_request(format!("name={}", req.name), req.clone());
-            self.cm.conn().asymmetric_decrypt(request).await
         };
         invoke(Some(retry.unwrap_or_else(default_setting)), action)
             .await
