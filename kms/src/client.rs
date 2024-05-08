@@ -97,7 +97,8 @@ mod tests {
     use serial_test::serial;
 
     use google_cloud_googleapis::cloud::kms::v1::{
-        CreateKeyRingRequest, GenerateRandomBytesRequest, GetKeyRingRequest, ListKeyRingsRequest, ProtectionLevel,
+        AsymmetricSignRequest, CreateKeyRingRequest, DecryptRequest, EncryptRequest, GenerateRandomBytesRequest,
+        GetKeyRingRequest, ListKeyRingsRequest, ProtectionLevel,
     };
 
     use crate::client::{Client, ClientConfig};
@@ -193,5 +194,48 @@ mod tests {
             "Data returned was all zeros: {:?}",
             random_bytes.data
         )
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_asymmetric_sign() {
+        let (client, project) = new_client().await;
+
+        let request = AsymmetricSignRequest {
+            name: format!("projects/{project}/locations/asia-northeast1/keyRings/gcr_test/cryptoKeys/eth-sign/cryptoKeyVersions/1"),
+            digest: None,
+            digest_crc32c: None,
+            data: vec![1,2,3,4,5],
+            data_crc32c: None,
+        };
+        let signature = client.asymmetric_sign(request.clone(), None).await.unwrap();
+        assert!(!signature.signature.is_empty());
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_encrypt_decrypt() {
+        let (client, project) = new_client().await;
+
+        let key = format!("projects/{project}/locations/asia-northeast1/keyRings/gcr_test/cryptoKeys/gcr_test");
+        let data = [1, 2, 3, 4, 5];
+        let request = EncryptRequest {
+            name: key.clone(),
+            plaintext: data.to_vec(),
+            additional_authenticated_data: vec![],
+            plaintext_crc32c: None,
+            additional_authenticated_data_crc32c: None,
+        };
+        let encrypted = client.encrypt(request.clone(), None).await.unwrap();
+
+        let request = DecryptRequest {
+            name: key,
+            ciphertext: encrypted.ciphertext.clone(),
+            additional_authenticated_data: vec![],
+            ciphertext_crc32c: None,
+            additional_authenticated_data_crc32c: None,
+        };
+        let raw = client.decrypt(request.clone(), None).await.unwrap();
+        assert_eq!(data.to_vec(), raw.plaintext);
     }
 }
