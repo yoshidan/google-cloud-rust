@@ -7,7 +7,6 @@ use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::{invoke, invoke_fn, RetrySetting};
 use google_cloud_googleapis::cloud::kms::v1::key_management_service_client::KeyManagementServiceClient;
-use google_cloud_googleapis::cloud::kms::v1::CreateCryptoKeyRequest;
 use google_cloud_googleapis::cloud::kms::v1::CreateCryptoKeyVersionRequest;
 use google_cloud_googleapis::cloud::kms::v1::CreateKeyRingRequest;
 use google_cloud_googleapis::cloud::kms::v1::CryptoKey;
@@ -25,6 +24,11 @@ use google_cloud_googleapis::cloud::kms::v1::ListCryptoKeysRequest;
 use google_cloud_googleapis::cloud::kms::v1::ListCryptoKeysResponse;
 use google_cloud_googleapis::cloud::kms::v1::ListKeyRingsRequest;
 use google_cloud_googleapis::cloud::kms::v1::ListKeyRingsResponse;
+use google_cloud_googleapis::cloud::kms::v1::{
+    AsymmetricDecryptRequest, AsymmetricDecryptResponse, AsymmetricSignRequest, AsymmetricSignResponse,
+    CreateCryptoKeyRequest, DecryptRequest, DecryptResponse, EncryptRequest, EncryptResponse, GetPublicKeyRequest,
+    MacSignRequest, MacSignResponse, MacVerifyRequest, MacVerifyResponse, PublicKey,
+};
 
 fn default_setting() -> RetrySetting {
     RetrySetting {
@@ -245,6 +249,127 @@ impl Client {
         let action = || async {
             let request = create_request(format!("parent={}", req.parent), req.clone());
             self.cm.conn().list_key_rings(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
+    }
+
+    /// Encrypt
+    ///
+    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.Encrypt
+    ///
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn encrypt(&self, req: EncryptRequest, retry: Option<RetrySetting>) -> Result<EncryptResponse, Status> {
+        let action = || async {
+            let request = create_request(format!("name={}", req.name), req.clone());
+            self.cm.conn().encrypt(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
+    }
+
+    /// Decrypt
+    ///
+    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.Decrypt
+    ///
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn decrypt(&self, req: DecryptRequest, retry: Option<RetrySetting>) -> Result<DecryptResponse, Status> {
+        let action = || async {
+            let request = create_request(format!("name={}", req.name), req.clone());
+            self.cm.conn().decrypt(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
+    }
+
+    /// AsymmetricSign
+    ///
+    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.AsymmetricSign
+    ///
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn asymmetric_sign(
+        &self,
+        req: AsymmetricSignRequest,
+        retry: Option<RetrySetting>,
+    ) -> Result<AsymmetricSignResponse, Status> {
+        let action = || async {
+            let request = create_request(format!("name={}", req.name), req.clone());
+            self.cm.conn().asymmetric_sign(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
+    }
+
+    /// AsymmetricDecrypt
+    ///
+    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.AsymmetricDecrypt
+    ///
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn asymmetric_decrypt(
+        &self,
+        req: AsymmetricDecryptRequest,
+        retry: Option<RetrySetting>,
+    ) -> Result<AsymmetricDecryptResponse, Status> {
+        let action = || async {
+            let request = create_request(format!("name={}", req.name), req.clone());
+            self.cm.conn().asymmetric_decrypt(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
+    }
+
+    /// MacSign
+    ///
+    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.MacSign
+    ///
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn mac_sign(&self, req: MacSignRequest, retry: Option<RetrySetting>) -> Result<MacSignResponse, Status> {
+        let action = || async {
+            let request = create_request(format!("name={}", req.name), req.clone());
+            self.cm.conn().mac_sign(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
+    }
+
+    /// MacVerify
+    ///
+    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.MacVerify
+    ///
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn mac_verify(
+        &self,
+        req: MacVerifyRequest,
+        retry: Option<RetrySetting>,
+    ) -> Result<MacVerifyResponse, Status> {
+        let action = || async {
+            let request = create_request(format!("name={}", req.name), req.clone());
+            self.cm.conn().mac_verify(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
+    }
+
+    /// PublicKey
+    ///
+    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.PublicKey
+    ///
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn get_public_key(
+        &self,
+        req: GetPublicKeyRequest,
+        retry: Option<RetrySetting>,
+    ) -> Result<PublicKey, Status> {
+        let action = || async {
+            let request = create_request(format!("name={}", req.name), req.clone());
+            self.cm.conn().get_public_key(request).await
         };
         invoke(Some(retry.unwrap_or_else(default_setting)), action)
             .await
