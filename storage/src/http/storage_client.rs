@@ -1108,7 +1108,13 @@ impl StorageClient {
     ///     // The chunk size should be multiple of 256KiB, unless it's the last chunk that completes the upload.
     ///     let chunk1 = ChunkSize::new(0, chunk1_size - 1, total_size.clone());
     ///     let status1 = uploader.upload_multiple_chunk(chunk1_data.clone(), &chunk1).await.unwrap();
-    ///     assert_eq!(status1, UploadStatus::ResumeIncomplete);
+    ///     assert_eq!(
+    ///         status1,
+    ///         UploadStatus::ResumeIncomplete(UploadedRange {
+    ///             first_byte: 0,
+    ///             last_byte: chunk1_data.len() as u64 - 1
+    ///         })
+    ///     );
     ///
     ///     let chunk2 = ChunkSize::new(chunk1_size, chunk1_size + chunk2_size - 1, total_size.clone());
     ///     let status2 = uploader.upload_multiple_chunk(chunk2_data.clone(), &chunk2).await.unwrap();
