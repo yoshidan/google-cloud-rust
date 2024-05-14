@@ -646,7 +646,6 @@ mod tests_in_gcp {
         // check redelivered messages
         ctx.cancel();
         pub_task.await.unwrap();
-        sub_task.await.unwrap();
         let received_msgs = sub_task.await.unwrap();
         assert!(!received_msgs.is_empty());
 
@@ -693,10 +692,12 @@ mod tests_in_gcp {
         // subscribe message
         let sub_task = tokio::spawn(async move {
             tracing::info!("start subscriber");
-            let config = SubscribeConfig::default().with_cancellable_by(ctx_sub);
-            let mut stream = subscription.subscribe(Some(config)).await.unwrap();
+            let mut stream = subscription.subscribe(None).await.unwrap();
             // None when the ctx_sub is cancelled
-            while let Some(message) = stream.next().await {
+            while let Some(message) = select! {
+                msg = stream.next() => msg,
+                _ = ctx_sub.cancelled() => None
+            } {
                 let msg_id = &message.message.message_id;
                 tokio::time::sleep(Duration::from_secs(3)).await;
                 message.ack().await.unwrap();
