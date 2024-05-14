@@ -87,6 +87,7 @@ pub struct SubscribeConfig {
     enable_multiple_subscriber: bool,
     channel_capacity: Option<usize>,
     subscriber_config: Option<SubscriberConfig>,
+    cancellation_token : Option<CancellationToken>
 }
 
 impl SubscribeConfig {
@@ -100,6 +101,10 @@ impl SubscribeConfig {
     }
     pub fn with_channel_capacity(mut self, v: usize) -> Self {
         self.channel_capacity = Some(v);
+        self
+    }
+    pub fn with_cancellable_by(mut self, v: CancellationToken) -> Self {
+        self.cancellation_token = Some(v);
         self
     }
 }
@@ -150,7 +155,7 @@ impl MessageStream {
         self.cancel.cancel();
 
         // gracefully shutdown getting message from the server.
-        for mut task in &self.tasks {
+        for task in &mut self.tasks {
             let _  = task.done().await;
         }
         // nack the messages remain
@@ -415,7 +420,7 @@ impl Subscription {
     pub async fn subscribe(&self, opt: Option<SubscribeConfig>) -> Result<MessageStream, Status> {
         let opt = opt.unwrap_or_default();
         let (tx, rx) = create_channel(opt.channel_capacity);
-        let cancel = CancellationToken::new();
+        let cancel = opt.cancellation_token.unwrap_or(CancellationToken::new());
         let sub_opt = self.unwrap_subscribe_config(opt.subscriber_config).await?;
 
         // spawn a separate subscriber task for each connection in the pool
@@ -1122,10 +1127,10 @@ mod tests {
                 tokio::time::sleep(Duration::from_millis(500)).await;
                 let _ = message.ack().await;
             }
-            iter.dispose().await;
         });
         publish(Some(msg)).await;
         tokio::time::sleep(Duration::from_secs(8)).await;
         assert_eq!(*checking.lock().unwrap(), msg_count);
     }
+
 }

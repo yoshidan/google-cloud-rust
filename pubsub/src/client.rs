@@ -458,7 +458,7 @@ mod tests {
 
 #[cfg(test)]
 mod tests_in_gcp {
-    use crate::client::{Client, ClientConfig};
+    use crate::client::{Client, ClientConfig, Error};
     use crate::publisher::PublisherConfig;
     use google_cloud_gax::conn::Environment;
     use google_cloud_gax::grpc::codegen::tokio_stream::StreamExt;
@@ -467,7 +467,9 @@ mod tests_in_gcp {
     use std::collections::HashMap;
 
     use std::time::Duration;
+    use tokio::select;
     use tokio_util::sync::CancellationToken;
+    use crate::subscription::{MessageStream, SubscribeConfig};
 
     fn make_msg(key: &str) -> PubsubMessage {
         PubsubMessage {
@@ -621,21 +623,20 @@ mod tests_in_gcp {
         });
 
         // subscribe message
-        let ctx_sub = ctx.clone();
+        let ctx_sub = ctx.child_token();
         let sub_task = tokio::spawn(async move {
             tracing::info!("start subscriber");
-            let mut stream = subscription.subscribe(None).await.unwrap();
+            let config = SubscribeConfig::default().with_cancellable_by(ctx_sub);
+            let mut stream = subscription.subscribe(Some(config)).await.unwrap();
             let mut msgs = HashMap::new();
             while let Some(message) = stream.next().await {
-                if ctx_sub.is_cancelled() {
-                    break;
-                }
                 let msg_id = &message.message.message_id;
                 // heavy task
                 tokio::time::sleep(Duration::from_secs(1)).await;
                 *msgs.entry(msg_id.clone()).or_insert(0) += 1;
                 message.ack().await.unwrap();
             }
+            stream.dispose().await.unwrap();
             tracing::info!("finish subscriber");
             msgs
         });
@@ -645,6 +646,7 @@ mod tests_in_gcp {
         // check redelivered messages
         ctx.cancel();
         pub_task.await.unwrap();
+        sub_task.await.unwrap();
         let received_msgs = sub_task.await.unwrap();
         assert!(!received_msgs.is_empty());
 
@@ -653,4 +655,61 @@ mod tests_in_gcp {
             assert_eq!(count, 1, "msg_id = {msg_id}, count = {count}");
         }
     }
+
+    #[tokio::test]
+    #[serial]
+    #[ignore]
+    async fn test_subscribe_with_graceful_shutdown() {
+        let client = Client::new(ClientConfig::default().with_auth().await.unwrap())
+            .await
+            .unwrap();
+
+        let subscription = client.subscription("graceful-test");
+
+        // publish message
+        let ctx = CancellationToken::new();
+
+        let ctx_pub = ctx.child_token();
+        let publisher = client.topic("graceful-test").new_publisher(None);
+        let pub_task = tokio::spawn(async move {
+            tracing::info!("start publisher");
+            loop {
+                if ctx_pub.is_cancelled() {
+                    tracing::info!("finish publisher");
+                    return;
+                }
+                publisher
+                    .publish_blocking(PubsubMessage {
+                        data: "msg".into(),
+                        ..Default::default()
+                    })
+                    .get()
+                    .await
+                    .unwrap();
+            }
+        });
+
+        let ctx_sub = ctx.child_token();
+        // subscribe message
+        let sub_task = tokio::spawn(async move {
+            tracing::info!("start subscriber");
+            let config = SubscribeConfig::default().with_cancellable_by(ctx_sub);
+            let mut stream = subscription.subscribe(Some(config)).await.unwrap();
+            // None when the ctx_sub is cancelled
+            while let Some(message) = stream.next().await {
+                let msg_id = &message.message.message_id;
+                tokio::time::sleep(Duration::from_secs(3)).await;
+                message.ack().await.unwrap();
+            }
+            tracing::info!("finish subscriber");
+            return stream.dispose().await;
+        });
+
+        tokio::time::sleep(Duration::from_secs(10)).await;
+
+        ctx.cancel();
+
+        assert!(sub_task.await.is_err());
+    }
+
 }
