@@ -1396,7 +1396,7 @@ pub(crate) mod test {
     use crate::http::objects::rewrite::RewriteObjectRequest;
     use crate::http::objects::upload::{Media, UploadObjectRequest, UploadType};
     use crate::http::objects::{Object, SourceObjects};
-    use crate::http::resumable_upload_client::{ChunkSize, UploadStatus};
+    use crate::http::resumable_upload_client::{ChunkSize, UploadStatus, UploadedRange};
     use crate::http::storage_client::{StorageClient, SCOPES};
 
     #[ctor::ctor]
@@ -2184,11 +2184,24 @@ pub(crate) mod test {
             .upload_multiple_chunk(chunk1_data.clone(), &chunk1)
             .await
             .unwrap();
-        assert_eq!(status1, UploadStatus::ResumeIncomplete);
+
+        assert_eq!(
+            status1,
+            UploadStatus::ResumeIncomplete(UploadedRange {
+                first_byte: 0,
+                last_byte: chunk1_data.len() as u64 - 1
+            })
+        );
 
         tracing::info!("check status chunk1");
         let status_check = uploader.status(total_size).await.unwrap();
-        assert_eq!(status_check, UploadStatus::ResumeIncomplete);
+        assert_eq!(
+            status_check,
+            UploadStatus::ResumeIncomplete(UploadedRange {
+                first_byte: 0,
+                last_byte: chunk1_data.len() as u64 - 1
+            })
+        );
 
         let chunk2 = ChunkSize::new(
             chunk1_data.len() as u64,
@@ -2287,14 +2300,28 @@ pub(crate) mod test {
             .upload_multiple_chunk(chunk1_data.clone(), &chunk1)
             .await
             .unwrap();
-        assert_eq!(status1, UploadStatus::ResumeIncomplete);
+
+        assert_eq!(
+            status1,
+            UploadStatus::ResumeIncomplete(UploadedRange {
+                first_byte: 0,
+                last_byte: chunk1_data.len() as u64 - 1
+            })
+        );
 
         tracing::info!("upload chunk1 resume {:?}", chunk1);
         let status1 = uploader
             .upload_multiple_chunk(chunk1_data.clone(), &chunk1)
             .await
             .unwrap();
-        assert_eq!(status1, UploadStatus::ResumeIncomplete);
+
+        assert_eq!(
+            status1,
+            UploadStatus::ResumeIncomplete(UploadedRange {
+                first_byte: 0,
+                last_byte: chunk1_data.len() as u64 - 1
+            })
+        );
 
         // total size is required for final chunk.
         let remaining = chunk1_data.len() as u64 + chunk2_data.len() as u64;
