@@ -1,10 +1,10 @@
+use futures_util::StreamExt;
 use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::{Duration, SystemTime};
-use futures_util::StreamExt;
 
 use prost_types::{DurationError, FieldMask};
 use tokio_util::sync::CancellationToken;
@@ -140,24 +140,23 @@ impl From<SeekTo> for Target {
 pub struct MessageStream {
     queue: async_channel::Receiver<ReceivedMessage>,
     cancel: CancellationToken,
-    tasks: Vec<Subscriber>
+    tasks: Vec<Subscriber>,
 }
 
 impl MessageStream {
-
     /// Gracefully shutdown MessageStream
     pub async fn dispose(mut self) -> Result<(), Error> {
         self.cancel.cancel();
 
         // gracefully shutdown getting message from the server.
-        for mut task in self.tasks {
-            let _  = task.done().await;
+        for task in &mut self.tasks {
+            let _ = task.done().await;
         }
         // nack the messages remain
         while let Ok(message) = self.queue.recv().await {
-           if let Err(err) = message.nack().await {
-               tracing::warn!("failed to nack message messageId={} {:?}", message.message.message_id, err);
-           }
+            if let Err(err) = message.nack().await {
+                tracing::warn!("failed to nack message messageId={} {:?}", message.message.message_id, err);
+            }
         }
 
         Ok(())
@@ -394,18 +393,22 @@ impl Subscription {
 
     /// subscribe creates a `Stream` of `ReceivedMessage`
     /// Terminates the underlying `Subscriber` when dropped.
-    /// ```no_test
-    /// use google_cloud_pubsub::client::Client;
+    /// ```
     /// use google_cloud_pubsub::subscription::Subscription;
-    /// use google_cloud_gax::grpc::Status;
     /// use futures_util::StreamExt;
+    /// use tokio::select;
+    /// use tokio_util::sync::CancellationToken;
+    /// use google_cloud_pubsub::client::Error;
     ///
-    /// async fn run(client: Client) -> Result<(), Status> {
-    ///     let subscription = client.subscription("test-subscription");
+    /// async fn run(subscription: Subscription, ct: CancellationToken) -> Result<(), Error> {
     ///     let mut iter = subscription.subscribe(None).await?;
-    ///     while let Some(message) = iter.next().await {
+    ///     while let Some(message) = select! {
+    ///         msg = iter.next() => msg,
+    ///         _ = ct.cancelled() => None
+    ///     } {
     ///         let _ = message.ack().await;
     ///     }
+    ///     iter.dispose().await?;
     ///     Ok(())
     ///  }
     /// ```
@@ -432,7 +435,11 @@ impl Subscription {
             ));
         }
 
-        Ok(MessageStream { queue: rx, cancel, tasks })
+        Ok(MessageStream {
+            queue: rx,
+            cancel,
+            tasks,
+        })
     }
 
     /// receive calls f with the outstanding messages from the subscription.
@@ -1124,5 +1131,4 @@ mod tests {
         tokio::time::sleep(Duration::from_secs(8)).await;
         assert_eq!(*checking.lock().unwrap(), msg_count);
     }
-
 }

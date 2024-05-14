@@ -466,10 +466,10 @@ mod tests_in_gcp {
     use serial_test::serial;
     use std::collections::HashMap;
 
+    use crate::subscription::{MessageStream, SubscribeConfig};
     use std::time::Duration;
     use tokio::select;
     use tokio_util::sync::CancellationToken;
-    use crate::subscription::{MessageStream, SubscribeConfig};
 
     fn make_msg(key: &str) -> PubsubMessage {
         PubsubMessage {
@@ -626,10 +626,12 @@ mod tests_in_gcp {
         let ctx_sub = ctx.child_token();
         let sub_task = tokio::spawn(async move {
             tracing::info!("start subscriber");
-            let config = SubscribeConfig::default().with_cancellable_by(ctx_sub);
-            let mut stream = subscription.subscribe(Some(config)).await.unwrap();
+            let mut stream = subscription.subscribe(None).await.unwrap();
             let mut msgs = HashMap::new();
-            while let Some(message) = stream.next().await {
+            while let Some(message) = select! {
+                msg = stream.next() => msg,
+                _ = ctx_sub.cancelled() => None
+            } {
                 let msg_id = &message.message.message_id;
                 // heavy task
                 tokio::time::sleep(Duration::from_secs(1)).await;
@@ -692,13 +694,13 @@ mod tests_in_gcp {
         // subscribe message
         let sub_task = tokio::spawn(async move {
             tracing::info!("start subscriber");
-            let mut stream = subscription.subscribe(None).await.unwrap();
+            let config = SubscribeConfig::default().with_enable_multiple_subscriber(true);
+            let mut stream = subscription.subscribe(Some(config)).await.unwrap();
             // None when the ctx_sub is cancelled
             while let Some(message) = select! {
                 msg = stream.next() => msg,
                 _ = ctx_sub.cancelled() => None
             } {
-                let msg_id = &message.message.message_id;
                 tokio::time::sleep(Duration::from_secs(3)).await;
                 message.ack().await.unwrap();
             }
@@ -710,7 +712,6 @@ mod tests_in_gcp {
 
         ctx.cancel();
 
-        assert!(sub_task.await.is_err());
+        assert!(!sub_task.await.is_err());
     }
-
 }
