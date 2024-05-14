@@ -1,11 +1,12 @@
+use std::sync::Arc;
 use std::time::Duration;
 
-use google_cloud_gax::conn::Channel;
+use crate::grpc::apiv1::conn_pool::ConnectionManager;
+
 use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::{Code, Status};
-use google_cloud_gax::retry::{invoke_fn, RetrySetting};
-use google_cloud_googleapis::cloud::kms::v1::key_management_service_client::KeyManagementServiceClient;
-use google_cloud_googleapis::cloud::kms::v1::CreateCryptoKeyRequest;
+use google_cloud_gax::retry::{invoke, RetrySetting};
+
 use google_cloud_googleapis::cloud::kms::v1::CreateCryptoKeyVersionRequest;
 use google_cloud_googleapis::cloud::kms::v1::CreateKeyRingRequest;
 use google_cloud_googleapis::cloud::kms::v1::CryptoKey;
@@ -23,6 +24,11 @@ use google_cloud_googleapis::cloud::kms::v1::ListCryptoKeysRequest;
 use google_cloud_googleapis::cloud::kms::v1::ListCryptoKeysResponse;
 use google_cloud_googleapis::cloud::kms::v1::ListKeyRingsRequest;
 use google_cloud_googleapis::cloud::kms::v1::ListKeyRingsResponse;
+use google_cloud_googleapis::cloud::kms::v1::{
+    AsymmetricSignRequest, AsymmetricSignResponse, CreateCryptoKeyRequest, DecryptRequest, DecryptResponse,
+    EncryptRequest, EncryptResponse, GetPublicKeyRequest, MacSignRequest, MacSignResponse, MacVerifyRequest,
+    MacVerifyResponse, PublicKey,
+};
 
 fn default_setting() -> RetrySetting {
     RetrySetting {
@@ -36,14 +42,12 @@ fn default_setting() -> RetrySetting {
 
 #[derive(Clone)]
 pub struct Client {
-    inner: KeyManagementServiceClient<Channel>,
+    cm: Arc<ConnectionManager>,
 }
 
 impl Client {
-    pub fn new(inner: KeyManagementServiceClient<Channel>) -> Self {
-        Self {
-            inner: inner.max_decoding_message_size(i32::MAX as usize),
-        }
+    pub fn new(cm: Arc<ConnectionManager>) -> Self {
+        Self { cm }
     }
 
     /// Generate random bytes
@@ -52,25 +56,17 @@ impl Client {
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn generate_random_bytes(
-        &mut self,
+        &self,
         req: GenerateRandomBytesRequest,
         retry: Option<RetrySetting>,
     ) -> Result<GenerateRandomBytesResponse, Status> {
-        let setting = retry.unwrap_or_else(default_setting);
-
-        invoke_fn(
-            Some(setting),
-            |client| async {
-                let request = create_request(format!("location={}", req.location), req.clone());
-                client
-                    .generate_random_bytes(request)
-                    .await
-                    .map(|s| s.into_inner())
-                    .map_err(|e| (e, client))
-            },
-            &mut self.inner,
-        )
-        .await
+        let action = || async {
+            let request = create_request(format!("location={}", req.location), req.clone());
+            self.cm.conn().generate_random_bytes(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
     }
 
     /// Create crypto key
@@ -79,25 +75,17 @@ impl Client {
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn create_crypto_key(
-        &mut self,
+        &self,
         req: CreateCryptoKeyRequest,
         retry: Option<RetrySetting>,
     ) -> Result<CryptoKey, Status> {
-        let setting = retry.unwrap_or_else(default_setting);
-
-        invoke_fn(
-            Some(setting),
-            |client| async {
-                let request = create_request(format!("parent={}", req.parent), req.clone());
-                client
-                    .create_crypto_key(request)
-                    .await
-                    .map(|s| s.into_inner())
-                    .map_err(|e| (e, client))
-            },
-            &mut self.inner,
-        )
-        .await
+        let action = || async {
+            let request = create_request(format!("parent={}", req.parent), req.clone());
+            self.cm.conn().create_crypto_key(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
     }
 
     /// Create crypto key version
@@ -106,25 +94,17 @@ impl Client {
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn create_crypto_key_version(
-        &mut self,
+        &self,
         req: CreateCryptoKeyVersionRequest,
         retry: Option<RetrySetting>,
     ) -> Result<CryptoKeyVersion, Status> {
-        let setting = retry.unwrap_or_else(default_setting);
-
-        invoke_fn(
-            Some(setting),
-            |client| async {
-                let request = create_request(format!("parent={}", req.parent), req.clone());
-                client
-                    .create_crypto_key_version(request)
-                    .await
-                    .map(|s| s.into_inner())
-                    .map_err(|e| (e, client))
-            },
-            &mut self.inner,
-        )
-        .await
+        let action = || async {
+            let request = create_request(format!("parent={}", req.parent), req.clone());
+            self.cm.conn().create_crypto_key_version(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
     }
 
     /// Create key ring
@@ -133,25 +113,17 @@ impl Client {
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn create_key_ring(
-        &mut self,
+        &self,
         req: CreateKeyRingRequest,
         retry: Option<RetrySetting>,
     ) -> Result<KeyRing, Status> {
-        let setting = retry.unwrap_or_else(default_setting);
-
-        invoke_fn(
-            Some(setting),
-            |client| async {
-                let request = create_request(format!("parent={}", req.parent), req.clone());
-                client
-                    .create_key_ring(request)
-                    .await
-                    .map(|s| s.into_inner())
-                    .map_err(|e| (e, client))
-            },
-            &mut self.inner,
-        )
-        .await
+        let action = || async {
+            let request = create_request(format!("parent={}", req.parent), req.clone());
+            self.cm.conn().create_key_ring(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
     }
 
     /// Destroy crypto key version
@@ -160,25 +132,17 @@ impl Client {
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn destroy_crypto_key_version(
-        &mut self,
+        &self,
         req: DestroyCryptoKeyVersionRequest,
         retry: Option<RetrySetting>,
     ) -> Result<CryptoKeyVersion, Status> {
-        let setting = retry.unwrap_or_else(default_setting);
-
-        invoke_fn(
-            Some(setting),
-            |client| async {
-                let request = create_request(format!("name={}", req.name), req.clone());
-                client
-                    .destroy_crypto_key_version(request)
-                    .await
-                    .map(|s| s.into_inner())
-                    .map_err(|e| (e, client))
-            },
-            &mut self.inner,
-        )
-        .await
+        let action = || async {
+            let request = create_request(format!("name={}", req.name), req.clone());
+            self.cm.conn().destroy_crypto_key_version(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
     }
 
     /// Get crypto key
@@ -187,25 +151,17 @@ impl Client {
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_crypto_key(
-        &mut self,
+        &self,
         req: GetCryptoKeyRequest,
         retry: Option<RetrySetting>,
     ) -> Result<CryptoKey, Status> {
-        let setting = retry.unwrap_or_else(default_setting);
-
-        invoke_fn(
-            Some(setting),
-            |client| async {
-                let request = create_request(format!("name={}", req.name), req.clone());
-                client
-                    .get_crypto_key(request)
-                    .await
-                    .map(|s| s.into_inner())
-                    .map_err(|e| (e, client))
-            },
-            &mut self.inner,
-        )
-        .await
+        let action = || async {
+            let request = create_request(format!("name={}", req.name), req.clone());
+            self.cm.conn().get_crypto_key(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
     }
 
     /// Get crypto key version
@@ -214,25 +170,17 @@ impl Client {
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_crypto_key_version(
-        &mut self,
+        &self,
         req: GetCryptoKeyVersionRequest,
         retry: Option<RetrySetting>,
     ) -> Result<CryptoKeyVersion, Status> {
-        let setting = retry.unwrap_or_else(default_setting);
-
-        invoke_fn(
-            Some(setting),
-            |client| async {
-                let request = create_request(format!("name={}", req.name), req.clone());
-                client
-                    .get_crypto_key_version(request)
-                    .await
-                    .map(|s| s.into_inner())
-                    .map_err(|e| (e, client))
-            },
-            &mut self.inner,
-        )
-        .await
+        let action = || async {
+            let request = create_request(format!("name={}", req.name), req.clone());
+            self.cm.conn().get_crypto_key_version(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
     }
 
     /// Get key ring
@@ -240,26 +188,14 @@ impl Client {
     /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.GetKeyRing
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn get_key_ring(
-        &mut self,
-        req: GetKeyRingRequest,
-        retry: Option<RetrySetting>,
-    ) -> Result<KeyRing, Status> {
-        let setting = retry.unwrap_or_else(default_setting);
-
-        invoke_fn(
-            Some(setting),
-            |client| async {
-                let request = create_request(format!("name={}", req.name), req.clone());
-                client
-                    .get_key_ring(request)
-                    .await
-                    .map(|s| s.into_inner())
-                    .map_err(|e| (e, client))
-            },
-            &mut self.inner,
-        )
-        .await
+    pub async fn get_key_ring(&self, req: GetKeyRingRequest, retry: Option<RetrySetting>) -> Result<KeyRing, Status> {
+        let action = || async {
+            let request = create_request(format!("name={}", req.name), req.clone());
+            self.cm.conn().get_key_ring(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
     }
 
     /// List crypto key versions
@@ -268,25 +204,17 @@ impl Client {
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list_crypto_key_versions(
-        &mut self,
+        &self,
         req: ListCryptoKeyVersionsRequest,
         retry: Option<RetrySetting>,
     ) -> Result<ListCryptoKeyVersionsResponse, Status> {
-        let setting = retry.unwrap_or_else(default_setting);
-
-        invoke_fn(
-            Some(setting),
-            |client| async {
-                let request = create_request(format!("parent={}", req.parent), req.clone());
-                client
-                    .list_crypto_key_versions(request)
-                    .await
-                    .map(|s| s.into_inner())
-                    .map_err(|e| (e, client))
-            },
-            &mut self.inner,
-        )
-        .await
+        let action = || async {
+            let request = create_request(format!("parent={}", req.parent), req.clone());
+            self.cm.conn().list_crypto_key_versions(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
     }
 
     /// List crypto keys
@@ -295,25 +223,17 @@ impl Client {
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list_crypto_keys(
-        &mut self,
+        &self,
         req: ListCryptoKeysRequest,
         retry: Option<RetrySetting>,
     ) -> Result<ListCryptoKeysResponse, Status> {
-        let setting = retry.unwrap_or_else(default_setting);
-
-        invoke_fn(
-            Some(setting),
-            |client| async {
-                let request = create_request(format!("parent={}", req.parent), req.clone());
-                client
-                    .list_crypto_keys(request)
-                    .await
-                    .map(|s| s.into_inner())
-                    .map_err(|e| (e, client))
-            },
-            &mut self.inner,
-        )
-        .await
+        let action = || async {
+            let request = create_request(format!("parent={}", req.parent), req.clone());
+            self.cm.conn().list_crypto_keys(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
     }
 
     /// List key rings
@@ -322,24 +242,118 @@ impl Client {
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list_key_rings(
-        &mut self,
+        &self,
         req: ListKeyRingsRequest,
         retry: Option<RetrySetting>,
     ) -> Result<ListKeyRingsResponse, Status> {
-        let setting = retry.unwrap_or_else(default_setting);
+        let action = || async {
+            let request = create_request(format!("parent={}", req.parent), req.clone());
+            self.cm.conn().list_key_rings(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
+    }
 
-        invoke_fn(
-            Some(setting),
-            |client| async {
-                let request = create_request(format!("parent={}", req.parent), req.clone());
-                client
-                    .list_key_rings(request)
-                    .await
-                    .map(|s| s.into_inner())
-                    .map_err(|e| (e, client))
-            },
-            &mut self.inner,
-        )
-        .await
+    /// Encrypt
+    ///
+    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.Encrypt
+    ///
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn encrypt(&self, req: EncryptRequest, retry: Option<RetrySetting>) -> Result<EncryptResponse, Status> {
+        let action = || async {
+            let request = create_request(format!("name={}", req.name), req.clone());
+            self.cm.conn().encrypt(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
+    }
+
+    /// Decrypt
+    ///
+    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.Decrypt
+    ///
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn decrypt(&self, req: DecryptRequest, retry: Option<RetrySetting>) -> Result<DecryptResponse, Status> {
+        let action = || async {
+            let request = create_request(format!("name={}", req.name), req.clone());
+            self.cm.conn().decrypt(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
+    }
+
+    /// AsymmetricSign
+    ///
+    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.AsymmetricSign
+    ///
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn asymmetric_sign(
+        &self,
+        req: AsymmetricSignRequest,
+        retry: Option<RetrySetting>,
+    ) -> Result<AsymmetricSignResponse, Status> {
+        let action = || async {
+            let request = create_request(format!("name={}", req.name), req.clone());
+            self.cm.conn().asymmetric_sign(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
+    }
+
+    /// MacSign
+    ///
+    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.MacSign
+    ///
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn mac_sign(&self, req: MacSignRequest, retry: Option<RetrySetting>) -> Result<MacSignResponse, Status> {
+        let action = || async {
+            let request = create_request(format!("name={}", req.name), req.clone());
+            self.cm.conn().mac_sign(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
+    }
+
+    /// MacVerify
+    ///
+    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.MacVerify
+    ///
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn mac_verify(
+        &self,
+        req: MacVerifyRequest,
+        retry: Option<RetrySetting>,
+    ) -> Result<MacVerifyResponse, Status> {
+        let action = || async {
+            let request = create_request(format!("name={}", req.name), req.clone());
+            self.cm.conn().mac_verify(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
+    }
+
+    /// PublicKey
+    ///
+    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.PublicKey
+    ///
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn get_public_key(
+        &self,
+        req: GetPublicKeyRequest,
+        retry: Option<RetrySetting>,
+    ) -> Result<PublicKey, Status> {
+        let action = || async {
+            let request = create_request(format!("name={}", req.name), req.clone());
+            self.cm.conn().get_public_key(request).await
+        };
+        invoke(Some(retry.unwrap_or_else(default_setting)), action)
+            .await
+            .map(|r| r.into_inner())
     }
 }

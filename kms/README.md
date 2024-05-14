@@ -63,7 +63,7 @@ google-cloud-kms = "version"
  async fn run(config: ClientConfig) {
 
      // Create client
-     let mut client = Client::new(config).await.unwrap();
+     let client = Client::new(config).await.unwrap();
 
      // Key ring
      // create
