@@ -37,6 +37,10 @@ pub enum Error {
     /// An error from a token source.
     #[error("token source failed: {0}")]
     TokenSource(Box<dyn std::error::Error + Send + Sync>),
+
+    /// Invalid Range error
+    #[error("invalid range header, received: {0}")]
+    InvalidRangeHeader(String),
 }
 
 impl From<reqwest_middleware::Error> for Error {

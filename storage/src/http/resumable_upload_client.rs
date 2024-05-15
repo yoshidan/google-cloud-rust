@@ -1,6 +1,6 @@
 use std::fmt;
 
-use reqwest::header::{CONTENT_LENGTH, CONTENT_RANGE};
+use reqwest::header::{CONTENT_LENGTH, CONTENT_RANGE, RANGE};
 use reqwest::{Body, Response};
 use reqwest_middleware::ClientWithMiddleware as Client;
 
@@ -20,7 +20,14 @@ pub enum ChunkError {
 #[allow(clippy::large_enum_variant)]
 pub enum UploadStatus {
     Ok(Object),
-    ResumeIncomplete,
+    NotStarted,
+    ResumeIncomplete(UploadedRange),
+}
+
+#[derive(PartialEq, Debug)]
+pub struct UploadedRange {
+    pub first_byte: u64,
+    pub last_byte: u64,
 }
 
 #[derive(Clone, Debug)]
@@ -140,11 +147,40 @@ impl ResumableUploadClient {
     }
 
     async fn map_resume_response(response: Response) -> Result<UploadStatus, Error> {
-        if response.status() == 308 {
-            Ok(UploadStatus::ResumeIncomplete)
-        } else {
+        if response.status() != 308 {
             let response = check_response_status(response).await?;
-            Ok(UploadStatus::Ok(response.json::<Object>().await?))
+            return Ok(UploadStatus::Ok(response.json::<Object>().await?));
         }
+
+        let range = response.headers().get(RANGE);
+
+        if range.is_none() {
+            return Ok(UploadStatus::NotStarted);
+        }
+
+        let range = range
+            .unwrap()
+            .to_str()
+            .map_err(|error| Error::InvalidRangeHeader(error.to_string()))?;
+
+        let range = range
+            .split('=')
+            .nth(1)
+            .ok_or_else(|| Error::InvalidRangeHeader(range.to_string()))?;
+
+        let start_end: Vec<&str> = range.split('-').collect();
+        let first_byte = start_end
+            .first()
+            .unwrap_or(&"0")
+            .parse::<u64>()
+            .map_err(|_| Error::InvalidRangeHeader(range.to_string()))?;
+
+        let last_byte = start_end
+            .get(1)
+            .ok_or_else(|| Error::InvalidRangeHeader(range.to_string()))?
+            .parse::<u64>()
+            .map_err(|_| Error::InvalidRangeHeader(range.to_string()))?;
+
+        Ok(UploadStatus::ResumeIncomplete(UploadedRange { first_byte, last_byte }))
     }
 }
