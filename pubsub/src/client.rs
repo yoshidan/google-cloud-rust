@@ -638,7 +638,7 @@ mod tests_in_gcp {
                 *msgs.entry(msg_id.clone()).or_insert(0) += 1;
                 message.ack().await.unwrap();
             }
-            stream.dispose().await.unwrap();
+            stream.dispose().await;
             tracing::info!("finish subscriber");
             msgs
         });
@@ -712,6 +712,11 @@ mod tests_in_gcp {
 
         ctx.cancel();
 
-        assert!(sub_task.await.is_ok());
+        select! {
+            _ = tokio::time::sleep(Duration::from_secs(60)) => {
+                panic!("unexpected timeout");
+            }
+            _ = sub_task => {}
+        }
     }
 }

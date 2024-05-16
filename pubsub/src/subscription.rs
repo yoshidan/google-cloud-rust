@@ -7,7 +7,6 @@ use std::time::{Duration, SystemTime};
 
 use prost_types::{DurationError, FieldMask};
 use tokio_util::sync::CancellationToken;
-use tracing::info;
 
 use google_cloud_gax::grpc::codegen::tokio_stream::Stream;
 use google_cloud_gax::grpc::{Code, Status};
@@ -20,7 +19,7 @@ use google_cloud_googleapis::pubsub::v1::{
 };
 
 use crate::apiv1::subscriber_client::SubscriberClient;
-use crate::client::Error;
+
 use crate::subscriber::{ack, ReceivedMessage, Subscriber, SubscriberConfig};
 
 #[derive(Debug, Clone, Default)]
@@ -145,13 +144,13 @@ pub struct MessageStream {
 
 impl MessageStream {
     /// Gracefully shutdown MessageStream
-    pub async fn dispose(mut self) -> Result<(), Error> {
+    pub async fn dispose(mut self) {
         // Close streaming pull task
         self.cancel.cancel();
 
         // Wait for all the streaming pull close.
         for task in &mut self.tasks {
-            let _ = task.done().await;
+            task.done().await;
         }
 
         // Nack for remaining messages.
@@ -160,8 +159,6 @@ impl MessageStream {
                 tracing::warn!("failed to nack message messageId={} {:?}", message.message.message_id, err);
             }
         }
-
-        Ok(())
     }
 }
 
