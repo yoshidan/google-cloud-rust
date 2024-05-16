@@ -409,7 +409,7 @@ impl Subscription {
     ///     } {
     ///         let _ = message.ack().await;
     ///     }
-    ///     iter.dispose().await?;
+    ///     iter.dispose().await;
     ///     Ok(())
     ///  }
     /// ```
