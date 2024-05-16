@@ -399,9 +399,9 @@ impl Subscription {
     /// use futures_util::StreamExt;
     /// use tokio::select;
     /// use tokio_util::sync::CancellationToken;
-    /// use google_cloud_pubsub::client::Error;
+    /// use google_cloud_gax::grpc::Status;
     ///
-    /// async fn run(subscription: Subscription, ct: CancellationToken) -> Result<(), Error> {
+    /// async fn run(subscription: Subscription, ct: CancellationToken) -> Result<(), Status> {
     ///     let mut iter = subscription.subscribe(None).await?;
     ///     while let Some(message) = select! {
     ///         msg = iter.next() => msg,
