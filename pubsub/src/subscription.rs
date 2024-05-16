@@ -145,13 +145,15 @@ pub struct MessageStream {
 impl MessageStream {
     /// Gracefully shutdown MessageStream
     pub async fn dispose(mut self) -> Result<(), Error> {
+        // Close streaming pull task
         self.cancel.cancel();
 
-        // gracefully shutdown getting message from the server.
+        // Wait for all the streaming pull close.
         for task in &mut self.tasks {
             let _ = task.done().await;
         }
-        // nack the messages remain
+
+        // Nack for remaining messages.
         while let Ok(message) = self.queue.recv().await {
             if let Err(err) = message.nack().await {
                 tracing::warn!("failed to nack message messageId={} {:?}", message.message.message_id, err);
