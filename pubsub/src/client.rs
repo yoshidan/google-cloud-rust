@@ -458,7 +458,7 @@ mod tests {
 
 #[cfg(test)]
 mod tests_in_gcp {
-    use crate::client::{Client, ClientConfig, Error};
+    use crate::client::{Client, ClientConfig};
     use crate::publisher::PublisherConfig;
     use google_cloud_gax::conn::Environment;
     use google_cloud_gax::grpc::codegen::tokio_stream::StreamExt;
@@ -466,7 +466,7 @@ mod tests_in_gcp {
     use serial_test::serial;
     use std::collections::HashMap;
 
-    use crate::subscription::{MessageStream, SubscribeConfig};
+    use crate::subscription::SubscribeConfig;
     use std::time::Duration;
     use tokio::select;
     use tokio_util::sync::CancellationToken;
@@ -672,7 +672,7 @@ mod tests_in_gcp {
 
         let ctx_pub = ctx.child_token();
         let publisher = client.topic("graceful-test").new_publisher(None);
-        let pub_task = tokio::spawn(async move {
+        let _pub_task = tokio::spawn(async move {
             tracing::info!("start publisher");
             loop {
                 if ctx_pub.is_cancelled() {
@@ -705,13 +705,13 @@ mod tests_in_gcp {
                 message.ack().await.unwrap();
             }
             tracing::info!("finish subscriber");
-            return stream.dispose().await;
+            stream.dispose().await
         });
 
         tokio::time::sleep(Duration::from_secs(10)).await;
 
         ctx.cancel();
 
-        assert!(!sub_task.await.is_err());
+        assert!(sub_task.await.is_ok());
     }
 }
