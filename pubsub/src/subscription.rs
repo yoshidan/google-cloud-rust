@@ -7,6 +7,7 @@ use std::time::{Duration, SystemTime};
 
 use prost_types::{DurationError, FieldMask};
 use tokio_util::sync::CancellationToken;
+use tracing::info;
 
 use google_cloud_gax::grpc::codegen::tokio_stream::Stream;
 use google_cloud_gax::grpc::{Code, Status};
@@ -166,9 +167,11 @@ impl MessageStream {
 
 impl Drop for MessageStream {
     fn drop(&mut self) {
+        if !self.queue.is_empty() {
+            tracing::warn!("Call 'dispose' before drop in order to call nack for remaining messages");
+        }
         if !self.cancel.is_cancelled() {
             self.cancel.cancel();
-            tracing::warn!("Call 'dispose' before drop in order to call nack for remaining messages");
         }
     }
 }
