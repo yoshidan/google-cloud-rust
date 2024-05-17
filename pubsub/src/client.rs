@@ -466,7 +466,9 @@ mod tests_in_gcp {
     use serial_test::serial;
     use std::collections::HashMap;
 
+    use crate::subscription::SubscribeConfig;
     use std::time::Duration;
+    use tokio::select;
     use tokio_util::sync::CancellationToken;
 
     fn make_msg(key: &str) -> PubsubMessage {
@@ -621,21 +623,22 @@ mod tests_in_gcp {
         });
 
         // subscribe message
-        let ctx_sub = ctx.clone();
+        let ctx_sub = ctx.child_token();
         let sub_task = tokio::spawn(async move {
             tracing::info!("start subscriber");
             let mut stream = subscription.subscribe(None).await.unwrap();
             let mut msgs = HashMap::new();
-            while let Some(message) = stream.next().await {
-                if ctx_sub.is_cancelled() {
-                    break;
-                }
+            while let Some(message) = select! {
+                msg = stream.next() => msg,
+                _ = ctx_sub.cancelled() => None
+            } {
                 let msg_id = &message.message.message_id;
                 // heavy task
                 tokio::time::sleep(Duration::from_secs(1)).await;
                 *msgs.entry(msg_id.clone()).or_insert(0) += 1;
                 message.ack().await.unwrap();
             }
+            stream.dispose().await;
             tracing::info!("finish subscriber");
             msgs
         });
@@ -651,6 +654,69 @@ mod tests_in_gcp {
         tracing::info!("Number of received messages = {}", received_msgs.len());
         for (msg_id, count) in received_msgs {
             assert_eq!(count, 1, "msg_id = {msg_id}, count = {count}");
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
+    #[ignore]
+    async fn test_subscribe_with_graceful_shutdown() {
+        let client = Client::new(ClientConfig::default().with_auth().await.unwrap())
+            .await
+            .unwrap();
+
+        let subscription = client.subscription("graceful-test");
+
+        // publish message
+        let ctx = CancellationToken::new();
+
+        let ctx_pub = ctx.child_token();
+        let publisher = client.topic("graceful-test").new_publisher(None);
+        let _pub_task = tokio::spawn(async move {
+            tracing::info!("start publisher");
+            loop {
+                if ctx_pub.is_cancelled() {
+                    tracing::info!("finish publisher");
+                    return;
+                }
+                publisher
+                    .publish_blocking(PubsubMessage {
+                        data: "msg".into(),
+                        ..Default::default()
+                    })
+                    .get()
+                    .await
+                    .unwrap();
+            }
+        });
+
+        let ctx_sub = ctx.child_token();
+        // subscribe message
+        let sub_task = tokio::spawn(async move {
+            tracing::info!("start subscriber");
+            let config = SubscribeConfig::default().with_enable_multiple_subscriber(true);
+            let mut stream = subscription.subscribe(Some(config)).await.unwrap();
+            // None when the ctx_sub is cancelled
+            while let Some(message) = select! {
+                msg = stream.next() => msg,
+                _ = ctx_sub.cancelled() => None
+            } {
+                tokio::time::sleep(Duration::from_secs(3)).await;
+                message.ack().await.unwrap();
+            }
+            tracing::info!("finish subscriber");
+            stream.dispose().await
+        });
+
+        tokio::time::sleep(Duration::from_secs(10)).await;
+
+        ctx.cancel();
+
+        select! {
+            _ = tokio::time::sleep(Duration::from_secs(60)) => {
+                panic!("unexpected timeout");
+            }
+            _ = sub_task => {}
         }
     }
 }

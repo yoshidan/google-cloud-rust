@@ -19,6 +19,7 @@ use google_cloud_googleapis::pubsub::v1::{
 };
 
 use crate::apiv1::subscriber_client::SubscriberClient;
+
 use crate::subscriber::{ack, ReceivedMessage, Subscriber, SubscriberConfig};
 
 #[derive(Debug, Clone, Default)]
@@ -138,11 +139,37 @@ impl From<SeekTo> for Target {
 pub struct MessageStream {
     queue: async_channel::Receiver<ReceivedMessage>,
     cancel: CancellationToken,
+    tasks: Vec<Subscriber>,
+}
+
+impl MessageStream {
+    /// Gracefully shutdown MessageStream
+    pub async fn dispose(mut self) {
+        // Close streaming pull task
+        self.cancel.cancel();
+
+        // Wait for all the streaming pull close.
+        for task in &mut self.tasks {
+            task.done().await;
+        }
+
+        // Nack for remaining messages.
+        while let Ok(message) = self.queue.recv().await {
+            if let Err(err) = message.nack().await {
+                tracing::warn!("failed to nack message messageId={} {:?}", message.message.message_id, err);
+            }
+        }
+    }
 }
 
 impl Drop for MessageStream {
     fn drop(&mut self) {
-        self.cancel.cancel();
+        if !self.queue.is_empty() {
+            tracing::warn!("Call 'dispose' before drop in order to call nack for remaining messages");
+        }
+        if !self.cancel.is_cancelled() {
+            self.cancel.cancel();
+        }
     }
 }
 
@@ -367,18 +394,22 @@ impl Subscription {
 
     /// subscribe creates a `Stream` of `ReceivedMessage`
     /// Terminates the underlying `Subscriber` when dropped.
-    /// ```no_test
-    /// use google_cloud_pubsub::client::Client;
+    /// ```
     /// use google_cloud_pubsub::subscription::Subscription;
-    /// use google_cloud_gax::grpc::Status;
     /// use futures_util::StreamExt;
+    /// use tokio::select;
+    /// use tokio_util::sync::CancellationToken;
+    /// use google_cloud_gax::grpc::Status;
     ///
-    /// async fn run(client: Client) -> Result<(), Status> {
-    ///     let subscription = client.subscription("test-subscription");
+    /// async fn run(subscription: Subscription, ct: CancellationToken) -> Result<(), Status> {
     ///     let mut iter = subscription.subscribe(None).await?;
-    ///     while let Some(message) = iter.next().await {
+    ///     while let Some(message) = select! {
+    ///         msg = iter.next() => msg,
+    ///         _ = ct.cancelled() => None
+    ///     } {
     ///         let _ = message.ack().await;
     ///     }
+    ///     iter.dispose().await;
     ///     Ok(())
     ///  }
     /// ```
@@ -394,17 +425,22 @@ impl Subscription {
         } else {
             1
         };
+        let mut tasks = Vec::with_capacity(subscribers);
         for _ in 0..subscribers {
-            Subscriber::start(
+            tasks.push(Subscriber::start(
                 cancel.clone(),
                 self.fqsn.clone(),
                 self.subc.clone(),
                 tx.clone(),
                 sub_opt.clone(),
-            );
+            ));
         }
 
-        Ok(MessageStream { queue: rx, cancel })
+        Ok(MessageStream {
+            queue: rx,
+            cancel,
+            tasks,
+        })
     }
 
     /// receive calls f with the outstanding messages from the subscription.
