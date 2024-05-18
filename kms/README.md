@@ -2,7 +2,7 @@
 
 Google Cloud Platform Key Management Service Client library.
 
-[![crates.io](https://img.shields.io/crates/v/google-cloud-artifact-registry.svg)](https://crates.io/crates/google-cloud-artifact-registry)
+[![crates.io](https://img.shields.io/crates/v/google-cloud-kms.svg)](https://crates.io/crates/google-cloud-kms)
 
 * [About KMS](https://cloud.google.com/kms/)
 * [JSON API Documentation](https://cloud.google.com/kms/docs/reference/rest)
