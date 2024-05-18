@@ -1071,7 +1071,7 @@ impl StorageClient {
     /// use google_cloud_storage::client::Client;
     /// use google_cloud_storage::http::objects::Object;
     /// use google_cloud_storage::http::objects::upload::{Media, UploadObjectRequest, UploadType};
-    /// use google_cloud_storage::http::resumable_upload_client::{ChunkSize, UploadStatus};
+    /// use google_cloud_storage::http::resumable_upload_client::{ChunkSize, UploadedRange, UploadStatus};
     ///
     /// async fn run_simple(client:Client) {
     ///     let upload_type = UploadType::Simple(Media::new("filename"));
