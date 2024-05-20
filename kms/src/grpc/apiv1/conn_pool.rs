@@ -1,6 +1,6 @@
+use crate::grpc::kms::v1::key_management_service_client::KeyManagementServiceClient;
 use google_cloud_gax::conn::{Channel, Environment};
 use google_cloud_gax::conn::{ConnectionManager as GRPCConnectionManager, ConnectionOptions, Error};
-use google_cloud_googleapis::cloud::kms::v1::key_management_service_client::KeyManagementServiceClient;
 
 pub const AUDIENCE: &str = "https://cloudkms.googleapis.com/";
 pub const KMS: &str = "cloudkms.googleapis.com";
