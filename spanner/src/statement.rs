@@ -254,6 +254,21 @@ impl<T> ToKind for Vec<T>
 where
     T: ToKind,
 {
+    #[inline]
+    fn to_kind(&self) -> Kind {
+        self.as_slice().to_kind()
+    }
+
+    #[inline]
+    fn get_type() -> Type {
+        <&[T] as ToKind>::get_type()
+    }
+}
+
+impl<'a, T> ToKind for &'a [T]
+where
+    T: ToKind,
+{
     fn to_kind(&self) -> Kind {
         value::Kind::ListValue(ListValue {
             values: self
@@ -264,6 +279,7 @@ where
                 .collect(),
         })
     }
+
     fn get_type() -> Type {
         Type {
             code: TypeCode::Array.into(),
