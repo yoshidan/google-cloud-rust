@@ -7,24 +7,24 @@ use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::{invoke, RetrySetting};
 
-use google_cloud_googleapis::cloud::kms::v1::CreateCryptoKeyVersionRequest;
-use google_cloud_googleapis::cloud::kms::v1::CreateKeyRingRequest;
-use google_cloud_googleapis::cloud::kms::v1::CryptoKey;
-use google_cloud_googleapis::cloud::kms::v1::CryptoKeyVersion;
-use google_cloud_googleapis::cloud::kms::v1::DestroyCryptoKeyVersionRequest;
-use google_cloud_googleapis::cloud::kms::v1::GenerateRandomBytesRequest;
-use google_cloud_googleapis::cloud::kms::v1::GenerateRandomBytesResponse;
-use google_cloud_googleapis::cloud::kms::v1::GetCryptoKeyRequest;
-use google_cloud_googleapis::cloud::kms::v1::GetCryptoKeyVersionRequest;
-use google_cloud_googleapis::cloud::kms::v1::GetKeyRingRequest;
-use google_cloud_googleapis::cloud::kms::v1::KeyRing;
-use google_cloud_googleapis::cloud::kms::v1::ListCryptoKeyVersionsRequest;
-use google_cloud_googleapis::cloud::kms::v1::ListCryptoKeyVersionsResponse;
-use google_cloud_googleapis::cloud::kms::v1::ListCryptoKeysRequest;
-use google_cloud_googleapis::cloud::kms::v1::ListCryptoKeysResponse;
-use google_cloud_googleapis::cloud::kms::v1::ListKeyRingsRequest;
-use google_cloud_googleapis::cloud::kms::v1::ListKeyRingsResponse;
-use google_cloud_googleapis::cloud::kms::v1::{
+use crate::grpc::kms::v1::CreateCryptoKeyVersionRequest;
+use crate::grpc::kms::v1::CreateKeyRingRequest;
+use crate::grpc::kms::v1::CryptoKey;
+use crate::grpc::kms::v1::CryptoKeyVersion;
+use crate::grpc::kms::v1::DestroyCryptoKeyVersionRequest;
+use crate::grpc::kms::v1::GenerateRandomBytesRequest;
+use crate::grpc::kms::v1::GenerateRandomBytesResponse;
+use crate::grpc::kms::v1::GetCryptoKeyRequest;
+use crate::grpc::kms::v1::GetCryptoKeyVersionRequest;
+use crate::grpc::kms::v1::GetKeyRingRequest;
+use crate::grpc::kms::v1::KeyRing;
+use crate::grpc::kms::v1::ListCryptoKeyVersionsRequest;
+use crate::grpc::kms::v1::ListCryptoKeyVersionsResponse;
+use crate::grpc::kms::v1::ListCryptoKeysRequest;
+use crate::grpc::kms::v1::ListCryptoKeysResponse;
+use crate::grpc::kms::v1::ListKeyRingsRequest;
+use crate::grpc::kms::v1::ListKeyRingsResponse;
+use crate::grpc::kms::v1::{
     AsymmetricSignRequest, AsymmetricSignResponse, CreateCryptoKeyRequest, DecryptRequest, DecryptResponse,
     EncryptRequest, EncryptResponse, GetPublicKeyRequest, MacSignRequest, MacSignResponse, MacVerifyRequest,
     MacVerifyResponse, PublicKey,
@@ -52,7 +52,7 @@ impl Client {
 
     /// Generate random bytes
     ///
-    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.GenerateRandomBytes
+    /// <https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.GenerateRandomBytes>
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn generate_random_bytes(
@@ -71,7 +71,7 @@ impl Client {
 
     /// Create crypto key
     ///
-    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.CreateCryptoKey
+    /// <https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.CreateCryptoKey>
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn create_crypto_key(
@@ -90,7 +90,7 @@ impl Client {
 
     /// Create crypto key version
     ///
-    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.CreateCryptoKeyVersion
+    /// <https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.CreateCryptoKeyVersion>
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn create_crypto_key_version(
@@ -109,7 +109,7 @@ impl Client {
 
     /// Create key ring
     ///
-    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.CreateKeyRing
+    /// <https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.CreateKeyRing>
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn create_key_ring(
@@ -128,7 +128,7 @@ impl Client {
 
     /// Destroy crypto key version
     ///
-    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.DestroyCryptoKeyVersion
+    /// <https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.DestroyCryptoKeyVersion>
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn destroy_crypto_key_version(
@@ -147,7 +147,7 @@ impl Client {
 
     /// Get crypto key
     ///
-    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.GetCryptoKey
+    /// <https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.GetCryptoKey>
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_crypto_key(
@@ -166,7 +166,7 @@ impl Client {
 
     /// Get crypto key version
     ///
-    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.GetCryptoKeyVersion
+    /// <https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.GetCryptoKeyVersion>
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_crypto_key_version(
@@ -185,7 +185,7 @@ impl Client {
 
     /// Get key ring
     ///
-    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.GetKeyRing
+    /// <https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.GetKeyRing>
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_key_ring(&self, req: GetKeyRingRequest, retry: Option<RetrySetting>) -> Result<KeyRing, Status> {
@@ -200,7 +200,7 @@ impl Client {
 
     /// List crypto key versions
     ///
-    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.ListCryptoKeyVersions
+    /// <https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.ListCryptoKeyVersions>
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list_crypto_key_versions(
@@ -219,7 +219,7 @@ impl Client {
 
     /// List crypto keys
     ///
-    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.ListCryptoKeys
+    /// <https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.ListCryptoKeys>
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list_crypto_keys(
@@ -238,7 +238,7 @@ impl Client {
 
     /// List key rings
     ///
-    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.ListKeyRings
+    /// <https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.ListKeyRings>
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn list_key_rings(
@@ -257,7 +257,7 @@ impl Client {
 
     /// Encrypt
     ///
-    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.Encrypt
+    /// <https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.Encrypt>
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn encrypt(&self, req: EncryptRequest, retry: Option<RetrySetting>) -> Result<EncryptResponse, Status> {
@@ -272,7 +272,7 @@ impl Client {
 
     /// Decrypt
     ///
-    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.Decrypt
+    /// <https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.Decrypt>
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn decrypt(&self, req: DecryptRequest, retry: Option<RetrySetting>) -> Result<DecryptResponse, Status> {
@@ -287,7 +287,7 @@ impl Client {
 
     /// AsymmetricSign
     ///
-    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.AsymmetricSign
+    /// <https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.AsymmetricSign>
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn asymmetric_sign(
@@ -306,7 +306,7 @@ impl Client {
 
     /// MacSign
     ///
-    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.MacSign
+    /// <https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.MacSign>
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn mac_sign(&self, req: MacSignRequest, retry: Option<RetrySetting>) -> Result<MacSignResponse, Status> {
@@ -321,7 +321,7 @@ impl Client {
 
     /// MacVerify
     ///
-    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.MacVerify
+    /// <https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.KeyManagementService.MacVerify>
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn mac_verify(
@@ -340,7 +340,7 @@ impl Client {
 
     /// PublicKey
     ///
-    /// https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.PublicKey
+    /// <https://cloud.google.com/kms/docs/reference/rpc/google.cloud.kms.v1#google.cloud.kms.v1.PublicKey>
     ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn get_public_key(

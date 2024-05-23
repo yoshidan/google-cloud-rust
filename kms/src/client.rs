@@ -96,7 +96,7 @@ mod tests {
 
     use serial_test::serial;
 
-    use google_cloud_googleapis::cloud::kms::v1::{
+    use crate::grpc::kms::v1::{
         AsymmetricSignRequest, CreateKeyRingRequest, DecryptRequest, EncryptRequest, GenerateRandomBytesRequest,
         GetKeyRingRequest, GetPublicKeyRequest, ListKeyRingsRequest, MacSignRequest, MacVerifyRequest, ProtectionLevel,
     };
