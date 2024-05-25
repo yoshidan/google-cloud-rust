@@ -172,27 +172,23 @@
 //! ```
 //! use google_cloud_pubsub::client::{Client, ClientConfig};
 //! use google_cloud_googleapis::pubsub::v1::PubsubMessage;
-//! use google_cloud_pubsub::subscription::SubscriptionConfig;
+//! use google_cloud_pubsub::subscription::{SubscribeConfig, SubscriptionConfig};
 //! use google_cloud_gax::grpc::Status;
 //! use tokio_util::sync::CancellationToken;
-//! use futures_util::StreamExt;
 //!
-//! async fn run(config: ClientConfig, cancel: CancellationToken) -> Result<(), Status> {
+//! async fn run(config: ClientConfig, ct: CancellationToken) -> Result<(), Status> {
 //!     // Creating Client, Topic and Subscription...
 //!     let client = Client::new(config).await.unwrap();
 //!     let subscription = client.subscription("test-subscription");
 //!
 //!     // Read the messages as a stream
-//!     let mut stream = subscription.subscribe(None).await.unwrap();
-//!     while let Some(message) = tokio::select! {
-//!         msg = stream.next() => msg,
-//!         _ = cancel.cancelled() => None
-//!     } {
+//!     let config = SubscribeConfig::default().with_cancellation_token(ct);
+//!     let mut stream = subscription.subscribe(Some(config)).await.unwrap();
+//!
+//!     // None if the CancellationToken is cancelled
+//!     while let Some(message) = stream.read().await {
 //!         message.ack().await.unwrap();
 //!     }
-//!     stream.dispose().await;
-//!
-//!     // Wait for stream dispose
 //!     Ok(())
 //! }
 //! ```

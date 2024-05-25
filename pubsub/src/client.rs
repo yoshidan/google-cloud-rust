@@ -694,18 +694,16 @@ mod tests_in_gcp {
         // subscribe message
         let sub_task = tokio::spawn(async move {
             tracing::info!("start subscriber");
-            let config = SubscribeConfig::default().with_enable_multiple_subscriber(true);
+            let config = SubscribeConfig::default()
+                .with_enable_multiple_subscriber(true)
+                .with_cancellation_token(ctx_sub);
             let mut stream = subscription.subscribe(Some(config)).await.unwrap();
             // None when the ctx_sub is cancelled
-            while let Some(message) = select! {
-                msg = stream.next() => msg,
-                _ = ctx_sub.cancelled() => None
-            } {
+            while let Some(message) = stream.read().await {
                 tokio::time::sleep(Duration::from_secs(3)).await;
                 message.ack().await.unwrap();
             }
             tracing::info!("finish subscriber");
-            stream.dispose().await
         });
 
         tokio::time::sleep(Duration::from_secs(10)).await;
