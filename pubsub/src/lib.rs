@@ -169,31 +169,30 @@
 //!
 //! ### Subscribe Message (Alternative Way)
 //!
-//! ```no_run
+//! ```
 //! use google_cloud_pubsub::client::{Client, ClientConfig};
 //! use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 //! use google_cloud_pubsub::subscription::SubscriptionConfig;
 //! use google_cloud_gax::grpc::Status;
-//! use std::time::Duration;
 //! use tokio_util::sync::CancellationToken;
 //! use futures_util::StreamExt;
 //!
-//! async fn run(config: ClientConfig) -> Result<(), Status> {
+//! async fn run(config: ClientConfig, cancel: CancellationToken) -> Result<(), Status> {
 //!     // Creating Client, Topic and Subscription...
 //!     let client = Client::new(config).await.unwrap();
 //!     let subscription = client.subscription("test-subscription");
 //!
 //!     // Read the messages as a stream
-//!     // (needs futures_util::StreamExt as import)
-//!     // Note: This blocks the current thread but helps working with non clonable data
-//!     let mut stream = subscription.subscribe(None).await?;
-//!     while let Some(message) = stream.next().await {
-//!         // Handle data.
-//!         println!("Got Message: {:?}", message.message);
-//!
-//!         // Ack or Nack message.
-//!         let _ = message.ack().await;
+//!     let mut stream = subscription.subscribe(None).await.unwrap();
+//!     while let Some(message) = tokio::select! {
+//!         msg = stream.next() => msg,
+//!         _ = cancel.cancelled() => None
+//!     } {
+//!         message.ack().await.unwrap();
 //!     }
+//!     stream.dispose().await;
+//!
+//!     // Wait for stream dispose
 //!     Ok(())
 //! }
 //! ```
