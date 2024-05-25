@@ -177,7 +177,7 @@ impl MessageStream {
         if message.is_none() {
             self.dispose().await;
         }
-        return message;
+        message
     }
 }
 
@@ -432,7 +432,7 @@ impl Subscription {
     pub async fn subscribe(&self, opt: Option<SubscribeConfig>) -> Result<MessageStream, Status> {
         let opt = opt.unwrap_or_default();
         let (tx, rx) = create_channel(opt.channel_capacity);
-        let cancel = opt.cancellation_token.unwrap_or(CancellationToken::new());
+        let cancel = opt.cancellation_token.unwrap_or_default();
         let sub_opt = self.unwrap_subscribe_config(opt.subscriber_config).await?;
 
         // spawn a separate subscriber task for each connection in the pool
