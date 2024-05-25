@@ -196,7 +196,7 @@ async fn run(config: ClientConfig, ct: CancellationToken) -> Result<(), Status> 
      let mut stream = subscription.subscribe(Some(config)).await.unwrap();
 
      // None if the CancellationToken is cancelled
-     while let Some(message) = stream.read() {
+     while let Some(message) = stream.read().await {
          message.ack().await.unwrap();
      }
      Ok(())
