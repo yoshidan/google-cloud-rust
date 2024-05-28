@@ -179,26 +179,61 @@ async fn run(config: ClientConfig) -> Result<(), Status> {
 
 ### Subscribe Message (Alternative Way)
 
+After canceling, wait until all pulled messages are processed.
 ```rust
+use std::time::Duration;
+use futures_util::StreamExt;
 use google_cloud_pubsub::client::{Client, ClientConfig};
 use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 use google_cloud_pubsub::subscription::{SubscribeConfig, SubscriptionConfig};
 use google_cloud_gax::grpc::Status;
-use tokio_util::sync::CancellationToken;
 
-async fn run(config: ClientConfig, ct: CancellationToken) -> Result<(), Status> {
+async fn run(config: ClientConfig) -> Result<(), Status> {
      // Creating Client, Topic and Subscription...
      let client = Client::new(config).await.unwrap();
      let subscription = client.subscription("test-subscription");
 
      // Read the messages as a stream
-     let config = SubscribeConfig::default().with_cancellation_token(ct);
-     let mut stream = subscription.subscribe(Some(config)).await.unwrap();
+     let mut stream = subscription.subscribe(None).await.unwrap();
+     let cancellable = stream.cancellable();
+     let task = tokio::spawn(async move {
+         // None if the CancellationToken is cancelled
+         while let Some(message) = stream.next().await {
+             message.ack().await.unwrap();
+         }
+     });
+     tokio::time::sleep(Duration::from_secs(60)).await;
+     cancellable.cancel();
+     let _ = task.await;
+     Ok(())
+}
+ ```
 
-     // None if the CancellationToken is cancelled
-     while let Some(message) = stream.read().await {
-         message.ack().await.unwrap();
-     }
+Unprocessed messages are nack after cancellation.
+```rust
+use std::time::Duration;
+use google_cloud_pubsub::client::{Client, ClientConfig};
+use google_cloud_googleapis::pubsub::v1::PubsubMessage;
+use google_cloud_pubsub::subscription::{SubscribeConfig, SubscriptionConfig};
+use google_cloud_gax::grpc::Status;
+
+async fn run(config: ClientConfig) -> Result<(), Status> {
+     // Creating Client, Topic and Subscription...
+     let client = Client::new(config).await.unwrap();
+     let subscription = client.subscription("test-subscription");
+
+     // Read the messages as a stream
+     let mut stream = subscription.subscribe(None).await.unwrap();
+     let cancellable = stream.cancellable();
+     let task = tokio::spawn(async move {
+         // None if the CancellationToken is cancelled
+         while let Some(message) = stream.read().await {
+             message.ack().await.unwrap();
+         }
+     });
+     tokio::time::sleep(Duration::from_secs(60)).await;
+     cancellable.cancel();
+     let _ = task.await;
      Ok(())
 }
 ```

@@ -690,17 +690,16 @@ mod tests_in_gcp {
             }
         });
 
-        let ctx_sub = ctx.child_token();
+        let config = SubscribeConfig::default().with_enable_multiple_subscriber(true);
+        let mut stream = subscription.subscribe(Some(config)).await.unwrap();
+        let ctx_sub = stream.cancellable();
         // subscribe message
         let sub_task = tokio::spawn(async move {
             tracing::info!("start subscriber");
-            let config = SubscribeConfig::default()
-                .with_enable_multiple_subscriber(true)
-                .with_cancellation_token(ctx_sub);
-            let mut stream = subscription.subscribe(Some(config)).await.unwrap();
             // None when the ctx_sub is cancelled
-            while let Some(message) = stream.read().await {
-                tokio::time::sleep(Duration::from_secs(3)).await;
+            while let Some(message) = stream.next().await {
+                tracing::info!("message received {}", &message.message.message_id);
+                tokio::time::sleep(Duration::from_secs(1)).await;
                 message.ack().await.unwrap();
             }
             tracing::info!("finish subscriber");
@@ -709,12 +708,9 @@ mod tests_in_gcp {
         tokio::time::sleep(Duration::from_secs(10)).await;
 
         ctx.cancel();
+        ctx_sub.cancel();
 
-        select! {
-            _ = tokio::time::sleep(Duration::from_secs(60)) => {
-                panic!("unexpected timeout");
-            }
-            _ = sub_task => {}
-        }
+        sub_task.await.unwrap();
+        println!("OK");
     }
 }
