@@ -238,7 +238,7 @@ impl Subscriber {
                         Some(m) => m,
                         None => return Ok(())
                     };
-                    let _ = handle_message(&queue, &client, subscription, message.received_messages).await;
+                    let _ = handle_message(&cancel, &queue, &client, subscription, message.received_messages).await;
                 }
             }
         }
@@ -255,6 +255,7 @@ impl Subscriber {
 }
 
 async fn handle_message(
+    cancel: &CancellationToken,
     queue: &async_channel::Sender<ReceivedMessage>,
     client: &SubscriberClient,
     subscription: &str,
@@ -265,17 +266,19 @@ async fn handle_message(
         if let Some(message) = received_message.message {
             let id = message.message_id.clone();
             tracing::debug!("message received: msg_id={id}");
-            if let Err(err) = queue
-                .send(ReceivedMessage::new(
-                    subscription.to_string(),
-                    client.clone(),
-                    message,
-                    received_message.ack_id.clone(),
-                    (received_message.delivery_attempt > 0).then_some(received_message.delivery_attempt as usize),
-                ))
-                .await
-            {
-                tracing::error!(%err, "failed to send receiver queue -> so nack immediately : msg_id={id}");
+            let msg = ReceivedMessage::new(
+                subscription.to_string(),
+                client.clone(),
+                message,
+                received_message.ack_id.clone(),
+                (received_message.delivery_attempt > 0).then_some(received_message.delivery_attempt as usize),
+            );
+            let should_nack =  select! {
+                result = queue.send(msg) => result.is_err(),
+                _ = cancel.cancelled() => true
+            };
+            if should_nack {
+                tracing::trace!("cancelled -> so nack immediately : msg_id={id}");
                 nack_targets.push(received_message.ack_id);
             }
         }
@@ -331,6 +334,7 @@ pub(crate) async fn ack(
 #[cfg(test)]
 mod tests {
     use serial_test::serial;
+    use tokio_util::sync::CancellationToken;
 
     use google_cloud_gax::conn::{ConnectionOptions, Environment};
     use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage, PullRequest};
@@ -391,7 +395,7 @@ mod tests {
         let messages = response.received_messages;
         let (queue, _) = async_channel::unbounded();
         queue.close();
-        let nack_size = handle_message(&queue, &subc, subscription, messages).await;
+        let nack_size = handle_message(&CancellationToken::new(), &queue, &subc, subscription, messages).await;
         assert_eq!(1, nack_size);
     }
 }

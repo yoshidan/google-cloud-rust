@@ -159,6 +159,7 @@ impl MessageStream {
         }
 
         // Nack for remaining messages.
+        // let undelivered = Vec::with_capacity(self.queue.len());
         while let Ok(message) = self.queue.recv().await {
             if let Err(err) = message.nack().await {
                 tracing::warn!("failed to nack message messageId={} {:?}", message.message.message_id, err);
@@ -1202,14 +1203,15 @@ mod tests {
             while let Some(message) = iter.read().await {
                 tracing::info!("received {}", message.message.message_id);
                 *received.lock().unwrap() += 1;
-                tokio::time::sleep(Duration::from_millis(500)).await;
+                tokio::time::sleep(Duration::from_secs(10)).await;
                 let _ = message.ack().await;
             }
         });
         publish(Some(msg)).await;
-        tokio::time::sleep(Duration::from_secs(8)).await;
+        tokio::time::sleep(Duration::from_secs(10)).await;
         ctx.cancel();
         handler.await.unwrap();
-        assert_eq!(*checking.lock().unwrap(), msg_count);
+        // expect nack
+        assert!(*checking.lock().unwrap() < msg_count);
     }
 }

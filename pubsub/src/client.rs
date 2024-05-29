@@ -697,9 +697,9 @@ mod tests_in_gcp {
         let sub_task = tokio::spawn(async move {
             tracing::info!("start subscriber");
             // None when the ctx_sub is cancelled
-            while let Some(message) = stream.next().await {
+            while let Some(message) = stream.read().await {
                 tracing::info!("message received {}", &message.message.message_id);
-                tokio::time::sleep(Duration::from_secs(1)).await;
+                tokio::time::sleep(Duration::from_secs(10)).await;
                 message.ack().await.unwrap();
             }
             tracing::info!("finish subscriber");
