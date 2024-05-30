@@ -412,7 +412,6 @@ impl Subscription {
     }
 
     /// subscribe creates a `Stream` of `ReceivedMessage`
-    /// Terminates the underlying `Subscriber` when dropped.
     /// ```
     /// use google_cloud_pubsub::subscription::{SubscribeConfig, Subscription};
     /// use tokio::select;

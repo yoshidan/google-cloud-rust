@@ -187,7 +187,7 @@
 //!     let mut stream = subscription.subscribe(None).await.unwrap();
 //!     let cancellable = stream.cancellable();
 //!     let task = tokio::spawn(async move {
-//!         // None if the CancellationToken is cancelled
+//!         // None if the stream is cancelled
 //!         while let Some(message) = stream.next().await {
 //!             message.ack().await.unwrap();
 //!         }
@@ -216,7 +216,7 @@
 //!     let mut stream = subscription.subscribe(None).await.unwrap();
 //!     let cancellable = stream.cancellable();
 //!     let task = tokio::spawn(async move {
-//!         // None if the CancellationToken is cancelled
+//!         // None if the tream is cancelled
 //!         while let Some(message) = stream.read().await {
 //!             message.ack().await.unwrap();
 //!         }
