@@ -26,6 +26,21 @@ pub struct CommitOptions {
     pub max_commit_delay: Option<Duration>,
 }
 
+#[derive(Clone)]
+pub struct CommitResult {
+    pub timestamp: Option<Timestamp>,
+    pub mutation_count: Option<u64>,
+}
+
+impl From<CommitResponse> for CommitResult {
+    fn from(value: CommitResponse) -> Self {
+        Self {
+            timestamp: value.commit_timestamp.map(|v| v.into()),
+            mutation_count: value.commit_stats.map(|s| s.mutation_count as u64),
+        }
+    }
+}
+
 /// ReadWriteTransaction provides a locking read-write transaction.
 ///
 /// This type of transaction is the only way to write data into Cloud Spanner;
@@ -243,11 +258,24 @@ impl ReadWriteTransaction {
     where
         E: TryAs<Status> + From<Status>,
     {
+        self.end_with_stats(result, options)
+            .await
+            .map(|(r, v)| (r.and_then(|r| r.timestamp), v))
+    }
+
+    pub async fn end_with_stats<S, E>(
+        &mut self,
+        result: Result<S, E>,
+        options: Option<CommitOptions>,
+    ) -> Result<(Option<CommitResult>, S), E>
+    where
+        E: TryAs<Status> + From<Status>,
+    {
         let opt = options.unwrap_or_default();
         match result {
             Ok(success) => {
                 let cr = self.commit(opt).await?;
-                Ok((cr.commit_timestamp.map(|e| e.into()), success))
+                Ok((Some(cr.into()), success))
             }
             Err(err) => {
                 if let Some(status) = err.try_as() {
@@ -266,7 +294,7 @@ impl ReadWriteTransaction {
         &mut self,
         result: Result<T, E>,
         options: Option<CommitOptions>,
-    ) -> Result<(Option<Timestamp>, T), (E, Option<ManagedSession>)>
+    ) -> Result<(Option<CommitResult>, T), (E, Option<ManagedSession>)>
     where
         E: TryAs<Status> + From<Status>,
     {
@@ -274,7 +302,7 @@ impl ReadWriteTransaction {
 
         match result {
             Ok(s) => match self.commit(opt).await {
-                Ok(c) => Ok((c.commit_timestamp.map(|ts| ts.into()), s)),
+                Ok(c) => Ok((Some(c.into()), s)),
                 // Retry the transaction using the same session on ABORT error.
                 // Cloud Spanner will create the new transaction with the previous
                 // one's wound-wait priority.
