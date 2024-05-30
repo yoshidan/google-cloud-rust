@@ -466,7 +466,6 @@ mod tests_in_gcp {
     use serial_test::serial;
     use std::collections::HashMap;
 
-    use crate::subscription::SubscribeConfig;
     use std::time::Duration;
     use tokio::select;
     use tokio_util::sync::CancellationToken;
@@ -655,62 +654,5 @@ mod tests_in_gcp {
         for (msg_id, count) in received_msgs {
             assert_eq!(count, 1, "msg_id = {msg_id}, count = {count}");
         }
-    }
-
-    #[tokio::test]
-    #[serial]
-    #[ignore]
-    async fn test_subscribe_with_graceful_shutdown() {
-        let client = Client::new(ClientConfig::default().with_auth().await.unwrap())
-            .await
-            .unwrap();
-
-        let subscription = client.subscription("graceful-test");
-
-        // publish message
-        let ctx = CancellationToken::new();
-
-        let ctx_pub = ctx.child_token();
-        let publisher = client.topic("graceful-test").new_publisher(None);
-        let _pub_task = tokio::spawn(async move {
-            tracing::info!("start publisher");
-            loop {
-                if ctx_pub.is_cancelled() {
-                    tracing::info!("finish publisher");
-                    return;
-                }
-                publisher
-                    .publish_blocking(PubsubMessage {
-                        data: "msg".into(),
-                        ..Default::default()
-                    })
-                    .get()
-                    .await
-                    .unwrap();
-            }
-        });
-
-        let config = SubscribeConfig::default().with_enable_multiple_subscriber(true);
-        let mut stream = subscription.subscribe(Some(config)).await.unwrap();
-        let ctx_sub = stream.cancellable();
-        // subscribe message
-        let sub_task = tokio::spawn(async move {
-            tracing::info!("start subscriber");
-            // None when the ctx_sub is cancelled
-            while let Some(message) = stream.read().await {
-                tracing::info!("message received {}", &message.message.message_id);
-                tokio::time::sleep(Duration::from_secs(10)).await;
-                message.ack().await.unwrap();
-            }
-            tracing::info!("finish subscriber");
-        });
-
-        tokio::time::sleep(Duration::from_secs(10)).await;
-
-        ctx.cancel();
-        ctx_sub.cancel();
-
-        sub_task.await.unwrap();
-        println!("OK");
     }
 }

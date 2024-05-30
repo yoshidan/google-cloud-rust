@@ -273,12 +273,12 @@ async fn handle_message(
                 received_message.ack_id.clone(),
                 (received_message.delivery_attempt > 0).then_some(received_message.delivery_attempt as usize),
             );
-            let should_nack =  select! {
+            let should_nack = select! {
                 result = queue.send(msg) => result.is_err(),
                 _ = cancel.cancelled() => true
             };
             if should_nack {
-                tracing::trace!("cancelled -> so nack immediately : msg_id={id}");
+                tracing::info!("cancelled -> so nack immediately : msg_id={id}");
                 nack_targets.push(received_message.ack_id);
             }
         }
