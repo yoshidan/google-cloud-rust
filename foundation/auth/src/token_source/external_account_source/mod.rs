@@ -14,6 +14,7 @@ use crate::token_source::{default_http_client, InternalToken, TokenSource};
 
 mod aws_subject_token_source;
 pub mod error;
+mod file_credential_source;
 mod subject_token_source;
 mod url_subject_token_source;
 
@@ -107,8 +108,11 @@ async fn subject_token_source(
     } else if let Some(_) = source.url {
         let ts = url_subject_token_source::UrlSubjectTokenSource::new(source).await?;
         Ok(Box::new(ts))
+    } else if let Some(file) = source.file {
+        let ts = file_credential_source::FileCredentialSource::new(file, source.format);
+        Ok(Box::new(ts))
     } else {
-        // TODO: support file and executable type
+        // TODO: support executable type
         Err(Error::UnsupportedSubjectTokenSource)
     }
 }

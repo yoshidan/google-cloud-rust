@@ -35,6 +35,9 @@ pub enum Error {
     #[error(transparent)]
     TimeFormatError(#[from] time::error::Format),
 
+    #[error(transparent)]
+    IoError(#[from] tokio::io::Error),
+
     #[error("Missing Region URL")]
     MissingRegionURL,
 
