@@ -32,7 +32,7 @@ google-cloud-auth = { optional = true, version = "0.15", path="../foundation/aut
 [dev-dependencies]
 tokio = { version="1.32", features=["rt-multi-thread"] }
 tracing-subscriber = { version="0.3", features=["env-filter"] }
-serial_test = "0.9"
+serial_test = "3.1"
 ctor = "0.1"
 google-cloud-auth = { path="../foundation/auth", default-features=false, features=["rustls-tls"]}
 
