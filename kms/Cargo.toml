@@ -21,6 +21,7 @@ serde_json = "1.0"
 thiserror = { version = "1.0", features = [] }
 prost-types = "0.12"
 asn1 = { version = "0.16", optional = true }
+once_cell =  { version="1.19" , optional = true}
 
 [dev-dependencies]
 tokio = { version="1.32", features=["rt-multi-thread"] }
@@ -38,4 +39,4 @@ rustls-tls = ["google-cloud-auth?/rustls-tls"]
 trace = []
 auth = ["google-cloud-auth"]
 external-account = ["google-cloud-auth?/external-account"]
-eth = ["asn1"]
+eth = ["asn1", "once_cell"]

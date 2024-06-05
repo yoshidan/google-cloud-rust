@@ -112,4 +112,5 @@
 //!     }
 //!}
 pub mod client;
+mod ethereum;
 pub mod grpc;

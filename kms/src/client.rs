@@ -1,14 +1,15 @@
+use hex_literal::hex;
 use std::ops::Deref;
 use std::sync::Arc;
-use hex_literal::hex;
 
 #[cfg(feature = "auth")]
 pub use google_cloud_auth;
 use google_cloud_gax::conn::{ConnectionOptions, Environment, Error};
 use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
-use google_cloud_googleapis::cloud::kms::v1::{AsymmetricSignRequest, Digest, digest};
+use google_cloud_googleapis::cloud::kms::v1::{digest, AsymmetricSignRequest, Digest};
 
+use crate::ethereum::EthereumSigner;
 use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
 
 use crate::grpc::apiv1::conn_pool::{ConnectionManager, KMS, SCOPES};
@@ -86,7 +87,10 @@ impl Client {
         })
     }
 
-
+    #[cfg(feature = "eth")]
+    pub fn ethereum(&self) -> EthereumSigner {
+        EthereumSigner::new(&self.kms_client)
+    }
 }
 
 impl Deref for Client {
@@ -94,57 +98,6 @@ impl Deref for Client {
 
     fn deref(&self) -> &Self::Target {
         &self.kms_client
-    }
-}
-
-#[cfg(feature = "eth")]
-#[derive(asn1::Asn1Read, asn1::Asn1Write)]
-struct Signature<'a> {
-    r: asn1::BigUint<'a>,
-    s: asn1::BigUint<'a>,
-}
-
-#[cfg(feature = "eth")]
-#[derive(thiserror::Error, Debug)]
-enum SignByECError {
-    #[error]
-    GRPC(#[transparent] Status),
-    #[error]
-    ParseError(#[transparent] asn1::ParseError)
-}
-
-const SECP256K1N: [u8; 32] = hex!("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141");
-
-#[cfg(feature = "eth")]
-impl Client {
-
-    /// sign_by_ec calculates an ECDSA signature.
-    /// Use for signing ethereum transaction.
-    /// name: key name
-    /// digest: sha256 hash ( transaction hash )
-    pub async fn sign_eth_tx(&self, name: String, digest: Vec<u8> , option: Option<RetrySetting>) -> Result<Vec<u8>, SignByECError> {
-
-        let secp256k1n = asn1::BigUint::new(SECP256K1N.as_slice()).unwrap();
-
-        let result = self.asymmetric_sign(AsymmetricSignRequest {
-            name,
-            digest: Some(Digest {
-                digest: Some(digest::Digest::Sha256(digest)),
-            }),
-            digest_crc32c: None,
-            data: vec![],
-            data_crc32c: None,
-        }, option).await?;
-
-        let sig = asn1::parse_single::<Signature>(result.signature.as_slice())?;
-        let s = if sig.s > secp256k1n {
-            secp256k1n - sig.s
-        }else {
-            sig.s
-        };
-        //TODO
-        println!("{:?}, {:?}", sig.r, sig.s);
-        Ok(vec![])
     }
 }
 
@@ -330,19 +283,5 @@ mod tests {
         };
         let raw = client.mac_verify(request, None).await.unwrap();
         assert!(raw.success);
-    }
-
-    #[cfg(feature = "eth")]
-    #[tokio::test]
-    #[serial]
-    async fn test_sign_ecdsa() {
-        use hex_literal::hex;
-
-        let (client, project) = new_client().await;
-        let key = format!(
-            "projects/{project}/locations/asia-northeast1/keyRings/gcr_test/cryptoKeys/eth-sign/cryptoKeyVersions/1"
-        );
-
-        let result = client.sign_eth_tx(key, hex!("9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08").to_vec(), None).await;
     }
 }
