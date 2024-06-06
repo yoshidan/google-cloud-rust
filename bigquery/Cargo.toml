@@ -34,7 +34,7 @@ google-cloud-auth = { optional = true, version = "0.15", path="../foundation/aut
 
 [dev-dependencies]
 tokio = { version="1.32", features=["rt-multi-thread"] }
-serial_test = "0.9"
+serial_test = "3.1"
 tracing-subscriber = { version="0.3.17", features=["env-filter"] }
 ctor = "0.1.26"
 tokio-util =  {version ="0.7", features = ["codec"] }
