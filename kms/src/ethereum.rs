@@ -1,19 +1,35 @@
 use crate::grpc::apiv1::kms_client::Client as KmsGrpcClient;
-use asn1::BigInt;
+use asn1::{BigInt, ParseError, ParseErrorKind, ParseResult, SimpleAsn1Readable, Tag};
 use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::cloud::kms::v1::{digest, AsymmetricSignRequest, Digest};
 use hex_literal::hex;
 use once_cell::sync::Lazy;
+use primitive_types::U256;
 
-const _SECP256K1N: [u8; 32] = hex!("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141");
+const _SECP256K1_N: [u8; 32] = hex!("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141");
 
-static SECP256K1N: Lazy<BigInt> = Lazy::new(|| BigInt::new(_SECP256K1N.as_slice()).unwrap());
+static SECP256K1_N: Lazy<U256> = Lazy::new(|| U256::from(_SECP256K1_N.as_slice()));
+static SECP256K1_HALF_N: Lazy<U256> = Lazy::new(|| *SECP256K1_N / 2);
 
-#[derive(asn1::Asn1Read, asn1::Asn1Write)]
-struct Signature<'a> {
-    r: BigInt<'a>,
-    s: BigInt<'a>,
+struct U256Bridge<'a> {
+    value: U256,
+}
+
+struct Signature {
+    r: U256,
+    s: U256,
+}
+
+impl<'a> SimpleAsn1Readable<'a> for U256Bridge<'a> {
+    const TAG: Tag = Tag::primitive(0x02);
+    fn parse_data(data: &'a [u8]) -> ParseResult<Self> {
+        let value= U256::try_from(data).map_err(|_| ParseError::new(ParseErrorKind::InvalidValue))?;
+        Ok(Self {
+            value,
+            bytes: data
+        })
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -55,10 +71,33 @@ impl<'a> EthereumSigner<'a> {
             )
             .await?;
 
-        let sig = asn1::parse_single::<Signature>(result.signature.as_slice())?;
+        let mut signature = asn1::parse(result.signature.as_slice(), |d| {
+            return d.read_element::<asn1::Sequence>()?.parse(|d| {
+                let r = d.read_element::<U256Bridge>()?;
+                let s = d.read_element::<U256Bridge>()?;
+                Ok((r, s))
+            })
+        })?;
+        let (r,s) = signature;
+        let s = if s.value < *SECP256K1_HALF_N {
+            *SECP256K1_N - s.value
+        }else {
+            s.value
+        };
+        let mut s_bytes: Vec<u8> = vec![];
+        s.to_big_endian(&mut s_bytes);
 
-        //TODO
-        println!("{:?}, {:?}", sig.r, sig.s);
+        let mut r_bytes: Vec<u8> = vec![];
+        r.to_big_endian(&mut r_bytes);
+        while s_bytes.len() < 32 {
+            s_bytes.insert(0, 0);
+        }
+        while r_bytes.len() < 32 {
+            r_bytes.insert(0, 0);
+        }
+
+        //TODO generate recovery_id
+
         Ok(vec![])
     }
 }
