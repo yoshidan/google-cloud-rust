@@ -16,6 +16,18 @@ struct U256Bridge<'a> {
     value: U256,
 }
 
+impl<'a> U256Bridge<'a> {
+    pub fn as_bytes32(&self) -> [u8; 32] {
+        let mut b: Vec<u8> = vec![];
+        self.value.to_big_endian(&mut b);
+
+        while self.len() < 32 {
+            b.insert(0, 0);
+        }
+        b.into()
+    }
+}
+
 struct Signature {
     r: U256,
     s: U256,
@@ -27,7 +39,6 @@ impl<'a> SimpleAsn1Readable<'a> for U256Bridge<'a> {
         let value= U256::try_from(data).map_err(|_| ParseError::new(ParseErrorKind::InvalidValue))?;
         Ok(Self {
             value,
-            bytes: data
         })
     }
 }
@@ -78,22 +89,9 @@ impl<'a> EthereumSigner<'a> {
                 Ok((r, s))
             })
         })?;
-        let (r,s) = signature;
-        let s = if s.value < *SECP256K1_HALF_N {
-            *SECP256K1_N - s.value
-        }else {
-            s.value
-        };
-        let mut s_bytes: Vec<u8> = vec![];
-        s.to_big_endian(&mut s_bytes);
-
-        let mut r_bytes: Vec<u8> = vec![];
-        r.to_big_endian(&mut r_bytes);
-        while s_bytes.len() < 32 {
-            s_bytes.insert(0, 0);
-        }
-        while r_bytes.len() < 32 {
-            r_bytes.insert(0, 0);
+        let (mut r,mut s) = signature;
+        if s.value < *SECP256K1_HALF_N {
+            s.value = *SECP256K1_N - s.value
         }
 
         //TODO generate recovery_id
