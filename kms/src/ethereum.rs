@@ -1,12 +1,15 @@
 use crate::ethereum::SignByECError::InvalidSignature;
 use crate::grpc::apiv1::kms_client::Client as KmsGrpcClient;
 use asn1::{BigInt, ParseError, ParseErrorKind, ParseResult, SimpleAsn1Readable, Tag};
+use elliptic_curve::sec1::ToEncodedPoint;
 use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::cloud::kms::v1::{digest, AsymmetricSignRequest, Digest};
 use hex_literal::hex;
+use k256::ecdsa::{RecoveryId, Signature as ECSignature, VerifyingKey};
 use once_cell::sync::Lazy;
 use primitive_types::U256;
+use tiny_keccak::{Hasher, Keccak};
 
 const _SECP256K1_N: [u8; 32] = hex!("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141");
 
@@ -88,7 +91,7 @@ impl<'a> EthereumSigner<'a> {
                 AsymmetricSignRequest {
                     name,
                     digest: Some(Digest {
-                        digest: Some(digest::Digest::Sha256(digest)),
+                        digest: Some(digest::Digest::Sha256(digest.clone())),
                     }),
                     digest_crc32c: None,
                     data: vec![],
@@ -112,18 +115,32 @@ impl<'a> EthereumSigner<'a> {
         }
 
         for rid in 0..1 {
-            let signature = [s.as_bytes32(), r.as_bytes32(), [rid]].concat();
-            let address = self.ecrecover(signature.as_slice())?;
+            let sr = [s.as_bytes32(), r.as_bytes32()].concat();
+            let address = self.ecrecover(digest.as_slice(), sr.as_slice(), rid)?;
             //TODO check equality
             return Ok(Signature {
-                value: signature.into(),
+                value: [sr, [rid]].concat().into(),
             });
         }
         return Err(InvalidSignature(result.signature));
     }
 
-    fn ecrecover(&self, signature: &[u8]) -> Result<[u8; 20], SignByECError> {
-        Ok([0u8; 20])
+    fn ecrecover(&self, digest: &[u8], sr: &[u8], rid: u8) -> Result<[u8; 20], SignByECError> {
+        let rid = RecoveryId::from_byte(rid)?;
+        let ec_signature = ECSignature::try_from(sr)?;
+        let verifying_key = VerifyingKey::recover_from_prehash(digest, &ec_signature, rid)?;
+        let point = verifying_key.as_affine().to_encoded_point(false);
+        let pubkey = point.to_bytes().try_into()?;
+        Ok(Self::kecckac256(&pubkey[1..])[12..].try_into()?)
+    }
+
+    fn keccak256(v: &[u8]) -> [u8; 32] {
+        let mut k = Keccak::v256();
+        k.update(v);
+
+        let mut o = [0u8; 32];
+        k.finalize(&mut o);
+        o
     }
 }
 

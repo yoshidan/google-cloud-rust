@@ -23,6 +23,9 @@ prost-types = "0.12"
 asn1 = { version = "0.16", optional = true }
 once_cell =  { version="1.19" , optional = true}
 primitive-types = { version="0.12", optional = true }
+k256 = {version = "0.13", optional = true}
+elliptic-curve = {version = "0.13", optional = true }
+tiny-keccak = {version = "2.0", features = ["keccak"],  optional = true}
 
 [dev-dependencies]
 tokio = { version="1.32", features=["rt-multi-thread"] }
@@ -40,4 +43,4 @@ rustls-tls = ["google-cloud-auth?/rustls-tls"]
 trace = []
 auth = ["google-cloud-auth"]
 external-account = ["google-cloud-auth?/external-account"]
-eth = ["asn1", "once_cell", "primitive-types"]
+eth = ["asn1", "once_cell", "primitive-types", "k256", "elliptic-curve", "tiny-keccak"]
