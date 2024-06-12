@@ -1,3 +1,4 @@
+use crate::ethereum::SignByECError::InvalidSignature;
 use crate::grpc::apiv1::kms_client::Client as KmsGrpcClient;
 use asn1::{BigInt, ParseError, ParseErrorKind, ParseResult, SimpleAsn1Readable, Tag};
 use google_cloud_gax::grpc::Status;
@@ -28,18 +29,11 @@ impl<'a> U256Bridge<'a> {
     }
 }
 
-struct Signature {
-    r: U256,
-    s: U256,
-}
-
 impl<'a> SimpleAsn1Readable<'a> for U256Bridge<'a> {
     const TAG: Tag = Tag::primitive(0x02);
     fn parse_data(data: &'a [u8]) -> ParseResult<Self> {
-        let value= U256::try_from(data).map_err(|_| ParseError::new(ParseErrorKind::InvalidValue))?;
-        Ok(Self {
-            value,
-        })
+        let value = U256::try_from(data).map_err(|_| ParseError::new(ParseErrorKind::InvalidValue))?;
+        Ok(Self { value })
     }
 }
 
@@ -49,6 +43,28 @@ pub enum SignByECError {
     GRPC(#[from] Status),
     #[error(transparent)]
     ParseError(#[from] asn1::ParseError),
+    #[error("invalid signature")]
+    InvalidSignature(Vec<u8>),
+}
+
+pub struct Signature {
+    value: [u8; 65],
+}
+
+impl AsRef<[u8; 65]> for Signature {
+    fn as_ref(&self) -> &[u8; 65] {
+        &self.value
+    }
+}
+
+impl Signature {
+    pub fn set_recovery_id(&mut self, recovery_id: u8) {
+        self.value[64] = recovery_id;
+    }
+
+    pub fn get_recovery_id(&self) -> u8 {
+        self.value[64]
+    }
 }
 
 pub struct EthereumSigner<'a> {
@@ -65,7 +81,7 @@ impl<'a> EthereumSigner<'a> {
         name: String,
         digest: Vec<u8>,
         option: Option<RetrySetting>,
-    ) -> Result<Vec<u8>, SignByECError> {
+    ) -> Result<Signature, SignByECError> {
         let result = self
             .client
             .asymmetric_sign(
@@ -87,16 +103,27 @@ impl<'a> EthereumSigner<'a> {
                 let r = d.read_element::<U256Bridge>()?;
                 let s = d.read_element::<U256Bridge>()?;
                 Ok((r, s))
-            })
+            });
         })?;
-        let (mut r,mut s) = signature;
+
+        let (mut r, mut s) = signature;
         if s.value < *SECP256K1_HALF_N {
             s.value = *SECP256K1_N - s.value
         }
 
-        //TODO generate recovery_id
+        for rid in 0..1 {
+            let signature = [s.as_bytes32(), r.as_bytes32(), [rid]].concat();
+            let address = self.ecrecover(signature.as_slice())?;
+            //TODO check equality
+            return Ok(Signature {
+                value: signature.into(),
+            });
+        }
+        return Err(InvalidSignature(result.signature));
+    }
 
-        Ok(vec![])
+    fn ecrecover(&self, signature: &[u8]) -> Result<[u8; 20], SignByECError> {
+        Ok([0u8; 20])
     }
 }
 
