@@ -1,22 +1,16 @@
 use crate::ethereum::Error::InvalidSignature;
 use crate::grpc::apiv1::kms_client::Client as KmsGrpcClient;
-use asn1::{BigInt, ParseError, ParseErrorKind, ParseResult, SimpleAsn1Readable, Tag};
-use elliptic_curve::sec1::ToEncodedPoint;
-use elliptic_curve::weierstrass::add;
+use asn1::{ParseError, ParseErrorKind, ParseResult, SimpleAsn1Readable, Tag};
 use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::cloud::kms::v1::{digest, AsymmetricSignRequest, Digest, GetPublicKeyRequest};
-use hex_literal::hex;
 use k256::ecdsa::{RecoveryId, Signature as ECSignature, VerifyingKey};
+use k256::elliptic_curve::bigint::Encoding;
 use k256::pkcs8::DecodePublicKey;
-use once_cell::sync::Lazy;
-use primitive_types::U256;
+use k256::U256;
+use k256::elliptic_curve::Curve;
+use k256::elliptic_curve::sec1::ToEncodedPoint;
 use tiny_keccak::{Hasher, Keccak};
-
-const _SECP256K1_N: [u8; 32] = hex!("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141");
-
-static SECP256K1_N: Lazy<U256> = Lazy::new(|| U256::from(_SECP256K1_N.as_slice()));
-static SECP256K1_HALF_N: Lazy<U256> = Lazy::new(|| *SECP256K1_N / 2);
 
 struct U256Bridge<'a> {
     value: U256,
@@ -119,10 +113,9 @@ impl<'a> EthereumSigner<'a> {
         })?;
 
         let (mut r, mut s) = signature;
-        if s.value < *SECP256K1_HALF_N {
-            s.value = *SECP256K1_N - s.value
+        if s.value < k256::Secp256k1::ORDER / 2 {
+            s.value = k256::Secp256k1::ORDER - s.value
         }
-
         let expected_address = self.get_address(name, option).await?;
 
         for rid in 0..1 {
