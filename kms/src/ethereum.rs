@@ -7,24 +7,26 @@ use k256::elliptic_curve::bigint::{CheckedSub, Encoding};
 use k256::elliptic_curve::sec1::ToEncodedPoint;
 use k256::elliptic_curve::Curve;
 use k256::pkcs8::DecodePublicKey;
-use tiny_keccak::{Hasher, Keccak};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
     GRPC(#[from] Status),
     #[error(transparent)]
-    K256ECError(#[from] k256::ecdsa::Error),
+    K256Error(#[from] k256::ecdsa::signature::Error),
     #[error(transparent)]
-    K256PKCSError(#[from] k256::pkcs8::spki::Error),
+    SPKIError(#[from] k256::pkcs8::spki::Error),
     #[error("invalid signature")]
     InvalidSignature(Vec<u8>),
 }
 
 #[derive(Clone, Debug)]
 pub struct Signature {
+    /// The output of an ECDSA signature
     pub r: [u8; 32],
+    /// The output of an ECDSA signature
     pub s: [u8; 32],
+    /// The recovery id to get pubkey. The value is 0 or 1.
     pub v: u8,
 }
 
@@ -49,14 +51,6 @@ impl<'a> EthereumSigner<'a> {
         Self { client }
     }
 
-    pub async fn get_pubkey(&self, name: &str, option: Option<RetrySetting>) -> Result<VerifyingKey, Error> {
-        let pubkey = self
-            .client
-            .get_public_key(GetPublicKeyRequest { name: name.to_string() }, option)
-            .await?;
-        Ok(VerifyingKey::from_public_key_pem(&pubkey.pem)?)
-    }
-
     pub async fn sign(&self, name: &str, digest: &[u8], option: Option<RetrySetting>) -> Result<Signature, Error> {
         let request = asymmetric_sign_request(name, digest.to_vec());
         let result = self.client.asymmetric_sign(request, option.clone()).await?;
@@ -79,6 +73,14 @@ impl<'a> EthereumSigner<'a> {
         }
         return Err(Error::InvalidSignature(result.signature));
     }
+
+    async fn get_pubkey(&self, name: &str, option: Option<RetrySetting>) -> Result<VerifyingKey, Error> {
+        let pubkey = self
+            .client
+            .get_public_key(GetPublicKeyRequest { name: name.to_string() }, option)
+            .await?;
+        Ok(VerifyingKey::from_public_key_pem(&pubkey.pem)?)
+    }
 }
 
 fn asymmetric_sign_request(name: &str, digest: Vec<u8>) -> AsymmetricSignRequest {
@@ -92,27 +94,11 @@ fn asymmetric_sign_request(name: &str, digest: Vec<u8>) -> AsymmetricSignRequest
         data_crc32c: None,
     }
 }
-/*
-fn key_to_address(value: VerifyingKey) -> Result<[u8; 20], Error> {
-    let point = value.as_affine().to_encoded_point(false);
-    let pubkey = point.to_bytes().try_into()?;
-    let address = keccak256(&pubkey[1..])[12..].try_into()?;
-    Ok(address)
-}
- */
-
-fn keccak256(v: &[u8]) -> [u8; 32] {
-    let mut k = Keccak::v256();
-    k.update(v);
-
-    let mut o = [0u8; 32];
-    k.finalize(&mut o);
-    o
-}
 
 mod tests {
     use crate::client::{Client, ClientConfig};
     use serial_test::serial;
+    use crate::ethereum::Error;
 
     async fn new_client() -> (Client, String) {
         let cred = google_cloud_auth::credentials::CredentialsFile::new().await.unwrap();
@@ -131,15 +117,14 @@ mod tests {
             "projects/{project}/locations/asia-northeast1/keyRings/gcr_test/cryptoKeys/eth-sign/cryptoKeyVersions/1"
         );
 
-        let result = client
+        let value = client
             .ethereum()
             .sign(
                 &key,
                 &hex!("9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"),
                 None,
             )
-            .await
-            .unwrap();
-        print!("{:?}", result);
+            .await.unwrap();
+            println!("{:?}", value.to_bytes());
     }
 }
