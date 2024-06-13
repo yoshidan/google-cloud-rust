@@ -1,14 +1,12 @@
-use crate::ethereum::Error::InvalidSignature;
 use crate::grpc::apiv1::kms_client::Client as KmsGrpcClient;
 use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::cloud::kms::v1::{digest, AsymmetricSignRequest, Digest, GetPublicKeyRequest};
-use k256::ecdsa::{RecoveryId, Signature as ECSignature, VerifyingKey};
+use k256::ecdsa::{RecoveryId, VerifyingKey};
 use k256::elliptic_curve::bigint::{CheckedSub, Encoding};
 use k256::elliptic_curve::sec1::ToEncodedPoint;
 use k256::elliptic_curve::Curve;
 use k256::pkcs8::DecodePublicKey;
-use std::ops::Div;
 use tiny_keccak::{Hasher, Keccak};
 
 #[derive(thiserror::Error, Debug)]
@@ -62,7 +60,7 @@ impl<'a> EthereumSigner<'a> {
     pub async fn sign(&self, name: &str, digest: &[u8], option: Option<RetrySetting>) -> Result<Signature, Error> {
         let request = asymmetric_sign_request(name, digest.to_vec());
         let result = self.client.asymmetric_sign(request, option.clone()).await?;
-        let mut signature = ECSignature::from_der(&result.signature)?;
+        let mut signature = k256::ecdsa::Signature::from_der(&result.signature)?;
         if let Some(new_sig) = signature.normalize_s() {
             signature = new_sig
         }
@@ -79,7 +77,7 @@ impl<'a> EthereumSigner<'a> {
                 });
             }
         }
-        return Err(InvalidSignature(result.signature));
+        return Err(Error::InvalidSignature(result.signature));
     }
 }
 
