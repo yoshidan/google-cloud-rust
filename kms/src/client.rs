@@ -1,4 +1,3 @@
-use hex_literal::hex;
 use std::ops::Deref;
 use std::sync::Arc;
 

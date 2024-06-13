@@ -38,10 +38,10 @@ hex-literal = { version = "0.4" }
 ethers = "2.0"
 
 [features]
-default = ["default-tls", "auth", "ethereum"]
+default = ["default-tls", "auth", "eth"]
 default-tls = ["google-cloud-auth?/default-tls"]
 rustls-tls = ["google-cloud-auth?/rustls-tls"]
 trace = []
 auth = ["google-cloud-auth"]
 external-account = ["google-cloud-auth?/external-account"]
-ethereum = ["ethers-core", "ethers-signers", "async-trait", "k256"]
+eth = ["ethers-core", "ethers-signers", "async-trait", "k256"]

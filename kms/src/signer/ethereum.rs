@@ -1,8 +1,5 @@
 use crate::client::Client;
 use ethers_core::k256::ecdsa::RecoveryId;
-use ethers_core::k256::elliptic_curve::bigint::{CheckedSub, Encoding};
-use ethers_core::k256::elliptic_curve::sec1::ToEncodedPoint;
-use ethers_core::k256::elliptic_curve::Curve;
 use ethers_core::k256::pkcs8::DecodePublicKey;
 use ethers_core::k256::FieldBytes;
 use ethers_core::types::{Signature, U256};
@@ -20,7 +17,6 @@ use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::cloud::kms::v1::{digest, AsymmetricSignRequest, Digest, GetPublicKeyRequest};
 use std::fmt::Debug;
-use tokio::time::error;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -101,7 +97,6 @@ impl Signer {
         for rid in 0..=1 {
             let recovery_id = RecoveryId::from_byte(rid).unwrap();
             let recovered_pubkey = VerifyingKey::recover_from_prehash(digest, &signature, recovery_id)?;
-            let address = public_key_to_address(&recovered_pubkey);
             if recovered_pubkey == self.pubkey {
                 let r_bytes: FieldBytes = signature.r().into();
                 let s_bytes: FieldBytes = signature.s().into();
@@ -112,7 +107,7 @@ impl Signer {
                 });
             }
         }
-        return Err(Error::InvalidSignature(result.signature));
+        Err(Error::InvalidSignature(result.signature))
     }
 
     fn asymmetric_sign_request(name: &str, digest: Vec<u8>) -> AsymmetricSignRequest {
@@ -128,8 +123,8 @@ impl Signer {
     }
 
     fn with_eip155(&self, mut signature: Signature) -> Signature {
-        signature.v = (self.chain_id * 2 + 35) + signature.v;
-        return signature;
+        signature.v += self.chain_id * 2 + 35;
+        signature
     }
 }
 
@@ -180,12 +175,13 @@ impl EthSigner for Signer {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use crate::client::{Client, ClientConfig};
     use crate::signer::ethereum::Signer;
     use ethers::middleware::SignerMiddleware;
     use ethers::providers::{Http, Middleware, Provider};
-    use ethers_core::types::{Address, TransactionRequest};
+    use ethers_core::types::{TransactionReceipt, TransactionRequest};
     use ethers_signers::Signer as EthSigner;
     use serial_test::serial;
 
@@ -217,9 +213,9 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_send_ethereum_transaction() {
-        let provider = Provider::<Http>::try_from("https://ethereum-sepolia-rpc.publicnode.com").unwrap();
+        let provider = Provider::<Http>::try_from("https://bsc-testnet-rpc.publicnode.com").unwrap();
 
-        let amount: u128 = 100_000_000_000_000; // 0.0001 eth
+        let amount: u128 = 100_000_000_000_000; // 0.0003 BNB
 
         let (client, project) = new_client().await;
         let key = format!(
@@ -237,14 +233,15 @@ mod tests {
         let tx = TransactionRequest::new()
             .to(signer_address)
             .value(amount)
-            .gas(8_600_000 as u64)
-            .gas_price(40_000_000_000 as u64)
-            .chain_id(11155111); // sepolia
+            .gas(1_500_000_u64)
+            .gas_price(4_000_000_000_u64)
+            .chain_id(97); // BSC testnet
 
         let res = eth_client.send_transaction(tx, None).await.unwrap();
         tracing::info!("tx res: {:?}", res);
 
-        let receipt = res.confirmations(10).await.unwrap();
+        let receipt: TransactionReceipt = res.confirmations(3).await.unwrap().unwrap();
         tracing::info!("receipt: {:?}", receipt);
+        assert_eq!(receipt.from, signer_address);
     }
 }
