@@ -20,8 +20,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = { version = "1.0", features = [] }
 prost-types = "0.12"
-asn1 = { version = "0.16", optional = true }
-k256 = {version = "0.13", optional = true}
+k256 = {version = "0.13", features = ["pem"], optional = true}
 tiny-keccak = {version = "2.0", features = ["keccak"],  optional = true}
 
 [dev-dependencies]
@@ -40,4 +39,4 @@ rustls-tls = ["google-cloud-auth?/rustls-tls"]
 trace = []
 auth = ["google-cloud-auth"]
 external-account = ["google-cloud-auth?/external-account"]
-eth = ["asn1", "k256", "tiny-keccak"]
+eth = ["k256", "tiny-keccak"]
