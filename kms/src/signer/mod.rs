@@ -1,2 +1,2 @@
-#[cfg(feature = "ethereum")]
+#[cfg(feature = "eth")]
 pub mod ethereum;
