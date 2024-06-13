@@ -97,8 +97,14 @@ fn asymmetric_sign_request(name: &str, digest: Vec<u8>) -> AsymmetricSignRequest
 
 mod tests {
     use crate::client::{Client, ClientConfig};
+    use crate::ethereum::Signature;
+    use ethers::prelude::{LocalWallet, SignerMiddleware};
+    use ethers::providers::{Http, Provider};
+    use ethers::types::{Address, TransactionRequest};
+    use ethers::utils::parse_ether;
+    use k256::ecdsa::signature::hazmat::PrehashSigner;
+    use k256::ecdsa::Error;
     use serial_test::serial;
-    use crate::ethereum::Error;
 
     async fn new_client() -> (Client, String) {
         let cred = google_cloud_auth::credentials::CredentialsFile::new().await.unwrap();
@@ -124,7 +130,50 @@ mod tests {
                 &hex!("9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"),
                 None,
             )
-            .await.unwrap();
-            println!("{:?}", value.to_bytes());
+            .await
+            .unwrap();
+        println!("{:?}", value.to_bytes());
+    }
+
+    struct RemoteSigner {
+        client: Client,
+        key_name: String,
+    }
+
+    impl PrehashSigner<Signature> for RemoteSigner {
+        fn sign_prehash(&self, prehash: &[u8]) -> Result<Signature, Error> {
+            self.client.ethereum().sign(self.key_name.as_str(), prehash, None)
+        }
+    }
+    #[tokio::test]
+    #[serial]
+    async fn test_send_ethereum_transaction() {
+        let provider = Provider::<Http>::try_from("https://ethereum-sepolia-rpc.publicnode.com")?;
+
+        let to_addr: Address = "0x295a70b2de5e3953354a6a8344e616ed314d7251".parse()?;
+        let amount: u128 = 1000000000000000000;
+
+        let (client, project) = new_client().await;
+        let key_name = format!(
+            "projects/{project}/locations/asia-northeast1/keyRings/gcr_test/cryptoKeys/eth-sign/cryptoKeyVersions/1"
+        );
+        let signer = RemoteSigner { client, key_name };
+
+        let mut eth_client = SignerMiddleware::new_with_provider_chain(provider, signer)
+            .await
+            .unwrap();
+
+        let tx = TransactionRequest::new()
+            .to(to_addr.parse::<Address>().unwrap())
+            .value(amount)
+            .gas(8500000)
+            .gas_price(40000000000)
+            .chain_id(11155111); // sepolia
+
+        let res = eth_client.send_transaction(tx, None).await.unwrap();
+
+        let receipt = res.confirmations(10).await.unwrap();
+
+        println!("sendEth: {:?}", receipt);
     }
 }

@@ -30,6 +30,7 @@ ctor = "0.1"
 tokio-util =  {version ="0.7", features = ["codec"] }
 google-cloud-auth = { path = "../foundation/auth", default-features=false }
 hex-literal = { version = "0.4" }
+ethers = "2.0"
 
 [features]
 default = ["default-tls", "auth", "eth"]
