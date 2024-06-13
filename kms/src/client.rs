@@ -5,11 +5,7 @@ use std::sync::Arc;
 #[cfg(feature = "auth")]
 pub use google_cloud_auth;
 use google_cloud_gax::conn::{ConnectionOptions, Environment, Error};
-use google_cloud_gax::grpc::Status;
-use google_cloud_gax::retry::RetrySetting;
-use google_cloud_googleapis::cloud::kms::v1::{digest, AsymmetricSignRequest, Digest};
 
-use crate::ethereum::EthereumSigner;
 use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
 
 use crate::grpc::apiv1::conn_pool::{ConnectionManager, KMS, SCOPES};
@@ -67,7 +63,7 @@ impl Default for ClientConfig {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Client {
     kms_client: KmsGrpcClient,
 }
@@ -85,11 +81,6 @@ impl Client {
         Ok(Self {
             kms_client: KmsGrpcClient::new(Arc::new(cm)),
         })
-    }
-
-    #[cfg(feature = "eth")]
-    pub fn ethereum(&self) -> EthereumSigner {
-        EthereumSigner::new(&self.kms_client)
     }
 }
 

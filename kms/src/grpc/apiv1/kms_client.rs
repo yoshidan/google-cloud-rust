@@ -40,7 +40,7 @@ fn default_setting() -> RetrySetting {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Client {
     cm: Arc<ConnectionManager>,
 }

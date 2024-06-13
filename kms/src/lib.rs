@@ -112,5 +112,5 @@
 //!     }
 //!}
 pub mod client;
-mod ethereum;
 pub mod grpc;
+pub mod signer;
