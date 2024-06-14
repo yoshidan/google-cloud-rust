@@ -44,7 +44,8 @@ pub struct Signer {
     /// Ethereum address
     address: Address,
     chain_id: u64,
-    retry_setting: Option<RetrySetting>, }
+    retry_setting: Option<RetrySetting>,
+}
 
 impl Signer {
     pub fn new_with_pubkey(
