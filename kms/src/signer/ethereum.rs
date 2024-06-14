@@ -35,17 +35,21 @@ pub enum Error {
 #[derive(Clone, Debug)]
 pub struct Signer {
     client: Client,
+    /// key_name managed by GoogleClod.
+    /// Format: "projects/{project}/locations/{region}/keyRings/{keyRing}/cryptoKeys/{key}/cryptoKeyVersions/{version}"
+    /// It must be ECDSA secp256k1.
     key_name: String,
+    /// ECDSA/secp256k1 pubkey
     pubkey: VerifyingKey,
+    /// Ethereum address
     address: Address,
     chain_id: u64,
-    retry_setting: Option<RetrySetting>,
-}
+    retry_setting: Option<RetrySetting>, }
 
 impl Signer {
-    pub fn new(
+    pub fn new_with_pubkey(
         client: Client,
-        key_name: String,
+        key_name: &str,
         pubkey: VerifyingKey,
         address: Address,
         chain_id: u64,
@@ -53,14 +57,50 @@ impl Signer {
     ) -> Self {
         Self {
             client,
-            key_name,
+            key_name: key_name.to_string(),
             pubkey,
             address,
             chain_id,
             retry_setting,
         }
     }
-    pub async fn create(
+
+    /// Instantiate a new signer from an existing `Client` and Key ID.
+    ///
+    /// This function retrieves the public key from Google Cloud and calculates the Etheruem address.
+    /// It is therefore `async`.
+    ///
+    /// ```
+    /// use ethers::prelude::SignerMiddleware;
+    /// use ethers::providers::{Http, Middleware, Provider};
+    /// use ethers_core::types::{TransactionReceipt, TransactionRequest};
+    /// use ethers_signers::Signer as EthSigner;
+    /// use google_cloud_kms::client::Client;
+    /// use google_cloud_kms::signer::ethereum::{Error, Signer};
+    ///
+    /// pub async fn run(client: Client, key_name: &str) {
+    ///
+    ///     // BSC testnet
+    ///     let chain_id = 97;
+    ///
+    ///     let signer = Signer::new(client, key_name, chain_id, None).await.unwrap();
+    ///     let provider = Provider::<Http>::try_from("https://bsc-testnet-rpc.publicnode.com").unwrap();
+    ///
+    ///
+    ///     let eth_client = SignerMiddleware::new_with_provider_chain(provider, signer).await.unwrap();
+    ///
+    ///     let tx = TransactionRequest::new()
+    ///             .to(signer.address())
+    ///             .value(100_000_000_000_000_u128)
+    ///             .gas(1_500_000_u64)
+    ///             .gas_price(4_000_000_000_u64)
+    ///             .chain_id(chain_id); // BSC testnet
+    ///
+    ///     let res = eth_client.send_transaction(tx, None).await.unwrap();
+    ///     let receipt: TransactionReceipt = res.confirmations(3).await.unwrap().unwrap();
+    /// }
+    /// ```
+    pub async fn new(
         client: Client,
         key_name: &str,
         chain_id: u64,
@@ -76,19 +116,13 @@ impl Signer {
             .await?;
         let pubkey = VerifyingKey::from_public_key_pem(&pubkey.pem)?;
         let address = public_key_to_address(&pubkey);
-        Ok(Self {
-            client,
-            key_name: key_name.to_string(),
-            pubkey,
-            address,
-            chain_id,
-            retry_setting: None,
-        })
+        Ok(Self::new_with_pubkey(client, key_name, pubkey, address, chain_id, retry))
     }
 
     pub async fn sign_digest(&self, digest: &[u8]) -> Result<Signature, Error> {
         let request = Self::asymmetric_sign_request(&self.key_name, digest.to_vec());
         let result = self.client.asymmetric_sign(request, self.retry_setting.clone()).await?;
+
         let mut signature = KSig::from_der(&result.signature)?;
         if let Some(new_sig) = signature.normalize_s() {
             signature = new_sig
@@ -163,12 +197,10 @@ impl EthSigner for Signer {
         self.address
     }
 
-    /// Returns the signer's chain id
     fn chain_id(&self) -> u64 {
         self.chain_id
     }
 
-    /// Sets the signer's chain id
     fn with_chain_id<T: Into<u64>>(mut self, chain_id: T) -> Self {
         self.chain_id = chain_id.into();
         self
@@ -202,7 +234,7 @@ mod tests {
             "projects/{project}/locations/asia-northeast1/keyRings/gcr_test/cryptoKeys/eth-sign/cryptoKeyVersions/1"
         );
 
-        let signer = Signer::create(client, &key, 1, None).await.unwrap();
+        let signer = Signer::new(client, &key, 1, None).await.unwrap();
         let signature = signer
             .sign_digest(&hex!("9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"))
             .await
@@ -215,14 +247,12 @@ mod tests {
     async fn test_send_ethereum_transaction() {
         let provider = Provider::<Http>::try_from("https://bsc-testnet-rpc.publicnode.com").unwrap();
 
-        let amount: u128 = 100_000_000_000_000; // 0.0003 BNB
-
         let (client, project) = new_client().await;
         let key = format!(
             "projects/{project}/locations/asia-northeast1/keyRings/gcr_test/cryptoKeys/eth-sign/cryptoKeyVersions/1"
         );
-
-        let signer = Signer::create(client, &key, 1, None).await.unwrap();
+        let chain_id = 97;
+        let signer = Signer::new(client, &key, chain_id, None).await.unwrap();
         let signer_address = signer.address();
         tracing::info!("signerAddress = {:?}", signer_address);
 
@@ -232,10 +262,10 @@ mod tests {
 
         let tx = TransactionRequest::new()
             .to(signer_address)
-            .value(amount)
+            .value(100_000_000_000_000_u128)
             .gas(1_500_000_u64)
             .gas_price(4_000_000_000_u64)
-            .chain_id(97); // BSC testnet
+            .chain_id(chain_id); // BSC testnet
 
         let res = eth_client.send_transaction(tx, None).await.unwrap();
         tracing::info!("tx res: {:?}", res);
@@ -243,5 +273,6 @@ mod tests {
         let receipt: TransactionReceipt = res.confirmations(3).await.unwrap().unwrap();
         tracing::info!("receipt: {:?}", receipt);
         assert_eq!(receipt.from, signer_address);
+        assert_eq!(receipt.status.unwrap().as_u64(), 1);
     }
 }
