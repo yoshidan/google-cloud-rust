@@ -142,7 +142,7 @@
 //!             .value(100_000_000_000_000_u128)
 //!             .gas(1_500_000_u64)
 //!             .gas_price(4_000_000_000_u64)
-//!             .chain_id(chain_id); // BSC testnet
+//!             .chain_id(chain_id);
 //!
 //!     let res = eth_client.send_transaction(tx, None).await.unwrap();
 //!     let receipt: TransactionReceipt = res.confirmations(3).await.unwrap().unwrap();
