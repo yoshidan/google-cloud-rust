@@ -339,10 +339,7 @@ impl Client {
                         Ok(tx) => tx,
                         Err(e) => return Err((Error::GRPC(e.status), Some(e.session))),
                     };
-                let qo = match options.query_options.clone() {
-                    Some(o) => o,
-                    None => QueryOptions::default(),
-                };
+                let qo = options.query_options.clone().unwrap_or_default();
                 tx.update_with_option(stmt.clone(), qo)
                     .await
                     .map_err(|e| (Error::GRPC(e), tx.take_session()))

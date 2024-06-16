@@ -86,12 +86,12 @@ impl Signer {
     ///
     ///     let signer = Signer::new(client, key_name, chain_id, None).await.unwrap();
     ///     let provider = Provider::<Http>::try_from("https://bsc-testnet-rpc.publicnode.com").unwrap();
-    ///
+    ///     let signer_address = signer.address();
     ///
     ///     let eth_client = SignerMiddleware::new_with_provider_chain(provider, signer).await.unwrap();
     ///
     ///     let tx = TransactionRequest::new()
-    ///             .to(signer.address())
+    ///             .to(signer_address)
     ///             .value(100_000_000_000_000_u128)
     ///             .gas(1_500_000_u64)
     ///             .gas_price(4_000_000_000_u64)
