@@ -9,15 +9,17 @@ Google Cloud Platform server application authentication library.
 ```toml
 [dependencies]
 google-cloud-auth = <version>
+google-cloud-token = "0.1.2"
 ```
 
 ## Quickstart
 
 ```rust
-use google_cloud_auth::*;
-
 #[tokio::main]
 async fn main() -> Result<(), error::Error> {
+    use google_cloud_auth::{project::Config, token::DefaultTokenSourceProvider};
+    use google_cloud_token::TokenSourceProvider as _;
+
     let audience = "https://spanner.googleapis.com/";
     let scopes = [
         "https://www.googleapis.com/auth/cloud-platform",
@@ -30,16 +32,17 @@ async fn main() -> Result<(), error::Error> {
         // scopes is required only for service account Oauth2
         // https://developers.google.com/identity/protocols/oauth2/service-account
         scopes: Some(&scopes),
-        sub: None
+        sub: None,
     };
-    let ts = create_token_source(config).await?;
+    let tsp = DefaultTokenSourceProvider::new(config).await?;
+    let ts = tsp.token_source();
     let token = ts.token().await?;
-    println!("token is {}",token.access_token);
+    println!("token is {}", token);
     Ok(())
 }
 ```
 
-`create_token_source`looks for credentials in the following places,
+`DefaultTokenSourceProvider::new(config)` looks for credentials in the following places,
 preferring the first location found:
 
 1. A JSON file whose path is specified by the
@@ -59,7 +62,7 @@ preferring the first location found:
 
 ## Supported Workload Identity
 
-https://cloud.google.com/iam/docs/workload-identity-federation
+<https://cloud.google.com/iam/docs/workload-identity-federation>
 
 - [x] AWS
 - [ ] Azure Active Directory
