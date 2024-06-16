@@ -62,7 +62,7 @@ impl Default for ClientConfig {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Client {
     kms_client: KmsGrpcClient,
 }
@@ -93,7 +93,6 @@ impl Deref for Client {
 
 #[cfg(test)]
 mod tests {
-
     use serial_test::serial;
 
     use crate::grpc::kms::v1::{

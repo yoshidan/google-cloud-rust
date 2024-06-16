@@ -84,7 +84,7 @@ google-cloud-kms = "version"
 
      // list
      match client
-        .list_key_rings(
+         .list_key_rings(
              ListKeyRingsRequest {
                  parent: "projects/qovery-gcp-tests/locations/europe-west9".to_string(),
                  page_size: 5,
@@ -121,3 +121,45 @@ google-cloud-kms = "version"
          }
          Err(err) => panic!("err: {:?}", err),
      }
+ }
+```
+
+### Ethereum Integration
+
+Enable 'eth' feature.
+
+```toml
+[dependencies]
+google-cloud-kms = { version="version", features=["eth"] }
+```
+
+ ```rust
+ use ethers::prelude::SignerMiddleware;
+ use ethers::providers::{Http, Middleware, Provider};
+ use ethers_core::types::{TransactionReceipt, TransactionRequest};
+ use ethers_signers::Signer as EthSigner;
+ use google_cloud_kms::client::Client;
+ use google_cloud_kms::signer::ethereum::{Error, Signer};
+
+ pub async fn send_bnb(client: Client, key_name: &str, rpc_node: &str) {
+
+     // BSC testnet
+     let chain_id = 97;
+
+     let signer = Signer::new(client, key_name, chain_id, None).await.unwrap();
+     let provider = Provider::<Http>::try_from(rpc_node).unwrap();
+ 
+     let signer_address = signer.address();
+     let eth_client = SignerMiddleware::new_with_provider_chain(provider, signer).await.unwrap();
+
+     let tx = TransactionRequest::new()
+             .to(signer_address)
+             .value(100_000_000_000_000_u128)
+             .gas(1_500_000_u64)
+             .gas_price(4_000_000_000_u64)
+             .chain_id(chain_id); 
+
+     let res = eth_client.send_transaction(tx, None).await.unwrap();
+     let receipt: TransactionReceipt = res.confirmations(3).await.unwrap().unwrap();
+ }
+```
