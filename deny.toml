@@ -108,7 +108,8 @@ allow = [
     "MPL-2.0",
     "Unicode-DFS-2016",
     "BSD-3-Clause",
-    "CC0-1.0"
+    "CC0-1.0",
+    "Unicode-3.0"
 ]
 # List of explicitly disallowed licenses
 # See https://spdx.org/licenses/ for list of possible licenses
@@ -239,6 +240,7 @@ skip-tree = [
     { name = "regex-automata" },
     { name = "windows-sys" },
     { name = "reqwest" },
+    { name = "ethers"},
 ]
 
 # This section is considered when running `cargo deny check sources`.
