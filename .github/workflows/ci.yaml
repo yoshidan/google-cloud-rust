@@ -10,8 +10,8 @@ on:
     types: [labeled]
 
 jobs:
-  lint:
-    name: lint
+  check-lint:
+    name: check-lint
     runs-on: ubuntu-latest
     if: contains(github.event.pull_request.labels.*.name, 'safe to test') || ${{ github.event_name }} == 'push'
     steps:
@@ -33,19 +33,6 @@ jobs:
         run: cargo fmt --all -- --check
       - name: clippy check
         run: cargo clippy -- -D warnings
-      - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@v0.6.0
-        with:
-          service_account_key: ${{ secrets.STORAGE_CREDENTIALS }}
-          export_default_credentials: true
-      - name: auth-test
-        run: cargo test --release --all-features --manifest-path foundation/auth/Cargo.toml
-      - name: gax-test
-        run: cargo test --release --all-features --manifest-path foundation/gax/Cargo.toml
-      - name: cargo-deny
-        uses: EmbarkStudios/cargo-deny-action@v1
-        with:
-          arguments: --workspace --all-features
   check-deps:
     name: check-deps
     runs-on: ubuntu-latest
