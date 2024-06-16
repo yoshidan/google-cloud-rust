@@ -10,8 +10,8 @@ on:
     types: [labeled]
 
 jobs:
-  common:
-    name: common
+  lint:
+    name: lint
     runs-on: ubuntu-latest
     if: contains(github.event.pull_request.labels.*.name, 'safe to test') || ${{ github.event_name }} == 'push'
     steps:
@@ -46,6 +46,45 @@ jobs:
         uses: EmbarkStudios/cargo-deny-action@v1
         with:
           arguments: --workspace --all-features
+  check-deps:
+    name: check-deps
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'safe to test') || ${{ github.event_name }} == 'push'
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{github.event.pull_request.head.repo.full_name}}
+      - name: cargo-deny
+        uses: EmbarkStudios/cargo-deny-action@v1
+        with:
+          arguments: --workspace --all-features
+  foundation:
+    name: foundation
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'safe to test') || ${{ github.event_name }} == 'push'
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{github.event.pull_request.head.repo.full_name}}
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v0.6.0
+        with:
+          service_account_key: ${{ secrets.STORAGE_CREDENTIALS }}
+          export_default_credentials: true
+      - name: auth-test
+        run: cargo test --release --all-features --manifest-path foundation/auth/Cargo.toml
+      - name: gax-test
+        run: cargo test --release --all-features --manifest-path foundation/gax/Cargo.toml
   pubsub:
     name: pubsub
     runs-on: ubuntu-latest
