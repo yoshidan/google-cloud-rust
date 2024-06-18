@@ -50,6 +50,8 @@ pub enum Error {
     NoColumnFoundInStruct(String),
     #[error("Failed to parse as BigDecimal field={0}")]
     BigDecimalParseError(String, #[source] ParseBigDecimalError),
+    #[error("Failed to parse as Prost Timestamp field={0}")]
+    ProstTimestampParseError(String, #[source] ::prost_types::TimestampError),
 }
 
 impl Row {
@@ -174,6 +176,16 @@ impl TryFromValue for OffsetDateTime {
             Kind::StringValue(s) => {
                 Ok(OffsetDateTime::parse(s, &Rfc3339).map_err(|e| Error::DateParseError(field.name.to_string(), e))?)
             }
+            v => kind_to_error(v, field),
+        }
+    }
+}
+
+impl TryFromValue for ::prost_types::Timestamp {
+    fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
+        match as_ref(item, field)? {
+            Kind::StringValue(s) => Ok(::prost_types::Timestamp::from_str(s)
+                .map_err(|e| Error::ProstTimestampParseError(field.name.to_string(), e))?),
             v => kind_to_error(v, field),
         }
     }
@@ -323,7 +335,7 @@ mod tests {
     use std::str::FromStr;
     use std::sync::Arc;
 
-    use prost_types::Value;
+    use prost_types::{Timestamp, Value};
     use time::OffsetDateTime;
 
     use google_cloud_googleapis::spanner::v1::struct_type::Field;
@@ -338,6 +350,7 @@ mod tests {
         pub struct_field_time: OffsetDateTime,
         pub commit_timestamp: CommitTimestamp,
         pub big_decimal: BigDecimal,
+        pub prost_timestamp: Timestamp,
     }
 
     impl TryFromStruct for TestStruct {
@@ -347,6 +360,7 @@ mod tests {
                 struct_field_time: s.column_by_name("struct_field_time")?,
                 commit_timestamp: s.column_by_name("commit_timestamp")?,
                 big_decimal: s.column_by_name("big_decimal")?,
+                prost_timestamp: s.column_by_name("prost_timestamp")?,
             })
         }
     }
@@ -359,6 +373,7 @@ mod tests {
                 // value from DB is timestamp. it's not string 'spanner.commit_timestamp()'.
                 ("commit_timestamp", OffsetDateTime::from(self.commit_timestamp).to_kind()),
                 ("big_decimal", self.big_decimal.to_kind()),
+                ("prost_timestamp", self.prost_timestamp.to_kind()),
             ]
         }
 
@@ -368,6 +383,7 @@ mod tests {
                 ("struct_field_time", OffsetDateTime::get_type()),
                 ("commit_timestamp", CommitTimestamp::get_type()),
                 ("big_decimal", BigDecimal::get_type()),
+                ("prost_timestamp", Timestamp::get_type()),
             ]
         }
     }
@@ -379,6 +395,7 @@ mod tests {
         index.insert("array".to_string(), 1);
         index.insert("struct".to_string(), 2);
         index.insert("decimal".to_string(), 3);
+        index.insert("timestamp".to_string(), 4);
 
         let now = OffsetDateTime::now_utc();
         let row = Row {
@@ -400,6 +417,10 @@ mod tests {
                     name: "decimal".to_string(),
                     r#type: Some(BigDecimal::get_type()),
                 },
+                Field {
+                    name: "timestamp".to_string(),
+                    r#type: Some(Timestamp::get_type()),
+                },
             ]),
             values: vec![
                 Value {
@@ -418,12 +439,14 @@ mod tests {
                                 struct_field_time: now,
                                 commit_timestamp: CommitTimestamp { timestamp: now },
                                 big_decimal: BigDecimal::from_str("-99999999999999999999999999999.999999999").unwrap(),
+                                prost_timestamp: Timestamp::from_str("2024-01-01T01:13:45Z").unwrap(),
                             },
                             TestStruct {
                                 struct_field: "bbb".to_string(),
                                 struct_field_time: now,
                                 commit_timestamp: CommitTimestamp { timestamp: now },
                                 big_decimal: BigDecimal::from_str("99999999999999999999999999999.999999999").unwrap(),
+                                prost_timestamp: Timestamp::from_str("2027-02-19T07:23:59Z").unwrap(),
                             },
                         ]
                         .to_kind(),
@@ -432,6 +455,9 @@ mod tests {
                 Value {
                     kind: Some(BigDecimal::from_f64(100.999999999999).unwrap().to_kind()),
                 },
+                Value {
+                    kind: Some(Timestamp::from_str("1999-12-31T23:59:59Z").unwrap().to_kind()),
+                },
             ],
         };
 
@@ -439,16 +465,19 @@ mod tests {
         let array = row.column_by_name::<Vec<i64>>("array").unwrap();
         let struct_data = row.column_by_name::<Vec<TestStruct>>("struct").unwrap();
         let decimal = row.column_by_name::<BigDecimal>("decimal").unwrap();
+        let ts = row.column_by_name::<Timestamp>("timestamp").unwrap();
         assert_eq!(value, "aaa");
         assert_eq!(array[0], 10);
         assert_eq!(array[1], 100);
         assert_eq!(decimal.to_f64().unwrap(), 100.999999999999);
+        assert_eq!(format!("{ts:}"), "1999-12-31T23:59:59Z");
         assert_eq!(struct_data[0].struct_field, "aaa");
         assert_eq!(struct_data[0].struct_field_time, now);
         assert_eq!(
             struct_data[0].big_decimal,
             BigDecimal::from_str("-99999999999999999999999999999.999999999").unwrap()
         );
+        assert_eq!(format!("{}", struct_data[0].prost_timestamp), "2024-01-01T01:13:45Z");
         assert_eq!(struct_data[1].struct_field, "bbb");
         assert_eq!(struct_data[1].struct_field_time, now);
         assert_eq!(struct_data[1].commit_timestamp.timestamp, now);
@@ -460,5 +489,6 @@ mod tests {
             struct_data[1].big_decimal.clone().add(&struct_data[0].big_decimal),
             BigDecimal::zero()
         );
+        assert_eq!(format!("{}", struct_data[1].prost_timestamp), "2027-02-19T07:23:59Z");
     }
 }
