@@ -206,6 +206,22 @@ impl ToKind for BigDecimal {
     }
 }
 
+impl ToKind for ::prost_types::Timestamp {
+    fn to_kind(&self) -> Kind {
+        // The protobuf timestamp type should be formatted in RFC3339
+        // See here for more details: https://docs.rs/prost-types/latest/prost_types/struct.Timestamp.html
+        let rfc3339 = format!("{}", self);
+        rfc3339.to_kind()
+    }
+
+    fn get_type() -> Type
+    where
+        Self: Sized,
+    {
+        single_type(TypeCode::Timestamp)
+    }
+}
+
 impl<T> ToKind for T
 where
     T: ToStruct,
@@ -287,5 +303,26 @@ where
             struct_type: None,
             type_annotation: TypeAnnotationCode::Unspecified.into(),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::statement::ToKind;
+    use prost_types::value::Kind;
+    use time::OffsetDateTime;
+
+    // Test that prost's to_kind implementation works as expected.
+    #[test]
+    fn prost_timestamp_to_kind_works() {
+        let ts = ::prost_types::Timestamp::date_time(2024, 01, 01, 12, 15, 36).unwrap();
+        let expected = String::from("2024-01-01T12:15:36Z");
+        // Make sure the formatting of prost_types::Timestamp hasn't changed
+        assert_eq!(format!("{ts:}"), expected);
+        let kind = ts.to_kind();
+        matches!(kind, Kind::StringValue(s) if s == expected);
+
+        // Prost's Timestamp type and OffsetDateTime should have the same representation in spanner
+        assert_eq!(prost_types::Timestamp::get_type(), OffsetDateTime::get_type());
     }
 }
