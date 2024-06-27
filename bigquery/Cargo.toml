@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-bigquery"
-version = "0.9.0"
+version = "0.10.0"
 edition = "2021"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/bigquery"
