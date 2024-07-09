@@ -27,7 +27,7 @@ pub struct ArrowRecordBatch {
 }
 /// Contains options specific to Arrow Serialization.
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct ArrowSerializationOptions {
     /// The compression codec to use for Arrow buffers in serialized record
     /// batches.
@@ -94,7 +94,7 @@ pub struct AvroRows {
 }
 /// Contains options specific to Avro Serialization.
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct AvroSerializationOptions {
     /// Enable displayName attribute in Avro schema.
     ///
@@ -415,7 +415,7 @@ pub struct ReadSession {
 pub mod read_session {
     /// Additional attributes when reading a table.
     #[allow(clippy::derive_partial_eq_without_eq)]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
     pub struct TableModifiers {
         /// The snapshot time of the table. If not set, interpreted as now.
         #[prost(message, optional, tag = "1")]
@@ -501,7 +501,7 @@ pub mod read_session {
     /// Nested message and enum types in `TableReadOptions`.
     pub mod table_read_options {
         #[allow(clippy::derive_partial_eq_without_eq)]
-        #[derive(Clone, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
         pub enum OutputFormatSerializationOptions {
             /// Optional. Options specific to the Apache Arrow output format.
             #[prost(message, tag = "3")]
@@ -765,7 +765,7 @@ pub struct ReadRowsRequest {
 }
 /// Information on if the current connection is being throttled.
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct ThrottleState {
     /// How much this connection is being throttled. Zero means no throttling,
     /// 100 means fully throttled.
@@ -774,7 +774,7 @@ pub struct ThrottleState {
 }
 /// Estimated stream statistics for a given read Stream.
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct StreamStats {
     /// Represents the progress of the current stream.
     #[prost(message, optional, tag = "2")]
@@ -783,7 +783,7 @@ pub struct StreamStats {
 /// Nested message and enum types in `StreamStats`.
 pub mod stream_stats {
     #[allow(clippy::derive_partial_eq_without_eq)]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
     pub struct Progress {
         /// The fraction of rows assigned to the stream that have been processed by
         /// the server so far, not including the rows in the current response
@@ -1087,7 +1087,7 @@ pub struct AppendRowsResponse {
 pub mod append_rows_response {
     /// AppendResult is returned for successful append requests.
     #[allow(clippy::derive_partial_eq_without_eq)]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
     pub struct AppendResult {
         /// The row offset at which the last append occurred. The offset will not be
         /// set if appending using default streams.
@@ -1177,7 +1177,7 @@ pub struct FinalizeWriteStreamRequest {
 }
 /// Response message for `FinalizeWriteStream`.
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct FinalizeWriteStreamResponse {
     /// Number of rows in the finalized stream.
     #[prost(int64, tag = "1")]
@@ -1197,7 +1197,7 @@ pub struct FlushRowsRequest {
 }
 /// Respond message for `FlushRows`.
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct FlushRowsResponse {
     /// The rows before this offset (including this offset) are flushed.
     #[prost(int64, tag = "1")]
