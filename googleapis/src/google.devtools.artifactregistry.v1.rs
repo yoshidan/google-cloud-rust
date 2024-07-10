@@ -416,7 +416,7 @@ pub struct ImportYumArtifactsResponse {
 }
 /// The operation metadata for importing artifacts.
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct ImportYumArtifactsMetadata {}
 /// The Artifact Registry VPC SC config that apply to a Project.
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -624,7 +624,7 @@ pub struct ImportAptArtifactsResponse {
 }
 /// The operation metadata for importing artifacts.
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct ImportAptArtifactsMetadata {}
 /// A hash of file content.
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -859,7 +859,7 @@ pub mod repository {
     /// Provides additional configuration details for repositories of the maven
     /// format type.
     #[allow(clippy::derive_partial_eq_without_eq)]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
     pub struct MavenRepositoryConfig {
         /// The repository with this flag will allow publishing
         /// the same snapshot versions.
@@ -958,7 +958,7 @@ pub mod repository {
     }
     /// Repository-specific configurations.
     #[allow(clippy::derive_partial_eq_without_eq)]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
     pub enum FormatConfig {
         /// Maven repository config contains repository level configuration
         /// for the repositories of maven type.
@@ -1343,7 +1343,7 @@ impl VersionView {
 }
 /// Metadata type for longrunning-operations, currently empty.
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct OperationMetadata {}
 /// Generated client implementations.
 pub mod artifact_registry_client {

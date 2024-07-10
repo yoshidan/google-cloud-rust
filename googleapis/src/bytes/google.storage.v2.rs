@@ -277,7 +277,7 @@ pub mod compose_object_request {
     pub mod source_object {
         /// Preconditions for a source object of a composition request.
         #[allow(clippy::derive_partial_eq_without_eq)]
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, Copy, PartialEq, ::prost::Message)]
         pub struct ObjectPreconditions {
             /// Only perform the composition if the generation of the source object
             /// that would be used matches this value.  If this value and a generation
@@ -340,7 +340,7 @@ pub struct CancelResumableWriteRequest {
 /// Empty response message for canceling an in-progress resumable upload, will be
 /// extended as needed.
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct CancelResumableWriteResponse {}
 /// Request message for ReadObject.
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1065,7 +1065,7 @@ pub struct CommonObjectRequestParams {
 }
 /// Shared constants.
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct ServiceConstants {}
 /// Nested message and enum types in `ServiceConstants`.
 pub mod service_constants {
@@ -1370,7 +1370,7 @@ pub struct Bucket {
 pub mod bucket {
     /// Billing properties of a bucket.
     #[allow(clippy::derive_partial_eq_without_eq)]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
     pub struct Billing {
         /// When set to true, Requester Pays is enabled for this bucket.
         #[prost(bool, tag = "1")]
@@ -1432,7 +1432,7 @@ pub mod bucket {
         /// Settings for Uniform Bucket level access.
         /// See <https://cloud.google.com/storage/docs/uniform-bucket-level-access.>
         #[allow(clippy::derive_partial_eq_without_eq)]
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, Copy, PartialEq, ::prost::Message)]
         pub struct UniformBucketLevelAccess {
             /// If set, access checks only use bucket-level IAM policies or above.
             #[prost(bool, tag = "1")]
@@ -1572,7 +1572,7 @@ pub mod bucket {
     }
     /// Retention policy properties of a bucket.
     #[allow(clippy::derive_partial_eq_without_eq)]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
     pub struct RetentionPolicy {
         /// Server-determined value that indicates the time from which policy was
         /// enforced and effective.
@@ -1593,7 +1593,7 @@ pub mod bucket {
     /// For more on Cloud Storage versioning, see
     /// <https://cloud.google.com/storage/docs/object-versioning.>
     #[allow(clippy::derive_partial_eq_without_eq)]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
     pub struct Versioning {
         /// While set to true, versioning is fully enabled for this bucket.
         #[prost(bool, tag = "1")]
@@ -1631,7 +1631,7 @@ pub mod bucket {
     }
     /// Configuration for a bucket's Autoclass feature.
     #[allow(clippy::derive_partial_eq_without_eq)]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
     pub struct Autoclass {
         /// Enables Autoclass.
         #[prost(bool, tag = "1")]
@@ -2078,7 +2078,7 @@ pub struct Owner {
 }
 /// Specifies a requested range of bytes to download.
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct ContentRange {
     /// The starting offset of the object data.
     #[prost(int64, tag = "1")]

@@ -175,7 +175,7 @@ pub mod crypto_key {
     }
     /// Controls the rate of automatic rotation.
     #[allow(clippy::derive_partial_eq_without_eq)]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
     pub enum RotationSchedule {
         /// [next_rotation_time][google.cloud.kms.v1.CryptoKey.next_rotation_time]
         /// will be advanced by this period when the service automatically rotates a
@@ -200,7 +200,7 @@ pub mod crypto_key {
 /// [CreateCryptoKeyVersion][google.cloud.kms.v1.KeyManagementService.CreateCryptoKeyVersion]
 /// or automatically as a result of auto-rotation.
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct CryptoKeyVersionTemplate {
     /// [ProtectionLevel][google.cloud.kms.v1.ProtectionLevel] to use when creating
     /// a [CryptoKeyVersion][google.cloud.kms.v1.CryptoKeyVersion] based on this
@@ -2703,7 +2703,7 @@ pub mod digest {
 /// Cloud KMS metadata for the given
 /// [google.cloud.location.Location][google.cloud.location.Location].
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct LocationMetadata {
     /// Indicates whether [CryptoKeys][google.cloud.kms.v1.CryptoKey] with
     /// [protection_level][google.cloud.kms.v1.CryptoKeyVersionTemplate.protection_level]
@@ -3696,7 +3696,7 @@ pub struct VerifyConnectivityRequest {
 /// Response message for
 /// [EkmService.VerifyConnectivity][google.cloud.kms.v1.EkmService.VerifyConnectivity].
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct VerifyConnectivityResponse {}
 /// Generated client implementations.
 pub mod ekm_service_client {
