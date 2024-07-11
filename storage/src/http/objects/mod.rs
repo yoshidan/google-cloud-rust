@@ -12,6 +12,8 @@ pub mod delete;
 pub mod download;
 pub mod get;
 pub mod list;
+
+pub mod r#move;
 pub mod patch;
 pub mod rewrite;
 pub mod upload;

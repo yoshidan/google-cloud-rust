@@ -1,18 +1,23 @@
 use std::sync::Arc;
 
 use futures_util::{Stream, TryStream, TryStreamExt};
-use reqwest::header::{HeaderValue, CONTENT_LENGTH, LOCATION};
 use reqwest::{Body, Request};
+use reqwest::header::{CONTENT_LENGTH, HeaderValue, LOCATION};
 use reqwest_middleware::RequestBuilder;
 
 use google_cloud_token::TokenSource;
 
+use crate::http::{
+    bucket_access_controls, buckets, check_response_status, default_object_access_controls, Error, hmac_keys,
+    notifications, object_access_controls, objects,
+};
+use crate::http::bucket_access_controls::BucketAccessControl;
 use crate::http::bucket_access_controls::delete::DeleteBucketAccessControlRequest;
 use crate::http::bucket_access_controls::get::GetBucketAccessControlRequest;
 use crate::http::bucket_access_controls::insert::InsertBucketAccessControlRequest;
 use crate::http::bucket_access_controls::list::{ListBucketAccessControlsRequest, ListBucketAccessControlsResponse};
 use crate::http::bucket_access_controls::patch::PatchBucketAccessControlRequest;
-use crate::http::bucket_access_controls::BucketAccessControl;
+use crate::http::buckets::{Bucket, Policy};
 use crate::http::buckets::delete::DeleteBucketRequest;
 use crate::http::buckets::get::GetBucketRequest;
 use crate::http::buckets::get_iam_policy::GetIamPolicyRequest;
@@ -21,7 +26,6 @@ use crate::http::buckets::list::{ListBucketsRequest, ListBucketsResponse};
 use crate::http::buckets::patch::PatchBucketRequest;
 use crate::http::buckets::set_iam_policy::SetIamPolicyRequest;
 use crate::http::buckets::test_iam_permissions::{TestIamPermissionsRequest, TestIamPermissionsResponse};
-use crate::http::buckets::{Bucket, Policy};
 use crate::http::default_object_access_controls::delete::DeleteDefaultObjectAccessControlRequest;
 use crate::http::default_object_access_controls::get::GetDefaultObjectAccessControlRequest;
 use crate::http::default_object_access_controls::insert::InsertDefaultObjectAccessControlRequest;
@@ -32,9 +36,9 @@ use crate::http::default_object_access_controls::patch::PatchDefaultObjectAccess
 use crate::http::hmac_keys::create::{CreateHmacKeyRequest, CreateHmacKeyResponse};
 use crate::http::hmac_keys::delete::DeleteHmacKeyRequest;
 use crate::http::hmac_keys::get::GetHmacKeyRequest;
+use crate::http::hmac_keys::HmacKeyMetadata;
 use crate::http::hmac_keys::list::{ListHmacKeysRequest, ListHmacKeysResponse};
 use crate::http::hmac_keys::update::UpdateHmacKeyRequest;
-use crate::http::hmac_keys::HmacKeyMetadata;
 use crate::http::notifications::delete::DeleteNotificationRequest;
 use crate::http::notifications::get::GetNotificationRequest;
 use crate::http::notifications::insert::InsertNotificationRequest;
@@ -44,23 +48,20 @@ use crate::http::object_access_controls::delete::DeleteObjectAccessControlReques
 use crate::http::object_access_controls::get::GetObjectAccessControlRequest;
 use crate::http::object_access_controls::insert::InsertObjectAccessControlRequest;
 use crate::http::object_access_controls::list::ListObjectAccessControlsRequest;
-use crate::http::object_access_controls::patch::PatchObjectAccessControlRequest;
 use crate::http::object_access_controls::ObjectAccessControl;
+use crate::http::object_access_controls::patch::PatchObjectAccessControlRequest;
 use crate::http::objects::compose::ComposeObjectRequest;
 use crate::http::objects::copy::CopyObjectRequest;
 use crate::http::objects::delete::DeleteObjectRequest;
 use crate::http::objects::download::Range;
 use crate::http::objects::get::GetObjectRequest;
 use crate::http::objects::list::{ListObjectsRequest, ListObjectsResponse};
+use crate::http::objects::Object;
 use crate::http::objects::patch::PatchObjectRequest;
+use crate::http::objects::r#move::MoveObjectRequest;
 use crate::http::objects::rewrite::{RewriteObjectRequest, RewriteObjectResponse};
 use crate::http::objects::upload::{UploadObjectRequest, UploadType};
-use crate::http::objects::Object;
 use crate::http::resumable_upload_client::ResumableUploadClient;
-use crate::http::{
-    bucket_access_controls, buckets, check_response_status, default_object_access_controls, hmac_keys, notifications,
-    object_access_controls, objects, Error,
-};
 
 pub const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
@@ -930,6 +931,23 @@ impl StorageClient {
         self.send(builder).await
     }
 
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn move_object(&self, req: &MoveObjectRequest) -> Result<Object, Error> {
+        let copy_req: CopyObjectRequest = req.clone().into();
+        let delete_req: DeleteObjectRequest = req.clone().into();
+        let copy_result = self.copy_object(&copy_req).await;
+        let result = if copy_result.is_ok() {
+            let delete_result = self.delete_object(&delete_req).await;
+            match delete_result {
+                Ok(_) => { copy_result }
+                Err(e) => { Err(e) }
+            }
+        } else {
+            copy_result
+        };
+        result
+    }
+
     /// Download the object.
     /// https://cloud.google.com/storage/docs/json_api/v1/objects/get
     /// alt is always media
@@ -984,7 +1002,7 @@ impl StorageClient {
         &self,
         req: &GetObjectRequest,
         range: &Range,
-    ) -> Result<impl Stream<Item = Result<bytes::Bytes, Error>>, Error> {
+    ) -> Result<impl Stream<Item=Result<bytes::Bytes, Error>>, Error> {
         let builder = objects::download::build(self.v1_endpoint.as_str(), &self.http, req, range);
         let request = self.with_headers(builder).await?;
         let response = request.send().await?;
@@ -1352,13 +1370,14 @@ pub(crate) mod test {
     use google_cloud_auth::token::DefaultTokenSourceProvider;
     use google_cloud_token::TokenSourceProvider;
 
+    use crate::http::bucket_access_controls::BucketACLRole;
     use crate::http::bucket_access_controls::delete::DeleteBucketAccessControlRequest;
     use crate::http::bucket_access_controls::get::GetBucketAccessControlRequest;
     use crate::http::bucket_access_controls::insert::{
         BucketAccessControlCreationConfig, InsertBucketAccessControlRequest,
     };
     use crate::http::bucket_access_controls::list::ListBucketAccessControlsRequest;
-    use crate::http::bucket_access_controls::BucketACLRole;
+    use crate::http::buckets::{Billing, Binding, Cors, IamConfiguration, lifecycle, Lifecycle, Website};
     use crate::http::buckets::delete::DeleteBucketRequest;
     use crate::http::buckets::get::GetBucketRequest;
     use crate::http::buckets::get_iam_policy::GetIamPolicyRequest;
@@ -1370,7 +1389,6 @@ pub(crate) mod test {
     use crate::http::buckets::patch::{BucketPatchConfig, PatchBucketRequest};
     use crate::http::buckets::set_iam_policy::SetIamPolicyRequest;
     use crate::http::buckets::test_iam_permissions::TestIamPermissionsRequest;
-    use crate::http::buckets::{lifecycle, Billing, Binding, Cors, IamConfiguration, Lifecycle, Website};
     use crate::http::default_object_access_controls::delete::DeleteDefaultObjectAccessControlRequest;
     use crate::http::default_object_access_controls::get::GetDefaultObjectAccessControlRequest;
     use crate::http::default_object_access_controls::insert::InsertDefaultObjectAccessControlRequest;
@@ -1378,14 +1396,14 @@ pub(crate) mod test {
     use crate::http::hmac_keys::create::CreateHmacKeyRequest;
     use crate::http::hmac_keys::delete::DeleteHmacKeyRequest;
     use crate::http::hmac_keys::get::GetHmacKeyRequest;
+    use crate::http::hmac_keys::HmacKeyMetadata;
     use crate::http::hmac_keys::list::ListHmacKeysRequest;
     use crate::http::hmac_keys::update::UpdateHmacKeyRequest;
-    use crate::http::hmac_keys::HmacKeyMetadata;
     use crate::http::notifications::delete::DeleteNotificationRequest;
+    use crate::http::notifications::EventType;
     use crate::http::notifications::get::GetNotificationRequest;
     use crate::http::notifications::insert::{InsertNotificationRequest, NotificationCreationConfig};
     use crate::http::notifications::list::ListNotificationsRequest;
-    use crate::http::notifications::EventType;
     use crate::http::object_access_controls::delete::DeleteObjectAccessControlRequest;
     use crate::http::object_access_controls::get::GetObjectAccessControlRequest;
     use crate::http::object_access_controls::insert::{
@@ -1393,6 +1411,7 @@ pub(crate) mod test {
     };
     use crate::http::object_access_controls::list::ListObjectAccessControlsRequest;
     use crate::http::object_access_controls::ObjectACLRole;
+    use crate::http::objects::{Object, SourceObjects};
     use crate::http::objects::compose::{ComposeObjectRequest, ComposingTargets};
     use crate::http::objects::copy::CopyObjectRequest;
     use crate::http::objects::delete::DeleteObjectRequest;
@@ -1401,9 +1420,8 @@ pub(crate) mod test {
     use crate::http::objects::list::ListObjectsRequest;
     use crate::http::objects::rewrite::RewriteObjectRequest;
     use crate::http::objects::upload::{Media, UploadObjectRequest, UploadType};
-    use crate::http::objects::{Object, SourceObjects};
-    use crate::http::resumable_upload_client::{ChunkSize, UploadStatus, UploadedRange};
-    use crate::http::storage_client::{StorageClient, SCOPES};
+    use crate::http::resumable_upload_client::{ChunkSize, UploadedRange, UploadStatus};
+    use crate::http::storage_client::{SCOPES, StorageClient};
 
     #[ctor::ctor]
     fn init() {
@@ -1422,8 +1440,8 @@ pub(crate) mod test {
             scopes: Some(&SCOPES),
             sub: None,
         })
-        .await
-        .unwrap();
+            .await
+            .unwrap();
         let cred = tsp.source_credentials.clone();
         let ts = tsp.token_source();
         let client = StorageClient::new(
@@ -2195,7 +2213,7 @@ pub(crate) mod test {
             status1,
             UploadStatus::ResumeIncomplete(UploadedRange {
                 first_byte: 0,
-                last_byte: chunk1_data.len() as u64 - 1
+                last_byte: chunk1_data.len() as u64 - 1,
             })
         );
 
@@ -2205,7 +2223,7 @@ pub(crate) mod test {
             status_check,
             UploadStatus::ResumeIncomplete(UploadedRange {
                 first_byte: 0,
-                last_byte: chunk1_data.len() as u64 - 1
+                last_byte: chunk1_data.len() as u64 - 1,
             })
         );
 
@@ -2311,7 +2329,7 @@ pub(crate) mod test {
             status1,
             UploadStatus::ResumeIncomplete(UploadedRange {
                 first_byte: 0,
-                last_byte: chunk1_data.len() as u64 - 1
+                last_byte: chunk1_data.len() as u64 - 1,
             })
         );
 
@@ -2325,7 +2343,7 @@ pub(crate) mod test {
             status1,
             UploadStatus::ResumeIncomplete(UploadedRange {
                 first_byte: 0,
-                last_byte: chunk1_data.len() as u64 - 1
+                last_byte: chunk1_data.len() as u64 - 1,
             })
         );
 
