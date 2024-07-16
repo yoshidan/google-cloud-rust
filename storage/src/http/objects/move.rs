@@ -5,7 +5,7 @@ use crate::http::objects::delete::DeleteObjectRequest;
 use crate::http::objects::{Encryption, Object};
 use crate::http::{object_access_controls::Projection, Escape};
 
-/// Request message for GetObject.
+/// Request message for moving an object.
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct MoveObjectRequest {
