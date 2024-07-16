@@ -931,6 +931,25 @@ impl StorageClient {
         self.send(builder).await
     }
 
+    /// Move the object.
+    /// https://cloud.google.com/storage/docs/copying-renaming-moving-objects#rest-move-object
+    /// This function will first make a copy of the object, and then delete the original object.
+    ///
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::objects::r#move::MoveObjectRequest;
+    ///
+    /// async fn run(client:Client) {
+    ///     let result = client.move_object(&MoveObjectRequest{
+    ///         source_bucket: "source_bucket".to_string(),
+    ///         source_object: "source_object".to_string(),
+    ///         destination_bucket: "destination_source".to_string(),
+    ///         destination_object: "destination_object".to_string(),
+    ///         ..Default::default()
+    ///     }).await;
+    /// }
+    /// ```
+    ///
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
     pub async fn move_object(&self, req: &MoveObjectRequest) -> Result<Object, Error> {
         let copy_req: CopyObjectRequest = req.clone().into();
