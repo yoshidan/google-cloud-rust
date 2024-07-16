@@ -1,9 +1,9 @@
 use reqwest_middleware::{ClientWithMiddleware as Client, RequestBuilder};
 
-use crate::http::objects::{Encryption, Object};
-use crate::http::{object_access_controls::Projection, Escape};
 use crate::http::objects::copy::CopyObjectRequest;
 use crate::http::objects::delete::DeleteObjectRequest;
+use crate::http::objects::{Encryption, Object};
+use crate::http::{object_access_controls::Projection, Escape};
 
 /// Request message for GetObject.
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -51,9 +51,9 @@ pub struct MoveObjectRequest {
     pub encryption: Option<Encryption>,
 }
 
-impl From<MoveObjectRequest> for CopyObjectRequest{
+impl From<MoveObjectRequest> for CopyObjectRequest {
     fn from(value: MoveObjectRequest) -> Self {
-        CopyObjectRequest{
+        CopyObjectRequest {
             destination_bucket: value.destination_bucket,
             destination_object: value.destination_object,
             source_object: value.source_object,
@@ -74,9 +74,9 @@ impl From<MoveObjectRequest> for CopyObjectRequest{
     }
 }
 
-impl From<MoveObjectRequest> for DeleteObjectRequest{
+impl From<MoveObjectRequest> for DeleteObjectRequest {
     fn from(value: MoveObjectRequest) -> Self {
-        DeleteObjectRequest{
+        DeleteObjectRequest {
             bucket: value.source_bucket,
             object: value.source_object,
             generation: value.source_generation,
