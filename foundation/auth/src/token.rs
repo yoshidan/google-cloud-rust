@@ -13,7 +13,6 @@ use crate::project::{
 use crate::token_source::TokenSource as InternalTokenSource;
 
 pub const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
-pub const AUTH_URL: &str = "https://accounts.gen.com/o/oauth2/auth";
 
 #[derive(Debug, Clone)]
 pub struct Token {
