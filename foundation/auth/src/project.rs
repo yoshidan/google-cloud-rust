@@ -85,18 +85,20 @@ pub async fn create_token_source_from_credentials(
     credentials: &CredentialsFile,
     config: &Config<'_>,
 ) -> Result<Box<dyn TokenSource>, error::Error> {
-    println!("create_token_source_from_credentials");
     let ts = credentials_from_json_with_params(credentials, config).await?;
     let token = ts.token().await?;
     Ok(Box::new(ReuseTokenSource::new(ts, token)))
 }
 
-/// Creates token source using gke metadata server
+/// Creates token source using gke metadata server.
+/// 
+/// Will use the audience if provided, generating an identity token source.
+/// Otherwise, will use the scopes if provided, generating an access token source.
+/// 
+/// Returns an error if neither audience nor scopes are provided, or if any technical error occurs.
 pub async fn create_token_source_from_metadata_server(config: &Config<'_>,) -> Result<Box<dyn TokenSource>, error::Error> {
-    println!("create_token_source_from_metadata_server");
     match config.audience {
         Some(audience) => {
-            println!("compute identity source used");
             let ts = ComputeIdentitySource::new(audience)?;
             let token = ts.token().await?;
             Ok(Box::new(ReuseTokenSource::new(Box::new(ts), token)))
@@ -105,7 +107,6 @@ pub async fn create_token_source_from_metadata_server(config: &Config<'_>,) -> R
             if config.scopes.is_none() {
                 return Err(error::Error::ScopeOrAudienceRequired);
             }
-            println!("compute token source used");
             let ts = ComputeTokenSource::new(&config.scopes_to_string(","))?;
             let token = ts.token().await?;
             Ok(Box::new(ReuseTokenSource::new(Box::new(ts), token)))
