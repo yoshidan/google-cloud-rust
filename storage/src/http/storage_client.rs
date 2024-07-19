@@ -954,17 +954,10 @@ impl StorageClient {
     pub async fn move_object(&self, req: &MoveObjectRequest) -> Result<Object, Error> {
         let copy_req: CopyObjectRequest = req.clone().into();
         let delete_req: DeleteObjectRequest = req.clone().into();
-        let copy_result = self.copy_object(&copy_req).await;
-        let result = if copy_result.is_ok() {
-            let delete_result = self.delete_object(&delete_req).await;
-            match delete_result {
-                Ok(_) => copy_result,
-                Err(e) => Err(e),
-            }
-        } else {
-            copy_result
-        };
-        result
+        // Only result of the copy operations is of interest, as it contains details of destination.
+        let copy_result = self.copy_object(&copy_req).await?;
+        let _ = self.delete_object(&delete_req).await?;
+        Ok(copy_result)
     }
 
     /// Download the object.
