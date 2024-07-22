@@ -1,8 +1,7 @@
-
+use crate::http::object_access_controls::Projection;
 use crate::http::objects::copy::CopyObjectRequest;
 use crate::http::objects::delete::DeleteObjectRequest;
 use crate::http::objects::{Encryption, Object};
-use crate::http::{object_access_controls::Projection};
 
 /// Request message for moving an object.
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
