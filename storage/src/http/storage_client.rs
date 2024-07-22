@@ -53,6 +53,7 @@ use crate::http::objects::download::Range;
 use crate::http::objects::get::GetObjectRequest;
 use crate::http::objects::list::{ListObjectsRequest, ListObjectsResponse};
 use crate::http::objects::patch::PatchObjectRequest;
+use crate::http::objects::r#move::MoveObjectRequest;
 use crate::http::objects::rewrite::{RewriteObjectRequest, RewriteObjectResponse};
 use crate::http::objects::upload::{UploadObjectRequest, UploadType};
 use crate::http::objects::Object;
@@ -928,6 +929,35 @@ impl StorageClient {
     pub async fn copy_object(&self, req: &CopyObjectRequest) -> Result<Object, Error> {
         let builder = objects::copy::build(self.v1_endpoint.as_str(), &self.http, req);
         self.send(builder).await
+    }
+
+    /// Move the object.
+    /// https://cloud.google.com/storage/docs/copying-renaming-moving-objects#rest-move-object
+    /// This function will first make a copy of the object, and then delete the original object.
+    ///
+    /// ```
+    /// use google_cloud_storage::client::Client;
+    /// use google_cloud_storage::http::objects::r#move::MoveObjectRequest;
+    ///
+    /// async fn run(client:Client) {
+    ///     let result = client.move_object(&MoveObjectRequest{
+    ///         source_bucket: "source_bucket".to_string(),
+    ///         source_object: "source_object".to_string(),
+    ///         destination_bucket: "destination_source".to_string(),
+    ///         destination_object: "destination_object".to_string(),
+    ///         ..Default::default()
+    ///     }).await;
+    /// }
+    /// ```
+    ///
+    #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
+    pub async fn move_object(&self, req: &MoveObjectRequest) -> Result<Object, Error> {
+        let copy_req: CopyObjectRequest = req.clone().into();
+        let delete_req: DeleteObjectRequest = req.clone().into();
+        // Only result of the copy operations is of interest, as it contains details of destination.
+        let copy_result = self.copy_object(&copy_req).await?;
+        let _ = self.delete_object(&delete_req).await?;
+        Ok(copy_result)
     }
 
     /// Download the object.
@@ -2195,7 +2225,7 @@ pub(crate) mod test {
             status1,
             UploadStatus::ResumeIncomplete(UploadedRange {
                 first_byte: 0,
-                last_byte: chunk1_data.len() as u64 - 1
+                last_byte: chunk1_data.len() as u64 - 1,
             })
         );
 
@@ -2205,7 +2235,7 @@ pub(crate) mod test {
             status_check,
             UploadStatus::ResumeIncomplete(UploadedRange {
                 first_byte: 0,
-                last_byte: chunk1_data.len() as u64 - 1
+                last_byte: chunk1_data.len() as u64 - 1,
             })
         );
 
@@ -2311,7 +2341,7 @@ pub(crate) mod test {
             status1,
             UploadStatus::ResumeIncomplete(UploadedRange {
                 first_byte: 0,
-                last_byte: chunk1_data.len() as u64 - 1
+                last_byte: chunk1_data.len() as u64 - 1,
             })
         );
 
@@ -2325,7 +2355,7 @@ pub(crate) mod test {
             status1,
             UploadStatus::ResumeIncomplete(UploadedRange {
                 first_byte: 0,
-                last_byte: chunk1_data.len() as u64 - 1
+                last_byte: chunk1_data.len() as u64 - 1,
             })
         );
 
