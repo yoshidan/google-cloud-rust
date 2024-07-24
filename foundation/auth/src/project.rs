@@ -1,6 +1,7 @@
 use google_cloud_metadata::on_gce;
 
 use crate::credentials::CredentialsFile;
+use crate::idtoken::id_token_source_from_credentials;
 use crate::misc::EMPTY;
 use crate::token_source::authorized_user_token_source::UserAccountTokenSource;
 use crate::token_source::compute_identity_source::ComputeIdentitySource;
@@ -21,6 +22,7 @@ pub struct Config<'a> {
     pub audience: Option<&'a str>,
     pub scopes: Option<&'a [&'a str]>,
     pub sub: Option<&'a str>,
+    pub use_id_token: bool,
 }
 
 impl Config<'_> {
@@ -90,38 +92,33 @@ pub async fn create_token_source_from_credentials(
     Ok(Box::new(ReuseTokenSource::new(ts, token)))
 }
 
-/// Creates token source using gke metadata server.
-/// 
-/// Will use the audience if provided, generating an identity token source.
-/// Otherwise, will use the scopes if provided, generating an access token source.
-/// 
-/// Returns an error if neither audience nor scopes are provided, or if any technical error occurs.
-pub async fn create_token_source_from_metadata_server(config: &Config<'_>,) -> Result<Box<dyn TokenSource>, error::Error> {
-    match config.audience {
-        Some(audience) => {
-            let ts = ComputeIdentitySource::new(audience)?;
-            let token = ts.token().await?;
-            Ok(Box::new(ReuseTokenSource::new(Box::new(ts), token)))
-        },
-        None => {
-            if config.scopes.is_none() {
-                return Err(error::Error::ScopeOrAudienceRequired);
-            }
-            let ts = ComputeTokenSource::new(&config.scopes_to_string(","))?;
-            let token = ts.token().await?;
-            Ok(Box::new(ReuseTokenSource::new(Box::new(ts), token)))
-        }
-    }
-}
-
 /// create_token_source_from_project creates the token source.
 pub async fn create_token_source_from_project(
     project: &Project,
     config: Config<'_>,
 ) -> Result<Box<dyn TokenSource>, error::Error> {
     match project {
-        Project::FromFile(file) => create_token_source_from_credentials(file, &config).await,
-        Project::FromMetadataServer(_) => create_token_source_from_metadata_server(&config).await,
+        Project::FromFile(file) => {
+            if config.use_id_token {
+                id_token_source_from_credentials(&Default::default(), file, config.audience.unwrap_or_default()).await
+            } else {
+                create_token_source_from_credentials(file, &config).await
+            }
+        }
+        Project::FromMetadataServer(_) => {
+            if config.use_id_token {
+                let ts = ComputeIdentitySource::new(&config.audience.unwrap_or_default())?;
+                let token = ts.token().await?;
+                Ok(Box::new(ReuseTokenSource::new(Box::new(ts), token)))
+            } else {
+                if config.scopes.is_none() {
+                    return Err(error::Error::ScopeOrAudienceRequired);
+                }
+                let ts = ComputeTokenSource::new(&config.scopes_to_string(","))?;
+                let token = ts.token().await?;
+                Ok(Box::new(ReuseTokenSource::new(Box::new(ts), token)))
+            }
+        }
     }
 }
 
