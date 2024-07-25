@@ -77,6 +77,7 @@ mod test {
             audience: None,
             scopes: Some(&["https://www.googleapis.com/auth/cloud-platform"]),
             sub: None,
+            ..Default::default()
         })
         .await
         .unwrap();
