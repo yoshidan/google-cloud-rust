@@ -132,6 +132,7 @@ impl ClientConfig {
             audience: None,
             scopes: Some(&crate::http::bigquery_client::SCOPES),
             sub: None,
+            ..Default::default()
         }
     }
 
@@ -140,6 +141,7 @@ impl ClientConfig {
             audience: Some(crate::grpc::apiv1::conn_pool::AUDIENCE),
             scopes: Some(&crate::grpc::apiv1::conn_pool::SCOPES),
             sub: None,
+            ..Default::default()
         }
     }
 }

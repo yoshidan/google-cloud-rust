@@ -68,7 +68,7 @@ pub async fn create_id_token_source(
     }
 }
 
-async fn id_token_source_from_credentials(
+pub(crate) async fn id_token_source_from_credentials(
     custom_claims: &HashMap<String, serde_json::Value>,
     credentials: &CredentialsFile,
     audience: &str,

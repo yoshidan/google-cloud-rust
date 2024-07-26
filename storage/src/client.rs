@@ -118,6 +118,7 @@ impl ClientConfig {
             audience: None,
             scopes: Some(&crate::http::storage_client::SCOPES),
             sub: None,
+            ..Default::default()
         }
     }
 }

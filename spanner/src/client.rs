@@ -128,6 +128,7 @@ impl ClientConfig {
             audience: Some(crate::apiv1::conn_pool::AUDIENCE),
             scopes: Some(&crate::apiv1::conn_pool::SCOPES),
             sub: None,
+            ..Default::default()
         }
     }
 }

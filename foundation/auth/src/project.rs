@@ -1,8 +1,10 @@
 use google_cloud_metadata::on_gce;
 
 use crate::credentials::CredentialsFile;
+use crate::idtoken::id_token_source_from_credentials;
 use crate::misc::EMPTY;
 use crate::token_source::authorized_user_token_source::UserAccountTokenSource;
+use crate::token_source::compute_identity_source::ComputeIdentitySource;
 use crate::token_source::compute_token_source::ComputeTokenSource;
 use crate::token_source::reuse_token_source::ReuseTokenSource;
 use crate::token_source::service_account_token_source::OAuth2ServiceAccountTokenSource;
@@ -20,6 +22,7 @@ pub struct Config<'a> {
     pub audience: Option<&'a str>,
     pub scopes: Option<&'a [&'a str]>,
     pub sub: Option<&'a str>,
+    pub use_id_token: bool,
 }
 
 impl Config<'_> {
@@ -95,11 +98,26 @@ pub async fn create_token_source_from_project(
     config: Config<'_>,
 ) -> Result<Box<dyn TokenSource>, error::Error> {
     match project {
-        Project::FromFile(file) => create_token_source_from_credentials(file, &config).await,
+        Project::FromFile(file) => {
+            if config.use_id_token {
+                id_token_source_from_credentials(&Default::default(), file, config.audience.unwrap_or_default()).await
+            } else {
+                create_token_source_from_credentials(file, &config).await
+            }
+        }
         Project::FromMetadataServer(_) => {
-            let ts = ComputeTokenSource::new(&config.scopes_to_string(","))?;
-            let token = ts.token().await?;
-            Ok(Box::new(ReuseTokenSource::new(Box::new(ts), token)))
+            if config.use_id_token {
+                let ts = ComputeIdentitySource::new(config.audience.unwrap_or_default())?;
+                let token = ts.token().await?;
+                Ok(Box::new(ReuseTokenSource::new(Box::new(ts), token)))
+            } else {
+                if config.scopes.is_none() {
+                    return Err(error::Error::ScopeOrAudienceRequired);
+                }
+                let ts = ComputeTokenSource::new(config.scopes_to_string(",").as_str())?;
+                let token = ts.token().await?;
+                Ok(Box::new(ReuseTokenSource::new(Box::new(ts), token)))
+            }
         }
     }
 }

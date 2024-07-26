@@ -114,6 +114,7 @@ async fn create_environment() -> Environment {
         audience: Some(google_cloud_spanner::apiv1::conn_pool::AUDIENCE),
         scopes: Some(&google_cloud_spanner::apiv1::conn_pool::SCOPES),
         sub: None,
+        ..Default::default()
     })
     .await
     .unwrap();

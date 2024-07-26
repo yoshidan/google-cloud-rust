@@ -1451,6 +1451,7 @@ pub(crate) mod test {
             audience: None,
             scopes: Some(&SCOPES),
             sub: None,
+            ..Default::default()
         })
         .await
         .unwrap();

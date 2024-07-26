@@ -49,6 +49,7 @@ impl ClientConfig {
             audience: None,
             scopes: Some(&SCOPES),
             sub: None,
+            ..Default::default()
         }
     }
 }
