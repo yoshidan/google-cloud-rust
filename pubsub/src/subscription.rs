@@ -649,8 +649,8 @@ impl Subscription {
     /// - The message backlog on the subscription -- or to be specific, messages that are unacknowledged
     ///   at the time of the subscription's creation.
     /// - All messages published to the subscription's topic after the snapshot's creation.
-    /// Snapshots have a finite lifetime -- a maximum of 7 days from the time of creation, beyond which
-    /// they are discarded and any messages being retained solely due to the snapshot dropped.
+    ///   Snapshots have a finite lifetime -- a maximum of 7 days from the time of creation, beyond which
+    ///   they are discarded and any messages being retained solely due to the snapshot dropped.
     pub async fn create_snapshot(
         &self,
         name: &str,

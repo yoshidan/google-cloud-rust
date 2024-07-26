@@ -315,7 +315,7 @@ mod test {
     // Test that prost's to_kind implementation works as expected.
     #[test]
     fn prost_timestamp_to_kind_works() {
-        let ts = ::prost_types::Timestamp::date_time(2024, 01, 01, 12, 15, 36).unwrap();
+        let ts = ::prost_types::Timestamp::date_time(2024, 1, 1, 12, 15, 36).unwrap();
         let expected = String::from("2024-01-01T12:15:36Z");
         // Make sure the formatting of prost_types::Timestamp hasn't changed
         assert_eq!(format!("{ts:}"), expected);

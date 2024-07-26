@@ -971,7 +971,7 @@ pub struct Subscription {
     /// a message with a given value of `message_id` on this subscription:
     ///
     /// * The message sent to a subscriber is guaranteed not to be resent
-    /// before the message's acknowledgement deadline expires.
+    ///   before the message's acknowledgement deadline expires.
     /// * An acknowledged message will not be resent to a subscriber.
     ///
     /// Note that subscribers may still receive multiple copies of a message
@@ -1258,9 +1258,9 @@ pub mod big_query_config {
         /// Cannot write to the BigQuery table because of permission denied errors.
         /// This can happen if
         /// - Pub/Sub SA has not been granted the [appropriate BigQuery IAM
-        /// permissions](<https://cloud.google.com/pubsub/docs/create-subscription#assign_bigquery_service_account>)
+        ///   permissions](<https://cloud.google.com/pubsub/docs/create-subscription#assign_bigquery_service_account>)
         /// - bigquery.googleapis.com API is not enabled for the project
-        /// ([instructions](<https://cloud.google.com/service-usage/docs/enable-disable>))
+        ///   ([instructions](<https://cloud.google.com/service-usage/docs/enable-disable>))
         PermissionDenied = 2,
         /// Cannot write to the BigQuery table because it does not exist.
         NotFound = 3,

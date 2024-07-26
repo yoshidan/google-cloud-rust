@@ -311,7 +311,7 @@ impl SessionPool {
     /// If the session is valid
     ///  - Pass the session to the first user on the waiting list.
     ///  - If there is no waiting list, the session is returned to the list of available sessions.
-    /// If the session is invalid
+    ///    If the session is invalid
     ///  - Discard the session. If the number of sessions falls below the threshold as a result of discarding, the session replenishment process is called.
     fn recycle(&self, mut session: SessionHandle) {
         if session.valid {

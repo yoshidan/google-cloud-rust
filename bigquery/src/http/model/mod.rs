@@ -737,10 +737,10 @@ pub struct TrainingOptions {
     pub data_split_eval_fraction: Option<f64>,
     /// The column to split data with. This column won't be used as a feature.
     /// 1. When dataSplitMethod is CUSTOM, the corresponding column should be boolean.
-    /// The rows with true value tag are eval data, and the false are training data.
+    ///    The rows with true value tag are eval data, and the false are training data.
     /// 2. When dataSplitMethod is SEQ, the first DATA_SPLIT_EVAL_FRACTION rows (from smallest to largest) in the corresponding column are used as training data,
-    /// and the rest are eval data.
-    /// It respects the order in Orderable data types: https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#data-type-properties
+    ///    and the rest are eval data.
+    ///    It respects the order in Orderable data types: https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#data-type-properties
     pub data_split_column: Option<String>,
     /// The strategy to determine learn rate for the current iteration.
     pub learn_rate_strategy: Option<LearnRateStrategy>,

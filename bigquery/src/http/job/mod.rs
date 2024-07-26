@@ -201,7 +201,7 @@ pub struct JobConfigurationLoad {
     /// - (38,10)  BIGNUMERIC (NUMERIC cannot hold 10 fractional digits);
     /// - (76,38)  BIGNUMERIC;
     /// - (77,38)  BIGNUMERIC (error if value exeeds supported range).
-    /// This field cannot contain duplicate types. The order of the types in this field is ignored. For example, ["BIGNUMERIC", "NUMERIC"] is the same as ["NUMERIC", "BIGNUMERIC"] and NUMERIC always takes precedence over BIGNUMERIC.
+    ///   This field cannot contain duplicate types. The order of the types in this field is ignored. For example, ["BIGNUMERIC", "NUMERIC"] is the same as ["NUMERIC", "BIGNUMERIC"] and NUMERIC always takes precedence over BIGNUMERIC.
     ///
     /// Defaults to ["NUMERIC", "STRING"] for ORC and ["NUMERIC"] for the other file formats.
     pub decimal_target_types: Option<Vec<DecimalTargetType>>,

@@ -42,12 +42,12 @@ pub struct BucketAccessControl {
     /// * `project-{team-projectid}`
     /// * `allUsers`
     /// * `allAuthenticatedUsers`
-    /// Examples:
+    ///   Examples:
     /// * The user `liz@example.com` would be `user-liz@example.com`.
     /// * The group `example@googlegroups.com` would be
-    /// `group-example@googlegroups.com`
+    ///   `group-example@googlegroups.com`
     /// * All members of the Google Apps for Business domain `example.com` would be
-    /// `domain-example.com`
+    ///   `domain-example.com`
     pub entity: String,
     /// The ID for the entity, if any.
     pub entity_id: Option<String>,
