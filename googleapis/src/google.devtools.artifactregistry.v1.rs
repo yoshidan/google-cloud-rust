@@ -719,9 +719,9 @@ pub struct ListFilesRequest {
     ///   An example of using a filter:
     ///
     ///    * `name="projects/p1/locations/us-central1/repositories/repo1/files/a/b/*"` --> Files with an
-    ///    ID starting with "a/b/".
+    ///      ID starting with "a/b/".
     ///    * `owner="projects/p1/locations/us-central1/repositories/repo1/packages/pkg1/versions/1.0"` -->
-    ///    Files owned by the version `1.0` in package `pkg1`.
+    ///      Files owned by the version `1.0` in package `pkg1`.
     #[prost(string, tag = "4")]
     pub filter: ::prost::alloc::string::String,
     /// The maximum number of files to return.
@@ -1145,7 +1145,7 @@ pub struct ListTagsRequest {
     ///   An example of using a filter:
     ///
     ///    * `version="projects/p1/locations/us-central1/repositories/repo1/packages/pkg1/versions/1.0"`
-    ///    --> Tags that are applied to the version `1.0` in package `pkg1`.
+    ///      --> Tags that are applied to the version `1.0` in package `pkg1`.
     #[prost(string, tag = "4")]
     pub filter: ::prost::alloc::string::String,
     /// The maximum number of tags to return. Maximum page size is 10,000.

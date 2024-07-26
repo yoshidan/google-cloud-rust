@@ -527,7 +527,7 @@ pub struct ListInstanceConfigOperationsRequest {
     ///      `(metadata.progress.start_time < \"2021-03-28T14:50:00Z\") AND` \
     ///      `(error:*)` - Return operations where:
     ///      * The operation's metadata type is
-    ///      [CreateInstanceConfigMetadata][google.spanner.admin.instance.v1.CreateInstanceConfigMetadata].
+    ///        [CreateInstanceConfigMetadata][google.spanner.admin.instance.v1.CreateInstanceConfigMetadata].
     ///      * The instance config name contains "custom-config".
     ///      * The operation started before 2021-03-28T14:50:00Z.
     ///      * The operation resulted in an error.
@@ -922,8 +922,8 @@ pub mod instance_admin_client {
         ///
         ///   * Instances can be created using the instance configuration.
         ///   * The instance config's
-        ///   [reconciling][google.spanner.admin.instance.v1.InstanceConfig.reconciling]
-        ///   field becomes false. Its state becomes `READY`.
+        ///     [reconciling][google.spanner.admin.instance.v1.InstanceConfig.reconciling]
+        ///     field becomes false. Its state becomes `READY`.
         ///
         /// The returned [long-running operation][google.longrunning.Operation] will
         /// have a name of the format
@@ -988,8 +988,8 @@ pub mod instance_admin_client {
         ///     values.
         ///   * The instance config's new values are readable via the API.
         ///   * The instance config's
-        ///   [reconciling][google.spanner.admin.instance.v1.InstanceConfig.reconciling]
-        ///   field becomes false.
+        ///     [reconciling][google.spanner.admin.instance.v1.InstanceConfig.reconciling]
+        ///     field becomes false.
         ///
         /// The returned [long-running operation][google.longrunning.Operation] will
         /// have a name of the format

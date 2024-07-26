@@ -14,7 +14,7 @@ pub struct ListObjectAccessControlsRequest {
     /// * `group-`*emailAddress*
     /// * `allUsers`
     /// * `allAuthenticatedUsers`
-    /// Required. Name of the object.
+    ///   Required. Name of the object.
     #[serde(skip_serializing)]
     pub object: String,
     /// If present, selects a specific revision of this object (as opposed to the

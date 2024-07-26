@@ -516,7 +516,7 @@ pub struct ListBackupOperationsRequest {
     ///       `metadata.database:prod` - Returns operations where:
     ///       * The operation's metadata type is [CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata].
     ///       * The database the backup was taken from has a name containing the
-    ///       string "prod".
+    ///         string "prod".
     ///    * `(metadata.@type=type.googleapis.com/google.spanner.admin.database.v1.CreateBackupMetadata) AND` \
     ///      `(metadata.name:howl) AND` \
     ///      `(metadata.progress.start_time < \"2018-03-28T14:50:00Z\") AND` \
@@ -531,7 +531,7 @@ pub struct ListBackupOperationsRequest {
     ///      `(error:*)` - Returns operations where:
     ///      * The operation's metadata type is [CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata].
     ///      * The source backup of the copied backup name contains the string
-    ///      "test".
+    ///        "test".
     ///      * The operation started before 2022-01-18T14:50:00Z.
     ///      * The operation resulted in an error.
     ///    * `((metadata.@type=type.googleapis.com/google.spanner.admin.database.v1.CreateBackupMetadata) AND` \
@@ -542,11 +542,11 @@ pub struct ListBackupOperationsRequest {
     ///      `(error:*)` - Returns operations where:
     ///      * The operation's metadata matches either of criteria:
     ///        * The operation's metadata type is [CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata] AND the
-    ///        database the backup was taken from has name containing string
-    ///        "test_db"
+    ///          database the backup was taken from has name containing string
+    ///          "test_db"
     ///        * The operation's metadata type is [CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata] AND the
-    ///        backup the backup was copied from has name containing string
-    ///        "test_bkp"
+    ///          backup the backup was copied from has name containing string
+    ///          "test_bkp"
     ///      * The operation resulted in an error.
     #[prost(string, tag = "2")]
     pub filter: ::prost::alloc::string::String,

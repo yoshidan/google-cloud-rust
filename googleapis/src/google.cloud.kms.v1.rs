@@ -3615,8 +3615,8 @@ pub mod ekm_connection {
         /// [EkmConnection][google.cloud.kms.v1.EkmConnection] must be initiated from
         /// the EKM directly and cannot be performed from Cloud KMS. This means that:
         /// * When creating a
-        /// [CryptoKeyVersion][google.cloud.kms.v1.CryptoKeyVersion] associated with
-        /// this
+        ///   [CryptoKeyVersion][google.cloud.kms.v1.CryptoKeyVersion] associated with
+        ///   this
         ///    [EkmConnection][google.cloud.kms.v1.EkmConnection], the caller must
         ///    supply the key path of pre-existing external key material that will be
         ///    linked to the [CryptoKeyVersion][google.cloud.kms.v1.CryptoKeyVersion].
@@ -3628,8 +3628,8 @@ pub mod ekm_connection {
         /// [EkmConnection][google.cloud.kms.v1.EkmConnection] use EKM-side key
         /// management operations initiated from Cloud KMS. This means that:
         /// * When a [CryptoKeyVersion][google.cloud.kms.v1.CryptoKeyVersion]
-        /// associated with this [EkmConnection][google.cloud.kms.v1.EkmConnection]
-        /// is
+        ///   associated with this [EkmConnection][google.cloud.kms.v1.EkmConnection]
+        ///   is
         ///    created, the EKM automatically generates new key material and a new
         ///    key path. The caller cannot supply the key path of pre-existing
         ///    external key material.
