@@ -107,14 +107,14 @@ pub async fn create_token_source_from_project(
         }
         Project::FromMetadataServer(_) => {
             if config.use_id_token {
-                let ts = ComputeIdentitySource::new(&config.audience.unwrap_or_default())?;
+                let ts = ComputeIdentitySource::new(config.audience.unwrap_or_default())?;
                 let token = ts.token().await?;
                 Ok(Box::new(ReuseTokenSource::new(Box::new(ts), token)))
             } else {
                 if config.scopes.is_none() {
                     return Err(error::Error::ScopeOrAudienceRequired);
                 }
-                let ts = ComputeTokenSource::new(&config.scopes_to_string(","))?;
+                let ts = ComputeTokenSource::new(config.scopes_to_string(",").as_str())?;
                 let token = ts.token().await?;
                 Ok(Box::new(ReuseTokenSource::new(Box::new(ts), token)))
             }
