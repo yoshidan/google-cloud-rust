@@ -362,7 +362,7 @@ mod tests {
             .await
             .unwrap()
         };
-        let subc = SubscriberClient::new(cm().await);
+        let subc = SubscriberClient::new(cm().await, cm().await);
         let pubc = PublisherClient::new(cm().await);
 
         pubc.publish(
