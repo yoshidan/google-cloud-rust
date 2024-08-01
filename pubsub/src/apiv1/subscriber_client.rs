@@ -33,13 +33,17 @@ pub(crate) fn create_empty_streaming_pull_request() -> StreamingPullRequest {
 #[derive(Clone, Debug)]
 pub struct SubscriberClient {
     cm: Arc<ConnectionManager>,
+    streaming_pull_cm: Arc<ConnectionManager>,
 }
 
 #[allow(dead_code)]
 impl SubscriberClient {
     /// create new Subscriber client
-    pub fn new(cm: ConnectionManager) -> SubscriberClient {
-        SubscriberClient { cm: Arc::new(cm) }
+    pub fn new(cm: ConnectionManager, streaming_pull_cm: ConnectionManager) -> SubscriberClient {
+        SubscriberClient {
+            cm: Arc::new(cm),
+            streaming_pull_cm: Arc::new(streaming_pull_cm),
+        }
     }
 
     #[inline]
@@ -49,8 +53,15 @@ impl SubscriberClient {
             .max_encoding_message_size(PUBSUB_MESSAGE_LIMIT)
     }
 
-    pub(crate) fn pool_size(&self) -> usize {
-        self.cm.num()
+    #[inline]
+    fn client_for_streaming_pull(&self) -> InternalSubscriberClient<Channel> {
+        InternalSubscriberClient::new(self.streaming_pull_cm.conn())
+            .max_decoding_message_size(PUBSUB_MESSAGE_LIMIT)
+            .max_encoding_message_size(PUBSUB_MESSAGE_LIMIT)
+    }
+
+    pub(crate) fn streaming_pool_size(&self) -> usize {
+        self.streaming_pull_cm.num()
     }
 
     /// create_subscription creates a subscription to a given topic. See the [resource name rules]
@@ -231,7 +242,7 @@ impl SubscriberClient {
         retry: Option<RetrySetting>,
     ) -> Result<Response<Streaming<StreamingPullResponse>>, Status> {
         let action = || async {
-            let mut client = self.client();
+            let mut client = self.client_for_streaming_pull();
             let base_req = req.clone();
             let rx = ping_receiver.clone();
             let request = Box::pin(async_stream::stream! {

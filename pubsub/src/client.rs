@@ -127,8 +127,14 @@ impl Client {
                 &config.connection_option,
             )
             .await?,
+            ConnectionManager::new(
+                pool_size,
+                config.endpoint.as_str(),
+                &config.environment,
+                &config.connection_option,
+            )
+            .await?,
         );
-
         Ok(Self {
             project_id: config.project_id.ok_or(Error::ProjectIdNotFound)?,
             pubc,

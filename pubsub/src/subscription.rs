@@ -211,8 +211,8 @@ impl Subscription {
         Self { fqsn, subc }
     }
 
-    pub(crate) fn pool_size(&self) -> usize {
-        self.subc.pool_size()
+    pub(crate) fn streaming_pool_size(&self) -> usize {
+        self.subc.streaming_pool_size()
     }
 
     /// id returns the unique identifier of the subscription within its project.
@@ -459,7 +459,7 @@ impl Subscription {
 
         // spawn a separate subscriber task for each connection in the pool
         let subscribers = if opt.enable_multiple_subscriber {
-            self.pool_size()
+            self.streaming_pool_size()
         } else {
             1
         };
@@ -740,7 +740,15 @@ mod tests {
         )
         .await
         .unwrap();
-        let client = SubscriberClient::new(cm);
+        let cm2 = ConnectionManager::new(
+            4,
+            "",
+            &Environment::Emulator(EMULATOR.to_string()),
+            &ConnectionOptions::default(),
+        )
+        .await
+        .unwrap();
+        let client = SubscriberClient::new(cm, cm2);
 
         let uuid = Uuid::new_v4().hyphenated().to_string();
         let subscription_name = format!("projects/{}/subscriptions/s{}", PROJECT_NAME, &uuid);

@@ -164,7 +164,10 @@ mod tests {
         let cm2 = ConnectionManager::new(4, "", &environment, &ConnectionOptions::default())
             .await
             .unwrap();
-        let subc = SubscriberClient::new(cm2);
+        let cm3 = ConnectionManager::new(4, "", &environment, &ConnectionOptions::default())
+            .await
+            .unwrap();
+        let subc = SubscriberClient::new(cm2, cm3);
 
         let uuid = Uuid::new_v4().hyphenated().to_string();
         let topic_name = format!("projects/local-project/topics/t{uuid}");
