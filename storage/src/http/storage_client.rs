@@ -1447,12 +1447,7 @@ pub(crate) mod test {
     }
 
     async fn client() -> (StorageClient, String, String) {
-        let tsp = DefaultTokenSourceProvider::new(Config {
-            audience: None,
-            scopes: Some(&SCOPES),
-            sub: None,
-            ..Default::default()
-        })
+        let tsp = DefaultTokenSourceProvider::new(Config::default().with_scopes(&SCOPES))
         .await
         .unwrap();
         let cred = tsp.source_credentials.clone();

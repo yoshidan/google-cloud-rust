@@ -114,12 +114,7 @@ impl ClientConfig {
     }
 
     fn auth_config() -> google_cloud_auth::project::Config<'static> {
-        google_cloud_auth::project::Config {
-            audience: None,
-            scopes: Some(&crate::http::storage_client::SCOPES),
-            sub: None,
-            ..Default::default()
-        }
+        google_cloud_auth::project::Config::default().with_scopes(&crate::http::storage_client::SCOPES)
     }
 }
 
