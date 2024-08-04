@@ -43,12 +43,7 @@ impl ClientConfig {
     }
 
     fn auth_config() -> google_cloud_auth::project::Config<'static> {
-        google_cloud_auth::project::Config {
-            audience: None,
-            scopes: Some(&SCOPES),
-            sub: None,
-            ..Default::default()
-        }
+        google_cloud_auth::project::Config::default().with_scopes(&SCOPES)
     }
 }
 

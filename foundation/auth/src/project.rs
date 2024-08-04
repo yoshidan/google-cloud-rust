@@ -19,18 +19,38 @@ const EXTERNAL_ACCOUNT_KEY: &str = "external_account";
 
 #[derive(Debug, Clone, Default)]
 pub struct Config<'a> {
-    pub audience: Option<&'a str>,
-    pub scopes: Option<&'a [&'a str]>,
-    pub sub: Option<&'a str>,
-    pub use_id_token: bool,
+    audience: Option<&'a str>,
+    scopes: Option<&'a [&'a str]>,
+    sub: Option<&'a str>,
+    use_id_token: bool,
 }
 
-impl Config<'_> {
+impl<'a> Config<'a> {
     pub fn scopes_to_string(&self, sep: &str) -> String {
         match self.scopes {
             Some(s) => s.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(sep),
             None => EMPTY.to_string(),
         }
+    }
+
+    pub fn with_audience(mut self, value: &'a str) -> Self {
+        self.audience = Some(value);
+        self
+    }
+
+    pub fn with_scopes(mut self, value: &'a [&'a str]) -> Self {
+        self.scopes = Some(value);
+        self
+    }
+
+    pub fn with_sub(mut self, value: &'a str) -> Self {
+        self.sub = Some(value);
+        self
+    }
+
+    pub fn with_use_id_token(mut self, value: bool) -> Self {
+        self.use_id_token = value;
+        self
     }
 }
 

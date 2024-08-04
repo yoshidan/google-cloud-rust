@@ -73,12 +73,9 @@ mod test {
     use crate::http::service_account_client::ServiceAccountClient;
 
     async fn client() -> (ServiceAccountClient, String) {
-        let tsp = DefaultTokenSourceProvider::new(Config {
-            audience: None,
-            scopes: Some(&["https://www.googleapis.com/auth/cloud-platform"]),
-            sub: None,
-            ..Default::default()
-        })
+        let tsp = DefaultTokenSourceProvider::new(
+            Config::default().with_scopes(&["https://www.googleapis.com/auth/cloud-platform"]),
+        )
         .await
         .unwrap();
         let email = tsp.source_credentials.clone().unwrap().client_email.unwrap();

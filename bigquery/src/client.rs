@@ -128,21 +128,13 @@ impl ClientConfig {
     }
 
     fn bigquery_http_auth_config() -> google_cloud_auth::project::Config<'static> {
-        google_cloud_auth::project::Config {
-            audience: None,
-            scopes: Some(&crate::http::bigquery_client::SCOPES),
-            sub: None,
-            ..Default::default()
-        }
+        google_cloud_auth::project::Config::default().with_scopes(&http::bigquery_client::SCOPES)
     }
 
     fn bigquery_grpc_auth_config() -> google_cloud_auth::project::Config<'static> {
-        google_cloud_auth::project::Config {
-            audience: Some(crate::grpc::apiv1::conn_pool::AUDIENCE),
-            scopes: Some(&crate::grpc::apiv1::conn_pool::SCOPES),
-            sub: None,
-            ..Default::default()
-        }
+        google_cloud_auth::project::Config::default()
+            .with_audience(crate::grpc::apiv1::conn_pool::AUDIENCE)
+            .with_scopes(&crate::grpc::apiv1::conn_pool::SCOPES)
     }
 }
 
