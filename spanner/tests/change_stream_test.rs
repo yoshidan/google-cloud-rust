@@ -112,8 +112,8 @@ impl TryFromStruct for DataChangeRecord {
 async fn create_environment() -> Environment {
     let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new(
         google_cloud_auth::project::Config::default()
-            .with_audience(&google_cloud_spanner::apiv1::conn_pool::AUDIENCE)
-            .with_scopes(&google_cloud_spanner::apiv1::conn_pool::SCOPES)
+            .with_audience(google_cloud_spanner::apiv1::conn_pool::AUDIENCE)
+            .with_scopes(&google_cloud_spanner::apiv1::conn_pool::SCOPES),
     )
     .await
     .unwrap();

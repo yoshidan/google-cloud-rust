@@ -131,7 +131,9 @@ pub(crate) mod test {
     }
 
     pub async fn create_client() -> (BigqueryClient, String) {
-        let tsp = DefaultTokenSourceProvider::new(Config::default().with_scopes(&SCOPES)).await.unwrap();
+        let tsp = DefaultTokenSourceProvider::new(Config::default().with_scopes(&SCOPES))
+            .await
+            .unwrap();
         let cred = tsp.source_credentials.clone();
         let ts = tsp.token_source();
         let client = BigqueryClient::new(

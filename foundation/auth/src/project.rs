@@ -25,7 +25,7 @@ pub struct Config<'a> {
     use_id_token: bool,
 }
 
-impl <'a> Config<'a> {
+impl<'a> Config<'a> {
     pub fn scopes_to_string(&self, sep: &str) -> String {
         match self.scopes {
             Some(s) => s.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(sep),

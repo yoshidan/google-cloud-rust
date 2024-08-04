@@ -1448,8 +1448,8 @@ pub(crate) mod test {
 
     async fn client() -> (StorageClient, String, String) {
         let tsp = DefaultTokenSourceProvider::new(Config::default().with_scopes(&SCOPES))
-        .await
-        .unwrap();
+            .await
+            .unwrap();
         let cred = tsp.source_credentials.clone();
         let ts = tsp.token_source();
         let client = StorageClient::new(
