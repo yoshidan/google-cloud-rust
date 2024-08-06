@@ -31,6 +31,44 @@ impl Default for AdminClientConfig {
     }
 }
 
+#[cfg(feature = "auth")]
+pub use google_cloud_auth;
+
+#[cfg(feature = "auth")]
+impl AdminClientConfig {
+    pub async fn with_auth(mut self) -> Result<Self, google_cloud_auth::error::Error> {
+        if let Environment::GoogleCloud(_) = self.environment {
+            let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new(Self::auth_config()).await?;
+            self.environment = Environment::GoogleCloud(Box::new(ts))
+        }
+        Ok(self)
+    }
+
+    pub async fn with_credentials(
+        mut self,
+        credentials: google_cloud_auth::credentials::CredentialsFile,
+    ) -> Result<Self, google_cloud_auth::error::Error> {
+        if let Environment::GoogleCloud(_) = self.environment {
+            let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new_with_credentials(
+                Self::auth_config(),
+                Box::new(credentials),
+            )
+            .await?;
+            self.environment = Environment::GoogleCloud(Box::new(ts))
+        }
+        Ok(self)
+    }
+
+    fn auth_config() -> google_cloud_auth::project::Config<'static> {
+        google_cloud_auth::project::Config {
+            audience: Some(crate::apiv1::conn_pool::AUDIENCE),
+            scopes: Some(&crate::apiv1::conn_pool::SCOPES),
+            sub: None,
+            ..Default::default()
+        }
+    }
+}
+
 pub fn default_retry_setting() -> RetrySetting {
     RetrySetting {
         from_millis: 50,
