@@ -60,12 +60,9 @@ impl AdminClientConfig {
     }
 
     fn auth_config() -> google_cloud_auth::project::Config<'static> {
-        google_cloud_auth::project::Config {
-            audience: Some(crate::apiv1::conn_pool::AUDIENCE),
-            scopes: Some(&crate::apiv1::conn_pool::SCOPES),
-            sub: None,
-            ..Default::default()
-        }
+        google_cloud_auth::project::Config::default()
+            .with_audience(crate::apiv1::conn_pool::AUDIENCE)
+            .with_scopes(&crate::apiv1::conn_pool::SCOPES)
     }
 }
 
