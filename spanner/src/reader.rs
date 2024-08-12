@@ -248,6 +248,11 @@ where
         }
     }
 
+    /// Return metadata for all columns
+    pub fn columns_metadata(&self) -> &Arc<Vec<Field>> {
+        &self.rs.fields
+    }
+
     pub fn column_metadata(&self, column_name: &str) -> Option<(usize, Field)> {
         for (i, val) in self.rs.fields.iter().enumerate() {
             if val.name == column_name {
