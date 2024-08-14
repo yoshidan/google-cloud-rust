@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt::{Debug, Formatter};
 use std::ops::Deref;
 use std::time::{Duration, SystemTime};
@@ -213,13 +213,20 @@ pub(crate) fn create_signed_buffer(
 
     // append query parameters
     {
+        let mut query_parameters = [
+            ("X-Goog-Algorithm", "GOOG4-RSA-SHA256"),
+            ("X-Goog-Credential", &format!("{}/{}", google_access_id, credential_scope)),
+            ("X-Goog-Date", &timestamp),
+            ("X-Goog-Expires", opts.expires.as_secs().to_string().as_str()),
+            ("X-Goog-SignedHeaders", &signed_headers),
+        ]
+        .into_iter()
+        .map(|(key, value)| (key.to_owned(), vec![value.to_owned()]))
+        .collect::<BTreeMap<_, _>>();
+        query_parameters.extend(opts.query_parameters.clone());
+
         let mut query = builder.query_pairs_mut();
-        query.append_pair("X-Goog-Algorithm", "GOOG4-RSA-SHA256");
-        query.append_pair("X-Goog-Credential", &format!("{}/{}", google_access_id, credential_scope));
-        query.append_pair("X-Goog-Date", &timestamp);
-        query.append_pair("X-Goog-Expires", opts.expires.as_secs().to_string().as_str());
-        query.append_pair("X-Goog-SignedHeaders", &signed_headers);
-        for (k, values) in &opts.query_parameters {
+        for (k, values) in &query_parameters {
             for value in values {
                 query.append_pair(k.as_str(), value.as_str());
             }
