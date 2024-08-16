@@ -64,7 +64,7 @@ async fn run() {
 }
 ```
 
-### Passing a custom reqwest middleware cliemt
+### Passing a custom reqwest middleware client
 
 ```rust
 use google_cloud_storage::client::Client;
