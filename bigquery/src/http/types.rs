@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct StandardSqlDataType {
@@ -130,7 +132,7 @@ pub struct QueryParameterValue {
     /// The struct field values.
     /// An object containing a list of "key": value pairs.
     /// Example: { "name": "wrench", "mass": "1.3kg", "count": "3" }..
-    pub struct_values: Option<Box<QueryParameterValue>>,
+    pub struct_values: Option<HashMap<String, QueryParameterValue>>,
 }
 
 /// Currently supported connection properties:

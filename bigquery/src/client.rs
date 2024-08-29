@@ -543,6 +543,7 @@ impl ReadTableOption {
 mod tests {
     use bigdecimal::BigDecimal;
     use serial_test::serial;
+    use std::collections::HashMap;
     use std::ops::AddAssign;
     use std::time::Duration;
 
@@ -555,6 +556,7 @@ mod tests {
     use crate::http::job::query::QueryRequest;
     use crate::http::table::{Table, TableReference};
     use crate::http::tabledata::insert_all::{InsertAllRequest, Row};
+    use crate::http::types::{QueryParameter, QueryParameterStructType, QueryParameterType, QueryParameterValue};
     use crate::query;
     use crate::query::QueryOption;
 
@@ -916,6 +918,113 @@ mod tests {
         }
         assert_eq!(iter.total_size, SIZE as i64);
         assert_eq!(data.len(), SIZE);
+    }
+
+    #[derive(Debug, Clone)]
+    struct Val {
+        pub val1: String,
+        pub val2: String,
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_query_with_parameter() {
+        let array_val = [
+            Val {
+                val1: "val1-1".to_string(),
+                val2: "val1-2".to_string(),
+            },
+            Val {
+                val1: "val2-1".to_string(),
+                val2: "val2-2".to_string(),
+            },
+        ];
+
+        let query_parameter = QueryParameter {
+            name: Some("p1".to_string()),
+            parameter_type: QueryParameterType {
+                parameter_type: "ARRAY".to_string(),
+                array_type: Some(Box::new(QueryParameterType {
+                    parameter_type: "STRUCT".to_string(),
+                    struct_types: Some(vec![
+                        QueryParameterStructType {
+                            name: Some("val1".to_string()),
+                            field_type: QueryParameterType {
+                                parameter_type: "STRING".to_string(),
+                                ..Default::default()
+                            },
+                            description: None,
+                        },
+                        QueryParameterStructType {
+                            name: Some("val2".to_string()),
+                            field_type: QueryParameterType {
+                                parameter_type: "STRING".to_string(),
+                                ..Default::default()
+                            },
+                            description: None,
+                        },
+                    ]),
+                    array_type: None,
+                })),
+                struct_types: None,
+            },
+            parameter_value: QueryParameterValue {
+                array_values: Some(
+                    array_val
+                        .iter()
+                        .map(|val| {
+                            let mut param_map = HashMap::new();
+                            param_map.insert(
+                                "val1".to_string(),
+                                QueryParameterValue {
+                                    value: Some(val.val1.clone()),
+                                    ..Default::default()
+                                },
+                            );
+                            param_map.insert(
+                                "val2".to_string(),
+                                QueryParameterValue {
+                                    value: Some(val.val2.clone()),
+                                    ..Default::default()
+                                },
+                            );
+                            QueryParameterValue {
+                                struct_values: Some(param_map),
+                                value: None,
+                                array_values: None,
+                            }
+                        })
+                        .collect(),
+                ),
+                ..Default::default()
+            },
+        };
+        let (client, project_id) = create_client().await;
+        let mut result = client
+            .query::<query::row::Row>(
+                &project_id,
+                QueryRequest {
+                    query: "
+            WITH VAL AS (SELECT @p1 AS col1)
+            SELECT
+                ARRAY(SELECT val1 FROM UNNEST(col1)) AS val1,
+                ARRAY(SELECT val2 FROM UNNEST(col1)) AS val2
+            FROM VAL
+            "
+                    .to_string(),
+                    query_parameters: vec![query_parameter],
+                    ..QueryRequest::default()
+                },
+            )
+            .await
+            .unwrap();
+        let row = result.next().await.unwrap().unwrap();
+        let col = row.column::<Vec<String>>(0).unwrap();
+        assert_eq!(col[0], "val1-1".to_string());
+        assert_eq!(col[1], "val2-1".to_string());
+        let col = row.column::<Vec<String>>(1).unwrap();
+        assert_eq!(col[0], "val1-2".to_string());
+        assert_eq!(col[1], "val2-2".to_string());
     }
 
     fn assert_data(now: &OffsetDateTime, data: Vec<TestData>) {
