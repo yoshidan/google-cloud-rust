@@ -8,7 +8,7 @@ license = "MIT"
 name = "google-cloud-storage"
 readme = "README.md"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/storage"
-version = "0.22.0"
+version = "0.22.1"
 
 [dependencies]
 anyhow = "1.0"
