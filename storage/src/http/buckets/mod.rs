@@ -244,6 +244,8 @@ pub mod lifecycle {
             Delete,
             /// Sets the `storage_class` of a Bucket.
             SetStorageClass,
+            /// Aborts an incomplete multipart upload and deletes the associated parts when the multipart upload meets the conditions specified in the lifecycle rule.
+            AbortIncompleteMultipartUpload,
         }
         /// An action to take on an object.
         #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
@@ -256,7 +258,7 @@ pub mod lifecycle {
         #[derive(Clone, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize, Debug)]
         #[serde(rename_all = "camelCase")]
         pub struct Condition {
-            pub age: i32,
+            pub age: Option<i32>,
             #[serde(default, with = "date_format::option")]
             pub created_before: Option<Date>,
             #[serde(default, with = "date_format::option")]

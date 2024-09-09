@@ -1530,7 +1530,7 @@ pub(crate) mod test {
                                 storage_class: None,
                             }),
                             condition: Some(lifecycle::rule::Condition {
-                                age: 365,
+                                age: Some(365),
                                 is_live: Some(true),
                                 ..Default::default()
                             }),
