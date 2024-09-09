@@ -475,5 +475,6 @@ pub struct Condition {
     pub title: String,
     /// Optional. Description of the expression. This is a longer text which
     /// describes the expression, e.g. when hovered over it in a UI.
-    pub description: String,
+    #[serde(default)]
+    pub description: Option<String>,
 }
