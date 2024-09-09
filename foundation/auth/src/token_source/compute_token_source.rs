@@ -24,9 +24,9 @@ impl ComputeTokenSource {
 
         Ok(ComputeTokenSource {
             token_url: format!(
-                "http://{}/computeMetadata/v1/instance/service-accounts/default/token?{}",
+                "http://{}/computeMetadata/v1/instance/service-accounts/default/token?scopes={}",
                 host,
-                encode(format!("scopes={scope}").as_str())
+                encode(scope)
             ),
             client: default_http_client(),
         })
