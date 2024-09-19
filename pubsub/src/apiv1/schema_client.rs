@@ -4,7 +4,7 @@ use google_cloud_gax::conn::Channel;
 use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::Response;
 use google_cloud_gax::grpc::Status;
-use google_cloud_gax::retry::{invoke, RetrySetting};
+use google_cloud_gax::retry::{invoke, MapErr, RetrySetting};
 use google_cloud_googleapis::pubsub::v1::schema_service_client::SchemaServiceClient;
 use google_cloud_googleapis::pubsub::v1::{
     CreateSchemaRequest, DeleteSchemaRequest, GetSchemaRequest, ListSchemasRequest, Schema, ValidateMessageRequest,
@@ -39,7 +39,7 @@ impl SchemaClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("parent={parent}"), req.clone());
-            client.create_schema(request).await
+            client.create_schema(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -54,7 +54,7 @@ impl SchemaClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={name}"), req.clone());
-            client.get_schema(request).await
+            client.get_schema(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -72,7 +72,11 @@ impl SchemaClient {
             let action = || async {
                 let mut client = self.client();
                 let request = create_request(format!("project={project}"), req.clone());
-                client.list_schemas(request).await.map(|d| d.into_inner())
+                client
+                    .list_schemas(request)
+                    .await
+                    .map(|d| d.into_inner())
+                    .map_transient_err()
             };
             let response = invoke(retry.clone(), action).await?;
             all.extend(response.schemas.into_iter());
@@ -93,7 +97,7 @@ impl SchemaClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={name}"), req.clone());
-            client.delete_schema(request).await
+            client.delete_schema(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -108,7 +112,7 @@ impl SchemaClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("parent={parent}"), req.clone());
-            client.validate_schema(request).await
+            client.validate_schema(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -123,7 +127,7 @@ impl SchemaClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("parent={parent}"), req.clone());
-            client.validate_message(request).await
+            client.validate_message(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }

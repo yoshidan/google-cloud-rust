@@ -5,7 +5,7 @@ use crate::grpc::apiv1::conn_pool::ConnectionManager;
 
 use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::{Code, Status};
-use google_cloud_gax::retry::{invoke, RetrySetting};
+use google_cloud_gax::retry::{invoke, MapErr, RetrySetting};
 
 use crate::grpc::kms::v1::CreateCryptoKeyVersionRequest;
 use crate::grpc::kms::v1::CreateKeyRingRequest;
@@ -62,7 +62,7 @@ impl Client {
     ) -> Result<GenerateRandomBytesResponse, Status> {
         let action = || async {
             let request = create_request(format!("location={}", req.location), req.clone());
-            self.cm.conn().generate_random_bytes(request).await
+            self.cm.conn().generate_random_bytes(request).await.map_transient_err()
         };
         invoke(Some(retry.unwrap_or_else(default_setting)), action)
             .await
@@ -81,7 +81,7 @@ impl Client {
     ) -> Result<CryptoKey, Status> {
         let action = || async {
             let request = create_request(format!("parent={}", req.parent), req.clone());
-            self.cm.conn().create_crypto_key(request).await
+            self.cm.conn().create_crypto_key(request).await.map_transient_err()
         };
         invoke(Some(retry.unwrap_or_else(default_setting)), action)
             .await
@@ -100,7 +100,11 @@ impl Client {
     ) -> Result<CryptoKeyVersion, Status> {
         let action = || async {
             let request = create_request(format!("parent={}", req.parent), req.clone());
-            self.cm.conn().create_crypto_key_version(request).await
+            self.cm
+                .conn()
+                .create_crypto_key_version(request)
+                .await
+                .map_transient_err()
         };
         invoke(Some(retry.unwrap_or_else(default_setting)), action)
             .await
@@ -119,7 +123,7 @@ impl Client {
     ) -> Result<KeyRing, Status> {
         let action = || async {
             let request = create_request(format!("parent={}", req.parent), req.clone());
-            self.cm.conn().create_key_ring(request).await
+            self.cm.conn().create_key_ring(request).await.map_transient_err()
         };
         invoke(Some(retry.unwrap_or_else(default_setting)), action)
             .await
@@ -138,7 +142,11 @@ impl Client {
     ) -> Result<CryptoKeyVersion, Status> {
         let action = || async {
             let request = create_request(format!("name={}", req.name), req.clone());
-            self.cm.conn().destroy_crypto_key_version(request).await
+            self.cm
+                .conn()
+                .destroy_crypto_key_version(request)
+                .await
+                .map_transient_err()
         };
         invoke(Some(retry.unwrap_or_else(default_setting)), action)
             .await
@@ -157,7 +165,7 @@ impl Client {
     ) -> Result<CryptoKey, Status> {
         let action = || async {
             let request = create_request(format!("name={}", req.name), req.clone());
-            self.cm.conn().get_crypto_key(request).await
+            self.cm.conn().get_crypto_key(request).await.map_transient_err()
         };
         invoke(Some(retry.unwrap_or_else(default_setting)), action)
             .await
@@ -176,7 +184,7 @@ impl Client {
     ) -> Result<CryptoKeyVersion, Status> {
         let action = || async {
             let request = create_request(format!("name={}", req.name), req.clone());
-            self.cm.conn().get_crypto_key_version(request).await
+            self.cm.conn().get_crypto_key_version(request).await.map_transient_err()
         };
         invoke(Some(retry.unwrap_or_else(default_setting)), action)
             .await
@@ -191,7 +199,7 @@ impl Client {
     pub async fn get_key_ring(&self, req: GetKeyRingRequest, retry: Option<RetrySetting>) -> Result<KeyRing, Status> {
         let action = || async {
             let request = create_request(format!("name={}", req.name), req.clone());
-            self.cm.conn().get_key_ring(request).await
+            self.cm.conn().get_key_ring(request).await.map_transient_err()
         };
         invoke(Some(retry.unwrap_or_else(default_setting)), action)
             .await
@@ -210,7 +218,11 @@ impl Client {
     ) -> Result<ListCryptoKeyVersionsResponse, Status> {
         let action = || async {
             let request = create_request(format!("parent={}", req.parent), req.clone());
-            self.cm.conn().list_crypto_key_versions(request).await
+            self.cm
+                .conn()
+                .list_crypto_key_versions(request)
+                .await
+                .map_transient_err()
         };
         invoke(Some(retry.unwrap_or_else(default_setting)), action)
             .await
@@ -229,7 +241,7 @@ impl Client {
     ) -> Result<ListCryptoKeysResponse, Status> {
         let action = || async {
             let request = create_request(format!("parent={}", req.parent), req.clone());
-            self.cm.conn().list_crypto_keys(request).await
+            self.cm.conn().list_crypto_keys(request).await.map_transient_err()
         };
         invoke(Some(retry.unwrap_or_else(default_setting)), action)
             .await
@@ -248,7 +260,7 @@ impl Client {
     ) -> Result<ListKeyRingsResponse, Status> {
         let action = || async {
             let request = create_request(format!("parent={}", req.parent), req.clone());
-            self.cm.conn().list_key_rings(request).await
+            self.cm.conn().list_key_rings(request).await.map_transient_err()
         };
         invoke(Some(retry.unwrap_or_else(default_setting)), action)
             .await
@@ -263,7 +275,7 @@ impl Client {
     pub async fn encrypt(&self, req: EncryptRequest, retry: Option<RetrySetting>) -> Result<EncryptResponse, Status> {
         let action = || async {
             let request = create_request(format!("name={}", req.name), req.clone());
-            self.cm.conn().encrypt(request).await
+            self.cm.conn().encrypt(request).await.map_transient_err()
         };
         invoke(Some(retry.unwrap_or_else(default_setting)), action)
             .await
@@ -278,7 +290,7 @@ impl Client {
     pub async fn decrypt(&self, req: DecryptRequest, retry: Option<RetrySetting>) -> Result<DecryptResponse, Status> {
         let action = || async {
             let request = create_request(format!("name={}", req.name), req.clone());
-            self.cm.conn().decrypt(request).await
+            self.cm.conn().decrypt(request).await.map_transient_err()
         };
         invoke(Some(retry.unwrap_or_else(default_setting)), action)
             .await
@@ -297,7 +309,7 @@ impl Client {
     ) -> Result<AsymmetricSignResponse, Status> {
         let action = || async {
             let request = create_request(format!("name={}", req.name), req.clone());
-            self.cm.conn().asymmetric_sign(request).await
+            self.cm.conn().asymmetric_sign(request).await.map_transient_err()
         };
         invoke(Some(retry.unwrap_or_else(default_setting)), action)
             .await
@@ -312,7 +324,7 @@ impl Client {
     pub async fn mac_sign(&self, req: MacSignRequest, retry: Option<RetrySetting>) -> Result<MacSignResponse, Status> {
         let action = || async {
             let request = create_request(format!("name={}", req.name), req.clone());
-            self.cm.conn().mac_sign(request).await
+            self.cm.conn().mac_sign(request).await.map_transient_err()
         };
         invoke(Some(retry.unwrap_or_else(default_setting)), action)
             .await
@@ -331,7 +343,7 @@ impl Client {
     ) -> Result<MacVerifyResponse, Status> {
         let action = || async {
             let request = create_request(format!("name={}", req.name), req.clone());
-            self.cm.conn().mac_verify(request).await
+            self.cm.conn().mac_verify(request).await.map_transient_err()
         };
         invoke(Some(retry.unwrap_or_else(default_setting)), action)
             .await
@@ -350,7 +362,7 @@ impl Client {
     ) -> Result<PublicKey, Status> {
         let action = || async {
             let request = create_request(format!("name={}", req.name), req.clone());
-            self.cm.conn().get_public_key(request).await
+            self.cm.conn().get_public_key(request).await.map_transient_err()
         };
         invoke(Some(retry.unwrap_or_else(default_setting)), action)
             .await

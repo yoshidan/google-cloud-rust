@@ -100,6 +100,12 @@ where
             _marker: PhantomData,
         }
     }
+
+    fn notify(error: &E, duration: std::time::Duration) {
+        if let Some(status) = error.try_as() {
+            tracing::trace!("transaction retry fn, error: {:?}, duration: {:?}", status, duration);
+        };
+    }
 }
 
 impl TransactionRetrySetting {

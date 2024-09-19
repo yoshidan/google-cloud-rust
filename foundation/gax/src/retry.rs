@@ -2,9 +2,9 @@ use std::future::Future;
 use std::iter::Take;
 use std::time::Duration;
 
-pub use tokio_retry::strategy::ExponentialBackoff;
-pub use tokio_retry::Condition;
-use tokio_retry::{Action, RetryIf};
+pub use tokio_retry2::strategy::ExponentialBackoff;
+use tokio_retry2::{Action, RetryIf};
+pub use tokio_retry2::{Condition, MapErr};
 
 use crate::grpc::{Code, Status};
 
@@ -21,6 +21,7 @@ impl TryAs<Status> for Status {
 pub trait Retry<E: TryAs<Status>, T: Condition<E>> {
     fn strategy(&self) -> Take<ExponentialBackoff>;
     fn condition(&self) -> T;
+    fn notify(error: &E, duration: Duration);
 }
 
 pub struct CodeCondition {
@@ -70,6 +71,10 @@ impl Retry<Status, CodeCondition> for RetrySetting {
     fn condition(&self) -> CodeCondition {
         CodeCondition::new(self.codes.clone())
     }
+
+    fn notify(_error: &Status, _duration: Duration) {
+        tracing::trace!("retry fn");
+    }
 }
 
 impl Default for RetrySetting {
@@ -92,7 +97,7 @@ where
     RT: Retry<E, C> + Default,
 {
     let retry = retry.unwrap_or_default();
-    RetryIf::spawn(retry.strategy(), action, retry.condition()).await
+    RetryIf::spawn(retry.strategy(), action, retry.condition(), RT::notify).await
 }
 /// Repeats retries when the specified error is detected.
 /// The argument specified by 'v' can be reused for each retry.
@@ -117,7 +122,6 @@ where
         if retry.condition().should_retry(&status) {
             let duration = strategy.next().ok_or(status)?;
             tokio::time::sleep(duration).await;
-            tracing::trace!("retry fn");
         } else {
             return Err(status);
         }
@@ -128,6 +132,7 @@ where
 mod tests {
     use std::sync::{Arc, Mutex};
 
+    use tokio_retry2::MapErr;
     use tonic::{Code, Status};
 
     use crate::retry::{invoke, RetrySetting};
@@ -140,7 +145,7 @@ mod tests {
             let mut lock = counter.lock().unwrap();
             *lock += 1;
             let result: Result<i32, Status> = Err(Status::new(Code::Aborted, "error"));
-            result
+            result.map_transient_err()
         };
         let actual = invoke(Some(retry), action).await.unwrap_err();
         let expected = Status::new(Code::Aborted, "error");

@@ -4,7 +4,7 @@ use google_cloud_gax::conn::Channel;
 use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::Status;
 use google_cloud_gax::grpc::{IntoStreamingRequest, Response, Streaming};
-use google_cloud_gax::retry::{invoke, RetrySetting};
+use google_cloud_gax::retry::{invoke, MapErr, RetrySetting};
 use google_cloud_googleapis::pubsub::v1::subscriber_client::SubscriberClient as InternalSubscriberClient;
 use google_cloud_googleapis::pubsub::v1::{
     AcknowledgeRequest, CreateSnapshotRequest, DeleteSnapshotRequest, DeleteSubscriptionRequest, GetSnapshotRequest,
@@ -85,7 +85,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={name}"), req.clone());
-            client.create_subscription(request).await
+            client.create_subscription(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -105,7 +105,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription.name={name}"), req.clone());
-            client.update_subscription(request).await
+            client.update_subscription(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -121,7 +121,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription={subscription}"), req.clone());
-            client.get_subscription(request).await
+            client.get_subscription(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -140,7 +140,11 @@ impl SubscriberClient {
             let action = || async {
                 let mut client = self.client();
                 let request = create_request(format!("project={project}"), req.clone());
-                client.list_subscriptions(request).await.map(|d| d.into_inner())
+                client
+                    .list_subscriptions(request)
+                    .await
+                    .map(|d| d.into_inner())
+                    .map_transient_err()
             };
             let response: ListSubscriptionsResponse = invoke(retry.clone(), action).await?;
             all.extend(response.subscriptions.into_iter());
@@ -166,7 +170,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription={subscription}"), req.clone());
-            client.delete_subscription(request).await
+            client.delete_subscription(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -186,7 +190,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription={subscription}"), req.clone());
-            client.modify_ack_deadline(request).await
+            client.modify_ack_deadline(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -208,7 +212,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription={subscription}"), req.clone());
-            client.acknowledge(request).await
+            client.acknowledge(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -222,7 +226,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription={subscription}"), req.clone());
-            client.pull(request).await
+            client.pull(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -260,7 +264,7 @@ impl SubscriberClient {
                 "x-goog-request-params",
                 format!("subscription={}", req.subscription).parse().unwrap(),
             );
-            client.streaming_pull(v).await
+            client.streaming_pull(v).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -281,7 +285,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription={subscription}"), req.clone());
-            client.modify_push_config(request).await
+            client.modify_push_config(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -301,7 +305,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("snapshot={snapshot}"), req.clone());
-            client.get_snapshot(request).await
+            client.get_snapshot(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -323,7 +327,11 @@ impl SubscriberClient {
             let action = || async {
                 let mut client = self.client();
                 let request = create_request(format!("project={project}"), req.clone());
-                client.list_snapshots(request).await.map(|d| d.into_inner())
+                client
+                    .list_snapshots(request)
+                    .await
+                    .map(|d| d.into_inner())
+                    .map_transient_err()
             };
             let response: ListSnapshotsResponse = invoke(retry.clone(), action).await?;
             all.extend(response.snapshots.into_iter());
@@ -360,7 +368,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={name}"), req.clone());
-            client.create_snapshot(request).await
+            client.create_snapshot(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -384,7 +392,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("snapshot.name={name}"), req.clone());
-            client.update_snapshot(request).await
+            client.update_snapshot(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -408,7 +416,7 @@ impl SubscriberClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("snapshot={name}"), req.clone());
-            client.delete_snapshot(request).await
+            client.delete_snapshot(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -420,7 +428,7 @@ impl SubscriberClient {
             let mut client = self.client();
             let subscription = req.subscription.clone();
             let request = create_request(format!("subscription={subscription}"), req.clone());
-            client.seek(request).await
+            client.seek(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
