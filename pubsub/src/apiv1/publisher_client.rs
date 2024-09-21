@@ -4,7 +4,7 @@ use google_cloud_gax::conn::Channel;
 use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::Response;
 use google_cloud_gax::grpc::{Code, Status};
-use google_cloud_gax::retry::{invoke, RetrySetting};
+use google_cloud_gax::retry::{invoke, MapErr, RetrySetting};
 use google_cloud_googleapis::pubsub::v1::publisher_client::PublisherClient as InternalPublisherClient;
 use google_cloud_googleapis::pubsub::v1::{
     DeleteTopicRequest, DetachSubscriptionRequest, DetachSubscriptionResponse, GetTopicRequest,
@@ -41,7 +41,7 @@ impl PublisherClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={name}"), req.clone());
-            client.create_topic(request).await
+            client.create_topic(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -61,7 +61,7 @@ impl PublisherClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={name}"), req.clone());
-            client.update_topic(request).await
+            client.update_topic(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -92,7 +92,7 @@ impl PublisherClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("name={name}"), req.clone());
-            client.publish(request).await
+            client.publish(request).await.map_transient_err()
         };
         invoke(Some(setting), action).await
     }
@@ -108,7 +108,7 @@ impl PublisherClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("topic={topic}"), req.clone());
-            client.get_topic(request).await
+            client.get_topic(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -127,7 +127,11 @@ impl PublisherClient {
             let action = || async {
                 let mut client = self.client();
                 let request = create_request(format!("project={project}"), req.clone());
-                client.list_topics(request).await.map(|d| d.into_inner())
+                client
+                    .list_topics(request)
+                    .await
+                    .map(|d| d.into_inner())
+                    .map_transient_err()
             };
             let response = invoke(retry.clone(), action).await?;
             all.extend(response.topics.into_iter());
@@ -152,7 +156,11 @@ impl PublisherClient {
             let action = || async {
                 let mut client = self.client();
                 let request = create_request(format!("topic={topic}"), req.clone());
-                client.list_topic_subscriptions(request).await.map(|d| d.into_inner())
+                client
+                    .list_topic_subscriptions(request)
+                    .await
+                    .map(|d| d.into_inner())
+                    .map_transient_err()
             };
             let response = invoke(retry.clone(), action).await?;
             all.extend(response.subscriptions.into_iter());
@@ -181,7 +189,11 @@ impl PublisherClient {
             let action = || async {
                 let mut client = self.client();
                 let request = create_request(format!("topic={topic}"), req.clone());
-                client.list_topic_snapshots(request).await.map(|d| d.into_inner())
+                client
+                    .list_topic_snapshots(request)
+                    .await
+                    .map(|d| d.into_inner())
+                    .map_transient_err()
             };
             let response = invoke(retry.clone(), action).await?;
             all.extend(response.snapshots.into_iter());
@@ -207,7 +219,7 @@ impl PublisherClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("topic={topic}"), req.clone());
-            client.delete_topic(request).await
+            client.delete_topic(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -226,7 +238,7 @@ impl PublisherClient {
         let action = || async {
             let mut client = self.client();
             let request = create_request(format!("subscription={subscription}"), req.clone());
-            client.detach_subscription(request).await
+            client.detach_subscription(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }

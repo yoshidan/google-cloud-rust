@@ -1,7 +1,7 @@
 use google_cloud_gax::conn::Channel;
 use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::{Response, Status};
-use google_cloud_gax::retry::{invoke, RetrySetting};
+use google_cloud_gax::retry::{invoke, MapErr, RetrySetting};
 use google_cloud_googleapis::iam::v1::{
     GetIamPolicyRequest, Policy, SetIamPolicyRequest, TestIamPermissionsRequest, TestIamPermissionsResponse,
 };
@@ -48,6 +48,7 @@ impl InstanceAdminClient {
                     .list_instance_configs(request)
                     .await
                     .map(|d| d.into_inner())
+                    .map_transient_err()
             };
             let response = invoke(retry.clone(), action).await?;
             all.extend(response.instance_configs.into_iter());
@@ -74,6 +75,7 @@ impl InstanceAdminClient {
                 .get_instance_config(request)
                 .await
                 .map(|d| d.into_inner())
+                .map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -92,7 +94,12 @@ impl InstanceAdminClient {
         loop {
             let action = || async {
                 let request = create_request(format!("parent={parent}"), req.clone());
-                self.inner.clone().list_instances(request).await.map(|d| d.into_inner())
+                self.inner
+                    .clone()
+                    .list_instances(request)
+                    .await
+                    .map(|d| d.into_inner())
+                    .map_transient_err()
             };
             let response = invoke(retry.clone(), action).await?;
             all.extend(response.instances.into_iter());
@@ -114,7 +121,7 @@ impl InstanceAdminClient {
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={name}"), req.clone());
-            self.inner.clone().get_instance(request).await
+            self.inner.clone().get_instance(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -168,7 +175,7 @@ impl InstanceAdminClient {
         let parent = &req.parent;
         let action = || async {
             let request = create_request(format!("parent={parent}"), req.clone());
-            self.inner.clone().create_instance(request).await
+            self.inner.clone().create_instance(request).await.map_transient_err()
         };
         invoke(retry, action)
             .await
@@ -229,7 +236,7 @@ impl InstanceAdminClient {
         let instance_name = &req.instance.as_ref().unwrap().name;
         let action = || async {
             let request = create_request(format!("instance.name={instance_name}"), req.clone());
-            self.inner.clone().update_instance(request).await
+            self.inner.clone().update_instance(request).await.map_transient_err()
         };
         invoke(retry, action)
             .await
@@ -257,7 +264,7 @@ impl InstanceAdminClient {
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={name}"), req.clone());
-            self.inner.clone().delete_instance(request).await
+            self.inner.clone().delete_instance(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -276,7 +283,7 @@ impl InstanceAdminClient {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let action = || async {
             let request = create_request(format!("resource={resource}"), req.clone());
-            self.inner.clone().set_iam_policy(request).await
+            self.inner.clone().set_iam_policy(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -295,7 +302,7 @@ impl InstanceAdminClient {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let action = || async {
             let request = create_request(format!("resource={resource}"), req.clone());
-            self.inner.clone().get_iam_policy(request).await
+            self.inner.clone().get_iam_policy(request).await.map_transient_err()
         };
         invoke(retry, action).await
     }
@@ -316,7 +323,11 @@ impl InstanceAdminClient {
         let retry = Some(retry.unwrap_or_else(default_retry_setting));
         let action = || async {
             let request = create_request(format!("resource={resource}"), req.clone());
-            self.inner.clone().test_iam_permissions(request).await
+            self.inner
+                .clone()
+                .test_iam_permissions(request)
+                .await
+                .map_transient_err()
         };
         invoke(retry, action).await
     }

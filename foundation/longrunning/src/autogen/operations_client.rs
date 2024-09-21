@@ -5,7 +5,7 @@ use tonic::Response;
 use google_cloud_gax::conn::{Channel, Error};
 use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::{Code, Status};
-use google_cloud_gax::retry::{invoke, RetrySetting};
+use google_cloud_gax::retry::{invoke, MapErr, RetrySetting};
 use google_cloud_googleapis::longrunning::operations_client::OperationsClient as InternalOperationsClient;
 use google_cloud_googleapis::longrunning::{
     CancelOperationRequest, DeleteOperationRequest, GetOperationRequest, Operation, WaitOperationRequest,
@@ -44,7 +44,7 @@ impl OperationsClient {
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={name}"), req.clone());
-            self.inner.clone().get_operation(request).await
+            self.inner.clone().get_operation(request).await.map_transient_err()
         };
         invoke(Some(setting), action).await
     }
@@ -62,7 +62,7 @@ impl OperationsClient {
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={name}"), req.clone());
-            self.inner.clone().delete_operation(request).await
+            self.inner.clone().delete_operation(request).await.map_transient_err()
         };
         invoke(Some(setting), action).await
     }
@@ -86,7 +86,7 @@ impl OperationsClient {
         let name = &req.name;
         let action = || async {
             let request = create_request(format!("name={name}"), req.clone());
-            self.inner.clone().cancel_operation(request).await
+            self.inner.clone().cancel_operation(request).await.map_transient_err()
         };
         invoke(Some(setting), action).await
     }
@@ -108,7 +108,7 @@ impl OperationsClient {
         let setting = retry.unwrap_or_else(default_retry_setting);
         let action = || async {
             let request = create_request("".to_string(), req.clone());
-            self.inner.clone().wait_operation(request).await
+            self.inner.clone().wait_operation(request).await.map_transient_err()
         };
         invoke(Some(setting), action).await
     }
