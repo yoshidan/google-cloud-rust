@@ -1099,6 +1099,7 @@ mod tests {
                                 seqno: 0,
                                 query_options: None,
                                 request_options: None,
+                                directed_read_options: None,
                                 data_boost_enabled: false,
                             },
                             None,

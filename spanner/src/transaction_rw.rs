@@ -132,7 +132,7 @@ impl ReadWriteTransaction {
             session: session.session.name.to_string(),
             options: Some(TransactionOptions {
                 exclude_txn_from_change_streams: false,
-                mode: Some(mode)
+                mode: Some(mode),
             }),
             request_options: Transaction::create_request_options(options.priority),
         };

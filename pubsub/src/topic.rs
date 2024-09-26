@@ -5,7 +5,10 @@ use prost_types::DurationError;
 
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::RetrySetting;
-use google_cloud_googleapis::pubsub::v1::{DeleteTopicRequest, GetTopicRequest, IngestionDataSourceSettings, ListTopicSubscriptionsRequest, MessageStoragePolicy, SchemaSettings, Topic as InternalTopic};
+use google_cloud_googleapis::pubsub::v1::{
+    DeleteTopicRequest, GetTopicRequest, IngestionDataSourceSettings, ListTopicSubscriptionsRequest,
+    MessageStoragePolicy, SchemaSettings, Topic as InternalTopic,
+};
 
 use crate::apiv1::publisher_client::PublisherClient;
 use crate::apiv1::subscriber_client::SubscriberClient;
@@ -20,7 +23,7 @@ pub struct TopicConfig {
     pub schema_settings: Option<SchemaSettings>,
     pub satisfies_pzs: bool,
     pub message_retention_duration: Option<Duration>,
-    pub ingestion_data_source_settings: Option<IngestionDataSourceSettings>
+    pub ingestion_data_source_settings: Option<IngestionDataSourceSettings>,
 }
 
 impl Default for TopicConfig {
@@ -32,7 +35,7 @@ impl Default for TopicConfig {
             schema_settings: None,
             satisfies_pzs: false,
             message_retention_duration: None,
-            ingestion_data_source_settings: None
+            ingestion_data_source_settings: None,
         }
     }
 }

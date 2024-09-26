@@ -11,12 +11,12 @@ use google_cloud_gax::grpc::codegen::tokio_stream::Stream;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::seek_request::Target;
+use google_cloud_googleapis::pubsub::v1::subscription::AnalyticsHubSubscriptionInfo;
 use google_cloud_googleapis::pubsub::v1::{
     BigQueryConfig, CloudStorageConfig, CreateSnapshotRequest, DeadLetterPolicy, DeleteSnapshotRequest,
     DeleteSubscriptionRequest, ExpirationPolicy, GetSnapshotRequest, GetSubscriptionRequest, PullRequest, PushConfig,
     RetryPolicy, SeekRequest, Snapshot, Subscription as InternalSubscription, UpdateSubscriptionRequest,
 };
-use google_cloud_googleapis::pubsub::v1::subscription::AnalyticsHubSubscriptionInfo;
 
 use crate::apiv1::subscriber_client::SubscriberClient;
 

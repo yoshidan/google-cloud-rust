@@ -5,7 +5,11 @@ use std::time::SystemTime;
 use time::OffsetDateTime;
 
 use google_cloud_gax::grpc::Status;
-use google_cloud_googleapis::spanner::v1::{transaction_options, transaction_selector, BeginTransactionRequest, ExecuteSqlRequest, PartitionOptions, PartitionQueryRequest, PartitionReadRequest, ReadRequest, TransactionOptions, TransactionSelector, DirectedReadOptions};
+use google_cloud_googleapis::spanner::v1::{
+    transaction_options, transaction_selector, BeginTransactionRequest, DirectedReadOptions, ExecuteSqlRequest,
+    PartitionOptions, PartitionQueryRequest, PartitionReadRequest, ReadRequest, TransactionOptions,
+    TransactionSelector,
+};
 
 use crate::key::KeySet;
 use crate::reader::{Reader, RowIterator, StatementReader, TableReader};
@@ -226,7 +230,7 @@ impl BatchReadOnlyTransaction {
         po: Option<PartitionOptions>,
         qo: QueryOptions,
         data_boost_enabled: bool,
-        directed_read_options: Option<DirectedReadOptions>
+        directed_read_options: Option<DirectedReadOptions>,
     ) -> Result<Vec<Partition<StatementReader>>, Status> {
         let request = PartitionQueryRequest {
             session: self.get_session_name(),
@@ -266,7 +270,7 @@ impl BatchReadOnlyTransaction {
                             query_options: qo.optimizer_options.clone(),
                             request_options: Transaction::create_request_options(qo.call_options.priority),
                             data_boost_enabled,
-                            directed_read_options: directed_read_options.clone()
+                            directed_read_options: directed_read_options.clone(),
                         },
                     },
                 })

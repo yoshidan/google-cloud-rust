@@ -146,7 +146,13 @@ mod tests {
                 create_time: None,
                 update_time: None,
                 kms_key_name: "".to_string(),
+                mode: 0,
+                cleanup_policies: Default::default(),
+                size_bytes: 0,
+                satisfies_pzs: false,
+                cleanup_policy_dry_run: false,
                 format_config: None,
+                mode_config: None,
             }),
         };
         let mut created_repository = client.create_repository(create_request.clone(), None).await.unwrap();
