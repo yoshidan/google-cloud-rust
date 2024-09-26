@@ -69,6 +69,7 @@ where
         struct_type: None,
         //TODO support PG Numeric
         type_annotation: TypeAnnotationCode::Unspecified.into(),
+        proto_type_fqn: "".to_string(),
     }
 }
 
@@ -247,6 +248,7 @@ where
                     })
                     .collect(),
             }),
+            proto_type_fqn: "".to_string(),
         }
     }
 }
@@ -302,6 +304,7 @@ where
             array_element_type: Some(Box::new(T::get_type())),
             struct_type: None,
             type_annotation: TypeAnnotationCode::Unspecified.into(),
+            proto_type_fqn: "".to_string(),
         }
     }
 }

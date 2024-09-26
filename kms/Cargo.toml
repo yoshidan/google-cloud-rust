@@ -1,6 +1,6 @@
 [package]
 name = "google-cloud-kms"
-version = "0.5.1"
+version = "0.6.0"
 edition = "2021"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/kms"
@@ -13,7 +13,7 @@ documentation = "https://docs.rs/google-cloud-kms/latest/google_cloud_kms/"
 [dependencies]
 google-cloud-token = { version = "0.1.2", path = "../foundation/token" }
 google-cloud-auth = { optional = true, version = "0.17", path="../foundation/auth", default-features=false }
-google-cloud-googleapis = { version="0.15.0", path = "../googleapis", features=["kms"]}
+google-cloud-googleapis = { version="0.16.0", path = "../googleapis", features=["kms"]}
 google-cloud-gax = { version = "0.19.1", path = "../foundation/gax"}
 tracing = "0.1"
 serde = { version = "1.0", features = ["derive"] }

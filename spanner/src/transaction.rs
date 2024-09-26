@@ -146,6 +146,7 @@ impl Transaction {
             query_options: options.optimizer_options,
             request_options: Transaction::create_request_options(options.call_options.priority),
             data_boost_enabled: false,
+            directed_read_options: None,
         };
         let session = self.session.as_mut().unwrap().deref_mut();
         let reader = StatementReader {
@@ -205,6 +206,9 @@ impl Transaction {
             partition_token: vec![],
             request_options: Transaction::create_request_options(options.call_options.priority),
             data_boost_enabled: false,
+            order_by: 0,
+            directed_read_options: None,
+            lock_hint: 0,
         };
 
         let session = self.as_mut_session();

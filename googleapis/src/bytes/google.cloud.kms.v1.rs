@@ -91,7 +91,7 @@ pub struct CryptoKey {
     /// [DESTROY_SCHEDULED][google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionState.DESTROY_SCHEDULED]
     /// state before transitioning to
     /// [DESTROYED][google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionState.DESTROYED].
-    /// If not specified at creation time, the default duration is 24 hours.
+    /// If not specified at creation time, the default duration is 30 days.
     #[prost(message, optional, tag = "14")]
     pub destroy_scheduled_duration: ::core::option::Option<::prost_types::Duration>,
     /// Immutable. The resource name of the backend environment where the key
@@ -106,6 +106,18 @@ pub struct CryptoKey {
     /// [ProtectionLevels][google.cloud.kms.v1.ProtectionLevel] in the future.
     #[prost(string, tag = "15")]
     pub crypto_key_backend: ::prost::alloc::string::String,
+    /// Optional. The policy used for Key Access Justifications Policy Enforcement.
+    /// If this field is present and this key is enrolled in Key Access
+    /// Justifications Policy Enforcement, the policy will be evaluated in encrypt,
+    /// decrypt, and sign operations, and the operation will fail if rejected by
+    /// the policy. The policy is defined by specifying zero or more allowed
+    /// justification codes.
+    /// <https://cloud.google.com/assured-workloads/key-access-justifications/docs/justification-codes>
+    /// By default, this field is absent, and all justification codes are allowed.
+    #[prost(message, optional, tag = "17")]
+    pub key_access_justifications_policy: ::core::option::Option<
+        KeyAccessJustificationsPolicy,
+    >,
     /// Controls the rate of automatic rotation.
     #[prost(oneof = "crypto_key::RotationSchedule", tags = "8")]
     pub rotation_schedule: ::core::option::Option<crypto_key::RotationSchedule>,
@@ -440,11 +452,11 @@ pub mod crypto_key_version {
     /// [CryptoKey.purpose][google.cloud.kms.v1.CryptoKey.purpose]
     /// [ENCRYPT_DECRYPT][google.cloud.kms.v1.CryptoKey.CryptoKeyPurpose.ENCRYPT_DECRYPT].
     ///
-    /// Algorithms beginning with "RSA_SIGN_" are usable with
+    /// Algorithms beginning with `RSA_SIGN_` are usable with
     /// [CryptoKey.purpose][google.cloud.kms.v1.CryptoKey.purpose]
     /// [ASYMMETRIC_SIGN][google.cloud.kms.v1.CryptoKey.CryptoKeyPurpose.ASYMMETRIC_SIGN].
     ///
-    /// The fields in the name after "RSA_SIGN_" correspond to the following
+    /// The fields in the name after `RSA_SIGN_` correspond to the following
     /// parameters: padding algorithm, modulus bit length, and digest algorithm.
     ///
     /// For PSS, the salt length used is equal to the length of digest
@@ -452,25 +464,25 @@ pub mod crypto_key_version {
     /// [RSA_SIGN_PSS_2048_SHA256][google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_SIGN_PSS_2048_SHA256]
     /// will use PSS with a salt length of 256 bits or 32 bytes.
     ///
-    /// Algorithms beginning with "RSA_DECRYPT_" are usable with
+    /// Algorithms beginning with `RSA_DECRYPT_` are usable with
     /// [CryptoKey.purpose][google.cloud.kms.v1.CryptoKey.purpose]
     /// [ASYMMETRIC_DECRYPT][google.cloud.kms.v1.CryptoKey.CryptoKeyPurpose.ASYMMETRIC_DECRYPT].
     ///
-    /// The fields in the name after "RSA_DECRYPT_" correspond to the following
+    /// The fields in the name after `RSA_DECRYPT_` correspond to the following
     /// parameters: padding algorithm, modulus bit length, and digest algorithm.
     ///
-    /// Algorithms beginning with "EC_SIGN_" are usable with
+    /// Algorithms beginning with `EC_SIGN_` are usable with
     /// [CryptoKey.purpose][google.cloud.kms.v1.CryptoKey.purpose]
     /// [ASYMMETRIC_SIGN][google.cloud.kms.v1.CryptoKey.CryptoKeyPurpose.ASYMMETRIC_SIGN].
     ///
-    /// The fields in the name after "EC_SIGN_" correspond to the following
+    /// The fields in the name after `EC_SIGN_` correspond to the following
     /// parameters: elliptic curve, digest algorithm.
     ///
-    /// Algorithms beginning with "HMAC_" are usable with
+    /// Algorithms beginning with `HMAC_` are usable with
     /// [CryptoKey.purpose][google.cloud.kms.v1.CryptoKey.purpose]
     /// [MAC][google.cloud.kms.v1.CryptoKey.CryptoKeyPurpose.MAC].
     ///
-    /// The suffix following "HMAC_" corresponds to the hash algorithm being used
+    /// The suffix following `HMAC_` corresponds to the hash algorithm being used
     /// (eg. SHA256).
     ///
     /// For more information, see \[Key purposes and algorithms\]
@@ -553,6 +565,8 @@ pub mod crypto_key_version {
         /// Other hash functions can also be used:
         /// <https://cloud.google.com/kms/docs/create-validate-signatures#ecdsa_support_for_other_hash_algorithms>
         EcSignSecp256k1Sha256 = 31,
+        /// EdDSA on the Curve25519 in pure mode (taking data as input).
+        EcSignEd25519 = 40,
         /// HMAC-SHA256 signing with a 256 bit key.
         HmacSha256 = 32,
         /// HMAC-SHA1 signing with a 160 bit key.
@@ -644,6 +658,7 @@ pub mod crypto_key_version {
                 CryptoKeyVersionAlgorithm::EcSignSecp256k1Sha256 => {
                     "EC_SIGN_SECP256K1_SHA256"
                 }
+                CryptoKeyVersionAlgorithm::EcSignEd25519 => "EC_SIGN_ED25519",
                 CryptoKeyVersionAlgorithm::HmacSha256 => "HMAC_SHA256",
                 CryptoKeyVersionAlgorithm::HmacSha1 => "HMAC_SHA1",
                 CryptoKeyVersionAlgorithm::HmacSha384 => "HMAC_SHA384",
@@ -686,6 +701,7 @@ pub mod crypto_key_version {
                 "EC_SIGN_P256_SHA256" => Some(Self::EcSignP256Sha256),
                 "EC_SIGN_P384_SHA384" => Some(Self::EcSignP384Sha384),
                 "EC_SIGN_SECP256K1_SHA256" => Some(Self::EcSignSecp256k1Sha256),
+                "EC_SIGN_ED25519" => Some(Self::EcSignEd25519),
                 "HMAC_SHA256" => Some(Self::HmacSha256),
                 "HMAC_SHA1" => Some(Self::HmacSha1),
                 "HMAC_SHA384" => Some(Self::HmacSha384),
@@ -865,7 +881,7 @@ pub mod crypto_key_version {
         }
     }
 }
-/// The public key for a given
+/// The public keys for a given
 /// [CryptoKeyVersion][google.cloud.kms.v1.CryptoKeyVersion]. Obtained via
 /// [GetPublicKey][google.cloud.kms.v1.KeyManagementService.GetPublicKey].
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1179,6 +1195,22 @@ pub struct ExternalProtectionLevelOptions {
     #[prost(string, tag = "2")]
     pub ekm_connection_key_path: ::prost::alloc::string::String,
 }
+/// A
+/// [KeyAccessJustificationsPolicy][google.cloud.kms.v1.KeyAccessJustificationsPolicy]
+/// specifies zero or more allowed
+/// [AccessReason][google.cloud.kms.v1.AccessReason] values for encrypt, decrypt,
+/// and sign operations on a [CryptoKey][google.cloud.kms.v1.CryptoKey].
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct KeyAccessJustificationsPolicy {
+    /// The list of allowed reasons for access to a
+    /// [CryptoKey][google.cloud.kms.v1.CryptoKey]. Zero allowed access reasons
+    /// means all encrypt, decrypt, and sign operations for the
+    /// [CryptoKey][google.cloud.kms.v1.CryptoKey] associated with this policy will
+    /// fail.
+    #[prost(enumeration = "AccessReason", repeated, tag = "1")]
+    pub allowed_access_reasons: ::prost::alloc::vec::Vec<i32>,
+}
 /// [ProtectionLevel][google.cloud.kms.v1.ProtectionLevel] specifies how
 /// cryptographic operations are performed. For more information, see [Protection
 /// levels] (<https://cloud.google.com/kms/docs/algorithms#protection_levels>).
@@ -1218,6 +1250,123 @@ impl ProtectionLevel {
             "HSM" => Some(Self::Hsm),
             "EXTERNAL" => Some(Self::External),
             "EXTERNAL_VPC" => Some(Self::ExternalVpc),
+            _ => None,
+        }
+    }
+}
+/// Describes the reason for a data access. Please refer to
+/// <https://cloud.google.com/assured-workloads/key-access-justifications/docs/justification-codes>
+/// for the detailed semantic meaning of justification reason codes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum AccessReason {
+    /// Unspecified access reason.
+    ReasonUnspecified = 0,
+    /// Customer-initiated support.
+    CustomerInitiatedSupport = 1,
+    /// Google-initiated access for system management and troubleshooting.
+    GoogleInitiatedService = 2,
+    /// Google-initiated access in response to a legal request or legal process.
+    ThirdPartyDataRequest = 3,
+    /// Google-initiated access for security, fraud, abuse, or compliance purposes.
+    GoogleInitiatedReview = 4,
+    /// Customer uses their account to perform any access to their own data which
+    /// their IAM policy authorizes.
+    CustomerInitiatedAccess = 5,
+    /// Google systems access customer data to help optimize the structure of the
+    /// data or quality for future uses by the customer.
+    GoogleInitiatedSystemOperation = 6,
+    /// No reason is expected for this key request.
+    ReasonNotExpected = 7,
+    /// Customer uses their account to perform any access to their own data which
+    /// their IAM policy authorizes, and one of the following is true:
+    ///
+    /// * A Google administrator has reset the root-access account associated with
+    ///    the user's organization within the past 7 days.
+    /// * A Google-initiated emergency access operation has interacted with a
+    ///    resource in the same project or folder as the currently accessed resource
+    ///    within the past 7 days.
+    ModifiedCustomerInitiatedAccess = 8,
+    /// Google systems access customer data to help optimize the structure of the
+    /// data or quality for future uses by the customer, and one of the following
+    /// is true:
+    ///
+    /// * A Google administrator has reset the root-access account associated with
+    ///    the user's organization within the past 7 days.
+    /// * A Google-initiated emergency access operation has interacted with a
+    ///    resource in the same project or folder as the currently accessed resource
+    ///    within the past 7 days.
+    ModifiedGoogleInitiatedSystemOperation = 9,
+    /// Google-initiated access to maintain system reliability.
+    GoogleResponseToProductionAlert = 10,
+    /// One of the following operations is being executed while simultaneously
+    /// encountering an internal technical issue which prevented a more precise
+    /// justification code from being generated:
+    ///
+    /// * Your account has been used to perform any access to your own data which
+    ///    your IAM policy authorizes.
+    /// * An automated Google system operates on encrypted customer data which your
+    ///    IAM policy authorizes.
+    /// * Customer-initiated Google support access.
+    /// * Google-initiated support access to protect system reliability.
+    CustomerAuthorizedWorkflowServicing = 11,
+}
+impl AccessReason {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            AccessReason::ReasonUnspecified => "REASON_UNSPECIFIED",
+            AccessReason::CustomerInitiatedSupport => "CUSTOMER_INITIATED_SUPPORT",
+            AccessReason::GoogleInitiatedService => "GOOGLE_INITIATED_SERVICE",
+            AccessReason::ThirdPartyDataRequest => "THIRD_PARTY_DATA_REQUEST",
+            AccessReason::GoogleInitiatedReview => "GOOGLE_INITIATED_REVIEW",
+            AccessReason::CustomerInitiatedAccess => "CUSTOMER_INITIATED_ACCESS",
+            AccessReason::GoogleInitiatedSystemOperation => {
+                "GOOGLE_INITIATED_SYSTEM_OPERATION"
+            }
+            AccessReason::ReasonNotExpected => "REASON_NOT_EXPECTED",
+            AccessReason::ModifiedCustomerInitiatedAccess => {
+                "MODIFIED_CUSTOMER_INITIATED_ACCESS"
+            }
+            AccessReason::ModifiedGoogleInitiatedSystemOperation => {
+                "MODIFIED_GOOGLE_INITIATED_SYSTEM_OPERATION"
+            }
+            AccessReason::GoogleResponseToProductionAlert => {
+                "GOOGLE_RESPONSE_TO_PRODUCTION_ALERT"
+            }
+            AccessReason::CustomerAuthorizedWorkflowServicing => {
+                "CUSTOMER_AUTHORIZED_WORKFLOW_SERVICING"
+            }
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "REASON_UNSPECIFIED" => Some(Self::ReasonUnspecified),
+            "CUSTOMER_INITIATED_SUPPORT" => Some(Self::CustomerInitiatedSupport),
+            "GOOGLE_INITIATED_SERVICE" => Some(Self::GoogleInitiatedService),
+            "THIRD_PARTY_DATA_REQUEST" => Some(Self::ThirdPartyDataRequest),
+            "GOOGLE_INITIATED_REVIEW" => Some(Self::GoogleInitiatedReview),
+            "CUSTOMER_INITIATED_ACCESS" => Some(Self::CustomerInitiatedAccess),
+            "GOOGLE_INITIATED_SYSTEM_OPERATION" => {
+                Some(Self::GoogleInitiatedSystemOperation)
+            }
+            "REASON_NOT_EXPECTED" => Some(Self::ReasonNotExpected),
+            "MODIFIED_CUSTOMER_INITIATED_ACCESS" => {
+                Some(Self::ModifiedCustomerInitiatedAccess)
+            }
+            "MODIFIED_GOOGLE_INITIATED_SYSTEM_OPERATION" => {
+                Some(Self::ModifiedGoogleInitiatedSystemOperation)
+            }
+            "GOOGLE_RESPONSE_TO_PRODUCTION_ALERT" => {
+                Some(Self::GoogleResponseToProductionAlert)
+            }
+            "CUSTOMER_AUTHORIZED_WORKFLOW_SERVICING" => {
+                Some(Self::CustomerAuthorizedWorkflowServicing)
+            }
             _ => None,
         }
     }
@@ -4075,7 +4224,7 @@ pub struct EkmConnection {
     /// [EkmConnection][google.cloud.kms.v1.EkmConnection] was created.
     #[prost(message, optional, tag = "2")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
-    /// A list of
+    /// Optional. A list of
     /// [ServiceResolvers][google.cloud.kms.v1.EkmConnection.ServiceResolver] where
     /// the EKM can be reached. There should be one ServiceResolver per EKM
     /// replica. Currently, only a single

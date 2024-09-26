@@ -5,10 +5,7 @@ use std::time::SystemTime;
 use time::OffsetDateTime;
 
 use google_cloud_gax::grpc::Status;
-use google_cloud_googleapis::spanner::v1::{
-    transaction_options, transaction_selector, BeginTransactionRequest, ExecuteSqlRequest, PartitionOptions,
-    PartitionQueryRequest, PartitionReadRequest, ReadRequest, TransactionOptions, TransactionSelector,
-};
+use google_cloud_googleapis::spanner::v1::{transaction_options, transaction_selector, BeginTransactionRequest, ExecuteSqlRequest, PartitionOptions, PartitionQueryRequest, PartitionReadRequest, ReadRequest, TransactionOptions, TransactionSelector, DirectedReadOptions};
 
 use crate::key::KeySet;
 use crate::reader::{Reader, RowIterator, StatementReader, TableReader};
@@ -58,6 +55,7 @@ impl ReadOnlyTransaction {
                 sequence_number: AtomicI64::new(0),
                 transaction_selector: TransactionSelector {
                     selector: Some(transaction_selector::Selector::SingleUse(TransactionOptions {
+                        exclude_txn_from_change_streams: false,
                         mode: Some(transaction_options::Mode::ReadOnly(tb.into())),
                     })),
                 },
@@ -75,6 +73,7 @@ impl ReadOnlyTransaction {
         let request = BeginTransactionRequest {
             session: session.session.name.to_string(),
             options: Some(TransactionOptions {
+                exclude_txn_from_change_streams: false,
                 mode: Some(transaction_options::Mode::ReadOnly(tb.into())),
             }),
             request_options: Transaction::create_request_options(options.priority),
@@ -149,7 +148,7 @@ impl BatchReadOnlyTransaction {
         columns: &[&str],
         keys: impl Into<KeySet> + Clone,
     ) -> Result<Vec<Partition<TableReader>>, Status> {
-        self.partition_read_with_option(table, columns, keys, None, ReadOptions::default(), false)
+        self.partition_read_with_option(table, columns, keys, None, ReadOptions::default(), false, None)
             .await
     }
 
@@ -165,6 +164,7 @@ impl BatchReadOnlyTransaction {
         po: Option<PartitionOptions>,
         ro: ReadOptions,
         data_boost_enabled: bool,
+        directed_read_options: Option<DirectedReadOptions>,
     ) -> Result<Vec<Partition<TableReader>>, Status> {
         let columns: Vec<String> = columns.iter().map(|x| x.to_string()).collect();
         let inner_keyset = keys.into().inner;
@@ -200,7 +200,10 @@ impl BatchReadOnlyTransaction {
                             resume_token: vec![],
                             partition_token: x.partition_token,
                             request_options: Transaction::create_request_options(ro.call_options.priority),
+                            directed_read_options: directed_read_options.clone(),
                             data_boost_enabled,
+                            order_by: 0,
+                            lock_hint: 0,
                         },
                     },
                 })
@@ -212,7 +215,7 @@ impl BatchReadOnlyTransaction {
 
     /// partition_query returns a list of Partitions that can be used to execute a query against the database.
     pub async fn partition_query(&mut self, stmt: Statement) -> Result<Vec<Partition<StatementReader>>, Status> {
-        self.partition_query_with_option(stmt, None, QueryOptions::default(), false)
+        self.partition_query_with_option(stmt, None, QueryOptions::default(), false, None)
             .await
     }
 
@@ -223,6 +226,7 @@ impl BatchReadOnlyTransaction {
         po: Option<PartitionOptions>,
         qo: QueryOptions,
         data_boost_enabled: bool,
+        directed_read_options: Option<DirectedReadOptions>
     ) -> Result<Vec<Partition<StatementReader>>, Status> {
         let request = PartitionQueryRequest {
             session: self.get_session_name(),
@@ -262,6 +266,7 @@ impl BatchReadOnlyTransaction {
                             query_options: qo.optimizer_options.clone(),
                             request_options: Transaction::create_request_options(qo.call_options.priority),
                             data_boost_enabled,
+                            directed_read_options: directed_read_options.clone()
                         },
                     },
                 })
