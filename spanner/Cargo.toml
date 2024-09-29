@@ -24,7 +24,7 @@ bigdecimal = { version="0.4", features=["serde"] }
 
 google-cloud-token = { version = "0.1.2", path = "../foundation/token" }
 google-cloud-longrunning = { version = "0.21.0", path = "../foundation/longrunning" }
-google-cloud-gax = { version = "0.19.1", path = "../foundation/gax" }
+google-cloud-gax = { version = "0.19.2", path = "../foundation/gax" }
 google-cloud-googleapis = { version = "0.16.0", path = "../googleapis", features = ["spanner"]}
 
 google-cloud-auth = { optional = true, version = "0.17", path="../foundation/auth", default-features=false }

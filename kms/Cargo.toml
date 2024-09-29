@@ -14,7 +14,7 @@ documentation = "https://docs.rs/google-cloud-kms/latest/google_cloud_kms/"
 google-cloud-token = { version = "0.1.2", path = "../foundation/token" }
 google-cloud-auth = { optional = true, version = "0.17", path="../foundation/auth", default-features=false }
 google-cloud-googleapis = { version="0.16.0", path = "../googleapis", features=["kms"]}
-google-cloud-gax = { version = "0.19.1", path = "../foundation/gax"}
+google-cloud-gax = { version = "0.19.2", path = "../foundation/gax"}
 tracing = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
