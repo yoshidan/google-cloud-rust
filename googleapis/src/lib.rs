@@ -1,3 +1,5 @@
+#![allow(clippy::doc_lazy_continuation)]
+
 #[path = "google.rpc.rs"]
 pub mod rpc;
 

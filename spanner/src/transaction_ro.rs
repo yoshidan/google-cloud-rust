@@ -160,6 +160,7 @@ impl BatchReadOnlyTransaction {
     /// the database. These partitions can be executed across multiple processes,
     /// even across different machines. The partition size and count hints can be
     /// configured using PartitionOptions.
+    #[allow(clippy::too_many_arguments)]
     pub async fn partition_read_with_option(
         &mut self,
         table: &str,
