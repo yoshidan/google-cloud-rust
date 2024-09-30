@@ -232,9 +232,25 @@ pub struct TableFieldSchema {
     /// (<https://cloud.google.com/bigquery/docs/default-values>) for this field.
     #[prost(string, tag = "10")]
     pub default_value_expression: ::prost::alloc::string::String,
+    /// Optional. The subtype of the RANGE, if the type of this field is RANGE. If
+    /// the type is RANGE, this field is required. Possible values for the field
+    /// element type of a RANGE include:
+    /// * DATE
+    /// * DATETIME
+    /// * TIMESTAMP
+    #[prost(message, optional, tag = "11")]
+    pub range_element_type: ::core::option::Option<table_field_schema::FieldElementType>,
 }
 /// Nested message and enum types in `TableFieldSchema`.
 pub mod table_field_schema {
+    /// Represents the type of a field element.
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    pub struct FieldElementType {
+        /// Required. The type of a field element.
+        #[prost(enumeration = "Type", tag = "1")]
+        pub r#type: i32,
+    }
     #[derive(
         Clone,
         Copy,
@@ -280,6 +296,8 @@ pub mod table_field_schema {
         Interval = 14,
         /// JSON, String
         Json = 15,
+        /// RANGE
+        Range = 16,
     }
     impl Type {
         /// String value of the enum field names used in the ProtoBuf definition.
@@ -304,6 +322,7 @@ pub mod table_field_schema {
                 Type::Bignumeric => "BIGNUMERIC",
                 Type::Interval => "INTERVAL",
                 Type::Json => "JSON",
+                Type::Range => "RANGE",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -325,6 +344,7 @@ pub mod table_field_schema {
                 "BIGNUMERIC" => Some(Self::Bignumeric),
                 "INTERVAL" => Some(Self::Interval),
                 "JSON" => Some(Self::Json),
+                "RANGE" => Some(Self::Range),
                 _ => None,
             }
         }
@@ -524,6 +544,14 @@ pub mod read_session {
         /// <https://cloud.google.com/bigquery/docs/table-sampling>)
         #[prost(double, optional, tag = "5")]
         pub sample_percentage: ::core::option::Option<f64>,
+        /// Optional. Set response_compression_codec when creating a read session to
+        /// enable application-level compression of ReadRows responses.
+        #[prost(
+            enumeration = "table_read_options::ResponseCompressionCodec",
+            optional,
+            tag = "6"
+        )]
+        pub response_compression_codec: ::core::option::Option<i32>,
         #[prost(
             oneof = "table_read_options::OutputFormatSerializationOptions",
             tags = "3, 4"
@@ -534,6 +562,53 @@ pub mod read_session {
     }
     /// Nested message and enum types in `TableReadOptions`.
     pub mod table_read_options {
+        /// Specifies which compression codec to attempt on the entire serialized
+        /// response payload (either Arrow record batch or Avro rows). This is
+        /// not to be confused with the Apache Arrow native compression codecs
+        /// specified in ArrowSerializationOptions. For performance reasons, when
+        /// creating a read session requesting Arrow responses, setting both native
+        /// Arrow compression and application-level response compression will not be
+        /// allowed - choose, at most, one kind of compression.
+        #[derive(
+            Clone,
+            Copy,
+            Debug,
+            PartialEq,
+            Eq,
+            Hash,
+            PartialOrd,
+            Ord,
+            ::prost::Enumeration
+        )]
+        #[repr(i32)]
+        pub enum ResponseCompressionCodec {
+            /// Default is no compression.
+            Unspecified = 0,
+            /// Use raw LZ4 compression.
+            Lz4 = 2,
+        }
+        impl ResponseCompressionCodec {
+            /// String value of the enum field names used in the ProtoBuf definition.
+            ///
+            /// The values are not transformed in any way and thus are considered stable
+            /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+            pub fn as_str_name(&self) -> &'static str {
+                match self {
+                    ResponseCompressionCodec::Unspecified => {
+                        "RESPONSE_COMPRESSION_CODEC_UNSPECIFIED"
+                    }
+                    ResponseCompressionCodec::Lz4 => "RESPONSE_COMPRESSION_CODEC_LZ4",
+                }
+            }
+            /// Creates an enum from field names used in the ProtoBuf definition.
+            pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+                match value {
+                    "RESPONSE_COMPRESSION_CODEC_UNSPECIFIED" => Some(Self::Unspecified),
+                    "RESPONSE_COMPRESSION_CODEC_LZ4" => Some(Self::Lz4),
+                    _ => None,
+                }
+            }
+        }
         #[allow(clippy::derive_partial_eq_without_eq)]
         #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
         pub enum OutputFormatSerializationOptions {
@@ -874,6 +949,22 @@ pub struct ReadRowsResponse {
     /// the current throttling status.
     #[prost(message, optional, tag = "5")]
     pub throttle_state: ::core::option::Option<ThrottleState>,
+    /// Optional. If the row data in this ReadRowsResponse is compressed, then
+    /// uncompressed byte size is the original size of the uncompressed row data.
+    /// If it is set to a value greater than 0, then decompress into a buffer of
+    /// size uncompressed_byte_size using the compression codec that was requested
+    /// during session creation time and which is specified in
+    /// TableReadOptions.response_compression_codec in ReadSession.
+    /// This value is not set if no response_compression_codec was not requested
+    /// and it is -1 if the requested compression would not have reduced the size
+    /// of this ReadRowsResponse's row data. This attempts to match Apache Arrow's
+    /// behavior described here <https://github.com/apache/arrow/issues/15102> where
+    /// the uncompressed length may be set to -1 to indicate that the data that
+    /// follows is not compressed, which can be useful for cases where compression
+    /// does not yield appreciable savings. When uncompressed_byte_size is not
+    /// greater than 0, the client should skip decompression.
+    #[prost(int64, optional, tag = "9")]
+    pub uncompressed_byte_size: ::core::option::Option<i64>,
     /// Row data is returned in format specified during session creation.
     #[prost(oneof = "read_rows_response::Rows", tags = "3, 4")]
     pub rows: ::core::option::Option<read_rows_response::Rows>,
@@ -1039,6 +1130,17 @@ pub struct AppendRowsRequest {
         ::prost::alloc::string::String,
         i32,
     >,
+    /// Optional. Default missing value interpretation for all columns in the
+    /// table. When a value is specified on an `AppendRowsRequest`, it is applied
+    /// to all requests on the connection from that point forward, until a
+    /// subsequent `AppendRowsRequest` sets it to a different value.
+    /// `missing_value_interpretation` can override
+    /// `default_missing_value_interpretation`. For example, if you want to write
+    /// `NULL` instead of using default values for some columns, you can set
+    /// `default_missing_value_interpretation` to `DEFAULT_VALUE` and at the same
+    /// time, set `missing_value_interpretations` to `NULL_VALUE` on those columns.
+    #[prost(enumeration = "append_rows_request::MissingValueInterpretation", tag = "8")]
+    pub default_missing_value_interpretation: i32,
     /// Input rows. The `writer_schema` field must be specified at the initial
     /// request and currently, it will be ignored if specified in following
     /// requests. Following requests must have data in the same format as the
@@ -1336,7 +1438,8 @@ pub mod storage_error {
         InvalidCmekProvided = 11,
         /// There is an encryption error while using customer-managed encryption key.
         CmekEncryptionError = 12,
-        /// Key Management Service (KMS) service returned an error.
+        /// Key Management Service (KMS) service returned an error, which can be
+        /// retried.
         KmsServiceError = 13,
         /// Permission denied while using customer-managed encryption key.
         KmsPermissionDenied = 14,

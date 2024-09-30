@@ -381,6 +381,7 @@ impl Client {
             Some(ro),
             |session| async {
                 let tx = commit_request::Transaction::SingleUseTransaction(TransactionOptions {
+                    exclude_txn_from_change_streams: false,
                     mode: Some(transaction_options::Mode::ReadWrite(transaction_options::ReadWrite::default())),
                 });
                 match commit(session, ms.clone(), tx, options.clone()).await {

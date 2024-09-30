@@ -40,6 +40,7 @@ mod tests {
             extra_statements: vec!["CREATE TABLE Tbl (ID STRING(MAX)) PRIMARY KEY(ID)".to_string()],
             encryption_config: None,
             database_dialect: DatabaseDialect::GoogleStandardSql.into(),
+            proto_descriptors: vec![],
         };
 
         let creation_result = match client.create_database(request, None).await {
@@ -131,6 +132,7 @@ mod tests {
             database: database.name.to_string(),
             statements: vec!["CREATE TABLE Tbl1 (ID INT64) PRIMARY KEY(ID)".to_string()],
             operation_id: "".to_string(),
+            proto_descriptors: vec![],
         };
 
         let update_result = match client.update_database_ddl(request, None).await {

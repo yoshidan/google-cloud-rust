@@ -44,11 +44,13 @@ mod tests {
                 display_name: "test-instance-ut".to_string(),
                 node_count: 0,
                 processing_units: 0,
+                autoscaling_config: None,
                 state: 0,
                 labels: Default::default(),
                 endpoint_uris: vec![],
                 create_time: None,
                 update_time: None,
+                edition: 0,
             }),
         };
 
@@ -108,6 +110,7 @@ mod tests {
             page_size: 1,
             page_token: "".to_string(),
             filter: "".to_string(),
+            instance_deadline: None,
         };
 
         match client.list_instances(request, None).await {

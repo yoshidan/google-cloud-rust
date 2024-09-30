@@ -47,6 +47,7 @@ mod tests {
         let request = BeginTransactionRequest {
             session: session.name.to_string(),
             options: Option::from(TransactionOptions {
+                exclude_txn_from_change_streams: false,
                 mode: Option::from(transaction_options::Mode::ReadOnly(transaction_options::ReadOnly {
                     return_read_timestamp: false,
                     timestamp_bound: None,
@@ -61,6 +62,7 @@ mod tests {
         let request = BeginTransactionRequest {
             session: session.name.to_string(),
             options: Some(TransactionOptions {
+                exclude_txn_from_change_streams: false,
                 mode: Some(transaction_options::Mode::ReadWrite(transaction_options::ReadWrite::default())),
             }),
             request_options: None,
@@ -189,6 +191,7 @@ mod tests {
             seqno: 0,
             query_options: None,
             request_options: None,
+            directed_read_options: None,
             data_boost_enabled: false,
         };
         match client.execute_sql(request, None).await {
@@ -216,6 +219,7 @@ mod tests {
             seqno: 0,
             query_options: None,
             request_options: None,
+            directed_read_options: None,
             data_boost_enabled: false,
         };
 
@@ -251,6 +255,7 @@ mod tests {
         let request = BeginTransactionRequest {
             session: session.name.to_string(),
             options: Option::from(TransactionOptions {
+                exclude_txn_from_change_streams: false,
                 mode: Option::from(transaction_options::Mode::ReadOnly(transaction_options::ReadOnly {
                     return_read_timestamp: false,
                     timestamp_bound: None,
@@ -383,6 +388,9 @@ mod tests {
             request_options: None,
             limit: 0,
             data_boost_enabled: false,
+            order_by: 0,
+            directed_read_options: None,
+            lock_hint: 0,
         };
 
         match client.read(request, None).await {
@@ -414,6 +422,9 @@ mod tests {
             request_options: None,
             limit: 0,
             data_boost_enabled: false,
+            order_by: 0,
+            directed_read_options: None,
+            lock_hint: 0,
         };
 
         match client.streaming_read(request, None).await {
@@ -463,6 +474,7 @@ mod tests {
                 transaction_tag: "".to_string(),
             }),
             return_commit_stats: false,
+            max_commit_delay: None,
         };
 
         match client.commit(request, None).await {

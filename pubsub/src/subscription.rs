@@ -11,6 +11,7 @@ use google_cloud_gax::grpc::codegen::tokio_stream::Stream;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::seek_request::Target;
+use google_cloud_googleapis::pubsub::v1::subscription::AnalyticsHubSubscriptionInfo;
 use google_cloud_googleapis::pubsub::v1::{
     BigQueryConfig, CloudStorageConfig, CreateSnapshotRequest, DeadLetterPolicy, DeleteSnapshotRequest,
     DeleteSubscriptionRequest, ExpirationPolicy, GetSnapshotRequest, GetSubscriptionRequest, PullRequest, PushConfig,
@@ -39,6 +40,7 @@ pub struct SubscriptionConfig {
     pub bigquery_config: Option<BigQueryConfig>,
     pub state: i32,
     pub cloud_storage_config: Option<CloudStorageConfig>,
+    pub analytics_hub_subscription_info: Option<AnalyticsHubSubscriptionInfo>,
 }
 impl From<InternalSubscription> for SubscriptionConfig {
     fn from(f: InternalSubscription) -> Self {
@@ -63,6 +65,7 @@ impl From<InternalSubscription> for SubscriptionConfig {
             enable_exactly_once_delivery: f.enable_exactly_once_delivery,
             state: f.state,
             cloud_storage_config: f.cloud_storage_config,
+            analytics_hub_subscription_info: f.analytics_hub_subscription_info,
         }
     }
 }
@@ -282,6 +285,7 @@ impl Subscription {
                         .map_err(|err: DurationError| Status::internal(err.to_string()))?,
                     enable_exactly_once_delivery: cfg.enable_exactly_once_delivery,
                     state: cfg.state,
+                    analytics_hub_subscription_info: cfg.analytics_hub_subscription_info,
                 },
                 retry,
             )

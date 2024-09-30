@@ -719,9 +719,9 @@ pub struct ListFilesRequest {
     ///   An example of using a filter:
     ///
     ///    * `name="projects/p1/locations/us-central1/repositories/repo1/files/a/b/*"` --> Files with an
-    ///      ID starting with "a/b/".
+    ///    ID starting with "a/b/".
     ///    * `owner="projects/p1/locations/us-central1/repositories/repo1/packages/pkg1/versions/1.0"` -->
-    ///      Files owned by the version `1.0` in package `pkg1`.
+    ///    Files owned by the version `1.0` in package `pkg1`.
     #[prost(string, tag = "4")]
     pub filter: ::prost::alloc::string::String,
     /// The maximum number of files to return.
@@ -759,7 +759,7 @@ pub struct GetFileRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Package {
     /// The name of the package, for example:
-    /// "projects/p1/locations/us-central1/repositories/repo1/packages/pkg1".
+    /// `projects/p1/locations/us-central1/repositories/repo1/packages/pkg1`.
     /// If the package ID part contains slashes, the slashes are escaped.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
@@ -816,15 +816,596 @@ pub struct DeletePackageRequest {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
+/// Artifact policy configuration for the repository contents.
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpstreamPolicy {
+    /// The user-provided ID of the upstream policy.
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// A reference to the repository resource, for example:
+    /// `projects/p1/locations/us-central1/repositories/repo1`.
+    #[prost(string, tag = "2")]
+    pub repository: ::prost::alloc::string::String,
+    /// Entries with a greater priority value take precedence in the pull order.
+    #[prost(int32, tag = "3")]
+    pub priority: i32,
+}
+/// CleanupPolicyCondition is a set of conditions attached to a CleanupPolicy.
+/// If multiple entries are set, all must be satisfied for the condition to be
+/// satisfied.
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CleanupPolicyCondition {
+    /// Match versions by tag status.
+    #[prost(enumeration = "cleanup_policy_condition::TagState", optional, tag = "2")]
+    pub tag_state: ::core::option::Option<i32>,
+    /// Match versions by tag prefix. Applied on any prefix match.
+    #[prost(string, repeated, tag = "3")]
+    pub tag_prefixes: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// Match versions by version name prefix. Applied on any prefix match.
+    #[prost(string, repeated, tag = "4")]
+    pub version_name_prefixes: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// Match versions by package prefix. Applied on any prefix match.
+    #[prost(string, repeated, tag = "5")]
+    pub package_name_prefixes: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// Match versions older than a duration.
+    #[prost(message, optional, tag = "6")]
+    pub older_than: ::core::option::Option<::prost_types::Duration>,
+    /// Match versions newer than a duration.
+    #[prost(message, optional, tag = "7")]
+    pub newer_than: ::core::option::Option<::prost_types::Duration>,
+}
+/// Nested message and enum types in `CleanupPolicyCondition`.
+pub mod cleanup_policy_condition {
+    /// Statuses applying to versions.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum TagState {
+        /// Tag status not specified.
+        Unspecified = 0,
+        /// Applies to tagged versions only.
+        Tagged = 1,
+        /// Applies to untagged versions only.
+        Untagged = 2,
+        /// Applies to all versions.
+        Any = 3,
+    }
+    impl TagState {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                TagState::Unspecified => "TAG_STATE_UNSPECIFIED",
+                TagState::Tagged => "TAGGED",
+                TagState::Untagged => "UNTAGGED",
+                TagState::Any => "ANY",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "TAG_STATE_UNSPECIFIED" => Some(Self::Unspecified),
+                "TAGGED" => Some(Self::Tagged),
+                "UNTAGGED" => Some(Self::Untagged),
+                "ANY" => Some(Self::Any),
+                _ => None,
+            }
+        }
+    }
+}
+/// CleanupPolicyMostRecentVersions is an alternate condition of a CleanupPolicy
+/// for retaining a minimum number of versions.
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CleanupPolicyMostRecentVersions {
+    /// List of package name prefixes that will apply this rule.
+    #[prost(string, repeated, tag = "1")]
+    pub package_name_prefixes: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// Minimum number of versions to keep.
+    #[prost(int32, optional, tag = "2")]
+    pub keep_count: ::core::option::Option<i32>,
+}
+/// Artifact policy configuration for repository cleanup policies.
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CleanupPolicy {
+    /// The user-provided ID of the cleanup policy.
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Policy action.
+    #[prost(enumeration = "cleanup_policy::Action", tag = "3")]
+    pub action: i32,
+    #[prost(oneof = "cleanup_policy::ConditionType", tags = "2, 4")]
+    pub condition_type: ::core::option::Option<cleanup_policy::ConditionType>,
+}
+/// Nested message and enum types in `CleanupPolicy`.
+pub mod cleanup_policy {
+    /// Action type for a cleanup policy.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum Action {
+        /// Action not specified.
+        Unspecified = 0,
+        /// Delete action.
+        Delete = 1,
+        /// Keep action.
+        Keep = 2,
+    }
+    impl Action {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Action::Unspecified => "ACTION_UNSPECIFIED",
+                Action::Delete => "DELETE",
+                Action::Keep => "KEEP",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "ACTION_UNSPECIFIED" => Some(Self::Unspecified),
+                "DELETE" => Some(Self::Delete),
+                "KEEP" => Some(Self::Keep),
+                _ => None,
+            }
+        }
+    }
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum ConditionType {
+        /// Policy condition for matching versions.
+        #[prost(message, tag = "2")]
+        Condition(super::CleanupPolicyCondition),
+        /// Policy condition for retaining a minimum number of versions. May only be
+        /// specified with a Keep action.
+        #[prost(message, tag = "4")]
+        MostRecentVersions(super::CleanupPolicyMostRecentVersions),
+    }
+}
+/// Virtual repository configuration.
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct VirtualRepositoryConfig {
+    /// Policies that configure the upstream artifacts distributed by the Virtual
+    /// Repository. Upstream policies cannot be set on a standard repository.
+    #[prost(message, repeated, tag = "1")]
+    pub upstream_policies: ::prost::alloc::vec::Vec<UpstreamPolicy>,
+}
+/// Remote repository configuration.
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RemoteRepositoryConfig {
+    /// The description of the remote source.
+    #[prost(string, tag = "1")]
+    pub description: ::prost::alloc::string::String,
+    /// Optional. The credentials used to access the remote repository.
+    #[prost(message, optional, tag = "9")]
+    pub upstream_credentials: ::core::option::Option<remote_repository_config::UpstreamCredentials>,
+    /// Settings specific to the remote repository.
+    #[prost(oneof = "remote_repository_config::RemoteSource", tags = "2, 3, 4, 5, 6, 7")]
+    pub remote_source: ::core::option::Option<remote_repository_config::RemoteSource>,
+}
+/// Nested message and enum types in `RemoteRepositoryConfig`.
+pub mod remote_repository_config {
+    /// The credentials to access the remote repository.
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct UpstreamCredentials {
+        #[prost(oneof = "upstream_credentials::Credentials", tags = "1")]
+        pub credentials: ::core::option::Option<upstream_credentials::Credentials>,
+    }
+    /// Nested message and enum types in `UpstreamCredentials`.
+    pub mod upstream_credentials {
+        /// Username and password credentials.
+        #[allow(clippy::derive_partial_eq_without_eq)]
+        #[derive(Clone, PartialEq, ::prost::Message)]
+        pub struct UsernamePasswordCredentials {
+            /// The username to access the remote repository.
+            #[prost(string, tag = "1")]
+            pub username: ::prost::alloc::string::String,
+            /// The Secret Manager key version that holds the password to access the
+            /// remote repository. Must be in the format of
+            /// `projects/{project}/secrets/{secret}/versions/{version}`.
+            #[prost(string, tag = "2")]
+            pub password_secret_version: ::prost::alloc::string::String,
+        }
+        #[allow(clippy::derive_partial_eq_without_eq)]
+        #[derive(Clone, PartialEq, ::prost::Oneof)]
+        pub enum Credentials {
+            /// Use username and password to access the remote repository.
+            #[prost(message, tag = "1")]
+            UsernamePasswordCredentials(UsernamePasswordCredentials),
+        }
+    }
+    /// Configuration for a Docker remote repository.
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    pub struct DockerRepository {
+        /// Address of the remote repository.
+        #[prost(oneof = "docker_repository::Upstream", tags = "1")]
+        pub upstream: ::core::option::Option<docker_repository::Upstream>,
+    }
+    /// Nested message and enum types in `DockerRepository`.
+    pub mod docker_repository {
+        /// Predefined list of publicly available Docker repositories like Docker
+        /// Hub.
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+        #[repr(i32)]
+        pub enum PublicRepository {
+            /// Unspecified repository.
+            Unspecified = 0,
+            /// Docker Hub.
+            DockerHub = 1,
+        }
+        impl PublicRepository {
+            /// String value of the enum field names used in the ProtoBuf definition.
+            ///
+            /// The values are not transformed in any way and thus are considered stable
+            /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+            pub fn as_str_name(&self) -> &'static str {
+                match self {
+                    PublicRepository::Unspecified => "PUBLIC_REPOSITORY_UNSPECIFIED",
+                    PublicRepository::DockerHub => "DOCKER_HUB",
+                }
+            }
+            /// Creates an enum from field names used in the ProtoBuf definition.
+            pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+                match value {
+                    "PUBLIC_REPOSITORY_UNSPECIFIED" => Some(Self::Unspecified),
+                    "DOCKER_HUB" => Some(Self::DockerHub),
+                    _ => None,
+                }
+            }
+        }
+        /// Address of the remote repository.
+        #[allow(clippy::derive_partial_eq_without_eq)]
+        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+        pub enum Upstream {
+            /// One of the publicly available Docker repositories supported by Artifact
+            /// Registry.
+            #[prost(enumeration = "PublicRepository", tag = "1")]
+            PublicRepository(i32),
+        }
+    }
+    /// Configuration for a Maven remote repository.
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    pub struct MavenRepository {
+        /// Address of the remote repository.
+        #[prost(oneof = "maven_repository::Upstream", tags = "1")]
+        pub upstream: ::core::option::Option<maven_repository::Upstream>,
+    }
+    /// Nested message and enum types in `MavenRepository`.
+    pub mod maven_repository {
+        /// Predefined list of publicly available Maven repositories like Maven
+        /// Central.
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+        #[repr(i32)]
+        pub enum PublicRepository {
+            /// Unspecified repository.
+            Unspecified = 0,
+            /// Maven Central.
+            MavenCentral = 1,
+        }
+        impl PublicRepository {
+            /// String value of the enum field names used in the ProtoBuf definition.
+            ///
+            /// The values are not transformed in any way and thus are considered stable
+            /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+            pub fn as_str_name(&self) -> &'static str {
+                match self {
+                    PublicRepository::Unspecified => "PUBLIC_REPOSITORY_UNSPECIFIED",
+                    PublicRepository::MavenCentral => "MAVEN_CENTRAL",
+                }
+            }
+            /// Creates an enum from field names used in the ProtoBuf definition.
+            pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+                match value {
+                    "PUBLIC_REPOSITORY_UNSPECIFIED" => Some(Self::Unspecified),
+                    "MAVEN_CENTRAL" => Some(Self::MavenCentral),
+                    _ => None,
+                }
+            }
+        }
+        /// Address of the remote repository.
+        #[allow(clippy::derive_partial_eq_without_eq)]
+        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+        pub enum Upstream {
+            /// One of the publicly available Maven repositories supported by Artifact
+            /// Registry.
+            #[prost(enumeration = "PublicRepository", tag = "1")]
+            PublicRepository(i32),
+        }
+    }
+    /// Configuration for a Npm remote repository.
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    pub struct NpmRepository {
+        /// Address of the remote repository
+        #[prost(oneof = "npm_repository::Upstream", tags = "1")]
+        pub upstream: ::core::option::Option<npm_repository::Upstream>,
+    }
+    /// Nested message and enum types in `NpmRepository`.
+    pub mod npm_repository {
+        /// Predefined list of publicly available NPM repositories like npmjs.
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+        #[repr(i32)]
+        pub enum PublicRepository {
+            /// Unspecified repository.
+            Unspecified = 0,
+            /// npmjs.
+            Npmjs = 1,
+        }
+        impl PublicRepository {
+            /// String value of the enum field names used in the ProtoBuf definition.
+            ///
+            /// The values are not transformed in any way and thus are considered stable
+            /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+            pub fn as_str_name(&self) -> &'static str {
+                match self {
+                    PublicRepository::Unspecified => "PUBLIC_REPOSITORY_UNSPECIFIED",
+                    PublicRepository::Npmjs => "NPMJS",
+                }
+            }
+            /// Creates an enum from field names used in the ProtoBuf definition.
+            pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+                match value {
+                    "PUBLIC_REPOSITORY_UNSPECIFIED" => Some(Self::Unspecified),
+                    "NPMJS" => Some(Self::Npmjs),
+                    _ => None,
+                }
+            }
+        }
+        /// Address of the remote repository
+        #[allow(clippy::derive_partial_eq_without_eq)]
+        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+        pub enum Upstream {
+            /// One of the publicly available Npm repositories supported by Artifact
+            /// Registry.
+            #[prost(enumeration = "PublicRepository", tag = "1")]
+            PublicRepository(i32),
+        }
+    }
+    /// Configuration for a Python remote repository.
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    pub struct PythonRepository {
+        /// Address of the remote repository.
+        #[prost(oneof = "python_repository::Upstream", tags = "1")]
+        pub upstream: ::core::option::Option<python_repository::Upstream>,
+    }
+    /// Nested message and enum types in `PythonRepository`.
+    pub mod python_repository {
+        /// Predefined list of publicly available Python repositories like PyPI.org.
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+        #[repr(i32)]
+        pub enum PublicRepository {
+            /// Unspecified repository.
+            Unspecified = 0,
+            /// PyPI.
+            Pypi = 1,
+        }
+        impl PublicRepository {
+            /// String value of the enum field names used in the ProtoBuf definition.
+            ///
+            /// The values are not transformed in any way and thus are considered stable
+            /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+            pub fn as_str_name(&self) -> &'static str {
+                match self {
+                    PublicRepository::Unspecified => "PUBLIC_REPOSITORY_UNSPECIFIED",
+                    PublicRepository::Pypi => "PYPI",
+                }
+            }
+            /// Creates an enum from field names used in the ProtoBuf definition.
+            pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+                match value {
+                    "PUBLIC_REPOSITORY_UNSPECIFIED" => Some(Self::Unspecified),
+                    "PYPI" => Some(Self::Pypi),
+                    _ => None,
+                }
+            }
+        }
+        /// Address of the remote repository.
+        #[allow(clippy::derive_partial_eq_without_eq)]
+        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+        pub enum Upstream {
+            /// One of the publicly available Python repositories supported by Artifact
+            /// Registry.
+            #[prost(enumeration = "PublicRepository", tag = "1")]
+            PublicRepository(i32),
+        }
+    }
+    /// Configuration for an Apt remote repository.
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct AptRepository {
+        /// Address of the remote repository.
+        #[prost(oneof = "apt_repository::Upstream", tags = "1")]
+        pub upstream: ::core::option::Option<apt_repository::Upstream>,
+    }
+    /// Nested message and enum types in `AptRepository`.
+    pub mod apt_repository {
+        /// Publicly available Apt repositories constructed from a common repository
+        /// base and a custom repository path.
+        #[allow(clippy::derive_partial_eq_without_eq)]
+        #[derive(Clone, PartialEq, ::prost::Message)]
+        pub struct PublicRepository {
+            /// A common public repository base for Apt.
+            #[prost(enumeration = "public_repository::RepositoryBase", tag = "1")]
+            pub repository_base: i32,
+            /// A custom field to define a path to a specific repository from the base.
+            #[prost(string, tag = "2")]
+            pub repository_path: ::prost::alloc::string::String,
+        }
+        /// Nested message and enum types in `PublicRepository`.
+        pub mod public_repository {
+            /// Predefined list of publicly available repository bases for Apt.
+            #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+            #[repr(i32)]
+            pub enum RepositoryBase {
+                /// Unspecified repository base.
+                Unspecified = 0,
+                /// Debian.
+                Debian = 1,
+                /// Ubuntu LTS/Pro.
+                Ubuntu = 2,
+            }
+            impl RepositoryBase {
+                /// String value of the enum field names used in the ProtoBuf definition.
+                ///
+                /// The values are not transformed in any way and thus are considered stable
+                /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+                pub fn as_str_name(&self) -> &'static str {
+                    match self {
+                        RepositoryBase::Unspecified => "REPOSITORY_BASE_UNSPECIFIED",
+                        RepositoryBase::Debian => "DEBIAN",
+                        RepositoryBase::Ubuntu => "UBUNTU",
+                    }
+                }
+                /// Creates an enum from field names used in the ProtoBuf definition.
+                pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+                    match value {
+                        "REPOSITORY_BASE_UNSPECIFIED" => Some(Self::Unspecified),
+                        "DEBIAN" => Some(Self::Debian),
+                        "UBUNTU" => Some(Self::Ubuntu),
+                        _ => None,
+                    }
+                }
+            }
+        }
+        /// Address of the remote repository.
+        #[allow(clippy::derive_partial_eq_without_eq)]
+        #[derive(Clone, PartialEq, ::prost::Oneof)]
+        pub enum Upstream {
+            /// One of the publicly available Apt repositories supported by Artifact
+            /// Registry.
+            #[prost(message, tag = "1")]
+            PublicRepository(PublicRepository),
+        }
+    }
+    /// Configuration for a Yum remote repository.
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct YumRepository {
+        /// Address of the remote repository.
+        #[prost(oneof = "yum_repository::Upstream", tags = "1")]
+        pub upstream: ::core::option::Option<yum_repository::Upstream>,
+    }
+    /// Nested message and enum types in `YumRepository`.
+    pub mod yum_repository {
+        /// Publicly available Yum repositories constructed from a common repository
+        /// base and a custom repository path.
+        #[allow(clippy::derive_partial_eq_without_eq)]
+        #[derive(Clone, PartialEq, ::prost::Message)]
+        pub struct PublicRepository {
+            /// A common public repository base for Yum.
+            #[prost(enumeration = "public_repository::RepositoryBase", tag = "1")]
+            pub repository_base: i32,
+            /// A custom field to define a path to a specific repository from the base.
+            #[prost(string, tag = "2")]
+            pub repository_path: ::prost::alloc::string::String,
+        }
+        /// Nested message and enum types in `PublicRepository`.
+        pub mod public_repository {
+            /// Predefined list of publicly available repository bases for Yum.
+            #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+            #[repr(i32)]
+            pub enum RepositoryBase {
+                /// Unspecified repository base.
+                Unspecified = 0,
+                /// CentOS.
+                Centos = 1,
+                /// CentOS Debug.
+                CentosDebug = 2,
+                /// CentOS Vault.
+                CentosVault = 3,
+                /// CentOS Stream.
+                CentosStream = 4,
+                /// Rocky.
+                Rocky = 5,
+                /// Fedora Extra Packages for Enterprise Linux (EPEL).
+                Epel = 6,
+            }
+            impl RepositoryBase {
+                /// String value of the enum field names used in the ProtoBuf definition.
+                ///
+                /// The values are not transformed in any way and thus are considered stable
+                /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+                pub fn as_str_name(&self) -> &'static str {
+                    match self {
+                        RepositoryBase::Unspecified => "REPOSITORY_BASE_UNSPECIFIED",
+                        RepositoryBase::Centos => "CENTOS",
+                        RepositoryBase::CentosDebug => "CENTOS_DEBUG",
+                        RepositoryBase::CentosVault => "CENTOS_VAULT",
+                        RepositoryBase::CentosStream => "CENTOS_STREAM",
+                        RepositoryBase::Rocky => "ROCKY",
+                        RepositoryBase::Epel => "EPEL",
+                    }
+                }
+                /// Creates an enum from field names used in the ProtoBuf definition.
+                pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+                    match value {
+                        "REPOSITORY_BASE_UNSPECIFIED" => Some(Self::Unspecified),
+                        "CENTOS" => Some(Self::Centos),
+                        "CENTOS_DEBUG" => Some(Self::CentosDebug),
+                        "CENTOS_VAULT" => Some(Self::CentosVault),
+                        "CENTOS_STREAM" => Some(Self::CentosStream),
+                        "ROCKY" => Some(Self::Rocky),
+                        "EPEL" => Some(Self::Epel),
+                        _ => None,
+                    }
+                }
+            }
+        }
+        /// Address of the remote repository.
+        #[allow(clippy::derive_partial_eq_without_eq)]
+        #[derive(Clone, PartialEq, ::prost::Oneof)]
+        pub enum Upstream {
+            /// One of the publicly available Yum repositories supported by Artifact
+            /// Registry.
+            #[prost(message, tag = "1")]
+            PublicRepository(PublicRepository),
+        }
+    }
+    /// Settings specific to the remote repository.
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum RemoteSource {
+        /// Specific settings for a Docker remote repository.
+        #[prost(message, tag = "2")]
+        DockerRepository(DockerRepository),
+        /// Specific settings for a Maven remote repository.
+        #[prost(message, tag = "3")]
+        MavenRepository(MavenRepository),
+        /// Specific settings for an Npm remote repository.
+        #[prost(message, tag = "4")]
+        NpmRepository(NpmRepository),
+        /// Specific settings for a Python remote repository.
+        #[prost(message, tag = "5")]
+        PythonRepository(PythonRepository),
+        /// Specific settings for an Apt remote repository.
+        #[prost(message, tag = "6")]
+        AptRepository(AptRepository),
+        /// Specific settings for a Yum remote repository.
+        #[prost(message, tag = "7")]
+        YumRepository(YumRepository),
+    }
+}
 /// A Repository for storing artifacts with a specific format.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Repository {
     /// The name of the repository, for example:
-    /// "projects/p1/locations/us-central1/repositories/repo1".
+    /// `projects/p1/locations/us-central1/repositories/repo1`.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
-    /// The format of packages that are stored in the repository.
+    /// Optional. The format of packages that are stored in the repository.
     #[prost(enumeration = "repository::Format", tag = "2")]
     pub format: i32,
     /// The user-provided description of the repository.
@@ -837,10 +1418,10 @@ pub struct Repository {
     /// and dashes.
     #[prost(map = "string, string", tag = "4")]
     pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
-    /// The time when the repository was created.
+    /// Output only. The time when the repository was created.
     #[prost(message, optional, tag = "5")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
-    /// The time when the repository was last updated.
+    /// Output only. The time when the repository was last updated.
     #[prost(message, optional, tag = "6")]
     pub update_time: ::core::option::Option<::prost_types::Timestamp>,
     /// The Cloud KMS resource name of the customer managed encryption key that's
@@ -849,9 +1430,34 @@ pub struct Repository {
     /// This value may not be changed after the Repository has been created.
     #[prost(string, tag = "8")]
     pub kms_key_name: ::prost::alloc::string::String,
+    /// Optional. The mode of the repository.
+    #[prost(enumeration = "repository::Mode", tag = "10")]
+    pub mode: i32,
+    /// Optional. Cleanup policies for this repository. Cleanup policies indicate
+    /// when certain package versions can be automatically deleted. Map keys are
+    /// policy IDs supplied by users during policy creation. They must unique
+    /// within a repository and be under 128 characters in length.
+    #[prost(map = "string, message", tag = "12")]
+    pub cleanup_policies: ::std::collections::HashMap<::prost::alloc::string::String, CleanupPolicy>,
+    /// Output only. The size, in bytes, of all artifact storage in this
+    /// repository. Repositories that are generally available or in public preview
+    ///   use this to calculate storage costs.
+    #[prost(int64, tag = "13")]
+    pub size_bytes: i64,
+    /// Output only. If set, the repository satisfies physical zone separation.
+    #[prost(bool, tag = "16")]
+    pub satisfies_pzs: bool,
+    /// Optional. If true, the cleanup pipeline is prevented from deleting versions
+    /// in this repository.
+    #[prost(bool, tag = "18")]
+    pub cleanup_policy_dry_run: bool,
     /// Repository-specific configurations.
-    #[prost(oneof = "repository::FormatConfig", tags = "9")]
+    #[prost(oneof = "repository::FormatConfig", tags = "9, 17")]
     pub format_config: ::core::option::Option<repository::FormatConfig>,
+    /// Repository configuration specific to the Mode value being selected (Remote
+    /// or Virtual)
+    #[prost(oneof = "repository::ModeConfig", tags = "14, 15")]
+    pub mode_config: ::core::option::Option<repository::ModeConfig>,
 }
 /// Nested message and enum types in `Repository`.
 pub mod repository {
@@ -907,6 +1513,18 @@ pub mod repository {
             }
         }
     }
+    /// DockerRepositoryConfig is docker related repository details.
+    /// Provides additional configuration details for repositories of the docker
+    /// format type.
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    pub struct DockerRepositoryConfig {
+        /// The repository which enabled this flag prevents all tags from being
+        /// modified, moved or deleted. This does not prevent tags from being
+        /// created.
+        #[prost(bool, tag = "1")]
+        pub immutable_tags: bool,
+    }
     /// A package format.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
@@ -925,6 +1543,10 @@ pub mod repository {
         Yum = 6,
         /// Python package format.
         Python = 8,
+        /// Kubeflow Pipelines package format.
+        Kfp = 9,
+        /// Go package format.
+        Go = 10,
     }
     impl Format {
         /// String value of the enum field names used in the ProtoBuf definition.
@@ -940,6 +1562,8 @@ pub mod repository {
                 Format::Apt => "APT",
                 Format::Yum => "YUM",
                 Format::Python => "PYTHON",
+                Format::Kfp => "KFP",
+                Format::Go => "GO",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -952,6 +1576,46 @@ pub mod repository {
                 "APT" => Some(Self::Apt),
                 "YUM" => Some(Self::Yum),
                 "PYTHON" => Some(Self::Python),
+                "KFP" => Some(Self::Kfp),
+                "GO" => Some(Self::Go),
+                _ => None,
+            }
+        }
+    }
+    /// The mode configures the repository to serve artifacts from different
+    /// sources.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum Mode {
+        /// Unspecified mode.
+        Unspecified = 0,
+        /// A standard repository storing artifacts.
+        StandardRepository = 1,
+        /// A virtual repository to serve artifacts from one or more sources.
+        VirtualRepository = 2,
+        /// A remote repository to serve artifacts from a remote source.
+        RemoteRepository = 3,
+    }
+    impl Mode {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Mode::Unspecified => "MODE_UNSPECIFIED",
+                Mode::StandardRepository => "STANDARD_REPOSITORY",
+                Mode::VirtualRepository => "VIRTUAL_REPOSITORY",
+                Mode::RemoteRepository => "REMOTE_REPOSITORY",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "MODE_UNSPECIFIED" => Some(Self::Unspecified),
+                "STANDARD_REPOSITORY" => Some(Self::StandardRepository),
+                "VIRTUAL_REPOSITORY" => Some(Self::VirtualRepository),
+                "REMOTE_REPOSITORY" => Some(Self::RemoteRepository),
                 _ => None,
             }
         }
@@ -964,13 +1628,30 @@ pub mod repository {
         /// for the repositories of maven type.
         #[prost(message, tag = "9")]
         MavenConfig(MavenRepositoryConfig),
+        /// Docker repository config contains repository level configuration
+        /// for the repositories of docker type.
+        #[prost(message, tag = "17")]
+        DockerConfig(DockerRepositoryConfig),
+    }
+    /// Repository configuration specific to the Mode value being selected (Remote
+    /// or Virtual)
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum ModeConfig {
+        /// Configuration specific for a Virtual Repository.
+        #[prost(message, tag = "14")]
+        VirtualRepositoryConfig(super::VirtualRepositoryConfig),
+        /// Configuration specific for a Remote Repository.
+        #[prost(message, tag = "15")]
+        RemoteRepositoryConfig(super::RemoteRepositoryConfig),
     }
 }
 /// The request to list repositories.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListRepositoriesRequest {
-    /// Required. The name of the parent resource whose repositories will be listed.
+    /// Required. The name of the parent resource whose repositories will be
+    /// listed.
     #[prost(string, tag = "1")]
     pub parent: ::prost::alloc::string::String,
     /// The maximum number of repositories to return. Maximum page size is 1,000.
@@ -1004,13 +1685,14 @@ pub struct GetRepositoryRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateRepositoryRequest {
-    /// Required. The name of the parent resource where the repository will be created.
+    /// Required. The name of the parent resource where the repository will be
+    /// created.
     #[prost(string, tag = "1")]
     pub parent: ::prost::alloc::string::String,
-    /// The repository id to use for this repository.
+    /// Required. The repository id to use for this repository.
     #[prost(string, tag = "2")]
     pub repository_id: ::prost::alloc::string::String,
-    /// The repository to be created.
+    /// Required. The repository to be created.
     #[prost(message, optional, tag = "3")]
     pub repository: ::core::option::Option<Repository>,
 }
@@ -1134,7 +1816,9 @@ pub struct Tag {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListTagsRequest {
-    /// The name of the parent resource whose tags will be listed.
+    /// The name of the parent package whose tags will be listed.
+    /// For example:
+    /// `projects/p1/locations/us-central1/repositories/repo1/packages/pkg1`.
     #[prost(string, tag = "1")]
     pub parent: ::prost::alloc::string::String,
     /// An expression for filtering the results of the request. Filter rules are
@@ -1145,7 +1829,7 @@ pub struct ListTagsRequest {
     ///   An example of using a filter:
     ///
     ///    * `version="projects/p1/locations/us-central1/repositories/repo1/packages/pkg1/versions/1.0"`
-    ///      --> Tags that are applied to the version `1.0` in package `pkg1`.
+    ///    --> Tags that are applied to the version `1.0` in package `pkg1`.
     #[prost(string, tag = "4")]
     pub filter: ::prost::alloc::string::String,
     /// The maximum number of tags to return. Maximum page size is 10,000.
@@ -1297,6 +1981,21 @@ pub struct DeleteVersionRequest {
     /// version and any tags pointing to the version are deleted.
     #[prost(bool, tag = "2")]
     pub force: bool,
+}
+/// The request to delete multiple versions across a repository.
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BatchDeleteVersionsRequest {
+    /// The name of the repository holding all requested versions.
+    #[prost(string, tag = "1")]
+    pub parent: ::prost::alloc::string::String,
+    /// Required. The names of the versions to delete.
+    /// A maximum of 10000 versions can be deleted in a batch.
+    #[prost(string, repeated, tag = "2")]
+    pub names: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// If true, the request is performed without deleting data, following AIP-163.
+    #[prost(bool, tag = "3")]
+    pub validate_only: bool,
 }
 /// The metadata of an LRO from deleting multiple versions.
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1849,6 +2548,27 @@ pub mod artifact_registry_client {
             req.extensions_mut().insert(GrpcMethod::new(
                 "google.devtools.artifactregistry.v1.ArtifactRegistry",
                 "DeleteVersion",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Deletes multiple versions across a repository. The returned operation will
+        /// complete once the versions have been deleted.
+        pub async fn batch_delete_versions(
+            &mut self,
+            request: impl tonic::IntoRequest<super::BatchDeleteVersionsRequest>,
+        ) -> std::result::Result<tonic::Response<super::super::super::super::longrunning::Operation>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.devtools.artifactregistry.v1.ArtifactRegistry/BatchDeleteVersions",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.devtools.artifactregistry.v1.ArtifactRegistry",
+                "BatchDeleteVersions",
             ));
             self.inner.unary(req, path, codec).await
         }

@@ -130,7 +130,10 @@ impl ReadWriteTransaction {
     ) -> Result<ReadWriteTransaction, BeginError> {
         let request = BeginTransactionRequest {
             session: session.session.name.to_string(),
-            options: Some(TransactionOptions { mode: Some(mode) }),
+            options: Some(TransactionOptions {
+                exclude_txn_from_change_streams: false,
+                mode: Some(mode),
+            }),
             request_options: Transaction::create_request_options(options.priority),
         };
         let result = session.spanner_client.begin_transaction(request, options.retry).await;
@@ -176,6 +179,7 @@ impl ReadWriteTransaction {
             seqno: self.sequence_number.fetch_add(1, Ordering::Relaxed),
             query_options: options.optimizer_options,
             request_options: Transaction::create_request_options(options.call_options.priority),
+            directed_read_options: None,
         };
 
         let session = self.as_mut_session();
@@ -327,6 +331,7 @@ pub(crate) async fn commit(
         transaction: Some(tx),
         request_options: Transaction::create_request_options(commit_options.call_options.priority),
         return_commit_stats: commit_options.return_commit_stats,
+        max_commit_delay: None,
     };
     let result = session
         .spanner_client

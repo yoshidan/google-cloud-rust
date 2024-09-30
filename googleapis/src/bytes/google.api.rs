@@ -19,7 +19,7 @@ pub struct Http {
     #[prost(bool, tag = "2")]
     pub fully_decode_reserved_expansion: bool,
 }
-/// # gRPC Transcoding
+/// gRPC Transcoding
 ///
 /// gRPC Transcoding is a feature for mapping between a gRPC method and one or
 /// more HTTP REST endpoints. It allows developers to build a single API service
@@ -60,9 +60,8 @@ pub struct Http {
 ///
 /// This enables an HTTP REST to gRPC mapping as below:
 ///
-/// HTTP | gRPC
-/// -----|-----
-/// `GET /v1/messages/123456`  | `GetMessage(name: "messages/123456")`
+/// - HTTP: `GET /v1/messages/123456`
+/// - gRPC: `GetMessage(name: "messages/123456")`
 ///
 /// Any fields in the request message which are not bound by the path template
 /// automatically become HTTP query parameters if there is no HTTP request body.
@@ -86,11 +85,9 @@ pub struct Http {
 ///
 /// This enables a HTTP JSON to RPC mapping as below:
 ///
-/// HTTP | gRPC
-/// -----|-----
-/// `GET /v1/messages/123456?revision=2&sub.subfield=foo` |
-/// `GetMessage(message_id: "123456" revision: 2 sub: SubMessage(subfield:
-/// "foo"))`
+/// - HTTP: `GET /v1/messages/123456?revision=2&sub.subfield=foo`
+/// - gRPC: `GetMessage(message_id: "123456" revision: 2 sub:
+/// SubMessage(subfield: "foo"))`
 ///
 /// Note that fields which are mapped to URL query parameters must have a
 /// primitive type or a repeated primitive type or a non-repeated message type.
@@ -120,10 +117,8 @@ pub struct Http {
 /// representation of the JSON in the request body is determined by
 /// protos JSON encoding:
 ///
-/// HTTP | gRPC
-/// -----|-----
-/// `PATCH /v1/messages/123456 { "text": "Hi!" }` | `UpdateMessage(message_id:
-/// "123456" message { text: "Hi!" })`
+/// - HTTP: `PATCH /v1/messages/123456 { "text": "Hi!" }`
+/// - gRPC: `UpdateMessage(message_id: "123456" message { text: "Hi!" })`
 ///
 /// The special name `*` can be used in the body mapping to define that
 /// every field not bound by the path template should be mapped to the
@@ -146,10 +141,8 @@ pub struct Http {
 ///
 /// The following HTTP JSON to RPC mapping is enabled:
 ///
-/// HTTP | gRPC
-/// -----|-----
-/// `PATCH /v1/messages/123456 { "text": "Hi!" }` | `UpdateMessage(message_id:
-/// "123456" text: "Hi!")`
+/// - HTTP: `PATCH /v1/messages/123456 { "text": "Hi!" }`
+/// - gRPC: `UpdateMessage(message_id: "123456" text: "Hi!")`
 ///
 /// Note that when using `*` in the body mapping, it is not possible to
 /// have HTTP parameters, as all fields not bound by the path end in
@@ -177,13 +170,13 @@ pub struct Http {
 ///
 /// This enables the following two alternative HTTP JSON to RPC mappings:
 ///
-/// HTTP | gRPC
-/// -----|-----
-/// `GET /v1/messages/123456` | `GetMessage(message_id: "123456")`
-/// `GET /v1/users/me/messages/123456` | `GetMessage(user_id: "me" message_id:
-/// "123456")`
+/// - HTTP: `GET /v1/messages/123456`
+/// - gRPC: `GetMessage(message_id: "123456")`
 ///
-/// ## Rules for HTTP mapping
+/// - HTTP: `GET /v1/users/me/messages/123456`
+/// - gRPC: `GetMessage(user_id: "me" message_id: "123456")`
+///
+/// Rules for HTTP mapping
 ///
 /// 1. Leaf request fields (recursive expansion nested messages in the request
 ///     message) are classified into three categories:
@@ -202,7 +195,7 @@ pub struct Http {
 ///   request body, all
 ///      fields are passed via URL path and URL query parameters.
 ///
-/// ### Path template syntax
+/// Path template syntax
 ///
 ///      Template = "/" Segments \[ Verb \] ;
 ///      Segments = Segment { "/" Segment } ;
@@ -241,7 +234,7 @@ pub struct Http {
 /// Document](<https://developers.google.com/discovery/v1/reference/apis>) as
 /// `{+var}`.
 ///
-/// ## Using gRPC API Service Configuration
+/// Using gRPC API Service Configuration
 ///
 /// gRPC API Service Configuration (service config) is a configuration language
 /// for configuring a gRPC service to become a user-facing product. The
@@ -256,15 +249,14 @@ pub struct Http {
 /// specified in the service config will override any matching transcoding
 /// configuration in the proto.
 ///
-/// Example:
+/// The following example selects a gRPC method and applies an `HttpRule` to it:
 ///
 ///      http:
 ///        rules:
-///          # Selects a gRPC method and applies HttpRule to it.
 ///          - selector: example.v1.Messaging.GetMessage
 ///            get: /v1/messages/{message_id}/{sub.subfield}
 ///
-/// ## Special notes
+/// Special notes
 ///
 /// When gRPC Transcoding is used to map a gRPC to JSON REST endpoints, the
 /// proto to JSON conversion must follow the [proto3
@@ -545,6 +537,10 @@ pub struct Publishing {
     /// <https://cloud.google.com/pubsub/lite/docs/reference/rpc>
     #[prost(string, tag = "110")]
     pub proto_reference_documentation_uri: ::prost::alloc::string::String,
+    /// Optional link to REST reference documentation.  Example:
+    /// <https://cloud.google.com/pubsub/lite/docs/reference/rest>
+    #[prost(string, tag = "111")]
+    pub rest_reference_documentation_uri: ::prost::alloc::string::String,
 }
 /// Settings for Java client libraries.
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -609,6 +605,27 @@ pub struct PythonSettings {
     /// Some settings.
     #[prost(message, optional, tag = "1")]
     pub common: ::core::option::Option<CommonLanguageSettings>,
+    /// Experimental features to be included during client library generation.
+    #[prost(message, optional, tag = "2")]
+    pub experimental_features: ::core::option::Option<
+        python_settings::ExperimentalFeatures,
+    >,
+}
+/// Nested message and enum types in `PythonSettings`.
+pub mod python_settings {
+    /// Experimental features to be included during client library generation.
+    /// These fields will be deprecated once the feature graduates and is enabled
+    /// by default.
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    pub struct ExperimentalFeatures {
+        /// Enables generation of asynchronous REST clients if `rest` transport is
+        /// enabled. By default, asynchronous REST clients will not be generated.
+        /// This feature will be enabled by default 1 month after launching the
+        /// feature in preview packages.
+        #[prost(bool, tag = "1")]
+        pub rest_async_io_enabled: bool,
+    }
 }
 /// Settings for Node client libraries.
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -686,6 +703,13 @@ pub struct GoSettings {
 pub struct MethodSettings {
     /// The fully qualified name of the method, for which the options below apply.
     /// This is used to find the method to apply the options.
+    ///
+    /// Example:
+    ///
+    ///     publishing:
+    ///       method_settings:
+    ///       - selector: google.storage.control.v2.StorageControl.CreateFolder
+    ///         # method settings for CreateFolder...
     #[prost(string, tag = "1")]
     pub selector: ::prost::alloc::string::String,
     /// Describes settings to use for long-running operations when generating
@@ -694,19 +718,29 @@ pub struct MethodSettings {
     ///
     /// Example of a YAML configuration::
     ///
-    ///   publishing:
-    ///     method_settings:
+    ///     publishing:
+    ///       method_settings:
     ///       - selector: google.cloud.speech.v2.Speech.BatchRecognize
     ///         long_running:
-    ///           initial_poll_delay:
-    ///             seconds: 60 # 1 minute
+    ///           initial_poll_delay: 60s # 1 minute
     ///           poll_delay_multiplier: 1.5
-    ///           max_poll_delay:
-    ///             seconds: 360 # 6 minutes
-    ///           total_poll_timeout:
-    ///              seconds: 54000 # 90 minutes
+    ///           max_poll_delay: 360s # 6 minutes
+    ///           total_poll_timeout: 54000s # 90 minutes
     #[prost(message, optional, tag = "2")]
     pub long_running: ::core::option::Option<method_settings::LongRunning>,
+    /// List of top-level fields of the request message, that should be
+    /// automatically populated by the client libraries based on their
+    /// (google.api.field_info).format. Currently supported format: UUID4.
+    ///
+    /// Example of a YAML configuration:
+    ///
+    ///     publishing:
+    ///       method_settings:
+    ///       - selector: google.example.v1.ExampleService.CreateExample
+    ///         auto_populated_fields:
+    ///         - request_id
+    #[prost(string, repeated, tag = "3")]
+    pub auto_populated_fields: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// Nested message and enum types in `MethodSettings`.
 pub mod method_settings {
@@ -872,6 +906,19 @@ pub enum FieldBehavior {
     /// a non-empty value will be returned. The user will not be aware of what
     /// non-empty value to expect.
     NonEmptyDefault = 7,
+    /// Denotes that the field in a resource (a message annotated with
+    /// google.api.resource) is used in the resource name to uniquely identify the
+    /// resource. For AIP-compliant APIs, this should only be applied to the
+    /// `name` field on the resource.
+    ///
+    /// This behavior should not be applied to references to other resources within
+    /// the message.
+    ///
+    /// The identifier field of resources often have different field behavior
+    /// depending on the request it is embedded in (e.g. for Create methods name
+    /// is optional and unused, while for Update methods it is required). Instead
+    /// of method-specific annotations, only `IDENTIFIER` is required.
+    Identifier = 8,
 }
 impl FieldBehavior {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -888,6 +935,7 @@ impl FieldBehavior {
             FieldBehavior::Immutable => "IMMUTABLE",
             FieldBehavior::UnorderedList => "UNORDERED_LIST",
             FieldBehavior::NonEmptyDefault => "NON_EMPTY_DEFAULT",
+            FieldBehavior::Identifier => "IDENTIFIER",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -901,6 +949,7 @@ impl FieldBehavior {
             "IMMUTABLE" => Some(Self::Immutable),
             "UNORDERED_LIST" => Some(Self::UnorderedList),
             "NON_EMPTY_DEFAULT" => Some(Self::NonEmptyDefault),
+            "IDENTIFIER" => Some(Self::Identifier),
             _ => None,
         }
     }
@@ -1011,8 +1060,13 @@ pub struct ResourceDescriptor {
     pub history: i32,
     /// The plural name used in the resource name and permission names, such as
     /// 'projects' for the resource name of 'projects/{project}' and the permission
-    /// name of 'cloudresourcemanager.googleapis.com/projects.get'. It is the same
-    /// concept of the `plural` field in k8s CRD spec
+    /// name of 'cloudresourcemanager.googleapis.com/projects.get'. One exception
+    /// to this is for Nested Collections that have stuttering names, as defined
+    /// in [AIP-122](<https://google.aip.dev/122#nested-collections>), where the
+    /// collection ID in the resource name pattern does not necessarily directly
+    /// match the `plural` value.
+    ///
+    /// It is the same concept of the `plural` field in k8s CRD spec
     /// <https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/>
     ///
     /// Note: The plural form is required even for singleton resources. See
