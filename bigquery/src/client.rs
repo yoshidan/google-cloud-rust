@@ -12,7 +12,7 @@ use google_cloud_googleapis::cloud::bigquery::storage::v1::{
 };
 use google_cloud_token::TokenSourceProvider;
 
-use crate::grpc::apiv1::conn_pool::{ReadConnectionManager, DOMAIN};
+use crate::grpc::apiv1::conn_pool::{ConnectionManager, DOMAIN};
 use crate::http::bigquery_client::BigqueryClient;
 use crate::http::bigquery_dataset_client::BigqueryDatasetClient;
 use crate::http::bigquery_job_client::BigqueryJobClient;
@@ -94,8 +94,10 @@ impl ClientConfig {
 use crate::http::job::get::GetJobRequest;
 use crate::http::job::list::ListJobsRequest;
 
+use crate::grpc::apiv1::bigquery_client::StreamingReadClient;
 #[cfg(feature = "auth")]
 pub use google_cloud_auth;
+use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_read_client::BigQueryReadClient;
 
 #[cfg(feature = "auth")]
 impl ClientConfig {
@@ -163,7 +165,7 @@ pub struct Client {
     routine_client: BigqueryRoutineClient,
     row_access_policy_client: BigqueryRowAccessPolicyClient,
     model_client: BigqueryModelClient,
-    streaming_read_client_conn_pool: Arc<ReadConnectionManager>,
+    streaming_client_conn_pool: Arc<ConnectionManager>,
 }
 
 impl Client {
@@ -183,8 +185,8 @@ impl Client {
             connect_timeout: read_config.connect_timeout,
         };
 
-        let streaming_read_client_conn_pool =
-            ReadConnectionManager::new(read_config.num_channels, &config.environment, DOMAIN, &conn_options).await?;
+        let streaming_client_conn_pool =
+            ConnectionManager::new(read_config.num_channels, &config.environment, &conn_options).await?;
         Ok(Self {
             dataset_client: BigqueryDatasetClient::new(client.clone()),
             table_client: BigqueryTableClient::new(client.clone()),
@@ -193,7 +195,7 @@ impl Client {
             routine_client: BigqueryRoutineClient::new(client.clone()),
             row_access_policy_client: BigqueryRowAccessPolicyClient::new(client.clone()),
             model_client: BigqueryModelClient::new(client.clone()),
-            streaming_read_client_conn_pool: Arc::new(streaming_read_client_conn_pool),
+            streaming_client_conn_pool: Arc::new(streaming_client_conn_pool),
         })
     }
 
@@ -473,7 +475,7 @@ impl Client {
     {
         let option = option.unwrap_or_default();
 
-        let mut client = self.streaming_read_client_conn_pool.conn();
+        let mut client = StreamingReadClient::new(BigQueryReadClient::new(self.streaming_client_conn_pool.conn()));
         let read_session = client
             .create_read_session(
                 CreateReadSessionRequest {

@@ -212,3 +212,151 @@ impl StreamingWriteClient {
         .await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::grpc::apiv1::bigquery_client::StreamingWriteClient;
+    use crate::grpc::apiv1::conn_pool::{ConnectionManager, AUDIENCE, SCOPES};
+    use google_cloud_gax::conn::Environment;
+    use google_cloud_gax::grpc::codegen::tokio_stream::StreamExt;
+    use google_cloud_gax::grpc::IntoStreamingRequest;
+    use google_cloud_googleapis::cloud::bigquery::storage::v1::append_rows_request::{ProtoData, Rows};
+    use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_write_client::BigQueryWriteClient;
+    use google_cloud_googleapis::cloud::bigquery::storage::v1::table_field_schema::Type;
+    use google_cloud_googleapis::cloud::bigquery::storage::v1::write_stream::Type::Pending;
+    use google_cloud_googleapis::cloud::bigquery::storage::v1::{
+        AppendRowsRequest, BatchCommitWriteStreamsRequest, BatchCommitWriteStreamsResponse, CreateWriteStreamRequest,
+        FinalizeWriteStreamRequest, ProtoRows, ProtoSchema, WriteStream,
+    };
+    use prost::Message;
+    use prost_types::{field_descriptor_proto, DescriptorProto, FieldDescriptorProto};
+
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    struct TestData {
+        #[prost(string, tag = "1")]
+        pub col_string: String,
+    }
+
+    #[ctor::ctor]
+    fn init() {
+        let _ = tracing_subscriber::fmt::try_init();
+    }
+    #[tokio::test]
+    async fn test_storage_write() {
+        let config = google_cloud_auth::project::Config::default()
+            .with_audience(AUDIENCE)
+            .with_scopes(&SCOPES);
+        let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new(config)
+            .await
+            .unwrap();
+        let conn = ConnectionManager::new(4, &Environment::GoogleCloud(Box::new(ts)), &Default::default())
+            .await
+            .unwrap();
+
+        let mut client = StreamingWriteClient::new(BigQueryWriteClient::new(conn.conn()));
+
+        let table = "projects/atl-dev1/datasets/gcrbq_storage/tables/write_test".to_string();
+        let pending_stream = client
+            .create_write_stream(
+                CreateWriteStreamRequest {
+                    parent: table.to_string(),
+                    write_stream: Some(WriteStream {
+                        name: "".to_string(),
+                        r#type: Pending as i32,
+                        create_time: None,
+                        commit_time: None,
+                        table_schema: None,
+                        write_mode: 0,
+                        location: "".to_string(),
+                    }),
+                },
+                None,
+            )
+            .await
+            .unwrap()
+            .into_inner();
+
+        let data1 = TestData {
+            col_string: "col1".to_string(),
+        };
+        let mut buf = Vec::new();
+        data1.encode(&mut buf).unwrap();
+
+        let row1 = AppendRowsRequest {
+            write_stream: pending_stream.name.to_string(),
+            offset: None,
+            trace_id: "".to_string(),
+            missing_value_interpretations: Default::default(),
+            default_missing_value_interpretation: 0,
+            rows: Some(Rows::ProtoRows(ProtoData {
+                writer_schema: Some(ProtoSchema {
+                    proto_descriptor: Some(DescriptorProto {
+                        name: Some("TestData".to_string()),
+                        field: vec![FieldDescriptorProto {
+                            name: Some("col_string".to_string()),
+                            number: Some(1),
+                            label: None,
+                            r#type: Some(field_descriptor_proto::Type::String.into()),
+                            type_name: None,
+                            extendee: None,
+                            default_value: None,
+                            oneof_index: None,
+                            json_name: None,
+                            options: None,
+                            proto3_optional: None,
+                        }],
+                        extension: vec![],
+                        nested_type: vec![],
+                        enum_type: vec![],
+                        extension_range: vec![],
+                        oneof_decl: vec![],
+                        options: None,
+                        reserved_range: vec![],
+                        reserved_name: vec![],
+                    }),
+                }),
+                rows: Some(ProtoRows {
+                    serialized_rows: vec![buf],
+                }),
+            })),
+        };
+
+        let request = Box::pin(async_stream::stream! {
+             for req in [row1] {
+                yield req;
+             }
+        });
+        let mut result = client.append_rows(request).await.unwrap().into_inner();
+        while let Some(res) = result.next().await {
+            match res {
+                Ok(res) => println!("row errors = {:?}", res.row_errors.len()),
+                Err(err) => println!("err = {:?}", err),
+            };
+        }
+
+        let res = client
+            .finalize_write_stream(
+                FinalizeWriteStreamRequest {
+                    name: pending_stream.name.to_string(),
+                },
+                None,
+            )
+            .await
+            .unwrap()
+            .into_inner();
+        println!("finalized = {:?}", res.row_count);
+
+        let res = client
+            .batch_commit_write_streams(
+                BatchCommitWriteStreamsRequest {
+                    parent: table.to_string(),
+                    write_streams: vec![pending_stream.name.to_string()],
+                },
+                None,
+            )
+            .await
+            .unwrap()
+            .into_inner();
+        println!("commit stream errors = {:?}", res.stream_errors.len())
+    }
+}

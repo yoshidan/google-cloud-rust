@@ -40,6 +40,9 @@ ctor = "0.1.26"
 tokio-util =  {version ="0.7", features = ["codec"] }
 google-cloud-auth = { path = "../foundation/auth", default-features=false }
 base64-serde = "0.7"
+async-stream = "0.3"
+prost = "0.13"
+prost-types = "0.13"
 
 [features]
 default = ["default-tls", "auth"]
