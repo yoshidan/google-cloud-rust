@@ -98,7 +98,7 @@ use crate::grpc::apiv1::bigquery_client::StreamingReadClient;
 #[cfg(feature = "auth")]
 pub use google_cloud_auth;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_read_client::BigQueryReadClient;
-use crate::storage_write::pending;
+use crate::storage_write::{default, pending};
 
 #[cfg(feature = "auth")]
 impl ClientConfig {
@@ -247,6 +247,13 @@ impl Client {
     /// https://cloud.google.com/bigquery/docs/write-api#pending_type
     pub fn pending_batch_writer(&self, table: String) -> pending::Writer {
         pending::Writer::new(table, self.streaming_client_conn_pool.clone())
+    }
+
+    /// Creates a new default batch writer.
+    /// Returns a `default::Writer` instance that can be used to write data to the specified table.
+    /// https://cloud.google.com/bigquery/docs/write-api#default_stream
+    pub fn default_batch_writer(&self) -> default::Writer {
+        default::Writer::new(self.streaming_client_conn_pool.clone())
     }
 
     /// Run query job and get result.
