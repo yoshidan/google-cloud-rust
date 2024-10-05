@@ -26,8 +26,8 @@ use crate::http::job::query::QueryRequest;
 use crate::http::job::{is_script, is_select_query, JobConfiguration, JobReference, JobStatistics, JobType};
 use crate::http::table::TableReference;
 use crate::query::{QueryOption, QueryResult};
-use crate::{http, query};
 use crate::storage;
+use crate::{http, query};
 
 const JOB_RETRY_REASONS: [&str; 3] = ["backendError", "rateLimitExceeded", "internalError"];
 
@@ -95,10 +95,10 @@ use crate::http::job::get::GetJobRequest;
 use crate::http::job::list::ListJobsRequest;
 
 use crate::grpc::apiv1::bigquery_client::StreamingReadClient;
+use crate::storage_write::{default, pending};
 #[cfg(feature = "auth")]
 pub use google_cloud_auth;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_read_client::BigQueryReadClient;
-use crate::storage_write::{default, pending};
 
 #[cfg(feature = "auth")]
 impl ClientConfig {

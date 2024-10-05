@@ -2,12 +2,12 @@ use crate::grpc::apiv1::bigquery_client::{create_write_stream_request, Streaming
 use crate::grpc::apiv1::conn_pool::ConnectionManager;
 use google_cloud_gax::grpc::{IntoStreamingRequest, Status, Streaming};
 use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_write_client::BigQueryWriteClient;
+use google_cloud_googleapis::cloud::bigquery::storage::v1::write_stream::Type::Pending;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::{
     AppendRowsRequest, AppendRowsResponse, BatchCommitWriteStreamsRequest, BatchCommitWriteStreamsResponse,
     CreateWriteStreamRequest, FinalizeWriteStreamRequest, WriteStream,
 };
 use std::sync::Arc;
-use google_cloud_googleapis::cloud::bigquery::storage::v1::write_stream::Type::Pending;
 
 pub struct Writer {
     table: String,
@@ -63,10 +63,7 @@ impl PendingStream {
     }
 
     //TODO serialize values and get schema
-    pub async fn append_rows(
-        &mut self,
-        rows: Vec<AppendRowsRequest>,
-    ) -> Result<Streaming<AppendRowsResponse>, Status> {
+    pub async fn append_rows(&mut self, rows: Vec<AppendRowsRequest>) -> Result<Streaming<AppendRowsResponse>, Status> {
         let request = Box::pin(async_stream::stream! {
             for row in rows {
                 yield row;
