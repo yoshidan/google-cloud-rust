@@ -121,7 +121,7 @@ mod test {
         // minimum dataset
         let mut ds1 = Dataset::default();
         ds1.dataset_reference.dataset_id = dataset_name("crud_empty");
-        ds1.dataset_reference.project_id = project.clone();
+        ds1.dataset_reference.project_id.clone_from(&project);
         ds1 = client.create(&ds1).await.unwrap();
 
         // test get

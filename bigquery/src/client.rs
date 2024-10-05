@@ -12,7 +12,7 @@ use google_cloud_googleapis::cloud::bigquery::storage::v1::{
 };
 use google_cloud_token::TokenSourceProvider;
 
-use crate::grpc::apiv1::conn_pool::{ConnectionManager, DOMAIN};
+use crate::grpc::apiv1::conn_pool::ConnectionManager;
 use crate::http::bigquery_client::BigqueryClient;
 use crate::http::bigquery_dataset_client::BigqueryDatasetClient;
 use crate::http::bigquery_job_client::BigqueryJobClient;
@@ -26,8 +26,8 @@ use crate::http::job::query::QueryRequest;
 use crate::http::job::{is_script, is_select_query, JobConfiguration, JobReference, JobStatistics, JobType};
 use crate::http::table::TableReference;
 use crate::query::{QueryOption, QueryResult};
-use crate::storage;
 use crate::{http, query};
+use crate::{storage, storage_batch_write};
 
 const JOB_RETRY_REASONS: [&str; 3] = ["backendError", "rateLimitExceeded", "internalError"];
 
@@ -239,6 +239,10 @@ impl Client {
     /// [BigqueryModelClient](crate::http::bigquery_model_client::BigqueryModelClient)
     pub fn model(&self) -> &BigqueryModelClient {
         &self.model_client
+    }
+
+    pub fn storage_batch_write(&self, table: String) -> storage_batch_write::StorageBatchWriter {
+        storage_batch_write::StorageBatchWriter::new(table, self.streaming_client_conn_pool.clone())
     }
 
     /// Run query job and get result.

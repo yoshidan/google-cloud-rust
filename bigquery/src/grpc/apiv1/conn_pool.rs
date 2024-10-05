@@ -10,6 +10,7 @@ pub const SCOPES: [&str; 3] = [
     "https://www.googleapis.com/auth/cloud-platform",
 ];
 
+#[derive(Debug)]
 pub struct ConnectionManager {
     inner: GRPCConnectionManager,
 }

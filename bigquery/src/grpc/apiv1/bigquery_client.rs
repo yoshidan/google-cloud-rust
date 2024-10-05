@@ -219,14 +219,14 @@ mod tests {
     use crate::grpc::apiv1::conn_pool::{ConnectionManager, AUDIENCE, SCOPES};
     use google_cloud_gax::conn::Environment;
     use google_cloud_gax::grpc::codegen::tokio_stream::StreamExt;
-    use google_cloud_gax::grpc::{IntoStreamingRequest, Status};
+    use google_cloud_gax::grpc::Status;
     use google_cloud_googleapis::cloud::bigquery::storage::v1::append_rows_request::{ProtoData, Rows};
     use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_write_client::BigQueryWriteClient;
-    use google_cloud_googleapis::cloud::bigquery::storage::v1::table_field_schema::Type;
+
     use google_cloud_googleapis::cloud::bigquery::storage::v1::write_stream::Type::Pending;
     use google_cloud_googleapis::cloud::bigquery::storage::v1::{
-        AppendRowsRequest, BatchCommitWriteStreamsRequest, BatchCommitWriteStreamsResponse, CreateWriteStreamRequest,
-        FinalizeWriteStreamRequest, ProtoRows, ProtoSchema, WriteStream,
+        AppendRowsRequest, BatchCommitWriteStreamsRequest, CreateWriteStreamRequest, FinalizeWriteStreamRequest,
+        ProtoRows, ProtoSchema, WriteStream,
     };
     use prost::Message;
     use prost_types::{field_descriptor_proto, DescriptorProto, FieldDescriptorProto};
@@ -277,7 +277,7 @@ mod tests {
 
         // Create Pending Streams
         let mut pending_streams = vec![];
-        for i in 0..5 {
+        for i in 0..4 {
             let pending_stream = client
                 .create_write_stream(create_write_stream_request(&table), None)
                 .await
@@ -361,7 +361,7 @@ mod tests {
         }
 
         // Wait for append rows
-        for mut task in tasks {
+        for task in tasks {
             task.await.unwrap().unwrap();
         }
 
