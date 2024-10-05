@@ -261,6 +261,47 @@ mod tests {
         let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
     }
 
+    fn create_append_rows_request(name: &str, buf: Vec<u8>) -> AppendRowsRequest {
+        AppendRowsRequest {
+            write_stream: name.to_string(),
+            offset: None,
+            trace_id: "".to_string(),
+            missing_value_interpretations: Default::default(),
+            default_missing_value_interpretation: 0,
+            rows: Some(Rows::ProtoRows(ProtoData {
+                writer_schema: Some(ProtoSchema {
+                    proto_descriptor: Some(DescriptorProto {
+                        name: Some("TestData".to_string()),
+                        field: vec![FieldDescriptorProto {
+                            name: Some("col_string".to_string()),
+                            number: Some(1),
+                            label: None,
+                            r#type: Some(field_descriptor_proto::Type::String.into()),
+                            type_name: None,
+                            extendee: None,
+                            default_value: None,
+                            oneof_index: None,
+                            json_name: None,
+                            options: None,
+                            proto3_optional: None,
+                        }],
+                        extension: vec![],
+                        nested_type: vec![],
+                        enum_type: vec![],
+                        extension_range: vec![],
+                        oneof_decl: vec![],
+                        options: None,
+                        reserved_range: vec![],
+                        reserved_name: vec![],
+                    }),
+                }),
+                rows: Some(ProtoRows {
+                    serialized_rows: vec![buf],
+                }),
+            })),
+        }
+    }
+
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_storage_write() {
         let config = google_cloud_auth::project::Config::default()
@@ -307,44 +348,7 @@ mod tests {
                     let mut buf = Vec::new();
                     data.encode(&mut buf).unwrap();
 
-                    let row = AppendRowsRequest {
-                        write_stream: pending_stream.name.to_string(),
-                        offset: None,
-                        trace_id: "".to_string(),
-                        missing_value_interpretations: Default::default(),
-                        default_missing_value_interpretation: 0,
-                        rows: Some(Rows::ProtoRows(ProtoData {
-                            writer_schema: Some(ProtoSchema {
-                                proto_descriptor: Some(DescriptorProto {
-                                    name: Some("TestData".to_string()),
-                                    field: vec![FieldDescriptorProto {
-                                        name: Some("col_string".to_string()),
-                                        number: Some(1),
-                                        label: None,
-                                        r#type: Some(field_descriptor_proto::Type::String.into()),
-                                        type_name: None,
-                                        extendee: None,
-                                        default_value: None,
-                                        oneof_index: None,
-                                        json_name: None,
-                                        options: None,
-                                        proto3_optional: None,
-                                    }],
-                                    extension: vec![],
-                                    nested_type: vec![],
-                                    enum_type: vec![],
-                                    extension_range: vec![],
-                                    oneof_decl: vec![],
-                                    options: None,
-                                    reserved_range: vec![],
-                                    reserved_name: vec![],
-                                }),
-                            }),
-                            rows: Some(ProtoRows {
-                                serialized_rows: vec![buf],
-                            }),
-                        })),
-                    };
+                    let row = create_append_rows_request(&pending_stream.name, buf);
                     rows.push(row);
                 }
 
@@ -396,6 +400,24 @@ mod tests {
             .await
             .unwrap()
             .into_inner();
-        tracing::info!("commit stream errors = {:?}", res.stream_errors.len())
+        tracing::info!("commit stream errors = {:?}", res.stream_errors.len());
+
+        // Write via default stream
+        let data = TestData {
+            col_string: format!("default_stream"),
+        };
+        let mut buf = Vec::new();
+        data.encode(&mut buf).unwrap();
+        let row = create_append_rows_request(&format!("{table}/streams/_default"), buf);
+        let request = Box::pin(async_stream::stream! {
+            for req in [row]{
+                yield req;
+            }
+        });
+        let mut response = client.append_rows(request).await.unwrap().into_inner();
+        while let Some(res) = response.next().await {
+            let res = res.unwrap();
+            tracing::info!("default append row errors = {:?}", res.row_errors.len());
+        }
     }
 }
