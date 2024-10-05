@@ -12,6 +12,7 @@ use google_cloud_googleapis::cloud::bigquery::storage::v1::{
     FlushRowsRequest, FlushRowsResponse, GetWriteStreamRequest, ReadRowsRequest, ReadRowsResponse, ReadSession,
     SplitReadStreamRequest, SplitReadStreamResponse, WriteStream,
 };
+use google_cloud_googleapis::cloud::bigquery::storage::v1::write_stream::Type;
 
 fn default_setting() -> RetrySetting {
     RetrySetting {
@@ -213,9 +214,24 @@ impl StreamingWriteClient {
     }
 }
 
+pub(crate) fn create_write_stream_request(table: &str, write_type: Type) -> CreateWriteStreamRequest {
+    CreateWriteStreamRequest {
+        parent: table.to_string(),
+        write_stream: Some(WriteStream {
+            name: "".to_string(),
+            r#type: write_type as i32,
+            create_time: None,
+            commit_time: None,
+            table_schema: None,
+            write_mode: 0,
+            location: "".to_string(),
+        }),
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::grpc::apiv1::bigquery_client::StreamingWriteClient;
+    use crate::grpc::apiv1::bigquery_client::{create_write_stream_request, StreamingWriteClient};
     use crate::grpc::apiv1::conn_pool::{ConnectionManager, AUDIENCE, SCOPES};
     use google_cloud_gax::conn::Environment;
     use google_cloud_gax::grpc::codegen::tokio_stream::StreamExt;
@@ -245,20 +261,6 @@ mod tests {
         let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
     }
 
-    fn create_write_stream_request(table: &str) -> CreateWriteStreamRequest {
-        CreateWriteStreamRequest {
-            parent: table.to_string(),
-            write_stream: Some(WriteStream {
-                name: "".to_string(),
-                r#type: Pending as i32,
-                create_time: None,
-                commit_time: None,
-                table_schema: None,
-                write_mode: 0,
-                location: "".to_string(),
-            }),
-        }
-    }
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_storage_write() {
         let config = google_cloud_auth::project::Config::default()
@@ -279,7 +281,7 @@ mod tests {
         let mut pending_streams = vec![];
         for i in 0..4 {
             let pending_stream = client
-                .create_write_stream(create_write_stream_request(&table), None)
+                .create_write_stream(create_write_stream_request(&table, Pending), None)
                 .await
                 .unwrap()
                 .into_inner();

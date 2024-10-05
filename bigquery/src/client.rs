@@ -27,7 +27,7 @@ use crate::http::job::{is_script, is_select_query, JobConfiguration, JobReferenc
 use crate::http::table::TableReference;
 use crate::query::{QueryOption, QueryResult};
 use crate::{http, query};
-use crate::{storage, storage_batch_write};
+use crate::storage;
 
 const JOB_RETRY_REASONS: [&str; 3] = ["backendError", "rateLimitExceeded", "internalError"];
 
@@ -98,6 +98,7 @@ use crate::grpc::apiv1::bigquery_client::StreamingReadClient;
 #[cfg(feature = "auth")]
 pub use google_cloud_auth;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_read_client::BigQueryReadClient;
+use crate::storage_write::pending;
 
 #[cfg(feature = "auth")]
 impl ClientConfig {
@@ -241,8 +242,11 @@ impl Client {
         &self.model_client
     }
 
-    pub fn storage_batch_write(&self, table: String) -> storage_batch_write::StorageBatchWriter {
-        storage_batch_write::StorageBatchWriter::new(table, self.streaming_client_conn_pool.clone())
+    /// Creates a new pending batch writer for the specified table.
+    /// Returns a `pending::Writer` instance that can be used to write batches of data to the specified table.
+    /// https://cloud.google.com/bigquery/docs/write-api#pending_type
+    pub fn pending_batch_writer(&self, table: String) -> pending::Writer {
+        pending::Writer::new(table, self.streaming_client_conn_pool.clone())
     }
 
     /// Run query job and get result.
