@@ -5,6 +5,8 @@ use std::collections::HashMap;
 
 pub mod default;
 pub mod pending;
+pub mod committed;
+pub mod buffered;
 
 pub struct AppendRowsRequestBuilder {
     offset: Option<i64>,

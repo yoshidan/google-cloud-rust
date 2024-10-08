@@ -95,7 +95,7 @@ use crate::http::job::get::GetJobRequest;
 use crate::http::job::list::ListJobsRequest;
 
 use crate::grpc::apiv1::bigquery_client::StreamingReadClient;
-use crate::storage_write::{default, pending};
+use crate::storage_write::{buffered, committed, default, pending};
 #[cfg(feature = "auth")]
 pub use google_cloud_auth;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_read_client::BigQueryReadClient;
@@ -242,18 +242,28 @@ impl Client {
         &self.model_client
     }
 
-    /// Creates a new pending batch writer for the specified table.
-    /// Returns a `pending::Writer` instance that can be used to write batches of data to the specified table.
+    /// Creates a new pending type storage writer for the specified table.
     /// https://cloud.google.com/bigquery/docs/write-api#pending_type
-    pub fn pending_batch_writer(&self, table: String) -> pending::Writer {
+    pub fn pending_storage_writer(&self, table: String) -> pending::Writer {
         pending::Writer::new(table, self.streaming_client_conn_pool.clone())
     }
 
-    /// Creates a new default batch writer.
-    /// Returns a `default::Writer` instance that can be used to write data to the specified table.
+    /// Creates a new default type storage writer.
     /// https://cloud.google.com/bigquery/docs/write-api#default_stream
-    pub fn default_batch_writer(&self) -> default::Writer {
+    pub fn default_storage_writer(&self) -> default::Writer {
         default::Writer::new(self.streaming_client_conn_pool.clone())
+    }
+
+    /// Creates a new committed type storage writer.
+    /// https://cloud.google.com/bigquery/docs/write-api#committed_type
+    pub fn committed_storage_writer(&self, table: String) -> committed::Writer {
+        committed::Writer::new(table, self.streaming_client_conn_pool.clone())
+    }
+
+    /// Creates a new buffered type storage writer.
+    /// https://cloud.google.com/bigquery/docs/write-api#buffered_type
+    pub fn buffered_storage_writer(&self, table: String) -> buffered::Writer {
+        buffered::Writer::new(table, self.streaming_client_conn_pool.clone())
     }
 
     /// Run query job and get result.
