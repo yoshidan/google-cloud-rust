@@ -7,6 +7,7 @@ pub mod default;
 pub mod pending;
 pub mod committed;
 pub mod buffered;
+mod flow_controller;
 
 pub struct AppendRowsRequestBuilder {
     offset: Option<i64>,
