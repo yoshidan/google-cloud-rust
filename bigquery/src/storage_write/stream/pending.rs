@@ -5,9 +5,9 @@ use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_write_clien
 use google_cloud_googleapis::cloud::bigquery::storage::v1::write_stream::Type::Pending;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::{
     AppendRowsRequest, AppendRowsResponse, BatchCommitWriteStreamsRequest, BatchCommitWriteStreamsResponse,
-    CreateWriteStreamRequest, FinalizeWriteStreamRequest, WriteStream,
 };
 use std::sync::Arc;
+use crate::storage_write::stream::{AsStream, DisposableStream, ManagedStream, Stream};
 
 pub struct Writer {
     table: String,
@@ -33,7 +33,7 @@ impl Writer {
 
         self.streams.push(res.name.clone());
 
-        Ok(PendingStream::new(res, client))
+        Ok(PendingStream::new(Stream::new(res, client)))
     }
 
     pub async fn commit(self) -> Result<BatchCommitWriteStreamsResponse, Status> {
@@ -51,39 +51,20 @@ impl Writer {
         Ok(result)
     }
 }
-
 pub struct PendingStream {
-    inner: WriteStream,
-    client: StreamingWriteClient,
+    inner: Stream
 }
 
 impl PendingStream {
-    pub(crate) fn new(inner: WriteStream, client: StreamingWriteClient) -> Self {
-        Self { inner, client }
-    }
-
-    //TODO serialize values and get schema
-    pub async fn append_rows(&mut self, rows: Vec<AppendRowsRequest>) -> Result<Streaming<AppendRowsResponse>, Status> {
-        let request = Box::pin(async_stream::stream! {
-            for row in rows {
-                yield row;
-            }
-        });
-        let response = self.client.append_rows(request).await?.into_inner();
-        Ok(response)
-    }
-
-    pub async fn finalize(mut self) -> Result<i64, Status> {
-        let res = self
-            .client
-            .finalize_write_stream(
-                FinalizeWriteStreamRequest {
-                    name: self.inner.name.to_string(),
-                },
-                None,
-            )
-            .await?
-            .into_inner();
-        Ok(res.row_count)
+    pub(crate) fn new(inner: Stream) -> Self {
+        Self { inner }
     }
 }
+
+impl AsStream for PendingStream {
+    fn as_mut(&mut self) -> &mut Stream {
+        &mut self.inner
+    }
+}
+impl ManagedStream for PendingStream {}
+impl DisposableStream for PendingStream {}

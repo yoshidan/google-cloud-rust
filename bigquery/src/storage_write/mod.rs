@@ -2,12 +2,15 @@ use google_cloud_googleapis::cloud::bigquery::storage::v1::append_rows_request::
 use google_cloud_googleapis::cloud::bigquery::storage::v1::{AppendRowsRequest, ProtoRows, ProtoSchema};
 use prost_types::DescriptorProto;
 use std::collections::HashMap;
+use google_cloud_gax::grpc::codegen::tokio_stream::Stream;
 
-pub mod default;
-pub mod pending;
-pub mod committed;
-pub mod buffered;
-mod flow_controller;
+mod pool;
+
+pub mod connection;
+
+mod flow;
+
+pub mod stream;
 
 pub struct AppendRowsRequestBuilder {
     offset: Option<i64>,
@@ -65,6 +68,14 @@ impl AppendRowsRequestBuilder {
                     serialized_rows: self.data,
                 }),
             })),
+        }
+    }
+}
+
+pub fn into_streaming_request(rows: Vec<AppendRowsRequest>) -> impl Stream<Item = AppendRowsRequest>{
+    async_stream::stream! {
+        for row in rows {
+            yield row;
         }
     }
 }

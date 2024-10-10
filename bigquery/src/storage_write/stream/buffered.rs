@@ -5,6 +5,7 @@ use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_write_clien
 use google_cloud_googleapis::cloud::bigquery::storage::v1::write_stream::Type::{Buffered, Committed};
 use google_cloud_googleapis::cloud::bigquery::storage::v1::{AppendRowsRequest, AppendRowsResponse, BatchCommitWriteStreamsRequest, BatchCommitWriteStreamsResponse, CreateWriteStreamRequest, FinalizeWriteStreamRequest, FlushRowsRequest, WriteStream};
 use std::sync::Arc;
+use crate::storage_write::stream::{AsStream, DisposableStream, ManagedStream, Stream};
 
 pub struct Writer {
     table: String,
@@ -21,7 +22,7 @@ impl Writer {
         }
     }
 
-    pub async fn create_write_stream(&mut self) -> Result<PendingStream, Status> {
+    pub async fn create_write_stream(&mut self) -> Result<BufferedStream, Status> {
         let mut client = StreamingWriteClient::new(BigQueryWriteClient::new(self.conn.conn()));
         let res = client
             .create_write_stream(create_write_stream_request(&self.table, Buffered), None)
@@ -30,38 +31,37 @@ impl Writer {
 
         self.streams.push(res.name.clone());
 
-        Ok(PendingStream::new(res, client))
+        Ok(BufferedStream::new(Stream::new(res, client)))
     }
 
 }
 
-pub struct PendingStream {
-    inner: WriteStream,
-    client: StreamingWriteClient,
+pub struct BufferedStream {
+    inner: Stream
 }
 
-impl PendingStream {
-    pub(crate) fn new(inner: WriteStream, client: StreamingWriteClient) -> Self {
-        Self { inner, client }
+impl BufferedStream {
+    pub(crate) fn new(inner: Stream) -> Self {
+        Self { inner }
     }
+}
 
-    //TODO serialize values and get schema
-    pub async fn append_rows(&mut self, rows: Vec<AppendRowsRequest>) -> Result<Streaming<AppendRowsResponse>, Status> {
-        let request = Box::pin(async_stream::stream! {
-            for row in rows {
-                yield row;
-            }
-        });
-        let response = self.client.append_rows(request).await?.into_inner();
-        Ok(response)
+impl AsStream for BufferedStream {
+    fn as_mut(&mut self) -> &mut Stream {
+        &mut self.inner
     }
+}
+impl ManagedStream for BufferedStream {}
+impl DisposableStream for BufferedStream {}
+
+impl BufferedStream {
 
     pub async fn flush_rows(mut self) -> Result<i64, Status> {
-        let res = self
-            .client
+        let stream = self.as_mut();
+        let res = stream.client
             .flush_rows(
                 FlushRowsRequest{
-                    write_stream: self.inner.name.to_string(),
+                    write_stream: stream.inner.name.to_string(),
                     offset: None,
                 },
                 None,
@@ -71,17 +71,4 @@ impl PendingStream {
         Ok(res.offset)
     }
 
-    pub async fn finalize(mut self) -> Result<i64, Status> {
-        let res = self
-            .client
-            .finalize_write_stream(
-                FinalizeWriteStreamRequest {
-                    name: self.inner.name.to_string(),
-                },
-                None,
-            )
-            .await?
-            .into_inner();
-        Ok(res.row_count)
-    }
 }

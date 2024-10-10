@@ -8,7 +8,7 @@ use std::sync::Arc;
 use google_cloud_gax::conn::{ConnectionOptions, Environment};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::{
-    read_session, CreateReadSessionRequest, DataFormat, ReadSession,
+    CreateReadSessionRequest, DataFormat, read_session, ReadSession,
 };
 use google_cloud_token::TokenSourceProvider;
 
@@ -95,10 +95,10 @@ use crate::http::job::get::GetJobRequest;
 use crate::http::job::list::ListJobsRequest;
 
 use crate::grpc::apiv1::bigquery_client::StreamingReadClient;
-use crate::storage_write::{buffered, committed, default, pending};
 #[cfg(feature = "auth")]
 pub use google_cloud_auth;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_read_client::BigQueryReadClient;
+use crate::storage_write::stream::{buffered, committed, default, pending};
 
 #[cfg(feature = "auth")]
 impl ClientConfig {
