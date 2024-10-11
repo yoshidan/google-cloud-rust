@@ -2,35 +2,28 @@ use crate::grpc::apiv1::bigquery_client::{create_write_stream_request, Streaming
 use crate::grpc::apiv1::conn_pool::ConnectionManager;
 use google_cloud_gax::grpc::{IntoStreamingRequest, Status, Streaming};
 use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_write_client::BigQueryWriteClient;
-use google_cloud_googleapis::cloud::bigquery::storage::v1::write_stream::Type::Committed;
+use google_cloud_googleapis::cloud::bigquery::storage::v1::write_stream::Type::{Buffered, Committed};
 use std::sync::Arc;
-use crate::storage_write::stream::{AsStream, DisposableStream, ManagedStream, Stream};
+use crate::storage_write::pool::Pool;
+use crate::storage_write::stream::{create_write_stream, AsStream, DisposableStream, ManagedStream, Stream};
+use crate::storage_write::stream::buffered::BufferedStream;
 
 pub struct Writer {
-    table: String,
-    conn: Arc<ConnectionManager>,
-    streams: Vec<String>,
+    cons: Arc<Pool>,
+    p_cons: Arc<ConnectionManager>,
 }
 
 impl Writer {
-    pub(crate) fn new(table: String, conn: Arc<ConnectionManager>) -> Self {
+    pub(crate) fn new(cons: Arc<Pool>, p_cons: Arc<ConnectionManager>) -> Self {
         Self {
-            table,
-            conn,
-            streams: Vec::new(),
+            cons,
+            p_cons,
         }
     }
 
-    pub async fn create_write_stream(&mut self) -> Result<CommittedStream, Status> {
-        let mut client = StreamingWriteClient::new(BigQueryWriteClient::new(self.conn.conn()));
-        let res = client
-            .create_write_stream(create_write_stream_request(&self.table, Committed), None)
-            .await?
-            .into_inner();
-
-        self.streams.push(res.name.clone());
-
-        Ok(CommittedStream::new(Stream::new(res, client)))
+    pub async fn create_write_stream(&mut self, table: &str) -> Result<CommittedStream, Status> {
+        let stream = self.cons.create_stream(table, Committed).await?;
+        Ok(CommittedStream::new(Stream::new(stream, self.cons.clone())))
     }
 
 }

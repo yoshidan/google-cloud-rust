@@ -2,43 +2,39 @@ use crate::grpc::apiv1::bigquery_client::{create_write_stream_request, Streaming
 use crate::grpc::apiv1::conn_pool::ConnectionManager;
 use google_cloud_gax::grpc::{IntoStreamingRequest, Status, Streaming};
 use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_write_client::BigQueryWriteClient;
-use google_cloud_googleapis::cloud::bigquery::storage::v1::write_stream::Type::Pending;
+use google_cloud_googleapis::cloud::bigquery::storage::v1::write_stream::Type::{Committed, Pending};
 use google_cloud_googleapis::cloud::bigquery::storage::v1::{
     AppendRowsRequest, AppendRowsResponse, BatchCommitWriteStreamsRequest, BatchCommitWriteStreamsResponse,
 };
 use std::sync::Arc;
+use crate::storage_write::pool::Pool;
 use crate::storage_write::stream::{AsStream, DisposableStream, ManagedStream, Stream};
 
 pub struct Writer {
-    table: String,
-    conn: Arc<ConnectionManager>,
+    cons: Arc<Pool>,
+    p_cons: Arc<ConnectionManager>,
     streams: Vec<String>,
+    table: String
 }
 
 impl Writer {
-    pub(crate) fn new(table: String, conn: Arc<ConnectionManager>) -> Self {
+    pub(crate) fn new(cons: Arc<Pool>, p_cons: Arc<ConnectionManager>, table: String) -> Self {
         Self {
+            cons,
+            p_cons,
             table,
-            conn,
-            streams: Vec::new(),
+            streams: Vec::new()
         }
     }
 
     pub async fn create_write_stream(&mut self) -> Result<PendingStream, Status> {
-        let mut client = StreamingWriteClient::new(BigQueryWriteClient::new(self.conn.conn()));
-        let res = client
-            .create_write_stream(create_write_stream_request(&self.table, Pending), None)
-            .await?
-            .into_inner();
-
-        self.streams.push(res.name.clone());
-
-        Ok(PendingStream::new(Stream::new(res, client)))
+        let stream = self.cons.create_stream(&self.table, Pending).await?;
+        self.streams.push(stream.name.clone());
+        Ok(PendingStream::new(Stream::new(stream, self.cons.clone())))
     }
 
     pub async fn commit(self) -> Result<BatchCommitWriteStreamsResponse, Status> {
-        let mut client = StreamingWriteClient::new(BigQueryWriteClient::new(self.conn.conn()));
-        let result = client
+        let result = self.cons.client()
             .batch_commit_write_streams(
                 BatchCommitWriteStreamsRequest {
                     parent: self.table.to_string(),

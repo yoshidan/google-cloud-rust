@@ -1,37 +1,28 @@
 use crate::grpc::apiv1::bigquery_client::{create_write_stream_request, StreamingWriteClient};
 use crate::grpc::apiv1::conn_pool::ConnectionManager;
 use google_cloud_gax::grpc::{IntoStreamingRequest, Status, Streaming};
-use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_write_client::BigQueryWriteClient;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::write_stream::Type::{Buffered, Committed};
 use google_cloud_googleapis::cloud::bigquery::storage::v1::{AppendRowsRequest, AppendRowsResponse, BatchCommitWriteStreamsRequest, BatchCommitWriteStreamsResponse, CreateWriteStreamRequest, FinalizeWriteStreamRequest, FlushRowsRequest, WriteStream};
 use std::sync::Arc;
+use crate::storage_write::pool::{Pool};
 use crate::storage_write::stream::{AsStream, DisposableStream, ManagedStream, Stream};
 
 pub struct Writer {
-    table: String,
-    conn: Arc<ConnectionManager>,
-    streams: Vec<String>,
+    cons: Arc<Pool>,
+    p_cons: Arc<ConnectionManager>,
 }
 
 impl Writer {
-    pub(crate) fn new(table: String, conn: Arc<ConnectionManager>) -> Self {
+    pub(crate) fn new(cons: Arc<Pool>, p_cons: Arc<ConnectionManager>) -> Self {
         Self {
-            table,
-            conn,
-            streams: Vec::new(),
+            cons,
+            p_cons,
         }
     }
 
-    pub async fn create_write_stream(&mut self) -> Result<BufferedStream, Status> {
-        let mut client = StreamingWriteClient::new(BigQueryWriteClient::new(self.conn.conn()));
-        let res = client
-            .create_write_stream(create_write_stream_request(&self.table, Buffered), None)
-            .await?
-            .into_inner();
-
-        self.streams.push(res.name.clone());
-
-        Ok(BufferedStream::new(Stream::new(res, client)))
+    pub async fn create_write_stream(&mut self, table: &str) -> Result<BufferedStream, Status> {
+        let stream = self.cons.create_stream(table, Buffered).await?;
+        Ok(BufferedStream::new(Stream::new(stream, self.cons.clone())))
     }
 
 }
@@ -58,7 +49,7 @@ impl BufferedStream {
 
     pub async fn flush_rows(mut self) -> Result<i64, Status> {
         let stream = self.as_mut();
-        let res = stream.client
+        let res = stream.cons.client()
             .flush_rows(
                 FlushRowsRequest{
                     write_stream: stream.inner.name.to_string(),
