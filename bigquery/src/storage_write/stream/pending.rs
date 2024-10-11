@@ -11,30 +11,31 @@ use crate::storage_write::pool::Pool;
 use crate::storage_write::stream::{AsStream, DisposableStream, ManagedStream, Stream};
 
 pub struct Writer {
-    cons: Arc<Pool>,
-    p_cons: Arc<ConnectionManager>,
-    streams: Vec<String>,
-    table: String
+    max_insert_count: usize,
+    cm: Arc<ConnectionManager>,
+    table: String,
+    streams: Vec<String>
 }
 
 impl Writer {
-    pub(crate) fn new(cons: Arc<Pool>, p_cons: Arc<ConnectionManager>, table: String) -> Self {
+    pub(crate) fn new(max_insert_count: usize, cm: Arc<ConnectionManager>, table: String) -> Self {
         Self {
-            cons,
-            p_cons,
+            max_insert_count,
+            cm,
             table,
             streams: Vec::new()
         }
     }
 
     pub async fn create_write_stream(&mut self) -> Result<PendingStream, Status> {
-        let stream = self.cons.create_stream(&self.table, Pending).await?;
-        self.streams.push(stream.name.clone());
-        Ok(PendingStream::new(Stream::new(stream, self.cons.clone())))
+        let req = create_write_stream_request(&self.table, Pending);
+        let stream = self.cm.writer().create_write_stream(req, None).await?.into_inner();
+        self.streams.push(stream.name.to_string());
+        Ok(PendingStream::new(Stream::new(stream, self.cm.clone(), self.max_insert_count)))
     }
 
     pub async fn commit(self) -> Result<BatchCommitWriteStreamsResponse, Status> {
-        let result = self.cons.client()
+        let result = self.cm.writer()
             .batch_commit_write_streams(
                 BatchCommitWriteStreamsRequest {
                     parent: self.table.to_string(),

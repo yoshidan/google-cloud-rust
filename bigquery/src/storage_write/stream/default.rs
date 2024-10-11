@@ -1,30 +1,28 @@
-use crate::grpc::apiv1::bigquery_client::StreamingWriteClient;
 use crate::grpc::apiv1::conn_pool::ConnectionManager;
-use google_cloud_gax::grpc::{Status, Streaming};
-use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_write_client::BigQueryWriteClient;
-use google_cloud_googleapis::cloud::bigquery::storage::v1::{AppendRowsRequest, AppendRowsResponse};
+use google_cloud_gax::grpc::{Status, };
 use std::sync::Arc;
-use google_cloud_googleapis::cloud::bigquery::storage::v1::write_stream::Type::Buffered;
-use crate::storage_write::pool::Pool;
-use crate::storage_write::stream::{AsStream, DisposableStream, ManagedStream, Stream};
-use crate::storage_write::stream::buffered::BufferedStream;
+use google_cloud_googleapis::cloud::bigquery::storage::v1::GetWriteStreamRequest;
+use crate::storage_write::stream::{AsStream, ManagedStream, Stream};
 
 pub struct Writer {
-    cons: Arc<Pool>,
-    p_cons: Arc<ConnectionManager>,
+    max_insert_count: usize,
+    cm: Arc<ConnectionManager>,
 }
 
 impl Writer {
-    pub(crate) fn new(cons: Arc<Pool>, p_cons: Arc<ConnectionManager>) -> Self {
+    pub(crate) fn new(max_insert_count: usize, cm: Arc<ConnectionManager>) -> Self {
         Self {
-            cons,
-            p_cons,
+            max_insert_count,
+            cm,
         }
     }
 
     pub async fn create_write_stream(&mut self, table: &str) -> Result<DefaultStream, Status> {
-        let stream = self.cons.get_stream(&format!("{table}/streams/_default")).await?;
-        Ok(DefaultStream::new(Stream::new(stream, self.cons.clone())))
+        let stream = self.cm.writer().get_write_stream(GetWriteStreamRequest {
+            name: format!("{table}/streams/_default"),
+            ..Default::default()
+        }, None).await?.into_inner();
+        Ok(DefaultStream::new(Stream::new(stream, self.cm.clone(), self.max_insert_count)))
     }
 }
 
