@@ -12,7 +12,7 @@ pub mod buffered;
 pub(crate) struct Stream {
     inner: WriteStream,
     cons: Arc<ConnectionManager>,
-    fc: FlowController
+    fc: Option<FlowController>
 }
 
 impl Stream {
@@ -20,7 +20,11 @@ impl Stream {
         Self {
             inner,
             cons ,
-            fc: FlowController::new(max_insert_count)
+            fc: if max_insert_count > 0 {
+                Some(FlowController::new(max_insert_count))
+            }else {
+                None
+            }
         }
     }
 }
@@ -32,11 +36,19 @@ pub(crate) trait AsStream : Sized {
 pub trait ManagedStream : AsStream {
     async fn append_rows(&mut self, req: impl IntoStreamingRequest<Message = AppendRowsRequest>) -> Result<Streaming<AppendRowsResponse>, Status> {
         let stream = self.as_mut();
-        let permit = stream.fc.acquire().await;
-        let mut client = stream.cons.writer();
-        let result = client.append_rows(req).await?.into_inner();
-        drop(permit);
-        Ok(result)
+        match &stream.fc {
+            None => {
+                let mut client = stream.cons.writer();
+                Ok(client.append_rows(req).await?.into_inner())
+            },
+            Some(fc) => {
+                let permit = fc.acquire().await;
+                let mut client = stream.cons.writer();
+                let result = client.append_rows(req).await?.into_inner();
+                drop(permit);
+                Ok(result)
+            }
+        }
     }
 
 }

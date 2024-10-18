@@ -38,7 +38,24 @@ pub struct ClientConfig {
     token_source_provider: Box<dyn TokenSourceProvider>,
     environment: Environment,
     streaming_read_config: ChannelConfig,
+    streaming_write_config: StreamingWriteConfig,
     debug: bool,
+}
+
+#[derive(Clone, Debug)]
+pub struct StreamingWriteConfig {
+    pub channel_config: ChannelConfig,
+    pub max_insert_count: usize
+}
+
+impl Default for StreamingWriteConfig {
+    fn default() -> Self {
+        Self {
+            channel_config: ChannelConfig::default(),
+            max_insert_count: 1000
+        }
+    }
+
 }
 
 #[derive(Clone, Debug)]
@@ -47,6 +64,15 @@ pub struct ChannelConfig {
     pub num_channels: usize,
     pub connect_timeout: Option<Duration>,
     pub timeout: Option<Duration>,
+}
+
+impl Into<ConnectionManager> for ChannelConfig {
+    fn into(self) -> ConnectionManager {
+        ConnectionManager::new(self.num_channels, &Environment::GoogleCloud, &ConnectionOptions {
+            timeout: self.timeout,
+            connect_timeout: self.connect_timeout,
+        })
+    }
 }
 
 impl Default for ChannelConfig {
@@ -70,6 +96,7 @@ impl ClientConfig {
             token_source_provider: http_token_source_provider,
             environment: Environment::GoogleCloud(grpc_token_source_provider),
             streaming_read_config: ChannelConfig::default(),
+            streaming_write_config: StreamingWriteConfig::default(),
             debug: false,
         }
     }
@@ -79,6 +106,10 @@ impl ClientConfig {
     }
     pub fn with_streaming_read_config(mut self, value: ChannelConfig) -> Self {
         self.streaming_read_config = value;
+        self
+    }
+    pub fn with_streaming_write_config(mut self, value: StreamingWriteConfig) -> Self {
+        self.streaming_write_config = value;
         self
     }
     pub fn with_http_client(mut self, value: reqwest_middleware::ClientWithMiddleware) -> Self {
@@ -166,7 +197,9 @@ pub struct Client {
     routine_client: BigqueryRoutineClient,
     row_access_policy_client: BigqueryRowAccessPolicyClient,
     model_client: BigqueryModelClient,
-    streaming_client_conn_pool: Arc<ConnectionManager>,
+    streaming_read_conn_pool: Arc<ConnectionManager>,
+    streaming_write_conn_pool: Arc<ConnectionManager>,
+    stereaming_write_max_insert_count: usize,
 }
 
 impl Client {
@@ -180,14 +213,6 @@ impl Client {
             config.debug,
         ));
 
-        let read_config = config.streaming_read_config;
-        let conn_options = ConnectionOptions {
-            timeout: read_config.timeout,
-            connect_timeout: read_config.connect_timeout,
-        };
-
-        let streaming_client_conn_pool =
-            ConnectionManager::new(read_config.num_channels, &config.environment, &conn_options).await?;
         Ok(Self {
             dataset_client: BigqueryDatasetClient::new(client.clone()),
             table_client: BigqueryTableClient::new(client.clone()),
@@ -196,7 +221,9 @@ impl Client {
             routine_client: BigqueryRoutineClient::new(client.clone()),
             row_access_policy_client: BigqueryRowAccessPolicyClient::new(client.clone()),
             model_client: BigqueryModelClient::new(client.clone()),
-            streaming_client_conn_pool: Arc::new(streaming_client_conn_pool),
+            streaming_read_conn_pool: Arc::new(config.streaming_read_config.into()),
+            streaming_write_conn_pool: Arc::new(config.streaming_write_config.channel_config.into()),
+            stereaming_write_max_insert_count: config.streaming_write_config.max_insert_count
         })
     }
 
@@ -245,25 +272,25 @@ impl Client {
     /// Creates a new pending type storage writer for the specified table.
     /// https://cloud.google.com/bigquery/docs/write-api#pending_type
     pub fn pending_storage_writer(&self, table: String) -> pending::Writer {
-        pending::Writer::new(table, self.streaming_client_conn_pool.clone())
+        pending::Writer::new(1, self.streaming_write_conn_pool.clone(), table)
     }
 
     /// Creates a new default type storage writer.
     /// https://cloud.google.com/bigquery/docs/write-api#default_stream
     pub fn default_storage_writer(&self) -> default::Writer {
-        default::Writer::new(self.streaming_client_conn_pool.clone())
+        default::Writer::new(self.stereaming_write_max_insert_count, self.streaming_write_conn_pool.clone())
     }
 
     /// Creates a new committed type storage writer.
     /// https://cloud.google.com/bigquery/docs/write-api#committed_type
-    pub fn committed_storage_writer(&self, table: String) -> committed::Writer {
-        committed::Writer::new(table, self.streaming_client_conn_pool.clone())
+    pub fn committed_storage_writer(&self) -> committed::Writer {
+        committed::Writer::new(self.stereaming_write_max_insert_count, self.streaming_write_conn_pool.clone())
     }
 
     /// Creates a new buffered type storage writer.
     /// https://cloud.google.com/bigquery/docs/write-api#buffered_type
-    pub fn buffered_storage_writer(&self, table: String) -> buffered::Writer {
-        buffered::Writer::new(table, self.streaming_client_conn_pool.clone())
+    pub fn buffered_storage_writer(&self) -> buffered::Writer {
+        buffered::Writer::new(self.stereaming_write_max_insert_count, self.streaming_write_conn_pool.clone())
     }
 
     /// Run query job and get result.
@@ -500,7 +527,7 @@ impl Client {
     {
         let option = option.unwrap_or_default();
 
-        let mut client = StreamingReadClient::new(BigQueryReadClient::new(self.streaming_client_conn_pool.conn()));
+        let mut client = StreamingReadClient::new(BigQueryReadClient::new(self.streaming_read_conn_pool.conn()));
         let read_session = client
             .create_read_session(
                 CreateReadSessionRequest {

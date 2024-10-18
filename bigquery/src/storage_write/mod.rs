@@ -4,12 +4,7 @@ use prost_types::DescriptorProto;
 use std::collections::HashMap;
 use google_cloud_gax::grpc::codegen::tokio_stream::Stream;
 
-mod pool;
-
-pub mod connection;
-
 mod flow;
-
 pub mod stream;
 
 pub struct AppendRowsRequestBuilder {
