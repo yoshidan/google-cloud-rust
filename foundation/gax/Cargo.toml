@@ -14,7 +14,7 @@ tracing = "0.1"
 tokio = { version = "1.32", features = ["macros"] }
 tonic = { version = "0.12", default-features = false, features = ["prost", "tls-webpki-roots"] }
 thiserror = "1.0"
-tower = { version = "0.4", features = ["filter"] }
+tower = { version = "0.4", features = ["filter", "util"] }
 http = "1.1"
 google-cloud-token = { version = "0.1.2", path = "../token" }
 tokio-retry2 = "0.5.3"
