@@ -304,7 +304,7 @@ impl Client {
             )
         } else {
             (
-                self.wait_for_query(&result.job_reference, &option.retry, &request.timeout_ms)
+                self.wait_for_query(&result.job_reference, option.retry, &request.timeout_ms)
                     .await?,
                 None,
                 vec![],
@@ -410,7 +410,7 @@ impl Client {
     async fn wait_for_query(
         &self,
         job: &JobReference,
-        builder: &ExponentialBuilder,
+        builder: ExponentialBuilder,
         timeout_ms: &Option<i64>,
     ) -> Result<i64, query::run::Error> {
         // Use get_query_results only to wait for completion, not to read results.
