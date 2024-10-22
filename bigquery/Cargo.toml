@@ -22,7 +22,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version="1.32", features=["macros"] }
 time = { version = "0.3", features = ["std", "macros", "formatting", "parsing", "serde"] }
-arrow = { version="50.0", default-features = false, features = ["ipc"] }
+arrow = { version = "53.1", default-features = false, features = ["ipc"] }
 base64 = "0.21"
 bigdecimal = { version="0.4", features=["serde"] }
 num-bigint = "0.4"
