@@ -42,6 +42,9 @@ impl AsStream for DefaultStream {
     fn as_mut(&mut self) -> &mut Stream {
         &mut self.inner
     }
+    fn as_ref(&self) -> &Stream {
+        &self.inner
+    }
 }
 impl ManagedStream for DefaultStream {}
 

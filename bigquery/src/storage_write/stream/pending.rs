@@ -61,6 +61,10 @@ impl AsStream for PendingStream {
     fn as_mut(&mut self) -> &mut Stream {
         &mut self.inner
     }
+
+    fn as_ref(&self) -> &Stream {
+        &self.inner
+    }
 }
 impl ManagedStream for PendingStream {}
 impl DisposableStream for PendingStream {}

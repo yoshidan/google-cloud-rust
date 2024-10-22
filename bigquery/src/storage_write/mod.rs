@@ -67,6 +67,15 @@ impl AppendRowsRequestBuilder {
     }
 }
 
+pub fn build_streaming_request(name: &str, rows: Vec<AppendRowsRequestBuilder>) -> impl Stream<Item = AppendRowsRequest>{
+    let name = name.to_string();
+    async_stream::stream! {
+        for row in rows {
+            yield row.build(&name);
+        }
+    }
+}
+
 pub fn into_streaming_request(rows: Vec<AppendRowsRequest>) -> impl Stream<Item = AppendRowsRequest>{
     async_stream::stream! {
         for row in rows {

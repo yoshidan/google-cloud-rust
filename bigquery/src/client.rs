@@ -44,8 +44,19 @@ pub struct ClientConfig {
 
 #[derive(Clone, Debug)]
 pub struct StreamingWriteConfig {
-    pub channel_config: ChannelConfig,
-    pub max_insert_count: usize
+    channel_config: ChannelConfig,
+    max_insert_count: usize
+}
+
+impl StreamingWriteConfig {
+    pub fn with_channel_config(mut self, value: ChannelConfig) -> Self {
+        self.channel_config = value;
+        self
+    }
+    pub fn with_max_insert_count(mut self, value: usize) -> Self {
+        self.max_insert_count = value;
+        self
+    }
 }
 
 impl Default for StreamingWriteConfig {
@@ -61,17 +72,30 @@ impl Default for StreamingWriteConfig {
 #[derive(Clone, Debug)]
 pub struct ChannelConfig {
     /// num_channels is the number of gRPC channels.
-    pub num_channels: usize,
-    pub connect_timeout: Option<Duration>,
-    pub timeout: Option<Duration>,
+    num_channels: usize,
+    connect_timeout: Option<Duration>,
+    timeout: Option<Duration>,
 }
 
-impl Into<ConnectionManager> for ChannelConfig {
-    fn into(self) -> ConnectionManager {
-        ConnectionManager::new(self.num_channels, &Environment::GoogleCloud, &ConnectionOptions {
+impl ChannelConfig {
+    pub fn with_num_channels(mut self, value: usize) -> Self {
+        self.num_channels = value;
+        self
+    }
+    pub fn with_connect_timeout(mut self, value: Duration) -> Self {
+        self.connect_timeout = Some(value);
+        self
+    }
+    pub fn with_timeout(mut self, value: Duration) -> Self {
+        self.timeout = Some(value);
+        self
+    }
+
+    async fn into_connection_manager(self, environment: &Environment) -> Result<ConnectionManager, google_cloud_gax::conn::Error> {
+        ConnectionManager::new(self.num_channels, environment, &ConnectionOptions {
             timeout: self.timeout,
             connect_timeout: self.connect_timeout,
-        })
+        }).await
     }
 }
 
@@ -221,8 +245,8 @@ impl Client {
             routine_client: BigqueryRoutineClient::new(client.clone()),
             row_access_policy_client: BigqueryRowAccessPolicyClient::new(client.clone()),
             model_client: BigqueryModelClient::new(client.clone()),
-            streaming_read_conn_pool: Arc::new(config.streaming_read_config.into()),
-            streaming_write_conn_pool: Arc::new(config.streaming_write_config.channel_config.into()),
+            streaming_read_conn_pool: Arc::new(config.streaming_read_config.into_connection_manager(&config.environment).await?),
+            streaming_write_conn_pool: Arc::new(config.streaming_write_config.channel_config.into_connection_manager(&config.environment).await?),
             stereaming_write_max_insert_count: config.streaming_write_config.max_insert_count
         })
     }

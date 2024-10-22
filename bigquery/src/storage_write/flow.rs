@@ -1,5 +1,6 @@
 use tokio::sync::{Semaphore, SemaphorePermit};
 
+#[derive(Debug)]
 pub struct FlowController {
     sem_insert_count: Semaphore
     //TODO support sem_insert_bytes
