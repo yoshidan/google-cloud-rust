@@ -117,13 +117,12 @@ mod tests {
                 let mut rows = vec![];
                 for j in 0..5 {
                     let data = TestData {
-                        col_string: format!("stream_{i}_{j}"),
+                        col_string: format!("buffered_{i}_{j}"),
                     };
                     let mut buf = Vec::new();
                     data.encode(&mut buf).unwrap();
-                    rows.push(create_append_rows_request(vec![buf]));
+                    rows.push(create_append_rows_request(vec![buf.clone(), buf]));
                 }
-                let size = rows.len() as i64;
                 let request = build_streaming_request(stream.name(), rows);
                 let mut result = stream.append_rows(request).await.unwrap();
                 while let Some(res) = result.next().await {
