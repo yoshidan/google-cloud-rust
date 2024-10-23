@@ -61,8 +61,8 @@ pub trait ManagedStream : AsStream {
 }
 
 pub trait DisposableStream : ManagedStream {
-    async fn finalize(mut self) -> Result<i64, Status> {
-        let stream = self.as_mut();
+    async fn finalize(&self) -> Result<i64, Status> {
+        let stream = self.as_ref();
         let res = stream
             .cons.writer()
             .finalize_write_stream(
@@ -80,12 +80,6 @@ pub trait DisposableStream : ManagedStream {
 
 #[cfg(test)]
 mod tests {
-    use google_cloud_googleapis::cloud::bigquery::storage::v1::append_rows_request::{ProtoData, Rows};
-
-    use google_cloud_googleapis::cloud::bigquery::storage::v1::{
-        AppendRowsRequest, BatchCommitWriteStreamsRequest, CreateWriteStreamRequest, FinalizeWriteStreamRequest,
-        ProtoRows, ProtoSchema, WriteStream,
-    };
     use prost_types::{field_descriptor_proto, DescriptorProto, FieldDescriptorProto};
     use crate::storage_write::AppendRowsRequestBuilder;
 

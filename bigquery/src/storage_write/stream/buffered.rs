@@ -52,13 +52,13 @@ impl DisposableStream for BufferedStream {}
 
 impl BufferedStream {
 
-    pub async fn flush_rows(&self) -> Result<i64, Status> {
+    pub async fn flush_rows(&self, offset: Option<i64>) -> Result<i64, Status> {
         let stream = self.as_ref();
         let res = stream.cons.writer()
             .flush_rows(
                 FlushRowsRequest{
                     write_stream: stream.inner.name.to_string(),
-                    offset: None,
+                    offset,
                 },
                 None,
             )
@@ -79,7 +79,7 @@ mod tests {
     use prost::Message;
     use crate::client::{Client, ClientConfig};
     use crate::storage_write::build_streaming_request;
-    use crate::storage_write::stream::{AsStream, ManagedStream};
+    use crate::storage_write::stream::{AsStream, DisposableStream, ManagedStream};
     use crate::storage_write::stream::tests::{create_append_rows_request, TestData};
 
     #[ctor::ctor]
@@ -91,18 +91,22 @@ mod tests {
     async fn test_storage_write() {
 
         let (config,project_id) = ClientConfig::new_with_auth().await.unwrap();
+        let project_id = project_id.unwrap();
         let client = Client::new(config).await.unwrap();
-        let table = format!("projects/{}/datasets/gcrbq_storage/tables/write_test_buffered", project_id.unwrap()).to_string();
+        let tables= [
+            "write_test",
+            "write_test_1"
+        ];
         let writer = client.buffered_storage_writer();
 
-        // Create Pending Streams
+        // Create Streams
         let mut streams = vec![];
         for i in 0..2 {
-            let stream = Arc::new(writer
+            let table = format!("projects/{}/datasets/gcrbq_storage/tables/{}", &project_id, tables[i % tables.len()]).to_string();
+            let stream = writer
                 .create_write_stream(&table)
                 .await
-                .unwrap());
-            streams.push(stream.clone());
+                .unwrap();
             streams.push(stream);
         }
 
@@ -119,15 +123,18 @@ mod tests {
                     data.encode(&mut buf).unwrap();
                     rows.push(create_append_rows_request(vec![buf]));
                 }
-
+                let size = rows.len() as i64;
                 let request = build_streaming_request(stream.name(), rows);
                 let mut result = stream.append_rows(request).await.unwrap();
                 while let Some(res) = result.next().await {
                     let res = res?;
                     tracing::info!("append row errors = {:?}", res.row_errors.len());
                 }
-                let result = stream.flush_rows().await.unwrap();
+                let result = stream.flush_rows(Some(0)).await.unwrap();
                 tracing::info!("flush rows count = {:?}", result);
+
+                let result = stream.finalize().await.unwrap();
+                tracing::info!("finalized row count = {:?}", result);
                 Ok(())
             }));
         }

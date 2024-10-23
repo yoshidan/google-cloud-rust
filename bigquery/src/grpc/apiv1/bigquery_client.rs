@@ -254,12 +254,6 @@ mod tests {
         pub col_string: String,
     }
 
-    #[ctor::ctor]
-    fn init() {
-        let filter = tracing_subscriber::filter::EnvFilter::from_default_env()
-            .add_directive("google_cloud_bigquery=trace".parse().unwrap());
-        let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
-    }
 
     fn create_append_rows_request(name: &str, buf: Vec<u8>) -> AppendRowsRequest {
         AppendRowsRequest {
