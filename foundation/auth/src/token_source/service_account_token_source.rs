@@ -2,11 +2,12 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 
 use async_trait::async_trait;
+use reqwest::Response;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
 use crate::credentials;
-use crate::error::Error;
+use crate::error::{Error, TokenErrorResponse};
 use crate::misc::UnwrapOrEmpty;
 use crate::token::{Token, TOKEN_URL};
 use crate::token_source::{default_http_client, InternalIdToken, InternalToken, TokenSource};
@@ -168,6 +169,27 @@ impl OAuth2ServiceAccountTokenSource {
         self.private_claims = claims;
         self
     }
+
+    /// Checks whether an HTTP response is successful and returns it, or returns an error.
+    async fn check_response_status(response: Response) -> Result<Response, Error> {
+        // Check the status code, returning the response if it is not an error.
+        let error = match response.error_for_status_ref() {
+            Ok(_) => return Ok(response),
+            Err(error) => error,
+        };
+
+        // try to extract a response error, falling back to the status error if it can not be parsed.
+        let status = response.status();
+        Err(response
+            .json::<TokenErrorResponse>()
+            .await
+            .map(|response| Error::TokenErrorResponse {
+                status: status.as_u16(),
+                error: response.error,
+                error_description: response.error_description,
+            })
+            .unwrap_or(Error::HttpError(error)))
+    }
 }
 
 #[async_trait]
@@ -200,25 +222,21 @@ impl TokenSource for OAuth2ServiceAccountTokenSource {
                     .ok_or(Error::NoTargetAudienceFound)?
                     .as_str()
                     .ok_or(Error::NoTargetAudienceFound)?;
-                Ok(self
-                    .client
-                    .post(self.token_url.as_str())
-                    .form(&form)
-                    .send()
+                let response = self.client.post(self.token_url.as_str()).form(&form).send().await?;
+                Ok(Self::check_response_status(response)
                     .await?
                     .json::<InternalIdToken>()
                     .await?
                     .to_token(audience)?)
             }
-            false => Ok(self
-                .client
-                .post(self.token_url.as_str())
-                .form(&form)
-                .send()
-                .await?
-                .json::<InternalToken>()
-                .await?
-                .to_token(iat)),
+            false => {
+                let response = self.client.post(self.token_url.as_str()).form(&form).send().await?;
+                Ok(Self::check_response_status(response)
+                    .await?
+                    .json::<InternalToken>()
+                    .await?
+                    .to_token(iat))
+            }
         }
     }
 }
