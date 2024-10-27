@@ -1,3 +1,5 @@
+use serde::Deserialize;
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("scopes is required if the audience is none")]
@@ -51,4 +53,17 @@ pub enum Error {
 
     #[error("No target_audience Found in the private claims")]
     NoTargetAudienceFound,
+
+    #[error("Unexpected token response: status={status}, error={error}, description={error_description}")]
+    TokenErrorResponse {
+        status: u16,
+        error: String,
+        error_description: String,
+    },
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct TokenErrorResponse {
+    pub(crate) error: String,
+    pub(crate) error_description: String,
 }
