@@ -1,8 +1,8 @@
+use google_cloud_gax::grpc::codegen::tokio_stream::Stream;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::append_rows_request::{ProtoData, Rows};
 use google_cloud_googleapis::cloud::bigquery::storage::v1::{AppendRowsRequest, ProtoRows, ProtoSchema};
 use prost_types::DescriptorProto;
 use std::collections::HashMap;
-use google_cloud_gax::grpc::codegen::tokio_stream::Stream;
 
 mod flow;
 pub mod stream;
@@ -67,16 +67,7 @@ impl AppendRowsRequestBuilder {
     }
 }
 
-pub fn build_streaming_request(name: &str, rows: Vec<AppendRowsRequestBuilder>) -> impl Stream<Item = AppendRowsRequest>{
-    let name = name.to_string();
-    async_stream::stream! {
-        for row in rows {
-            yield row.build(&name);
-        }
-    }
-}
-
-pub fn into_streaming_request(rows: Vec<AppendRowsRequest>) -> impl Stream<Item = AppendRowsRequest>{
+pub fn into_streaming_request(rows: Vec<AppendRowsRequest>) -> impl Stream<Item = AppendRowsRequest> {
     async_stream::stream! {
         for row in rows {
             yield row;

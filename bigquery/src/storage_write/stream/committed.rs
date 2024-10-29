@@ -1,9 +1,9 @@
-use crate::grpc::apiv1::bigquery_client::{create_write_stream_request, StreamingWriteClient};
+use crate::grpc::apiv1::bigquery_client::create_write_stream_request;
 use crate::grpc::apiv1::conn_pool::ConnectionManager;
-use google_cloud_gax::grpc::{IntoStreamingRequest, Status, Streaming};
-use google_cloud_googleapis::cloud::bigquery::storage::v1::write_stream::Type::{Buffered, Committed};
+use crate::storage_write::stream::{AsStream, DisposableStream, ManagedStream, Stream};
+use google_cloud_gax::grpc::Status;
+use google_cloud_googleapis::cloud::bigquery::storage::v1::write_stream::Type::Committed;
 use std::sync::Arc;
-use crate::storage_write::stream::{ AsStream, DisposableStream, ManagedStream, Stream};
 
 pub struct Writer {
     max_insert_count: usize,
@@ -12,29 +12,28 @@ pub struct Writer {
 
 impl Writer {
     pub(crate) fn new(max_insert_count: usize, cm: Arc<ConnectionManager>) -> Self {
-        Self {
-            max_insert_count,
-            cm,
-        }
+        Self { max_insert_count, cm }
     }
 
     pub async fn create_write_stream(&self, table: &str) -> Result<CommittedStream, Status> {
         let req = create_write_stream_request(table, Committed);
         let stream = self.cm.writer().create_write_stream(req, None).await?.into_inner();
-        Ok(CommittedStream::new(Stream::new(stream, self.cm.clone(),self.max_insert_count)))
+        Ok(CommittedStream::new(Stream::new(
+            stream,
+            self.cm.clone(),
+            self.max_insert_count,
+        )))
     }
-
 }
 
 pub struct CommittedStream {
-    inner: Stream
+    inner: Stream,
 }
 
 impl CommittedStream {
     pub(crate) fn new(inner: Stream) -> Self {
         Self { inner }
     }
-
 }
 
 impl AsStream for CommittedStream {
@@ -45,18 +44,16 @@ impl AsStream for CommittedStream {
 impl ManagedStream for CommittedStream {}
 impl DisposableStream for CommittedStream {}
 
-
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-    use tokio::task::JoinHandle;
+    use crate::client::{Client, ClientConfig};
+    use crate::storage_write::stream::tests::{create_append_rows_request, TestData};
+    use crate::storage_write::stream::{DisposableStream, ManagedStream};
     use google_cloud_gax::grpc::codegen::tokio_stream::StreamExt;
     use google_cloud_gax::grpc::Status;
     use prost::Message;
-    use crate::client::{Client, ClientConfig};
-    use crate::storage_write::build_streaming_request;
-    use crate::storage_write::stream::{AsStream, DisposableStream, ManagedStream};
-    use crate::storage_write::stream::tests::{create_append_rows_request, TestData};
+    use std::sync::Arc;
+    use tokio::task::JoinHandle;
 
     #[ctor::ctor]
     fn init() {
@@ -69,20 +66,19 @@ mod tests {
         let (config, project_id) = ClientConfig::new_with_auth().await.unwrap();
         let project_id = project_id.unwrap();
         let client = Client::new(config).await.unwrap();
-        let tables = [
-            "write_test",
-            "write_test_1"
-        ];
+        let tables = ["write_test", "write_test_1"];
         let writer = client.committed_storage_writer();
 
         // Create Streams
         let mut streams = vec![];
         for i in 0..2 {
-            let table = format!("projects/{}/datasets/gcrbq_storage/tables/{}", &project_id, tables[i % tables.len()]).to_string();
-            let stream = writer
-                .create_write_stream(&table)
-                .await
-                .unwrap();
+            let table = format!(
+                "projects/{}/datasets/gcrbq_storage/tables/{}",
+                &project_id,
+                tables[i % tables.len()]
+            )
+            .to_string();
+            let stream = writer.create_write_stream(&table).await.unwrap();
             streams.push(stream);
         }
 
@@ -99,8 +95,7 @@ mod tests {
                     data.encode(&mut buf).unwrap();
                     rows.push(create_append_rows_request(vec![buf.clone(), buf.clone(), buf]));
                 }
-                let request = build_streaming_request(stream.name(), rows);
-                let mut result = stream.append_rows(request).await.unwrap();
+                let mut result = stream.append_rows(rows).await.unwrap();
                 while let Some(res) = result.next().await {
                     let res = res?;
                     tracing::info!("append row errors = {:?}", res.row_errors.len());
@@ -146,8 +141,7 @@ mod tests {
                     data.encode(&mut buf).unwrap();
                     rows.push(create_append_rows_request(vec![buf.clone(), buf.clone(), buf]));
                 }
-                let request = build_streaming_request(stream.name(), rows);
-                let mut result = stream.append_rows(request).await.unwrap();
+                let mut result = stream.append_rows(rows).await.unwrap();
                 while let Some(res) = result.next().await {
                     let res = res?;
                     tracing::info!("append row errors = {:?}", res.row_errors.len());

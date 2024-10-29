@@ -231,22 +231,12 @@ pub(crate) fn create_write_stream_request(table: &str, write_type: Type) -> Crea
 
 #[cfg(test)]
 mod tests {
-    use crate::grpc::apiv1::bigquery_client::{create_write_stream_request, StreamingWriteClient};
-    use crate::grpc::apiv1::conn_pool::{ConnectionManager, AUDIENCE, SCOPES};
-    use google_cloud_gax::conn::Environment;
-    use google_cloud_gax::grpc::codegen::tokio_stream::StreamExt;
-    use google_cloud_gax::grpc::Status;
-    use google_cloud_googleapis::cloud::bigquery::storage::v1::append_rows_request::{ProtoData, Rows};
-    use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_write_client::BigQueryWriteClient;
 
-    use google_cloud_googleapis::cloud::bigquery::storage::v1::write_stream::Type::Pending;
-    use google_cloud_googleapis::cloud::bigquery::storage::v1::{
-        AppendRowsRequest, BatchCommitWriteStreamsRequest, CreateWriteStreamRequest, FinalizeWriteStreamRequest,
-        ProtoRows, ProtoSchema, WriteStream,
-    };
+    use google_cloud_googleapis::cloud::bigquery::storage::v1::append_rows_request::{ProtoData, Rows};
+
+    use google_cloud_googleapis::cloud::bigquery::storage::v1::{AppendRowsRequest, ProtoRows, ProtoSchema};
     use prost::Message;
     use prost_types::{field_descriptor_proto, DescriptorProto, FieldDescriptorProto};
-    use tokio::task::JoinHandle;
 
     #[derive(Clone, PartialEq, ::prost::Message)]
     struct TestData {

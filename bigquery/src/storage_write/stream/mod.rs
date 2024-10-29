@@ -1,52 +1,78 @@
-use std::sync::Arc;
-use google_cloud_gax::grpc::{IntoStreamingRequest, Status, Streaming};
-use google_cloud_googleapis::cloud::bigquery::storage::v1::{AppendRowsRequest, AppendRowsResponse, CreateWriteStreamRequest, FinalizeWriteStreamRequest, WriteStream};
 use crate::grpc::apiv1::conn_pool::ConnectionManager;
-use crate::storage_write::AppendRowsRequestBuilder;
 use crate::storage_write::flow::FlowController;
-use google_cloud_gax::grpc::codegen::tokio_stream::Stream as FuturesStream;
+use crate::storage_write::AppendRowsRequestBuilder;
+use google_cloud_gax::grpc::{IntoStreamingRequest, Status, Streaming};
+use google_cloud_googleapis::cloud::bigquery::storage::v1::{
+    AppendRowsRequest, AppendRowsResponse, FinalizeWriteStreamRequest, WriteStream,
+};
+use std::sync::Arc;
 
+pub mod buffered;
+pub mod committed;
 pub mod default;
 pub mod pending;
-pub mod committed;
-pub mod buffered;
 
 pub(crate) struct Stream {
     inner: WriteStream,
     cons: Arc<ConnectionManager>,
-    fc: Option<FlowController>
+    fc: Option<FlowController>,
 }
 
 impl Stream {
     pub(crate) fn new(inner: WriteStream, cons: Arc<ConnectionManager>, max_insert_count: usize) -> Self {
         Self {
             inner,
-            cons ,
+            cons,
             fc: if max_insert_count > 0 {
                 Some(FlowController::new(max_insert_count))
-            }else {
+            } else {
                 None
-            }
+            },
         }
     }
 }
 
-pub(crate) trait AsStream : Sized {
+pub(crate) trait AsStream: Sized {
     fn as_ref(&self) -> &Stream;
 
     fn name(&self) -> &str {
         &self.as_ref().inner.name
     }
+
+    fn create_streaming_request(
+        &self,
+        rows: Vec<AppendRowsRequestBuilder>,
+    ) -> impl google_cloud_gax::grpc::codegen::tokio_stream::Stream<Item = AppendRowsRequest> {
+        let name = self.name().to_string();
+        async_stream::stream! {
+            for row in rows {
+                yield row.build(&name);
+            }
+        }
+    }
 }
 
-pub trait ManagedStream : AsStream {
-    async fn append_rows(&self, req: impl IntoStreamingRequest<Message = AppendRowsRequest>) -> Result<Streaming<AppendRowsResponse>, Status> {
+pub trait ManagedStream: AsStream {
+    async fn append_rows(&self, rows: Vec<AppendRowsRequestBuilder>) -> Result<Streaming<AppendRowsResponse>, Status> {
+        let name = self.name().to_string();
+        let stream = async_stream::stream! {
+            for row in rows {
+                yield row.build(&name);
+            }
+        };
+        self.append_streaming_request(stream).await
+    }
+
+    async fn append_streaming_request(
+        &self,
+        req: impl IntoStreamingRequest<Message = AppendRowsRequest>,
+    ) -> Result<Streaming<AppendRowsResponse>, Status> {
         let stream = self.as_ref();
         match &stream.fc {
             None => {
                 let mut client = stream.cons.writer();
                 Ok(client.append_rows(req).await?.into_inner())
-            },
+            }
             Some(fc) => {
                 let permit = fc.acquire().await;
                 let mut client = stream.cons.writer();
@@ -56,14 +82,14 @@ pub trait ManagedStream : AsStream {
             }
         }
     }
-
 }
 
-pub trait DisposableStream : ManagedStream {
+pub trait DisposableStream: ManagedStream {
     async fn finalize(&self) -> Result<i64, Status> {
         let stream = self.as_ref();
         let res = stream
-            .cons.writer()
+            .cons
+            .writer()
             .finalize_write_stream(
                 FinalizeWriteStreamRequest {
                     name: stream.inner.name.to_string(),
@@ -76,11 +102,10 @@ pub trait DisposableStream : ManagedStream {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use prost_types::{field_descriptor_proto, DescriptorProto, FieldDescriptorProto};
     use crate::storage_write::AppendRowsRequestBuilder;
+    use prost_types::{field_descriptor_proto, DescriptorProto, FieldDescriptorProto};
 
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub(crate) struct TestData {
@@ -119,6 +144,6 @@ mod tests {
             reserved_range: vec![],
             reserved_name: vec![],
         };
-        return AppendRowsRequestBuilder::new(proto, buf)
+        AppendRowsRequestBuilder::new(proto, buf)
     }
 }

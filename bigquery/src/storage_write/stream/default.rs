@@ -1,8 +1,8 @@
 use crate::grpc::apiv1::conn_pool::ConnectionManager;
-use google_cloud_gax::grpc::{Status, };
-use std::sync::Arc;
-use google_cloud_googleapis::cloud::bigquery::storage::v1::GetWriteStreamRequest;
 use crate::storage_write::stream::{AsStream, ManagedStream, Stream};
+use google_cloud_gax::grpc::Status;
+use google_cloud_googleapis::cloud::bigquery::storage::v1::GetWriteStreamRequest;
+use std::sync::Arc;
 
 pub struct Writer {
     max_insert_count: usize,
@@ -11,31 +11,34 @@ pub struct Writer {
 
 impl Writer {
     pub(crate) fn new(max_insert_count: usize, cm: Arc<ConnectionManager>) -> Self {
-        Self {
-            max_insert_count,
-            cm,
-        }
+        Self { max_insert_count, cm }
     }
 
     pub async fn create_write_stream(&self, table: &str) -> Result<DefaultStream, Status> {
-        let stream = self.cm.writer().get_write_stream(GetWriteStreamRequest {
-            name: format!("{table}/streams/_default"),
-            ..Default::default()
-        }, None).await?.into_inner();
+        let stream = self
+            .cm
+            .writer()
+            .get_write_stream(
+                GetWriteStreamRequest {
+                    name: format!("{table}/streams/_default"),
+                    ..Default::default()
+                },
+                None,
+            )
+            .await?
+            .into_inner();
         Ok(DefaultStream::new(Stream::new(stream, self.cm.clone(), self.max_insert_count)))
     }
 }
 
-
 pub struct DefaultStream {
-    inner: Stream
+    inner: Stream,
 }
 
 impl DefaultStream {
     pub(crate) fn new(inner: Stream) -> Self {
         Self { inner }
     }
-
 }
 
 impl AsStream for DefaultStream {
@@ -47,14 +50,13 @@ impl ManagedStream for DefaultStream {}
 
 #[cfg(test)]
 mod tests {
-    use tokio::task::JoinHandle;
+    use crate::client::{Client, ClientConfig};
+    use crate::storage_write::stream::tests::{create_append_rows_request, TestData};
+    use crate::storage_write::stream::ManagedStream;
     use google_cloud_gax::grpc::codegen::tokio_stream::StreamExt;
     use google_cloud_gax::grpc::Status;
     use prost::Message;
-    use crate::client::{Client, ClientConfig};
-    use crate::storage_write::build_streaming_request;
-    use crate::storage_write::stream::{AsStream, DisposableStream, ManagedStream};
-    use crate::storage_write::stream::tests::{create_append_rows_request, TestData};
+    use tokio::task::JoinHandle;
 
     #[ctor::ctor]
     fn init() {
@@ -67,20 +69,19 @@ mod tests {
         let (config, project_id) = ClientConfig::new_with_auth().await.unwrap();
         let project_id = project_id.unwrap();
         let client = Client::new(config).await.unwrap();
-        let tables = [
-            "write_test",
-            "write_test_1"
-        ];
+        let tables = ["write_test", "write_test_1"];
         let writer = client.default_storage_writer();
 
         // Create Streams
         let mut streams = vec![];
         for i in 0..2 {
-            let table = format!("projects/{}/datasets/gcrbq_storage/tables/{}", &project_id, tables[i % tables.len()]).to_string();
-            let stream = writer
-                .create_write_stream(&table)
-                .await
-                .unwrap();
+            let table = format!(
+                "projects/{}/datasets/gcrbq_storage/tables/{}",
+                &project_id,
+                tables[i % tables.len()]
+            )
+            .to_string();
+            let stream = writer.create_write_stream(&table).await.unwrap();
             streams.push(stream);
         }
 
@@ -97,8 +98,7 @@ mod tests {
                     data.encode(&mut buf).unwrap();
                     rows.push(create_append_rows_request(vec![buf.clone(), buf.clone(), buf]));
                 }
-                let request = build_streaming_request(stream.name(), rows);
-                let mut result = stream.append_rows(request).await.unwrap();
+                let mut result = stream.append_rows(rows).await.unwrap();
                 while let Some(res) = result.next().await {
                     let res = res?;
                     tracing::info!("append row errors = {:?}", res.row_errors.len());

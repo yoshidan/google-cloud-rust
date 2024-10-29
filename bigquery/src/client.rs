@@ -8,7 +8,7 @@ use std::sync::Arc;
 use google_cloud_gax::conn::{ConnectionOptions, Environment};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::{
-    CreateReadSessionRequest, DataFormat, read_session, ReadSession,
+    read_session, CreateReadSessionRequest, DataFormat, ReadSession,
 };
 use google_cloud_token::TokenSourceProvider;
 
@@ -45,7 +45,7 @@ pub struct ClientConfig {
 #[derive(Clone, Debug)]
 pub struct StreamingWriteConfig {
     channel_config: ChannelConfig,
-    max_insert_count: usize
+    max_insert_count: usize,
 }
 
 impl StreamingWriteConfig {
@@ -63,10 +63,9 @@ impl Default for StreamingWriteConfig {
     fn default() -> Self {
         Self {
             channel_config: ChannelConfig::default(),
-            max_insert_count: 1000
+            max_insert_count: 1000,
         }
     }
-
 }
 
 #[derive(Clone, Debug)]
@@ -91,11 +90,19 @@ impl ChannelConfig {
         self
     }
 
-    async fn into_connection_manager(self, environment: &Environment) -> Result<ConnectionManager, google_cloud_gax::conn::Error> {
-        ConnectionManager::new(self.num_channels, environment, &ConnectionOptions {
-            timeout: self.timeout,
-            connect_timeout: self.connect_timeout,
-        }).await
+    async fn into_connection_manager(
+        self,
+        environment: &Environment,
+    ) -> Result<ConnectionManager, google_cloud_gax::conn::Error> {
+        ConnectionManager::new(
+            self.num_channels,
+            environment,
+            &ConnectionOptions {
+                timeout: self.timeout,
+                connect_timeout: self.connect_timeout,
+            },
+        )
+        .await
     }
 }
 
@@ -150,10 +157,10 @@ use crate::http::job::get::GetJobRequest;
 use crate::http::job::list::ListJobsRequest;
 
 use crate::grpc::apiv1::bigquery_client::StreamingReadClient;
+use crate::storage_write::stream::{buffered, committed, default, pending};
 #[cfg(feature = "auth")]
 pub use google_cloud_auth;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_read_client::BigQueryReadClient;
-use crate::storage_write::stream::{buffered, committed, default, pending};
 
 #[cfg(feature = "auth")]
 impl ClientConfig {
@@ -245,9 +252,20 @@ impl Client {
             routine_client: BigqueryRoutineClient::new(client.clone()),
             row_access_policy_client: BigqueryRowAccessPolicyClient::new(client.clone()),
             model_client: BigqueryModelClient::new(client.clone()),
-            streaming_read_conn_pool: Arc::new(config.streaming_read_config.into_connection_manager(&config.environment).await?),
-            streaming_write_conn_pool: Arc::new(config.streaming_write_config.channel_config.into_connection_manager(&config.environment).await?),
-            stereaming_write_max_insert_count: config.streaming_write_config.max_insert_count
+            streaming_read_conn_pool: Arc::new(
+                config
+                    .streaming_read_config
+                    .into_connection_manager(&config.environment)
+                    .await?,
+            ),
+            streaming_write_conn_pool: Arc::new(
+                config
+                    .streaming_write_config
+                    .channel_config
+                    .into_connection_manager(&config.environment)
+                    .await?,
+            ),
+            stereaming_write_max_insert_count: config.streaming_write_config.max_insert_count,
         })
     }
 
