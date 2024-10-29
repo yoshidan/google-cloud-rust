@@ -17,7 +17,7 @@ impl Writer {
         }
     }
 
-    pub async fn create_write_stream(&mut self, table: &str) -> Result<DefaultStream, Status> {
+    pub async fn create_write_stream(&self, table: &str) -> Result<DefaultStream, Status> {
         let stream = self.cm.writer().get_write_stream(GetWriteStreamRequest {
             name: format!("{table}/streams/_default"),
             ..Default::default()
@@ -48,3 +48,71 @@ impl AsStream for DefaultStream {
 }
 impl ManagedStream for DefaultStream {}
 
+#[cfg(test)]
+mod tests {
+    use tokio::task::JoinHandle;
+    use google_cloud_gax::grpc::codegen::tokio_stream::StreamExt;
+    use google_cloud_gax::grpc::Status;
+    use prost::Message;
+    use crate::client::{Client, ClientConfig};
+    use crate::storage_write::build_streaming_request;
+    use crate::storage_write::stream::{AsStream, DisposableStream, ManagedStream};
+    use crate::storage_write::stream::tests::{create_append_rows_request, TestData};
+
+    #[ctor::ctor]
+    fn init() {
+        crate::storage_write::stream::tests::init();
+    }
+
+    #[serial_test::serial]
+    #[tokio::test]
+    async fn test_storage_write() {
+        let (config, project_id) = ClientConfig::new_with_auth().await.unwrap();
+        let project_id = project_id.unwrap();
+        let client = Client::new(config).await.unwrap();
+        let tables = [
+            "write_test",
+            "write_test_1"
+        ];
+        let writer = client.default_storage_writer();
+
+        // Create Streams
+        let mut streams = vec![];
+        for i in 0..2 {
+            let table = format!("projects/{}/datasets/gcrbq_storage/tables/{}", &project_id, tables[i % tables.len()]).to_string();
+            let stream = writer
+                .create_write_stream(&table)
+                .await
+                .unwrap();
+            streams.push(stream);
+        }
+
+        // Append Rows
+        let mut tasks: Vec<JoinHandle<Result<(), Status>>> = vec![];
+        for (i, stream) in streams.into_iter().enumerate() {
+            tasks.push(tokio::spawn(async move {
+                let mut rows = vec![];
+                for j in 0..5 {
+                    let data = TestData {
+                        col_string: format!("default_{i}_{j}"),
+                    };
+                    let mut buf = Vec::new();
+                    data.encode(&mut buf).unwrap();
+                    rows.push(create_append_rows_request(vec![buf.clone(), buf.clone(), buf]));
+                }
+                let request = build_streaming_request(stream.name(), rows);
+                let mut result = stream.append_rows(request).await.unwrap();
+                while let Some(res) = result.next().await {
+                    let res = res?;
+                    tracing::info!("append row errors = {:?}", res.row_errors.len());
+                }
+                Ok(())
+            }));
+        }
+
+        // Wait for append rows
+        for task in tasks {
+            task.await.unwrap().unwrap();
+        }
+    }
+}

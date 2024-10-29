@@ -33,12 +33,12 @@ impl Writer {
         Ok(PendingStream::new(Stream::new(stream, self.cm.clone(), self.max_insert_count)))
     }
 
-    pub async fn commit(self) -> Result<BatchCommitWriteStreamsResponse, Status> {
+    pub async fn commit(&self) -> Result<BatchCommitWriteStreamsResponse, Status> {
         let result = self.cm.writer()
             .batch_commit_write_streams(
                 BatchCommitWriteStreamsRequest {
                     parent: self.table.to_string(),
-                    write_streams: self.streams,
+                    write_streams: self.streams.clone(),
                 },
                 None,
             )
@@ -68,3 +68,134 @@ impl AsStream for PendingStream {
 }
 impl ManagedStream for PendingStream {}
 impl DisposableStream for PendingStream {}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+    use tokio::task::JoinHandle;
+    use google_cloud_gax::grpc::codegen::tokio_stream::StreamExt;
+    use google_cloud_gax::grpc::Status;
+    use prost::Message;
+    use crate::client::{Client, ClientConfig};
+    use crate::storage_write::build_streaming_request;
+    use crate::storage_write::stream::{AsStream, DisposableStream, ManagedStream};
+    use crate::storage_write::stream::tests::{create_append_rows_request, TestData};
+
+    #[ctor::ctor]
+    fn init() {
+        crate::storage_write::stream::tests::init();
+    }
+
+    #[serial_test::serial]
+    #[tokio::test]
+    async fn test_storage_write() {
+        let (config, project_id) = ClientConfig::new_with_auth().await.unwrap();
+        let project_id = project_id.unwrap();
+        let client = Client::new(config).await.unwrap();
+        let tables = [
+            "write_test",
+            "write_test_1"
+        ];
+
+        // Create Writers
+        let mut writers = vec![];
+        for i in 0..2 {
+            let table = format!("projects/{}/datasets/gcrbq_storage/tables/{}", &project_id, tables[i % tables.len()]).to_string();
+            let writer = client.pending_storage_writer(table);
+            writers.push(writer);
+        }
+
+        // Create Streams
+        let mut streams = vec![];
+        for writer in writers.iter_mut() {
+            let stream = writer.create_write_stream().await.unwrap();
+            streams.push(stream);
+        }
+
+        // Append Rows
+        let mut tasks: Vec<JoinHandle<Result<(), Status>>> = vec![];
+        for (i, stream) in streams.into_iter().enumerate() {
+            tasks.push(tokio::spawn(async move {
+                let mut rows = vec![];
+                for j in 0..5 {
+                    let data = TestData {
+                        col_string: format!("pending_{i}_{j}"),
+                    };
+                    let mut buf = Vec::new();
+                    data.encode(&mut buf).unwrap();
+                    rows.push(create_append_rows_request(vec![buf.clone(), buf.clone(), buf]));
+                }
+                let request = build_streaming_request(stream.name(), rows);
+                let mut result = stream.append_rows(request).await.unwrap();
+                while let Some(res) = result.next().await {
+                    let res = res?;
+                    tracing::info!("append row errors = {:?}", res.row_errors.len());
+                }
+                let result = stream.finalize().await.unwrap();
+                tracing::info!("finalized row count = {:?}", result);
+                Ok(())
+            }));
+        }
+
+        // Wait for append rows
+        for task in tasks {
+            task.await.unwrap().unwrap();
+        }
+
+        for writer in writers.iter_mut() {
+           let result = writer.commit().await.unwrap();
+            tracing::info!("committed error count = {:?}", result.stream_errors.len());
+        }
+    }
+
+    #[serial_test::serial]
+    #[tokio::test]
+    async fn test_storage_write_single_stream() {
+        let (config, project_id) = ClientConfig::new_with_auth().await.unwrap();
+        let project_id = project_id.unwrap();
+        let client = Client::new(config).await.unwrap();
+
+        // Create Streams
+        let mut streams = vec![];
+        let table = format!("projects/{}/datasets/gcrbq_storage/tables/write_test", &project_id).to_string();
+        let mut writer = client.pending_storage_writer(table);
+        let stream = Arc::new(writer.create_write_stream().await.unwrap());
+        for i in 0..2 {
+            streams.push(stream.clone());
+        }
+
+        // Append Rows
+        let mut tasks: Vec<JoinHandle<Result<(), Status>>> = vec![];
+        for (i, stream) in streams.into_iter().enumerate() {
+            tasks.push(tokio::spawn(async move {
+                let mut rows = vec![];
+                for j in 0..5 {
+                    let data = TestData {
+                        col_string: format!("pending_{i}_{j}"),
+                    };
+                    let mut buf = Vec::new();
+                    data.encode(&mut buf).unwrap();
+                    rows.push(create_append_rows_request(vec![buf.clone(), buf.clone(), buf]));
+                }
+                let request = build_streaming_request(stream.name(), rows);
+                let mut result = stream.append_rows(request).await.unwrap();
+                while let Some(res) = result.next().await {
+                    let res = res?;
+                    tracing::info!("append row errors = {:?}", res.row_errors.len());
+                }
+                Ok(())
+            }));
+        }
+
+        // Wait for append rows
+        for task in tasks {
+            task.await.unwrap().unwrap();
+        }
+
+        let result = stream.finalize().await.unwrap();
+        tracing::info!("finalized row count = {:?}", result);
+
+        let result = writer.commit().await.unwrap();
+        tracing::info!("commit error count = {:?}", result.stream_errors.len());
+    }
+}
