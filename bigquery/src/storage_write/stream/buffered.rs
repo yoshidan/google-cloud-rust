@@ -40,9 +40,6 @@ impl BufferedStream {
 }
 
 impl AsStream for BufferedStream {
-    fn as_mut(&mut self) -> &mut Stream {
-        &mut self.inner
-    }
     fn as_ref(&self) -> &Stream {
         &self.inner
     }

@@ -32,7 +32,6 @@ impl Stream {
 }
 
 pub(crate) trait AsStream : Sized {
-    fn as_mut(&mut self) -> &mut Stream;
     fn as_ref(&self) -> &Stream;
 
     fn name(&self) -> &str {

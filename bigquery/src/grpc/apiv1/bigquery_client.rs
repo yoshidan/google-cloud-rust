@@ -254,7 +254,6 @@ mod tests {
         pub col_string: String,
     }
 
-
     fn create_append_rows_request(name: &str, buf: Vec<u8>) -> AppendRowsRequest {
         AppendRowsRequest {
             write_stream: name.to_string(),
@@ -293,125 +292,6 @@ mod tests {
                     serialized_rows: vec![buf],
                 }),
             })),
-        }
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    async fn test_storage_write() {
-        let config = google_cloud_auth::project::Config::default()
-            .with_audience(AUDIENCE)
-            .with_scopes(&SCOPES);
-        let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new(config)
-            .await
-            .unwrap();
-        let conn = ConnectionManager::new(1, &Environment::GoogleCloud(Box::new(ts)), &Default::default())
-            .await
-            .unwrap();
-
-        let mut client = StreamingWriteClient::new(BigQueryWriteClient::new(conn.conn()));
-
-        let table = "projects/atl-dev1/datasets/gcrbq_storage/tables/write_test".to_string();
-
-        // Create Pending Streams
-        let mut pending_streams = vec![];
-        for i in 0..4 {
-            let pending_stream = client
-                .create_write_stream(create_write_stream_request(&table, Pending), None)
-                .await
-                .unwrap()
-                .into_inner();
-            tracing::info!("stream = {:?}", pending_stream.name);
-            pending_streams.push(pending_stream);
-        }
-
-        let stream_names = pending_streams
-            .iter()
-            .map(|s| s.name.to_string())
-            .collect::<Vec<String>>();
-
-        // Append Rows
-        let mut tasks: Vec<JoinHandle<Result<(), Status>>> = vec![];
-        for (i, pending_stream) in pending_streams.into_iter().enumerate() {
-            let mut client = StreamingWriteClient::new(BigQueryWriteClient::new(conn.conn()));
-            tasks.push(tokio::spawn(async move {
-                let mut rows = vec![];
-                for j in 0..5 {
-                    let data = TestData {
-                        col_string: format!("stream_{i}_{j}"),
-                    };
-                    let mut buf = Vec::new();
-                    data.encode(&mut buf).unwrap();
-
-                    let row = create_append_rows_request(&pending_stream.name, buf);
-                    rows.push(row);
-                }
-
-                let request = Box::pin(async_stream::stream! {
-                    for req in rows {
-                        yield req;
-                    }
-                });
-                let mut result = client.append_rows(request).await?.into_inner();
-                while let Some(res) = result.next().await {
-                    let res = res?;
-                    tracing::info!("append row errors = {:?}", res.row_errors.len());
-                }
-                Ok(())
-            }));
-        }
-
-        // Wait for append rows
-        for task in tasks {
-            task.await.unwrap().unwrap();
-        }
-
-        // Finalize streams
-        for pending_stream in &stream_names {
-            let mut client = StreamingWriteClient::new(BigQueryWriteClient::new(conn.conn()));
-            let res = client
-                .finalize_write_stream(
-                    FinalizeWriteStreamRequest {
-                        name: pending_stream.to_string(),
-                    },
-                    None,
-                )
-                .await
-                .unwrap()
-                .into_inner();
-            tracing::info!("finalized = {:?}", res.row_count);
-        }
-
-        // Commit
-        let mut client = StreamingWriteClient::new(BigQueryWriteClient::new(conn.conn()));
-        let res = client
-            .batch_commit_write_streams(
-                BatchCommitWriteStreamsRequest {
-                    parent: table.to_string(),
-                    write_streams: stream_names.iter().map(|s| s.to_string()).collect(),
-                },
-                None,
-            )
-            .await
-            .unwrap()
-            .into_inner();
-        tracing::info!("commit stream errors = {:?}", res.stream_errors.len());
-
-        // Write via default stream
-        let data = TestData {
-            col_string: format!("default_stream"),
-        };
-        let mut buf = Vec::new();
-        data.encode(&mut buf).unwrap();
-        let row = create_append_rows_request(&format!("{table}/streams/_default"), buf);
-        let request = Box::pin(async_stream::stream! {
-            for req in [row]{
-                yield req;
-            }
-        });
-        let mut response = client.append_rows(request).await.unwrap().into_inner();
-        while let Some(res) = response.next().await {
-            let res = res.unwrap();
-            tracing::info!("default append row errors = {:?}", res.row_errors.len());
         }
     }
 }

@@ -29,6 +29,8 @@ num-bigint = "0.4"
 backon = "0.4"
 reqwest-middleware = { version = "0.3", features = ["json", "multipart"] }
 anyhow = "1.0"
+async-stream = "0.3"
+prost-types = "0.13"
 
 google-cloud-auth = { optional = true, version = "0.17", path="../foundation/auth", default-features=false }
 
@@ -40,9 +42,7 @@ ctor = "0.1.26"
 tokio-util =  {version ="0.7", features = ["codec"] }
 google-cloud-auth = { path = "../foundation/auth", default-features=false }
 base64-serde = "0.7"
-async-stream = "0.3"
 prost = "0.13"
-prost-types = "0.13"
 
 [features]
 default = ["default-tls", "auth"]
