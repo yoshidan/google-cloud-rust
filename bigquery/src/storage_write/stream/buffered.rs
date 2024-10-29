@@ -87,7 +87,7 @@ mod tests {
         crate::storage_write::stream::tests::init();
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test]
     async fn test_storage_write() {
 
         let (config,project_id) = ClientConfig::new_with_auth().await.unwrap();
@@ -142,6 +142,59 @@ mod tests {
         for task in tasks {
             task.await.unwrap().unwrap();
         }
+
+    }
+
+    #[serial_test::serial]
+    #[tokio::test]
+    async fn test_storage_write_single_stream() {
+
+        let (config,project_id) = ClientConfig::new_with_auth().await.unwrap();
+        let project_id = project_id.unwrap();
+        let client = Client::new(config).await.unwrap();
+        let writer = client.buffered_storage_writer();
+
+        // Create Streams
+        let mut streams = vec![];
+        let table = format!("projects/{}/datasets/gcrbq_storage/tables/write_test", &project_id).to_string();
+        let stream = Arc::new(writer.create_write_stream(&table).await.unwrap());
+        for i in 0..2 {
+            streams.push(stream.clone());
+        }
+
+        // Append Rows
+        let mut tasks: Vec<JoinHandle<Result<(), Status>>> = vec![];
+        for (i, stream) in streams.into_iter().enumerate() {
+            tasks.push(tokio::spawn(async move {
+                let mut rows = vec![];
+                for j in 0..5 {
+                    let data = TestData {
+                        col_string: format!("buffered_{i}_{j}"),
+                    };
+                    let mut buf = Vec::new();
+                    data.encode(&mut buf).unwrap();
+                    rows.push(create_append_rows_request(vec![buf.clone(), buf]));
+                }
+                let request = build_streaming_request(stream.name(), rows);
+                let mut result = stream.append_rows(request).await.unwrap();
+                while let Some(res) = result.next().await {
+                    let res = res?;
+                    tracing::info!("append row errors = {:?}", res.row_errors.len());
+                }
+                Ok(())
+            }));
+        }
+
+        // Wait for append rows
+        for task in tasks {
+            task.await.unwrap().unwrap();
+        }
+
+        let result = stream.flush_rows(Some(0)).await.unwrap();
+        tracing::info!("flush rows count = {:?}", result);
+
+        let result = stream.finalize().await.unwrap();
+        tracing::info!("finalized row count = {:?}", result);
 
     }
 }
