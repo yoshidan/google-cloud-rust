@@ -133,6 +133,9 @@ mod test {
             .get(project.as_str(), &ds2.dataset_reference.dataset_id)
             .await
             .unwrap();
+
+        // default is 168
+        ds1.max_time_travel_hours = Some(168);
         assert_eq!(ds1, res1);
         assert_eq!(ds2, res2);
 

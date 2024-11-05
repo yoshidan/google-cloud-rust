@@ -123,7 +123,7 @@ where
             let mut rows_with_schema = schema.serialized_schema;
             rows_with_schema.extend_from_slice(&rows.serialized_record_batch);
             let rows = Cursor::new(rows_with_schema);
-            let rows: StreamReader<BufReader<Cursor<Vec<u8>>>> = StreamReader::try_new(rows, None)?;
+            let rows: StreamReader<BufReader<Cursor<Vec<u8>>>> = StreamReader::try_new(BufReader::new(rows), None)?;
             let mut chunk: VecDeque<T> = VecDeque::new();
             for row in rows {
                 let row = row?;
