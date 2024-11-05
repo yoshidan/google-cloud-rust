@@ -53,6 +53,9 @@ pub struct ListObjectsRequest {
     /// increasing generation number. The default value for versions is false.
     /// For more information, see Object Versioning.
     pub versions: Option<bool>,
+    /// Filter results to objects and prefixes that match this glob pattern.
+    /// For more information, see [List objects and prefixes using glob](<https://cloud.google.com/storage/docs/json_api/v1/objects/list#list-objects-and-prefixes-using-glob>)
+    pub match_glob: Option<String>,
 }
 
 /// The result of a call to Objects.ListObjects
