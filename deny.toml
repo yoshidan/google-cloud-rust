@@ -35,8 +35,6 @@ yanked = "warn"
 # A list of advisory IDs to ignore. Note that ignored advisories will still
 # output a note when they are encountered.
 ignore = [
-    # TODO wait for release https://github.com/apache/arrow-rs/blob/f41c258246cd4bd9d89228cded9ed54dbd00faff/arrow-cast/Cargo.toml#L52
-    "RUSTSEC-2023-0086",
 ]
 # Threshold for security vulnerabilities, any vulnerability with a CVSS score
 # lower than the range specified will be ignored. Note that ignored advisories
@@ -70,7 +68,8 @@ allow = [
     "Unicode-DFS-2016",
     "BSD-2-Clause",
     "BSD-3-Clause",
-    "CC0-1.0"
+    "CC0-1.0",
+    "Unicode-3.0"
 ]
 # The confidence threshold for detecting a license from license text.
 # The higher the value, the more closely the license text must be to the
