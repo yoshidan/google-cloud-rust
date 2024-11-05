@@ -313,24 +313,143 @@ impl Client {
 
     /// Creates a new pending type storage writer for the specified table.
     /// https://cloud.google.com/bigquery/docs/write-api#pending_type
-    pub fn pending_storage_writer(&self, table: String) -> pending::Writer {
-        pending::Writer::new(1, self.streaming_write_conn_pool.clone(), table)
+    /// ```
+    /// use prost_types::DescriptorProto;
+    /// use google_cloud_bigquery::client::Client;
+    /// use google_cloud_gax::grpc::Status;
+    /// use prost::Message;
+    /// use tokio::sync::futures;
+    /// use google_cloud_bigquery::storage_write::AppendRowsRequestBuilder;
+    /// use google_cloud_bigquery::storage_write::stream::{DisposableStream, ManagedStream};
+    /// use futures_util::stream::StreamExt;
+    ///
+    /// pub async fn run<T: Message>(client: &Client, table: &str, rows: Vec<T>, schema: DescriptorProto)
+    /// -> Result<(), Status> {
+    ///     let mut writer = client.pending_storage_writer(table);
+    ///     let stream = writer.create_write_stream().await?;
+    ///
+    ///     let mut data= vec![];
+    ///     for row in rows {
+    ///         let mut buf = Vec::new();
+    ///         row.encode(&mut buf).unwrap();
+    ///         data.push(buf);
+    ///     }
+    ///     let mut result = stream.append_rows(vec![AppendRowsRequestBuilder::new(schema, data)]).await.unwrap();
+    ///     while let Some(Ok(res)) = result.next().await {
+    ///         tracing::info!("append row errors = {:?}", res.row_errors.len());
+    ///     }
+    ///
+    ///     let _ = stream.finalize().await?;
+    ///     let _ = writer.commit().await?;
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn pending_storage_writer(&self, table: &str) -> pending::Writer {
+        pending::Writer::new(1, self.streaming_write_conn_pool.clone(), table.to_string())
     }
 
     /// Creates a new default type storage writer.
     /// https://cloud.google.com/bigquery/docs/write-api#default_stream
+    /// ```
+    /// use prost_types::DescriptorProto;
+    /// use google_cloud_bigquery::client::Client;
+    /// use google_cloud_gax::grpc::Status;
+    /// use prost::Message;
+    /// use tokio::sync::futures;
+    /// use google_cloud_bigquery::storage_write::AppendRowsRequestBuilder;
+    /// use google_cloud_bigquery::storage_write::stream::ManagedStream;
+    /// use futures_util::stream::StreamExt;
+    ///
+    /// pub async fn run<T: Message>(client: &Client, table: &str, rows: Vec<T>, schema: DescriptorProto)
+    /// -> Result<(), Status> {
+    ///     let writer = client.default_storage_writer();
+    ///     let stream = writer.create_write_stream(table).await?;
+    ///
+    ///     let mut data= vec![];
+    ///     for row in rows {
+    ///         let mut buf = Vec::new();
+    ///         row.encode(&mut buf).unwrap();
+    ///         data.push(buf);
+    ///     }
+    ///     let mut result = stream.append_rows(vec![AppendRowsRequestBuilder::new(schema, data)]).await.unwrap();
+    ///     while let Some(Ok(res)) = result.next().await {
+    ///         tracing::info!("append row errors = {:?}", res.row_errors.len());
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn default_storage_writer(&self) -> default::Writer {
         default::Writer::new(self.stereaming_write_max_insert_count, self.streaming_write_conn_pool.clone())
     }
 
     /// Creates a new committed type storage writer.
     /// https://cloud.google.com/bigquery/docs/write-api#committed_type
+    /// ```
+    /// use prost_types::DescriptorProto;
+    /// use google_cloud_bigquery::client::Client;
+    /// use google_cloud_gax::grpc::Status;
+    /// use prost::Message;
+    /// use tokio::sync::futures;
+    /// use google_cloud_bigquery::storage_write::AppendRowsRequestBuilder;
+    /// use google_cloud_bigquery::storage_write::stream::{DisposableStream, ManagedStream};
+    /// use futures_util::stream::StreamExt;
+    ///
+    /// pub async fn run<T: Message>(client: &Client, table: &str, rows: Vec<T>, schema: DescriptorProto)
+    /// -> Result<(), Status> {
+    ///     let writer = client.committed_storage_writer();
+    ///     let stream = writer.create_write_stream(table).await?;
+    ///
+    ///     let mut data= vec![];
+    ///     for row in rows {
+    ///         let mut buf = Vec::new();
+    ///         row.encode(&mut buf).unwrap();
+    ///         data.push(buf);
+    ///     }
+    ///     let mut result = stream.append_rows(vec![AppendRowsRequestBuilder::new(schema, data)]).await.unwrap();
+    ///     while let Some(Ok(res)) = result.next().await {
+    ///         tracing::info!("append row errors = {:?}", res.row_errors.len());
+    ///     }
+    ///
+    ///     let _ = stream.finalize().await?;
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn committed_storage_writer(&self) -> committed::Writer {
         committed::Writer::new(self.stereaming_write_max_insert_count, self.streaming_write_conn_pool.clone())
     }
 
     /// Creates a new buffered type storage writer.
     /// https://cloud.google.com/bigquery/docs/write-api#buffered_type
+    /// ```
+    /// use prost_types::DescriptorProto;
+    /// use google_cloud_bigquery::client::Client;
+    /// use prost::Message;
+    /// use tokio::sync::futures;
+    /// use google_cloud_bigquery::storage_write::AppendRowsRequestBuilder;
+    /// use google_cloud_bigquery::storage_write::stream::{DisposableStream, ManagedStream};
+    /// use futures_util::stream::StreamExt;
+    /// use google_cloud_gax::grpc::Status;
+    ///
+    /// pub async fn run<T: Message>(client: &Client, table: &str, rows: Vec<T>, schema: DescriptorProto)
+    /// -> Result<(), Status> {
+    ///     let writer = client.buffered_storage_writer();
+    ///     let stream = writer.create_write_stream(table).await?;
+    ///
+    ///     let mut data= vec![];
+    ///     for row in rows {
+    ///         let mut buf = Vec::new();
+    ///         row.encode(&mut buf).unwrap();
+    ///         data.push(buf);
+    ///     }
+    ///     let mut result = stream.append_rows(vec![AppendRowsRequestBuilder::new(schema, data)]).await.unwrap();
+    ///     while let Some(Ok(res)) = result.next().await {
+    ///         tracing::info!("append row errors = {:?}", res.row_errors.len());
+    ///     }
+    ///     let _ = stream.flush_rows(Some(0)).await?;
+    ///     let _ = stream.finalize().await?;
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn buffered_storage_writer(&self) -> buffered::Writer {
         buffered::Writer::new(self.stereaming_write_max_insert_count, self.streaming_write_conn_pool.clone())
     }

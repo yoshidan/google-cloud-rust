@@ -190,4 +190,4 @@ pub mod grpc;
 pub mod http;
 pub mod query;
 pub mod storage;
-mod storage_write;
+pub mod storage_write;

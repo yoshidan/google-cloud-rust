@@ -71,7 +71,7 @@ mod tests {
     use crate::client::{Client, ClientConfig};
     use crate::storage_write::stream::tests::{create_append_rows_request, TestData};
     use crate::storage_write::stream::{DisposableStream, ManagedStream};
-    use google_cloud_gax::grpc::codegen::tokio_stream::StreamExt;
+    use futures_util::StreamExt;
     use google_cloud_gax::grpc::Status;
     use prost::Message;
     use std::sync::Arc;
@@ -97,9 +97,8 @@ mod tests {
                 "projects/{}/datasets/gcrbq_storage/tables/{}",
                 &project_id,
                 tables[i % tables.len()]
-            )
-            .to_string();
-            let writer = client.pending_storage_writer(table);
+            );
+            let writer = client.pending_storage_writer(&table);
             writers.push(writer);
         }
 
@@ -154,8 +153,8 @@ mod tests {
 
         // Create Streams
         let mut streams = vec![];
-        let table = format!("projects/{}/datasets/gcrbq_storage/tables/write_test", &project_id).to_string();
-        let mut writer = client.pending_storage_writer(table);
+        let table = format!("projects/{}/datasets/gcrbq_storage/tables/write_test", &project_id);
+        let mut writer = client.pending_storage_writer(&table);
         let stream = Arc::new(writer.create_write_stream().await.unwrap());
         for i in 0..2 {
             streams.push(stream.clone());

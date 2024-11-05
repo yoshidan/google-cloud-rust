@@ -61,13 +61,13 @@ impl BufferedStream {
 
 #[cfg(test)]
 mod tests {
+    use futures_util::StreamExt;
     use std::sync::Arc;
     use tokio::task::JoinHandle;
 
     use crate::client::{Client, ClientConfig};
     use crate::storage_write::stream::tests::{create_append_rows_request, TestData};
     use crate::storage_write::stream::{DisposableStream, ManagedStream};
-    use google_cloud_gax::grpc::codegen::tokio_stream::StreamExt;
     use google_cloud_gax::grpc::Status;
     use prost::Message;
 

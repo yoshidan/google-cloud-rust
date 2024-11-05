@@ -53,7 +53,7 @@ mod tests {
     use crate::client::{Client, ClientConfig};
     use crate::storage_write::stream::tests::{create_append_rows_request, TestData};
     use crate::storage_write::stream::ManagedStream;
-    use google_cloud_gax::grpc::codegen::tokio_stream::StreamExt;
+    use futures_util::StreamExt;
     use google_cloud_gax::grpc::Status;
     use prost::Message;
     use tokio::task::JoinHandle;
