@@ -1,9 +1,10 @@
 use crate::grpc::apiv1::bigquery_client::create_write_stream_request;
 use crate::grpc::apiv1::conn_pool::ConnectionManager;
-use crate::storage_write::stream::{AsStream, DisposableStream, ManagedStream, Stream};
-use google_cloud_gax::grpc::Status;
+use crate::storage_write::stream::{AsStream, DisposableStreamDelegate, ManagedStreamDelegate, Stream};
+use crate::storage_write::AppendRowsRequestBuilder;
+use google_cloud_gax::grpc::{Status, Streaming};
 use google_cloud_googleapis::cloud::bigquery::storage::v1::write_stream::Type::Buffered;
-use google_cloud_googleapis::cloud::bigquery::storage::v1::FlushRowsRequest;
+use google_cloud_googleapis::cloud::bigquery::storage::v1::{AppendRowsResponse, FlushRowsRequest};
 use std::sync::Arc;
 
 pub struct Writer {
@@ -30,19 +31,20 @@ impl BufferedStream {
     pub(crate) fn new(inner: Stream) -> Self {
         Self { inner }
     }
-}
 
-impl AsStream for BufferedStream {
-    fn as_ref(&self) -> &Stream {
-        &self.inner
+    pub async fn append_rows(
+        &self,
+        rows: Vec<AppendRowsRequestBuilder>,
+    ) -> Result<Streaming<AppendRowsResponse>, Status> {
+        ManagedStreamDelegate::append_rows(&self.inner, rows).await
     }
-}
-impl ManagedStream for BufferedStream {}
-impl DisposableStream for BufferedStream {}
 
-impl BufferedStream {
+    pub async fn finalize(&self) -> Result<i64, Status> {
+        DisposableStreamDelegate::finalize(&self.inner).await
+    }
+
     pub async fn flush_rows(&self, offset: Option<i64>) -> Result<i64, Status> {
-        let stream = self.as_ref();
+        let stream = &self.inner;
         let res = stream
             .cons
             .writer()
@@ -59,6 +61,12 @@ impl BufferedStream {
     }
 }
 
+impl AsStream for BufferedStream {
+    fn as_ref(&self) -> &Stream {
+        &self.inner
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use futures_util::StreamExt;
@@ -67,7 +75,6 @@ mod tests {
 
     use crate::client::{Client, ClientConfig};
     use crate::storage_write::stream::tests::{create_append_rows_request, TestData};
-    use crate::storage_write::stream::{DisposableStream, ManagedStream};
     use google_cloud_gax::grpc::Status;
     use prost::Message;
 
@@ -142,7 +149,7 @@ mod tests {
         let mut streams = vec![];
         let table = format!("projects/{}/datasets/gcrbq_storage/tables/write_test", &project_id).to_string();
         let stream = Arc::new(writer.create_write_stream(&table).await.unwrap());
-        for i in 0..2 {
+        for _i in 0..2 {
             streams.push(stream.clone());
         }
 

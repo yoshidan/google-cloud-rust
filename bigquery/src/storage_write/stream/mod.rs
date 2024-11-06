@@ -12,7 +12,7 @@ pub mod committed;
 pub mod default;
 pub mod pending;
 
-pub(crate) struct Stream {
+pub struct Stream {
     inner: WriteStream,
     cons: Arc<ConnectionManager>,
     fc: Option<FlowController>,
@@ -32,7 +32,7 @@ impl Stream {
     }
 }
 
-pub(crate) trait AsStream: Sized {
+pub trait AsStream: Sized {
     fn as_ref(&self) -> &Stream;
 
     fn name(&self) -> &str {
@@ -52,22 +52,26 @@ pub(crate) trait AsStream: Sized {
     }
 }
 
-pub trait ManagedStream: AsStream {
-    async fn append_rows(&self, rows: Vec<AppendRowsRequestBuilder>) -> Result<Streaming<AppendRowsResponse>, Status> {
-        let name = self.name().to_string();
-        let stream = async_stream::stream! {
+pub(crate) struct ManagedStreamDelegate {}
+
+impl ManagedStreamDelegate {
+    async fn append_rows(
+        stream: &Stream,
+        rows: Vec<AppendRowsRequestBuilder>,
+    ) -> Result<Streaming<AppendRowsResponse>, Status> {
+        let name = stream.inner.name.to_string();
+        let req = async_stream::stream! {
             for row in rows {
                 yield row.build(&name);
             }
         };
-        self.append_streaming_request(stream).await
+        Self::append_streaming_request(stream, req).await
     }
 
     async fn append_streaming_request(
-        &self,
+        stream: &Stream,
         req: impl IntoStreamingRequest<Message = AppendRowsRequest>,
     ) -> Result<Streaming<AppendRowsResponse>, Status> {
-        let stream = self.as_ref();
         match &stream.fc {
             None => {
                 let mut client = stream.cons.writer();
@@ -84,9 +88,9 @@ pub trait ManagedStream: AsStream {
     }
 }
 
-pub trait DisposableStream: ManagedStream {
-    async fn finalize(&self) -> Result<i64, Status> {
-        let stream = self.as_ref();
+pub(crate) struct DisposableStreamDelegate {}
+impl DisposableStreamDelegate {
+    async fn finalize(stream: &Stream) -> Result<i64, Status> {
         let res = stream
             .cons
             .writer()

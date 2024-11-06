@@ -42,7 +42,7 @@ pub struct ClientConfig {
     debug: bool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct StreamingWriteConfig {
     channel_config: ChannelConfig,
     max_insert_count: usize,
@@ -56,15 +56,6 @@ impl StreamingWriteConfig {
     pub fn with_max_insert_count(mut self, value: usize) -> Self {
         self.max_insert_count = value;
         self
-    }
-}
-
-impl Default for StreamingWriteConfig {
-    fn default() -> Self {
-        Self {
-            channel_config: ChannelConfig::default(),
-            max_insert_count: 1000,
-        }
     }
 }
 
@@ -230,7 +221,7 @@ pub struct Client {
     model_client: BigqueryModelClient,
     streaming_read_conn_pool: Arc<ConnectionManager>,
     streaming_write_conn_pool: Arc<ConnectionManager>,
-    stereaming_write_max_insert_count: usize,
+    streaming_write_max_insert_count: usize,
 }
 
 impl Client {
@@ -265,7 +256,7 @@ impl Client {
                     .into_connection_manager(&config.environment)
                     .await?,
             ),
-            stereaming_write_max_insert_count: config.streaming_write_config.max_insert_count,
+            streaming_write_max_insert_count: config.streaming_write_config.max_insert_count,
         })
     }
 
@@ -320,7 +311,6 @@ impl Client {
     /// use prost::Message;
     /// use tokio::sync::futures;
     /// use google_cloud_bigquery::storage_write::AppendRowsRequestBuilder;
-    /// use google_cloud_bigquery::storage_write::stream::{DisposableStream, ManagedStream};
     /// use futures_util::stream::StreamExt;
     ///
     /// pub async fn run<T: Message>(client: &Client, table: &str, rows: Vec<T>, schema: DescriptorProto)
@@ -357,7 +347,6 @@ impl Client {
     /// use prost::Message;
     /// use tokio::sync::futures;
     /// use google_cloud_bigquery::storage_write::AppendRowsRequestBuilder;
-    /// use google_cloud_bigquery::storage_write::stream::ManagedStream;
     /// use futures_util::stream::StreamExt;
     ///
     /// pub async fn run<T: Message>(client: &Client, table: &str, rows: Vec<T>, schema: DescriptorProto)
@@ -379,7 +368,7 @@ impl Client {
     /// }
     /// ```
     pub fn default_storage_writer(&self) -> default::Writer {
-        default::Writer::new(self.stereaming_write_max_insert_count, self.streaming_write_conn_pool.clone())
+        default::Writer::new(self.streaming_write_max_insert_count, self.streaming_write_conn_pool.clone())
     }
 
     /// Creates a new committed type storage writer.
@@ -391,7 +380,6 @@ impl Client {
     /// use prost::Message;
     /// use tokio::sync::futures;
     /// use google_cloud_bigquery::storage_write::AppendRowsRequestBuilder;
-    /// use google_cloud_bigquery::storage_write::stream::{DisposableStream, ManagedStream};
     /// use futures_util::stream::StreamExt;
     ///
     /// pub async fn run<T: Message>(client: &Client, table: &str, rows: Vec<T>, schema: DescriptorProto)
@@ -415,7 +403,7 @@ impl Client {
     /// }
     /// ```
     pub fn committed_storage_writer(&self) -> committed::Writer {
-        committed::Writer::new(self.stereaming_write_max_insert_count, self.streaming_write_conn_pool.clone())
+        committed::Writer::new(self.streaming_write_max_insert_count, self.streaming_write_conn_pool.clone())
     }
 
     /// Creates a new buffered type storage writer.
@@ -426,7 +414,6 @@ impl Client {
     /// use prost::Message;
     /// use tokio::sync::futures;
     /// use google_cloud_bigquery::storage_write::AppendRowsRequestBuilder;
-    /// use google_cloud_bigquery::storage_write::stream::{DisposableStream, ManagedStream};
     /// use futures_util::stream::StreamExt;
     /// use google_cloud_gax::grpc::Status;
     ///
@@ -451,7 +438,7 @@ impl Client {
     /// }
     /// ```
     pub fn buffered_storage_writer(&self) -> buffered::Writer {
-        buffered::Writer::new(self.stereaming_write_max_insert_count, self.streaming_write_conn_pool.clone())
+        buffered::Writer::new(self.streaming_write_max_insert_count, self.streaming_write_conn_pool.clone())
     }
 
     /// Run query job and get result.

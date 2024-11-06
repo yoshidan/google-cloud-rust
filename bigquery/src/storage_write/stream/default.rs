@@ -1,7 +1,8 @@
 use crate::grpc::apiv1::conn_pool::ConnectionManager;
-use crate::storage_write::stream::{AsStream, ManagedStream, Stream};
-use google_cloud_gax::grpc::Status;
-use google_cloud_googleapis::cloud::bigquery::storage::v1::GetWriteStreamRequest;
+use crate::storage_write::stream::{AsStream, ManagedStreamDelegate, Stream};
+use crate::storage_write::AppendRowsRequestBuilder;
+use google_cloud_gax::grpc::{Status, Streaming};
+use google_cloud_googleapis::cloud::bigquery::storage::v1::{AppendRowsResponse, GetWriteStreamRequest};
 use std::sync::Arc;
 
 pub struct Writer {
@@ -39,6 +40,12 @@ impl DefaultStream {
     pub(crate) fn new(inner: Stream) -> Self {
         Self { inner }
     }
+    pub async fn append_rows(
+        &self,
+        rows: Vec<AppendRowsRequestBuilder>,
+    ) -> Result<Streaming<AppendRowsResponse>, Status> {
+        ManagedStreamDelegate::append_rows(&self.inner, rows).await
+    }
 }
 
 impl AsStream for DefaultStream {
@@ -46,13 +53,11 @@ impl AsStream for DefaultStream {
         &self.inner
     }
 }
-impl ManagedStream for DefaultStream {}
 
 #[cfg(test)]
 mod tests {
     use crate::client::{Client, ClientConfig};
     use crate::storage_write::stream::tests::{create_append_rows_request, TestData};
-    use crate::storage_write::stream::ManagedStream;
     use futures_util::StreamExt;
     use google_cloud_gax::grpc::Status;
     use prost::Message;

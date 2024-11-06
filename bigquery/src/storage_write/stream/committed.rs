@@ -1,8 +1,10 @@
 use crate::grpc::apiv1::bigquery_client::create_write_stream_request;
 use crate::grpc::apiv1::conn_pool::ConnectionManager;
-use crate::storage_write::stream::{AsStream, DisposableStream, ManagedStream, Stream};
-use google_cloud_gax::grpc::Status;
+use crate::storage_write::stream::{AsStream, DisposableStreamDelegate, ManagedStreamDelegate, Stream};
+use crate::storage_write::AppendRowsRequestBuilder;
+use google_cloud_gax::grpc::{Status, Streaming};
 use google_cloud_googleapis::cloud::bigquery::storage::v1::write_stream::Type::Committed;
+use google_cloud_googleapis::cloud::bigquery::storage::v1::AppendRowsResponse;
 use std::sync::Arc;
 
 pub struct Writer {
@@ -34,6 +36,17 @@ impl CommittedStream {
     pub(crate) fn new(inner: Stream) -> Self {
         Self { inner }
     }
+
+    pub async fn append_rows(
+        &self,
+        rows: Vec<AppendRowsRequestBuilder>,
+    ) -> Result<Streaming<AppendRowsResponse>, Status> {
+        ManagedStreamDelegate::append_rows(&self.inner, rows).await
+    }
+
+    pub async fn finalize(&self) -> Result<i64, Status> {
+        DisposableStreamDelegate::finalize(&self.inner).await
+    }
 }
 
 impl AsStream for CommittedStream {
@@ -41,14 +54,10 @@ impl AsStream for CommittedStream {
         &self.inner
     }
 }
-impl ManagedStream for CommittedStream {}
-impl DisposableStream for CommittedStream {}
-
 #[cfg(test)]
 mod tests {
     use crate::client::{Client, ClientConfig};
     use crate::storage_write::stream::tests::{create_append_rows_request, TestData};
-    use crate::storage_write::stream::{DisposableStream, ManagedStream};
     use futures_util::StreamExt;
     use google_cloud_gax::grpc::Status;
     use prost::Message;
@@ -124,7 +133,7 @@ mod tests {
         let mut streams = vec![];
         let table = format!("projects/{}/datasets/gcrbq_storage/tables/write_test", &project_id).to_string();
         let stream = Arc::new(writer.create_write_stream(&table).await.unwrap());
-        for i in 0..2 {
+        for _i in 0..2 {
             streams.push(stream.clone());
         }
 
