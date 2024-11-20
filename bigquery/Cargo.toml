@@ -27,7 +27,7 @@ base64 = "0.21"
 bigdecimal = { version="0.4", features=["serde"] }
 num-bigint = "0.4"
 backon = { version = "1.2", default-features = false, features = ["tokio-sleep"] }
-reqwest-middleware = { version = "0.3", features = ["json", "multipart"] }
+reqwest-middleware = { version = "0.4", features = ["json", "multipart"] }
 anyhow = "1.0"
 async-stream = "0.3"
 prost-types = "0.13"
