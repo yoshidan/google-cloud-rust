@@ -183,6 +183,7 @@ skip-tree = [
     { name = "windows-sys" },
     { name = "reqwest" },
     { name = "ethers"},
+    { name = "tonic"},
 ]
 
 # This section is considered when running `cargo deny check sources`.
