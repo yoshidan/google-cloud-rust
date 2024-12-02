@@ -78,6 +78,7 @@ pub struct Object {
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
     #[serde(skip_serializing_if = "crate::http::is_i64_zero")]
     #[serde(deserialize_with = "crate::http::from_str")]
+    #[serde(default)]
     pub size: i64,
     /// The creation time of the object.
     /// Attempting to set or update this field will result in a
@@ -109,6 +110,7 @@ pub struct Object {
     /// Attempting to set or update this field will result in a
     /// \[FieldViolation][google.rpc.BadRequest.FieldViolation\].
     #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(default)]
     pub etag: String,
     /// The modification time of the object metadata.
     /// Attempting to set or update this field will result in a
