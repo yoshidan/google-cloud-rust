@@ -283,7 +283,7 @@ where
     }
 }
 
-impl<'a, T> ToKind for &'a [T]
+impl<T> ToKind for &[T]
 where
     T: ToKind,
 {

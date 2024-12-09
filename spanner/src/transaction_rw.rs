@@ -266,7 +266,7 @@ impl ReadWriteTransaction {
     {
         let opt = options.unwrap_or_default();
 
-        return match result {
+        match result {
             Ok(s) => match self.commit(opt).await {
                 Ok(c) => Ok((c.commit_timestamp.map(|ts| ts.into()), s)),
                 // Retry the transaction using the same session on ABORT error.
@@ -293,11 +293,11 @@ impl ReadWriteTransaction {
                     Code::Aborted => Err((err, self.take_session())),
                     _ => {
                         let _ = self.rollback(opt.call_options.retry).await;
-                        return Err((err, self.take_session()));
+                        Err((err, self.take_session()))
                     }
                 }
             }
-        };
+        }
     }
 
     pub(crate) async fn commit(&mut self, options: CommitOptions) -> Result<CommitResponse, Status> {

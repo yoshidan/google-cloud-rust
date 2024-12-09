@@ -310,10 +310,10 @@ where
 }
 
 pub fn as_ref<'a>(item: &'a Value, field: &'a Field) -> Result<&'a Kind, Error> {
-    return match item.kind.as_ref() {
+    match item.kind.as_ref() {
         Some(v) => Ok(v),
         None => Err(Error::NoKind(field.name.to_string())),
-    };
+    }
 }
 
 pub fn kind_to_error<'a, T>(v: &'a value::Kind, field: &'a Field) -> Result<T, Error> {
