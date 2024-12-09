@@ -313,8 +313,7 @@ fn v4_sanitize_headers(hdrs: &[String]) -> Vec<String> {
 }
 
 fn extract_header_names(kvs: &[String]) -> Vec<&str> {
-    kvs
-        .iter()
+    kvs.iter()
         .map(|header| {
             let name_value: Vec<&str> = header.split(':').collect();
             name_value[0]
