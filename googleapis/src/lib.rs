@@ -1,5 +1,8 @@
 #![allow(clippy::doc_lazy_continuation)]
 
+#[path = "google.api.rs"]
+pub mod api;
+
 #[path = "google.rpc.rs"]
 pub mod rpc;
 
@@ -84,4 +87,11 @@ pub mod cloud {
         #[path = "google.cloud.kms.v1.rs"]
         pub mod v1;
     }
+}
+
+#[cfg(feature = "monitoring")]
+#[path = ""]
+pub mod monitoring {
+    #[path = "google.monitoring.v3.rs"]
+    pub mod v3;
 }
