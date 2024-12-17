@@ -22,30 +22,31 @@ pub use google_cloud_auth;
 
 #[cfg(feature = "auth")]
 impl ClientConfig {
-    pub async fn with_auth(self) -> Result<Self, google_cloud_auth::error::Error> {
-        let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new(Self::auth_config()).await?;
-        Ok(self.with_token_source(ts).await)
+    pub async fn with_auth(self) -> Result<Self, crate::auth::error::Error> {
+        let ts = crate::auth::token::DefaultTokenSourceProvider::new(Self::auth_config()).await?;
+        Ok(self.with_token_source(ts))
     }
 
     pub async fn with_credentials(
         self,
-        credentials: google_cloud_auth::credentials::CredentialsFile,
-    ) -> Result<Self, google_cloud_auth::error::Error> {
-        let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new_with_credentials(
+        credentials: crate::auth::credentials::CredentialsFile,
+    ) -> Result<Self, crate::auth::error::Error> {
+        let ts = crate::auth::token::DefaultTokenSourceProvider::new_with_credentials(
             Self::auth_config(),
             Box::new(credentials),
         )
         .await?;
-        Ok(self.with_token_source(ts).await)
+        Ok(self.with_token_source(ts))
     }
 
-    async fn with_token_source(mut self, ts: google_cloud_auth::token::DefaultTokenSourceProvider) -> Self {
+    ///Initializes token source using default source provider
+    pub fn with_token_source(mut self, ts: crate::auth::token::DefaultTokenSourceProvider) -> Self {
         self.token_source_provider = Box::new(ts);
         self
     }
 
-    fn auth_config() -> google_cloud_auth::project::Config<'static> {
-        google_cloud_auth::project::Config::default().with_scopes(&SCOPES)
+    fn auth_config() -> crate::auth::project::Config<'static> {
+        crate::auth::project::Config::default().with_scopes(&SCOPES)
     }
 }
 
@@ -116,7 +117,7 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     async fn new_client() -> (Client, String) {
-        let cred = google_cloud_auth::credentials::CredentialsFile::new().await.unwrap();
+        let cred = crate::auth::credentials::CredentialsFile::new().await.unwrap();
         let project = cred.project_id.clone().unwrap();
         let config = ClientConfig::default().with_credentials(cred).await.unwrap();
         (Client::new(config).await.unwrap(), project)

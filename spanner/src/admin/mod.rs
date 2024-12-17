@@ -59,6 +59,14 @@ impl AdminClientConfig {
         Ok(self)
     }
 
+    ///Initializes environment using default source provider when using real cloud environment
+    pub async fn with_token_source(mut self, ts: crate::auth::token::DefaultTokenSourceProvider) -> Self {
+        if let Environment::GoogleCloud(_) = self.environment {
+            self.environment = Environment::GoogleCloud(Box::new(ts))
+        }
+        self
+    }
+
     fn auth_config() -> google_cloud_auth::project::Config<'static> {
         google_cloud_auth::project::Config::default()
             .with_audience(crate::apiv1::conn_pool::AUDIENCE)

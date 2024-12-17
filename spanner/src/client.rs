@@ -100,9 +100,9 @@ pub use google_cloud_auth;
 
 #[cfg(feature = "auth")]
 impl ClientConfig {
-    pub async fn with_auth(mut self) -> Result<Self, google_cloud_auth::error::Error> {
+    pub async fn with_auth(mut self) -> Result<Self, crate::auth::error::Error> {
         if let Environment::GoogleCloud(_) = self.environment {
-            let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new(Self::auth_config()).await?;
+            let ts = crate::auth::token::DefaultTokenSourceProvider::new(Self::auth_config()).await?;
             self.environment = Environment::GoogleCloud(Box::new(ts))
         }
         Ok(self)
@@ -110,10 +110,10 @@ impl ClientConfig {
 
     pub async fn with_credentials(
         mut self,
-        credentials: google_cloud_auth::credentials::CredentialsFile,
-    ) -> Result<Self, google_cloud_auth::error::Error> {
+        credentials: crate::auth::credentials::CredentialsFile,
+    ) -> Result<Self, crate::auth::error::Error> {
         if let Environment::GoogleCloud(_) = self.environment {
-            let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new_with_credentials(
+            let ts = crate::auth::token::DefaultTokenSourceProvider::new_with_credentials(
                 Self::auth_config(),
                 Box::new(credentials),
             )
@@ -123,8 +123,16 @@ impl ClientConfig {
         Ok(self)
     }
 
-    fn auth_config() -> google_cloud_auth::project::Config<'static> {
-        google_cloud_auth::project::Config::default()
+    ///Initializes environment using default source provider when using real cloud environment
+    pub fn with_token_source(mut self, ts: crate::auth::token::DefaultTokenSourceProvider) -> Self {
+        if let Environment::GoogleCloud(_) = self.environment {
+            self.environment = Environment::GoogleCloud(Box::new(ts))
+        }
+        self
+    }
+
+    fn auth_config() -> crate::auth::project::Config<'static> {
+        crate::auth::project::Config::default()
             .with_audience(crate::apiv1::conn_pool::AUDIENCE)
             .with_scopes(&crate::apiv1::conn_pool::SCOPES)
     }

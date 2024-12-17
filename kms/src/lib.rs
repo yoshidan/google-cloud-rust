@@ -148,6 +148,8 @@
 //!     let receipt: TransactionReceipt = res.confirmations(3).await.unwrap().unwrap();
 //! }
 //! ```
+#[cfg(feature = "auth")]
+pub use google_cloud_auth as auth;
 pub mod client;
 pub mod grpc;
 pub mod signer;

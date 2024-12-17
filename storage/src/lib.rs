@@ -103,6 +103,8 @@
 
 extern crate core;
 
+#[cfg(feature = "auth")]
+pub use google_cloud_auth as auth;
 pub mod client;
 pub mod http;
 pub mod sign;

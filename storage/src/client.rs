@@ -75,16 +75,16 @@ pub use google_cloud_auth;
 
 #[cfg(feature = "auth")]
 impl ClientConfig {
-    pub async fn with_auth(self) -> Result<Self, google_cloud_auth::error::Error> {
-        let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new(Self::auth_config()).await?;
+    pub async fn with_auth(self) -> Result<Self, crate::auth::error::Error> {
+        let ts = crate::auth::token::DefaultTokenSourceProvider::new(Self::auth_config()).await?;
         Ok(self.with_token_source(ts).await)
     }
 
     pub async fn with_credentials(
         self,
-        credentials: google_cloud_auth::credentials::CredentialsFile,
-    ) -> Result<Self, google_cloud_auth::error::Error> {
-        let ts = google_cloud_auth::token::DefaultTokenSourceProvider::new_with_credentials(
+        credentials: crate::auth::credentials::CredentialsFile,
+    ) -> Result<Self, crate::auth::error::Error> {
+        let ts = crate::auth::token::DefaultTokenSourceProvider::new_with_credentials(
             Self::auth_config(),
             Box::new(credentials),
         )
@@ -92,7 +92,8 @@ impl ClientConfig {
         Ok(self.with_token_source(ts).await)
     }
 
-    async fn with_token_source(mut self, ts: google_cloud_auth::token::DefaultTokenSourceProvider) -> Self {
+    ///Initializes project configuration and auth method using default source provider.
+    pub async fn with_token_source(mut self, ts: crate::auth::token::DefaultTokenSourceProvider) -> Self {
         match &ts.source_credentials {
             // Credential file is used.
             Some(cred) => {
@@ -113,8 +114,8 @@ impl ClientConfig {
         self
     }
 
-    fn auth_config() -> google_cloud_auth::project::Config<'static> {
-        google_cloud_auth::project::Config::default().with_scopes(&crate::http::storage_client::SCOPES)
+    fn auth_config() -> crate::auth::project::Config<'static> {
+        crate::auth::project::Config::default().with_scopes(&crate::http::storage_client::SCOPES)
     }
 }
 

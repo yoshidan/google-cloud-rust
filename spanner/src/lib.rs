@@ -631,6 +631,8 @@
 //!     Ok(())
 //! }
 //! ```
+#[cfg(feature = "auth")]
+pub use google_cloud_auth as auth;
 pub mod admin;
 pub mod apiv1;
 pub mod client;
