@@ -42,6 +42,7 @@ impl Token {
     }
 }
 
+#[derive(Clone)]
 pub struct DefaultTokenSourceProvider {
     ts: Arc<DefaultTokenSource>,
     pub project_id: Option<String>,
