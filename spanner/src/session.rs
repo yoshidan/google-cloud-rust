@@ -238,6 +238,7 @@ impl SessionPool {
         let mut sessions = Vec::<SessionHandle>::new();
         let mut tasks = JoinSet::new();
         for _ in 0..channel_num {
+            // Ensure that we create the exact number of requested sessions by adding the remainder to the first channel.
             let creation_count = if channel_num == 0 {
                 creation_count_per_channel + remainder
             } else {
