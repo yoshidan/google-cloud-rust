@@ -508,10 +508,8 @@ impl SessionManager {
                 select! {
                     biased;
                     _ = cancel.cancelled() => break,
-                    session_result = tasks.join_next() => {
-                        if let Some(Ok((session_count, result))) = session_result {
-                            session_pool.inner.write().replenish(session_count, result)
-                        }
+                    Some(Ok((session_count, result))) = tasks.join_next(), if !tasks.is_empty() => {
+                        session_pool.inner.write().replenish(session_count, result);
                     }
                     session_count = rx.recv() => match session_count {
                         Some(session_count) => {
