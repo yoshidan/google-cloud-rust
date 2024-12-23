@@ -6,6 +6,7 @@ use google_cloud_gax::grpc::{Code, IntoStreamingRequest, Response, Status, Strea
 use google_cloud_gax::retry::{invoke_fn, RetrySetting};
 use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_read_client::BigQueryReadClient;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_write_client::BigQueryWriteClient;
+use google_cloud_googleapis::cloud::bigquery::storage::v1::write_stream::Type;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::{
     AppendRowsRequest, AppendRowsResponse, BatchCommitWriteStreamsRequest, BatchCommitWriteStreamsResponse,
     CreateReadSessionRequest, CreateWriteStreamRequest, FinalizeWriteStreamRequest, FinalizeWriteStreamResponse,
@@ -210,5 +211,20 @@ impl StreamingWriteClient {
             &mut self.inner,
         )
         .await
+    }
+}
+
+pub(crate) fn create_write_stream_request(table: &str, write_type: Type) -> CreateWriteStreamRequest {
+    CreateWriteStreamRequest {
+        parent: table.to_string(),
+        write_stream: Some(WriteStream {
+            name: "".to_string(),
+            r#type: write_type as i32,
+            create_time: None,
+            commit_time: None,
+            table_schema: None,
+            write_mode: 0,
+            location: "".to_string(),
+        }),
     }
 }

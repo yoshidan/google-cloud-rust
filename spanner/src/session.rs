@@ -13,6 +13,7 @@ use tokio::task::{JoinHandle, JoinSet};
 use tokio::time::{sleep, timeout};
 use tokio_util::sync::CancellationToken;
 
+use google_cloud_gax::grpc::metadata::MetadataMap;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::TryAs;
 use google_cloud_googleapis::spanner::v1::{BatchCreateSessionsRequest, DeleteSessionRequest, Session};
@@ -244,7 +245,7 @@ impl SessionPool {
             } else {
                 creation_count_per_channel
             };
-            let next_client = conn_pool.conn();
+            let next_client = conn_pool.conn().with_metadata(client_metadata(&database));
             let database = database.clone();
             tasks.spawn(async move { batch_create_sessions(next_client, &database, creation_count).await });
         }
@@ -513,9 +514,9 @@ impl SessionManager {
                     }
                     session_count = rx.recv() => match session_count {
                         Some(session_count) => {
-                            let conn = conn_pool.conn();
+                            let client = conn_pool.conn().with_metadata(client_metadata(&database));
                             let database = database.clone();
-                            tasks.spawn(async move { (session_count, batch_create_sessions(conn, &database, session_count).await) });
+                            tasks.spawn(async move { (session_count, batch_create_sessions(client, &database, session_count).await) });
                         },
                         None => continue
                     },
@@ -648,6 +649,12 @@ async fn batch_create_session(
         .collect::<Vec<SessionHandle>>())
 }
 
+pub(crate) fn client_metadata(database: &str) -> MetadataMap {
+    let mut metadata = MetadataMap::new();
+    metadata.insert("google-cloud-resource-prefix", database.parse().unwrap());
+    metadata
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::atomic::{AtomicI64, Ordering};
@@ -663,7 +670,9 @@ mod tests {
     use google_cloud_googleapis::spanner::v1::ExecuteSqlRequest;
 
     use crate::apiv1::conn_pool::ConnectionManager;
-    use crate::session::{batch_create_sessions, health_check, SessionConfig, SessionError, SessionManager};
+    use crate::session::{
+        batch_create_sessions, client_metadata, health_check, SessionConfig, SessionError, SessionManager,
+    };
 
     pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
@@ -1095,7 +1104,7 @@ mod tests {
         )
         .await
         .unwrap();
-        let client = cm.conn();
+        let client = cm.conn().with_metadata(client_metadata(DATABASE));
         let session_count = 125;
         let result = batch_create_sessions(client.clone(), DATABASE, session_count).await;
         match result {
