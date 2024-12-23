@@ -29,6 +29,7 @@ fn init() {
     let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 struct ChangeRecord {
     pub data_change_record: Vec<DataChangeRecord>,
@@ -44,6 +45,7 @@ impl TryFromStruct for ChangeRecord {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 struct ChildPartitionsRecord {
     pub start_timestamp: OffsetDateTime,
@@ -61,6 +63,7 @@ impl TryFromStruct for ChildPartitionsRecord {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 struct ChildPartition {
     pub token: String,
@@ -76,6 +79,7 @@ impl TryFromStruct for ChildPartition {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 struct DataChangeRecord {
     pub commit_timestamp: OffsetDateTime,
