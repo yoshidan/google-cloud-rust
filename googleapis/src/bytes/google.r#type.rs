@@ -30,7 +30,6 @@
 /// The exact variables and functions that may be referenced within an expression
 /// are determined by the service that evaluates it. See the service
 /// documentation for additional information.
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Expr {
     /// Textual representation of an expression in Common Expression Language
@@ -64,7 +63,6 @@ pub struct Expr {
 ///
 /// Related types are [google.type.TimeOfDay][google.type.TimeOfDay] and
 /// `google.protobuf.Timestamp`.
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct Date {
     /// Year of the date. Must be from 1 to 9999, or 0 to specify a date without
