@@ -32,7 +32,7 @@ jobs:
       - name: format check
         run: cargo fmt --all -- --check
       - name: clippy check
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --all-targets -- -D warnings
   check-deps:
     name: check-deps
     runs-on: ubuntu-latest

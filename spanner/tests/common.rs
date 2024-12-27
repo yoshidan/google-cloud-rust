@@ -18,6 +18,7 @@ use google_cloud_spanner::bigdecimal::BigDecimal;
 
 pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
+#[allow(dead_code)]
 pub struct UserCharacter {
     pub user_id: String,
     pub character_id: i64,
@@ -36,6 +37,7 @@ impl TryFromStruct for UserCharacter {
     }
 }
 
+#[allow(dead_code)]
 pub struct UserItem {
     pub user_id: String,
     pub item_id: i64,
@@ -54,6 +56,7 @@ impl TryFromStruct for UserItem {
     }
 }
 
+#[allow(dead_code)]
 pub struct UserItemWithHistory {
     pub user_id: String,
     pub item_id: i64,
@@ -74,6 +77,7 @@ impl TryFromStruct for UserItemWithHistory {
     }
 }
 
+#[allow(dead_code)]
 pub struct UserItemHistory {
     pub user_id: String,
     pub item_id: i64,
