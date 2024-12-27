@@ -32,7 +32,7 @@ mod tests {
         )
         .await
         .unwrap();
-        cm.conn().with_metadata(client_metadata(&DATABASE))
+        cm.conn().with_metadata(client_metadata(DATABASE))
     }
 
     async fn create_session(client: &mut Client) -> Session {
