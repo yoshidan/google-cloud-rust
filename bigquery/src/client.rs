@@ -721,7 +721,7 @@ impl Client {
                         streams: vec![],
                         estimated_total_bytes_scanned: 0,
                         estimated_total_physical_file_size: 0,
-                        estimated_row_count: 10,
+                        estimated_row_count: 0,
                         trace_id: "".to_string(),
                         schema: option.session_schema,
                     }),
