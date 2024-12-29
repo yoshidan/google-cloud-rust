@@ -1,16 +1,16 @@
 use backon::{ExponentialBuilder, Retryable};
 use core::time::Duration;
-use std::borrow::Cow;
-use std::collections::VecDeque;
-use std::marker::PhantomData;
-use std::sync::Arc;
-
 use google_cloud_gax::conn::{ConnectionOptions, Environment};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::{
     read_session, CreateReadSessionRequest, DataFormat, ReadSession,
 };
-use google_cloud_token::TokenSourceProvider;
+use google_cloud_token::{TokenSource, TokenSourceProvider};
+use std::borrow::Cow;
+use std::collections::VecDeque;
+use std::fmt::Debug;
+use std::marker::PhantomData;
+use std::sync::Arc;
 
 use crate::grpc::apiv1::conn_pool::ConnectionManager;
 use crate::http::bigquery_client::BigqueryClient;
@@ -107,7 +107,38 @@ impl Default for ChannelConfig {
     }
 }
 
+#[derive(Debug)]
+pub struct EmptyTokenSourceProvider {}
+
+#[derive(Debug)]
+pub struct EmptyTokenSource {}
+
+#[async_trait::async_trait]
+impl TokenSource for EmptyTokenSource {
+    async fn token(&self) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+        Ok("".to_string())
+    }
+}
+
+impl TokenSourceProvider for EmptyTokenSourceProvider {
+    fn token_source(&self) -> Arc<dyn TokenSource> {
+        Arc::new(EmptyTokenSource {})
+    }
+}
+
 impl ClientConfig {
+    pub fn new_with_emulator(grpc_host: &str, http_addr: impl Into<Cow<'static, str>>) -> Self {
+        Self {
+            http: reqwest_middleware::ClientBuilder::new(reqwest::Client::default()).build(),
+            bigquery_endpoint: http_addr.into(),
+            token_source_provider: Box::new(EmptyTokenSourceProvider {}),
+            environment: Environment::Emulator(grpc_host.to_string()),
+            streaming_read_config: ChannelConfig::default(),
+            streaming_write_config: StreamingWriteConfig::default(),
+            debug: false,
+        }
+    }
+
     pub fn new(
         http_token_source_provider: Box<dyn TokenSourceProvider>,
         grpc_token_source_provider: Box<dyn TokenSourceProvider>,
@@ -690,11 +721,11 @@ impl Client {
                         streams: vec![],
                         estimated_total_bytes_scanned: 0,
                         estimated_total_physical_file_size: 0,
-                        estimated_row_count: 0,
+                        estimated_row_count: 10,
                         trace_id: "".to_string(),
                         schema: option.session_schema,
                     }),
-                    max_stream_count: 0,
+                    max_stream_count: option.max_stream_count,
                     preferred_min_stream_count: 0,
                 },
                 option.session_retry_setting,
@@ -712,6 +743,7 @@ pub struct ReadTableOption {
     session_schema: Option<read_session::Schema>,
     session_retry_setting: Option<RetrySetting>,
     read_rows_retry_setting: Option<RetrySetting>,
+    max_stream_count: i32,
 }
 
 impl ReadTableOption {
@@ -739,16 +771,21 @@ impl ReadTableOption {
         self.read_rows_retry_setting = Some(value);
         self
     }
+
+    pub fn with_max_stream_count(mut self, value: i32) -> Self {
+        self.max_stream_count = value;
+        self
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use bigdecimal::BigDecimal;
+
     use serial_test::serial;
     use std::collections::HashMap;
     use std::ops::AddAssign;
     use std::time::Duration;
-
     use time::{Date, OffsetDateTime, Time};
 
     use google_cloud_googleapis::cloud::bigquery::storage::v1::read_session::TableReadOptions;
@@ -1235,5 +1272,122 @@ mod tests {
         for (i, d) in data.iter().enumerate() {
             assert_eq!(&TestData::default(i, *now + Duration::from_secs(i as u64)), d);
         }
+    }
+}
+
+#[cfg(test)]
+mod emulator_tests {
+    use crate::client::{Client, ClientConfig};
+    use crate::http::table::{Table, TableFieldSchema, TableFieldType, TableSchema};
+    use crate::http::tabledata::insert_all::{InsertAllRequest, Row};
+    use crate::http::tabledata::list::FetchDataRequest;
+    use futures_util::StreamExt;
+
+    use prost::Message;
+
+    use std::time::SystemTime;
+
+    #[ignore]
+    #[tokio::test]
+    async fn test_emulator_use() {
+        let config = ClientConfig::new_with_emulator("localhost:9060", "http://localhost:9050");
+
+        // Create Table
+        let now = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let client = Client::new(config).await.unwrap();
+        let mut table1 = Table::default();
+        table1.table_reference.dataset_id = "dataset1".to_string();
+        table1.table_reference.project_id = "local-project".to_string();
+        table1.table_reference.table_id = format!("table{now}").to_string();
+        table1.schema = Some(TableSchema {
+            fields: vec![TableFieldSchema {
+                name: "col_string".to_string(),
+                data_type: TableFieldType::String,
+                ..Default::default()
+            }],
+        });
+        client.table_client.create(&table1).await.unwrap();
+
+        // Insert data
+        let mut req = InsertAllRequest::<serde_json::Value>::default();
+        req.rows.push(Row {
+            insert_id: None,
+            json: serde_json::from_str(
+                r#"
+                {"col_string": "test1"}
+            "#,
+            )
+            .unwrap(),
+        });
+        client
+            .tabledata_client
+            .insert(
+                &table1.table_reference.project_id,
+                &table1.table_reference.dataset_id,
+                &table1.table_reference.table_id,
+                &req,
+            )
+            .await
+            .unwrap();
+
+        // Streaming write
+        let writer = client.default_storage_writer();
+        let fqtn = &format!(
+            "projects/local-project/datasets/dataset1/tables/{}",
+            table1.table_reference.table_id
+        );
+        let stream = writer.create_write_stream(fqtn).await.unwrap();
+
+        let mut rows = vec![];
+        for j in 0..5 {
+            let data = crate::storage_write::stream::tests::TestData {
+                col_string: format!("default_{j}"),
+            };
+            let mut buf = Vec::new();
+            data.encode(&mut buf).unwrap();
+            rows.push(crate::storage_write::stream::tests::create_append_rows_request(vec![
+                buf.clone(),
+                buf.clone(),
+                buf,
+            ]));
+        }
+        let mut result = stream.append_rows(rows).await.unwrap();
+        while let Some(res) = result.next().await {
+            let res = res.unwrap();
+            tracing::info!("append row errors = {:?}", res.row_errors.len());
+        }
+
+        // Read all data
+        let tref = &table1.table_reference;
+        let data = client
+            .tabledata_client
+            .read(
+                &tref.project_id,
+                &tref.dataset_id,
+                &tref.table_id,
+                &FetchDataRequest { ..Default::default() },
+            )
+            .await
+            .unwrap();
+        assert_eq!(16, data.total_rows);
+
+        /* TODO fix emulator stream
+        // Read all data by storage
+        let opt = ReadTableOption::default()
+            .with_session_read_options(TableReadOptions::default())
+            .with_max_stream_count(1);
+        let mut records= client
+            .read_table::<crate::storage::row::Row>(&tref, Some(opt))
+            .await
+            .unwrap();
+        let mut count = 0;
+        while let record = records.next().await.unwrap() {
+            count += 1;
+        }
+        assert_eq!(count, data.total_rows);
+         */
     }
 }
