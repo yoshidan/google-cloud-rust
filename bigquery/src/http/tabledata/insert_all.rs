@@ -67,6 +67,7 @@ pub struct Error {
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InsertAllResponse {
+    #[serde(default)]
     pub kind: String,
     pub insert_errors: Option<Vec<Error>>,
 }

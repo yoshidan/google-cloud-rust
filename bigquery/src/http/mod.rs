@@ -47,6 +47,14 @@ where
     T::from_str(&s).map_err(de::Error::custom)
 }
 
+fn into_str<T, S>(value: T, s: S) -> Result<S::Ok, S::Error>
+where
+    T: ToString,
+    S: serde::Serializer,
+{
+    s.serialize_str(&value.to_string())
+}
+
 fn from_str_vec_option<'de, T, D>(deserializer: D) -> Result<Option<Vec<T>>, D::Error>
 where
     T: FromStr,

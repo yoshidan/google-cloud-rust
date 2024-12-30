@@ -107,7 +107,7 @@ impl DisposableStreamDelegate {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use crate::storage_write::AppendRowsRequestBuilder;
     use prost_types::{field_descriptor_proto, DescriptorProto, FieldDescriptorProto};
 
