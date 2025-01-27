@@ -33,7 +33,7 @@ const JOB_RETRY_REASONS: [&str; 3] = ["backendError", "rateLimitExceeded", "inte
 
 #[derive(Debug)]
 pub struct ClientConfig {
-    http: reqwest_middleware::ClientWithMiddleware,
+    http: Option<reqwest_middleware::ClientWithMiddleware>,
     bigquery_endpoint: Cow<'static, str>,
     token_source_provider: Box<dyn TokenSourceProvider>,
     environment: Environment,
@@ -129,7 +129,7 @@ impl TokenSourceProvider for EmptyTokenSourceProvider {
 impl ClientConfig {
     pub fn new_with_emulator(grpc_host: &str, http_addr: impl Into<Cow<'static, str>>) -> Self {
         Self {
-            http: reqwest_middleware::ClientBuilder::new(reqwest::Client::default()).build(),
+            http: None,
             bigquery_endpoint: http_addr.into(),
             token_source_provider: Box::new(EmptyTokenSourceProvider {}),
             environment: Environment::Emulator(grpc_host.to_string()),
@@ -144,7 +144,7 @@ impl ClientConfig {
         grpc_token_source_provider: Box<dyn TokenSourceProvider>,
     ) -> Self {
         Self {
-            http: reqwest_middleware::ClientBuilder::new(reqwest::Client::default()).build(),
+            http: None,
             bigquery_endpoint: "https://bigquery.googleapis.com".into(),
             token_source_provider: http_token_source_provider,
             environment: Environment::GoogleCloud(grpc_token_source_provider),
@@ -166,7 +166,7 @@ impl ClientConfig {
         self
     }
     pub fn with_http_client(mut self, value: reqwest_middleware::ClientWithMiddleware) -> Self {
-        self.http = value;
+        self.http = Some(value);
         self
     }
     pub fn with_endpoint(mut self, value: impl Into<Cow<'static, str>>) -> Self {
@@ -262,7 +262,9 @@ impl Client {
         let client = Arc::new(BigqueryClient::new(
             ts,
             config.bigquery_endpoint.into_owned().as_str(),
-            config.http,
+            config
+                .http
+                .unwrap_or_else(|| reqwest_middleware::ClientBuilder::new(reqwest::Client::default()).build()),
             config.debug,
         ));
 
