@@ -357,7 +357,7 @@ impl Client {
     /// apply's default replay protection may require an additional RPC.  So this
     /// method may be appropriate for latency sensitive and/or high throughput blind
     /// writing.
-    pub async fn apply_at_least_once(&self, ms: Vec<Mutation>) -> Result<Option<Timestamp>, Error> {
+    pub async fn apply_at_least_once(&self, ms: Vec<Mutation>) -> Result<Option<CommitResult>, Error> {
         self.apply_at_least_once_with_option(ms, CommitOptions::default()).await
     }
 
@@ -374,7 +374,7 @@ impl Client {
         &self,
         ms: Vec<Mutation>,
         options: CommitOptions,
-    ) -> Result<Option<Timestamp>, Error> {
+    ) -> Result<Option<CommitResult>, Error> {
         let ro = TransactionRetrySetting::default();
         let mut session = self.get_session().await?;
 
@@ -387,7 +387,7 @@ impl Client {
                     isolation_level: IsolationLevel::Unspecified as i32,
                 });
                 match commit(session, ms.clone(), tx, options.clone()).await {
-                    Ok(s) => Ok(s.commit_timestamp.map(|s| s.into())),
+                    Ok(s) => Ok(s.into()),
                     Err(e) => Err((Error::GRPC(e), session)),
                 }
             },
