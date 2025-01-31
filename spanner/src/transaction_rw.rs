@@ -254,19 +254,6 @@ impl ReadWriteTransaction {
         &mut self,
         result: Result<S, E>,
         options: Option<CommitOptions>,
-    ) -> Result<(Option<Timestamp>, S), E>
-    where
-        E: TryAs<Status> + From<Status>,
-    {
-        self.end_with_stats(result, options)
-            .await
-            .map(|(r, v)| (r.and_then(|r| r.timestamp), v))
-    }
-
-    pub async fn end_with_stats<S, E>(
-        &mut self,
-        result: Result<S, E>,
-        options: Option<CommitOptions>,
     ) -> Result<(Option<CommitResult>, S), E>
     where
         E: TryAs<Status> + From<Status>,
