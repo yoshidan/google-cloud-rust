@@ -41,6 +41,9 @@ pub enum Error {
     /// Invalid Range error
     #[error("invalid range header, received: {0}")]
     InvalidRangeHeader(String),
+
+    #[error("Request failed: {0} detail={1}")]
+    RawResponse(reqwest::Error, String),
 }
 
 impl From<reqwest_middleware::Error> for Error {
