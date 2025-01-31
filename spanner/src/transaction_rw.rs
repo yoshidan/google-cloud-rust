@@ -1,6 +1,7 @@
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::sync::atomic::{AtomicI64, Ordering};
+use std::time::Duration;
 
 use prost_types::Struct;
 
@@ -22,6 +23,7 @@ use crate::value::Timestamp;
 pub struct CommitOptions {
     pub return_commit_stats: bool,
     pub call_options: CallOptions,
+    pub max_commit_delay: Option<Duration>,
 }
 
 /// ReadWriteTransaction provides a locking read-write transaction.
@@ -331,7 +333,7 @@ pub(crate) async fn commit(
         transaction: Some(tx),
         request_options: Transaction::create_request_options(commit_options.call_options.priority),
         return_commit_stats: commit_options.return_commit_stats,
-        max_commit_delay: None,
+        max_commit_delay: commit_options.max_commit_delay.map(|d| d.try_into().unwrap()),
     };
     let result = session
         .spanner_client
