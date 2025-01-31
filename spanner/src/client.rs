@@ -412,7 +412,7 @@ impl Client {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn apply(&self, ms: Vec<Mutation>) -> Result<Option<Timestamp>, Error> {
+    pub async fn apply(&self, ms: Vec<Mutation>) -> Result<Option<CommitResult>, Error> {
         self.apply_with_option(ms, ReadWriteTransactionOption::default()).await
     }
 
@@ -421,8 +421,8 @@ impl Client {
         &self,
         ms: Vec<Mutation>,
         options: ReadWriteTransactionOption,
-    ) -> Result<Option<Timestamp>, Error> {
-        let result: Result<(Option<Timestamp>, ()), Error> = self
+    ) -> Result<Option<CommitResult>, Error> {
+        let result: Result<(Option<CommitResult>, ()), Error> = self
             .read_write_transaction_sync_with_option(
                 |tx| {
                     tx.buffer_write(ms.to_vec());
@@ -593,7 +593,7 @@ impl Client {
         &self,
         f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,
         options: ReadWriteTransactionOption,
-    ) -> Result<(Option<Timestamp>, T), E>
+    ) -> Result<(Option<CommitResult>, T), E>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
     {
@@ -608,9 +608,7 @@ impl Client {
             |session| async {
                 let mut tx = self.create_read_write_transaction::<E>(session, bo.clone()).await?;
                 let result = f(&mut tx);
-                tx.finish(result, Some(co.clone()))
-                    .await
-                    .map(|(r, v)| (r.and_then(|r| r.timestamp), v))
+                tx.finish(result, Some(co.clone())).await
             },
             session,
         )
