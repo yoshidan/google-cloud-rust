@@ -66,7 +66,7 @@ pub struct Bucket {
     /// bucket are stored and determines the SLA and the cost of storage.
     /// If this value is not specified when the bucket is created, it will default
     /// to `STANDARD`. For more information, see
-    /// <https://developers.google.com/storage/docs/storage-classes.>
+    /// <https://developers.google.com/storage/docs/storage-classes>.
     pub storage_class: String,
     /// HTTP 1.1 \[<https://tools.ietf.org/html/rfc7232#section-2.3"\]Entity> tag]
     /// for the bucket.
@@ -141,8 +141,8 @@ pub struct Billing {
 }
 /// Cross-Origin Response sharing (CORS) properties for a bucket.
 /// For more on GCS and CORS, see
-/// <https://cloud.google.com/storage/docs/cross-origin.>
-/// For more on CORS in general, see <https://tools.ietf.org/html/rfc6454.>
+/// <https://cloud.google.com/storage/docs/cross-origin>.
+/// For more on CORS in general, see <https://tools.ietf.org/html/rfc6454>.
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Cors {
@@ -211,7 +211,7 @@ pub mod iam_configuration {
     }
 }
 /// Lifecycle properties of a bucket.
-/// For more information, see <https://cloud.google.com/storage/docs/lifecycle.>
+/// For more information, see <https://cloud.google.com/storage/docs/lifecycle>.
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Lifecycle {
@@ -302,7 +302,7 @@ pub struct RetentionPolicy {
 }
 /// Properties of a bucket related to versioning.
 /// For more on GCS versioning, see
-/// <https://cloud.google.com/storage/docs/object-versioning.>
+/// <https://cloud.google.com/storage/docs/object-versioning>.
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Versioning {
@@ -311,7 +311,7 @@ pub struct Versioning {
 }
 /// Properties of a bucket related to accessing the contents as a static
 /// website. For more on hosting a static website via GCS, see
-/// <https://cloud.google.com/storage/docs/hosting-static-website.>
+/// <https://cloud.google.com/storage/docs/hosting-static-website>.
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Website {
