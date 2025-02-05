@@ -71,9 +71,11 @@ impl TokenSource for ComputeIdentitySource {
             .get(self.token_url.to_string())
             .header(METADATA_FLAVOR_KEY, METADATA_GOOGLE)
             .send()
-            .await?
+            .await
+            .map_err(|e| Error::HttpError(self.token_url.clone(), e))?
             .text()
-            .await?;
+            .await
+            .map_err(|e| Error::HttpError(self.token_url.clone(), e))?;
 
         let exp = jsonwebtoken::decode::<ExpClaim>(&jwt, &self.decoding_key, &self.validation)?
             .claims
