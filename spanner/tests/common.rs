@@ -16,6 +16,7 @@ use google_cloud_spanner::value::CommitTimestamp;
 
 use google_cloud_spanner::bigdecimal::BigDecimal;
 
+pub use gcloud_spanner as google_cloud_spanner;
 pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
 #[allow(dead_code)]

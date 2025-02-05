@@ -2,7 +2,7 @@
 
 Google Cloud Platform Key Management Service Client library.
 
-[![crates.io](https://img.shields.io/crates/v/google-cloud-kms.svg)](https://crates.io/crates/google-cloud-kms)
+[![crates.io](https://img.shields.io/crates/v/gcloud-kms.svg)](https://crates.io/crates/gcloud-kms)
 
 * [About KMS](https://cloud.google.com/kms/)
 * [JSON API Documentation](https://cloud.google.com/kms/docs/reference/rest)
@@ -12,7 +12,7 @@ Google Cloud Platform Key Management Service Client library.
 
 ```toml
 [dependencies]
-google-cloud-kms = "version"
+google-cloud-kms = { package="gcloud-kms", version="1.0.0" }
 ```
 
  ### Authentication

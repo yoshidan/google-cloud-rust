@@ -2,14 +2,14 @@
 
 Google Cloud Platform server application authentication library.
 
-[![crates.io](https://img.shields.io/crates/v/google-cloud-auth.svg)](https://crates.io/crates/google-cloud-auth)
+[![crates.io](https://img.shields.io/crates/v/gloud-auth.svg)](https://crates.io/crates/gcloud-auth)
 
 ## Installation
 
 ```toml
 [dependencies]
-google-cloud-auth = <version>
-google-cloud-token = "0.1.2"
+google-cloud-auth = { package="gcloud-auth", version="1.0.0" }
+google-cloud-token = { package="gcloud-token", version="1.0.0" }
 ```
 
 ## Quickstart

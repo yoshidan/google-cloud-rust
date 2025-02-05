@@ -2,13 +2,13 @@
 
 Google Cloud Platform BigQuery Client library.
 
-[![crates.io](https://img.shields.io/crates/v/google-cloud-bigquery.svg)](https://crates.io/crates/google-cloud-bigquery)
+[![crates.io](https://img.shields.io/crates/v/gcloud-bigquery.svg)](https://crates.io/crates/gcloud-bigquery)
 
 ## Installation
 
 ```toml
 [dependencies]
-google-cloud-bigquery = version
+google-cloud-bigquery = { package="gcloud-bigquery", version="1.0.0" }
 ```
 
 ## Quick Start
