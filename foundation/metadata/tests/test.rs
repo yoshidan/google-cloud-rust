@@ -1,4 +1,4 @@
-use google_cloud_metadata::{email, on_gce, Error};
+use gcloud_metadata::{email, on_gce, Error};
 
 #[tokio::test]
 async fn test_on_gce() {

@@ -1,6 +1,6 @@
 [package]
-name = "google-cloud-token"
-version = "0.1.2"
+name = "gcloud-token"
+version = "1.0.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/foundation/token"
@@ -8,6 +8,9 @@ keywords = ["gcp","googleapis","google-cloud-rust"]
 license = "MIT"
 readme = "README.md"
 description = "Google Cloud Platform token spec."
+
+[lib]
+doctest = false
 
 [dependencies]
 async-trait = "0.1"

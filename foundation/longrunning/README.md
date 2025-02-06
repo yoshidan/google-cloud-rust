@@ -2,12 +2,12 @@
 
 Google Cloud Platform long running operation library.
 
-[![crates.io](https://img.shields.io/crates/v/google-cloud-longrunning.svg)](https://crates.io/crates/google-cloud-longrunning)
+[![crates.io](https://img.shields.io/crates/v/gcloud-longrunning.svg)](https://crates.io/crates/gcloud-longrunning)
 
 ## Installation
 
 ```toml
 [dependencies]
-google-cloud-longrunning = <version>
+google-cloud-longrunning = { package="gcloud-longrunning", version="..." }
 ```
 

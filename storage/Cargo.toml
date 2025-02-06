@@ -1,23 +1,24 @@
 [package]
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 description = "Google Cloud Platform storage client library."
-documentation = "https://docs.rs/google-cloud-storage/latest/google_cloud_storage/"
+documentation = "https://docs.rs/gcloud-storage/latest/gcloud_storage/"
 edition = "2021"
 keywords = ["gcp", "gcs", "storage", "googleapis", "google-cloud-rust"]
 license = "MIT"
-name = "google-cloud-storage"
+name = "gcloud-storage"
 readme = "README.md"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/storage"
-version = "0.24.0"
+version = "1.0.0"
+
+[lib]
+doctest = false
 
 [dependencies]
 anyhow = "1.0"
-async-stream = "0.3"
-async-trait = "0.1"
 base64 = "0.21"
 bytes = "1.5"
 futures-util = "0.3"
-google-cloud-token = {version = "0.1.2", path = "../foundation/token"}
+google-cloud-token = {package = "gcloud-token", version = "1.0.0", path = "../foundation/token"}
 hex = "0.4"
 once_cell = "1.18"
 percent-encoding = "2.3"
@@ -45,17 +46,16 @@ tokio = {version = "1.32", features = ["macros"]}
 tracing = "0.1"
 url = "2.4"
 
-google-cloud-auth = {optional = true, version = "0.17", path = "../foundation/auth", default-features = false}
-google-cloud-metadata = {optional = true, version = "0.5", path = "../foundation/metadata"}
+google-cloud-auth = {package = "gcloud-auth", optional = true, version = "1.0.0", path = "../foundation/auth", default-features = false}
+google-cloud-metadata = {package = "gcloud-metadata", optional = true, version = "1.0.0", path = "../foundation/metadata"}
 
 [dev-dependencies]
 ctor = "0.1.26"
-google-cloud-auth = {path = "../foundation/auth", default-features = false}
+google-cloud-auth = { package = "gcloud-auth", path = "../foundation/auth", default-features = false}
 reqwest-retry = "0.7.0"
 retry-policies = "0.4.0"
 serial_test = "3.1"
 tokio = {version = "1.32", features = ["rt-multi-thread"]}
-tokio-util = {version = "0.7", features = ["codec"]}
 tracing-subscriber = {version = "0.3.17", features = ["env-filter"]}
 
 [features]

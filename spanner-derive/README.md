@@ -2,13 +2,13 @@
 
 Procedural macro for [google-cloud-spanner](../spanner).
 
-[![crates.io](https://img.shields.io/crates/v/google-cloud-spanner-derive.svg)](https://crates.io/crates/google-cloud-spanner-derive)
+[![crates.io](https://img.shields.io/crates/v/gcloud-spanner-derive.svg)](https://crates.io/crates/gcloud-spanner-derive)
 
 ## Installation
 
 ```toml
 [dependencies]
-google-cloud-spanner-derive = <version>
+google-cloud-spanner-derive = { package="gcloud-spanner-derive", version="1.0.0" }
 ```
 
 ## Quick Start

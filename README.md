@@ -4,6 +4,18 @@ Providing a high level API for gRPC API like [Google Cloud Go](https://github.co
 
 ![CI](https://github.com/yoshidan/google-cloud-rust/workflows/CI/badge.svg?branch=main)
 
+## Announcement
+### 2025.02.06:  
+Since the development of [google cloud rust by Google](https://github.com/googleapis/google-cloud-rust) seems to have resumed,
+We have decided to donate the `google-cloud-*` namespace to Google.
+#### Migration from `google-cloud-*` to `gcloud-*`
+
+Library users do not need to modify existing code.
+Use `package` option at [dependency] in Cargo.toml
+```
+google-cloud-spanner = { package="gcloud-spanner", version="1.0.0" }
+```
+
 ## Component 
 
 * [google-cloud-spanner](./spanner)

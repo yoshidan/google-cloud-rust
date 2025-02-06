@@ -10,6 +10,7 @@ use google_cloud_gax::conn::Environment::GoogleCloud;
 use google_cloud_gax::grpc::Code;
 use google_cloud_googleapis::spanner::admin::database::v1::UpdateDatabaseDdlRequest;
 
+use common::*;
 use google_cloud_spanner::admin;
 use google_cloud_spanner::admin::AdminClientConfig;
 use google_cloud_spanner::client::{Client, ClientConfig};
