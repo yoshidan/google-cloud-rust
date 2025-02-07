@@ -4,6 +4,7 @@ use serial_test::serial;
 use std::str::FromStr;
 use time::{Date, OffsetDateTime};
 
+use gcloud_spanner_derive as google_cloud_spanner_derive;
 use google_cloud_spanner::client::{Client, ClientConfig, Error};
 use google_cloud_spanner::mutation::insert_struct;
 use google_cloud_spanner::statement::Statement;

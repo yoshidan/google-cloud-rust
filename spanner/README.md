@@ -2,7 +2,7 @@
 
 Google Cloud Platform spanner library.
 
-[![crates.io](https://img.shields.io/crates/v/google-cloud-spanner.svg)](https://crates.io/crates/google-cloud-spanner)
+[![crates.io](https://img.shields.io/crates/v/gcloud-spanner.svg)](https://crates.io/crates/gcloud-spanner)
 
 * [About Cloud Spanner](https://cloud.google.com/spanner/)
 * [Spanner API Documentation](https://cloud.google.com/spanner/docs)
@@ -12,7 +12,7 @@ Google Cloud Platform spanner library.
 
 ```toml
 [dependencies]
-google-cloud-spanner = "version"
+google-cloud-spanner = { package="gcloud-spanner", version="1.0.0" }
 ```
 
 ## Quickstart

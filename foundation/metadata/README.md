@@ -2,13 +2,13 @@
 
 Google Cloud Platform GCE check library.
 
-[![crates.io](https://img.shields.io/crates/v/google-cloud-metadata.svg)](https://crates.io/crates/google-cloud-metadata)
+[![crates.io](https://img.shields.io/crates/v/gcloud-metadata.svg)](https://crates.io/crates/gcloud-metadata)
 
 ## Installation
 
 ```toml
 [dependencies]
-google-cloud-metadata = <version>
+google-cloud-metadata = { package="gcloud-metadata", version="..." }
 ```
 
 ## Usage 

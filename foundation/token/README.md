@@ -2,11 +2,11 @@
 
 Google Cloud Platform token spec for google-cloud-rust.
 
-[![crates.io](https://img.shields.io/crates/v/google-cloud-token.svg)](https://crates.io/crates/google-cloud-token)
+[![crates.io](https://img.shields.io/crates/v/gcloud-token.svg)](https://crates.io/crates/gcloud-token)
 
 ## Installation
 
 ```toml
 [dependencies]
-google-cloud-token = <version>
+google-cloud-token = { package="gcloud-token", version="1.0.0" }
 ```

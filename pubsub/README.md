@@ -2,7 +2,7 @@
 
 Google Cloud Platform pub/sub library.
 
-[![crates.io](https://img.shields.io/crates/v/google-cloud-pubsub.svg)](https://crates.io/crates/google-cloud-pubsub)
+[![crates.io](https://img.shields.io/crates/v/gcloud-pubsub.svg)](https://crates.io/crates/gcloud-pubsub)
 
 
 * [About Cloud Pub/Sub](https://cloud.google.com/pubsub/)
@@ -12,7 +12,7 @@ Google Cloud Platform pub/sub library.
 
 ```toml
 [dependencies]
-google-cloud-pubsub = "version"
+google-cloud-pubsub = { package="gcloud-pubsub", version="1.0.0" }
 ```
 
 ## Quickstart
