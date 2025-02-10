@@ -106,6 +106,7 @@ pub struct QueryRequest {
 #[serde(rename_all = "camelCase")]
 pub struct QueryResponse {
     /// The resource type.
+    #[serde(default)]
     pub kind: String,
     /// The schema of the results. Present only when the query completes successfully.
     pub schema: Option<TableSchema>,
