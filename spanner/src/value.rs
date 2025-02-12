@@ -35,7 +35,7 @@ impl From<prost_types::Timestamp> for Timestamp {
     }
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug)]
 pub struct CommitTimestamp {
     pub(crate) timestamp: time::OffsetDateTime,
 }
