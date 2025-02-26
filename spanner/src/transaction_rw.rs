@@ -1,6 +1,7 @@
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::sync::atomic::{AtomicI64, Ordering};
+use std::time::Duration;
 
 use prost_types::Struct;
 
@@ -22,6 +23,7 @@ use crate::value::Timestamp;
 pub struct CommitOptions {
     pub return_commit_stats: bool,
     pub call_options: CallOptions,
+    pub max_commit_delay: Option<Duration>,
 }
 
 /// ReadWriteTransaction provides a locking read-write transaction.
@@ -266,7 +268,7 @@ impl ReadWriteTransaction {
     {
         let opt = options.unwrap_or_default();
 
-        return match result {
+        match result {
             Ok(s) => match self.commit(opt).await {
                 Ok(c) => Ok((c.commit_timestamp.map(|ts| ts.into()), s)),
                 // Retry the transaction using the same session on ABORT error.
@@ -293,11 +295,11 @@ impl ReadWriteTransaction {
                     Code::Aborted => Err((err, self.take_session())),
                     _ => {
                         let _ = self.rollback(opt.call_options.retry).await;
-                        return Err((err, self.take_session()));
+                        Err((err, self.take_session()))
                     }
                 }
             }
-        };
+        }
     }
 
     pub(crate) async fn commit(&mut self, options: CommitOptions) -> Result<CommitResponse, Status> {
@@ -331,7 +333,7 @@ pub(crate) async fn commit(
         transaction: Some(tx),
         request_options: Transaction::create_request_options(commit_options.call_options.priority),
         return_commit_stats: commit_options.return_commit_stats,
-        max_commit_delay: None,
+        max_commit_delay: commit_options.max_commit_delay.map(|d| d.try_into().unwrap()),
     };
     let result = session
         .spanner_client

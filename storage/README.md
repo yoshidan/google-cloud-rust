@@ -2,7 +2,7 @@
 
 Google Cloud Platform Storage Client library.
 
-[![crates.io](https://img.shields.io/crates/v/google-cloud-storage.svg)](https://crates.io/crates/google-cloud-storage)
+[![crates.io](https://img.shields.io/crates/v/gcloud-storage.svg)](https://crates.io/crates/gcloud-storage)
 
 * [About Cloud Storage](https://cloud.google.com/storage/)
 * [JSON API Documentation](https://cloud.google.com/storage/docs/json_api/v1)
@@ -11,7 +11,7 @@ Google Cloud Platform Storage Client library.
 
 ```toml
 [dependencies]
-google-cloud-storage = "version"
+google-cloud-storage = { package="gcloud-storage", version="1.0.0" }
 ```
 
 ## Quickstart

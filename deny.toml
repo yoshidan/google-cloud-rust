@@ -71,7 +71,8 @@ allow = [
     "BSD-2-Clause",
     "BSD-3-Clause",
     "CC0-1.0",
-    "Unicode-3.0"
+    "Unicode-3.0",
+    "Zlib",
 ]
 # The confidence threshold for detecting a license from license text.
 # The higher the value, the more closely the license text must be to the
@@ -183,6 +184,7 @@ skip-tree = [
     { name = "windows-sys" },
     { name = "reqwest" },
     { name = "ethers"},
+    { name = "tonic"},
 ]
 
 # This section is considered when running `cargo deny check sources`.

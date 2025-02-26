@@ -676,6 +676,7 @@ pub struct Table {
     /// Output only. The resource type.
     pub kind: String,
     /// Output only. A hash of the resource.
+    #[serde(default)]
     pub etag: String,
     /// Output only. The fully-qualified unique name of the dataset in the format projectId:datasetId.
     /// The dataset name without the project name is given in the datasetId field. When creating a new dataset,
@@ -712,15 +713,21 @@ pub struct Table {
     pub require_partition_filter: Option<bool>,
     /// Output only. The size of this table in logical bytes, excluding any data in the streaming buffer.
     #[serde(deserialize_with = "crate::http::from_str_option")]
+    #[serde(default)]
     pub num_bytes: Option<i64>,
     /// Output only. The number of logical bytes in the table that are considered "long-term storage".
     #[serde(deserialize_with = "crate::http::from_str")]
+    #[serde(serialize_with = "crate::http::into_str")]
+    #[serde(default)]
     pub num_long_term_bytes: i64,
     /// Output only. The number of rows of data in this table, excluding any data in the streaming buffer.
     #[serde(deserialize_with = "crate::http::from_str")]
+    #[serde(serialize_with = "crate::http::into_str")]
+    #[serde(default)]
     pub num_rows: u64,
     /// Output only. The time when this table was created, in milliseconds since the epoch.
     #[serde(deserialize_with = "crate::http::from_str")]
+    #[serde(serialize_with = "crate::http::into_str")]
     pub creation_time: i64,
     /// Optional. The time when this table expires, in milliseconds since the epoch.
     /// If not present, the table will persist indefinitely. Expired tables will be deleted and their storage reclaimed. The defaultTableExpirationMs property of the encapsulating dataset can be used to set a default expirationTime on newly created tables.
@@ -729,6 +736,7 @@ pub struct Table {
     pub expiration_time: Option<i64>,
     /// Output only. The time when this table was last modified, in milliseconds since the epoch.
     #[serde(deserialize_with = "crate::http::from_str")]
+    #[serde(serialize_with = "crate::http::into_str")]
     pub last_modified_time: u64,
     /// Output only. Describes the table type. The following values are supported:
     ///
@@ -750,6 +758,7 @@ pub struct Table {
     pub external_data_configuration: Option<ExternalDataConfiguration>,
     /// Output only. The geographic location where the table resides.
     /// This value is inherited from the dataset.
+    #[serde(default)]
     pub location: String,
     /// Output only. Contains information regarding this table's streaming buffer, if one is present.
     /// This field will be absent if the table is not being streamed to or

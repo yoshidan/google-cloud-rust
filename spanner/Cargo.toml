@@ -1,6 +1,6 @@
 [package]
-name = "google-cloud-spanner"
-version = "0.32.0"
+name = "gcloud-spanner"
+version = "1.0.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/spanner"
@@ -8,7 +8,10 @@ keywords = ["gcp","spanner","googleapis","google-cloud-rust"]
 license = "MIT"
 readme = "README.md"
 description = "Google Cloud Platform spanner client library."
-documentation = "https://docs.rs/google-cloud-spanner/latest/google_cloud_spanner/"
+documentation = "https://docs.rs/gcloud-spanner/latest/gcloud_spanner/"
+
+[lib]
+doctest = false
 
 [dependencies]
 tracing = "0.1"
@@ -22,19 +25,19 @@ serde = { version = "1.0", optional = true, features = ["derive"] }
 tokio-util = "0.7"
 bigdecimal = { version="0.4", features=["serde"] }
 
-google-cloud-token = { version = "0.1.2", path = "../foundation/token" }
-google-cloud-longrunning = { version = "0.21.0", path = "../foundation/longrunning" }
-google-cloud-gax = { version = "0.19.2", path = "../foundation/gax" }
-google-cloud-googleapis = { version = "0.16.0", path = "../googleapis", features = ["spanner"]}
+google-cloud-token = { package = "gcloud-token", version = "1.0.0", path = "../foundation/token" }
+google-cloud-longrunning = { package = "gcloud-longrunning", version = "1.0.0", path = "../foundation/longrunning" }
+google-cloud-gax = { package = "gcloud-gax", version = "1.0.0", path = "../foundation/gax" }
+google-cloud-googleapis = { package = "gcloud-googleapis", version = "1.0.0", path = "../googleapis", features = ["spanner"]}
 
-google-cloud-auth = { optional = true, version = "0.17", path="../foundation/auth", default-features=false }
+google-cloud-auth = { package = "gcloud-auth", optional = true, version = "1.0.0", path="../foundation/auth", default-features=false }
 
 [dev-dependencies]
 tokio = { version="1.32", features=["rt-multi-thread"] }
 tracing-subscriber = { version="0.3", features=["env-filter"] }
 serial_test = "3.1"
 ctor = "0.1"
-google-cloud-auth = { path="../foundation/auth", default-features=false, features=["rustls-tls"]}
+google-cloud-auth = { package = "gcloud-auth", path="../foundation/auth", default-features=false, features=["rustls-tls"]}
 
 [features]
 default = ["serde", "auth", "default-tls"]

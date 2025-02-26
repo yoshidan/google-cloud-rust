@@ -250,11 +250,11 @@ impl Transaction {
     }
 
     pub(crate) fn get_session_name(&self) -> String {
-        return self.session.as_ref().unwrap().session.name.to_string();
+        self.session.as_ref().unwrap().session.name.to_string()
     }
 
     pub(crate) fn as_mut_session(&mut self) -> &mut ManagedSession {
-        return self.session.as_mut().unwrap();
+        self.session.as_mut().unwrap()
     }
 
     /// returns the owner ship of session.

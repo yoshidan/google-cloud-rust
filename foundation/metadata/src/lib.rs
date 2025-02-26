@@ -88,7 +88,7 @@ pub async fn email(service_account: &str) -> Result<String, Error> {
 
 async fn get_etag_with_trim(suffix: &str) -> Result<String, Error> {
     let result = get_etag(suffix).await?;
-    return Ok(result.trim().to_string());
+    Ok(result.trim().to_string())
 }
 
 async fn get_etag(suffix: &str) -> Result<String, Error> {

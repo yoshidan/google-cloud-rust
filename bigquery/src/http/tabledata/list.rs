@@ -42,8 +42,10 @@ pub struct FetchDataRequest {
 #[serde(rename_all = "camelCase")]
 pub struct FetchDataResponse {
     /// Will be set to "bigquery#tableDataList".
+    #[serde(default)]
     pub kind: String,
     /// Etag to the response.
+    #[serde(default)]
     pub etag: String,
     /// Total rows of the entire table. In order to show default value "0", we have to present it as string.
     #[serde(deserialize_with = "crate::http::from_str")]

@@ -2,7 +2,7 @@
 
 Google Cloud Platform Artifact Registry Client library.
 
-[![crates.io](https://img.shields.io/crates/v/google-cloud-artifact-registry.svg)](https://crates.io/crates/google-cloud-artifact-registry)
+[![crates.io](https://img.shields.io/crates/v/gcloud-artifact-registry.svg)](https://crates.io/crates/google-cloud-artifact-registry)
 
 * [About Artifact Registry](https://cloud.google.com/artifact-registry/)
 * [JSON API Documentation](https://cloud.google.com/artifact-registry/docs/reference/rest)
@@ -12,7 +12,7 @@ Google Cloud Platform Artifact Registry Client library.
 
 ```toml
 [dependencies]
-google-cloud-artifact-registry = "version"
+google-cloud-artifact-registry = {package="gcloud-artifact-registry", version="1.0.0" }
 ```
 
 ## Quickstart

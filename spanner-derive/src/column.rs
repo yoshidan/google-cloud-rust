@@ -14,7 +14,7 @@ pub(crate) struct Column<'a> {
     pub commit_timestamp: bool,
 }
 
-impl<'a> Column<'a> {
+impl Column<'_> {
     pub(crate) fn name(&self) -> String {
         match &self.column_name {
             Some(v) => v.to_string(),

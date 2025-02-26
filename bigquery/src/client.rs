@@ -1,18 +1,19 @@
 use backon::{ExponentialBuilder, Retryable};
 use core::time::Duration;
-use std::borrow::Cow;
-use std::collections::VecDeque;
-use std::marker::PhantomData;
-use std::sync::Arc;
-
 use google_cloud_gax::conn::{ConnectionOptions, Environment};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::{
     read_session, CreateReadSessionRequest, DataFormat, ReadSession,
 };
-use google_cloud_token::TokenSourceProvider;
+use google_cloud_token::{TokenSource, TokenSourceProvider};
+use std::borrow::Cow;
+use std::collections::VecDeque;
+use std::fmt::Debug;
+use std::future::Future;
+use std::marker::PhantomData;
+use std::sync::Arc;
 
-use crate::grpc::apiv1::conn_pool::{ReadConnectionManager, DOMAIN};
+use crate::grpc::apiv1::conn_pool::ConnectionManager;
 use crate::http::bigquery_client::BigqueryClient;
 use crate::http::bigquery_dataset_client::BigqueryDatasetClient;
 use crate::http::bigquery_job_client::BigqueryJobClient;
@@ -29,24 +30,154 @@ use crate::query::{QueryOption, QueryResult};
 use crate::storage;
 use crate::{http, query};
 
+#[cfg(feature = "auth")]
+pub use google_cloud_auth;
+
 const JOB_RETRY_REASONS: [&str; 3] = ["backendError", "rateLimitExceeded", "internalError"];
 
 #[derive(Debug)]
-pub struct ClientConfig {
-    http: reqwest_middleware::ClientWithMiddleware,
+pub struct HttpClientConfig {
+    client: Option<reqwest_middleware::ClientWithMiddleware>,
     bigquery_endpoint: Cow<'static, str>,
     token_source_provider: Box<dyn TokenSourceProvider>,
+    debug: bool,
+}
+
+impl HttpClientConfig {
+    pub fn new_with_emulator(http_addr: impl Into<Cow<'static, str>>) -> Self {
+        Self {
+            client: None,
+            bigquery_endpoint: http_addr.into(),
+            token_source_provider: Box::new(EmptyTokenSourceProvider {}),
+            debug: false,
+        }
+    }
+
+    pub fn new(http_token_source_provider: Box<dyn TokenSourceProvider>) -> Self {
+        Self {
+            client: None,
+            bigquery_endpoint: "https://bigquery.googleapis.com".into(),
+            token_source_provider: http_token_source_provider,
+            debug: false,
+        }
+    }
+
+    pub fn with_debug(mut self, value: bool) -> Self {
+        self.debug = value;
+        self
+    }
+
+    pub fn with_http_client(mut self, value: reqwest_middleware::ClientWithMiddleware) -> Self {
+        self.client = Some(value);
+        self
+    }
+
+    pub fn with_endpoint(mut self, value: impl Into<Cow<'static, str>>) -> Self {
+        self.bigquery_endpoint = value.into();
+        self
+    }
+
+    pub fn create_client(self) -> Arc<BigqueryClient> {
+        let ts = self.token_source_provider.token_source();
+        Arc::new(BigqueryClient::new(
+            ts,
+            self.bigquery_endpoint.as_ref(),
+            self.client
+                .unwrap_or_else(|| reqwest_middleware::ClientBuilder::new(reqwest::Client::default()).build()),
+            self.debug,
+        ))
+    }
+}
+
+#[cfg(feature = "auth")]
+impl HttpClientConfig {
+    fn bigquery_http_auth_config() -> google_cloud_auth::project::Config<'static> {
+        google_cloud_auth::project::Config::default().with_scopes(&http::bigquery_client::SCOPES)
+    }
+
+    ///Creates new token provider for HTTP client
+    pub fn default_token_provider() -> impl Future<
+        Output = Result<google_cloud_auth::token::DefaultTokenSourceProvider, google_cloud_auth::error::Error>,
+    > + Send
+           + 'static {
+        google_cloud_auth::token::DefaultTokenSourceProvider::new(Self::bigquery_http_auth_config())
+    }
+
+    ///Creates new token provider for HTTP client with specified `credentials`
+    pub fn default_token_provider_with(
+        credentials: google_cloud_auth::credentials::CredentialsFile,
+    ) -> impl Future<
+        Output = Result<google_cloud_auth::token::DefaultTokenSourceProvider, google_cloud_auth::error::Error>,
+    > + Send
+           + 'static {
+        google_cloud_auth::token::DefaultTokenSourceProvider::new_with_credentials(
+            HttpClientConfig::bigquery_http_auth_config(),
+            Box::new(credentials.clone()),
+        )
+    }
+}
+
+#[derive(Debug)]
+pub struct ClientConfig {
+    http: HttpClientConfig,
     environment: Environment,
     streaming_read_config: ChannelConfig,
-    debug: bool,
+    streaming_write_config: StreamingWriteConfig,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct StreamingWriteConfig {
+    channel_config: ChannelConfig,
+    max_insert_count: usize,
+}
+
+impl StreamingWriteConfig {
+    pub fn with_channel_config(mut self, value: ChannelConfig) -> Self {
+        self.channel_config = value;
+        self
+    }
+    pub fn with_max_insert_count(mut self, value: usize) -> Self {
+        self.max_insert_count = value;
+        self
+    }
 }
 
 #[derive(Clone, Debug)]
 pub struct ChannelConfig {
     /// num_channels is the number of gRPC channels.
-    pub num_channels: usize,
-    pub connect_timeout: Option<Duration>,
-    pub timeout: Option<Duration>,
+    num_channels: usize,
+    connect_timeout: Option<Duration>,
+    timeout: Option<Duration>,
+}
+
+impl ChannelConfig {
+    pub fn with_num_channels(mut self, value: usize) -> Self {
+        self.num_channels = value;
+        self
+    }
+    pub fn with_connect_timeout(mut self, value: Duration) -> Self {
+        self.connect_timeout = Some(value);
+        self
+    }
+    pub fn with_timeout(mut self, value: Duration) -> Self {
+        self.timeout = Some(value);
+        self
+    }
+
+    async fn into_connection_manager(
+        self,
+        environment: &Environment,
+    ) -> Result<ConnectionManager, google_cloud_gax::conn::Error> {
+        ConnectionManager::new(
+            self.num_channels,
+            environment,
+            &ConnectionOptions {
+                timeout: self.timeout,
+                connect_timeout: self.connect_timeout,
+            },
+        )
+        .await
+    }
 }
 
 impl Default for ChannelConfig {
@@ -59,34 +190,69 @@ impl Default for ChannelConfig {
     }
 }
 
+#[derive(Debug)]
+pub struct EmptyTokenSourceProvider {}
+
+#[derive(Debug)]
+pub struct EmptyTokenSource {}
+
+#[async_trait::async_trait]
+impl TokenSource for EmptyTokenSource {
+    async fn token(&self) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+        Ok("".to_string())
+    }
+}
+
+impl TokenSourceProvider for EmptyTokenSourceProvider {
+    fn token_source(&self) -> Arc<dyn TokenSource> {
+        Arc::new(EmptyTokenSource {})
+    }
+}
+
 impl ClientConfig {
+    pub fn new_with_emulator(grpc_host: &str, http_addr: impl Into<Cow<'static, str>>) -> Self {
+        Self {
+            http: HttpClientConfig::new_with_emulator(http_addr),
+            environment: Environment::Emulator(grpc_host.to_string()),
+            streaming_read_config: ChannelConfig::default(),
+            streaming_write_config: StreamingWriteConfig::default(),
+        }
+    }
+
     pub fn new(
         http_token_source_provider: Box<dyn TokenSourceProvider>,
         grpc_token_source_provider: Box<dyn TokenSourceProvider>,
     ) -> Self {
         Self {
-            http: reqwest_middleware::ClientBuilder::new(reqwest::Client::default()).build(),
-            bigquery_endpoint: "https://bigquery.googleapis.com".into(),
-            token_source_provider: http_token_source_provider,
+            http: HttpClientConfig::new(http_token_source_provider),
             environment: Environment::GoogleCloud(grpc_token_source_provider),
             streaming_read_config: ChannelConfig::default(),
-            debug: false,
+            streaming_write_config: StreamingWriteConfig::default(),
         }
     }
+
     pub fn with_debug(mut self, value: bool) -> Self {
-        self.debug = value;
+        self.http.debug = value;
         self
     }
+
     pub fn with_streaming_read_config(mut self, value: ChannelConfig) -> Self {
         self.streaming_read_config = value;
         self
     }
-    pub fn with_http_client(mut self, value: reqwest_middleware::ClientWithMiddleware) -> Self {
-        self.http = value;
+
+    pub fn with_streaming_write_config(mut self, value: StreamingWriteConfig) -> Self {
+        self.streaming_write_config = value;
         self
     }
+
+    pub fn with_http_client(mut self, value: reqwest_middleware::ClientWithMiddleware) -> Self {
+        self.http.client = Some(value);
+        self
+    }
+
     pub fn with_endpoint(mut self, value: impl Into<Cow<'static, str>>) -> Self {
-        self.bigquery_endpoint = value.into();
+        self.http.bigquery_endpoint = value.into();
         self
     }
 }
@@ -94,14 +260,14 @@ impl ClientConfig {
 use crate::http::job::get::GetJobRequest;
 use crate::http::job::list::ListJobsRequest;
 
-#[cfg(feature = "auth")]
-pub use google_cloud_auth;
+use crate::grpc::apiv1::bigquery_client::StreamingReadClient;
+use crate::storage_write::stream::{buffered, committed, default, pending};
+use google_cloud_googleapis::cloud::bigquery::storage::v1::big_query_read_client::BigQueryReadClient;
 
 #[cfg(feature = "auth")]
 impl ClientConfig {
     pub async fn new_with_auth() -> Result<(Self, Option<String>), google_cloud_auth::error::Error> {
-        let ts_http =
-            google_cloud_auth::token::DefaultTokenSourceProvider::new(Self::bigquery_http_auth_config()).await?;
+        let ts_http = HttpClientConfig::default_token_provider().await?;
         let ts_grpc =
             google_cloud_auth::token::DefaultTokenSourceProvider::new(Self::bigquery_grpc_auth_config()).await?;
         let project_id = ts_grpc.project_id.clone();
@@ -112,11 +278,7 @@ impl ClientConfig {
     pub async fn new_with_credentials(
         credentials: google_cloud_auth::credentials::CredentialsFile,
     ) -> Result<(Self, Option<String>), google_cloud_auth::error::Error> {
-        let ts_http = google_cloud_auth::token::DefaultTokenSourceProvider::new_with_credentials(
-            Self::bigquery_http_auth_config(),
-            Box::new(credentials.clone()),
-        )
-        .await?;
+        let ts_http = HttpClientConfig::default_token_provider_with(credentials.clone()).await?;
         let ts_grpc = google_cloud_auth::token::DefaultTokenSourceProvider::new_with_credentials(
             Self::bigquery_grpc_auth_config(),
             Box::new(credentials),
@@ -125,10 +287,6 @@ impl ClientConfig {
         let project_id = ts_grpc.project_id.clone();
         let config = Self::new(Box::new(ts_http), Box::new(ts_grpc));
         Ok((config, project_id))
-    }
-
-    fn bigquery_http_auth_config() -> google_cloud_auth::project::Config<'static> {
-        google_cloud_auth::project::Config::default().with_scopes(&http::bigquery_client::SCOPES)
     }
 
     fn bigquery_grpc_auth_config() -> google_cloud_auth::project::Config<'static> {
@@ -163,28 +321,16 @@ pub struct Client {
     routine_client: BigqueryRoutineClient,
     row_access_policy_client: BigqueryRowAccessPolicyClient,
     model_client: BigqueryModelClient,
-    streaming_read_client_conn_pool: Arc<ReadConnectionManager>,
+    streaming_read_conn_pool: Arc<ConnectionManager>,
+    streaming_write_conn_pool: Arc<ConnectionManager>,
+    streaming_write_max_insert_count: usize,
 }
 
 impl Client {
     /// New client
     pub async fn new(config: ClientConfig) -> Result<Self, google_cloud_gax::conn::Error> {
-        let ts = config.token_source_provider.token_source();
-        let client = Arc::new(BigqueryClient::new(
-            ts,
-            config.bigquery_endpoint.into_owned().as_str(),
-            config.http,
-            config.debug,
-        ));
+        let client = config.http.create_client();
 
-        let read_config = config.streaming_read_config;
-        let conn_options = ConnectionOptions {
-            timeout: read_config.timeout,
-            connect_timeout: read_config.connect_timeout,
-        };
-
-        let streaming_read_client_conn_pool =
-            ReadConnectionManager::new(read_config.num_channels, &config.environment, DOMAIN, &conn_options).await?;
         Ok(Self {
             dataset_client: BigqueryDatasetClient::new(client.clone()),
             table_client: BigqueryTableClient::new(client.clone()),
@@ -193,7 +339,20 @@ impl Client {
             routine_client: BigqueryRoutineClient::new(client.clone()),
             row_access_policy_client: BigqueryRowAccessPolicyClient::new(client.clone()),
             model_client: BigqueryModelClient::new(client.clone()),
-            streaming_read_client_conn_pool: Arc::new(streaming_read_client_conn_pool),
+            streaming_read_conn_pool: Arc::new(
+                config
+                    .streaming_read_config
+                    .into_connection_manager(&config.environment)
+                    .await?,
+            ),
+            streaming_write_conn_pool: Arc::new(
+                config
+                    .streaming_write_config
+                    .channel_config
+                    .into_connection_manager(&config.environment)
+                    .await?,
+            ),
+            streaming_write_max_insert_count: config.streaming_write_config.max_insert_count,
         })
     }
 
@@ -237,6 +396,145 @@ impl Client {
     /// [BigqueryModelClient](crate::http::bigquery_model_client::BigqueryModelClient)
     pub fn model(&self) -> &BigqueryModelClient {
         &self.model_client
+    }
+
+    /// Creates a new pending type storage writer for the specified table.
+    /// https://cloud.google.com/bigquery/docs/write-api#pending_type
+    /// ```
+    /// use prost_types::DescriptorProto;
+    /// use google_cloud_bigquery::client::Client;
+    /// use google_cloud_gax::grpc::Status;
+    /// use prost::Message;
+    /// use tokio::sync::futures;
+    /// use google_cloud_bigquery::storage_write::AppendRowsRequestBuilder;
+    /// use futures_util::stream::StreamExt;
+    ///
+    /// pub async fn run<T: Message>(client: &Client, table: &str, rows: Vec<T>, schema: DescriptorProto)
+    /// -> Result<(), Status> {
+    ///     let mut writer = client.pending_storage_writer(table);
+    ///     let stream = writer.create_write_stream().await?;
+    ///
+    ///     let mut data= vec![];
+    ///     for row in rows {
+    ///         let mut buf = Vec::new();
+    ///         row.encode(&mut buf).unwrap();
+    ///         data.push(buf);
+    ///     }
+    ///     let mut result = stream.append_rows(vec![AppendRowsRequestBuilder::new(schema, data)]).await.unwrap();
+    ///     while let Some(Ok(res)) = result.next().await {
+    ///         tracing::info!("append row errors = {:?}", res.row_errors.len());
+    ///     }
+    ///
+    ///     let _ = stream.finalize().await?;
+    ///     let _ = writer.commit().await?;
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn pending_storage_writer(&self, table: &str) -> pending::Writer {
+        pending::Writer::new(1, self.streaming_write_conn_pool.clone(), table.to_string())
+    }
+
+    /// Creates a new default type storage writer.
+    /// https://cloud.google.com/bigquery/docs/write-api#default_stream
+    /// ```
+    /// use prost_types::DescriptorProto;
+    /// use google_cloud_bigquery::client::Client;
+    /// use google_cloud_gax::grpc::Status;
+    /// use prost::Message;
+    /// use tokio::sync::futures;
+    /// use google_cloud_bigquery::storage_write::AppendRowsRequestBuilder;
+    /// use futures_util::stream::StreamExt;
+    ///
+    /// pub async fn run<T: Message>(client: &Client, table: &str, rows: Vec<T>, schema: DescriptorProto)
+    /// -> Result<(), Status> {
+    ///     let writer = client.default_storage_writer();
+    ///     let stream = writer.create_write_stream(table).await?;
+    ///
+    ///     let mut data= vec![];
+    ///     for row in rows {
+    ///         let mut buf = Vec::new();
+    ///         row.encode(&mut buf).unwrap();
+    ///         data.push(buf);
+    ///     }
+    ///     let mut result = stream.append_rows(vec![AppendRowsRequestBuilder::new(schema, data)]).await.unwrap();
+    ///     while let Some(Ok(res)) = result.next().await {
+    ///         tracing::info!("append row errors = {:?}", res.row_errors.len());
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn default_storage_writer(&self) -> default::Writer {
+        default::Writer::new(self.streaming_write_max_insert_count, self.streaming_write_conn_pool.clone())
+    }
+
+    /// Creates a new committed type storage writer.
+    /// https://cloud.google.com/bigquery/docs/write-api#committed_type
+    /// ```
+    /// use prost_types::DescriptorProto;
+    /// use google_cloud_bigquery::client::Client;
+    /// use google_cloud_gax::grpc::Status;
+    /// use prost::Message;
+    /// use tokio::sync::futures;
+    /// use google_cloud_bigquery::storage_write::AppendRowsRequestBuilder;
+    /// use futures_util::stream::StreamExt;
+    ///
+    /// pub async fn run<T: Message>(client: &Client, table: &str, rows: Vec<T>, schema: DescriptorProto)
+    /// -> Result<(), Status> {
+    ///     let writer = client.committed_storage_writer();
+    ///     let stream = writer.create_write_stream(table).await?;
+    ///
+    ///     let mut data= vec![];
+    ///     for row in rows {
+    ///         let mut buf = Vec::new();
+    ///         row.encode(&mut buf).unwrap();
+    ///         data.push(buf);
+    ///     }
+    ///     let mut result = stream.append_rows(vec![AppendRowsRequestBuilder::new(schema, data)]).await.unwrap();
+    ///     while let Some(Ok(res)) = result.next().await {
+    ///         tracing::info!("append row errors = {:?}", res.row_errors.len());
+    ///     }
+    ///
+    ///     let _ = stream.finalize().await?;
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn committed_storage_writer(&self) -> committed::Writer {
+        committed::Writer::new(self.streaming_write_max_insert_count, self.streaming_write_conn_pool.clone())
+    }
+
+    /// Creates a new buffered type storage writer.
+    /// https://cloud.google.com/bigquery/docs/write-api#buffered_type
+    /// ```
+    /// use prost_types::DescriptorProto;
+    /// use google_cloud_bigquery::client::Client;
+    /// use prost::Message;
+    /// use tokio::sync::futures;
+    /// use google_cloud_bigquery::storage_write::AppendRowsRequestBuilder;
+    /// use futures_util::stream::StreamExt;
+    /// use google_cloud_gax::grpc::Status;
+    ///
+    /// pub async fn run<T: Message>(client: &Client, table: &str, rows: Vec<T>, schema: DescriptorProto)
+    /// -> Result<(), Status> {
+    ///     let writer = client.buffered_storage_writer();
+    ///     let stream = writer.create_write_stream(table).await?;
+    ///
+    ///     let mut data= vec![];
+    ///     for row in rows {
+    ///         let mut buf = Vec::new();
+    ///         row.encode(&mut buf).unwrap();
+    ///         data.push(buf);
+    ///     }
+    ///     let mut result = stream.append_rows(vec![AppendRowsRequestBuilder::new(schema, data)]).await.unwrap();
+    ///     while let Some(Ok(res)) = result.next().await {
+    ///         tracing::info!("append row errors = {:?}", res.row_errors.len());
+    ///     }
+    ///     let _ = stream.flush_rows(Some(0)).await?;
+    ///     let _ = stream.finalize().await?;
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn buffered_storage_writer(&self) -> buffered::Writer {
+        buffered::Writer::new(self.streaming_write_max_insert_count, self.streaming_write_conn_pool.clone())
     }
 
     /// Run query job and get result.
@@ -473,7 +771,7 @@ impl Client {
     {
         let option = option.unwrap_or_default();
 
-        let mut client = self.streaming_read_client_conn_pool.conn();
+        let mut client = StreamingReadClient::new(BigQueryReadClient::new(self.streaming_read_conn_pool.conn()));
         let read_session = client
             .create_read_session(
                 CreateReadSessionRequest {
@@ -492,7 +790,7 @@ impl Client {
                         trace_id: "".to_string(),
                         schema: option.session_schema,
                     }),
-                    max_stream_count: 0,
+                    max_stream_count: option.max_stream_count,
                     preferred_min_stream_count: 0,
                 },
                 option.session_retry_setting,
@@ -510,6 +808,7 @@ pub struct ReadTableOption {
     session_schema: Option<read_session::Schema>,
     session_retry_setting: Option<RetrySetting>,
     read_rows_retry_setting: Option<RetrySetting>,
+    max_stream_count: i32,
 }
 
 impl ReadTableOption {
@@ -537,16 +836,21 @@ impl ReadTableOption {
         self.read_rows_retry_setting = Some(value);
         self
     }
+
+    pub fn with_max_stream_count(mut self, value: i32) -> Self {
+        self.max_stream_count = value;
+        self
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use bigdecimal::BigDecimal;
+
     use serial_test::serial;
     use std::collections::HashMap;
     use std::ops::AddAssign;
     use std::time::Duration;
-
     use time::{Date, OffsetDateTime, Time};
 
     use google_cloud_googleapis::cloud::bigquery::storage::v1::read_session::TableReadOptions;
@@ -562,7 +866,9 @@ mod tests {
 
     #[ctor::ctor]
     fn init() {
-        let _ = tracing_subscriber::fmt::try_init();
+        let filter = tracing_subscriber::filter::EnvFilter::from_default_env()
+            .add_directive("google_cloud_bigquery=trace".parse().unwrap());
+        let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
     }
 
     async fn create_client() -> (Client, String) {
@@ -1031,5 +1337,122 @@ mod tests {
         for (i, d) in data.iter().enumerate() {
             assert_eq!(&TestData::default(i, *now + Duration::from_secs(i as u64)), d);
         }
+    }
+}
+
+#[cfg(test)]
+mod emulator_tests {
+    use crate::client::{Client, ClientConfig};
+    use crate::http::table::{Table, TableFieldSchema, TableFieldType, TableSchema};
+    use crate::http::tabledata::insert_all::{InsertAllRequest, Row};
+    use crate::http::tabledata::list::FetchDataRequest;
+    use futures_util::StreamExt;
+
+    use prost::Message;
+
+    use std::time::SystemTime;
+
+    #[ignore]
+    #[tokio::test]
+    async fn test_emulator_use() {
+        let config = ClientConfig::new_with_emulator("localhost:9060", "http://localhost:9050");
+
+        // Create Table
+        let now = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let client = Client::new(config).await.unwrap();
+        let mut table1 = Table::default();
+        table1.table_reference.dataset_id = "dataset1".to_string();
+        table1.table_reference.project_id = "local-project".to_string();
+        table1.table_reference.table_id = format!("table{now}").to_string();
+        table1.schema = Some(TableSchema {
+            fields: vec![TableFieldSchema {
+                name: "col_string".to_string(),
+                data_type: TableFieldType::String,
+                ..Default::default()
+            }],
+        });
+        client.table_client.create(&table1).await.unwrap();
+
+        // Insert data
+        let mut req = InsertAllRequest::<serde_json::Value>::default();
+        req.rows.push(Row {
+            insert_id: None,
+            json: serde_json::from_str(
+                r#"
+                {"col_string": "test1"}
+            "#,
+            )
+            .unwrap(),
+        });
+        client
+            .tabledata_client
+            .insert(
+                &table1.table_reference.project_id,
+                &table1.table_reference.dataset_id,
+                &table1.table_reference.table_id,
+                &req,
+            )
+            .await
+            .unwrap();
+
+        // Streaming write
+        let writer = client.default_storage_writer();
+        let fqtn = &format!(
+            "projects/local-project/datasets/dataset1/tables/{}",
+            table1.table_reference.table_id
+        );
+        let stream = writer.create_write_stream(fqtn).await.unwrap();
+
+        let mut rows = vec![];
+        for j in 0..5 {
+            let data = crate::storage_write::stream::tests::TestData {
+                col_string: format!("default_{j}"),
+            };
+            let mut buf = Vec::new();
+            data.encode(&mut buf).unwrap();
+            rows.push(crate::storage_write::stream::tests::create_append_rows_request(vec![
+                buf.clone(),
+                buf.clone(),
+                buf,
+            ]));
+        }
+        let mut result = stream.append_rows(rows).await.unwrap();
+        while let Some(res) = result.next().await {
+            let res = res.unwrap();
+            tracing::info!("append row errors = {:?}", res.row_errors.len());
+        }
+
+        // Read all data
+        let tref = &table1.table_reference;
+        let data = client
+            .tabledata_client
+            .read(
+                &tref.project_id,
+                &tref.dataset_id,
+                &tref.table_id,
+                &FetchDataRequest { ..Default::default() },
+            )
+            .await
+            .unwrap();
+        assert_eq!(16, data.total_rows);
+
+        /* TODO fix emulator stream
+        // Read all data by storage
+        let opt = ReadTableOption::default()
+            .with_session_read_options(TableReadOptions::default())
+            .with_max_stream_count(1);
+        let mut records= client
+            .read_table::<crate::storage::row::Row>(&tref, Some(opt))
+            .await
+            .unwrap();
+        let mut count = 0;
+        while let record = records.next().await.unwrap() {
+            count += 1;
+        }
+        assert_eq!(count, data.total_rows);
+         */
     }
 }

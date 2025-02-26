@@ -19,6 +19,7 @@ mod tests {
 
     use crate::apiv1::conn_pool::ConnectionManager;
     use crate::apiv1::spanner_client::Client;
+    use crate::session::client_metadata;
 
     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
@@ -31,7 +32,7 @@ mod tests {
         )
         .await
         .unwrap();
-        cm.conn()
+        cm.conn().with_metadata(client_metadata(DATABASE))
     }
 
     async fn create_session(client: &mut Client) -> Session {

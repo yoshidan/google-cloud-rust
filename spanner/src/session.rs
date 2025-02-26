@@ -9,10 +9,11 @@ use thiserror;
 use tokio::select;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::sync::{mpsc, oneshot};
-use tokio::task::JoinHandle;
+use tokio::task::{JoinHandle, JoinSet};
 use tokio::time::{sleep, timeout};
 use tokio_util::sync::CancellationToken;
 
+use google_cloud_gax::grpc::metadata::MetadataMap;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::TryAs;
 use google_cloud_googleapis::spanner::v1::{BatchCreateSessionsRequest, DeleteSessionRequest, Session};
@@ -233,12 +234,23 @@ impl SessionPool {
     ) -> Result<VecDeque<SessionHandle>, Status> {
         let channel_num = conn_pool.num();
         let creation_count_per_channel = min_opened / channel_num;
+        let remainder = min_opened % channel_num;
 
         let mut sessions = Vec::<SessionHandle>::new();
+        let mut tasks = JoinSet::new();
         for _ in 0..channel_num {
-            let next_client = conn_pool.conn();
-            let new_sessions =
-                batch_create_sessions(next_client, database.as_str(), creation_count_per_channel).await?;
+            // Ensure that we create the exact number of requested sessions by adding the remainder to the first channel.
+            let creation_count = if channel_num == 0 {
+                creation_count_per_channel + remainder
+            } else {
+                creation_count_per_channel
+            };
+            let next_client = conn_pool.conn().with_metadata(client_metadata(&database));
+            let database = database.clone();
+            tasks.spawn(async move { batch_create_sessions(next_client, &database, creation_count).await });
+        }
+        while let Some(r) = tasks.join_next().await {
+            let new_sessions = r.map_err(|e| Status::from_error(e.into()))??;
             sessions.extend(new_sessions);
         }
         tracing::debug!("initial session created count = {}", sessions.len());
@@ -492,16 +504,23 @@ impl SessionManager {
         cancel: CancellationToken,
     ) -> JoinHandle<()> {
         tokio::spawn(async move {
+            let mut tasks = JoinSet::default();
             loop {
-                let session_count: usize = select! {
+                select! {
+                    biased;
+                    _ = cancel.cancelled() => break,
+                    Some(Ok((session_count, result))) = tasks.join_next(), if !tasks.is_empty() => {
+                        session_pool.inner.write().replenish(session_count, result);
+                    }
                     session_count = rx.recv() => match session_count {
-                        Some(session_count) => session_count,
+                        Some(session_count) => {
+                            let client = conn_pool.conn().with_metadata(client_metadata(&database));
+                            let database = database.clone();
+                            tasks.spawn(async move { (session_count, batch_create_sessions(client, &database, session_count).await) });
+                        },
                         None => continue
                     },
-                    _ = cancel.cancelled() => break
-                };
-                let result = batch_create_sessions(conn_pool.conn(), database.as_str(), session_count).await;
-                session_pool.inner.write().replenish(session_count, result);
+                }
             }
             tracing::trace!("shutdown session creation task.");
         })
@@ -630,6 +649,12 @@ async fn batch_create_session(
         .collect::<Vec<SessionHandle>>())
 }
 
+pub(crate) fn client_metadata(database: &str) -> MetadataMap {
+    let mut metadata = MetadataMap::new();
+    metadata.insert("google-cloud-resource-prefix", database.parse().unwrap());
+    metadata
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::atomic::{AtomicI64, Ordering};
@@ -645,7 +670,9 @@ mod tests {
     use google_cloud_googleapis::spanner::v1::ExecuteSqlRequest;
 
     use crate::apiv1::conn_pool::ConnectionManager;
-    use crate::session::{batch_create_sessions, health_check, SessionConfig, SessionError, SessionManager};
+    use crate::session::{
+        batch_create_sessions, client_metadata, health_check, SessionConfig, SessionError, SessionManager,
+    };
 
     pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
@@ -1077,7 +1104,7 @@ mod tests {
         )
         .await
         .unwrap();
-        let client = cm.conn();
+        let client = cm.conn().with_metadata(client_metadata(DATABASE));
         let session_count = 125;
         let result = batch_create_sessions(client.clone(), DATABASE, session_count).await;
         match result {

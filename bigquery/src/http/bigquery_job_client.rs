@@ -335,7 +335,7 @@ mod test {
 
         // insert test data
         let mut table1 = Table::default();
-        table1.table_reference.dataset_id = dataset.clone();
+        table1.table_reference.dataset_id.clone_from(&dataset);
         table1.table_reference.project_id = project.to_string();
         table1.table_reference.table_id = format!("table_data_{}", OffsetDateTime::now_utc().unix_timestamp());
         table1.schema = Some(create_table_schema());
