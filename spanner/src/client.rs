@@ -9,7 +9,7 @@ use google_cloud_gax::conn::{ConnectionOptions, Environment};
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::{invoke_fn, TryAs};
 use google_cloud_googleapis::spanner::v1::{commit_request, transaction_options, Mutation, TransactionOptions};
-use google_cloud_token::NopeTokenSourceProvider;
+use token_source::NoopTokenSourceProvider;
 
 use crate::apiv1::conn_pool::{ConnectionManager, SPANNER};
 use crate::retry::TransactionRetrySetting;
@@ -86,7 +86,7 @@ impl Default for ClientConfig {
             endpoint: SPANNER.to_string(),
             environment: match var("SPANNER_EMULATOR_HOST").ok() {
                 Some(v) => Environment::Emulator(v),
-                None => Environment::GoogleCloud(Box::new(NopeTokenSourceProvider {})),
+                None => Environment::GoogleCloud(Box::new(NoopTokenSourceProvider {})),
             },
         };
         config.session_config.min_opened = config.channel_config.num_channels * 4;

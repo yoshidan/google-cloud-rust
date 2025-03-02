@@ -3,7 +3,7 @@ use std::sync::Arc;
 use reqwest::Response;
 use reqwest_middleware::{ClientWithMiddleware as Client, RequestBuilder};
 
-use google_cloud_token::TokenSource;
+use token_source::TokenSource;
 
 use crate::http::error::{Error, ErrorWrapper};
 
@@ -102,7 +102,7 @@ pub(crate) mod test {
 
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
-    use google_cloud_token::TokenSourceProvider;
+    use token_source::TokenSourceProvider;
 
     use crate::http::bigquery_client::{BigqueryClient, SCOPES};
     use crate::http::query;

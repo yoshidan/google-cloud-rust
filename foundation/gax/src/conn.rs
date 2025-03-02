@@ -14,7 +14,7 @@ use tower::filter::{AsyncFilter, AsyncFilterLayer, AsyncPredicate};
 use tower::util::Either;
 use tower::{BoxError, ServiceBuilder};
 
-use google_cloud_token::{TokenSource, TokenSourceProvider};
+use token_source::{TokenSource, TokenSourceProvider};
 
 pub type Channel = Either<AsyncFilter<TonicChannel, AsyncAuthInterceptor>, TonicChannel>;
 

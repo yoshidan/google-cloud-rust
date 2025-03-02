@@ -1,4 +1,4 @@
-use google_cloud_token::TokenSource;
+use token_source::TokenSource;
 use reqwest::Response;
 use std::sync::Arc;
 
@@ -80,7 +80,7 @@ mod test {
 
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
-    use google_cloud_token::TokenSourceProvider;
+    use token_source::TokenSourceProvider;
 
     use crate::http::service_account_client::ServiceAccountClient;
 

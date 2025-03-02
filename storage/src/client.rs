@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use ring::{rand, signature};
 
-use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
+use token_source::{NoopTokenSourceProvider, TokenSourceProvider};
 
 use crate::http::service_account_client::ServiceAccountClient;
 use crate::http::storage_client::StorageClient;
@@ -54,7 +54,7 @@ impl Default for ClientConfig {
         Self {
             http: None,
             storage_endpoint: "https://storage.googleapis.com".to_string(),
-            token_source_provider: Some(Box::new(NopeTokenSourceProvider {})),
+            token_source_provider: Some(Box::new(NoopTokenSourceProvider {})),
             service_account_endpoint: "https://iamcredentials.googleapis.com".to_string(),
             default_google_access_id: None,
             default_sign_by: None,

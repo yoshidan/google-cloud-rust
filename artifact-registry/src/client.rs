@@ -1,6 +1,6 @@
 use crate::grpc::apiv1::artifact_registry_client::Client as ArtifactRegistryGrpcClient;
 use google_cloud_gax::conn::{ConnectionManager, ConnectionOptions, Environment, Error};
-use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
+use token_source::{NoopTokenSourceProvider, TokenSourceProvider};
 use std::ops::{Deref, DerefMut};
 use std::time::Duration;
 
@@ -53,7 +53,7 @@ impl Default for ClientConfig {
     fn default() -> Self {
         Self {
             artifact_registry_endpoint: ARTIFACT_REGISTRY.to_string(),
-            token_source_provider: Box::new(NopeTokenSourceProvider {}),
+            token_source_provider: Box::new(NoopTokenSourceProvider {}),
             timeout: Some(Duration::from_secs(30)),
             connect_timeout: Some(Duration::from_secs(30)),
         }

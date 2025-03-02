@@ -25,7 +25,7 @@ serde = { version = "1.0", optional = true, features = ["derive"] }
 tokio-util = "0.7"
 bigdecimal = { version="0.4", features=["serde"] }
 
-google-cloud-token = { package = "gcloud-token", version = "1.0.0", path = "../foundation/token" }
+token-source = "1.0"
 google-cloud-longrunning = { package = "gcloud-longrunning", version = "1.0.0", path = "../foundation/longrunning" }
 google-cloud-gax = { package = "gcloud-gax", version = "1.0.0", path = "../foundation/gax" }
 google-cloud-googleapis = { package = "gcloud-googleapis", version = "1.0.0", path = "../googleapis", features = ["spanner"]}

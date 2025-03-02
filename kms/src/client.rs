@@ -5,7 +5,7 @@ use std::sync::Arc;
 pub use google_cloud_auth;
 use google_cloud_gax::conn::{ConnectionOptions, Environment, Error};
 
-use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
+use token_source::{NoopTokenSourceProvider, TokenSourceProvider};
 
 use crate::grpc::apiv1::conn_pool::{ConnectionManager, KMS, SCOPES};
 use crate::grpc::apiv1::kms_client::Client as KmsGrpcClient;
@@ -51,7 +51,7 @@ impl Default for ClientConfig {
     fn default() -> Self {
         Self {
             endpoint: KMS.to_string(),
-            token_source_provider: Box::new(NopeTokenSourceProvider {}),
+            token_source_provider: Box::new(NoopTokenSourceProvider {}),
             pool_size: Some(1),
             connection_option: ConnectionOptions::default(),
         }

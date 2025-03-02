@@ -6,7 +6,7 @@ use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::{
     DetachSubscriptionRequest, ListSnapshotsRequest, ListSubscriptionsRequest, ListTopicsRequest, Snapshot,
 };
-use google_cloud_token::NopeTokenSourceProvider;
+use token_source::NoopTokenSourceProvider;
 
 use crate::apiv1::conn_pool::{ConnectionManager, PUBSUB};
 use crate::apiv1::publisher_client::PublisherClient;
@@ -37,7 +37,7 @@ impl Default for ClientConfig {
             pool_size: Some(4),
             environment: match emulator {
                 Some(v) => Environment::Emulator(v),
-                None => Environment::GoogleCloud(Box::new(NopeTokenSourceProvider {})),
+                None => Environment::GoogleCloud(Box::new(NoopTokenSourceProvider {})),
             },
             project_id: default_project_id,
             endpoint: PUBSUB.to_string(),

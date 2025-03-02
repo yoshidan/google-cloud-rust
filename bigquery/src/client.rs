@@ -5,7 +5,7 @@ use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::{
     read_session, CreateReadSessionRequest, DataFormat, ReadSession,
 };
-use google_cloud_token::{TokenSource, TokenSourceProvider};
+use token_source::{TokenSource, TokenSourceProvider};
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt::Debug;
