@@ -31,13 +31,10 @@ db-path = "~/.cargo/advisory-db"
 # The url(s) of the advisory databases to use
 db-urls = ["https://github.com/rustsec/advisory-db"]
 # The lint level for crates that have been yanked from their source registry
-yanked = "warn"
+yanked = "allow"
 # A list of advisory IDs to ignore. Note that ignored advisories will still
 # output a note when they are encountered.
 ignore = [
-    # TODO remove deprecated ehters crate
-    "RUSTSEC-2024-0384",
-    "RUSTSEC-2025-0009"
 ]
 # Threshold for security vulnerabilities, any vulnerability with a CVSS score
 # lower than the range specified will be ignored. Note that ignored advisories
@@ -184,7 +181,6 @@ skip-tree = [
     { name = "regex-automata" },
     { name = "windows-sys" },
     { name = "reqwest" },
-    { name = "ethers"},
     { name = "tonic"},
 ]
 

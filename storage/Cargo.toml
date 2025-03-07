@@ -52,8 +52,6 @@ google-cloud-metadata = {package = "gcloud-metadata", optional = true, version =
 [dev-dependencies]
 ctor = "0.1.26"
 google-cloud-auth = { package = "gcloud-auth", path = "../foundation/auth", default-features = false}
-reqwest-retry = "0.7.0"
-retry-policies = "0.4.0"
 serial_test = "3.1"
 tokio = {version = "1.32", features = ["rt-multi-thread"]}
 tracing-subscriber = {version = "0.3.17", features = ["env-filter"]}
