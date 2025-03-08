@@ -171,7 +171,7 @@ impl OAuth2ServiceAccountTokenSource {
     }
 
     /// Checks whether an HTTP response is successful and returns it, or returns an error.
-    async fn check_response_status(response: Response) -> Result<Response, Error> {
+    async fn check_response_status(token_url: &String, response: Response) -> Result<Response, Error> {
         // Check the status code, returning the response if it is not an error.
         let error = match response.error_for_status_ref() {
             Ok(_) => return Ok(response),
@@ -188,7 +188,7 @@ impl OAuth2ServiceAccountTokenSource {
                 error: response.error,
                 error_description: response.error_description,
             })
-            .unwrap_or(Error::HttpError(error)))
+            .unwrap_or(Error::HttpError(token_url.to_owned(), error)))
     }
 }
 
@@ -222,19 +222,33 @@ impl TokenSource for OAuth2ServiceAccountTokenSource {
                     .ok_or(Error::NoTargetAudienceFound)?
                     .as_str()
                     .ok_or(Error::NoTargetAudienceFound)?;
-                let response = self.client.post(self.token_url.as_str()).form(&form).send().await?;
-                Ok(Self::check_response_status(response)
+                let response = self
+                    .client
+                    .post(self.token_url.as_str())
+                    .form(&form)
+                    .send()
+                    .await
+                    .map_err(|e| Error::HttpError(self.token_url.clone(), e))?;
+                Ok(Self::check_response_status(&self.token_url, response)
                     .await?
                     .json::<InternalIdToken>()
-                    .await?
+                    .await
+                    .map_err(|e| Error::HttpError(self.token_url.clone(), e))?
                     .to_token(audience)?)
             }
             false => {
-                let response = self.client.post(self.token_url.as_str()).form(&form).send().await?;
-                Ok(Self::check_response_status(response)
+                let response = self
+                    .client
+                    .post(self.token_url.as_str())
+                    .form(&form)
+                    .send()
+                    .await
+                    .map_err(|e| Error::HttpError(self.token_url.clone(), e))?;
+                Ok(Self::check_response_status(&self.token_url, response)
                     .await?
                     .json::<InternalToken>()
-                    .await?
+                    .await
+                    .map_err(|e| Error::HttpError(self.token_url.clone(), e))?
                     .to_token(iat))
             }
         }
