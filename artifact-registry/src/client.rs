@@ -1,8 +1,8 @@
 use crate::grpc::apiv1::artifact_registry_client::Client as ArtifactRegistryGrpcClient;
 use google_cloud_gax::conn::{ConnectionManager, ConnectionOptions, Environment, Error};
-use token_source::{NoopTokenSourceProvider, TokenSourceProvider};
 use std::ops::{Deref, DerefMut};
 use std::time::Duration;
+use token_source::{NoopTokenSourceProvider, TokenSourceProvider};
 
 use crate::grpc::apiv1::{ARTIFACT_REGISTRY, AUDIENCE, SCOPES};
 

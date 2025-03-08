@@ -5,13 +5,13 @@ use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::cloud::bigquery::storage::v1::{
     read_session, CreateReadSessionRequest, DataFormat, ReadSession,
 };
-use token_source::{TokenSource, TokenSourceProvider};
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::sync::Arc;
+use token_source::{TokenSource, TokenSourceProvider};
 
 use crate::grpc::apiv1::conn_pool::ConnectionManager;
 use crate::http::bigquery_client::BigqueryClient;

@@ -1,6 +1,6 @@
-use token_source::TokenSource;
 use reqwest::Response;
 use std::sync::Arc;
+use token_source::TokenSource;
 
 use crate::http::Error;
 
