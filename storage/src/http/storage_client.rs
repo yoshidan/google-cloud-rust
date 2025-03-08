@@ -5,7 +5,7 @@ use reqwest::header::{HeaderValue, CONTENT_LENGTH, LOCATION};
 use reqwest::{Body, Request};
 use reqwest_middleware::RequestBuilder;
 
-use google_cloud_token::TokenSource;
+use token_source::TokenSource;
 
 use crate::http::bucket_access_controls::delete::DeleteBucketAccessControlRequest;
 use crate::http::bucket_access_controls::get::GetBucketAccessControlRequest;
@@ -1380,7 +1380,7 @@ pub(crate) mod test {
 
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
-    use google_cloud_token::TokenSourceProvider;
+    use token_source::TokenSourceProvider;
 
     use crate::http::bucket_access_controls::delete::DeleteBucketAccessControlRequest;
     use crate::http::bucket_access_controls::get::GetBucketAccessControlRequest;

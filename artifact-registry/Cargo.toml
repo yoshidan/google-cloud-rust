@@ -14,7 +14,7 @@ documentation = "https://docs.rs/gcloud-artifact-registry/latest/gcloud_artifact
 doctest = false
 
 [dependencies]
-google-cloud-token = { package = "gcloud-token", version = "1.0.0", path = "../foundation/token" }
+token-source = "1.0"
 google-cloud-auth = { package = "gcloud-auth", optional = true, version = "1.0.0", path="../foundation/auth", default-features=false }
 google-cloud-googleapis = { package = "gcloud-googleapis", version="1.0.0", path = "../googleapis", features=["artifact-registry"]}
 google-cloud-gax = { package = "gcloud-gax", version = "1.0.0", path = "../foundation/gax"}

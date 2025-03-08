@@ -22,7 +22,7 @@ async-stream = "0.3"
 thiserror = "1.0"
 tokio-util = "0.7"
 
-google-cloud-token = { package = "gcloud-token", version = "1.0.0", path = "../foundation/token" }
+token-source = "1.0"
 google-cloud-gax = { package = "gcloud-gax", version = "1.0.0", path = "../foundation/gax" }
 google-cloud-googleapis = { package = "gcloud-googleapis", version = "1.0.0", path = "../googleapis", features = ["pubsub"]}
 

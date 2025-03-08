@@ -9,7 +9,6 @@ Google Cloud Platform server application authentication library.
 ```toml
 [dependencies]
 google-cloud-auth = { package="gcloud-auth", version="1.0.0" }
-google-cloud-token = { package="gcloud-token", version="1.0.0" }
 ```
 
 ## Quickstart

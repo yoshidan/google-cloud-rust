@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use google_cloud_token::{TokenSource, TokenSourceProvider};
+use token_source::{TokenSource, TokenSourceProvider};
 
 use crate::credentials::CredentialsFile;
 use crate::error::Error;
