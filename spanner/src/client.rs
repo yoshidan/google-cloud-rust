@@ -17,7 +17,7 @@ use crate::session::{ManagedSession, SessionConfig, SessionError, SessionManager
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions};
 use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
-use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
+use crate::transaction_rw::{commit, CommitOptions, CommitResult, ReadWriteTransaction};
 use crate::value::{Timestamp, TimestampBound};
 
 #[derive(Clone, Default)]
@@ -356,7 +356,7 @@ impl Client {
     /// apply's default replay protection may require an additional RPC.  So this
     /// method may be appropriate for latency sensitive and/or high throughput blind
     /// writing.
-    pub async fn apply_at_least_once(&self, ms: Vec<Mutation>) -> Result<Option<Timestamp>, Error> {
+    pub async fn apply_at_least_once(&self, ms: Vec<Mutation>) -> Result<Option<CommitResult>, Error> {
         self.apply_at_least_once_with_option(ms, CommitOptions::default()).await
     }
 
@@ -373,7 +373,7 @@ impl Client {
         &self,
         ms: Vec<Mutation>,
         options: CommitOptions,
-    ) -> Result<Option<Timestamp>, Error> {
+    ) -> Result<Option<CommitResult>, Error> {
         let ro = TransactionRetrySetting::default();
         let mut session = self.get_session().await?;
 
@@ -385,7 +385,7 @@ impl Client {
                     mode: Some(transaction_options::Mode::ReadWrite(transaction_options::ReadWrite::default())),
                 });
                 match commit(session, ms.clone(), tx, options.clone()).await {
-                    Ok(s) => Ok(s.commit_timestamp.map(|s| s.into())),
+                    Ok(s) => Ok(s.into()),
                     Err(e) => Err((Error::GRPC(e), session)),
                 }
             },
@@ -410,7 +410,7 @@ impl Client {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn apply(&self, ms: Vec<Mutation>) -> Result<Option<Timestamp>, Error> {
+    pub async fn apply(&self, ms: Vec<Mutation>) -> Result<Option<CommitResult>, Error> {
         self.apply_with_option(ms, ReadWriteTransactionOption::default()).await
     }
 
@@ -419,8 +419,8 @@ impl Client {
         &self,
         ms: Vec<Mutation>,
         options: ReadWriteTransactionOption,
-    ) -> Result<Option<Timestamp>, Error> {
-        let result: Result<(Option<Timestamp>, ()), Error> = self
+    ) -> Result<Option<CommitResult>, Error> {
+        let result: Result<(Option<CommitResult>, ()), Error> = self
             .read_write_transaction_sync_with_option(
                 |tx| {
                     tx.buffer_write(ms.to_vec());
@@ -481,7 +481,7 @@ impl Client {
     ///         })
     ///     }).await
     /// }
-    pub async fn read_write_transaction<'a, T, E, F>(&self, f: F) -> Result<(Option<Timestamp>, T), E>
+    pub async fn read_write_transaction<'a, T, E, F>(&self, f: F) -> Result<(Option<CommitResult>, T), E>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
         F: for<'tx> Fn(&'tx mut ReadWriteTransaction) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'tx>>,
@@ -512,7 +512,7 @@ impl Client {
         &'a self,
         f: F,
         options: ReadWriteTransactionOption,
-    ) -> Result<(Option<Timestamp>, T), E>
+    ) -> Result<(Option<CommitResult>, T), E>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
         F: for<'tx> Fn(&'tx mut ReadWriteTransaction) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'tx>>,
@@ -591,7 +591,7 @@ impl Client {
         &self,
         f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,
         options: ReadWriteTransactionOption,
-    ) -> Result<(Option<Timestamp>, T), E>
+    ) -> Result<(Option<CommitResult>, T), E>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
     {
