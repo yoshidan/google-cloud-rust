@@ -25,7 +25,7 @@ urlencoding = "2.1"
 tokio = { version = "1.32", features = ["fs"] }
 google-cloud-metadata = { package = "gcloud-metadata", version = "1.0.0", path = "../metadata" }
 token-source = "1.0"
-base64 = "0.21"
+base64 = "0.22"
 time = "0.3"
 
 url = { version = "2.4", optional = true }
