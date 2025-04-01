@@ -1205,7 +1205,7 @@ impl StorageClient {
         upload_type: &UploadType,
     ) -> Result<Object, Error>
     where
-        S: TryStream + Send + Sync + 'static,
+        S: TryStream + Send + 'static,
         S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
         bytes::Bytes: From<S::Ok>,
     {
