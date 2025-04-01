@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use http::header::AUTHORIZATION;
 use http::{HeaderValue, Request};
-use tonic::body::BoxBody;
+use tonic::body::Body;
 use tonic::transport::{Channel as TonicChannel, ClientTlsConfig, Endpoint};
 use tonic::{Code, Status};
 use tower::filter::{AsyncFilter, AsyncFilterLayer, AsyncPredicate};
@@ -29,11 +29,11 @@ impl AsyncAuthInterceptor {
     }
 }
 
-impl AsyncPredicate<Request<BoxBody>> for AsyncAuthInterceptor {
+impl AsyncPredicate<Request<Body>> for AsyncAuthInterceptor {
     type Future = Pin<Box<dyn Future<Output = Result<Self::Request, BoxError>> + Send>>;
-    type Request = Request<BoxBody>;
+    type Request = Request<Body>;
 
-    fn check(&mut self, request: Request<BoxBody>) -> Self::Future {
+    fn check(&mut self, request: Request<Body>) -> Self::Future {
         let ts = self.token_source.clone();
         Box::pin(async move {
             let token = ts
