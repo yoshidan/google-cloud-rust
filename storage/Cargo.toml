@@ -46,7 +46,7 @@ tokio = {version = "1.32", features = ["macros"]}
 tracing = "0.1"
 url = "2.4"
 
-google-cloud-auth = {package = "gcloud-auth", optional = true, version = "1.0.0", path = "../foundation/auth", default-features = false}
+google-cloud-auth = {package = "gcloud-auth", optional = true, version = "1.1.0", path = "../foundation/auth", default-features = false}
 google-cloud-metadata = {package = "gcloud-metadata", optional = true, version = "1.0.0", path = "../foundation/metadata"}
 
 [dev-dependencies]
