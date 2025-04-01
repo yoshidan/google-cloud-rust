@@ -15,10 +15,10 @@ doctest = false
 
 [dependencies]
 token-source = "1.0"
-google-cloud-auth = { package = "gcloud-auth", optional = true, version = "1.0.0", path="../foundation/auth", default-features=false }
+google-cloud-auth = { package = "gcloud-auth", optional = true, version = "1.1.0", path="../foundation/auth", default-features=false }
 google-cloud-googleapis = { package = "gcloud-googleapis", version="1.0.0", path = "../googleapis", features=["artifact-registry"]}
-google-cloud-gax = { package = "gcloud-gax", version = "1.0.0", path = "../foundation/gax"}
-google-cloud-longrunning = { package = "gcloud-longrunning", version = "1.0.0", path = "../foundation/longrunning" }
+google-cloud-gax = { package = "gcloud-gax", version = "1.1.0", path = "../foundation/gax"}
+google-cloud-longrunning = { package = "gcloud-longrunning", version = "1.1.0", path = "../foundation/longrunning" }
 tracing = "0.1"
 prost-types = "0.13"
 
