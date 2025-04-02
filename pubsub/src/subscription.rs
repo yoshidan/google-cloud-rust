@@ -14,8 +14,9 @@ use google_cloud_googleapis::pubsub::v1::seek_request::Target;
 use google_cloud_googleapis::pubsub::v1::subscription::AnalyticsHubSubscriptionInfo;
 use google_cloud_googleapis::pubsub::v1::{
     BigQueryConfig, CloudStorageConfig, CreateSnapshotRequest, DeadLetterPolicy, DeleteSnapshotRequest,
-    DeleteSubscriptionRequest, ExpirationPolicy, GetSnapshotRequest, GetSubscriptionRequest, PullRequest, PushConfig,
-    RetryPolicy, SeekRequest, Snapshot, Subscription as InternalSubscription, UpdateSubscriptionRequest,
+    DeleteSubscriptionRequest, ExpirationPolicy, GetSnapshotRequest, GetSubscriptionRequest, MessageTransform,
+    PullRequest, PushConfig, RetryPolicy, SeekRequest, Snapshot, Subscription as InternalSubscription,
+    UpdateSubscriptionRequest,
 };
 
 use crate::apiv1::subscriber_client::SubscriberClient;
@@ -41,6 +42,7 @@ pub struct SubscriptionConfig {
     pub state: i32,
     pub cloud_storage_config: Option<CloudStorageConfig>,
     pub analytics_hub_subscription_info: Option<AnalyticsHubSubscriptionInfo>,
+    pub message_transforms: Vec<MessageTransform>,
 }
 impl From<InternalSubscription> for SubscriptionConfig {
     fn from(f: InternalSubscription) -> Self {
@@ -66,6 +68,7 @@ impl From<InternalSubscription> for SubscriptionConfig {
             state: f.state,
             cloud_storage_config: f.cloud_storage_config,
             analytics_hub_subscription_info: f.analytics_hub_subscription_info,
+            message_transforms: f.message_transforms,
         }
     }
 }
@@ -286,6 +289,7 @@ impl Subscription {
                     enable_exactly_once_delivery: cfg.enable_exactly_once_delivery,
                     state: cfg.state,
                     analytics_hub_subscription_info: cfg.analytics_hub_subscription_info,
+                    message_transforms: cfg.message_transforms,
                 },
                 retry,
             )

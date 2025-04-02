@@ -7,7 +7,7 @@ use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::{
     DeleteTopicRequest, GetTopicRequest, IngestionDataSourceSettings, ListTopicSubscriptionsRequest,
-    MessageStoragePolicy, SchemaSettings, Topic as InternalTopic,
+    MessageStoragePolicy, MessageTransform, SchemaSettings, Topic as InternalTopic,
 };
 
 use crate::apiv1::publisher_client::PublisherClient;
@@ -15,7 +15,7 @@ use crate::apiv1::subscriber_client::SubscriberClient;
 use crate::publisher::{Publisher, PublisherConfig};
 use crate::subscription::Subscription;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct TopicConfig {
     pub labels: HashMap<String, String>,
     pub message_storage_policy: Option<MessageStoragePolicy>,
@@ -24,20 +24,7 @@ pub struct TopicConfig {
     pub satisfies_pzs: bool,
     pub message_retention_duration: Option<Duration>,
     pub ingestion_data_source_settings: Option<IngestionDataSourceSettings>,
-}
-
-impl Default for TopicConfig {
-    fn default() -> Self {
-        Self {
-            labels: HashMap::default(),
-            message_storage_policy: None,
-            kms_key_name: "".to_string(),
-            schema_settings: None,
-            satisfies_pzs: false,
-            message_retention_duration: None,
-            ingestion_data_source_settings: None,
-        }
-    }
+    pub message_transform: Vec<MessageTransform>,
 }
 
 /// Topic is a reference to a PubSub topic.
@@ -88,6 +75,7 @@ impl Topic {
                 .map_err(|err: DurationError| Status::internal(err.to_string()))?,
             state: 0,
             ingestion_data_source_settings: topic_config.ingestion_data_source_settings,
+            message_transforms: topic_config.message_transform,
         };
         self.pubc.create_topic(req, retry).await.map(|_v| ())
     }

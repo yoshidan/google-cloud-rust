@@ -97,6 +97,7 @@ impl Default for ClientConfig {
 
 #[cfg(feature = "auth")]
 pub use google_cloud_auth;
+use google_cloud_googleapis::spanner::v1::transaction_options::IsolationLevel;
 
 #[cfg(feature = "auth")]
 impl ClientConfig {
@@ -383,6 +384,7 @@ impl Client {
                 let tx = commit_request::Transaction::SingleUseTransaction(TransactionOptions {
                     exclude_txn_from_change_streams: false,
                     mode: Some(transaction_options::Mode::ReadWrite(transaction_options::ReadWrite::default())),
+                    isolation_level: IsolationLevel::Unspecified as i32,
                 });
                 match commit(session, ms.clone(), tx, options.clone()).await {
                     Ok(s) => Ok(s.commit_timestamp.map(|s| s.into())),
