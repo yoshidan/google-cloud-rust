@@ -212,6 +212,7 @@ mod tests {
         let (client, project) = new_client().await;
         let request = GetPublicKeyRequest{
             name: format!("projects/{project}/locations/asia-northeast1/keyRings/gcr_test/cryptoKeys/eth-sign/cryptoKeyVersions/1"),
+            public_key_format: 0,
         };
         let pubkey = client.get_public_key(request.clone(), None).await.unwrap();
         assert!(!pubkey.pem.is_empty());

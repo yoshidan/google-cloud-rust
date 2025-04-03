@@ -153,6 +153,10 @@ mod tests {
                 cleanup_policy_dry_run: false,
                 format_config: None,
                 mode_config: None,
+                vulnerability_scanning_config: None,
+                disallow_unspecified_mode: false,
+                satisfies_pzi: false,
+                registry_uri: "".to_string(),
             }),
         };
         let mut created_repository = client.create_repository(create_request.clone(), None).await.unwrap();
@@ -187,6 +191,8 @@ mod tests {
             parent: create_request.parent.to_string(),
             page_size: 0,
             page_token: "".to_string(),
+            order_by: "".to_string(),
+            filter: "".to_string(),
         };
         let list_result = client.list_repositories(list_request, None).await.unwrap();
         assert!(!list_result.repositories.is_empty());
