@@ -1121,6 +1121,7 @@ pub mod append_rows_request {
     /// request and currently, it will be ignored if specified in following
     /// requests. Following requests must have data in the same format as the
     /// initial request.
+    #[warn(clippy::large_enum_variant)]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Rows {
         /// Rows in proto format.
