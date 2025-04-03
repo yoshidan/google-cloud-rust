@@ -1128,6 +1128,7 @@ mod tests {
                                 request_options: None,
                                 directed_read_options: None,
                                 data_boost_enabled: false,
+                                last_statement: false,
                             },
                             None,
                         )
