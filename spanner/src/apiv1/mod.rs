@@ -6,9 +6,13 @@ mod tests {
     use prost_types::{value::Kind, ListValue, Value};
     use serial_test::serial;
 
+    use crate::apiv1::conn_pool::ConnectionManager;
+    use crate::apiv1::spanner_client::Client;
+    use crate::session::client_metadata;
     use google_cloud_gax::conn::{ConnectionOptions, Environment};
     use google_cloud_gax::grpc::Code;
     use google_cloud_googleapis::spanner::v1::mutation::{Operation, Write};
+    use google_cloud_googleapis::spanner::v1::transaction_options::IsolationLevel;
     use google_cloud_googleapis::spanner::v1::{
         commit_request, transaction_options, transaction_selector, BatchCreateSessionsRequest, BeginTransactionRequest,
         CommitRequest, CreateSessionRequest, DeleteSessionRequest, ExecuteBatchDmlRequest, ExecuteSqlRequest,
@@ -16,10 +20,6 @@ mod tests {
         RequestOptions, RollbackRequest, Session, Transaction, TransactionOptions, TransactionSelector,
     };
     use google_cloud_googleapis::spanner::v1::{execute_batch_dml_request, KeySet, Mutation};
-
-    use crate::apiv1::conn_pool::ConnectionManager;
-    use crate::apiv1::spanner_client::Client;
-    use crate::session::client_metadata;
 
     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
@@ -53,8 +53,10 @@ mod tests {
                     return_read_timestamp: false,
                     timestamp_bound: None,
                 })),
+                isolation_level: IsolationLevel::Unspecified as i32,
             }),
             request_options: None,
+            mutation_key: None,
         };
         client.begin_transaction(request, None).await.unwrap().into_inner()
     }
@@ -65,8 +67,10 @@ mod tests {
             options: Some(TransactionOptions {
                 exclude_txn_from_change_streams: false,
                 mode: Some(transaction_options::Mode::ReadWrite(transaction_options::ReadWrite::default())),
+                isolation_level: IsolationLevel::Unspecified as i32,
             }),
             request_options: None,
+            mutation_key: None,
         };
         client.begin_transaction(request, None).await.unwrap().into_inner()
     }
@@ -194,6 +198,7 @@ mod tests {
             request_options: None,
             directed_read_options: None,
             data_boost_enabled: false,
+            last_statement: false,
         };
         match client.execute_sql(request, None).await {
             Ok(res) => {
@@ -222,6 +227,7 @@ mod tests {
             request_options: None,
             directed_read_options: None,
             data_boost_enabled: false,
+            last_statement: false,
         };
 
         let resume_token = match client.execute_streaming_sql(request.clone(), None).await {
@@ -261,8 +267,10 @@ mod tests {
                     return_read_timestamp: false,
                     timestamp_bound: None,
                 })),
+                isolation_level: IsolationLevel::Unspecified as i32,
             }),
             request_options: None,
+            mutation_key: None,
         };
 
         match client.begin_transaction(request, None).await {
@@ -302,6 +310,7 @@ mod tests {
             ],
             seqno: 0,
             request_options: None,
+            last_statements: false,
         };
 
         let result = client.execute_batch_dml(request, None).await;
@@ -343,6 +352,7 @@ mod tests {
             }],
             seqno: 0,
             request_options: None,
+            last_statements: false,
         };
 
         let result = client.execute_batch_dml(request, None).await;
@@ -476,6 +486,7 @@ mod tests {
             }),
             return_commit_stats: false,
             max_commit_delay: None,
+            precommit_token: None,
         };
 
         match client.commit(request, None).await {

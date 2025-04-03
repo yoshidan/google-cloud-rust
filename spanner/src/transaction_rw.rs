@@ -5,19 +5,19 @@ use std::time::Duration;
 
 use prost_types::Struct;
 
+use crate::session::ManagedSession;
+use crate::statement::Statement;
+use crate::transaction::{CallOptions, QueryOptions, Transaction};
+use crate::value::Timestamp;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::{RetrySetting, TryAs};
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::TransactionId;
+use google_cloud_googleapis::spanner::v1::transaction_options::IsolationLevel;
 use google_cloud_googleapis::spanner::v1::{
     commit_request, execute_batch_dml_request, result_set_stats, transaction_options, transaction_selector,
     BeginTransactionRequest, CommitRequest, CommitResponse, ExecuteBatchDmlRequest, ExecuteSqlRequest, Mutation,
     ResultSetStats, RollbackRequest, TransactionOptions, TransactionSelector,
 };
-
-use crate::session::ManagedSession;
-use crate::statement::Statement;
-use crate::transaction::{CallOptions, QueryOptions, Transaction};
-use crate::value::Timestamp;
 
 #[derive(Clone, Default)]
 pub struct CommitOptions {
@@ -135,8 +135,10 @@ impl ReadWriteTransaction {
             options: Some(TransactionOptions {
                 exclude_txn_from_change_streams: false,
                 mode: Some(mode),
+                isolation_level: IsolationLevel::Unspecified as i32,
             }),
             request_options: Transaction::create_request_options(options.priority),
+            mutation_key: None,
         };
         let result = session.spanner_client.begin_transaction(request, options.retry).await;
         let response = match session.invalidate_if_needed(result).await {
@@ -182,6 +184,7 @@ impl ReadWriteTransaction {
             query_options: options.optimizer_options,
             request_options: Transaction::create_request_options(options.call_options.priority),
             directed_read_options: None,
+            last_statement: false,
         };
 
         let session = self.as_mut_session();
@@ -215,6 +218,7 @@ impl ReadWriteTransaction {
                     param_types: x.param_types,
                 })
                 .collect(),
+            last_statements: false,
         };
 
         let session = self.as_mut_session();
@@ -334,6 +338,7 @@ pub(crate) async fn commit(
         request_options: Transaction::create_request_options(commit_options.call_options.priority),
         return_commit_stats: commit_options.return_commit_stats,
         max_commit_delay: commit_options.max_commit_delay.map(|d| d.try_into().unwrap()),
+        precommit_token: None,
     };
     let result = session
         .spanner_client

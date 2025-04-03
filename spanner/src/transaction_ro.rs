@@ -4,19 +4,19 @@ use std::time::SystemTime;
 
 use time::OffsetDateTime;
 
-use google_cloud_gax::grpc::Status;
-use google_cloud_googleapis::spanner::v1::{
-    transaction_options, transaction_selector, BeginTransactionRequest, DirectedReadOptions, ExecuteSqlRequest,
-    PartitionOptions, PartitionQueryRequest, PartitionReadRequest, ReadRequest, TransactionOptions,
-    TransactionSelector,
-};
-
 use crate::key::KeySet;
 use crate::reader::{Reader, RowIterator, StatementReader, TableReader};
 use crate::session::ManagedSession;
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, ReadOptions, Transaction};
 use crate::value::TimestampBound;
+use google_cloud_gax::grpc::Status;
+use google_cloud_googleapis::spanner::v1::transaction_options::IsolationLevel;
+use google_cloud_googleapis::spanner::v1::{
+    transaction_options, transaction_selector, BeginTransactionRequest, DirectedReadOptions, ExecuteSqlRequest,
+    PartitionOptions, PartitionQueryRequest, PartitionReadRequest, ReadRequest, TransactionOptions,
+    TransactionSelector,
+};
 
 /// ReadOnlyTransaction provides a snapshot transaction with guaranteed
 /// consistency across reads, but does not allow writes.  Read-only transactions
@@ -61,6 +61,7 @@ impl ReadOnlyTransaction {
                     selector: Some(transaction_selector::Selector::SingleUse(TransactionOptions {
                         exclude_txn_from_change_streams: false,
                         mode: Some(transaction_options::Mode::ReadOnly(tb.into())),
+                        isolation_level: IsolationLevel::Unspecified as i32,
                     })),
                 },
             },
@@ -79,8 +80,10 @@ impl ReadOnlyTransaction {
             options: Some(TransactionOptions {
                 exclude_txn_from_change_streams: false,
                 mode: Some(transaction_options::Mode::ReadOnly(tb.into())),
+                isolation_level: IsolationLevel::Unspecified as i32,
             }),
             request_options: Transaction::create_request_options(options.priority),
+            mutation_key: None,
         };
 
         let result = session.spanner_client.begin_transaction(request, options.retry).await;
@@ -272,6 +275,7 @@ impl BatchReadOnlyTransaction {
                             request_options: Transaction::create_request_options(qo.call_options.priority),
                             data_boost_enabled,
                             directed_read_options: directed_read_options.clone(),
+                            last_statement: false,
                         },
                     },
                 })

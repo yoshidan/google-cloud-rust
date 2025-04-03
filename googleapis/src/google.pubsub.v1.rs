@@ -616,7 +616,7 @@ pub struct IngestionDataSourceSettings {
     #[prost(message, optional, tag = "4")]
     pub platform_logs_settings: ::core::option::Option<PlatformLogsSettings>,
     /// Only one source type can have settings set.
-    #[prost(oneof = "ingestion_data_source_settings::Source", tags = "1, 2")]
+    #[prost(oneof = "ingestion_data_source_settings::Source", tags = "1, 2, 3, 5, 6")]
     pub source: ::core::option::Option<ingestion_data_source_settings::Source>,
 }
 /// Nested message and enum types in `IngestionDataSourceSettings`.
@@ -822,6 +822,251 @@ pub mod ingestion_data_source_settings {
             PubsubAvroFormat(PubSubAvroFormat),
         }
     }
+    /// Ingestion settings for Azure Event Hubs.
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct AzureEventHubs {
+        /// Output only. An output-only field that indicates the state of the Event
+        /// Hubs ingestion source.
+        #[prost(enumeration = "azure_event_hubs::State", tag = "1")]
+        pub state: i32,
+        /// Optional. Name of the resource group within the azure subscription.
+        #[prost(string, tag = "2")]
+        pub resource_group: ::prost::alloc::string::String,
+        /// Optional. The name of the Event Hubs namespace.
+        #[prost(string, tag = "3")]
+        pub namespace: ::prost::alloc::string::String,
+        /// Optional. The name of the Event Hub.
+        #[prost(string, tag = "4")]
+        pub event_hub: ::prost::alloc::string::String,
+        /// Optional. The client id of the Azure application that is being used to
+        /// authenticate Pub/Sub.
+        #[prost(string, tag = "5")]
+        pub client_id: ::prost::alloc::string::String,
+        /// Optional. The tenant id of the Azure application that is being used to
+        /// authenticate Pub/Sub.
+        #[prost(string, tag = "6")]
+        pub tenant_id: ::prost::alloc::string::String,
+        /// Optional. The Azure subscription id.
+        #[prost(string, tag = "7")]
+        pub subscription_id: ::prost::alloc::string::String,
+        /// Optional. The GCP service account to be used for Federated Identity
+        /// authentication.
+        #[prost(string, tag = "8")]
+        pub gcp_service_account: ::prost::alloc::string::String,
+    }
+    /// Nested message and enum types in `AzureEventHubs`.
+    pub mod azure_event_hubs {
+        /// Possible states for managed ingestion from Event Hubs.
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+        #[repr(i32)]
+        pub enum State {
+            /// Default value. This value is unused.
+            Unspecified = 0,
+            /// Ingestion is active.
+            Active = 1,
+            /// Permission denied encountered while consuming data from Event Hubs.
+            /// This can happen when `client_id`, or `tenant_id` are invalid. Or the
+            /// right permissions haven't been granted.
+            EventHubsPermissionDenied = 2,
+            /// Permission denied encountered while publishing to the topic.
+            PublishPermissionDenied = 3,
+            /// The provided Event Hubs namespace couldn't be found.
+            NamespaceNotFound = 4,
+            /// The provided Event Hub couldn't be found.
+            EventHubNotFound = 5,
+            /// The provided Event Hubs subscription couldn't be found.
+            SubscriptionNotFound = 6,
+            /// The provided Event Hubs resource group couldn't be found.
+            ResourceGroupNotFound = 7,
+        }
+        impl State {
+            /// String value of the enum field names used in the ProtoBuf definition.
+            ///
+            /// The values are not transformed in any way and thus are considered stable
+            /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+            pub fn as_str_name(&self) -> &'static str {
+                match self {
+                    Self::Unspecified => "STATE_UNSPECIFIED",
+                    Self::Active => "ACTIVE",
+                    Self::EventHubsPermissionDenied => "EVENT_HUBS_PERMISSION_DENIED",
+                    Self::PublishPermissionDenied => "PUBLISH_PERMISSION_DENIED",
+                    Self::NamespaceNotFound => "NAMESPACE_NOT_FOUND",
+                    Self::EventHubNotFound => "EVENT_HUB_NOT_FOUND",
+                    Self::SubscriptionNotFound => "SUBSCRIPTION_NOT_FOUND",
+                    Self::ResourceGroupNotFound => "RESOURCE_GROUP_NOT_FOUND",
+                }
+            }
+            /// Creates an enum from field names used in the ProtoBuf definition.
+            pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+                match value {
+                    "STATE_UNSPECIFIED" => Some(Self::Unspecified),
+                    "ACTIVE" => Some(Self::Active),
+                    "EVENT_HUBS_PERMISSION_DENIED" => Some(Self::EventHubsPermissionDenied),
+                    "PUBLISH_PERMISSION_DENIED" => Some(Self::PublishPermissionDenied),
+                    "NAMESPACE_NOT_FOUND" => Some(Self::NamespaceNotFound),
+                    "EVENT_HUB_NOT_FOUND" => Some(Self::EventHubNotFound),
+                    "SUBSCRIPTION_NOT_FOUND" => Some(Self::SubscriptionNotFound),
+                    "RESOURCE_GROUP_NOT_FOUND" => Some(Self::ResourceGroupNotFound),
+                    _ => None,
+                }
+            }
+        }
+    }
+    /// Ingestion settings for Amazon MSK.
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct AwsMsk {
+        /// Output only. An output-only field that indicates the state of the Amazon
+        /// MSK ingestion source.
+        #[prost(enumeration = "aws_msk::State", tag = "1")]
+        pub state: i32,
+        /// Required. The Amazon Resource Name (ARN) that uniquely identifies the
+        /// cluster.
+        #[prost(string, tag = "2")]
+        pub cluster_arn: ::prost::alloc::string::String,
+        /// Required. The name of the topic in the Amazon MSK cluster that Pub/Sub
+        /// will import from.
+        #[prost(string, tag = "3")]
+        pub topic: ::prost::alloc::string::String,
+        /// Required. AWS role ARN to be used for Federated Identity authentication
+        /// with Amazon MSK. Check the Pub/Sub docs for how to set up this role and
+        /// the required permissions that need to be attached to it.
+        #[prost(string, tag = "4")]
+        pub aws_role_arn: ::prost::alloc::string::String,
+        /// Required. The GCP service account to be used for Federated Identity
+        /// authentication with Amazon MSK (via a `AssumeRoleWithWebIdentity` call
+        /// for the provided role). The `aws_role_arn` must be set up with
+        /// `accounts.google.com:sub` equals to this service account number.
+        #[prost(string, tag = "5")]
+        pub gcp_service_account: ::prost::alloc::string::String,
+    }
+    /// Nested message and enum types in `AwsMsk`.
+    pub mod aws_msk {
+        /// Possible states for managed ingestion from Amazon MSK.
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+        #[repr(i32)]
+        pub enum State {
+            /// Default value. This value is unused.
+            Unspecified = 0,
+            /// Ingestion is active.
+            Active = 1,
+            /// Permission denied encountered while consuming data from Amazon MSK.
+            MskPermissionDenied = 2,
+            /// Permission denied encountered while publishing to the topic.
+            PublishPermissionDenied = 3,
+            /// The provided MSK cluster wasn't found.
+            ClusterNotFound = 4,
+            /// The provided topic wasn't found.
+            TopicNotFound = 5,
+        }
+        impl State {
+            /// String value of the enum field names used in the ProtoBuf definition.
+            ///
+            /// The values are not transformed in any way and thus are considered stable
+            /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+            pub fn as_str_name(&self) -> &'static str {
+                match self {
+                    Self::Unspecified => "STATE_UNSPECIFIED",
+                    Self::Active => "ACTIVE",
+                    Self::MskPermissionDenied => "MSK_PERMISSION_DENIED",
+                    Self::PublishPermissionDenied => "PUBLISH_PERMISSION_DENIED",
+                    Self::ClusterNotFound => "CLUSTER_NOT_FOUND",
+                    Self::TopicNotFound => "TOPIC_NOT_FOUND",
+                }
+            }
+            /// Creates an enum from field names used in the ProtoBuf definition.
+            pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+                match value {
+                    "STATE_UNSPECIFIED" => Some(Self::Unspecified),
+                    "ACTIVE" => Some(Self::Active),
+                    "MSK_PERMISSION_DENIED" => Some(Self::MskPermissionDenied),
+                    "PUBLISH_PERMISSION_DENIED" => Some(Self::PublishPermissionDenied),
+                    "CLUSTER_NOT_FOUND" => Some(Self::ClusterNotFound),
+                    "TOPIC_NOT_FOUND" => Some(Self::TopicNotFound),
+                    _ => None,
+                }
+            }
+        }
+    }
+    /// Ingestion settings for Confluent Cloud.
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct ConfluentCloud {
+        /// Output only. An output-only field that indicates the state of the
+        /// Confluent Cloud ingestion source.
+        #[prost(enumeration = "confluent_cloud::State", tag = "1")]
+        pub state: i32,
+        /// Required. The address of the bootstrap server. The format is url:port.
+        #[prost(string, tag = "2")]
+        pub bootstrap_server: ::prost::alloc::string::String,
+        /// Required. The id of the cluster.
+        #[prost(string, tag = "3")]
+        pub cluster_id: ::prost::alloc::string::String,
+        /// Required. The name of the topic in the Confluent Cloud cluster that
+        /// Pub/Sub will import from.
+        #[prost(string, tag = "4")]
+        pub topic: ::prost::alloc::string::String,
+        /// Required. The id of the identity pool to be used for Federated Identity
+        /// authentication with Confluent Cloud. See
+        /// <https://docs.confluent.io/cloud/current/security/authenticate/workload-identities/identity-providers/oauth/identity-pools.html#add-oauth-identity-pools.>
+        #[prost(string, tag = "5")]
+        pub identity_pool_id: ::prost::alloc::string::String,
+        /// Required. The GCP service account to be used for Federated Identity
+        /// authentication with `identity_pool_id`.
+        #[prost(string, tag = "6")]
+        pub gcp_service_account: ::prost::alloc::string::String,
+    }
+    /// Nested message and enum types in `ConfluentCloud`.
+    pub mod confluent_cloud {
+        /// Possible states for managed ingestion from Confluent Cloud.
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+        #[repr(i32)]
+        pub enum State {
+            /// Default value. This value is unused.
+            Unspecified = 0,
+            /// Ingestion is active.
+            Active = 1,
+            /// Permission denied encountered while consuming data from Confluent
+            /// Cloud.
+            ConfluentCloudPermissionDenied = 2,
+            /// Permission denied encountered while publishing to the topic.
+            PublishPermissionDenied = 3,
+            /// The provided bootstrap server address is unreachable.
+            UnreachableBootstrapServer = 4,
+            /// The provided cluster wasn't found.
+            ClusterNotFound = 5,
+            /// The provided topic wasn't found.
+            TopicNotFound = 6,
+        }
+        impl State {
+            /// String value of the enum field names used in the ProtoBuf definition.
+            ///
+            /// The values are not transformed in any way and thus are considered stable
+            /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+            pub fn as_str_name(&self) -> &'static str {
+                match self {
+                    Self::Unspecified => "STATE_UNSPECIFIED",
+                    Self::Active => "ACTIVE",
+                    Self::ConfluentCloudPermissionDenied => "CONFLUENT_CLOUD_PERMISSION_DENIED",
+                    Self::PublishPermissionDenied => "PUBLISH_PERMISSION_DENIED",
+                    Self::UnreachableBootstrapServer => "UNREACHABLE_BOOTSTRAP_SERVER",
+                    Self::ClusterNotFound => "CLUSTER_NOT_FOUND",
+                    Self::TopicNotFound => "TOPIC_NOT_FOUND",
+                }
+            }
+            /// Creates an enum from field names used in the ProtoBuf definition.
+            pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+                match value {
+                    "STATE_UNSPECIFIED" => Some(Self::Unspecified),
+                    "ACTIVE" => Some(Self::Active),
+                    "CONFLUENT_CLOUD_PERMISSION_DENIED" => Some(Self::ConfluentCloudPermissionDenied),
+                    "PUBLISH_PERMISSION_DENIED" => Some(Self::PublishPermissionDenied),
+                    "UNREACHABLE_BOOTSTRAP_SERVER" => Some(Self::UnreachableBootstrapServer),
+                    "CLUSTER_NOT_FOUND" => Some(Self::ClusterNotFound),
+                    "TOPIC_NOT_FOUND" => Some(Self::TopicNotFound),
+                    _ => None,
+                }
+            }
+        }
+    }
     /// Only one source type can have settings set.
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Source {
@@ -831,6 +1076,15 @@ pub mod ingestion_data_source_settings {
         /// Optional. Cloud Storage.
         #[prost(message, tag = "2")]
         CloudStorage(CloudStorage),
+        /// Optional. Azure Event Hubs.
+        #[prost(message, tag = "3")]
+        AzureEventHubs(AzureEventHubs),
+        /// Optional. Amazon MSK.
+        #[prost(message, tag = "5")]
+        AwsMsk(AwsMsk),
+        /// Optional. Confluent Cloud.
+        #[prost(message, tag = "6")]
+        ConfluentCloud(ConfluentCloud),
     }
 }
 /// Settings for Platform Logs produced by Pub/Sub.
@@ -888,6 +1142,245 @@ pub mod platform_logs_settings {
         }
     }
 }
+/// Payload of the Platform Log entry sent when a failure is encountered while
+/// ingesting.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IngestionFailureEvent {
+    /// Required. Name of the import topic. Format is:
+    /// projects/{project_name}/topics/{topic_name}.
+    #[prost(string, tag = "1")]
+    pub topic: ::prost::alloc::string::String,
+    /// Required. Error details explaining why ingestion to Pub/Sub has failed.
+    #[prost(string, tag = "2")]
+    pub error_message: ::prost::alloc::string::String,
+    #[prost(oneof = "ingestion_failure_event::Failure", tags = "3, 4, 5, 6")]
+    pub failure: ::core::option::Option<ingestion_failure_event::Failure>,
+}
+/// Nested message and enum types in `IngestionFailureEvent`.
+pub mod ingestion_failure_event {
+    /// Specifies the reason why some data may have been left out of
+    /// the desired Pub/Sub message due to the API message limits
+    /// (<https://cloud.google.com/pubsub/quotas#resource_limits>). For example,
+    /// when the number of attributes is larger than 100, the number of
+    /// attributes is truncated to 100 to respect the limit on the attribute count.
+    /// Other attribute limits are treated similarly. When the size of the desired
+    /// message would've been larger than 10MB, the message won't be published at
+    /// all, and ingestion of the subsequent messages will proceed as normal.
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    pub struct ApiViolationReason {}
+    /// Set when an Avro file is unsupported or its format is not valid. When this
+    /// occurs, one or more Avro objects won't be ingested.
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    pub struct AvroFailureReason {}
+    /// Failure when ingesting from a Cloud Storage source.
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct CloudStorageFailure {
+        /// Optional. Name of the Cloud Storage bucket used for ingestion.
+        #[prost(string, tag = "1")]
+        pub bucket: ::prost::alloc::string::String,
+        /// Optional. Name of the Cloud Storage object which contained the section
+        /// that couldn't be ingested.
+        #[prost(string, tag = "2")]
+        pub object_name: ::prost::alloc::string::String,
+        /// Optional. Generation of the Cloud Storage object which contained the
+        /// section that couldn't be ingested.
+        #[prost(int64, tag = "3")]
+        pub object_generation: i64,
+        /// Reason why ingestion failed for the specified object.
+        #[prost(oneof = "cloud_storage_failure::Reason", tags = "5, 6")]
+        pub reason: ::core::option::Option<cloud_storage_failure::Reason>,
+    }
+    /// Nested message and enum types in `CloudStorageFailure`.
+    pub mod cloud_storage_failure {
+        /// Reason why ingestion failed for the specified object.
+        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+        pub enum Reason {
+            /// Optional. Failure encountered when parsing an Avro file.
+            #[prost(message, tag = "5")]
+            AvroFailureReason(super::AvroFailureReason),
+            /// Optional. The Pub/Sub API limits prevented the desired message from
+            /// being published.
+            #[prost(message, tag = "6")]
+            ApiViolationReason(super::ApiViolationReason),
+        }
+    }
+    /// Failure when ingesting from an Amazon MSK source.
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct AwsMskFailureReason {
+        /// Optional. The ARN of the cluster of the topic being ingested from.
+        #[prost(string, tag = "1")]
+        pub cluster_arn: ::prost::alloc::string::String,
+        /// Optional. The name of the Kafka topic being ingested from.
+        #[prost(string, tag = "2")]
+        pub kafka_topic: ::prost::alloc::string::String,
+        /// Optional. The partition ID of the message that failed to be ingested.
+        #[prost(int64, tag = "3")]
+        pub partition_id: i64,
+        /// Optional. The offset within the partition of the message that failed to
+        /// be ingested.
+        #[prost(int64, tag = "4")]
+        pub offset: i64,
+        /// Reason why ingestion failed for the specified message.
+        #[prost(oneof = "aws_msk_failure_reason::Reason", tags = "5")]
+        pub reason: ::core::option::Option<aws_msk_failure_reason::Reason>,
+    }
+    /// Nested message and enum types in `AwsMskFailureReason`.
+    pub mod aws_msk_failure_reason {
+        /// Reason why ingestion failed for the specified message.
+        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+        pub enum Reason {
+            /// Optional. The Pub/Sub API limits prevented the desired message from
+            /// being published.
+            #[prost(message, tag = "5")]
+            ApiViolationReason(super::ApiViolationReason),
+        }
+    }
+    /// Failure when ingesting from an Azure Event Hubs source.
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct AzureEventHubsFailureReason {
+        /// Optional. The namespace containing the event hub being ingested from.
+        #[prost(string, tag = "1")]
+        pub namespace: ::prost::alloc::string::String,
+        /// Optional. The name of the event hub being ingested from.
+        #[prost(string, tag = "2")]
+        pub event_hub: ::prost::alloc::string::String,
+        /// Optional. The partition ID of the message that failed to be ingested.
+        #[prost(int64, tag = "3")]
+        pub partition_id: i64,
+        /// Optional. The offset within the partition of the message that failed to
+        /// be ingested.
+        #[prost(int64, tag = "4")]
+        pub offset: i64,
+        /// Reason why ingestion failed for the specified message.
+        #[prost(oneof = "azure_event_hubs_failure_reason::Reason", tags = "5")]
+        pub reason: ::core::option::Option<azure_event_hubs_failure_reason::Reason>,
+    }
+    /// Nested message and enum types in `AzureEventHubsFailureReason`.
+    pub mod azure_event_hubs_failure_reason {
+        /// Reason why ingestion failed for the specified message.
+        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+        pub enum Reason {
+            /// Optional. The Pub/Sub API limits prevented the desired message from
+            /// being published.
+            #[prost(message, tag = "5")]
+            ApiViolationReason(super::ApiViolationReason),
+        }
+    }
+    /// Failure when ingesting from a Confluent Cloud source.
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct ConfluentCloudFailureReason {
+        /// Optional. The cluster ID containing the topic being ingested from.
+        #[prost(string, tag = "1")]
+        pub cluster_id: ::prost::alloc::string::String,
+        /// Optional. The name of the Kafka topic being ingested from.
+        #[prost(string, tag = "2")]
+        pub kafka_topic: ::prost::alloc::string::String,
+        /// Optional. The partition ID of the message that failed to be ingested.
+        #[prost(int64, tag = "3")]
+        pub partition_id: i64,
+        /// Optional. The offset within the partition of the message that failed to
+        /// be ingested.
+        #[prost(int64, tag = "4")]
+        pub offset: i64,
+        /// Reason why ingestion failed for the specified message.
+        #[prost(oneof = "confluent_cloud_failure_reason::Reason", tags = "5")]
+        pub reason: ::core::option::Option<confluent_cloud_failure_reason::Reason>,
+    }
+    /// Nested message and enum types in `ConfluentCloudFailureReason`.
+    pub mod confluent_cloud_failure_reason {
+        /// Reason why ingestion failed for the specified message.
+        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+        pub enum Reason {
+            /// Optional. The Pub/Sub API limits prevented the desired message from
+            /// being published.
+            #[prost(message, tag = "5")]
+            ApiViolationReason(super::ApiViolationReason),
+        }
+    }
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Failure {
+        /// Optional. Failure when ingesting from Cloud Storage.
+        #[prost(message, tag = "3")]
+        CloudStorageFailure(CloudStorageFailure),
+        /// Optional. Failure when ingesting from Amazon MSK.
+        #[prost(message, tag = "4")]
+        AwsMskFailure(AwsMskFailureReason),
+        /// Optional. Failure when ingesting from Azure Event Hubs.
+        #[prost(message, tag = "5")]
+        AzureEventHubsFailure(AzureEventHubsFailureReason),
+        /// Optional. Failure when ingesting from Confluent Cloud.
+        #[prost(message, tag = "6")]
+        ConfluentCloudFailure(ConfluentCloudFailureReason),
+    }
+}
+/// User-defined JavaScript function that can transform or filter a Pub/Sub
+/// message.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct JavaScriptUdf {
+    /// Required. Name of the JavasScript function that should applied to Pub/Sub
+    /// messages.
+    #[prost(string, tag = "1")]
+    pub function_name: ::prost::alloc::string::String,
+    /// Required. JavaScript code that contains a function `function_name` with the
+    /// below signature:
+    ///
+    /// ```
+    ///    /**
+    ///    * Transforms a Pub/Sub message.
+    ///
+    ///    * @return {(Object<string, (string | Object<string, string>)>|null)} - To
+    ///    * filter a message, return `null`. To transform a message return a map
+    ///    * with the following keys:
+    ///    *   - (required) 'data' : {string}
+    ///    *   - (optional) 'attributes' : {Object<string, string>}
+    ///    * Returning empty `attributes` will remove all attributes from the
+    ///    * message.
+    ///    *
+    ///    * @param  {(Object<string, (string | Object<string, string>)>} Pub/Sub
+    ///    * message. Keys:
+    ///    *   - (required) 'data' : {string}
+    ///    *   - (required) 'attributes' : {Object<string, string>}
+    ///    *
+    ///    * @param  {Object<string, any>} metadata - Pub/Sub message metadata.
+    ///    * Keys:
+    ///    *   - (optional) 'message_id'  : {string}
+    ///    *   - (optional) 'publish_time': {string} YYYY-MM-DDTHH:MM:SSZ format
+    ///    *   - (optional) 'ordering_key': {string}
+    ///    */
+    ///
+    ///    function <function_name>(message, metadata) {
+    ///    }
+    /// ```
+    #[prost(string, tag = "2")]
+    pub code: ::prost::alloc::string::String,
+}
+/// All supported message transforms types.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MessageTransform {
+    /// Optional. This field is deprecated, use the `disabled` field to disable
+    /// transforms.
+    #[deprecated]
+    #[prost(bool, tag = "3")]
+    pub enabled: bool,
+    /// Optional. If true, the transform is disabled and will not be applied to
+    /// messages. Defaults to `false`.
+    #[prost(bool, tag = "4")]
+    pub disabled: bool,
+    /// The type of transform to apply to messages.
+    #[prost(oneof = "message_transform::Transform", tags = "2")]
+    pub transform: ::core::option::Option<message_transform::Transform>,
+}
+/// Nested message and enum types in `MessageTransform`.
+pub mod message_transform {
+    /// The type of transform to apply to messages.
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Transform {
+        /// Optional. JavaScript User Defined Function. If multiple JavaScriptUDF's
+        /// are specified on a resource, each must have a unique `function_name`.
+        #[prost(message, tag = "2")]
+        JavascriptUdf(super::JavaScriptUdf),
+    }
+}
 /// A topic resource.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Topic {
@@ -938,6 +1431,10 @@ pub struct Topic {
     /// Optional. Settings for ingestion from a data source into this topic.
     #[prost(message, optional, tag = "10")]
     pub ingestion_data_source_settings: ::core::option::Option<IngestionDataSourceSettings>,
+    /// Optional. Transforms to be applied to messages published to the topic.
+    /// Transforms are applied in the order specified.
+    #[prost(message, repeated, tag = "13")]
+    pub message_transforms: ::prost::alloc::vec::Vec<MessageTransform>,
 }
 /// Nested message and enum types in `Topic`.
 pub mod topic {
@@ -1313,11 +1810,15 @@ pub struct Subscription {
     /// Only set if the subscritpion is created by Analytics Hub.
     #[prost(message, optional, tag = "23")]
     pub analytics_hub_subscription_info: ::core::option::Option<subscription::AnalyticsHubSubscriptionInfo>,
+    /// Optional. Transforms to be applied to messages before they are delivered to
+    /// subscribers. Transforms are applied in the order specified.
+    #[prost(message, repeated, tag = "25")]
+    pub message_transforms: ::prost::alloc::vec::Vec<MessageTransform>,
 }
 /// Nested message and enum types in `Subscription`.
 pub mod subscription {
-    /// Information about an associated Analytics Hub subscription
-    /// (<https://cloud.google.com/bigquery/docs/analytics-hub-manage-subscriptions>).
+    /// Information about an associated [Analytics Hub
+    /// subscription](<https://cloud.google.com/bigquery/docs/analytics-hub-manage-subscriptions>).
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct AnalyticsHubSubscriptionInfo {
         /// Optional. The name of the associated Analytics Hub listing resource.

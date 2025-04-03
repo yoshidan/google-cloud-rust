@@ -15,6 +15,13 @@ pub struct OperationProgress {
     #[prost(message, optional, tag = "3")]
     pub end_time: ::core::option::Option<::prost_types::Timestamp>,
 }
+/// ReplicaSelection identifies replicas with common properties.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ReplicaSelection {
+    /// Required. Name of the location of the replicas (e.g., "us-central1").
+    #[prost(string, tag = "1")]
+    pub location: ::prost::alloc::string::String,
+}
 /// Indicates the expected fulfillment period of an operation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -52,7 +59,7 @@ impl FulfillmentPeriod {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ReplicaInfo {
-    /// The location of the serving resources, e.g. "us-central1".
+    /// The location of the serving resources, e.g., "us-central1".
     #[prost(string, tag = "1")]
     pub location: ::prost::alloc::string::String,
     /// The type of replica.
@@ -144,16 +151,21 @@ pub struct InstanceConfig {
     pub config_type: i32,
     /// The geographic placement of nodes in this instance configuration and their
     /// replication properties.
+    ///
+    /// To create user-managed configurations, input
+    /// `replicas` must include all replicas in `replicas` of the `base_config`
+    /// and include one or more replicas in the `optional_replicas` of the
+    /// `base_config`.
     #[prost(message, repeated, tag = "3")]
     pub replicas: ::prost::alloc::vec::Vec<ReplicaInfo>,
-    /// Output only. The available optional replicas to choose from for user
-    /// managed configurations. Populated for Google managed configurations.
+    /// Output only. The available optional replicas to choose from for
+    /// user-managed configurations. Populated for Google-managed configurations.
     #[prost(message, repeated, tag = "6")]
     pub optional_replicas: ::prost::alloc::vec::Vec<ReplicaInfo>,
     /// Base configuration name, e.g. projects/<project_name>/instanceConfigs/nam3,
-    /// based on which this configuration is created. Only set for user managed
+    /// based on which this configuration is created. Only set for user-managed
     /// configurations. `base_config` must refer to a configuration of type
-    /// GOOGLE_MANAGED in the same project as this configuration.
+    /// `GOOGLE_MANAGED` in the same project as this configuration.
     #[prost(string, tag = "7")]
     pub base_config: ::prost::alloc::string::String,
     /// Cloud Labels are a flexible and lightweight mechanism for organizing cloud
@@ -205,6 +217,16 @@ pub struct InstanceConfig {
     /// `USER_MANAGED` configurations.
     #[prost(enumeration = "instance_config::State", tag = "11")]
     pub state: i32,
+    /// Output only. Describes whether free instances are available to be created
+    /// in this instance configuration.
+    #[prost(enumeration = "instance_config::FreeInstanceAvailability", tag = "12")]
+    pub free_instance_availability: i32,
+    /// Output only. The `QuorumType` of the instance configuration.
+    #[prost(enumeration = "instance_config::QuorumType", tag = "18")]
+    pub quorum_type: i32,
+    /// Output only. The storage limit in bytes per processing unit.
+    #[prost(int64, tag = "19")]
+    pub storage_limit_per_processing_unit: i64,
 }
 /// Nested message and enum types in `InstanceConfig`.
 pub mod instance_config {
@@ -214,9 +236,9 @@ pub mod instance_config {
     pub enum Type {
         /// Unspecified.
         Unspecified = 0,
-        /// Google managed configuration.
+        /// Google-managed configuration.
         GoogleManaged = 1,
-        /// User managed configuration.
+        /// User-managed configuration.
         UserManaged = 2,
     }
     impl Type {
@@ -275,9 +297,140 @@ pub mod instance_config {
             }
         }
     }
+    /// Describes the availability for free instances to be created in an instance
+    /// configuration.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum FreeInstanceAvailability {
+        /// Not specified.
+        Unspecified = 0,
+        /// Indicates that free instances are available to be created in this
+        /// instance configuration.
+        Available = 1,
+        /// Indicates that free instances are not supported in this instance
+        /// configuration.
+        Unsupported = 2,
+        /// Indicates that free instances are currently not available to be created
+        /// in this instance configuration.
+        Disabled = 3,
+        /// Indicates that additional free instances cannot be created in this
+        /// instance configuration because the project has reached its limit of free
+        /// instances.
+        QuotaExceeded = 4,
+    }
+    impl FreeInstanceAvailability {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "FREE_INSTANCE_AVAILABILITY_UNSPECIFIED",
+                Self::Available => "AVAILABLE",
+                Self::Unsupported => "UNSUPPORTED",
+                Self::Disabled => "DISABLED",
+                Self::QuotaExceeded => "QUOTA_EXCEEDED",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "FREE_INSTANCE_AVAILABILITY_UNSPECIFIED" => Some(Self::Unspecified),
+                "AVAILABLE" => Some(Self::Available),
+                "UNSUPPORTED" => Some(Self::Unsupported),
+                "DISABLED" => Some(Self::Disabled),
+                "QUOTA_EXCEEDED" => Some(Self::QuotaExceeded),
+                _ => None,
+            }
+        }
+    }
+    /// Indicates the quorum type of this instance configuration.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum QuorumType {
+        /// Quorum type not specified.
+        Unspecified = 0,
+        /// An instance configuration tagged with `REGION` quorum type forms a write
+        /// quorum in a single region.
+        Region = 1,
+        /// An instance configuration tagged with the `DUAL_REGION` quorum type forms
+        /// a write quorum with exactly two read-write regions in a multi-region
+        /// configuration.
+        ///
+        /// This instance configuration requires failover in the event of
+        /// regional failures.
+        DualRegion = 2,
+        /// An instance configuration tagged with the `MULTI_REGION` quorum type
+        /// forms a write quorum from replicas that are spread across more than one
+        /// region in a multi-region configuration.
+        MultiRegion = 3,
+    }
+    impl QuorumType {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "QUORUM_TYPE_UNSPECIFIED",
+                Self::Region => "REGION",
+                Self::DualRegion => "DUAL_REGION",
+                Self::MultiRegion => "MULTI_REGION",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "QUORUM_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+                "REGION" => Some(Self::Region),
+                "DUAL_REGION" => Some(Self::DualRegion),
+                "MULTI_REGION" => Some(Self::MultiRegion),
+                _ => None,
+            }
+        }
+    }
+}
+/// ReplicaComputeCapacity describes the amount of server resources that are
+/// allocated to each replica identified by the replica selection.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ReplicaComputeCapacity {
+    /// Required. Identifies replicas by specified properties.
+    /// All replicas in the selection have the same amount of compute capacity.
+    #[prost(message, optional, tag = "1")]
+    pub replica_selection: ::core::option::Option<ReplicaSelection>,
+    /// Compute capacity allocated to each replica identified by the specified
+    /// selection.
+    /// The unit is selected based on the unit used to specify the instance size
+    /// for non-autoscaling instances, or the unit used in autoscaling limit for
+    /// autoscaling instances.
+    #[prost(oneof = "replica_compute_capacity::ComputeCapacity", tags = "2, 3")]
+    pub compute_capacity: ::core::option::Option<replica_compute_capacity::ComputeCapacity>,
+}
+/// Nested message and enum types in `ReplicaComputeCapacity`.
+pub mod replica_compute_capacity {
+    /// Compute capacity allocated to each replica identified by the specified
+    /// selection.
+    /// The unit is selected based on the unit used to specify the instance size
+    /// for non-autoscaling instances, or the unit used in autoscaling limit for
+    /// autoscaling instances.
+    #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+    pub enum ComputeCapacity {
+        /// The number of nodes allocated to each replica.
+        ///
+        /// This may be zero in API responses for instances that are not yet in
+        /// state `READY`.
+        #[prost(int32, tag = "2")]
+        NodeCount(i32),
+        /// The number of processing units allocated to each replica.
+        ///
+        /// This may be zero in API responses for instances that are not yet in
+        /// state `READY`.
+        #[prost(int32, tag = "3")]
+        ProcessingUnits(i32),
+    }
 }
 /// Autoscaling configuration for an instance.
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AutoscalingConfig {
     /// Required. Autoscaling limits for an instance.
     #[prost(message, optional, tag = "1")]
@@ -285,6 +438,17 @@ pub struct AutoscalingConfig {
     /// Required. The autoscaling targets for an instance.
     #[prost(message, optional, tag = "2")]
     pub autoscaling_targets: ::core::option::Option<autoscaling_config::AutoscalingTargets>,
+    /// Optional. Optional asymmetric autoscaling options.
+    /// Replicas matching the replica selection criteria will be autoscaled
+    /// independently from other replicas. The autoscaler will scale the replicas
+    /// based on the utilization of replicas identified by the replica selection.
+    /// Replica selections should not overlap with each other.
+    ///
+    /// Other replicas (those do not match any replica selection) will be
+    /// autoscaled together and will have the same compute capacity allocated to
+    /// them.
+    #[prost(message, repeated, tag = "3")]
+    pub asymmetric_autoscaling_options: ::prost::alloc::vec::Vec<autoscaling_config::AsymmetricAutoscalingOption>,
 }
 /// Nested message and enum types in `AutoscalingConfig`.
 pub mod autoscaling_config {
@@ -346,9 +510,41 @@ pub mod autoscaling_config {
         /// Required. The target storage utilization percentage that the autoscaler
         /// should be trying to achieve for the instance. This number is on a scale
         /// from 0 (no utilization) to 100 (full utilization). The valid range is
-        /// \[10, 100\] inclusive.
+        /// \[10, 99\] inclusive.
         #[prost(int32, tag = "2")]
         pub storage_utilization_percent: i32,
+    }
+    /// AsymmetricAutoscalingOption specifies the scaling of replicas identified by
+    /// the given selection.
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct AsymmetricAutoscalingOption {
+        /// Required. Selects the replicas to which this AsymmetricAutoscalingOption
+        /// applies. Only read-only replicas are supported.
+        #[prost(message, optional, tag = "1")]
+        pub replica_selection: ::core::option::Option<super::ReplicaSelection>,
+        /// Optional. Overrides applied to the top-level autoscaling configuration
+        /// for the selected replicas.
+        #[prost(message, optional, tag = "2")]
+        pub overrides: ::core::option::Option<asymmetric_autoscaling_option::AutoscalingConfigOverrides>,
+    }
+    /// Nested message and enum types in `AsymmetricAutoscalingOption`.
+    pub mod asymmetric_autoscaling_option {
+        /// Overrides the top-level autoscaling configuration for the replicas
+        /// identified by `replica_selection`. All fields in this message are
+        /// optional. Any unspecified fields will use the corresponding values from
+        /// the top-level autoscaling configuration.
+        #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+        pub struct AutoscalingConfigOverrides {
+            /// Optional. If specified, overrides the min/max limit in the top-level
+            /// autoscaling configuration for the selected replicas.
+            #[prost(message, optional, tag = "1")]
+            pub autoscaling_limits: ::core::option::Option<super::AutoscalingLimits>,
+            /// Optional. If specified, overrides the autoscaling target
+            /// high_priority_cpu_utilization_percent in the top-level autoscaling
+            /// configuration for the selected replicas.
+            #[prost(int32, tag = "2")]
+            pub autoscaling_target_high_priority_cpu_utilization_percent: i32,
+        }
     }
 }
 /// An isolated set of Cloud Spanner resources on which databases can be hosted.
@@ -370,34 +566,48 @@ pub struct Instance {
     /// Must be unique per project and between 4 and 30 characters in length.
     #[prost(string, tag = "3")]
     pub display_name: ::prost::alloc::string::String,
-    /// The number of nodes allocated to this instance. At most one of either
-    /// node_count or processing_units should be present in the message.
+    /// The number of nodes allocated to this instance. At most, one of either
+    /// `node_count` or `processing_units` should be present in the message.
     ///
-    /// Users can set the node_count field to specify the target number of nodes
+    /// Users can set the `node_count` field to specify the target number of nodes
     /// allocated to the instance.
     ///
-    /// This may be zero in API responses for instances that are not yet in state
-    /// `READY`.
+    /// If autoscaling is enabled, `node_count` is treated as an `OUTPUT_ONLY`
+    /// field and reflects the current number of nodes allocated to the instance.
     ///
-    /// See [the
-    /// documentation](<https://cloud.google.com/spanner/docs/compute-capacity>)
-    /// for more information about nodes and processing units.
+    /// This might be zero in API responses for instances that are not yet in the
+    /// `READY` state.
+    ///
+    ///
+    /// For more information, see
+    /// [Compute capacity, nodes, and processing
+    /// units](<https://cloud.google.com/spanner/docs/compute-capacity>).
     #[prost(int32, tag = "5")]
     pub node_count: i32,
-    /// The number of processing units allocated to this instance. At most one of
-    /// processing_units or node_count should be present in the message.
+    /// The number of processing units allocated to this instance. At most, one of
+    /// either `processing_units` or `node_count` should be present in the message.
     ///
-    /// Users can set the processing_units field to specify the target number of
+    /// Users can set the `processing_units` field to specify the target number of
     /// processing units allocated to the instance.
     ///
-    /// This may be zero in API responses for instances that are not yet in state
-    /// `READY`.
+    /// If autoscaling is enabled, `processing_units` is treated as an
+    /// `OUTPUT_ONLY` field and reflects the current number of processing units
+    /// allocated to the instance.
     ///
-    /// See [the
-    /// documentation](<https://cloud.google.com/spanner/docs/compute-capacity>)
-    /// for more information about nodes and processing units.
+    /// This might be zero in API responses for instances that are not yet in the
+    /// `READY` state.
+    ///
+    ///
+    /// For more information, see
+    /// [Compute capacity, nodes and processing
+    /// units](<https://cloud.google.com/spanner/docs/compute-capacity>).
     #[prost(int32, tag = "9")]
     pub processing_units: i32,
+    /// Output only. Lists the compute capacity per ReplicaSelection. A replica
+    /// selection identifies a set of replicas with common properties. Replicas
+    /// identified by a ReplicaSelection are scaled with the same compute capacity.
+    #[prost(message, repeated, tag = "19")]
+    pub replica_compute_capacity: ::prost::alloc::vec::Vec<ReplicaComputeCapacity>,
     /// Optional. The autoscaling configuration. Autoscaling is enabled if this
     /// field is set. When autoscaling is enabled, node_count and processing_units
     /// are treated as OUTPUT_ONLY fields and reflect the current compute capacity
@@ -434,6 +644,9 @@ pub struct Instance {
     /// allow "_" in a future release.
     #[prost(map = "string, string", tag = "7")]
     pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    /// The `InstanceType` of the current instance.
+    #[prost(enumeration = "instance::InstanceType", tag = "10")]
+    pub instance_type: i32,
     /// Deprecated. This field is not populated.
     #[prost(string, repeated, tag = "8")]
     pub endpoint_uris: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
@@ -443,9 +656,24 @@ pub struct Instance {
     /// Output only. The time at which the instance was most recently updated.
     #[prost(message, optional, tag = "12")]
     pub update_time: ::core::option::Option<::prost_types::Timestamp>,
+    /// Free instance metadata. Only populated for free instances.
+    #[prost(message, optional, tag = "13")]
+    pub free_instance_metadata: ::core::option::Option<FreeInstanceMetadata>,
     /// Optional. The `Edition` of the current instance.
     #[prost(enumeration = "instance::Edition", tag = "20")]
     pub edition: i32,
+    /// Optional. Controls the default backup schedule behavior for new databases
+    /// within the instance. By default, a backup schedule is created automatically
+    /// when a new database is created in a new instance.
+    ///
+    /// Note that the `AUTOMATIC` value isn't permitted for free instances,
+    /// as backups and backup schedules aren't supported for free instances.
+    ///
+    /// In the `GetInstance` or `ListInstances` response, if the value of
+    /// `default_backup_schedule_type` isn't set, or set to `NONE`, Spanner doesn't
+    /// create a default backup schedule for new databases in the instance.
+    #[prost(enumeration = "instance::DefaultBackupScheduleType", tag = "23")]
+    pub default_backup_schedule_type: i32,
 }
 /// Nested message and enum types in `Instance`.
 pub mod instance {
@@ -485,6 +713,45 @@ pub mod instance {
             }
         }
     }
+    /// The type of this instance. The type can be used to distinguish product
+    /// variants, that can affect aspects like: usage restrictions, quotas and
+    /// billing. Currently this is used to distinguish FREE_INSTANCE vs PROVISIONED
+    /// instances.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum InstanceType {
+        /// Not specified.
+        Unspecified = 0,
+        /// Provisioned instances have dedicated resources, standard usage limits and
+        /// support.
+        Provisioned = 1,
+        /// Free instances provide no guarantee for dedicated resources,
+        /// \[node_count, processing_units\] should be 0. They come
+        /// with stricter usage limits and limited support.
+        FreeInstance = 2,
+    }
+    impl InstanceType {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "INSTANCE_TYPE_UNSPECIFIED",
+                Self::Provisioned => "PROVISIONED",
+                Self::FreeInstance => "FREE_INSTANCE",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "INSTANCE_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+                "PROVISIONED" => Some(Self::Provisioned),
+                "FREE_INSTANCE" => Some(Self::FreeInstance),
+                _ => None,
+            }
+        }
+    }
     /// The edition selected for this instance. Different editions provide
     /// different capabilities at different price points.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
@@ -519,6 +786,46 @@ pub mod instance {
                 "STANDARD" => Some(Self::Standard),
                 "ENTERPRISE" => Some(Self::Enterprise),
                 "ENTERPRISE_PLUS" => Some(Self::EnterprisePlus),
+                _ => None,
+            }
+        }
+    }
+    /// Indicates the
+    /// [default backup
+    /// schedule](<https://cloud.google.com/spanner/docs/backup#default-backup-schedules>)
+    /// behavior for new databases within the instance.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum DefaultBackupScheduleType {
+        /// Not specified.
+        Unspecified = 0,
+        /// A default backup schedule isn't created automatically when a new database
+        /// is created in the instance.
+        None = 1,
+        /// A default backup schedule is created automatically when a new database
+        /// is created in the instance. The default backup schedule creates a full
+        /// backup every 24 hours. These full backups are retained for 7 days.
+        /// You can edit or delete the default backup schedule once it's created.
+        Automatic = 2,
+    }
+    impl DefaultBackupScheduleType {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "DEFAULT_BACKUP_SCHEDULE_TYPE_UNSPECIFIED",
+                Self::None => "NONE",
+                Self::Automatic => "AUTOMATIC",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "DEFAULT_BACKUP_SCHEDULE_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+                "NONE" => Some(Self::None),
+                "AUTOMATIC" => Some(Self::Automatic),
                 _ => None,
             }
         }
@@ -567,7 +874,7 @@ pub struct GetInstanceConfigRequest {
     pub name: ::prost::alloc::string::String,
 }
 /// The request for
-/// [CreateInstanceConfigRequest][InstanceAdmin.CreateInstanceConfigRequest].
+/// [CreateInstanceConfig][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstanceConfig].
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateInstanceConfigRequest {
     /// Required. The name of the project in which to create the instance
@@ -580,10 +887,10 @@ pub struct CreateInstanceConfigRequest {
     /// conflicts with Google-managed configurations.
     #[prost(string, tag = "2")]
     pub instance_config_id: ::prost::alloc::string::String,
-    /// Required. The InstanceConfig proto of the configuration to create.
-    /// instance_config.name must be
+    /// Required. The `InstanceConfig` proto of the configuration to create.
+    /// `instance_config.name` must be
     /// `<parent>/instanceConfigs/<instance_config_id>`.
-    /// instance_config.base_config must be a Google managed configuration name,
+    /// `instance_config.base_config` must be a Google-managed configuration name,
     /// e.g. <parent>/instanceConfigs/us-east1, <parent>/instanceConfigs/nam3.
     #[prost(message, optional, tag = "3")]
     pub instance_config: ::core::option::Option<InstanceConfig>,
@@ -593,7 +900,7 @@ pub struct CreateInstanceConfigRequest {
     pub validate_only: bool,
 }
 /// The request for
-/// [UpdateInstanceConfigRequest][InstanceAdmin.UpdateInstanceConfigRequest].
+/// [UpdateInstanceConfig][google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstanceConfig].
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateInstanceConfigRequest {
     /// Required. The user instance configuration to update, which must always
@@ -619,7 +926,7 @@ pub struct UpdateInstanceConfigRequest {
     pub validate_only: bool,
 }
 /// The request for
-/// [DeleteInstanceConfigRequest][InstanceAdmin.DeleteInstanceConfigRequest].
+/// [DeleteInstanceConfig][google.spanner.admin.instance.v1.InstanceAdmin.DeleteInstanceConfig].
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteInstanceConfigRequest {
     /// Required. The name of the instance configuration to be deleted.
@@ -657,8 +964,7 @@ pub struct ListInstanceConfigOperationsRequest {
     /// must be one of: `<`, `>`, `<=`, `>=`, `!=`, `=`, or `:`.
     /// Colon `:` is the contains operator. Filter rules are not case sensitive.
     ///
-    /// The following fields in the [Operation][google.longrunning.Operation]
-    /// are eligible for filtering:
+    /// The following fields in the Operation are eligible for filtering:
     ///
     ///    * `name` - The name of the long-running operation
     ///    * `done` - False if the operation is in progress, else true.
@@ -710,10 +1016,10 @@ pub struct ListInstanceConfigOperationsRequest {
 /// [ListInstanceConfigOperations][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigOperations].
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListInstanceConfigOperationsResponse {
-    /// The list of matching instance configuration [long-running
-    /// operations][google.longrunning.Operation]. Each operation's name will be
+    /// The list of matching instance configuration long-running operations. Each
+    /// operation's name will be
     /// prefixed by the name of the instance configuration. The operation's
-    /// [metadata][google.longrunning.Operation.metadata] field type
+    /// metadata field type
     /// `metadata.type_url` describes the type of the metadata.
     #[prost(message, repeated, tag = "1")]
     pub operations: ::prost::alloc::vec::Vec<super::super::super::super::longrunning::Operation>,
@@ -898,6 +1204,64 @@ pub struct UpdateInstanceMetadata {
     #[prost(enumeration = "FulfillmentPeriod", tag = "5")]
     pub expected_fulfillment_period: i32,
 }
+/// Free instance specific metadata that is kept even after an instance has been
+/// upgraded for tracking purposes.
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct FreeInstanceMetadata {
+    /// Output only. Timestamp after which the instance will either be upgraded or
+    /// scheduled for deletion after a grace period. ExpireBehavior is used to
+    /// choose between upgrading or scheduling the free instance for deletion. This
+    /// timestamp is set during the creation of a free instance.
+    #[prost(message, optional, tag = "1")]
+    pub expire_time: ::core::option::Option<::prost_types::Timestamp>,
+    /// Output only. If present, the timestamp at which the free instance was
+    /// upgraded to a provisioned instance.
+    #[prost(message, optional, tag = "2")]
+    pub upgrade_time: ::core::option::Option<::prost_types::Timestamp>,
+    /// Specifies the expiration behavior of a free instance. The default of
+    /// ExpireBehavior is `REMOVE_AFTER_GRACE_PERIOD`. This can be modified during
+    /// or after creation, and before expiration.
+    #[prost(enumeration = "free_instance_metadata::ExpireBehavior", tag = "3")]
+    pub expire_behavior: i32,
+}
+/// Nested message and enum types in `FreeInstanceMetadata`.
+pub mod free_instance_metadata {
+    /// Allows users to change behavior when a free instance expires.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum ExpireBehavior {
+        /// Not specified.
+        Unspecified = 0,
+        /// When the free instance expires, upgrade the instance to a provisioned
+        /// instance.
+        FreeToProvisioned = 1,
+        /// When the free instance expires, disable the instance, and delete it
+        /// after the grace period passes if it has not been upgraded.
+        RemoveAfterGracePeriod = 2,
+    }
+    impl ExpireBehavior {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "EXPIRE_BEHAVIOR_UNSPECIFIED",
+                Self::FreeToProvisioned => "FREE_TO_PROVISIONED",
+                Self::RemoveAfterGracePeriod => "REMOVE_AFTER_GRACE_PERIOD",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "EXPIRE_BEHAVIOR_UNSPECIFIED" => Some(Self::Unspecified),
+                "FREE_TO_PROVISIONED" => Some(Self::FreeToProvisioned),
+                "REMOVE_AFTER_GRACE_PERIOD" => Some(Self::RemoveAfterGracePeriod),
+                _ => None,
+            }
+        }
+    }
+}
 /// Metadata type for the operation returned by
 /// [CreateInstanceConfig][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstanceConfig].
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -968,10 +1332,12 @@ pub struct InstancePartition {
     /// from being deleted.
     #[prost(string, repeated, tag = "10")]
     pub referencing_databases: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// Output only. Deprecated: This field is not populated.
     /// Output only. The names of the backups that reference this instance
     /// partition. Referencing backups should share the parent instance. The
     /// existence of any referencing backup prevents the instance partition from
     /// being deleted.
+    #[deprecated]
     #[prost(string, repeated, tag = "11")]
     pub referencing_backups: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// Used for optimistic concurrency control as a way
@@ -987,10 +1353,11 @@ pub struct InstancePartition {
     #[prost(string, tag = "12")]
     pub etag: ::prost::alloc::string::String,
     /// Compute capacity defines amount of server and storage resources that are
-    /// available to the databases in an instance partition. At most one of either
-    /// node_count or processing_units should be present in the message. See [the
-    /// documentation](<https://cloud.google.com/spanner/docs/compute-capacity>)
-    /// for more information about nodes and processing units.
+    /// available to the databases in an instance partition. At most, one of either
+    /// `node_count` or` processing_units` should be present in the message. For
+    /// more information, see
+    /// [Compute capacity, nodes, and processing
+    /// units](<https://cloud.google.com/spanner/docs/compute-capacity>).
     #[prost(oneof = "instance_partition::ComputeCapacity", tags = "5, 6")]
     pub compute_capacity: ::core::option::Option<instance_partition::ComputeCapacity>,
 }
@@ -1033,16 +1400,17 @@ pub mod instance_partition {
         }
     }
     /// Compute capacity defines amount of server and storage resources that are
-    /// available to the databases in an instance partition. At most one of either
-    /// node_count or processing_units should be present in the message. See [the
-    /// documentation](<https://cloud.google.com/spanner/docs/compute-capacity>)
-    /// for more information about nodes and processing units.
+    /// available to the databases in an instance partition. At most, one of either
+    /// `node_count` or` processing_units` should be present in the message. For
+    /// more information, see
+    /// [Compute capacity, nodes, and processing
+    /// units](<https://cloud.google.com/spanner/docs/compute-capacity>).
     #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
     pub enum ComputeCapacity {
         /// The number of nodes allocated to this instance partition.
         ///
-        /// Users can set the node_count field to specify the target number of nodes
-        /// allocated to the instance partition.
+        /// Users can set the `node_count` field to specify the target number of
+        /// nodes allocated to the instance partition.
         ///
         /// This may be zero in API responses for instance partitions that are not
         /// yet in state `READY`.
@@ -1050,11 +1418,11 @@ pub mod instance_partition {
         NodeCount(i32),
         /// The number of processing units allocated to this instance partition.
         ///
-        /// Users can set the processing_units field to specify the target number of
-        /// processing units allocated to the instance partition.
+        /// Users can set the `processing_units` field to specify the target number
+        /// of processing units allocated to the instance partition.
         ///
-        /// This may be zero in API responses for instance partitions that are not
-        /// yet in state `READY`.
+        /// This might be zero in API responses for instance partitions that are not
+        /// yet in the `READY` state.
         #[prost(int32, tag = "6")]
         ProcessingUnits(i32),
     }
@@ -1171,7 +1539,9 @@ pub struct UpdateInstancePartitionMetadata {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListInstancePartitionsRequest {
     /// Required. The instance whose instance partitions should be listed. Values
-    /// are of the form `projects/<project>/instances/<instance>`.
+    /// are of the form `projects/<project>/instances/<instance>`. Use `{instance}
+    /// = '-'` to list instance partitions for all Instances in a project, e.g.,
+    /// `projects/myproject/instances/-`.
     #[prost(string, tag = "1")]
     pub parent: ::prost::alloc::string::String,
     /// Number of instance partitions to be returned in the response. If 0 or less,
@@ -1205,9 +1575,9 @@ pub struct ListInstancePartitionsResponse {
     /// call to fetch more of the matching instance partitions.
     #[prost(string, tag = "2")]
     pub next_page_token: ::prost::alloc::string::String,
-    /// The list of unreachable instance partitions.
-    /// It includes the names of instance partitions whose metadata could
-    /// not be retrieved within
+    /// The list of unreachable instances or instance partitions.
+    /// It includes the names of instances or instance partitions whose metadata
+    /// could not be retrieved within
     /// [instance_partition_deadline][google.spanner.admin.instance.v1.ListInstancePartitionsRequest.instance_partition_deadline].
     #[prost(string, repeated, tag = "3")]
     pub unreachable: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
@@ -1228,8 +1598,7 @@ pub struct ListInstancePartitionOperationsRequest {
     /// must be one of: `<`, `>`, `<=`, `>=`, `!=`, `=`, or `:`.
     /// Colon `:` is the contains operator. Filter rules are not case sensitive.
     ///
-    /// The following fields in the [Operation][google.longrunning.Operation]
-    /// are eligible for filtering:
+    /// The following fields in the Operation are eligible for filtering:
     ///
     ///    * `name` - The name of the long-running operation
     ///    * `done` - False if the operation is in progress, else true.
@@ -1279,7 +1648,8 @@ pub struct ListInstancePartitionOperationsRequest {
     /// Optional. Deadline used while retrieving metadata for instance partition
     /// operations. Instance partitions whose operation metadata cannot be
     /// retrieved within this deadline will be added to
-    /// [unreachable][ListInstancePartitionOperationsResponse.unreachable] in
+    /// [unreachable_instance_partitions][google.spanner.admin.instance.v1.ListInstancePartitionOperationsResponse.unreachable_instance_partitions]
+    /// in
     /// [ListInstancePartitionOperationsResponse][google.spanner.admin.instance.v1.ListInstancePartitionOperationsResponse].
     #[prost(message, optional, tag = "5")]
     pub instance_partition_deadline: ::core::option::Option<::prost_types::Timestamp>,
@@ -1288,10 +1658,10 @@ pub struct ListInstancePartitionOperationsRequest {
 /// [ListInstancePartitionOperations][google.spanner.admin.instance.v1.InstanceAdmin.ListInstancePartitionOperations].
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListInstancePartitionOperationsResponse {
-    /// The list of matching instance partition [long-running
-    /// operations][google.longrunning.Operation]. Each operation's name will be
+    /// The list of matching instance partition long-running operations. Each
+    /// operation's name will be
     /// prefixed by the instance partition's name. The operation's
-    /// [metadata][google.longrunning.Operation.metadata] field type
+    /// metadata field type
     /// `metadata.type_url` describes the type of the metadata.
     #[prost(message, repeated, tag = "1")]
     pub operations: ::prost::alloc::vec::Vec<super::super::super::super::longrunning::Operation>,
@@ -1450,6 +1820,9 @@ pub mod instance_admin_client {
             self
         }
         /// Lists the supported instance configurations for a given project.
+        ///
+        /// Returns both Google-managed configurations and user-managed
+        /// configurations.
         pub async fn list_instance_configs(
             &mut self,
             request: impl tonic::IntoRequest<super::ListInstanceConfigsRequest>,
@@ -1490,7 +1863,7 @@ pub mod instance_admin_client {
             self.inner.unary(req, path, codec).await
         }
         /// Creates an instance configuration and begins preparing it to be used. The
-        /// returned [long-running operation][google.longrunning.Operation]
+        /// returned long-running operation
         /// can be used to track the progress of preparing the new
         /// instance configuration. The instance configuration name is assigned by the
         /// caller. If the named instance configuration already exists,
@@ -1517,13 +1890,13 @@ pub mod instance_admin_client {
         ///   [reconciling][google.spanner.admin.instance.v1.InstanceConfig.reconciling]
         ///   field becomes false. Its state becomes `READY`.
         ///
-        /// The returned [long-running operation][google.longrunning.Operation] will
+        /// The returned long-running operation will
         /// have a name of the format
         /// `<instance_config_name>/operations/<operation_id>` and can be used to track
         /// creation of the instance configuration. The
-        /// [metadata][google.longrunning.Operation.metadata] field type is
+        /// metadata field type is
         /// [CreateInstanceConfigMetadata][google.spanner.admin.instance.v1.CreateInstanceConfigMetadata].
-        /// The [response][google.longrunning.Operation.response] field type is
+        /// The response field type is
         /// [InstanceConfig][google.spanner.admin.instance.v1.InstanceConfig], if
         /// successful.
         ///
@@ -1553,7 +1926,7 @@ pub mod instance_admin_client {
             self.inner.unary(req, path, codec).await
         }
         /// Updates an instance configuration. The returned
-        /// [long-running operation][google.longrunning.Operation] can be used to track
+        /// long-running operation can be used to track
         /// the progress of updating the instance. If the named instance configuration
         /// does not exist, returns `NOT_FOUND`.
         ///
@@ -1584,13 +1957,13 @@ pub mod instance_admin_client {
         ///   [reconciling][google.spanner.admin.instance.v1.InstanceConfig.reconciling]
         ///   field becomes false.
         ///
-        /// The returned [long-running operation][google.longrunning.Operation] will
+        /// The returned long-running operation will
         /// have a name of the format
         /// `<instance_config_name>/operations/<operation_id>` and can be used to track
         /// the instance configuration modification.  The
-        /// [metadata][google.longrunning.Operation.metadata] field type is
+        /// metadata field type is
         /// [UpdateInstanceConfigMetadata][google.spanner.admin.instance.v1.UpdateInstanceConfigMetadata].
-        /// The [response][google.longrunning.Operation.response] field type is
+        /// The response field type is
         /// [InstanceConfig][google.spanner.admin.instance.v1.InstanceConfig], if
         /// successful.
         ///
@@ -1645,12 +2018,12 @@ pub mod instance_admin_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Lists the user-managed instance configuration [long-running
-        /// operations][google.longrunning.Operation] in the given project. An instance
+        /// Lists the user-managed instance configuration long-running
+        /// operations in the given project. An instance
         /// configuration operation has a name of the form
         /// `projects/<project>/instanceConfigs/<instance_config>/operations/<operation>`.
         /// The long-running operation
-        /// [metadata][google.longrunning.Operation.metadata] field type
+        /// metadata field type
         /// `metadata.type_url` describes the type of the metadata. Operations returned
         /// include those that have completed/failed/canceled within the last 7 days,
         /// and pending operations. Operations returned are ordered by
@@ -1732,7 +2105,7 @@ pub mod instance_admin_client {
             self.inner.unary(req, path, codec).await
         }
         /// Creates an instance and begins preparing it to begin serving. The
-        /// returned [long-running operation][google.longrunning.Operation]
+        /// returned long-running operation
         /// can be used to track the progress of preparing the new
         /// instance. The instance name is assigned by the caller. If the
         /// named instance already exists, `CreateInstance` returns
@@ -1758,12 +2131,12 @@ pub mod instance_admin_client {
         ///   * The instance's allocated resource levels are readable via the API.
         ///   * The instance's state becomes `READY`.
         ///
-        /// The returned [long-running operation][google.longrunning.Operation] will
+        /// The returned long-running operation will
         /// have a name of the format `<instance_name>/operations/<operation_id>` and
         /// can be used to track creation of the instance.  The
-        /// [metadata][google.longrunning.Operation.metadata] field type is
+        /// metadata field type is
         /// [CreateInstanceMetadata][google.spanner.admin.instance.v1.CreateInstanceMetadata].
-        /// The [response][google.longrunning.Operation.response] field type is
+        /// The response field type is
         /// [Instance][google.spanner.admin.instance.v1.Instance], if successful.
         pub async fn create_instance(
             &mut self,
@@ -1787,8 +2160,7 @@ pub mod instance_admin_client {
             self.inner.unary(req, path, codec).await
         }
         /// Updates an instance, and begins allocating or releasing resources
-        /// as requested. The returned [long-running
-        /// operation][google.longrunning.Operation] can be used to track the
+        /// as requested. The returned long-running operation can be used to track the
         /// progress of updating the instance. If the named instance does not
         /// exist, returns `NOT_FOUND`.
         ///
@@ -1816,12 +2188,12 @@ pub mod instance_admin_client {
         ///     tables.
         ///   * The instance's new resource levels are readable via the API.
         ///
-        /// The returned [long-running operation][google.longrunning.Operation] will
+        /// The returned long-running operation will
         /// have a name of the format `<instance_name>/operations/<operation_id>` and
         /// can be used to track the instance modification.  The
-        /// [metadata][google.longrunning.Operation.metadata] field type is
+        /// metadata field type is
         /// [UpdateInstanceMetadata][google.spanner.admin.instance.v1.UpdateInstanceMetadata].
-        /// The [response][google.longrunning.Operation.response] field type is
+        /// The response field type is
         /// [Instance][google.spanner.admin.instance.v1.Instance], if successful.
         ///
         /// Authorization requires `spanner.instances.update` permission on
@@ -1973,7 +2345,7 @@ pub mod instance_admin_client {
             self.inner.unary(req, path, codec).await
         }
         /// Creates an instance partition and begins preparing it to be used. The
-        /// returned [long-running operation][google.longrunning.Operation]
+        /// returned long-running operation
         /// can be used to track the progress of preparing the new instance partition.
         /// The instance partition name is assigned by the caller. If the named
         /// instance partition already exists, `CreateInstancePartition` returns
@@ -2000,13 +2372,13 @@ pub mod instance_admin_client {
         ///     API.
         ///   * The instance partition's state becomes `READY`.
         ///
-        /// The returned [long-running operation][google.longrunning.Operation] will
+        /// The returned long-running operation will
         /// have a name of the format
         /// `<instance_partition_name>/operations/<operation_id>` and can be used to
         /// track creation of the instance partition.  The
-        /// [metadata][google.longrunning.Operation.metadata] field type is
+        /// metadata field type is
         /// [CreateInstancePartitionMetadata][google.spanner.admin.instance.v1.CreateInstancePartitionMetadata].
-        /// The [response][google.longrunning.Operation.response] field type is
+        /// The response field type is
         /// [InstancePartition][google.spanner.admin.instance.v1.InstancePartition], if
         /// successful.
         pub async fn create_instance_partition(
@@ -2058,8 +2430,7 @@ pub mod instance_admin_client {
             self.inner.unary(req, path, codec).await
         }
         /// Updates an instance partition, and begins allocating or releasing resources
-        /// as requested. The returned [long-running
-        /// operation][google.longrunning.Operation] can be used to track the
+        /// as requested. The returned long-running operation can be used to track the
         /// progress of updating the instance partition. If the named instance
         /// partition does not exist, returns `NOT_FOUND`.
         ///
@@ -2088,13 +2459,13 @@ pub mod instance_admin_client {
         ///     partition's tables.
         ///   * The instance partition's new resource levels are readable via the API.
         ///
-        /// The returned [long-running operation][google.longrunning.Operation] will
+        /// The returned long-running operation will
         /// have a name of the format
         /// `<instance_partition_name>/operations/<operation_id>` and can be used to
         /// track the instance partition modification. The
-        /// [metadata][google.longrunning.Operation.metadata] field type is
+        /// metadata field type is
         /// [UpdateInstancePartitionMetadata][google.spanner.admin.instance.v1.UpdateInstancePartitionMetadata].
-        /// The [response][google.longrunning.Operation.response] field type is
+        /// The response field type is
         /// [InstancePartition][google.spanner.admin.instance.v1.InstancePartition], if
         /// successful.
         ///
@@ -2123,12 +2494,11 @@ pub mod instance_admin_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Lists instance partition [long-running
-        /// operations][google.longrunning.Operation] in the given instance.
+        /// Lists instance partition long-running operations in the given instance.
         /// An instance partition operation has a name of the form
         /// `projects/<project>/instances/<instance>/instancePartitions/<instance_partition>/operations/<operation>`.
         /// The long-running operation
-        /// [metadata][google.longrunning.Operation.metadata] field type
+        /// metadata field type
         /// `metadata.type_url` describes the type of the metadata. Operations returned
         /// include those that have completed/failed/canceled within the last 7 days,
         /// and pending operations. Operations returned are ordered by
@@ -2159,7 +2529,7 @@ pub mod instance_admin_client {
             self.inner.unary(req, path, codec).await
         }
         /// Moves an instance to the target instance configuration. You can use the
-        /// returned [long-running operation][google.longrunning.Operation] to track
+        /// returned long-running operation to track
         /// the progress of moving the instance.
         ///
         /// `MoveInstance` returns `FAILED_PRECONDITION` if the instance meets any of
@@ -2190,13 +2560,13 @@ pub mod instance_admin_client {
         ///     transaction abort rate. However, moving an instance doesn't cause any
         ///     downtime.
         ///
-        /// The returned [long-running operation][google.longrunning.Operation] has
+        /// The returned long-running operation has
         /// a name of the format
         /// `<instance_name>/operations/<operation_id>` and can be used to track
         /// the move instance operation. The
-        /// [metadata][google.longrunning.Operation.metadata] field type is
+        /// metadata field type is
         /// [MoveInstanceMetadata][google.spanner.admin.instance.v1.MoveInstanceMetadata].
-        /// The [response][google.longrunning.Operation.response] field type is
+        /// The response field type is
         /// [Instance][google.spanner.admin.instance.v1.Instance],
         /// if successful.
         /// Cancelling the operation sets its metadata's

@@ -147,6 +147,7 @@ impl Transaction {
             request_options: Transaction::create_request_options(options.call_options.priority),
             data_boost_enabled: false,
             directed_read_options: None,
+            last_statement: false,
         };
         let session = self.session.as_mut().unwrap().deref_mut();
         let reader = StatementReader {

@@ -1113,11 +1113,23 @@ pub struct AppendRowsRequest {
     /// request and currently, it will be ignored if specified in following
     /// requests. Following requests must have data in the same format as the
     /// initial request.
-    #[prost(oneof = "append_rows_request::Rows", tags = "4")]
+    #[prost(oneof = "append_rows_request::Rows", tags = "4, 5")]
     pub rows: ::core::option::Option<append_rows_request::Rows>,
 }
 /// Nested message and enum types in `AppendRowsRequest`.
 pub mod append_rows_request {
+    /// Arrow schema and data.
+    /// Arrow format is an experimental feature only selected for allowlisted
+    /// customers.
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct ArrowData {
+        /// Optional. Arrow Schema used to serialize the data.
+        #[prost(message, optional, tag = "1")]
+        pub writer_schema: ::core::option::Option<super::ArrowSchema>,
+        /// Required. Serialized row data in Arrow format.
+        #[prost(message, optional, tag = "2")]
+        pub rows: ::core::option::Option<super::ArrowRecordBatch>,
+    }
     /// ProtoData contains the data rows and schema when constructing append
     /// requests.
     #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1195,6 +1207,10 @@ pub mod append_rows_request {
         /// Rows in proto format.
         #[prost(message, tag = "4")]
         ProtoRows(ProtoData),
+        /// Rows in arrow format. This is an experimental feature only selected for
+        /// allowlisted customers.
+        #[prost(message, tag = "5")]
+        ArrowRows(ArrowData),
     }
 }
 /// Response message for `AppendRows`.
