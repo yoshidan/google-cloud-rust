@@ -369,7 +369,17 @@ pub mod transaction_options {
     pub mod read_write {
         /// `ReadLockMode` is used to set the read lock mode for read-write
         /// transactions.
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+        #[derive(
+            Clone,
+            Copy,
+            Debug,
+            PartialEq,
+            Eq,
+            Hash,
+            PartialOrd,
+            Ord,
+            ::prost::Enumeration
+        )]
         #[repr(i32)]
         pub enum ReadLockMode {
             /// Default value.
@@ -503,7 +513,17 @@ pub mod transaction_options {
         }
     }
     /// `IsolationLevel` is used when setting `isolation_level` for a transaction.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum IsolationLevel {
         /// Default value.
@@ -678,7 +698,9 @@ pub struct CommitResponse {
     /// Clients should examine and retry the commit if any of the following
     /// reasons are populated.
     #[prost(oneof = "commit_response::MultiplexedSessionRetry", tags = "4")]
-    pub multiplexed_session_retry: ::core::option::Option<commit_response::MultiplexedSessionRetry>,
+    pub multiplexed_session_retry: ::core::option::Option<
+        commit_response::MultiplexedSessionRetry,
+    >,
 }
 /// Nested message and enum types in `CommitResponse`.
 pub mod commit_response {
@@ -1024,7 +1046,17 @@ pub mod plan_node {
     }
     /// The kind of [PlanNode][google.spanner.v1.PlanNode]. Distinguishes between the two different kinds of
     /// nodes that can appear in a query plan.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum Kind {
         /// Not specified.
@@ -1595,7 +1627,10 @@ pub struct Session {
     ///
     /// See <https://goo.gl/xmQnxf> for more information on and examples of labels.
     #[prost(map = "string, string", tag = "2")]
-    pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    pub labels: ::std::collections::HashMap<
+        ::prost::alloc::string::String,
+        ::prost::alloc::string::String,
+    >,
     /// Output only. The timestamp when the session is created.
     #[prost(message, optional, tag = "3")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
@@ -1721,7 +1756,17 @@ pub mod request_options {
     ///    Cloud Spanner does not guarantee to process the higher priority
     ///    operations first. There may be other constraints to satisfy, such as
     ///    order of operations.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum Priority {
         /// `PRIORITY_UNSPECIFIED` is equivalent to `PRIORITY_HIGH`.
@@ -1802,7 +1847,17 @@ pub mod directed_read_options {
     /// Nested message and enum types in `ReplicaSelection`.
     pub mod replica_selection {
         /// Indicates the type of replica.
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+        #[derive(
+            Clone,
+            Copy,
+            Debug,
+            PartialEq,
+            Eq,
+            Hash,
+            PartialOrd,
+            Ord,
+            ::prost::Enumeration
+        )]
         #[repr(i32)]
         pub enum Type {
             /// Not specified.
@@ -2041,7 +2096,17 @@ pub mod execute_sql_request {
         pub optimizer_statistics_package: ::prost::alloc::string::String,
     }
     /// Mode in which the statement must be processed.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum QueryMode {
         /// The default mode. Only the statement results are returned.
@@ -2167,7 +2232,10 @@ pub mod execute_batch_dml_request {
         /// definition of [Type][google.spanner.v1.Type] for more information
         /// about SQL types.
         #[prost(map = "string, message", tag = "3")]
-        pub param_types: ::std::collections::HashMap<::prost::alloc::string::String, super::Type>,
+        pub param_types: ::std::collections::HashMap<
+            ::prost::alloc::string::String,
+            super::Type,
+        >,
     }
 }
 /// The response for
@@ -2459,7 +2527,17 @@ pub struct ReadRequest {
 /// Nested message and enum types in `ReadRequest`.
 pub mod read_request {
     /// An option to control the order in which rows are returned from a read.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum OrderBy {
         /// Default value.
@@ -2497,7 +2575,17 @@ pub mod read_request {
         }
     }
     /// A lock hint mechanism for reads done within a transaction.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum LockHint {
         /// Default value.
@@ -2722,10 +2810,10 @@ pub mod spanner_client {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value
+        clippy::let_unit_value,
     )]
-    use tonic::codegen::http::Uri;
     use tonic::codegen::*;
+    use tonic::codegen::http::Uri;
     /// Cloud Spanner API
     ///
     /// The Cloud Spanner API can be used to manage sessions and execute
@@ -2760,16 +2848,22 @@ pub mod spanner_client {
             let inner = tonic::client::Grpc::with_origin(inner, origin);
             Self { inner }
         }
-        pub fn with_interceptor<F>(inner: T, interceptor: F) -> SpannerClient<InterceptedService<T, F>>
+        pub fn with_interceptor<F>(
+            inner: T,
+            interceptor: F,
+        ) -> SpannerClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
                 http::Request<tonic::body::Body>,
-                Response = http::Response<<T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody>,
+                Response = http::Response<
+                    <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                >,
             >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::Body>>>::Error:
-                Into<StdError> + std::marker::Send + std::marker::Sync,
+            <T as tonic::codegen::Service<
+                http::Request<tonic::body::Body>,
+            >>::Error: Into<StdError> + std::marker::Send + std::marker::Sync,
         {
             SpannerClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -2830,9 +2924,15 @@ pub mod spanner_client {
             self.inner
                 .ready()
                 .await
-                .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/CreateSession");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/CreateSession",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.spanner.v1.Spanner", "CreateSession"));
@@ -2845,16 +2945,27 @@ pub mod spanner_client {
         pub async fn batch_create_sessions(
             &mut self,
             request: impl tonic::IntoRequest<super::BatchCreateSessionsRequest>,
-        ) -> std::result::Result<tonic::Response<super::BatchCreateSessionsResponse>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::BatchCreateSessionsResponse>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
-                .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/BatchCreateSessions");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/BatchCreateSessions",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
-                .insert(GrpcMethod::new("google.spanner.v1.Spanner", "BatchCreateSessions"));
+                .insert(
+                    GrpcMethod::new("google.spanner.v1.Spanner", "BatchCreateSessions"),
+                );
             self.inner.unary(req, path, codec).await
         }
         /// Gets a session. Returns `NOT_FOUND` if the session does not exist.
@@ -2867,9 +2978,15 @@ pub mod spanner_client {
             self.inner
                 .ready()
                 .await
-                .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/GetSession");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/GetSession",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.spanner.v1.Spanner", "GetSession"));
@@ -2879,13 +2996,22 @@ pub mod spanner_client {
         pub async fn list_sessions(
             &mut self,
             request: impl tonic::IntoRequest<super::ListSessionsRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListSessionsResponse>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::ListSessionsResponse>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
-                .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/ListSessions");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/ListSessions",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.spanner.v1.Spanner", "ListSessions"));
@@ -2901,9 +3027,15 @@ pub mod spanner_client {
             self.inner
                 .ready()
                 .await
-                .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/DeleteSession");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/DeleteSession",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.spanner.v1.Spanner", "DeleteSession"));
@@ -2929,9 +3061,15 @@ pub mod spanner_client {
             self.inner
                 .ready()
                 .await
-                .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/ExecuteSql");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/ExecuteSql",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.spanner.v1.Spanner", "ExecuteSql"));
@@ -2945,17 +3083,27 @@ pub mod spanner_client {
         pub async fn execute_streaming_sql(
             &mut self,
             request: impl tonic::IntoRequest<super::ExecuteSqlRequest>,
-        ) -> std::result::Result<tonic::Response<tonic::codec::Streaming<super::PartialResultSet>>, tonic::Status>
-        {
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::PartialResultSet>>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
-                .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/ExecuteStreamingSql");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/ExecuteStreamingSql",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
-                .insert(GrpcMethod::new("google.spanner.v1.Spanner", "ExecuteStreamingSql"));
+                .insert(
+                    GrpcMethod::new("google.spanner.v1.Spanner", "ExecuteStreamingSql"),
+                );
             self.inner.server_streaming(req, path, codec).await
         }
         /// Executes a batch of SQL DML statements. This method allows many statements
@@ -2973,13 +3121,22 @@ pub mod spanner_client {
         pub async fn execute_batch_dml(
             &mut self,
             request: impl tonic::IntoRequest<super::ExecuteBatchDmlRequest>,
-        ) -> std::result::Result<tonic::Response<super::ExecuteBatchDmlResponse>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::ExecuteBatchDmlResponse>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
-                .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/ExecuteBatchDml");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/ExecuteBatchDml",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.spanner.v1.Spanner", "ExecuteBatchDml"));
@@ -3006,9 +3163,15 @@ pub mod spanner_client {
             self.inner
                 .ready()
                 .await
-                .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/Read");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/Read",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.spanner.v1.Spanner", "Read"));
@@ -3022,14 +3185,22 @@ pub mod spanner_client {
         pub async fn streaming_read(
             &mut self,
             request: impl tonic::IntoRequest<super::ReadRequest>,
-        ) -> std::result::Result<tonic::Response<tonic::codec::Streaming<super::PartialResultSet>>, tonic::Status>
-        {
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::PartialResultSet>>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
-                .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/StreamingRead");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/StreamingRead",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.spanner.v1.Spanner", "StreamingRead"));
@@ -3047,12 +3218,20 @@ pub mod spanner_client {
             self.inner
                 .ready()
                 .await
-                .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/BeginTransaction");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/BeginTransaction",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
-                .insert(GrpcMethod::new("google.spanner.v1.Spanner", "BeginTransaction"));
+                .insert(
+                    GrpcMethod::new("google.spanner.v1.Spanner", "BeginTransaction"),
+                );
             self.inner.unary(req, path, codec).await
         }
         /// Commits a transaction. The request includes the mutations to be
@@ -3076,9 +3255,15 @@ pub mod spanner_client {
             self.inner
                 .ready()
                 .await
-                .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/Commit");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/Commit",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.spanner.v1.Spanner", "Commit"));
@@ -3100,9 +3285,15 @@ pub mod spanner_client {
             self.inner
                 .ready()
                 .await
-                .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/Rollback");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/Rollback",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.spanner.v1.Spanner", "Rollback"));
@@ -3123,13 +3314,22 @@ pub mod spanner_client {
         pub async fn partition_query(
             &mut self,
             request: impl tonic::IntoRequest<super::PartitionQueryRequest>,
-        ) -> std::result::Result<tonic::Response<super::PartitionResponse>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::PartitionResponse>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
-                .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/PartitionQuery");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/PartitionQuery",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.spanner.v1.Spanner", "PartitionQuery"));
@@ -3152,13 +3352,22 @@ pub mod spanner_client {
         pub async fn partition_read(
             &mut self,
             request: impl tonic::IntoRequest<super::PartitionReadRequest>,
-        ) -> std::result::Result<tonic::Response<super::PartitionResponse>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::PartitionResponse>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
-                .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/PartitionRead");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/PartitionRead",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.spanner.v1.Spanner", "PartitionRead"));
@@ -3182,14 +3391,22 @@ pub mod spanner_client {
         pub async fn batch_write(
             &mut self,
             request: impl tonic::IntoRequest<super::BatchWriteRequest>,
-        ) -> std::result::Result<tonic::Response<tonic::codec::Streaming<super::BatchWriteResponse>>, tonic::Status>
-        {
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::BatchWriteResponse>>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
-                .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/BatchWrite");
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.v1.Spanner/BatchWrite",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.spanner.v1.Spanner", "BatchWrite"));
