@@ -7,6 +7,7 @@ use serde::Deserialize;
 
 use crate::error::Error;
 use crate::token::Token;
+// pub use token_source::TokenSource;
 
 pub mod authorized_user_token_source;
 pub mod compute_identity_source;
@@ -19,7 +20,7 @@ pub mod service_account_token_source;
 pub mod external_account_source;
 
 #[async_trait]
-pub trait TokenSource: Send + Sync + Debug {
+pub trait GoogleCloudTokenSource: Send + Sync + Debug {
     async fn token(&self) -> Result<Token, Error>;
 }
 
@@ -86,7 +87,7 @@ mod tests {
     use crate::token_source::service_account_token_source::{
         OAuth2ServiceAccountTokenSource, ServiceAccountTokenSource,
     };
-    use crate::token_source::TokenSource;
+    use crate::token_source::GoogleCloudTokenSource;
 
     #[tokio::test]
     async fn test_jwt_token_source() -> Result<(), Error> {

@@ -10,7 +10,7 @@ use crate::credentials;
 use crate::error::{Error, TokenErrorResponse};
 use crate::misc::UnwrapOrEmpty;
 use crate::token::{Token, TOKEN_URL};
-use crate::token_source::{default_http_client, InternalIdToken, InternalToken, TokenSource};
+use crate::token_source::{default_http_client, GoogleCloudTokenSource, InternalIdToken, InternalToken};
 
 #[derive(Clone, Serialize)]
 struct Claims<'a> {
@@ -74,7 +74,7 @@ impl ServiceAccountTokenSource {
 }
 
 #[async_trait]
-impl TokenSource for ServiceAccountTokenSource {
+impl GoogleCloudTokenSource for ServiceAccountTokenSource {
     async fn token(&self) -> Result<Token, Error> {
         let iat = OffsetDateTime::now_utc();
         let exp = iat + time::Duration::hours(1);
@@ -193,7 +193,7 @@ impl OAuth2ServiceAccountTokenSource {
 }
 
 #[async_trait]
-impl TokenSource for OAuth2ServiceAccountTokenSource {
+impl GoogleCloudTokenSource for OAuth2ServiceAccountTokenSource {
     async fn token(&self) -> Result<Token, Error> {
         let iat = OffsetDateTime::now_utc();
         let exp = iat + time::Duration::hours(1);
