@@ -3,14 +3,14 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use token_source::{TokenSource, TokenSourceProvider};
+pub use token_source::{TokenSource, TokenSourceProvider};
 
 use crate::credentials::CredentialsFile;
 use crate::error::Error;
 use crate::project::{
     create_token_source_from_credentials, create_token_source_from_project, project, Config, Project,
 };
-use crate::token_source::TokenSource as InternalTokenSource;
+use crate::token_source::GoogleCloudTokenSource as InternalTokenSource;
 
 pub const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
 
