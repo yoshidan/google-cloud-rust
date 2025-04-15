@@ -55,12 +55,22 @@ impl TokenSource for ImpersonateTokenSource {
                 format!("{} {}", auth_token.token_type, auth_token.access_token),
             )
             .send()
-            .await?;
+            .await
+            .map_err(|e| Error::HttpError(self.url.clone(), e))?;
         let response = if !response.status().is_success() {
             let status = response.status().as_u16();
-            return Err(Error::UnexpectedImpersonateTokenResponse(status, response.text().await?));
+            return Err(Error::UnexpectedImpersonateTokenResponse(
+                status,
+                response
+                    .text()
+                    .await
+                    .map_err(|e| Error::HttpError(self.url.clone(), e))?,
+            ));
         } else {
-            response.json::<ImpersonateTokenResponse>().await?
+            response
+                .json::<ImpersonateTokenResponse>()
+                .await
+                .map_err(|e| Error::HttpError(self.url.clone(), e))?
         };
 
         let expiry = time::OffsetDateTime::parse(&response.expire_time, &Rfc3339)?;
