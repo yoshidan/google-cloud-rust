@@ -254,7 +254,7 @@ impl ReadWriteTransaction {
         &mut self,
         result: Result<S, E>,
         options: Option<CommitOptions>,
-    ) -> Result<(Option<CommitResult>, S), E>
+    ) -> Result<(CommitResult, S), E>
     where
         E: TryAs<Status> + From<Status>,
     {
@@ -262,7 +262,7 @@ impl ReadWriteTransaction {
         match result {
             Ok(success) => {
                 let cr = self.commit(opt).await?;
-                Ok((Some(cr.into()), success))
+                Ok((cr.into(), success))
             }
             Err(err) => {
                 if let Some(status) = err.try_as() {
@@ -281,7 +281,7 @@ impl ReadWriteTransaction {
         &mut self,
         result: Result<T, E>,
         options: Option<CommitOptions>,
-    ) -> Result<(Option<CommitResult>, T), (E, Option<ManagedSession>)>
+    ) -> Result<(CommitResult, T), (E, Option<ManagedSession>)>
     where
         E: TryAs<Status> + From<Status>,
     {
@@ -289,7 +289,7 @@ impl ReadWriteTransaction {
 
         match result {
             Ok(s) => match self.commit(opt).await {
-                Ok(c) => Ok((Some(c.into()), s)),
+                Ok(c) => Ok((c.into(), s)),
                 // Retry the transaction using the same session on ABORT error.
                 // Cloud Spanner will create the new transaction with the previous
                 // one's wound-wait priority.

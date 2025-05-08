@@ -412,7 +412,7 @@ impl Client {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn apply(&self, ms: Vec<Mutation>) -> Result<Option<CommitResult>, Error> {
+    pub async fn apply(&self, ms: Vec<Mutation>) -> Result<CommitResult, Error> {
         self.apply_with_option(ms, ReadWriteTransactionOption::default()).await
     }
 
@@ -421,8 +421,8 @@ impl Client {
         &self,
         ms: Vec<Mutation>,
         options: ReadWriteTransactionOption,
-    ) -> Result<Option<CommitResult>, Error> {
-        let result: Result<(Option<CommitResult>, ()), Error> = self
+    ) -> Result<CommitResult, Error> {
+        let result: Result<(CommitResult, ()), Error> = self
             .read_write_transaction_sync_with_option(
                 |tx| {
                     tx.buffer_write(ms.to_vec());
@@ -483,7 +483,7 @@ impl Client {
     ///         })
     ///     }).await
     /// }
-    pub async fn read_write_transaction<'a, T, E, F>(&self, f: F) -> Result<(Option<CommitResult>, T), E>
+    pub async fn read_write_transaction<'a, T, E, F>(&self, f: F) -> Result<(CommitResult, T), E>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
         F: for<'tx> Fn(&'tx mut ReadWriteTransaction) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'tx>>,
@@ -514,7 +514,7 @@ impl Client {
         &'a self,
         f: F,
         options: ReadWriteTransactionOption,
-    ) -> Result<(Option<CommitResult>, T), E>
+    ) -> Result<(CommitResult, T), E>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
         F: for<'tx> Fn(&'tx mut ReadWriteTransaction) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'tx>>,
@@ -593,7 +593,7 @@ impl Client {
         &self,
         f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,
         options: ReadWriteTransactionOption,
-    ) -> Result<(Option<CommitResult>, T), E>
+    ) -> Result<(CommitResult, T), E>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
     {

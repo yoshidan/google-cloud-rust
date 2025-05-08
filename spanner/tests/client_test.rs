@@ -68,7 +68,7 @@ async fn test_read_write_transaction() {
 
     // test
     let client = Client::new(DATABASE, ClientConfig::default()).await.unwrap();
-    let result: Result<(Option<CommitResult>, i64), DomainError> = client
+    let result: Result<(CommitResult, i64), DomainError> = client
         .read_write_transaction(
             |tx| {
                 let user_id= user_id.to_string();
@@ -87,7 +87,7 @@ async fn test_read_write_transaction() {
             },
         )
         .await;
-    let value = result.unwrap().0.unwrap();
+    let value = result.unwrap().0;
     let ts = OffsetDateTime::from_unix_timestamp(value.timestamp.as_ref().unwrap().seconds)
         .unwrap()
         .replace_nanosecond(value.timestamp.unwrap().nanos as u32)
@@ -124,7 +124,7 @@ async fn test_apply() {
     let client = Client::new(DATABASE, ClientConfig::default()).await.unwrap();
     let now = OffsetDateTime::now_utc();
     let ms = users.iter().map(|id| create_user_mutation(id, &now)).collect();
-    let value = client.apply(ms).await.unwrap().unwrap();
+    let value = client.apply(ms).await.unwrap();
     let ts = OffsetDateTime::from_unix_timestamp(value.timestamp.as_ref().unwrap().seconds)
         .unwrap()
         .replace_nanosecond(value.timestamp.unwrap().nanos as u32)
