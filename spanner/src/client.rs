@@ -18,7 +18,7 @@ use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions};
 use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use crate::transaction_rw::{commit, CommitOptions, CommitResult, ReadWriteTransaction};
-use crate::value::{Timestamp, TimestampBound};
+use crate::value::TimestampBound;
 
 #[derive(Clone, Default)]
 pub struct PartitionedUpdateOption {
