@@ -387,7 +387,7 @@ impl Client {
                     isolation_level: IsolationLevel::Unspecified as i32,
                 });
                 match commit(session, ms.clone(), tx, options.clone()).await {
-                    Ok(s) => Ok(s.into()),
+                    Ok(s) => Ok(Some(s.into())),
                     Err(e) => Err((Error::GRPC(e), session)),
                 }
             },
