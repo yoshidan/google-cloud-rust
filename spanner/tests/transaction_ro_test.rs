@@ -69,7 +69,7 @@ async fn test_query_and_read() {
 
     //test
     let mut tx = data_client.read_only_transaction().await.unwrap();
-    let ts = cr.unwrap();
+    let ts = cr.timestamp.unwrap();
     let ts = OffsetDateTime::from_unix_timestamp(ts.seconds)
         .unwrap()
         .replace_nanosecond(ts.nanos as u32)
@@ -122,7 +122,7 @@ async fn test_complex_query() {
     let row = rows.pop().unwrap();
 
     // check UserTable
-    let ts = cr.unwrap();
+    let ts = cr.timestamp.unwrap();
     let ts = OffsetDateTime::from_unix_timestamp(ts.seconds)
         .unwrap()
         .replace_nanosecond(ts.nanos as u32)
@@ -195,7 +195,7 @@ async fn test_batch_partition_query_and_read() {
 
     // test
     let mut tx = data_client.batch_read_only_transaction().await.unwrap();
-    let ts = cr.unwrap();
+    let ts = cr.timestamp.unwrap();
     let ts = OffsetDateTime::from_unix_timestamp(ts.seconds)
         .unwrap()
         .replace_nanosecond(ts.nanos as u32)
@@ -216,7 +216,7 @@ async fn test_batch_partition_query_and_read() {
         map.insert(user_id, row);
     }
 
-    let ts = cr2.unwrap();
+    let ts = cr2.timestamp.unwrap();
     let ts = OffsetDateTime::from_unix_timestamp(ts.seconds)
         .unwrap()
         .replace_nanosecond(ts.nanos as u32)
@@ -240,7 +240,7 @@ async fn test_query(count: usize, prefix: &str) {
     let rows = execute_query(&mut tx, stmt).await;
     assert_eq!(count, rows.len());
 
-    let ts = cr.unwrap();
+    let ts = cr.timestamp.unwrap();
     let ts = OffsetDateTime::from_unix_timestamp(ts.seconds)
         .unwrap()
         .replace_nanosecond(ts.nanos as u32)

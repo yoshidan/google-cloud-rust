@@ -2,6 +2,7 @@ use serial_test::serial;
 use time::OffsetDateTime;
 
 use common::*;
+use gcloud_spanner::transaction_rw::CommitResult;
 use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::TryAs;
@@ -11,7 +12,6 @@ use google_cloud_spanner::retry::TransactionRetry;
 use google_cloud_spanner::row::Row;
 use google_cloud_spanner::session::SessionError;
 use google_cloud_spanner::statement::Statement;
-use google_cloud_spanner::value::Timestamp;
 
 mod common;
 
@@ -68,7 +68,7 @@ async fn test_read_write_transaction() {
 
     // test
     let client = Client::new(DATABASE, ClientConfig::default()).await.unwrap();
-    let result: Result<(Option<Timestamp>, i64), DomainError> = client
+    let result: Result<(CommitResult, i64), DomainError> = client
         .read_write_transaction(
             |tx| {
                 let user_id= user_id.to_string();
@@ -87,10 +87,10 @@ async fn test_read_write_transaction() {
             },
         )
         .await;
-    let value = result.unwrap().0.unwrap();
-    let ts = OffsetDateTime::from_unix_timestamp(value.seconds)
+    let value = result.unwrap().0;
+    let ts = OffsetDateTime::from_unix_timestamp(value.timestamp.as_ref().unwrap().seconds)
         .unwrap()
-        .replace_nanosecond(value.nanos as u32)
+        .replace_nanosecond(value.timestamp.unwrap().nanos as u32)
         .unwrap();
 
     let mut ro = client.read_only_transaction().await.unwrap();
@@ -124,10 +124,10 @@ async fn test_apply() {
     let client = Client::new(DATABASE, ClientConfig::default()).await.unwrap();
     let now = OffsetDateTime::now_utc();
     let ms = users.iter().map(|id| create_user_mutation(id, &now)).collect();
-    let value = client.apply(ms).await.unwrap().unwrap();
-    let ts = OffsetDateTime::from_unix_timestamp(value.seconds)
+    let value = client.apply(ms).await.unwrap();
+    let ts = OffsetDateTime::from_unix_timestamp(value.timestamp.as_ref().unwrap().seconds)
         .unwrap()
-        .replace_nanosecond(value.nanos as u32)
+        .replace_nanosecond(value.timestamp.unwrap().nanos as u32)
         .unwrap();
 
     let mut ro = client.read_only_transaction().await.unwrap();
@@ -146,9 +146,9 @@ async fn test_apply_at_least_once() {
     let now = OffsetDateTime::now_utc();
     let ms = users.iter().map(|id| create_user_mutation(id, &now)).collect();
     let value = client.apply_at_least_once(ms).await.unwrap().unwrap();
-    let ts = OffsetDateTime::from_unix_timestamp(value.seconds)
+    let ts = OffsetDateTime::from_unix_timestamp(value.timestamp.as_ref().unwrap().seconds)
         .unwrap()
-        .replace_nanosecond(value.nanos as u32)
+        .replace_nanosecond(value.timestamp.unwrap().nanos as u32)
         .unwrap();
 
     let mut ro = client.read_only_transaction().await.unwrap();
