@@ -1351,18 +1351,20 @@ mod emulator_tests {
     use prost::Message;
 
     use std::time::SystemTime;
+    use crate::http::job::query::QueryRequest;
+    use crate::query;
 
     #[ignore]
     #[tokio::test]
     async fn test_emulator_use() {
         let config = ClientConfig::new_with_emulator("localhost:9060", "http://localhost:9050");
+        let client = Client::new(config).await.unwrap();
 
         // Create Table
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        let client = Client::new(config).await.unwrap();
         let mut table1 = Table::default();
         table1.table_reference.dataset_id = "dataset1".to_string();
         table1.table_reference.project_id = "local-project".to_string();
@@ -1438,6 +1440,19 @@ mod emulator_tests {
             .await
             .unwrap();
         assert_eq!(16, data.total_rows);
+
+        // Query
+        let request = QueryRequest {
+            query: format!("SELECT * FROM {}.{}.{}", tref.project_id, tref.dataset_id, tref.table_id).to_string(),
+            ..Default::default()
+        };
+
+        let mut iter = client.query::<query::row::Row>(&tref.project_id, request).await.unwrap();
+        while let Some(row) = iter.next().await.unwrap() {
+            let v: String = row.column(0).unwrap();
+            assert!(v.starts_with("default_") || v == "test1");
+        }
+        assert_eq!(16, iter.total_size);
 
         /* TODO fix emulator stream
         // Read all data by storage

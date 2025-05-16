@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  bigquery:
+    image: ghcr.io/goccy/bigquery-emulator:latest
+    ports:
+      - "9050:9050"
+      - "9060:9060"
+    command: "bigquery-emulator --project=local-project --dataset=dataset1"
