@@ -839,6 +839,8 @@ pub enum IndexUnusedCode {
     BaseTableTooSmall,
     BaseTableTooLarge,
     EstimatedPerformanceGainTooLow,
+    QueryCacheHit,
+    StaleIndex,
     InternalError,
     OtherReason,
 }
