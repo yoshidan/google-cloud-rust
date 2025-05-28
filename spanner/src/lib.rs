@@ -1,3 +1,4 @@
+#![allow(clippy::result_large_err)]
 //! # google-cloud-spanner
 //!
 //! Google Cloud Platform spanner library.
