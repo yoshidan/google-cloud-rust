@@ -180,6 +180,7 @@ async fn test_read_change_stream() {
                 statements: vec!["CREATE CHANGE STREAM UserItemChangeStream FOR UserItem".to_string()],
                 operation_id: "".to_string(),
                 proto_descriptors: vec![],
+                throughput_mode: false,
             },
             None,
         )
@@ -216,6 +217,7 @@ async fn test_read_change_stream() {
                 statements: vec!["DROP CHANGE STREAM UserItemChangeStream".to_string()],
                 operation_id: "".to_string(),
                 proto_descriptors: vec![],
+                throughput_mode: false,
             },
             None,
         )

@@ -133,6 +133,7 @@ mod tests {
             statements: vec!["CREATE TABLE Tbl1 (ID INT64) PRIMARY KEY(ID)".to_string()],
             operation_id: "".to_string(),
             proto_descriptors: vec![],
+            throughput_mode: false,
         };
 
         let update_result = match client.update_database_ddl(request, None).await {
