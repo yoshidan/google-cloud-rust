@@ -1391,6 +1391,11 @@ pub struct UpdateDatabaseDdlRequest {
     /// description](<https://developers.google.com/protocol-buffers/docs/techniques#self-description>).
     #[prost(bytes = "vec", tag = "4")]
     pub proto_descriptors: ::prost::alloc::vec::Vec<u8>,
+    /// Optional. This field is exposed to be used by the Spanner Migration Tool.
+    /// For more details, see
+    /// [SMT](<https://github.com/GoogleCloudPlatform/spanner-migration-tool>).
+    #[prost(bool, tag = "5")]
+    pub throughput_mode: bool,
 }
 /// Action information extracted from a DDL statement. This proto is used to
 /// display the brief info of the DDL statement for the operation
