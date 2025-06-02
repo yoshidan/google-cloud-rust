@@ -447,6 +447,7 @@ pub mod crypto_key_version {
     /// The suffix following `HMAC_` corresponds to the hash algorithm being used
     /// (eg. SHA256).
     ///
+    /// Algorithms beginning with `PQ_` are post-quantum.
     ///
     /// For more information, see \[Key purposes and algorithms\]
     /// (<https://cloud.google.com/kms/docs/algorithms>).
@@ -651,7 +652,7 @@ pub mod crypto_key_version {
         /// [ENABLED][google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionState.ENABLED]
         /// state.
         Disabled = 2,
-        /// This version is destroyed, and the key material is no longer stored.
+        /// The key material of this version is destroyed and no longer stored.
         /// This version may only become
         /// [ENABLED][google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionState.ENABLED]
         /// again if this version is
@@ -1458,6 +1459,10 @@ pub struct ListKeyRingsResponse {
     pub next_page_token: ::prost::alloc::string::String,
     /// The total number of [KeyRings][google.cloud.kms.v1.KeyRing] that matched
     /// the query.
+    ///
+    /// This field is not populated if
+    /// [ListKeyRingsRequest.filter][google.cloud.kms.v1.ListKeyRingsRequest.filter]
+    /// is applied.
     #[prost(int32, tag = "3")]
     pub total_size: i32,
 }
@@ -1475,6 +1480,10 @@ pub struct ListCryptoKeysResponse {
     pub next_page_token: ::prost::alloc::string::String,
     /// The total number of [CryptoKeys][google.cloud.kms.v1.CryptoKey] that
     /// matched the query.
+    ///
+    /// This field is not populated if
+    /// [ListCryptoKeysRequest.filter][google.cloud.kms.v1.ListCryptoKeysRequest.filter]
+    /// is applied.
     #[prost(int32, tag = "3")]
     pub total_size: i32,
 }
@@ -1493,6 +1502,10 @@ pub struct ListCryptoKeyVersionsResponse {
     /// The total number of
     /// [CryptoKeyVersions][google.cloud.kms.v1.CryptoKeyVersion] that matched the
     /// query.
+    ///
+    /// This field is not populated if
+    /// [ListCryptoKeyVersionsRequest.filter][google.cloud.kms.v1.ListCryptoKeyVersionsRequest.filter]
+    /// is applied.
     #[prost(int32, tag = "3")]
     pub total_size: i32,
 }
@@ -1510,6 +1523,10 @@ pub struct ListImportJobsResponse {
     pub next_page_token: ::prost::alloc::string::String,
     /// The total number of [ImportJobs][google.cloud.kms.v1.ImportJob] that
     /// matched the query.
+    ///
+    /// This field is not populated if
+    /// [ListImportJobsRequest.filter][google.cloud.kms.v1.ListImportJobsRequest.filter]
+    /// is applied.
     #[prost(int32, tag = "3")]
     pub total_size: i32,
 }
@@ -3631,6 +3648,10 @@ pub struct ListEkmConnectionsResponse {
     pub next_page_token: ::prost::alloc::string::String,
     /// The total number of [EkmConnections][google.cloud.kms.v1.EkmConnection]
     /// that matched the query.
+    ///
+    /// This field is not populated if
+    /// [ListEkmConnectionsRequest.filter][google.cloud.kms.v1.ListEkmConnectionsRequest.filter]
+    /// is applied.
     #[prost(int32, tag = "3")]
     pub total_size: i32,
 }

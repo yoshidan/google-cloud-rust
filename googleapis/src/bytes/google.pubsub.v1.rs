@@ -1153,7 +1153,7 @@ pub struct IngestionFailureEvent {
     /// Required. Error details explaining why ingestion to Pub/Sub has failed.
     #[prost(string, tag = "2")]
     pub error_message: ::prost::alloc::string::String,
-    #[prost(oneof = "ingestion_failure_event::Failure", tags = "3, 4, 5, 6")]
+    #[prost(oneof = "ingestion_failure_event::Failure", tags = "3, 4, 5, 6, 7")]
     pub failure: ::core::option::Option<ingestion_failure_event::Failure>,
 }
 /// Nested message and enum types in `IngestionFailureEvent`.
@@ -1172,6 +1172,10 @@ pub mod ingestion_failure_event {
     /// occurs, one or more Avro objects won't be ingested.
     #[derive(Clone, Copy, PartialEq, ::prost::Message)]
     pub struct AvroFailureReason {}
+    /// Set when a Pub/Sub message fails to get published due to a schema
+    /// validation violation.
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    pub struct SchemaViolationReason {}
     /// Failure when ingesting from a Cloud Storage source.
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct CloudStorageFailure {
@@ -1187,7 +1191,7 @@ pub mod ingestion_failure_event {
         #[prost(int64, tag = "3")]
         pub object_generation: i64,
         /// Reason why ingestion failed for the specified object.
-        #[prost(oneof = "cloud_storage_failure::Reason", tags = "5, 6")]
+        #[prost(oneof = "cloud_storage_failure::Reason", tags = "5, 6, 7")]
         pub reason: ::core::option::Option<cloud_storage_failure::Reason>,
     }
     /// Nested message and enum types in `CloudStorageFailure`.
@@ -1202,6 +1206,9 @@ pub mod ingestion_failure_event {
             /// being published.
             #[prost(message, tag = "6")]
             ApiViolationReason(super::ApiViolationReason),
+            /// Optional. The Pub/Sub message failed schema validation.
+            #[prost(message, tag = "7")]
+            SchemaViolationReason(super::SchemaViolationReason),
         }
     }
     /// Failure when ingesting from an Amazon MSK source.
@@ -1221,7 +1228,7 @@ pub mod ingestion_failure_event {
         #[prost(int64, tag = "4")]
         pub offset: i64,
         /// Reason why ingestion failed for the specified message.
-        #[prost(oneof = "aws_msk_failure_reason::Reason", tags = "5")]
+        #[prost(oneof = "aws_msk_failure_reason::Reason", tags = "5, 6")]
         pub reason: ::core::option::Option<aws_msk_failure_reason::Reason>,
     }
     /// Nested message and enum types in `AwsMskFailureReason`.
@@ -1233,6 +1240,9 @@ pub mod ingestion_failure_event {
             /// being published.
             #[prost(message, tag = "5")]
             ApiViolationReason(super::ApiViolationReason),
+            /// Optional. The Pub/Sub message failed schema validation.
+            #[prost(message, tag = "6")]
+            SchemaViolationReason(super::SchemaViolationReason),
         }
     }
     /// Failure when ingesting from an Azure Event Hubs source.
@@ -1252,7 +1262,7 @@ pub mod ingestion_failure_event {
         #[prost(int64, tag = "4")]
         pub offset: i64,
         /// Reason why ingestion failed for the specified message.
-        #[prost(oneof = "azure_event_hubs_failure_reason::Reason", tags = "5")]
+        #[prost(oneof = "azure_event_hubs_failure_reason::Reason", tags = "5, 6")]
         pub reason: ::core::option::Option<azure_event_hubs_failure_reason::Reason>,
     }
     /// Nested message and enum types in `AzureEventHubsFailureReason`.
@@ -1264,6 +1274,9 @@ pub mod ingestion_failure_event {
             /// being published.
             #[prost(message, tag = "5")]
             ApiViolationReason(super::ApiViolationReason),
+            /// Optional. The Pub/Sub message failed schema validation.
+            #[prost(message, tag = "6")]
+            SchemaViolationReason(super::SchemaViolationReason),
         }
     }
     /// Failure when ingesting from a Confluent Cloud source.
@@ -1283,7 +1296,7 @@ pub mod ingestion_failure_event {
         #[prost(int64, tag = "4")]
         pub offset: i64,
         /// Reason why ingestion failed for the specified message.
-        #[prost(oneof = "confluent_cloud_failure_reason::Reason", tags = "5")]
+        #[prost(oneof = "confluent_cloud_failure_reason::Reason", tags = "5, 6")]
         pub reason: ::core::option::Option<confluent_cloud_failure_reason::Reason>,
     }
     /// Nested message and enum types in `ConfluentCloudFailureReason`.
@@ -1295,6 +1308,35 @@ pub mod ingestion_failure_event {
             /// being published.
             #[prost(message, tag = "5")]
             ApiViolationReason(super::ApiViolationReason),
+            /// Optional. The Pub/Sub message failed schema validation.
+            #[prost(message, tag = "6")]
+            SchemaViolationReason(super::SchemaViolationReason),
+        }
+    }
+    /// Failure when ingesting from an AWS Kinesis source.
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct AwsKinesisFailureReason {
+        /// Optional. The stream ARN of the Kinesis stream being ingested from.
+        #[prost(string, tag = "1")]
+        pub stream_arn: ::prost::alloc::string::String,
+        /// Optional. The partition key of the message that failed to be ingested.
+        #[prost(string, tag = "2")]
+        pub partition_key: ::prost::alloc::string::String,
+        /// Optional. The sequence number of the message that failed to be ingested.
+        #[prost(string, tag = "3")]
+        pub sequence_number: ::prost::alloc::string::String,
+        /// Reason why ingestion failed for the specified message.
+        #[prost(oneof = "aws_kinesis_failure_reason::Reason", tags = "4")]
+        pub reason: ::core::option::Option<aws_kinesis_failure_reason::Reason>,
+    }
+    /// Nested message and enum types in `AwsKinesisFailureReason`.
+    pub mod aws_kinesis_failure_reason {
+        /// Reason why ingestion failed for the specified message.
+        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+        pub enum Reason {
+            /// Optional. The Pub/Sub message failed schema validation.
+            #[prost(message, tag = "4")]
+            SchemaViolationReason(super::SchemaViolationReason),
         }
     }
     #[derive(Clone, PartialEq, ::prost::Oneof)]
@@ -1311,6 +1353,9 @@ pub mod ingestion_failure_event {
         /// Optional. Failure when ingesting from Confluent Cloud.
         #[prost(message, tag = "6")]
         ConfluentCloudFailure(ConfluentCloudFailureReason),
+        /// Optional. Failure when ingesting from AWS Kinesis.
+        #[prost(message, tag = "7")]
+        AwsKinesisFailure(AwsKinesisFailureReason),
     }
 }
 /// User-defined JavaScript function that can transform or filter a Pub/Sub
@@ -1769,8 +1814,8 @@ pub struct Subscription {
     ///
     /// If not set, the default retry policy is applied. This generally implies
     /// that messages will be retried as soon as possible for healthy subscribers.
-    /// RetryPolicy will be triggered on NACKs or acknowledgement deadline
-    /// exceeded events for a given message.
+    /// RetryPolicy will be triggered on NACKs or acknowledgment deadline exceeded
+    /// events for a given message.
     #[prost(message, optional, tag = "14")]
     pub retry_policy: ::core::option::Option<RetryPolicy>,
     /// Optional. Indicates whether the subscription is detached from its topic.
@@ -1785,7 +1830,7 @@ pub struct Subscription {
     /// subscription:
     ///
     /// * The message sent to a subscriber is guaranteed not to be resent
-    /// before the message's acknowledgement deadline expires.
+    /// before the message's acknowledgment deadline expires.
     /// * An acknowledged message will not be resent to a subscriber.
     ///
     /// Note that subscribers may still receive multiple copies of a message
@@ -1873,7 +1918,7 @@ pub mod subscription {
 /// Retry delay will be exponential based on provided minimum and maximum
 /// backoffs. <https://en.wikipedia.org/wiki/Exponential_backoff.>
 ///
-/// RetryPolicy will be triggered on NACKs or acknowledgement deadline exceeded
+/// RetryPolicy will be triggered on NACKs or acknowledgment deadline exceeded
 /// events for a given message.
 ///
 /// Retry Policy is implemented on a best effort basis. At times, the delay
@@ -1913,7 +1958,7 @@ pub struct DeadLetterPolicy {
     /// value must be between 5 and 100.
     ///
     /// The number of delivery attempts is defined as 1 + (the sum of number of
-    /// NACKs and number of times the acknowledgement deadline has been exceeded
+    /// NACKs and number of times the acknowledgment deadline has been exceeded
     /// for the message).
     ///
     /// A NACK is any call to ModifyAckDeadline with a 0 deadline. Note that
@@ -2168,7 +2213,7 @@ pub struct CloudStorageConfig {
     pub filename_datetime_format: ::prost::alloc::string::String,
     /// Optional. The maximum duration that can elapse before a new Cloud Storage
     /// file is created. Min 1 minute, max 10 minutes, default 5 minutes. May not
-    /// exceed the subscription's acknowledgement deadline.
+    /// exceed the subscription's acknowledgment deadline.
     #[prost(message, optional, tag = "6")]
     pub max_duration: ::core::option::Option<::prost_types::Duration>,
     /// Optional. The maximum bytes that can be written to a Cloud Storage file
@@ -2450,7 +2495,7 @@ pub struct AcknowledgeRequest {
     pub ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// Request for the `StreamingPull` streaming RPC method. This request is used to
-/// establish the initial stream as well as to stream acknowledgements and ack
+/// establish the initial stream as well as to stream acknowledgments and ack
 /// deadline modifications from the client to the server.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StreamingPullRequest {
@@ -2460,12 +2505,11 @@ pub struct StreamingPullRequest {
     /// Format is `projects/{project}/subscriptions/{sub}`.
     #[prost(string, tag = "1")]
     pub subscription: ::prost::alloc::string::String,
-    /// Optional. List of acknowledgement IDs for acknowledging previously received
+    /// Optional. List of acknowledgment IDs for acknowledging previously received
     /// messages (received on this stream or a different stream). If an ack ID has
     /// expired, the corresponding message may be redelivered later. Acknowledging
-    /// a message more than once will not result in an error. If the
-    /// acknowledgement ID is malformed, the stream will be aborted with status
-    /// `INVALID_ARGUMENT`.
+    /// a message more than once will not result in an error. If the acknowledgment
+    /// ID is malformed, the stream will be aborted with status `INVALID_ARGUMENT`.
     #[prost(string, repeated, tag = "2")]
     pub ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// Optional. The list of new ack deadlines for the IDs listed in
@@ -2481,7 +2525,7 @@ pub struct StreamingPullRequest {
     /// be aborted with status `INVALID_ARGUMENT`.
     #[prost(int32, repeated, packed = "false", tag = "3")]
     pub modify_deadline_seconds: ::prost::alloc::vec::Vec<i32>,
-    /// Optional. List of acknowledgement IDs whose deadline will be modified based
+    /// Optional. List of acknowledgment IDs whose deadline will be modified based
     /// on the corresponding element in `modify_deadline_seconds`. This field can
     /// be used to indicate that more time is needed to process a message by the
     /// subscriber, or to make the message available for redelivery if the
@@ -2547,37 +2591,37 @@ pub struct StreamingPullResponse {
 }
 /// Nested message and enum types in `StreamingPullResponse`.
 pub mod streaming_pull_response {
-    /// Acknowledgement IDs sent in one or more previous requests to acknowledge a
+    /// Acknowledgment IDs sent in one or more previous requests to acknowledge a
     /// previously received message.
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct AcknowledgeConfirmation {
-        /// Optional. Successfully processed acknowledgement IDs.
+        /// Optional. Successfully processed acknowledgment IDs.
         #[prost(string, repeated, tag = "1")]
         pub ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-        /// Optional. List of acknowledgement IDs that were malformed or whose
-        /// acknowledgement deadline has expired.
+        /// Optional. List of acknowledgment IDs that were malformed or whose
+        /// acknowledgment deadline has expired.
         #[prost(string, repeated, tag = "2")]
         pub invalid_ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-        /// Optional. List of acknowledgement IDs that were out of order.
+        /// Optional. List of acknowledgment IDs that were out of order.
         #[prost(string, repeated, tag = "3")]
         pub unordered_ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-        /// Optional. List of acknowledgement IDs that failed processing with
+        /// Optional. List of acknowledgment IDs that failed processing with
         /// temporary issues.
         #[prost(string, repeated, tag = "4")]
         pub temporary_failed_ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     }
-    /// Acknowledgement IDs sent in one or more previous requests to modify the
+    /// Acknowledgment IDs sent in one or more previous requests to modify the
     /// deadline for a specific message.
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct ModifyAckDeadlineConfirmation {
-        /// Optional. Successfully processed acknowledgement IDs.
+        /// Optional. Successfully processed acknowledgment IDs.
         #[prost(string, repeated, tag = "1")]
         pub ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-        /// Optional. List of acknowledgement IDs that were malformed or whose
-        /// acknowledgement deadline has expired.
+        /// Optional. List of acknowledgment IDs that were malformed or whose
+        /// acknowledgment deadline has expired.
         #[prost(string, repeated, tag = "2")]
         pub invalid_ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-        /// Optional. List of acknowledgement IDs that failed processing with
+        /// Optional. List of acknowledgment IDs that failed processing with
         /// temporary issues.
         #[prost(string, repeated, tag = "3")]
         pub temporary_failed_ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
@@ -3233,7 +3277,7 @@ pub mod subscriber_client {
             self.inner.unary(req, path, codec).await
         }
         /// Establishes a stream with the server, which sends messages down to the
-        /// client. The client streams acknowledgements and ack deadline modifications
+        /// client. The client streams acknowledgments and ack deadline modifications
         /// back to the server. The server will close the stream and return the status
         /// on any error. The server may close the stream with status `UNAVAILABLE` to
         /// reassign server-side resources, in which case, the client should
