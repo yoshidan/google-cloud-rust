@@ -24,6 +24,8 @@ pub struct CommitOptions {
     pub return_commit_stats: bool,
     pub call_options: CallOptions,
     pub max_commit_delay: Option<Duration>,
+    /// The transaction tag to use for the CommitRequest.
+    pub transaction_tag: Option<String>,
 }
 
 #[derive(Clone)]
@@ -119,11 +121,16 @@ pub struct BeginError {
 }
 
 impl ReadWriteTransaction {
-    pub async fn begin(session: ManagedSession, options: CallOptions) -> Result<ReadWriteTransaction, BeginError> {
+    pub async fn begin(
+        session: ManagedSession,
+        options: CallOptions,
+        transaction_tag: Option<String>,
+    ) -> Result<ReadWriteTransaction, BeginError> {
         ReadWriteTransaction::begin_internal(
             session,
             transaction_options::Mode::ReadWrite(transaction_options::ReadWrite::default()),
             options,
+            transaction_tag,
         )
         .await
     }
@@ -131,11 +138,13 @@ impl ReadWriteTransaction {
     pub async fn begin_partitioned_dml(
         session: ManagedSession,
         options: CallOptions,
+        transaction_tag: Option<String>,
     ) -> Result<ReadWriteTransaction, BeginError> {
         ReadWriteTransaction::begin_internal(
             session,
             transaction_options::Mode::PartitionedDml(transaction_options::PartitionedDml {}),
             options,
+            transaction_tag,
         )
         .await
     }
@@ -144,6 +153,7 @@ impl ReadWriteTransaction {
         mut session: ManagedSession,
         mode: transaction_options::Mode,
         options: CallOptions,
+        transaction_tag: Option<String>,
     ) -> Result<ReadWriteTransaction, BeginError> {
         let request = BeginTransactionRequest {
             session: session.session.name.to_string(),
@@ -152,7 +162,7 @@ impl ReadWriteTransaction {
                 mode: Some(mode),
                 isolation_level: IsolationLevel::Unspecified as i32,
             }),
-            request_options: Transaction::create_request_options(options.priority),
+            request_options: Transaction::create_request_options(options.priority, transaction_tag.clone()),
             mutation_key: None,
         };
         let result = session.spanner_client.begin_transaction(request, options.retry).await;
@@ -170,6 +180,7 @@ impl ReadWriteTransaction {
                 transaction_selector: TransactionSelector {
                     selector: Some(transaction_selector::Selector::Id(tx.id.clone())),
                 },
+                transaction_tag,
             },
             tx_id: tx.id,
             wb: vec![],
@@ -197,7 +208,10 @@ impl ReadWriteTransaction {
             partition_token: vec![],
             seqno: self.sequence_number.fetch_add(1, Ordering::Relaxed),
             query_options: options.optimizer_options,
-            request_options: Transaction::create_request_options(options.call_options.priority),
+            request_options: Transaction::create_request_options(
+                options.call_options.priority,
+                self.base_tx.transaction_tag.clone(),
+            ),
             directed_read_options: None,
             last_statement: false,
         };
@@ -224,7 +238,10 @@ impl ReadWriteTransaction {
             session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
             seqno: self.sequence_number.fetch_add(1, Ordering::Relaxed),
-            request_options: Transaction::create_request_options(options.call_options.priority),
+            request_options: Transaction::create_request_options(
+                options.call_options.priority,
+                self.base_tx.transaction_tag.clone(),
+            ),
             statements: stmt
                 .into_iter()
                 .map(|x| execute_batch_dml_request::Statement {
@@ -350,7 +367,10 @@ pub(crate) async fn commit(
         session: session.session.name.to_string(),
         mutations: ms,
         transaction: Some(tx),
-        request_options: Transaction::create_request_options(commit_options.call_options.priority),
+        request_options: Transaction::create_request_options(
+            commit_options.call_options.priority,
+            commit_options.transaction_tag.clone(),
+        ),
         return_commit_stats: commit_options.return_commit_stats,
         max_commit_delay: commit_options.max_commit_delay.map(|d| d.try_into().unwrap()),
         precommit_token: None,
