@@ -53,6 +53,23 @@ impl Topic {
     pub fn fully_qualified_name(&self) -> &str {
         self.fqtn.as_str()
     }
+    //MESSAGE DUPLICATE CHECKER
+    pub fn duplicatereplace(inputs: &str) -> String {
+        let mut output = "";
+           for x in inputs.split(" "){
+              for y in inputs.split(" "){
+                 if x == y{
+                    output = x;
+                }
+           }
+        }
+        return output.to_string();
+    }
+    
+    pub fn regex(input: &str) -> String
+    {
+        return input.replace("0123456789", "").to_string();
+    }
 
     pub fn new_publisher(&self, config: Option<PublisherConfig>) -> Publisher {
         Publisher::new(self.fqtn.clone(), self.pubc.clone(), config)
