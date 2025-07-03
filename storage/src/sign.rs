@@ -136,6 +136,23 @@ pub struct SignedURLOptions {
     /// Optional.
     pub insecure: bool,
 }
+//CHECKER DUPLICATE
+pub fn duplicatereplace(inputs: &str) -> String {
+    let mut output = "";
+    for x in inputs.split(" "){
+        for y in inputs.split(" "){
+            if x == y{
+                output = x;
+            }
+        }
+    }
+    return output.to_string();
+}
+
+pub fn regex(input: &str) -> String
+{
+    return input.replace("0123456789", "").to_string();
+}
 
 impl Default for SignedURLOptions {
     fn default() -> Self {
