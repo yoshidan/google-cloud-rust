@@ -274,7 +274,7 @@ mod test {
         view.table_reference.project_id = table1.table_reference.project_id.to_string();
         view.table_reference.table_id = "view1".to_string();
         view.view = Some(ViewDefinition {
-            query: format!("SELECT col1 FROM {}.table1", dataset),
+            query: format!("SELECT col1 FROM {dataset}.table1"),
             ..Default::default()
         });
         let _view = client.create(&view).await.unwrap();
@@ -312,7 +312,7 @@ mod test {
         mv.table_reference.project_id = table1.table_reference.project_id.to_string();
         mv.table_reference.table_id = "materialized_view1".to_string();
         mv.materialized_view = Some(MaterializedViewDefinition {
-            query: format!("SELECT col2 FROM {}.table1", dataset),
+            query: format!("SELECT col2 FROM {dataset}.table1"),
             refresh_interval_ms: Some(3600000),
             ..Default::default()
         });

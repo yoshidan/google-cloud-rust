@@ -94,7 +94,7 @@ impl Client {
         invoke_fn(
             Some(setting),
             |client| async {
-                let request = create_request(format!("project_settings.name={}", project_settings_name), req.clone());
+                let request = create_request(format!("project_settings.name={project_settings_name}"), req.clone());
                 client
                     .update_project_settings(request)
                     .await
@@ -203,7 +203,7 @@ impl Client {
         invoke_fn(
             Some(setting),
             |client| async {
-                let request = create_request(format!("repository.name={}", repository_name), req.clone());
+                let request = create_request(format!("repository.name={repository_name}"), req.clone());
                 client
                     .update_repository(request)
                     .await
@@ -763,7 +763,7 @@ impl Client {
         invoke_fn(
             Some(setting),
             |client| async {
-                let request = create_request(format!("tag.name={}", tag_name), req.clone());
+                let request = create_request(format!("tag.name={tag_name}"), req.clone());
                 client
                     .update_tag(request)
                     .await

@@ -80,9 +80,6 @@ pub fn build<T: Serialize>(
     table_id: &str,
     data: &InsertAllRequest<T>,
 ) -> RequestBuilder {
-    let url = format!(
-        "{}/projects/{}/datasets/{}/tables/{}/insertAll",
-        base_url, project_id, dataset_id, table_id
-    );
+    let url = format!("{base_url}/projects/{project_id}/datasets/{dataset_id}/tables/{table_id}/insertAll");
     client.post(url).json(data)
 }

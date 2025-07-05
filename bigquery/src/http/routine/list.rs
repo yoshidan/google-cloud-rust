@@ -54,7 +54,7 @@ pub fn build(
     data: &ListRoutinesRequest,
     page_token: Option<String>,
 ) -> RequestBuilder {
-    let url = format!("{}/projects/{}/datasets/{}/routines", base_url, project_id, dataset_id);
+    let url = format!("{base_url}/projects/{project_id}/datasets/{dataset_id}/routines");
     let builder = client.get(url).query(data);
     if let Some(page_token) = page_token {
         builder.query(&[("pageToken", page_token.as_str())])

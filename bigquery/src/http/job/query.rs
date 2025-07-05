@@ -154,6 +154,6 @@ pub struct QueryResponse {
 }
 
 pub fn build(base_url: &str, client: &Client, project_id: &str, data: &QueryRequest) -> RequestBuilder {
-    let url = format!("{}/projects/{}/queries", base_url, project_id);
+    let url = format!("{base_url}/projects/{project_id}/queries");
     client.post(url).json(data)
 }

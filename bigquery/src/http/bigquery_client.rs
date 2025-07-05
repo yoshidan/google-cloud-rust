@@ -123,11 +123,11 @@ pub(crate) mod test {
     }
 
     pub fn dataset_name(name: &str) -> String {
-        format!("gcrbq_{}", name)
+        format!("gcrbq_{name}")
     }
 
     pub fn bucket_name(project: &str, name: &str) -> String {
-        format!("{}_gcrbq_{}", project, name)
+        format!("{project}_gcrbq_{name}")
     }
 
     pub async fn create_client() -> (BigqueryClient, String) {
@@ -220,7 +220,7 @@ pub(crate) mod test {
     impl TestData {
         pub fn default(index: usize, now: OffsetDateTime) -> TestData {
             TestData {
-                col_string: Some(format!("test_{}", index)),
+                col_string: Some(format!("test_{index}")),
                 col_number: Some(BigDecimal::from_str("-99999999999999999999999999999.999999999").unwrap()),
                 col_number_array: vec![
                     BigDecimal::from_str(

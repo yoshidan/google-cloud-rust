@@ -215,7 +215,7 @@ pub(crate) fn create_signed_buffer(
     {
         let mut query_parameters = [
             ("X-Goog-Algorithm", "GOOG4-RSA-SHA256"),
-            ("X-Goog-Credential", &format!("{}/{}", google_access_id, credential_scope)),
+            ("X-Goog-Credential", &format!("{google_access_id}/{credential_scope}")),
             ("X-Goog-Date", &timestamp),
             ("X-Goog-Expires", opts.expires.as_secs().to_string().as_str()),
             ("X-Goog-SignedHeaders", &signed_headers),

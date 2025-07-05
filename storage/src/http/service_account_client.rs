@@ -116,7 +116,7 @@ mod test {
             56, 98, 50, 56, 101, 55, 48, 98, 101,
         ];
         let data = client
-            .sign_blob(&format!("projects/-/serviceAccounts/{}", email), &body)
+            .sign_blob(&format!("projects/-/serviceAccounts/{email}"), &body)
             .await
             .unwrap();
         assert_eq!(256, data.len());

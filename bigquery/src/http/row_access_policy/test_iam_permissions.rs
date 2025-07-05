@@ -12,8 +12,7 @@ pub fn build(
     data: &TestIamPermissionsRequest,
 ) -> RequestBuilder {
     let url = format!(
-        "{}/projects/{}/datasets/{}/tables/{}/rowAccessPolicies/{}/:testIamPermissions",
-        base_url, project_id, dataset_id, table_id, policy_id
+        "{base_url}/projects/{project_id}/datasets/{dataset_id}/tables/{table_id}/rowAccessPolicies/{policy_id}/:testIamPermissions"
     );
     client.post(url).json(data)
 }
