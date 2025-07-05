@@ -166,13 +166,13 @@ async fn test_read_change_stream() {
     // Create Change Stream
     let cred = google_cloud_auth::credentials::CredentialsFile::new().await.unwrap();
     let project = cred.project_id.unwrap();
-    let db = format!("projects/{}/instances/test-instance/databases/local-database", project);
+    let db = format!("projects/{project}/instances/test-instance/databases/local-database2");
     let admin_client = admin::client::Client::new(AdminClientConfig {
         environment: create_environment().await,
     })
     .await
     .unwrap();
-    let _ = admin_client
+    let result = admin_client
         .database()
         .update_database_ddl(
             UpdateDatabaseDdlRequest {
@@ -185,8 +185,16 @@ async fn test_read_change_stream() {
             None,
         )
         .await;
-
-    sleep(Duration::from_secs(20)).await;
+    match result {
+        Ok(mut res) => {
+            let op = res.wait(None).await;
+            match op {
+                Ok(_) => tracing::info!("create change stream success"),
+                Err(e) => panic!("create change stream failed: {e:?}"),
+            }
+        }
+        Err(e) => panic!("create change stream failed: {e:?}"),
+    }
 
     let now = OffsetDateTime::now_utc();
 
