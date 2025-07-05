@@ -1443,7 +1443,7 @@ pub(crate) mod test {
     }
 
     pub fn bucket_name(project: &str, name: &str) -> String {
-        format!("{}_gcrgcs_{}", project, name)
+        format!("{project}_gcrgcs_{name}")
     }
 
     async fn client() -> (StorageClient, String, String) {
@@ -1553,7 +1553,7 @@ pub(crate) mod test {
 
         assert_eq!(found.location.as_str(), "ASIA-NORTHEAST1");
 
-        let entity = format!("user-{}", email);
+        let entity = format!("user-{email}");
         let patched = client
             .patch_bucket(&PatchBucketRequest {
                 bucket: bucket.name.to_string(),
@@ -1628,7 +1628,7 @@ pub(crate) mod test {
     pub async fn crud_default_object_controls() {
         let (client, project, email) = client().await;
         let bucket_name = bucket_name(&project, "default_object_acl");
-        let entity = format!("user-{}", email);
+        let entity = format!("user-{email}");
 
         client
             .insert_default_object_access_control(&InsertDefaultObjectAccessControlRequest {
@@ -1676,7 +1676,7 @@ pub(crate) mod test {
         let (client, project, email) = client().await;
         let bucket_name = bucket_name(&project, "bucket_acl");
 
-        let entity = format!("user-{}", email);
+        let entity = format!("user-{email}");
         client
             .insert_bucket_access_control(&InsertBucketAccessControlRequest {
                 bucket: bucket_name.to_string(),
@@ -1722,7 +1722,7 @@ pub(crate) mod test {
         let bucket_name = bucket_name(&project, "object_acl");
         let object_name = "test.txt";
 
-        let entity = format!("user-{}", email);
+        let entity = format!("user-{email}");
 
         client
             .insert_object_access_control(&InsertObjectAccessControlRequest {

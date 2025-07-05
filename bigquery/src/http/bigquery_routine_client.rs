@@ -141,10 +141,7 @@ mod test {
                 },
                 routine_type: RoutineType::TableValuedFunction,
                 language: Some(Language::Sql),
-                definition_body: format!(
-                    "SELECT * FROM `{}.{}.external_data` WHERE string_field_0 = x",
-                    project, dataset,
-                ),
+                definition_body: format!("SELECT * FROM `{project}.{dataset}.external_data` WHERE string_field_0 = x",),
                 arguments: Some(vec![Argument {
                     name: Some("x".to_string()),
                     argument_kind: Some(ArgumentKind::FixedType),
@@ -171,9 +168,8 @@ mod test {
                     "
             DECLARE id STRING;
             SET id = GENERATE_UUID();
-            INSERT INTO `{}.{}.external_data` VALUES(id, name)
+            INSERT INTO `{project}.{dataset}.external_data` VALUES(id, name)
             ",
-                    project, dataset,
                 ),
                 arguments: Some(vec![Argument {
                     name: Some("name".to_string()),

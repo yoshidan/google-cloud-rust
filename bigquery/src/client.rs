@@ -1064,7 +1064,7 @@ mod tests {
                 &project_id,
                 QueryRequest {
                     max_results,
-                    query: format!("SELECT * FROM {}.{}", dataset, table),
+                    query: format!("SELECT * FROM {dataset}.{table}"),
                     ..Default::default()
                 },
                 option.clone(),
@@ -1089,7 +1089,7 @@ mod tests {
             .query_with_option::<TestData>(
                 &project_id,
                 QueryRequest {
-                    query: format!("SELECT * FROM {}.{}", dataset, table),
+                    query: format!("SELECT * FROM {dataset}.{table}"),
                     ..Default::default()
                 },
                 option,
@@ -1212,7 +1212,7 @@ mod tests {
                     timeout_ms: Some(5), // pass wait_for_query
                     use_query_cache: Some(false),
                     max_results,
-                    query: format!("SELECT 1 FROM {}.{}", dataset, table),
+                    query: format!("SELECT 1 FROM {dataset}.{table}"),
                     ..Default::default()
                 },
                 option,

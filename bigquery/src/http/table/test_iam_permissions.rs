@@ -24,9 +24,6 @@ pub(crate) fn build(
     table_id: &str,
     req: &TestIamPermissionsRequest,
 ) -> RequestBuilder {
-    let url = format!(
-        "{}/projects/{}/datasets/{}/tables/{}:testIamPermissions",
-        base_url, project_id, dataset_id, table_id
-    );
+    let url = format!("{base_url}/projects/{project_id}/datasets/{dataset_id}/tables/{table_id}:testIamPermissions");
     client.post(url).json(&req)
 }

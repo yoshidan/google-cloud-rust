@@ -65,7 +65,7 @@ pub fn build(
     req: Option<&ListDatasetsRequest>,
     page_token: Option<String>,
 ) -> RequestBuilder {
-    let url = format!("{}/projects/{}/datasets", base_url, project_id);
+    let url = format!("{base_url}/projects/{project_id}/datasets");
     let mut builder = client.get(url);
     builder = if let Some(req) = req {
         builder.query(req)

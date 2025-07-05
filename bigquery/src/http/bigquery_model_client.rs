@@ -102,7 +102,7 @@ mod test {
                 use_legacy_sql: Some(false),
                 query: format!(
                     "
-                    CREATE OR REPLACE MODEL `{}.{}`
+                    CREATE OR REPLACE MODEL `{dataset}.{model_id}`
                     OPTIONS (model_type='linear_reg', input_label_cols=['body_mass_g']) AS
                         SELECT
                             *
@@ -111,8 +111,7 @@ mod test {
                         WHERE
                             body_mass_g IS NOT NULL
                         LIMIT 100
-                    ",
-                    dataset, model_id
+                    "
                 ),
                 ..Default::default()
             }),
@@ -148,7 +147,7 @@ mod test {
                     max_results: None,
                     query: format!(
                         "
-                    SELECT * FROM  ML.PREDICT(MODEL `{}.{}`, (
+                    SELECT * FROM  ML.PREDICT(MODEL `{dataset}.{model_id}`, (
                         SELECT
                             *
                         FROM
@@ -156,8 +155,7 @@ mod test {
                         WHERE
                             body_mass_g IS NOT NULL
                         AND island = 'Biscoe' LIMIT 10))
-                    ",
-                        dataset, model_id
+                    "
                     ),
                     ..Default::default()
                 },

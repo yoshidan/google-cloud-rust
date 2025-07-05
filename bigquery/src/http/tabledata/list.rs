@@ -66,9 +66,6 @@ pub fn build(
     table_id: &str,
     data: &FetchDataRequest,
 ) -> RequestBuilder {
-    let url = format!(
-        "{}/projects/{}/datasets/{}/tables/{}/data",
-        base_url, project_id, dataset_id, table_id
-    );
+    let url = format!("{base_url}/projects/{project_id}/datasets/{dataset_id}/tables/{table_id}/data");
     client.get(url).query(&data)
 }

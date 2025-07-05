@@ -50,10 +50,7 @@ pub fn build(
     data: &ListRowAccessPoliciesRequest,
     page_token: Option<String>,
 ) -> RequestBuilder {
-    let url = format!(
-        "{}/projects/{}/datasets/{}/tables/{}/rowAccessPolicies",
-        base_url, project_id, dataset_id, table_id
-    );
+    let url = format!("{base_url}/projects/{project_id}/datasets/{dataset_id}/tables/{table_id}/rowAccessPolicies");
     let builder = client.get(url).query(data);
     if let Some(page_token) = page_token {
         builder.query(&[("pageToken", page_token.as_str())])

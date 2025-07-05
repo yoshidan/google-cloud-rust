@@ -254,7 +254,7 @@ impl Client {
                 signed
             }
             SignBy::SignBytes => {
-                let path = format!("projects/-/serviceAccounts/{}", google_access_id);
+                let path = format!("projects/-/serviceAccounts/{google_access_id}");
                 self.service_account_client
                     .sign_blob(&path, signed_buffer.as_slice())
                     .await
