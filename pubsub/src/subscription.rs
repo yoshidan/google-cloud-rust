@@ -393,8 +393,7 @@ impl Subscription {
         })
     }
 
-    /// pull get message synchronously.
-    /// It blocks until at least one message is available.
+    /// pull pulls messages from the server.
     pub async fn pull(&self, max_messages: i32, retry: Option<RetrySetting>) -> Result<Vec<ReceivedMessage>, Status> {
         #[allow(deprecated)]
         let req = PullRequest {

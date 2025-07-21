@@ -659,4 +659,16 @@ mod tests_in_gcp {
             assert_eq!(count, 1, "msg_id = {msg_id}, count = {count}");
         }
     }
+
+    #[tokio::test]
+    #[serial]
+    #[ignore]
+    async fn test_pull_empty() {
+        let client = Client::new(ClientConfig::default().with_auth().await.unwrap())
+            .await
+            .unwrap();
+        let subscription = client.subscription("pull-test");
+        let messages = subscription.pull(10, None).await.unwrap();
+        assert!(messages.is_empty());
+    }
 }
