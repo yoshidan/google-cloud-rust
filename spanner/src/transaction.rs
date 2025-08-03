@@ -103,14 +103,22 @@ pub struct Transaction {
     // for returning ownership of session on before destroy
     pub(crate) sequence_number: AtomicI64,
     pub(crate) transaction_selector: TransactionSelector,
+    /// The transaction tag to include with each request in this transaction.
+    pub(crate) transaction_tag: Option<String>,
 }
 
 impl Transaction {
-    pub(crate) fn create_request_options(priority: Option<Priority>) -> Option<RequestOptions> {
-        priority.map(|s| RequestOptions {
-            priority: s.into(),
-            request_tag: "".to_string(),
-            transaction_tag: "".to_string(),
+    pub(crate) fn create_request_options(
+        priority: Option<Priority>,
+        transaction_tag: Option<String>,
+    ) -> Option<RequestOptions> {
+        if priority.is_none() && transaction_tag.as_ref().map(String::is_empty).unwrap_or(true) {
+            return None;
+        }
+        Some(RequestOptions {
+            priority: priority.unwrap_or_default().into(),
+            request_tag: String::new(),
+            transaction_tag: transaction_tag.unwrap_or_default(),
         })
     }
 
@@ -144,7 +152,10 @@ impl Transaction {
             partition_token: vec![],
             seqno: 0,
             query_options: options.optimizer_options,
-            request_options: Transaction::create_request_options(options.call_options.priority),
+            request_options: Transaction::create_request_options(
+                options.call_options.priority,
+                self.transaction_tag.clone(),
+            ),
             data_boost_enabled: false,
             directed_read_options: None,
             last_statement: false,
@@ -205,7 +216,10 @@ impl Transaction {
             limit: options.limit,
             resume_token: vec![],
             partition_token: vec![],
-            request_options: Transaction::create_request_options(options.call_options.priority),
+            request_options: Transaction::create_request_options(
+                options.call_options.priority,
+                self.transaction_tag.clone(),
+            ),
             data_boost_enabled: false,
             order_by: 0,
             directed_read_options: None,

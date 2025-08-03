@@ -24,6 +24,8 @@ use crate::value::TimestampBound;
 pub struct PartitionedUpdateOption {
     pub begin_options: CallOptions,
     pub query_options: Option<QueryOptions>,
+    /// The transaction tag to use for partitioned update operations.
+    pub transaction_tag: Option<String>,
 }
 
 #[derive(Clone)]
@@ -45,6 +47,8 @@ impl Default for ReadOnlyTransactionOption {
 pub struct ReadWriteTransactionOption {
     pub begin_options: CallOptions,
     pub commit_options: CommitOptions,
+    /// The transaction tag to use for this read/write transaction.
+    pub transaction_tag: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -331,15 +335,17 @@ impl Client {
         invoke_fn(
             Some(ro),
             |session| async {
-                let mut tx =
-                    match ReadWriteTransaction::begin_partitioned_dml(session.unwrap(), options.begin_options.clone())
-                        .await
-                    {
-                        Ok(tx) => tx,
-                        Err(e) => return Err((Error::GRPC(e.status), Some(e.session))),
-                    };
-                let qo = options.query_options.clone().unwrap_or_default();
-                tx.update_with_option(stmt.clone(), qo)
+                let mut tx = match ReadWriteTransaction::begin_partitioned_dml(
+                    session.unwrap(),
+                    options.begin_options.clone(),
+                    options.transaction_tag.clone(),
+                )
+                .await
+                {
+                    Ok(tx) => tx,
+                    Err(e) => return Err((Error::GRPC(e.status), Some(e.session))),
+                };
+                tx.update_with_option(stmt.clone(), options.query_options.clone().unwrap_or_default())
                     .await
                     .map_err(|e| (Error::GRPC(e), tx.take_session()))
             },
@@ -519,7 +525,7 @@ impl Client {
         E: TryAs<Status> + From<SessionError> + From<Status>,
         F: for<'tx> Fn(&'tx mut ReadWriteTransaction) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'tx>>,
     {
-        let (bo, co) = Client::split_read_write_transaction_option(options);
+        let (bo, co, tag) = Client::split_read_write_transaction_option(options);
 
         let ro = TransactionRetrySetting::default();
         let session = Some(self.get_session().await?);
@@ -527,7 +533,9 @@ impl Client {
         invoke_fn(
             Some(ro),
             |session| async {
-                let mut tx = self.create_read_write_transaction::<E>(session, bo.clone()).await?;
+                let mut tx = self
+                    .create_read_write_transaction::<E>(session, bo.clone(), tag.clone())
+                    .await?;
                 let result = f(&mut tx).await;
                 tx.finish(result, Some(co.clone())).await
             },
@@ -579,9 +587,13 @@ impl Client {
     /// ```
     pub async fn begin_read_write_transaction(&self) -> Result<ReadWriteTransaction, Error> {
         let session = self.get_session().await?;
-        ReadWriteTransaction::begin(session, ReadWriteTransactionOption::default().begin_options)
-            .await
-            .map_err(|e| e.status.into())
+        ReadWriteTransaction::begin(
+            session,
+            ReadWriteTransactionOption::default().begin_options,
+            ReadWriteTransactionOption::default().transaction_tag,
+        )
+        .await
+        .map_err(|e| e.status.into())
     }
 
     /// Get open session count.
@@ -597,7 +609,7 @@ impl Client {
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
     {
-        let (bo, co) = Client::split_read_write_transaction_option(options);
+        let (bo, co, tag) = Client::split_read_write_transaction_option(options);
 
         let ro = TransactionRetrySetting::default();
         let session = Some(self.get_session().await?);
@@ -606,7 +618,9 @@ impl Client {
         invoke_fn(
             Some(ro),
             |session| async {
-                let mut tx = self.create_read_write_transaction::<E>(session, bo.clone()).await?;
+                let mut tx = self
+                    .create_read_write_transaction::<E>(session, bo.clone(), tag.clone())
+                    .await?;
                 let result = f(&mut tx);
                 tx.finish(result, Some(co.clone())).await
             },
@@ -619,11 +633,12 @@ impl Client {
         &self,
         session: Option<ManagedSession>,
         bo: CallOptions,
+        transaction_tag: Option<String>,
     ) -> Result<ReadWriteTransaction, (E, Option<ManagedSession>)>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
     {
-        ReadWriteTransaction::begin(session.unwrap(), bo)
+        ReadWriteTransaction::begin(session.unwrap(), bo, transaction_tag)
             .await
             .map_err(|e| (E::from(e.status), Some(e.session)))
     }
@@ -632,7 +647,9 @@ impl Client {
         self.sessions.get().await
     }
 
-    fn split_read_write_transaction_option(options: ReadWriteTransactionOption) -> (CallOptions, CommitOptions) {
-        (options.begin_options, options.commit_options)
+    fn split_read_write_transaction_option(
+        options: ReadWriteTransactionOption,
+    ) -> (CallOptions, CommitOptions, Option<String>) {
+        (options.begin_options, options.commit_options, options.transaction_tag)
     }
 }

@@ -64,6 +64,7 @@ impl ReadOnlyTransaction {
                         isolation_level: IsolationLevel::Unspecified as i32,
                     })),
                 },
+                transaction_tag: None,
             },
             rts: None,
         })
@@ -82,7 +83,7 @@ impl ReadOnlyTransaction {
                 mode: Some(transaction_options::Mode::ReadOnly(tb.into())),
                 isolation_level: IsolationLevel::Unspecified as i32,
             }),
-            request_options: Transaction::create_request_options(options.priority),
+            request_options: Transaction::create_request_options(options.priority, None),
             mutation_key: None,
         };
 
@@ -99,6 +100,7 @@ impl ReadOnlyTransaction {
                         transaction_selector: TransactionSelector {
                             selector: Some(transaction_selector::Selector::Id(tx.id)),
                         },
+                        transaction_tag: None,
                     },
                     rts: Some(OffsetDateTime::from(st)),
                 })
@@ -207,7 +209,10 @@ impl BatchReadOnlyTransaction {
                             limit: ro.limit,
                             resume_token: vec![],
                             partition_token: x.partition_token,
-                            request_options: Transaction::create_request_options(ro.call_options.priority),
+                            request_options: Transaction::create_request_options(
+                                ro.call_options.priority,
+                                self.base_tx.transaction_tag.clone(),
+                            ),
                             directed_read_options: directed_read_options.clone(),
                             data_boost_enabled,
                             order_by: 0,
@@ -272,7 +277,10 @@ impl BatchReadOnlyTransaction {
                             partition_token: x.partition_token,
                             seqno: 0,
                             query_options: qo.optimizer_options.clone(),
-                            request_options: Transaction::create_request_options(qo.call_options.priority),
+                            request_options: Transaction::create_request_options(
+                                qo.call_options.priority,
+                                self.base_tx.transaction_tag.clone(),
+                            ),
                             data_boost_enabled,
                             directed_read_options: directed_read_options.clone(),
                             last_statement: false,
