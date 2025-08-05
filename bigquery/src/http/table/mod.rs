@@ -244,7 +244,7 @@ pub struct ParquetOptions {
     /// Optional. Indicates whether to infer Parquet ENUM logical type as STRING instead of BYTES by default.
     pub enum_as_string: Option<bool>,
     /// Optional. Indicates whether to use schema inference specifically for Parquet LIST logical type.
-    pub enable_list_interface: Option<bool>,
+    pub enable_list_inference: Option<bool>,
 }
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug, Default)]
