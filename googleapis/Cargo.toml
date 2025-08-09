@@ -13,13 +13,15 @@ description = "Google Cloud Platform rust client."
 doctest = false
 
 [dependencies]
-tonic = { version = "0.13", default-features = false, features = ["channel", "prost", "codegen", "gzip"] }
-prost = "0.13"
-prost-types = "0.13"
+tonic = { version = "0.14", default-features = false, features = ["channel", "codegen", "gzip"] }
+tonic-prost = "0.14"
+prost = "0.14"
+prost-types = "0.14"
 
 [build-dependencies]
-tonic-build = { version = "0.13", optional = true }
-prost-build = { version = "0.13", optional = true }
+tonic-build = { version = "0.14", optional = true }
+tonic-prost-build = { version = "0.14", optional = true }
+prost-build = { version = "0.14", optional = true }
 
 [features]
 spanner = []
@@ -28,5 +30,5 @@ storage = []
 artifact-registry = []
 kms = []
 bigquery = []
-generate = ["dep:tonic-build", "dep:prost-build"]
+generate = ["dep:tonic-build", "dep:prost-build", "dep:tonic-prost-build"]
 bytes = []

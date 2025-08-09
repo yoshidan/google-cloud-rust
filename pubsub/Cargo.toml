@@ -15,7 +15,7 @@ doctest = false
 
 [dependencies]
 tracing = "0.1"
-prost-types = "0.13"
+prost-types = "0.14"
 tokio = "1.32"
 async-channel = "1.9"
 async-stream = "0.3"

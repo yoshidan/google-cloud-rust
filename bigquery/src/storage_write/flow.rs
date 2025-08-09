@@ -11,7 +11,7 @@ impl FlowController {
             sem_insert_count: Semaphore::new(max_insert_count),
         }
     }
-    pub async fn acquire(&self) -> SemaphorePermit {
+    pub async fn acquire(&self) -> SemaphorePermit<'_> {
         self.sem_insert_count.acquire().await.unwrap()
     }
 }

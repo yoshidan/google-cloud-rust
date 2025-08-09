@@ -20,7 +20,7 @@ google-cloud-googleapis = { package = "gcloud-googleapis", version="1.2.0", path
 google-cloud-gax = { package = "gcloud-gax", version = "1.2.0", path = "../foundation/gax"}
 google-cloud-longrunning = { package = "gcloud-longrunning", version = "1.2.1", path = "../foundation/longrunning" }
 tracing = "0.1"
-prost-types = "0.13"
+prost-types = "0.14"
 
 [dev-dependencies]
 tokio = { version="1.32", features=["rt-multi-thread"] }

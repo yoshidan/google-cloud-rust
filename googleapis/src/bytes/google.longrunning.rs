@@ -50,16 +50,16 @@ pub mod operation {
     }
 }
 /// The request message for
-/// [Operations.GetOperation][google.longrunning.Operations.GetOperation].
-#[derive(Clone, PartialEq, ::prost::Message)]
+/// \[Operations.GetOperation\]\[google.longrunning.Operations.GetOperation\].
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetOperationRequest {
     /// The name of the operation resource.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// The request message for
-/// [Operations.ListOperations][google.longrunning.Operations.ListOperations].
-#[derive(Clone, PartialEq, ::prost::Message)]
+/// \[Operations.ListOperations\]\[google.longrunning.Operations.ListOperations\].
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListOperationsRequest {
     /// The name of the operation's parent resource.
     #[prost(string, tag = "4")]
@@ -75,7 +75,7 @@ pub struct ListOperationsRequest {
     pub page_token: ::prost::alloc::string::String,
 }
 /// The response message for
-/// [Operations.ListOperations][google.longrunning.Operations.ListOperations].
+/// \[Operations.ListOperations\]\[google.longrunning.Operations.ListOperations\].
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListOperationsResponse {
     /// A list of operations that matches the specified filter in the request.
@@ -86,24 +86,24 @@ pub struct ListOperationsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request message for
-/// [Operations.CancelOperation][google.longrunning.Operations.CancelOperation].
-#[derive(Clone, PartialEq, ::prost::Message)]
+/// \[Operations.CancelOperation\]\[google.longrunning.Operations.CancelOperation\].
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CancelOperationRequest {
     /// The name of the operation resource to be cancelled.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// The request message for
-/// [Operations.DeleteOperation][google.longrunning.Operations.DeleteOperation].
-#[derive(Clone, PartialEq, ::prost::Message)]
+/// \[Operations.DeleteOperation\]\[google.longrunning.Operations.DeleteOperation\].
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteOperationRequest {
     /// The name of the operation resource to be deleted.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// The request message for
-/// [Operations.WaitOperation][google.longrunning.Operations.WaitOperation].
-#[derive(Clone, PartialEq, ::prost::Message)]
+/// \[Operations.WaitOperation\]\[google.longrunning.Operations.WaitOperation\].
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct WaitOperationRequest {
     /// The name of the operation resource to wait on.
     #[prost(string, tag = "1")]
@@ -118,13 +118,15 @@ pub struct WaitOperationRequest {
 ///
 /// Example:
 ///
-///      rpc Export(ExportRequest) returns (google.longrunning.Operation) {
-///        option (google.longrunning.operation_info) = {
-///          response_type: "ExportResponse"
-///          metadata_type: "ExportMetadata"
-///        };
-///      }
-#[derive(Clone, PartialEq, ::prost::Message)]
+/// ```text
+/// rpc Export(ExportRequest) returns (google.longrunning.Operation) {
+///    option (google.longrunning.operation_info) = {
+///      response_type: "ExportResponse"
+///      metadata_type: "ExportMetadata"
+///    };
+/// }
+/// ```
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct OperationInfo {
     /// Required. The message name of the primary return type for this
     /// long-running operation.
@@ -160,7 +162,7 @@ pub mod operations_client {
     /// Manages long-running operations with an API service.
     ///
     /// When an API method normally takes long time to complete, it can be designed
-    /// to return [Operation][google.longrunning.Operation] to the client, and the
+    /// to return \[Operation\]\[google.longrunning.Operation\] to the client, and the
     /// client can use this interface to receive the real response asynchronously by
     /// polling the operation resource, or pass the operation resource to another API
     /// (such as Pub/Sub API) to receive the response.  Any API service that returns
@@ -263,7 +265,7 @@ pub mod operations_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.longrunning.Operations/ListOperations",
             );
@@ -289,7 +291,7 @@ pub mod operations_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.longrunning.Operations/GetOperation",
             );
@@ -316,7 +318,7 @@ pub mod operations_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.longrunning.Operations/DeleteOperation",
             );
@@ -331,12 +333,12 @@ pub mod operations_client {
         /// makes a best effort to cancel the operation, but success is not
         /// guaranteed.  If the server doesn't support this method, it returns
         /// `google.rpc.Code.UNIMPLEMENTED`.  Clients can use
-        /// [Operations.GetOperation][google.longrunning.Operations.GetOperation] or
+        /// \[Operations.GetOperation\]\[google.longrunning.Operations.GetOperation\] or
         /// other methods to check whether the cancellation succeeded or whether the
         /// operation completed despite cancellation. On successful cancellation,
         /// the operation is not deleted; instead, it becomes an operation with
-        /// an [Operation.error][google.longrunning.Operation.error] value with a
-        /// [google.rpc.Status.code][google.rpc.Status.code] of `1`, corresponding to
+        /// an \[Operation.error\]\[google.longrunning.Operation.error\] value with a
+        /// \[google.rpc.Status.code\]\[google.rpc.Status.code\] of `1`, corresponding to
         /// `Code.CANCELLED`.
         pub async fn cancel_operation(
             &mut self,
@@ -350,7 +352,7 @@ pub mod operations_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.longrunning.Operations/CancelOperation",
             );
@@ -382,7 +384,7 @@ pub mod operations_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.longrunning.Operations/WaitOperation",
             );

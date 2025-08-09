@@ -15,5 +15,5 @@ doctest = false
 [dependencies]
 google-cloud-googleapis = { package = "gcloud-googleapis", version = "1.2.0", path = "../../googleapis" }
 google-cloud-gax = { package = "gcloud-gax", version = "1.2.0", path = "../gax" }
-tonic = { version = "0.13", default-features = false }
-prost = "0.13"
+tonic = { version = "0.14", default-features = false }
+prost = "0.14"
