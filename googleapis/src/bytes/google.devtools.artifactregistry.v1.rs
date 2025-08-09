@@ -2,10 +2,11 @@
 /// DockerImage represents a docker artifact.
 /// The following fields are returned as untyped metadata in the Version
 /// resource, using camelcase keys (i.e. metadata.imageSizeBytes):
+///
 /// * imageSizeBytes
 /// * mediaType
 /// * buildTime
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DockerImage {
     /// Required. registry_location, project_id, repository_name and image id forms
     /// a unique image
@@ -53,7 +54,7 @@ pub struct DockerImage {
     pub update_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// The request to list docker images.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListDockerImagesRequest {
     /// Required. The name of the parent resource whose docker images will be
     /// listed.
@@ -81,14 +82,14 @@ pub struct ListDockerImagesResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request to get docker images.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetDockerImageRequest {
     /// Required. The name of the docker images.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// MavenArtifact represents a maven artifact.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MavenArtifact {
     /// Required. registry_location, project_id, repository_name and maven_artifact
     /// forms a unique artifact For example,
@@ -124,7 +125,7 @@ pub struct MavenArtifact {
     pub update_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// The request to list maven artifacts.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListMavenArtifactsRequest {
     /// Required. The name of the parent resource whose maven artifacts will be
     /// listed.
@@ -149,14 +150,14 @@ pub struct ListMavenArtifactsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request to get maven artifacts.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetMavenArtifactRequest {
     /// Required. The name of the maven artifact.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// NpmPackage represents an npm artifact.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct NpmPackage {
     /// Required. registry_location, project_id, repository_name and npm_package
     /// forms a unique package For example,
@@ -184,7 +185,7 @@ pub struct NpmPackage {
     pub update_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// The request to list npm packages.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListNpmPackagesRequest {
     /// Required. The name of the parent resource whose npm packages will be
     /// listed.
@@ -209,14 +210,14 @@ pub struct ListNpmPackagesResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request to get npm packages.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetNpmPackageRequest {
     /// Required. The name of the npm package.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// PythonPackage represents a python artifact.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct PythonPackage {
     /// Required. registry_location, project_id, repository_name and python_package
     /// forms a unique package
@@ -248,7 +249,7 @@ pub struct PythonPackage {
     pub update_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// The request to list python packages.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListPythonPackagesRequest {
     /// Required. The name of the parent resource whose python packages will be
     /// listed.
@@ -273,14 +274,14 @@ pub struct ListPythonPackagesResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request to get python packages.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetPythonPackageRequest {
     /// Required. The name of the python package.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// A detailed representation of a Yum artifact.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct YumArtifact {
     /// Output only. The Artifact Registry resource name of the artifact.
     #[prost(string, tag = "1")]
@@ -342,7 +343,7 @@ pub mod yum_artifact {
     }
 }
 /// Google Cloud Storage location where the artifacts currently reside.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ImportYumArtifactsGcsSource {
     /// Cloud Storage paths URI (e.g., gs://my_bucket//my_object).
     #[prost(string, repeated, tag = "1")]
@@ -352,7 +353,7 @@ pub struct ImportYumArtifactsGcsSource {
     pub use_wildcards: bool,
 }
 /// The request to import new yum artifacts.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ImportYumArtifactsRequest {
     /// The name of the parent resource where the artifacts will be imported.
     #[prost(string, tag = "1")]
@@ -364,7 +365,7 @@ pub struct ImportYumArtifactsRequest {
 /// Nested message and enum types in `ImportYumArtifactsRequest`.
 pub mod import_yum_artifacts_request {
     /// The source location of the package binaries.
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Source {
         /// Google Cloud Storage location where input content is located.
         #[prost(message, tag = "2")]
@@ -384,7 +385,7 @@ pub struct ImportYumArtifactsErrorInfo {
 /// Nested message and enum types in `ImportYumArtifactsErrorInfo`.
 pub mod import_yum_artifacts_error_info {
     /// The source that was not imported.
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Source {
         /// Google Cloud Storage location requested.
         #[prost(message, tag = "1")]
@@ -402,10 +403,10 @@ pub struct ImportYumArtifactsResponse {
     pub errors: ::prost::alloc::vec::Vec<ImportYumArtifactsErrorInfo>,
 }
 /// The operation metadata for importing artifacts.
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ImportYumArtifactsMetadata {}
 /// The Artifact Registry VPC SC config that apply to a Project.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct VpcscConfig {
     /// The name of the project's VPC SC Config.
     ///
@@ -472,14 +473,14 @@ pub mod vpcsc_config {
     }
 }
 /// Gets the VPC SC config for a project.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetVpcscConfigRequest {
     /// Required. The name of the VPCSCConfig resource.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// Sets the VPCSC config of the project.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct UpdateVpcscConfigRequest {
     /// The project config.
     #[prost(message, optional, tag = "1")]
@@ -491,7 +492,7 @@ pub struct UpdateVpcscConfigRequest {
 /// A detailed representation of an Apt artifact. Information in the record
 /// is derived from the archive's control file.
 /// See <https://www.debian.org/doc/debian-policy/ch-controlfields.html>
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct AptArtifact {
     /// Output only. The Artifact Registry resource name of the artifact.
     #[prost(string, tag = "1")]
@@ -559,7 +560,7 @@ pub mod apt_artifact {
     }
 }
 /// Google Cloud Storage location where the artifacts currently reside.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ImportAptArtifactsGcsSource {
     /// Cloud Storage paths URI (e.g., gs://my_bucket//my_object).
     #[prost(string, repeated, tag = "1")]
@@ -569,7 +570,7 @@ pub struct ImportAptArtifactsGcsSource {
     pub use_wildcards: bool,
 }
 /// The request to import new apt artifacts.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ImportAptArtifactsRequest {
     /// The name of the parent resource where the artifacts will be imported.
     #[prost(string, tag = "1")]
@@ -581,7 +582,7 @@ pub struct ImportAptArtifactsRequest {
 /// Nested message and enum types in `ImportAptArtifactsRequest`.
 pub mod import_apt_artifacts_request {
     /// The source location of the package binaries.
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Source {
         /// Google Cloud Storage location where input content is located.
         #[prost(message, tag = "2")]
@@ -601,7 +602,7 @@ pub struct ImportAptArtifactsErrorInfo {
 /// Nested message and enum types in `ImportAptArtifactsErrorInfo`.
 pub mod import_apt_artifacts_error_info {
     /// The source that was not imported.
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Source {
         /// Google Cloud Storage location requested.
         #[prost(message, tag = "1")]
@@ -619,10 +620,10 @@ pub struct ImportAptArtifactsResponse {
     pub errors: ::prost::alloc::vec::Vec<ImportAptArtifactsErrorInfo>,
 }
 /// The operation metadata for importing artifacts.
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ImportAptArtifactsMetadata {}
 /// A hash of file content.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Hash {
     /// The algorithm used to compute the hash value.
     #[prost(enumeration = "hash::HashType", tag = "1")]
@@ -712,7 +713,7 @@ pub struct File {
     >,
 }
 /// The request to list files.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListFilesRequest {
     /// Required. The name of the repository whose files will be listed. For
     /// example: "projects/p1/locations/us-central1/repositories/repo1
@@ -721,53 +722,53 @@ pub struct ListFilesRequest {
     /// An expression for filtering the results of the request. Filter rules are
     /// case insensitive. The fields eligible for filtering are:
     ///
-    ///    * `name`
-    ///    * `owner`
-    ///    * `annotations`
+    /// * `name`
+    /// * `owner`
+    /// * `annotations`
     ///
     /// Examples of using a filter:
     ///
-    ///   To filter the results of your request to files with the name `my_file.txt`
-    ///   in project `my-project` in the `us-central` region, in repository
-    ///   `my-repo`, append the following filter expression to your request:
+    /// To filter the results of your request to files with the name `my_file.txt`
+    /// in project `my-project` in the `us-central` region, in repository
+    /// `my-repo`, append the following filter expression to your request:
     ///
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/files/my-file.txt"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/files/my-file.txt"`
     ///
-    ///   You can also use wildcards to match any number of characters before or
-    ///   after the value:
+    /// You can also use wildcards to match any number of characters before or
+    /// after the value:
     ///
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/files/my-*"`
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/files/*file.txt"`
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/files/*file*"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/files/my-*"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/files/*file.txt"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/files/*file*"`
     ///
-    ///   To filter the results of your request to files owned by the version `1.0`
-    ///   in package `pkg1`, append the following filter expression to your request:
+    /// To filter the results of your request to files owned by the version `1.0`
+    /// in package `pkg1`, append the following filter expression to your request:
     ///
-    ///    * `owner="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package/versions/1.0"`
+    /// * `owner="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package/versions/1.0"`
     ///
-    ///   To filter the results of your request to files with the annotation
-    ///   key-value pair \[`external_link`: `external_link_value`\], append the
-    ///   following filter expression to your request:
+    /// To filter the results of your request to files with the annotation
+    /// key-value pair \[`external_link`: `external_link_value`\], append the
+    /// following filter expression to your request:
     ///
-    ///    * `"annotations.external_link:external_link_value"`
+    /// * `"annotations.external_link:external_link_value"`
     ///
-    ///   To filter just for a specific annotation key `external_link`, append the
-    ///   following filter expression to your request:
+    /// To filter just for a specific annotation key `external_link`, append the
+    /// following filter expression to your request:
     ///
-    ///    * `"annotations.external_link"`
+    /// * `"annotations.external_link"`
     ///
-    ///   If the annotation key or value contains special characters, you can escape
-    ///   them by surrounding the value with backticks. For example, to filter the
-    ///   results of your request to files with the annotation key-value pair
-    ///   \[`external.link`:`<https://example.com/my-file`\],> append the following
-    ///   filter expression to your request:
+    /// If the annotation key or value contains special characters, you can escape
+    /// them by surrounding the value with backticks. For example, to filter the
+    /// results of your request to files with the annotation key-value pair
+    /// \[`external.link`:`<https://example.com/my-file`\],> append the following
+    /// filter expression to your request:
     ///
-    ///    * `` "annotations.`external.link`:`<https://example.com/my-file`"> ``
+    /// * ``"annotations.`external.link`:`<https://example.com/my-file`"``>
     ///
-    ///   You can also filter with annotations with a wildcard to
-    ///   match any number of characters before or after the value:
+    /// You can also filter with annotations with a wildcard to
+    /// match any number of characters before or after the value:
     ///
-    ///    * `` "annotations.*_link:`*example.com*`" ``
+    /// * ``"annotations.*_link:`*example.com*`"``
     #[prost(string, tag = "4")]
     pub filter: ::prost::alloc::string::String,
     /// The maximum number of files to return. Maximum page size is 1,000.
@@ -792,14 +793,14 @@ pub struct ListFilesResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request to retrieve a file.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetFileRequest {
     /// Required. The name of the file to retrieve.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// The request to delete a file.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteFileRequest {
     /// Required. The name of the file to delete.
     #[prost(string, tag = "1")]
@@ -843,7 +844,7 @@ pub struct Package {
     >,
 }
 /// The request to list packages.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListPackagesRequest {
     /// Required. The name of the parent resource whose packages will be listed.
     #[prost(string, tag = "1")]
@@ -857,48 +858,48 @@ pub struct ListPackagesRequest {
     /// Optional. An expression for filtering the results of the request. Filter
     /// rules are case insensitive. The fields eligible for filtering are:
     ///
-    ///    * `name`
-    ///    * `annotations`
+    /// * `name`
+    /// * `annotations`
     ///
     /// Examples of using a filter:
     ///
-    ///   To filter the results of your request to packages with the name
-    ///   `my-package` in project `my-project` in the `us-central` region, in
-    ///   repository `my-repo`, append the following filter expression to your
-    ///   request:
+    /// To filter the results of your request to packages with the name
+    /// `my-package` in project `my-project` in the `us-central` region, in
+    /// repository `my-repo`, append the following filter expression to your
+    /// request:
     ///
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package"`
     ///
-    ///   You can also use wildcards to match any number of characters before or
-    ///   after the value:
+    /// You can also use wildcards to match any number of characters before or
+    /// after the value:
     ///
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-*"`
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/*package"`
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/*pack*"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-*"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/*package"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/*pack*"`
     ///
-    ///   To filter the results of your request to packages with the annotation
-    ///   key-value pair \[`external_link`: `external_link_value`\], append the
-    ///   following filter expression to your request":
+    /// To filter the results of your request to packages with the annotation
+    /// key-value pair \[`external_link`: `external_link_value`\], append the
+    /// following filter expression to your request":
     ///
-    ///    * `"annotations.external_link:external_link_value"`
+    /// * `"annotations.external_link:external_link_value"`
     ///
-    ///   To filter the results just for a specific annotation key `external_link`,
-    ///   append the following filter expression to your request:
+    /// To filter the results just for a specific annotation key `external_link`,
+    /// append the following filter expression to your request:
     ///
-    ///    * `"annotations.external_link"`
+    /// * `"annotations.external_link"`
     ///
-    ///   If the annotation key or value contains special characters, you can escape
-    ///   them by surrounding the value with backticks. For example, to filter the
-    ///   results of your request to packages with the annotation key-value pair
-    ///   \[`external.link`:`<https://example.com/my-package`\],> append the following
-    ///   filter expression to your request:
+    /// If the annotation key or value contains special characters, you can escape
+    /// them by surrounding the value with backticks. For example, to filter the
+    /// results of your request to packages with the annotation key-value pair
+    /// \[`external.link`:`<https://example.com/my-package`\],> append the following
+    /// filter expression to your request:
     ///
-    ///    * `` "annotations.`external.link`:`<https://example.com/my-package`"> ``
+    /// * ``"annotations.`external.link`:`<https://example.com/my-package`"``>
     ///
-    ///   You can also filter with annotations with a wildcard to
-    ///   match any number of characters before or after the value:
+    /// You can also filter with annotations with a wildcard to
+    /// match any number of characters before or after the value:
     ///
-    ///    * `` "annotations.*_link:`*example.com*`" ``
+    /// * ``"annotations.*_link:`*example.com*`"``
     #[prost(string, tag = "4")]
     pub filter: ::prost::alloc::string::String,
     /// Optional. The field to order the results by.
@@ -917,14 +918,14 @@ pub struct ListPackagesResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request to retrieve a package.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetPackageRequest {
     /// Required. The name of the package to retrieve.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// The request to delete a package.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeletePackageRequest {
     /// Required. The name of the package to delete.
     #[prost(string, tag = "1")]
@@ -943,7 +944,7 @@ pub struct UpdatePackageRequest {
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
 /// Artifact policy configuration for the repository contents.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct UpstreamPolicy {
     /// The user-provided ID of the upstream policy.
     #[prost(string, tag = "1")]
@@ -959,7 +960,7 @@ pub struct UpstreamPolicy {
 /// CleanupPolicyCondition is a set of conditions attached to a CleanupPolicy.
 /// If multiple entries are set, all must be satisfied for the condition to be
 /// satisfied.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CleanupPolicyCondition {
     /// Match versions by tag status.
     #[prost(enumeration = "cleanup_policy_condition::TagState", optional, tag = "2")]
@@ -1032,7 +1033,7 @@ pub mod cleanup_policy_condition {
 }
 /// CleanupPolicyMostRecentVersions is an alternate condition of a CleanupPolicy
 /// for retaining a minimum number of versions.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CleanupPolicyMostRecentVersions {
     /// List of package name prefixes that will apply this rule.
     #[prost(string, repeated, tag = "1")]
@@ -1042,7 +1043,7 @@ pub struct CleanupPolicyMostRecentVersions {
     pub keep_count: ::core::option::Option<i32>,
 }
 /// Artifact policy configuration for repository cleanup policies.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CleanupPolicy {
     /// The user-provided ID of the cleanup policy.
     #[prost(string, tag = "1")]
@@ -1098,7 +1099,7 @@ pub mod cleanup_policy {
             }
         }
     }
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum ConditionType {
         /// Policy condition for matching versions.
         #[prost(message, tag = "2")]
@@ -1118,7 +1119,7 @@ pub struct VirtualRepositoryConfig {
     pub upstream_policies: ::prost::alloc::vec::Vec<UpstreamPolicy>,
 }
 /// Remote repository configuration.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct RemoteRepositoryConfig {
     /// The description of the remote source.
     #[prost(string, tag = "1")]
@@ -1142,7 +1143,7 @@ pub struct RemoteRepositoryConfig {
 /// Nested message and enum types in `RemoteRepositoryConfig`.
 pub mod remote_repository_config {
     /// The credentials to access the remote repository.
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct UpstreamCredentials {
         #[prost(oneof = "upstream_credentials::Credentials", tags = "1")]
         pub credentials: ::core::option::Option<upstream_credentials::Credentials>,
@@ -1150,7 +1151,7 @@ pub mod remote_repository_config {
     /// Nested message and enum types in `UpstreamCredentials`.
     pub mod upstream_credentials {
         /// Username and password credentials.
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct UsernamePasswordCredentials {
             /// The username to access the remote repository.
             #[prost(string, tag = "1")]
@@ -1161,7 +1162,7 @@ pub mod remote_repository_config {
             #[prost(string, tag = "2")]
             pub password_secret_version: ::prost::alloc::string::String,
         }
-        #[derive(Clone, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum Credentials {
             /// Use username and password to access the remote repository.
             #[prost(message, tag = "1")]
@@ -1169,7 +1170,7 @@ pub mod remote_repository_config {
         }
     }
     /// Configuration for a Docker remote repository.
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct DockerRepository {
         /// Address of the remote repository.
         #[prost(oneof = "docker_repository::Upstream", tags = "1, 3")]
@@ -1178,7 +1179,7 @@ pub mod remote_repository_config {
     /// Nested message and enum types in `DockerRepository`.
     pub mod docker_repository {
         /// Customer-specified publicly available remote repository.
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct CustomRepository {
             /// An http/https uri reference to the custom remote repository, for ex:
             /// "<https://registry-1.docker.io".>
@@ -1226,7 +1227,7 @@ pub mod remote_repository_config {
             }
         }
         /// Address of the remote repository.
-        #[derive(Clone, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum Upstream {
             /// One of the publicly available Docker repositories supported by Artifact
             /// Registry.
@@ -1238,7 +1239,7 @@ pub mod remote_repository_config {
         }
     }
     /// Configuration for a Maven remote repository.
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct MavenRepository {
         /// Address of the remote repository.
         #[prost(oneof = "maven_repository::Upstream", tags = "1, 3")]
@@ -1247,7 +1248,7 @@ pub mod remote_repository_config {
     /// Nested message and enum types in `MavenRepository`.
     pub mod maven_repository {
         /// Customer-specified publicly available remote repository.
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct CustomRepository {
             /// An http/https uri reference to the upstream remote repository, for ex:
             /// "<https://my.maven.registry/".>
@@ -1295,7 +1296,7 @@ pub mod remote_repository_config {
             }
         }
         /// Address of the remote repository.
-        #[derive(Clone, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum Upstream {
             /// One of the publicly available Maven repositories supported by Artifact
             /// Registry.
@@ -1307,7 +1308,7 @@ pub mod remote_repository_config {
         }
     }
     /// Configuration for a Npm remote repository.
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct NpmRepository {
         /// Address of the remote repository
         #[prost(oneof = "npm_repository::Upstream", tags = "1, 3")]
@@ -1316,7 +1317,7 @@ pub mod remote_repository_config {
     /// Nested message and enum types in `NpmRepository`.
     pub mod npm_repository {
         /// Customer-specified publicly available remote repository.
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct CustomRepository {
             /// An http/https uri reference to the upstream remote repository, for ex:
             /// "<https://my.npm.registry/".>
@@ -1363,7 +1364,7 @@ pub mod remote_repository_config {
             }
         }
         /// Address of the remote repository
-        #[derive(Clone, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum Upstream {
             /// One of the publicly available Npm repositories supported by Artifact
             /// Registry.
@@ -1375,7 +1376,7 @@ pub mod remote_repository_config {
         }
     }
     /// Configuration for a Python remote repository.
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct PythonRepository {
         /// Address of the remote repository.
         #[prost(oneof = "python_repository::Upstream", tags = "1, 3")]
@@ -1384,7 +1385,7 @@ pub mod remote_repository_config {
     /// Nested message and enum types in `PythonRepository`.
     pub mod python_repository {
         /// Customer-specified publicly available remote repository.
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct CustomRepository {
             /// An http/https uri reference to the upstream remote repository, for ex:
             /// "<https://my.python.registry/".>
@@ -1431,7 +1432,7 @@ pub mod remote_repository_config {
             }
         }
         /// Address of the remote repository.
-        #[derive(Clone, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum Upstream {
             /// One of the publicly available Python repositories supported by Artifact
             /// Registry.
@@ -1443,7 +1444,7 @@ pub mod remote_repository_config {
         }
     }
     /// Configuration for an Apt remote repository.
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct AptRepository {
         /// Address of the remote repository.
         #[prost(oneof = "apt_repository::Upstream", tags = "1, 3")]
@@ -1453,7 +1454,7 @@ pub mod remote_repository_config {
     pub mod apt_repository {
         /// Publicly available Apt repositories constructed from a common repository
         /// base and a custom repository path.
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct PublicRepository {
             /// A common public repository base for Apt.
             #[prost(enumeration = "public_repository::RepositoryBase", tag = "1")]
@@ -1513,7 +1514,7 @@ pub mod remote_repository_config {
             }
         }
         /// Customer-specified publicly available remote repository.
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct CustomRepository {
             /// An http/https uri reference to the upstream remote repository, for ex:
             /// "<https://my.apt.registry/".>
@@ -1521,7 +1522,7 @@ pub mod remote_repository_config {
             pub uri: ::prost::alloc::string::String,
         }
         /// Address of the remote repository.
-        #[derive(Clone, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum Upstream {
             /// One of the publicly available Apt repositories supported by Artifact
             /// Registry.
@@ -1533,7 +1534,7 @@ pub mod remote_repository_config {
         }
     }
     /// Configuration for a Yum remote repository.
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct YumRepository {
         /// Address of the remote repository.
         #[prost(oneof = "yum_repository::Upstream", tags = "1, 3")]
@@ -1543,7 +1544,7 @@ pub mod remote_repository_config {
     pub mod yum_repository {
         /// Publicly available Yum repositories constructed from a common repository
         /// base and a custom repository path.
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct PublicRepository {
             /// A common public repository base for Yum.
             #[prost(enumeration = "public_repository::RepositoryBase", tag = "1")]
@@ -1615,7 +1616,7 @@ pub mod remote_repository_config {
             }
         }
         /// Customer-specified publicly available remote repository.
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct CustomRepository {
             /// An http/https uri reference to the upstream remote repository, for ex:
             /// "<https://my.yum.registry/".>
@@ -1623,7 +1624,7 @@ pub mod remote_repository_config {
             pub uri: ::prost::alloc::string::String,
         }
         /// Address of the remote repository.
-        #[derive(Clone, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum Upstream {
             /// One of the publicly available Yum repositories supported by Artifact
             /// Registry.
@@ -1635,14 +1636,14 @@ pub mod remote_repository_config {
         }
     }
     /// Common remote repository settings type.
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct CommonRemoteRepository {
         /// Required. A common public repository base for remote repository.
         #[prost(string, tag = "1")]
         pub uri: ::prost::alloc::string::String,
     }
     /// Settings specific to the remote repository.
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum RemoteSource {
         /// Specific settings for a Docker remote repository.
         #[prost(message, tag = "2")]
@@ -1718,7 +1719,7 @@ pub struct Repository {
     >,
     /// Output only. The size, in bytes, of all artifact storage in this
     /// repository. Repositories that are generally available or in public preview
-    ///   use this to calculate storage costs.
+    /// use this to calculate storage costs.
     #[prost(int64, tag = "13")]
     pub size_bytes: i64,
     /// Output only. If set, the repository satisfies physical zone separation.
@@ -1758,7 +1759,7 @@ pub mod repository {
     /// MavenRepositoryConfig is maven related repository details.
     /// Provides additional configuration details for repositories of the maven
     /// format type.
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct MavenRepositoryConfig {
         /// The repository with this flag will allow publishing
         /// the same snapshot versions.
@@ -1819,7 +1820,7 @@ pub mod repository {
     /// DockerRepositoryConfig is docker related repository details.
     /// Provides additional configuration details for repositories of the docker
     /// format type.
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct DockerRepositoryConfig {
         /// The repository which enabled this flag prevents all tags from being
         /// modified, moved or deleted. This does not prevent tags from being
@@ -1829,7 +1830,7 @@ pub mod repository {
     }
     /// Config on whether to perform vulnerability scanning for resources in this
     /// repository, as well as output fields describing current state.
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct VulnerabilityScanningConfig {
         /// Optional. Config for whether this repository has vulnerability scanning
         /// disabled.
@@ -2067,7 +2068,7 @@ pub mod repository {
         }
     }
     /// Repository-specific configurations.
-    #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum FormatConfig {
         /// Maven repository config contains repository level configuration
         /// for the repositories of maven type.
@@ -2091,7 +2092,7 @@ pub mod repository {
     }
 }
 /// The request to list repositories.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListRepositoriesRequest {
     /// Required. The name of the parent resource whose repositories will be
     /// listed.
@@ -2106,22 +2107,22 @@ pub struct ListRepositoriesRequest {
     /// Optional. An expression for filtering the results of the request. Filter
     /// rules are case insensitive. The fields eligible for filtering are:
     ///
-    ///    * `name`
+    /// * `name`
     ///
-    ///   Examples of using a filter:
+    /// Examples of using a filter:
     ///
     /// To filter the results of your request to repositories with the name
     /// `my-repo` in project `my-project` in the `us-central` region, append the
     /// following filter expression to your request:
     ///
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo"`
     ///
-    ///   You can also use wildcards to match any number of characters before or
-    ///   after the value:
+    /// You can also use wildcards to match any number of characters before or
+    /// after the value:
     ///
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-*"`
-    ///    * `name="projects/my-project/locations/us-central1/repositories/*repo"`
-    ///    * `name="projects/my-project/locations/us-central1/repositories/*repo*"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-*"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/*repo"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/*repo*"`
     #[prost(string, tag = "4")]
     pub filter: ::prost::alloc::string::String,
     /// Optional. The field to order the results by.
@@ -2140,7 +2141,7 @@ pub struct ListRepositoriesResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request to retrieve a repository.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetRepositoryRequest {
     /// Required. The name of the repository to retrieve.
     #[prost(string, tag = "1")]
@@ -2173,7 +2174,7 @@ pub struct UpdateRepositoryRequest {
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
 /// The request to delete a repository.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteRepositoryRequest {
     /// Required. The name of the repository to delete.
     #[prost(string, tag = "1")]
@@ -2228,7 +2229,7 @@ pub struct Attachment {
     pub oci_version_name: ::prost::alloc::string::String,
 }
 /// The request to list attachments.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListAttachmentsRequest {
     /// Required. The name of the parent resource whose attachments will be listed.
     #[prost(string, tag = "1")]
@@ -2236,9 +2237,9 @@ pub struct ListAttachmentsRequest {
     /// Optional. An expression for filtering the results of the request. Filter
     /// rules are case insensitive. The fields eligible for filtering are:
     ///
-    ///    * `target`
-    ///    * `type`
-    ///    * `attachment_namespace`
+    /// * `target`
+    /// * `type`
+    /// * `attachment_namespace`
     #[prost(string, tag = "2")]
     pub filter: ::prost::alloc::string::String,
     /// The maximum number of attachments to return. Maximum page size is 1,000.
@@ -2260,7 +2261,7 @@ pub struct ListAttachmentsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request to retrieve an attachment.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetAttachmentRequest {
     /// Required. The name of the attachment to retrieve.
     #[prost(string, tag = "1")]
@@ -2281,7 +2282,7 @@ pub struct CreateAttachmentRequest {
     pub attachment: ::core::option::Option<Attachment>,
 }
 /// The request to delete an attachment.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteAttachmentRequest {
     /// Required. The name of the attachment to delete.
     #[prost(string, tag = "1")]
@@ -2290,7 +2291,7 @@ pub struct DeleteAttachmentRequest {
 /// A rule defines the deny or allow action of the operation it applies to and
 /// the conditions required for the rule to apply. You can set one rule for an
 /// entire repository and one rule for each package within.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Rule {
     /// The name of the rule, for example:
     /// `projects/p1/locations/us-central1/repositories/repo1/rules/rule1`.
@@ -2396,7 +2397,7 @@ pub mod rule {
     }
 }
 /// The request to list rules.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListRulesRequest {
     /// Required. The name of the parent repository whose rules will be listed.
     /// For example:
@@ -2422,14 +2423,14 @@ pub struct ListRulesResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request to retrieve a rule.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetRuleRequest {
     /// Required. The name of the rule to retrieve.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// The request to create a new rule.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CreateRuleRequest {
     /// Required. The name of the parent resource where the rule will be created.
     #[prost(string, tag = "1")]
@@ -2442,7 +2443,7 @@ pub struct CreateRuleRequest {
     pub rule: ::core::option::Option<Rule>,
 }
 /// The request to update a rule.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct UpdateRuleRequest {
     /// The rule that replaces the resource on the server.
     #[prost(message, optional, tag = "1")]
@@ -2454,14 +2455,14 @@ pub struct UpdateRuleRequest {
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
 /// The request to delete a rule.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteRuleRequest {
     /// Required. The name of the rule to delete.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// The Artifact Registry settings that apply to a Project.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ProjectSettings {
     /// The name of the project's settings.
     ///
@@ -2555,14 +2556,14 @@ pub mod project_settings {
     }
 }
 /// Gets the redirection status for a project.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetProjectSettingsRequest {
     /// Required. The name of the projectSettings resource.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// Sets the settings of the project.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct UpdateProjectSettingsRequest {
     /// The project settings.
     #[prost(message, optional, tag = "2")]
@@ -2573,12 +2574,12 @@ pub struct UpdateProjectSettingsRequest {
 }
 /// Tags point to a version and represent an alternative name that can be used
 /// to access the version.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Tag {
     /// The name of the tag, for example:
     /// "projects/p1/locations/us-central1/repositories/repo1/packages/pkg1/tags/tag1".
     /// If the package part contains slashes, the slashes are escaped.
-    /// The tag part can only have characters in \[a-zA-Z0-9\-._~:@\], anything else
+    /// The tag part can only have characters in \[a-zA-Z0-9-.\_~:@\], anything else
     /// must be URL encoded.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
@@ -2590,7 +2591,7 @@ pub struct Tag {
     pub version: ::prost::alloc::string::String,
 }
 /// The request to list tags.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListTagsRequest {
     /// The name of the parent package whose tags will be listed.
     /// For example:
@@ -2600,30 +2601,30 @@ pub struct ListTagsRequest {
     /// An expression for filtering the results of the request. Filter rules are
     /// case insensitive. The fields eligible for filtering are:
     ///
-    ///    * `name`
-    ///    * `version`
+    /// * `name`
+    /// * `version`
     ///
-    ///   Examples of using a filter:
+    /// Examples of using a filter:
     ///
-    ///   To filter the results of your request to tags with the name `my-tag` in
-    ///   package `my-package` in repository `my-repo` in project "`y-project` in
-    ///   the us-central region, append the following filter expression to your
-    ///   request:
+    /// To filter the results of your request to tags with the name `my-tag` in
+    /// package `my-package` in repository `my-repo` in project "`y-project` in
+    /// the us-central region, append the following filter expression to your
+    /// request:
     ///
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package/tags/my-tag"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package/tags/my-tag"`
     ///
-    ///   You can also use wildcards to match any number of characters before or
-    ///   after the value:
+    /// You can also use wildcards to match any number of characters before or
+    /// after the value:
     ///
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package/tags/my*"`
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package/tags/*tag"`
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package/tags/*tag*"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package/tags/my*"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package/tags/*tag"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package/tags/*tag*"`
     ///
-    ///   To filter the results of your request to tags applied to the version
-    ///   `1.0` in package `my-package`, append the following filter expression to
-    ///   your request:
+    /// To filter the results of your request to tags applied to the version
+    /// `1.0` in package `my-package`, append the following filter expression to
+    /// your request:
     ///
-    ///    * `version="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package/versions/1.0"`
+    /// * `version="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package/versions/1.0"`
     #[prost(string, tag = "4")]
     pub filter: ::prost::alloc::string::String,
     /// The maximum number of tags to return. Maximum page size is 1,000.
@@ -2645,14 +2646,14 @@ pub struct ListTagsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request to retrieve a tag.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetTagRequest {
     /// The name of the tag to retrieve.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// The request to create a new tag.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CreateTagRequest {
     /// The name of the parent resource where the tag will be created.
     #[prost(string, tag = "1")]
@@ -2665,7 +2666,7 @@ pub struct CreateTagRequest {
     pub tag: ::core::option::Option<Tag>,
 }
 /// The request to create or update a tag.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct UpdateTagRequest {
     /// The tag that replaces the resource on the server.
     #[prost(message, optional, tag = "1")]
@@ -2677,7 +2678,7 @@ pub struct UpdateTagRequest {
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
 /// The request to delete a tag.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteTagRequest {
     /// The name of the tag to delete.
     #[prost(string, tag = "1")]
@@ -2710,8 +2711,8 @@ pub struct Version {
     /// Output only. Repository-specific Metadata stored against this version.
     /// The fields returned are defined by the underlying repository-specific
     /// resource. Currently, the resources could be:
-    /// [DockerImage][google.devtools.artifactregistry.v1.DockerImage]
-    /// [MavenArtifact][google.devtools.artifactregistry.v1.MavenArtifact]
+    /// \[DockerImage\]\[google.devtools.artifactregistry.v1.DockerImage\]
+    /// \[MavenArtifact\]\[google.devtools.artifactregistry.v1.MavenArtifact\]
     #[prost(message, optional, tag = "8")]
     pub metadata: ::core::option::Option<::prost_types::Struct>,
     /// Optional. Client specified annotations.
@@ -2722,7 +2723,7 @@ pub struct Version {
     >,
 }
 /// The request to list versions.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListVersionsRequest {
     /// The name of the parent resource whose versions will be listed.
     #[prost(string, tag = "1")]
@@ -2742,48 +2743,48 @@ pub struct ListVersionsRequest {
     /// Optional. An expression for filtering the results of the request. Filter
     /// rules are case insensitive. The fields eligible for filtering are:
     ///
-    ///    * `name`
-    ///    * `annotations`
+    /// * `name`
+    /// * `annotations`
     ///
-    ///   Examples of using a filter:
+    /// Examples of using a filter:
     ///
-    ///   To filter the results of your request to versions with the name
-    ///   `my-version` in project `my-project` in the `us-central` region, in
-    ///   repository `my-repo`, append the following filter expression to your
-    ///   request:
+    /// To filter the results of your request to versions with the name
+    /// `my-version` in project `my-project` in the `us-central` region, in
+    /// repository `my-repo`, append the following filter expression to your
+    /// request:
     ///
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package/versions/my-version"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package/versions/my-version"`
     ///
-    ///   You can also use wildcards to match any number of characters before or
-    ///   after the value:
+    /// You can also use wildcards to match any number of characters before or
+    /// after the value:
     ///
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package/versions/*version"`
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package/versions/my*"`
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package/versions/*version*"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package/versions/*version"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package/versions/my*"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-package/versions/*version*"`
     ///
-    ///   To filter the results of your request to versions with the annotation
-    ///   key-value pair \[`external_link`: `external_link_value`\], append the
-    ///   following filter expression to your request:
+    /// To filter the results of your request to versions with the annotation
+    /// key-value pair \[`external_link`: `external_link_value`\], append the
+    /// following filter expression to your request:
     ///
-    ///    * `"annotations.external_link:external_link_value"`
+    /// * `"annotations.external_link:external_link_value"`
     ///
-    ///   To filter just for a specific annotation key `external_link`, append the
-    ///   following filter expression to your request:
+    /// To filter just for a specific annotation key `external_link`, append the
+    /// following filter expression to your request:
     ///
-    ///    * `"annotations.external_link"`
+    /// * `"annotations.external_link"`
     ///
-    ///   If the annotation key or value contains special characters, you can escape
-    ///   them by surrounding the value with backticks. For example, to filter the
-    ///   results of your request to versions with the annotation key-value pair
-    ///   \[`external.link`:`<https://example.com/my-version`\],> append the following
-    ///   filter expression to your request:
+    /// If the annotation key or value contains special characters, you can escape
+    /// them by surrounding the value with backticks. For example, to filter the
+    /// results of your request to versions with the annotation key-value pair
+    /// \[`external.link`:`<https://example.com/my-version`\],> append the following
+    /// filter expression to your request:
     ///
-    ///    * `` "annotations.`external.link`:`<https://example.com/my-version`"> ``
+    /// * ``"annotations.`external.link`:`<https://example.com/my-version`"``>
     ///
-    ///   You can also filter with annotations with a wildcard to
-    ///   match any number of characters before or after the value:
+    /// You can also filter with annotations with a wildcard to
+    /// match any number of characters before or after the value:
     ///
-    ///    * `` "annotations.*_link:`*example.com*`" ``
+    /// * ``"annotations.*_link:`*example.com*`"``
     #[prost(string, tag = "6")]
     pub filter: ::prost::alloc::string::String,
 }
@@ -2799,7 +2800,7 @@ pub struct ListVersionsResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request to retrieve a version.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetVersionRequest {
     /// The name of the version to retrieve.
     #[prost(string, tag = "1")]
@@ -2809,7 +2810,7 @@ pub struct GetVersionRequest {
     pub view: i32,
 }
 /// The request to delete a version.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteVersionRequest {
     /// The name of the version to delete.
     #[prost(string, tag = "1")]
@@ -2820,7 +2821,7 @@ pub struct DeleteVersionRequest {
     pub force: bool,
 }
 /// The request to delete multiple versions across a repository.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct BatchDeleteVersionsRequest {
     /// The name of the repository holding all requested versions.
     #[prost(string, tag = "1")]
@@ -2835,7 +2836,7 @@ pub struct BatchDeleteVersionsRequest {
     pub validate_only: bool,
 }
 /// The metadata of an LRO from deleting multiple versions.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct BatchDeleteVersionsMetadata {
     /// The versions the operation failed to delete.
     #[prost(string, repeated, tag = "2")]
@@ -2889,7 +2890,7 @@ impl VersionView {
     }
 }
 /// Metadata type for longrunning-operations, currently empty.
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct OperationMetadata {}
 /// Generated client implementations.
 pub mod artifact_registry_client {
@@ -2914,7 +2915,7 @@ pub mod artifact_registry_client {
     /// * Versions, which are specific forms of a package.
     /// * Tags, which represent alternative names for versions.
     /// * Files, which contain content and are optionally associated with a Package
-    ///   or Version.
+    ///  or Version.
     #[derive(Debug, Clone)]
     pub struct ArtifactRegistryClient<T> {
         inner: tonic::client::Grpc<T>,
@@ -3011,7 +3012,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListDockerImages",
             );
@@ -3038,7 +3039,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetDockerImage",
             );
@@ -3068,7 +3069,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListMavenArtifacts",
             );
@@ -3095,7 +3096,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetMavenArtifact",
             );
@@ -3125,7 +3126,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListNpmPackages",
             );
@@ -3152,7 +3153,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetNpmPackage",
             );
@@ -3182,7 +3183,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListPythonPackages",
             );
@@ -3209,7 +3210,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetPythonPackage",
             );
@@ -3242,7 +3243,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ImportAptArtifacts",
             );
@@ -3275,7 +3276,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ImportYumArtifacts",
             );
@@ -3305,7 +3306,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListRepositories",
             );
@@ -3332,7 +3333,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetRepository",
             );
@@ -3363,7 +3364,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/CreateRepository",
             );
@@ -3390,7 +3391,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/UpdateRepository",
             );
@@ -3422,7 +3423,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/DeleteRepository",
             );
@@ -3452,7 +3453,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListPackages",
             );
@@ -3479,7 +3480,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetPackage",
             );
@@ -3510,7 +3511,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/DeletePackage",
             );
@@ -3540,7 +3541,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListVersions",
             );
@@ -3567,7 +3568,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetVersion",
             );
@@ -3598,7 +3599,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/DeleteVersion",
             );
@@ -3629,7 +3630,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/BatchDeleteVersions",
             );
@@ -3656,7 +3657,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/UpdateVersion",
             );
@@ -3686,7 +3687,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListFiles",
             );
@@ -3713,7 +3714,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetFile",
             );
@@ -3745,7 +3746,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/DeleteFile",
             );
@@ -3772,7 +3773,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/UpdateFile",
             );
@@ -3802,7 +3803,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListTags",
             );
@@ -3829,7 +3830,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetTag",
             );
@@ -3856,7 +3857,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/CreateTag",
             );
@@ -3883,7 +3884,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/UpdateTag",
             );
@@ -3910,7 +3911,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/DeleteTag",
             );
@@ -3937,7 +3938,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/CreateRule",
             );
@@ -3967,7 +3968,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListRules",
             );
@@ -3994,7 +3995,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetRule",
             );
@@ -4021,7 +4022,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/UpdateRule",
             );
@@ -4048,7 +4049,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/DeleteRule",
             );
@@ -4080,7 +4081,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/SetIamPolicy",
             );
@@ -4112,7 +4113,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetIamPolicy",
             );
@@ -4146,7 +4147,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/TestIamPermissions",
             );
@@ -4176,7 +4177,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetProjectSettings",
             );
@@ -4206,7 +4207,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/UpdateProjectSettings",
             );
@@ -4233,7 +4234,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetVPCSCConfig",
             );
@@ -4260,7 +4261,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/UpdateVPCSCConfig",
             );
@@ -4287,7 +4288,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/UpdatePackage",
             );
@@ -4317,7 +4318,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListAttachments",
             );
@@ -4344,7 +4345,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetAttachment",
             );
@@ -4375,7 +4376,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/CreateAttachment",
             );
@@ -4407,7 +4408,7 @@ pub mod artifact_registry_client {
                         format!("Service was not ready: {}", e.into()),
                     )
                 })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/DeleteAttachment",
             );

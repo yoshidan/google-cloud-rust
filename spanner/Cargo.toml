@@ -15,7 +15,7 @@ doctest = false
 
 [dependencies]
 tracing = "0.1"
-prost-types = "0.13"
+prost-types = "0.14"
 tokio = "1.32"
 time = { version="0.3", features = ["std", "macros", "formatting", "parsing"] }
 thiserror = "1.0"
