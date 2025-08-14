@@ -1,6 +1,6 @@
 [package]
 name = "gcloud-longrunning"
-version = "1.2.1"
+version = "1.3.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/foundation/longrunning"
@@ -13,7 +13,7 @@ description = "Google Cloud Platform longrunning library."
 doctest = false
 
 [dependencies]
-google-cloud-googleapis = { package = "gcloud-googleapis", version = "1.2.0", path = "../../googleapis" }
-google-cloud-gax = { package = "gcloud-gax", version = "1.2.0", path = "../gax" }
-tonic = { version = "0.13", default-features = false }
-prost = "0.13"
+google-cloud-googleapis = { package = "gcloud-googleapis", version = "1.3.0", path = "../../googleapis" }
+google-cloud-gax = { package = "gcloud-gax", version = "1.3.0", path = "../gax" }
+tonic = { version = "0.14", default-features = false }
+prost = "0.14"

@@ -5,14 +5,14 @@
 /// <https://arrow.apache.org/docs/format/Columnar.html#serialization-and-interprocess-communication-ipc>
 ///
 /// See code samples on how this message can be deserialized.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ArrowSchema {
     /// IPC serialized Arrow schema.
     #[prost(bytes = "vec", tag = "1")]
     pub serialized_schema: ::prost::alloc::vec::Vec<u8>,
 }
 /// Arrow RecordBatch.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ArrowRecordBatch {
     /// IPC-serialized Arrow RecordBatch.
     #[prost(bytes = "vec", tag = "1")]
@@ -24,7 +24,7 @@ pub struct ArrowRecordBatch {
     pub row_count: i64,
 }
 /// Contains options specific to Arrow Serialization.
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ArrowSerializationOptions {
     /// The compression codec to use for Arrow buffers in serialized record
     /// batches.
@@ -68,7 +68,7 @@ pub mod arrow_serialization_options {
     }
 }
 /// Avro schema.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct AvroSchema {
     /// Json serialized schema, as described at
     /// <https://avro.apache.org/docs/1.8.1/spec.html.>
@@ -76,7 +76,7 @@ pub struct AvroSchema {
     pub schema: ::prost::alloc::string::String,
 }
 /// Avro rows.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct AvroRows {
     /// Binary serialized rows in a block.
     #[prost(bytes = "vec", tag = "1")]
@@ -88,7 +88,7 @@ pub struct AvroRows {
     pub row_count: i64,
 }
 /// Contains options specific to Avro Serialization.
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct AvroSerializationOptions {
     /// Enable displayName attribute in Avro schema.
     ///
@@ -118,7 +118,7 @@ pub struct ProtoSchema {
     #[prost(message, optional, tag = "1")]
     pub proto_descriptor: ::core::option::Option<::prost_types::DescriptorProto>,
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ProtoRows {
     /// A sequence of rows serialized as a Protocol Buffer.
     ///
@@ -140,7 +140,7 @@ pub struct TableSchema {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TableFieldSchema {
     /// Required. The field name. The name must contain only letters (a-z, A-Z),
-    /// numbers (0-9), or underscores (_), and must start with a letter or
+    /// numbers (0-9), or underscores (\_), and must start with a letter or
     /// underscore. The maximum length is 128 characters.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
@@ -184,23 +184,23 @@ pub struct TableFieldSchema {
     /// Values of this NUMERIC or BIGNUMERIC field must be in this range when:
     ///
     /// * Precision (P) and scale (S) are specified:
-    ///    \[-10^(P-S) + 10^(-S), 10^(P-S) - 10^(-S)\]
+    ///   \[-10^(P-S) + 10^(-S), 10^(P-S) - 10^(-S)\]
     /// * Precision (P) is specified but not scale (and thus scale is
-    ///    interpreted to be equal to zero):
-    ///    \[-10^P + 1, 10^P - 1\].
+    ///   interpreted to be equal to zero):
+    ///   \[-10^P + 1, 10^P - 1\].
     ///
     /// Acceptable values for precision and scale if both are specified:
     ///
     /// * If type = "NUMERIC":
-    ///    1 <= precision - scale <= 29 and 0 <= scale <= 9.
+    ///   1 \<= precision - scale \<= 29 and 0 \<= scale \<= 9.
     /// * If type = "BIGNUMERIC":
-    ///    1 <= precision - scale <= 38 and 0 <= scale <= 38.
+    ///   1 \<= precision - scale \<= 38 and 0 \<= scale \<= 38.
     ///
     /// Acceptable values for precision if only precision is specified but not
     /// scale (and thus scale is interpreted to be equal to zero):
     ///
-    /// * If type = "NUMERIC": 1 <= precision <= 29.
-    /// * If type = "BIGNUMERIC": 1 <= precision <= 38.
+    /// * If type = "NUMERIC": 1 \<= precision \<= 29.
+    /// * If type = "BIGNUMERIC": 1 \<= precision \<= 38.
     ///
     /// If scale is specified but not precision, then it is invalid.
     #[prost(int64, tag = "8")]
@@ -215,6 +215,7 @@ pub struct TableFieldSchema {
     /// Optional. The subtype of the RANGE, if the type of this field is RANGE. If
     /// the type is RANGE, this field is required. Possible values for the field
     /// element type of a RANGE include:
+    ///
     /// * DATE
     /// * DATETIME
     /// * TIMESTAMP
@@ -224,7 +225,7 @@ pub struct TableFieldSchema {
 /// Nested message and enum types in `TableFieldSchema`.
 pub mod table_field_schema {
     /// Represents the type of a field element.
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct FieldElementType {
         /// Required. The type of a field element.
         #[prost(enumeration = "Type", tag = "1")]
@@ -422,7 +423,7 @@ pub struct ReadSession {
 /// Nested message and enum types in `ReadSession`.
 pub mod read_session {
     /// Additional attributes when reading a table.
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct TableModifiers {
         /// The snapshot time of the table. If not set, interpreted as now.
         #[prost(message, optional, tag = "1")]
@@ -442,38 +443,38 @@ pub mod read_session {
         ///
         /// As an example, consider a table with the following schema:
         ///
-        ///    {
-        ///        "name": "struct_field",
-        ///        "type": "RECORD",
-        ///        "mode": "NULLABLE",
-        ///        "fields": [
-        ///            {
-        ///                "name": "string_field1",
-        ///                "type": "STRING",
+        /// {
+        /// "name": "struct_field",
+        /// "type": "RECORD",
+        /// "mode": "NULLABLE",
+        /// "fields": \[
+        /// {
+        /// "name": "string_field1",
+        /// "type": "STRING",
         /// .              "mode": "NULLABLE"
-        ///            },
-        ///            {
-        ///                "name": "string_field2",
-        ///                "type": "STRING",
-        ///                "mode": "NULLABLE"
-        ///            }
-        ///        ]
-        ///    }
+        /// },
+        /// {
+        /// "name": "string_field2",
+        /// "type": "STRING",
+        /// "mode": "NULLABLE"
+        /// }
+        /// \]
+        /// }
         ///
         /// Specifying "struct_field" in the selected fields list will result in a
         /// read session schema with the following logical structure:
         ///
-        ///    struct_field {
-        ///        string_field1
-        ///        string_field2
-        ///    }
+        /// struct_field {
+        /// string_field1
+        /// string_field2
+        /// }
         ///
         /// Specifying "struct_field.string_field1" in the selected fields list will
         /// result in a read session schema with the following logical structure:
         ///
-        ///    struct_field {
-        ///        string_field1
-        ///    }
+        /// struct_field {
+        /// string_field1
+        /// }
         ///
         /// The order of the fields in the read session schema is derived from the
         /// table schema and does not correspond to the order in which the fields are
@@ -484,10 +485,10 @@ pub mod read_session {
         /// Aggregates are not supported.
         ///
         /// Examples: "int_field > 5"
-        ///            "date_field = CAST('2014-9-27' as DATE)"
-        ///            "nullable_field is not NULL"
-        ///            "st_equals(geo_field, st_geofromtext("POINT(2, 2)"))"
-        ///            "numeric_field BETWEEN 1.0 AND 5.0"
+        /// "date_field = CAST('2014-9-27' as DATE)"
+        /// "nullable_field is not NULL"
+        /// "st_equals(geo_field, st_geofromtext("POINT(2, 2)"))"
+        /// "numeric_field BETWEEN 1.0 AND 5.0"
         ///
         /// Restricted to a maximum length for 1 MB.
         #[prost(string, tag = "2")]
@@ -545,7 +546,7 @@ pub mod read_session {
                 }
             }
         }
-        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum OutputFormatSerializationOptions {
             /// Optional. Options specific to the Apache Arrow output format.
             #[prost(message, tag = "3")]
@@ -558,7 +559,7 @@ pub mod read_session {
     /// The schema for the read. If read_options.selected_fields is set, the
     /// schema may be different from the table schema as it will only contain
     /// the selected fields.
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Schema {
         /// Output only. Avro schema.
         #[prost(message, tag = "4")]
@@ -571,7 +572,7 @@ pub mod read_session {
 /// Information about a single stream that gets data out of the storage system.
 /// Most of the information about `ReadStream` instances is aggregated, making
 /// `ReadStream` lightweight.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ReadStream {
     /// Output only. Name of the stream, in the form
     /// `projects/{project_id}/locations/{location}/sessions/{session_id}/streams/{stream_id}`.
@@ -588,7 +589,7 @@ pub struct WriteStream {
     /// Immutable. Type of the stream.
     #[prost(enumeration = "write_stream::Type", tag = "2")]
     pub r#type: i32,
-    /// Output only. Create time of the stream. For the _default stream, this is
+    /// Output only. Create time of the stream. For the \_default stream, this is
     /// the creation_time of the table.
     #[prost(message, optional, tag = "3")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
@@ -791,7 +792,7 @@ pub struct CreateReadSessionRequest {
     pub preferred_min_stream_count: i32,
 }
 /// Request message for `ReadRows`.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ReadRowsRequest {
     /// Required. Stream to read rows from.
     #[prost(string, tag = "1")]
@@ -803,7 +804,7 @@ pub struct ReadRowsRequest {
     pub offset: i64,
 }
 /// Information on if the current connection is being throttled.
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ThrottleState {
     /// How much this connection is being throttled. Zero means no throttling,
     /// 100 means fully throttled.
@@ -827,8 +828,7 @@ pub mod stream_stats {
         ///
         /// This value, along with `at_response_end`, can be used to interpolate
         /// the progress made as the rows in the message are being processed using
-        /// the following formula: `at_response_start + (at_response_end -
-        /// at_response_start) * rows_processed_from_response / rows_in_response`.
+        /// the following formula: `at_response_start + (at_response_end -  at_response_start) * rows_processed_from_response / rows_in_response`.
         ///
         /// Note that if a filter is provided, the `at_response_end` value of the
         /// previous response may not necessarily be equal to the
@@ -885,7 +885,7 @@ pub struct ReadRowsResponse {
 /// Nested message and enum types in `ReadRowsResponse`.
 pub mod read_rows_response {
     /// Row data is returned in format specified during session creation.
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Rows {
         /// Serialized row data in AVRO format.
         #[prost(message, tag = "3")]
@@ -899,7 +899,7 @@ pub mod read_rows_response {
     /// the selected fields. This schema is equivalent to the one returned by
     /// CreateSession. This field is only populated in the first ReadRowsResponse
     /// RPC.
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Schema {
         /// Output only. Avro schema.
         #[prost(message, tag = "7")]
@@ -926,10 +926,10 @@ pub struct SplitReadStreamRequest {
     pub fraction: f64,
 }
 /// Response message for `SplitReadStream`.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SplitReadStreamResponse {
     /// Primary stream, which contains the beginning portion of
-    /// |original_stream|. An empty value indicates that the original stream can no
+    /// \|original_stream|. An empty value indicates that the original stream can no
     /// longer be split.
     #[prost(message, optional, tag = "1")]
     pub primary_stream: ::core::option::Option<ReadStream>,
@@ -966,8 +966,8 @@ pub struct AppendRowsRequest {
     /// * In the first request to an AppendRows connection.
     ///
     /// * In all subsequent requests to an AppendRows connection, if you use the
-    /// same connection to write to multiple tables or change the input schema for
-    /// default streams.
+    ///   same connection to write to multiple tables or change the input schema for
+    ///   default streams.
     ///
     /// For explicitly created write streams, the format is:
     ///
@@ -997,7 +997,7 @@ pub struct AppendRowsRequest {
     /// If present, the write is only performed if the next append offset is same
     /// as the provided value. If not present, the write is performed at the
     /// current end of stream. Specifying a value for this field is not allowed
-    /// when calling AppendRows for the '_default' stream.
+    /// when calling AppendRows for the '\_default' stream.
     #[prost(message, optional, tag = "2")]
     pub offset: ::core::option::Option<i64>,
     /// Id set by client to annotate its identity. Only initial request setting is
@@ -1050,7 +1050,7 @@ pub mod append_rows_request {
     /// Arrow schema and data.
     /// Arrow format is an experimental feature only selected for allowlisted
     /// customers.
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct ArrowData {
         /// Optional. Arrow Schema used to serialize the data.
         #[prost(message, optional, tag = "1")]
@@ -1155,7 +1155,7 @@ pub struct AppendRowsResponse {
 /// Nested message and enum types in `AppendRowsResponse`.
 pub mod append_rows_response {
     /// AppendResult is returned for successful append requests.
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct AppendResult {
         /// The row offset at which the last append occurred. The offset will not be
         /// set if appending using default streams.
@@ -1192,7 +1192,7 @@ pub mod append_rows_response {
     }
 }
 /// Request message for `GetWriteStreamRequest`.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetWriteStreamRequest {
     /// Required. Name of the stream to get, in the form of
     /// `projects/{project}/datasets/{dataset}/tables/{table}/streams/{stream}`.
@@ -1204,7 +1204,7 @@ pub struct GetWriteStreamRequest {
     pub view: i32,
 }
 /// Request message for `BatchCommitWriteStreams`.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct BatchCommitWriteStreamsRequest {
     /// Required. Parent table that all the streams should belong to, in the form
     /// of `projects/{project}/datasets/{dataset}/tables/{table}`.
@@ -1231,7 +1231,7 @@ pub struct BatchCommitWriteStreamsResponse {
     pub stream_errors: ::prost::alloc::vec::Vec<StorageError>,
 }
 /// Request message for invoking `FinalizeWriteStream`.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct FinalizeWriteStreamRequest {
     /// Required. Name of the stream to finalize, in the form of
     /// `projects/{project}/datasets/{dataset}/tables/{table}/streams/{stream}`.
@@ -1239,14 +1239,14 @@ pub struct FinalizeWriteStreamRequest {
     pub name: ::prost::alloc::string::String,
 }
 /// Response message for `FinalizeWriteStream`.
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct FinalizeWriteStreamResponse {
     /// Number of rows in the finalized stream.
     #[prost(int64, tag = "1")]
     pub row_count: i64,
 }
 /// Request message for `FlushRows`.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct FlushRowsRequest {
     /// Required. The stream that is the target of the flush operation.
     #[prost(string, tag = "1")]
@@ -1257,7 +1257,7 @@ pub struct FlushRowsRequest {
     pub offset: ::core::option::Option<i64>,
 }
 /// Respond message for `FlushRows`.
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct FlushRowsResponse {
     /// The rows before this offset (including this offset) are flushed.
     #[prost(int64, tag = "1")]
@@ -1267,7 +1267,7 @@ pub struct FlushRowsResponse {
 /// as error details in the returned rpc Status. In particular, the use of error
 /// codes allows more structured error handling, and reduces the need to evaluate
 /// unstructured error text strings.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct StorageError {
     /// BigQuery Storage specific error code.
     #[prost(enumeration = "storage_error::StorageErrorCode", tag = "1")]
@@ -1370,7 +1370,7 @@ pub mod storage_error {
     }
 }
 /// The message that presents row level error info in a request.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct RowError {
     /// Index of the malformed row in the request.
     #[prost(int64, tag = "1")]
@@ -1529,7 +1529,7 @@ pub mod big_query_read_client {
                 .ready()
                 .await
                 .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.bigquery.storage.v1.BigQueryRead/CreateReadSession",
             );
@@ -1556,7 +1556,7 @@ pub mod big_query_read_client {
                 .ready()
                 .await
                 .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static("/google.cloud.bigquery.storage.v1.BigQueryRead/ReadRows");
             let mut req = request.into_request();
             req.extensions_mut()
@@ -1572,8 +1572,8 @@ pub mod big_query_read_client {
         ///
         /// Moreover, the two child streams will be allocated back-to-back in the
         /// original `ReadStream`. Concretely, it is guaranteed that for streams
-        /// original, primary, and residual, that original[0-j] = primary[0-j] and
-        /// original[j-n] = residual[0-m] once the streams have been read to
+        /// original, primary, and residual, that original\[0-j\] = primary\[0-j\] and
+        /// original\[j-n\] = residual\[0-m\] once the streams have been read to
         /// completion.
         pub async fn split_read_stream(
             &mut self,
@@ -1583,7 +1583,7 @@ pub mod big_query_read_client {
                 .ready()
                 .await
                 .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.cloud.bigquery.storage.v1.BigQueryRead/SplitReadStream");
             let mut req = request.into_request();
@@ -1687,7 +1687,7 @@ pub mod big_query_write_client {
             self
         }
         /// Creates a write stream to the given table.
-        /// Additionally, every table has a special stream named '_default'
+        /// Additionally, every table has a special stream named '\_default'
         /// to which data can be written. This stream doesn't need to be created using
         /// CreateWriteStream. It is a stream that can be used simultaneously by any
         /// number of clients. Data written to this stream is considered committed as
@@ -1700,7 +1700,7 @@ pub mod big_query_write_client {
                 .ready()
                 .await
                 .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.bigquery.storage.v1.BigQueryWrite/CreateWriteStream",
             );
@@ -1734,14 +1734,14 @@ pub mod big_query_write_client {
         /// table are governed by the type of stream:
         ///
         /// * For COMMITTED streams (which includes the default stream), data is
-        /// visible immediately upon successful append.
+        ///  visible immediately upon successful append.
         ///
         /// * For BUFFERED streams, data is made visible via a subsequent `FlushRows`
-        /// rpc which advances a cursor to a newer offset in the stream.
+        ///  rpc which advances a cursor to a newer offset in the stream.
         ///
         /// * For PENDING streams, data is not made visible until the stream itself is
-        /// finalized (via the `FinalizeWriteStream` rpc), and the stream is explicitly
-        /// committed via the `BatchCommitWriteStreams` rpc.
+        ///  finalized (via the `FinalizeWriteStream` rpc), and the stream is explicitly
+        ///  committed via the `BatchCommitWriteStreams` rpc.
         pub async fn append_rows(
             &mut self,
             request: impl tonic::IntoStreamingRequest<Message = super::AppendRowsRequest>,
@@ -1751,7 +1751,7 @@ pub mod big_query_write_client {
                 .ready()
                 .await
                 .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.cloud.bigquery.storage.v1.BigQueryWrite/AppendRows");
             let mut req = request.into_streaming_request();
@@ -1768,7 +1768,7 @@ pub mod big_query_write_client {
                 .ready()
                 .await
                 .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.cloud.bigquery.storage.v1.BigQueryWrite/GetWriteStream");
             let mut req = request.into_request();
@@ -1779,7 +1779,7 @@ pub mod big_query_write_client {
             self.inner.unary(req, path, codec).await
         }
         /// Finalize a write stream so that no new data can be appended to the
-        /// stream. Finalize is not supported on the '_default' stream.
+        /// stream. Finalize is not supported on the '\_default' stream.
         pub async fn finalize_write_stream(
             &mut self,
             request: impl tonic::IntoRequest<super::FinalizeWriteStreamRequest>,
@@ -1788,7 +1788,7 @@ pub mod big_query_write_client {
                 .ready()
                 .await
                 .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.bigquery.storage.v1.BigQueryWrite/FinalizeWriteStream",
             );
@@ -1813,7 +1813,7 @@ pub mod big_query_write_client {
                 .ready()
                 .await
                 .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.bigquery.storage.v1.BigQueryWrite/BatchCommitWriteStreams",
             );
@@ -1831,7 +1831,7 @@ pub mod big_query_write_client {
         /// Flush operation flushes up to any previously flushed offset in a BUFFERED
         /// stream, to the offset specified in the request.
         ///
-        /// Flush is not supported on the _default stream, since it is not BUFFERED.
+        /// Flush is not supported on the \_default stream, since it is not BUFFERED.
         pub async fn flush_rows(
             &mut self,
             request: impl tonic::IntoRequest<super::FlushRowsRequest>,
@@ -1840,7 +1840,7 @@ pub mod big_query_write_client {
                 .ready()
                 .await
                 .map_err(|e| tonic::Status::unknown(format!("Service was not ready: {}", e.into())))?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.cloud.bigquery.storage.v1.BigQueryWrite/FlushRows");
             let mut req = request.into_request();
