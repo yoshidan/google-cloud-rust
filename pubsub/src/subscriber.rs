@@ -1,3 +1,4 @@
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use tokio::select;
@@ -7,15 +8,12 @@ use tokio_util::sync::CancellationToken;
 
 use google_cloud_gax::grpc::{Code, Status, Streaming};
 use google_cloud_gax::retry::RetrySetting;
-use google_cloud_googleapis::pubsub::v1::{
-    AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage, ReceivedMessage as InternalReceivedMessage,
-    StreamingPullResponse,
-};
+use google_cloud_googleapis::pubsub::v1::{AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage, ReceivedMessage as InternalReceivedMessage, StreamingPullRequest, StreamingPullResponse};
 
 use crate::apiv1::default_retry_setting;
 use crate::apiv1::subscriber_client::{create_empty_streaming_pull_request, SubscriberClient};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ReceivedMessage {
     pub message: PubsubMessage,
     ack_id: String,
@@ -123,13 +121,14 @@ impl Default for SubscriberConfig {
 
 #[derive(Debug)]
 pub(crate) struct Subscriber {
-    pinger: Option<JoinHandle<()>>,
-    inner: Option<JoinHandle<()>>,
+    task_to_ping: JoinHandle<()>,
+    task_to_receive: JoinHandle<()>,
+    /// Ack id list of unprocessed messages.
+    unprocessed_messages: Arc<Mutex<Vec<ReceivedMessage>>>,
 }
 
 impl Subscriber {
-    pub fn start(
-        ctx: CancellationToken,
+    pub fn new(
         subscription: String,
         client: SubscriberClient,
         queue: async_channel::Sender<ReceivedMessage>,
@@ -137,31 +136,24 @@ impl Subscriber {
     ) -> Self {
         let (ping_sender, ping_receiver) = async_channel::unbounded();
 
-        // ping request
-        let subscription_clone = subscription.to_string();
-
-        let cancel_receiver = ctx.clone();
-        let pinger = tokio::spawn(async move {
+        // Build task to ping
+        let task_to_ping = async move {
             loop {
-                select! {
-                    _ = ctx.cancelled() => {
-                        ping_sender.close();
-                        break;
-                    }
-                    _ = sleep(config.ping_interval) => {
-                        let _ = ping_sender.send(true).await;
-                    }
-                }
+                _ = sleep(config.ping_interval) ;
+                let _ = ping_sender.send(true).await;
             }
-            tracing::trace!("stop pinger : {}", subscription_clone);
-        });
+            tracing::trace!("stop ping");
+        };
 
-        let inner = tokio::spawn(async move {
+        // Build task to receive
+        let mut unprocessed_messages  = Arc::new(Mutex::new(Vec::new()));
+        let task_to_receive = async move {
             tracing::trace!("start subscriber: {}", subscription);
             let retryable_codes = match &config.retry_setting {
                 Some(v) => v.codes.clone(),
                 None => default_retry_setting().codes,
             };
+
             loop {
                 let mut request = create_empty_streaming_pull_request();
                 request.subscription = subscription.to_string();
@@ -169,130 +161,108 @@ impl Subscriber {
                 request.max_outstanding_messages = config.max_outstanding_messages;
                 request.max_outstanding_bytes = config.max_outstanding_bytes;
 
-                let response = client
-                    .streaming_pull(request, ping_receiver.clone(), config.retry_setting.clone())
-                    .await;
+                tracing::trace!("start streaming: {}", subscription);
 
-                let stream = match response {
-                    Ok(r) => r.into_inner(),
-                    Err(e) => {
-                        if e.code() == Code::Cancelled {
-                            tracing::trace!("stop subscriber : {}", subscription);
-                            break;
-                        } else if retryable_codes.contains(&e.code()) {
-                            tracing::warn!("failed to start streaming: will reconnect {:?} : {}", e, subscription);
-                            continue;
-                        } else {
-                            tracing::error!("failed to start streaming: will stop {:?} : {}", e, subscription);
-                            break;
-                        }
+                let mut lock = unprocessed_messages.lock().unwrap();
+                let response = Self::start_streaming(
+                    client.clone(),
+                    request,
+                    ping_receiver.clone(),
+                    config.clone(),
+                    queue.clone(),
+                    &mut lock);
+
+                if let Err(e) = response {
+                    if retryable_codes.contains(&e.code()) {
+                        tracing::warn!("failed to start streaming: will reconnect {:?} : {}", e, subscription);
+                        continue;
+                    } else {
+                        tracing::error!("failed to start streaming: will stop {:?} : {}", e, subscription);
+                        break;
                     }
                 };
-                match Self::recv(
-                    client.clone(),
-                    stream,
-                    subscription.as_str(),
-                    cancel_receiver.clone(),
-                    queue.clone(),
-                )
-                .await
-                {
-                    Ok(_) => break,
-                    Err(e) => {
-                        if retryable_codes.contains(&e.code()) {
-                            tracing::trace!("reconnect - '{:?}' : {} ", e, subscription);
-                            continue;
-                        } else {
-                            tracing::error!("terminated subscriber streaming with error {:?} : {}", e, subscription);
-                            break;
-                        }
-                    }
-                }
             }
+
             // streaming request is closed when the ping_sender closed.
-            tracing::trace!("stop subscriber in streaming: {}", subscription);
-        });
+            tracing::trace!("stop subscriber: {}", subscription);
+        };
+
         Self {
-            pinger: Some(pinger),
-            inner: Some(inner),
+            task_to_ping: tokio::spawn(task_to_ping),
+            task_to_receive: tokio::spawn(task_to_receive),
+            unprocessed_messages,
         }
     }
 
-    async fn recv(
-        client: SubscriberClient,
-        mut stream: Streaming<StreamingPullResponse>,
-        subscription: &str,
-        cancel: CancellationToken,
+    async fn start_streaming(
+        client:SubscriberClient,
+        request: StreamingPullRequest,
+        ping_receiver: async_channel::Receiver<bool>,
+        config: SubscriberConfig,
         queue: async_channel::Sender<ReceivedMessage>,
-    ) -> Result<(), Status> {
-        tracing::trace!("start streaming: {}", subscription);
+        unprocessed_messages: &mut Vec<ReceivedMessage>,
+    ) -> Result<(), Status>{
+        let subscription = request.subscription.to_string();
+
+        // Call the streaming_pull method with the provided request and ping_receiver
+        let response = client
+            .streaming_pull(request, ping_receiver.clone(), config.retry_setting.clone())
+            .await?;
+        let mut stream = response.into_inner();
+
+        // Process the stream
         loop {
-            select! {
-                _ = cancel.cancelled() => {
-                    queue.close();
-                    return Ok(());
-                }
-                maybe = stream.message() => {
-                    let message = maybe?;
-                    let message = match message {
-                        Some(m) => m,
-                        None => return Ok(())
-                    };
-                    let _ = handle_message(&cancel, &queue, &client, subscription, message.received_messages).await;
-                }
-            }
-        }
-    }
-
-    pub async fn done(&mut self) {
-        if let Some(v) = self.pinger.take() {
-            let _ = v.await;
-        }
-        if let Some(v) = self.inner.take() {
-            let _ = v.await;
-        }
-    }
-}
-
-async fn handle_message(
-    cancel: &CancellationToken,
-    queue: &async_channel::Sender<ReceivedMessage>,
-    client: &SubscriberClient,
-    subscription: &str,
-    messages: Vec<InternalReceivedMessage>,
-) -> usize {
-    let mut nack_targets = vec![];
-    for received_message in messages {
-        if let Some(message) = received_message.message {
-            let id = message.message_id.clone();
-            tracing::debug!("message received: msg_id={id}");
-            let msg = ReceivedMessage::new(
-                subscription.to_string(),
-                client.clone(),
-                message,
-                received_message.ack_id.clone(),
-                (received_message.delivery_attempt > 0).then_some(received_message.delivery_attempt as usize),
-            );
-            let should_nack = select! {
-                result = queue.send(msg) => result.is_err(),
-                _ = cancel.cancelled() => true
+            let message = stream.message().await?;
+            let messages = match message {
+                Some(m) => m.received_messages,
+                None => return Ok(())
             };
-            if should_nack {
-                tracing::info!("cancelled -> so nack immediately : msg_id={id}");
-                nack_targets.push(received_message.ack_id);
+
+            for received_message in messages {
+                if let Some(message) = received_message.message {
+                    let id = message.message_id.clone();
+                    tracing::debug!("message received: msg_id={id}");
+                    let msg = ReceivedMessage::new(
+                        subscription.clone(),
+                        client.clone(),
+                        message,
+                        received_message.ack_id.clone(),
+                        (received_message.delivery_attempt > 0).then_some(received_message.delivery_attempt as usize),
+                    );
+                    unprocessed_messages.push(msg);
+                }
+            }
+
+            for msg in unprocessed_messages.drain(..) {
+                if let Err(e) = queue.send(msg).await {
+                    tracing::error!("failed to send message to queue: msg_id={} ack_id={}", &e.0.message.message_id, &e.0.ack_id);
+                    unprocessed_messages.push(e.0);
+                }
             }
         }
     }
-    let size = nack_targets.len();
-    if size > 0 {
-        // Nack immediately although the queue is closed only when the cancellation token is closed.
-        if let Err(err) = nack(client, subscription.to_string(), nack_targets).await {
-            tracing::error!(
-                "failed to nack immediately {err}. The messages will be redelivered after the ack deadline."
-            );
+
+    pub async fn run(mut self, ctx: CancellationToken) -> Result<(), Status>{
+        select ! {
+            _ = &self.task_to_receive => {
+                &self.task_to_ping.abort();
+                tracing::warn!("streaming finished unexpectedly");
+            },
+            _ = ctx.cancelled() => {
+                &self.task_to_ping.abort();
+                let _ = &self.task_to_receive.await;
+                tracing::trace!("streaming finished successfully");
+            }
         }
+        if self.unprocessed_messages.lock().unwrap().is_empty() {
+            return Ok(());
+        }
+        let first = self.unprocessed_messages.lock().unwrap().first().unwrap();
+        nack(
+            &first.subscriber_client, (&first).subscription.to_string(),
+            self.unprocessed_messages.lock().unwrap().iter().map(|m| m.ack_id.clone()).collect(),
+        )
     }
-    size
 }
 
 async fn modify_ack_deadline(
@@ -342,7 +312,6 @@ mod tests {
     use crate::apiv1::conn_pool::ConnectionManager;
     use crate::apiv1::publisher_client::PublisherClient;
     use crate::apiv1::subscriber_client::SubscriberClient;
-    use crate::subscriber::handle_message;
 
     #[ctor::ctor]
     fn init() {

@@ -491,6 +491,7 @@ impl Subscription {
     /// receive calls f with the outstanding messages from the subscription.
     /// It blocks until cancellation token is cancelled, or the service returns a non-retryable error.
     /// The standard way to terminate a receive is to use CancellationToken.
+    /// [Deprecated] Use `subscribe` instead.
     pub async fn receive<F>(
         &self,
         f: impl Fn(ReceivedMessage, CancellationToken) -> F + Send + 'static + Sync + Clone,
@@ -545,11 +546,8 @@ impl Subscription {
                 tracing::trace!("stop message receiver : {}", name);
             }));
         }
-        cancel.cancelled().await;
-
-        // wait for all the threads finish.
         for mut subscriber in subscribers {
-            subscriber.done().await;
+           subscriber.run(cancel.clone())? ;
         }
 
         // wait for all the receivers process received messages
