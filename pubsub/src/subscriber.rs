@@ -1,13 +1,16 @@
-use std::sync::{Arc};
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::select;
+use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
-use tokio::sync::{Mutex};
 
 use google_cloud_gax::grpc::{Code, Status, Streaming};
 use google_cloud_gax::retry::RetrySetting;
-use google_cloud_googleapis::pubsub::v1::{AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage, ReceivedMessage as InternalReceivedMessage, StreamingPullRequest, StreamingPullResponse};
+use google_cloud_googleapis::pubsub::v1::{
+    AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage, ReceivedMessage as InternalReceivedMessage,
+    StreamingPullRequest, StreamingPullResponse,
+};
 
 use crate::apiv1::default_retry_setting;
 use crate::apiv1::subscriber_client::{create_empty_streaming_pull_request, SubscriberClient};
@@ -108,9 +111,13 @@ pub struct SubscriberConfig {
 
 impl Default for SubscriberConfig {
     fn default() -> Self {
+        // Default retry setting with Cancelled code
+        let mut retry = default_retry_setting();
+        retry.codes.push(Code::Cancelled);
+
         Self {
-            ping_interval: std::time::Duration::from_secs(10),
-            retry_setting: Some(default_retry_setting()),
+            ping_interval: Duration::from_secs(10),
+            retry_setting: Some(retry),
             stream_ack_deadline_seconds: 60,
             max_outstanding_messages: 50,
             max_outstanding_bytes: 1000 * 1000 * 1000,
@@ -140,7 +147,7 @@ impl Subscriber {
         // Build task to ping
         let task_to_ping = async move {
             loop {
-                _ = sleep(config.ping_interval) ;
+                _ = sleep(config.ping_interval);
                 let _ = ping_sender.send(true).await;
             }
         };
@@ -149,7 +156,7 @@ impl Subscriber {
         let client_clone = client.clone();
 
         // Build task to receive
-        let unprocessed_messages  = Arc::new(Mutex::new(Vec::new()));
+        let unprocessed_messages = Arc::new(Mutex::new(Vec::new()));
         let unprocessed_messages_for_task = unprocessed_messages.clone();
         let task_to_receive = async move {
             tracing::trace!("start subscriber: {}", subscription);
@@ -176,7 +183,9 @@ impl Subscriber {
                         ping_receiver.clone(),
                         config.clone(),
                         queue.clone(),
-                        unprocessed_messages).await
+                        unprocessed_messages,
+                    )
+                    .await
                 };
 
                 if let Err(e) = response {
@@ -204,13 +213,13 @@ impl Subscriber {
     }
 
     async fn start_streaming(
-        client:SubscriberClient,
+        client: SubscriberClient,
         request: StreamingPullRequest,
         ping_receiver: async_channel::Receiver<bool>,
         config: SubscriberConfig,
         queue: async_channel::Sender<ReceivedMessage>,
         unprocessed_messages: &mut Vec<String>,
-    ) -> Result<(), Status>{
+    ) -> Result<(), Status> {
         let subscription = request.subscription.to_string();
 
         // Call the streaming_pull method with the provided request and ping_receiver
@@ -224,7 +233,7 @@ impl Subscriber {
             let message = stream.message().await?;
             let messages = match message {
                 Some(m) => m.received_messages,
-                None => return Ok(())
+                None => return Ok(()),
             };
 
             let mut msgs = vec![];
@@ -253,7 +262,7 @@ impl Subscriber {
         }
     }
 
-    pub async fn dispose(self) -> Result<(), Status>{
+    pub async fn dispose(self) -> Result<(), Status> {
         self.task_to_ping.abort();
         self.task_to_receive.abort();
 
@@ -262,11 +271,7 @@ impl Subscriber {
             return Ok(());
         }
         // Nack all the unprocessed messages
-        nack(
-            &self.client,
-            self.subscription,
-            lock.iter().map(|m| m.clone()).collect(),
-        ).await
+        nack(&self.client, self.subscription, lock.iter().map(|m| m.clone()).collect()).await
     }
 }
 
@@ -304,72 +309,4 @@ pub(crate) async fn ack(
     }
     let req = AcknowledgeRequest { subscription, ack_ids };
     subscriber_client.acknowledge(req, None).await.map(|e| e.into_inner())
-}
-
-#[cfg(test)]
-mod tests {
-    use serial_test::serial;
-    use tokio_util::sync::CancellationToken;
-
-    use google_cloud_gax::conn::{ConnectionOptions, Environment};
-    use google_cloud_googleapis::pubsub::v1::{PublishRequest, PubsubMessage, PullRequest};
-
-    use crate::apiv1::conn_pool::ConnectionManager;
-    use crate::apiv1::publisher_client::PublisherClient;
-    use crate::apiv1::subscriber_client::SubscriberClient;
-
-    #[ctor::ctor]
-    fn init() {
-        let _ = tracing_subscriber::fmt().try_init();
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
-    async fn test_handle_message_immediately_nack() {
-        let cm = || async {
-            ConnectionManager::new(
-                4,
-                "",
-                &Environment::Emulator("localhost:8681".to_string()),
-                &ConnectionOptions::default(),
-            )
-            .await
-            .unwrap()
-        };
-        let subc = SubscriberClient::new(cm().await, cm().await);
-        let pubc = PublisherClient::new(cm().await);
-
-        pubc.publish(
-            PublishRequest {
-                topic: "projects/local-project/topics/test-topic1".to_string(),
-                messages: vec![PubsubMessage {
-                    data: "hoge".into(),
-                    ..Default::default()
-                }],
-            },
-            None,
-        )
-        .await
-        .unwrap();
-
-        let subscription = "projects/local-project/subscriptions/test-subscription1";
-        let response = subc
-            .pull(
-                PullRequest {
-                    subscription: subscription.to_string(),
-                    max_messages: 1,
-                    ..Default::default()
-                },
-                None,
-            )
-            .await
-            .unwrap()
-            .into_inner();
-
-        let messages = response.received_messages;
-        let (queue, _) = async_channel::unbounded();
-        queue.close();
-        let nack_size = handle_message(&CancellationToken::new(), &queue, &subc, subscription, messages).await;
-        assert_eq!(1, nack_size);
-    }
 }

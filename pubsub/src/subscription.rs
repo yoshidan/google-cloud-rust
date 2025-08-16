@@ -445,10 +445,7 @@ impl Subscription {
             ));
         }
 
-        Ok(MessageStream {
-            queue: rx,
-            tasks,
-        })
+        Ok(MessageStream { queue: rx, tasks })
     }
 
     /// receive calls f with the outstanding messages from the subscription.
@@ -490,9 +487,7 @@ impl Subscription {
         //same ordering key is in same stream.
         let subscribers: Vec<Subscriber> = senders
             .into_iter()
-            .map(|queue| {
-                Subscriber::new(self.fqsn.clone(), self.subc.clone(), queue, sub_opt.clone())
-            })
+            .map(|queue| Subscriber::new(self.fqsn.clone(), self.subc.clone(), queue, sub_opt.clone()))
             .collect();
 
         let mut message_receivers = Vec::with_capacity(receivers.len());
@@ -508,7 +503,7 @@ impl Subscription {
             }));
         }
         for subscriber in subscribers {
-           subscriber.dispose().await?;
+            subscriber.dispose().await?;
         }
         //TODO wait for cancel
 
@@ -1019,7 +1014,7 @@ mod tests {
 
         // snapshot at received = 1
         let _snapshot = subscription
-           .create_snapshot(snapshot_name.as_str(), HashMap::new(), None)
+            .create_snapshot(snapshot_name.as_str(), HashMap::new(), None)
             .await
             .unwrap();
 
@@ -1188,7 +1183,7 @@ mod tests {
         });
         publish(Some(msg)).await;
         tokio::time::sleep(Duration::from_secs(10)).await;
-        iter.dispose().await ;
+        iter.dispose().await;
         handler.await.unwrap();
         if should_cancel && msg_count > 0 {
             // expect nack
@@ -1226,5 +1221,4 @@ mod tests {
         handler.await.unwrap();
         assert_eq!(*checking.lock().unwrap(), msg_count);
     }
-
 }
