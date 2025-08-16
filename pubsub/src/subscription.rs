@@ -5,7 +5,6 @@ use std::task::{Context, Poll};
 use std::time::{Duration, SystemTime};
 
 use prost_types::{DurationError, FieldMask};
-use tokio_util::sync::CancellationToken;
 
 use google_cloud_gax::grpc::codegen::tokio_stream::Stream;
 use google_cloud_gax::grpc::{Code, Status};
@@ -143,44 +142,14 @@ impl From<SeekTo> for Target {
 
 pub struct MessageStream {
     queue: async_channel::Receiver<ReceivedMessage>,
-    cancel: CancellationToken,
     tasks: Vec<Subscriber>,
 }
 
 impl MessageStream {
-    pub fn cancellable(&self) -> CancellationToken {
-        self.cancel.clone()
-    }
-
-    pub async fn dispose(&mut self) {
-        // Close streaming pull task
-        if !self.cancel.is_cancelled() {
-            self.cancel.cancel();
+    pub async fn dispose(mut self) {
+        for task in self.tasks.drain(..) {
+            let _ = task.dispose().await;
         }
-
-        // Wait for all the streaming pull close.
-        for task in &mut self.tasks {
-            task.done().await;
-        }
-
-        // Nack for remaining messages.
-        while let Ok(message) = self.queue.recv().await {
-            if let Err(err) = message.nack().await {
-                tracing::warn!("failed to nack message messageId={} {:?}", message.message.message_id, err);
-            }
-        }
-    }
-
-    /// Immediately Nack on cancel
-    pub async fn read(&mut self) -> Option<ReceivedMessage> {
-        let message = tokio::select! {
-            msg = self.queue.recv() => msg.ok(),
-            _ = self.cancel.cancelled() => None
-        };
-        if message.is_none() {
-            self.dispose().await;
-        }
-        message
     }
 }
 
@@ -188,9 +157,6 @@ impl Drop for MessageStream {
     fn drop(&mut self) {
         if !self.queue.is_empty() {
             tracing::warn!("Call 'dispose' before drop in order to call nack for remaining messages");
-        }
-        if !self.cancel.is_cancelled() {
-            self.cancel.cancel();
         }
     }
 }
@@ -461,7 +427,6 @@ impl Subscription {
     pub async fn subscribe(&self, opt: Option<SubscribeConfig>) -> Result<MessageStream, Status> {
         let opt = opt.unwrap_or_default();
         let (tx, rx) = create_channel(opt.channel_capacity);
-        let cancel = CancellationToken::new();
         let sub_opt = self.unwrap_subscribe_config(opt.subscriber_config).await?;
 
         // spawn a separate subscriber task for each connection in the pool
@@ -472,8 +437,7 @@ impl Subscription {
         };
         let mut tasks = Vec::with_capacity(subscribers);
         for _ in 0..subscribers {
-            tasks.push(Subscriber::start(
-                cancel.clone(),
+            tasks.push(Subscriber::new(
                 self.fqsn.clone(),
                 self.subc.clone(),
                 tx.clone(),
@@ -483,7 +447,6 @@ impl Subscription {
 
         Ok(MessageStream {
             queue: rx,
-            cancel,
             tasks,
         })
     }
@@ -494,8 +457,7 @@ impl Subscription {
     /// [Deprecated] Use `subscribe` instead.
     pub async fn receive<F>(
         &self,
-        f: impl Fn(ReceivedMessage, CancellationToken) -> F + Send + 'static + Sync + Clone,
-        cancel: CancellationToken,
+        f: impl Fn(ReceivedMessage) -> F + Send + 'static + Sync + Clone,
         config: Option<ReceiveConfig>,
     ) -> Result<(), Status>
     where
@@ -529,26 +491,26 @@ impl Subscription {
         let subscribers: Vec<Subscriber> = senders
             .into_iter()
             .map(|queue| {
-                Subscriber::start(cancel.clone(), self.fqsn.clone(), self.subc.clone(), queue, sub_opt.clone())
+                Subscriber::new(self.fqsn.clone(), self.subc.clone(), queue, sub_opt.clone())
             })
             .collect();
 
         let mut message_receivers = Vec::with_capacity(receivers.len());
         for receiver in receivers {
             let f_clone = f.clone();
-            let cancel_clone = cancel.clone();
             let name = self.fqsn.clone();
             message_receivers.push(tokio::spawn(async move {
                 while let Ok(message) = receiver.recv().await {
-                    f_clone(message, cancel_clone.clone()).await;
+                    f_clone(message).await;
                 }
                 // queue is closed by subscriber when the cancellation token is cancelled
                 tracing::trace!("stop message receiver : {}", name);
             }));
         }
-        for mut subscriber in subscribers {
-           subscriber.run(cancel.clone())? ;
+        for subscriber in subscribers {
+           subscriber.dispose().await?;
         }
+        //TODO wait for cancel
 
         // wait for all the receivers process received messages
         for mr in message_receivers {
@@ -806,8 +768,6 @@ mod tests {
         assert_eq!(new_config.0, topic_name);
         assert_eq!(new_config.1.ack_deadline_seconds, 100);
 
-        let receiver_ctx = CancellationToken::new();
-        let cancel_receiver = receiver_ctx.clone();
         let handle = tokio::spawn(async move {
             let _ = subscription
                 .receive(
@@ -815,7 +775,6 @@ mod tests {
                         println!("{}", message.message.message_id);
                         let _ = message.ack().await;
                     },
-                    cancel_receiver,
                     None,
                 )
                 .await;
@@ -823,7 +782,6 @@ mod tests {
             assert!(!subscription.exists(None).await.unwrap())
         });
         tokio::time::sleep(Duration::from_secs(3)).await;
-        receiver_ctx.cancel();
         let _ = handle.await;
     }
 
@@ -895,7 +853,6 @@ mod tests {
                             let _ = message.ack().await;
                         }
                     },
-                    cancel_receiver,
                     opt,
                 )
                 .await;
@@ -928,7 +885,6 @@ mod tests {
                                 let _ = message.ack().await;
                             }
                         },
-                        ctx,
                         None,
                     )
                     .await;
@@ -953,7 +909,6 @@ mod tests {
         let subscription = create_subscription(false).await;
         let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
         let subscription_for_receive = subscription.clone();
-        let ctx_for_receive = ctx.clone();
         let handle = tokio::spawn(async move {
             let _ = subscription_for_receive
                 .receive(
@@ -963,7 +918,6 @@ mod tests {
                             let _ = sender.send(message.ack_id().to_string());
                         }
                     },
-                    ctx_for_receive.clone(),
                     None,
                 )
                 .await;
@@ -1065,7 +1019,7 @@ mod tests {
 
         // snapshot at received = 1
         let _snapshot = subscription
-            .create_snapshot(snapshot_name.as_str(), HashMap::new(), None)
+           .create_snapshot(snapshot_name.as_str(), HashMap::new(), None)
             .await
             .unwrap();
 
@@ -1171,7 +1125,6 @@ mod tests {
         let received = Arc::new(Mutex::new(0));
         let checking = received.clone();
         let mut iter = subscription.subscribe(opt).await.unwrap();
-        let cancellable = iter.cancellable();
         let handler = tokio::spawn(async move {
             while let Some(message) = iter.next().await {
                 tracing::info!("received {}", message.message.message_id);
@@ -1182,7 +1135,7 @@ mod tests {
         });
         publish(Some(msg)).await;
         tokio::time::sleep(Duration::from_secs(8)).await;
-        cancellable.cancel();
+        iter.dispose();
         let _ = handler.await;
         assert_eq!(*checking.lock().unwrap(), msg_count);
     }
@@ -1220,9 +1173,8 @@ mod tests {
         let checking = received.clone();
 
         let mut iter = subscription.subscribe(opt).await.unwrap();
-        let ctx = iter.cancellable();
         let handler = tokio::spawn(async move {
-            while let Some(message) = iter.read().await {
+            while let Some(message) = iter.next().await {
                 tracing::info!("received {}", message.message.message_id);
                 *received.lock().unwrap() += 1;
                 if should_cancel {
@@ -1236,7 +1188,7 @@ mod tests {
         });
         publish(Some(msg)).await;
         tokio::time::sleep(Duration::from_secs(10)).await;
-        ctx.cancel();
+        iter.dispose().await ;
         handler.await.unwrap();
         if should_cancel && msg_count > 0 {
             // expect nack
@@ -1260,7 +1212,6 @@ mod tests {
         let checking = received.clone();
 
         let mut iter = subscription.subscribe(opt).await.unwrap();
-        let ctx = iter.cancellable();
         let handler = tokio::spawn(async move {
             while let Some(message) = iter.next().await {
                 tracing::info!("received {}", message.message.message_id);
@@ -1271,19 +1222,9 @@ mod tests {
         });
         publish(Some(msg)).await;
         tokio::time::sleep(Duration::from_secs(10)).await;
-        ctx.cancel();
+        iter.dispose().await;
         handler.await.unwrap();
         assert_eq!(*checking.lock().unwrap(), msg_count);
     }
 
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
-    async fn test_message_stream_dispose() {
-        let subscription = create_subscription(false).await;
-        let mut iter = subscription.subscribe(None).await.unwrap();
-        iter.dispose().await;
-        // no effect
-        iter.dispose().await;
-        assert!(iter.next().await.is_none());
-    }
 }
