@@ -177,7 +177,7 @@ impl Subscriber {
                 let response = {
                     let mut unprocessed_messages = unprocessed_messages_for_task.lock().await;
                     let unprocessed_messages = &mut *unprocessed_messages;
-                    Self::start_streaming(
+                    Self::receive(
                         client.clone(),
                         request,
                         ping_receiver.clone(),
@@ -190,17 +190,23 @@ impl Subscriber {
 
                 if let Err(e) = response {
                     if retryable_codes.contains(&e.code()) {
-                        tracing::warn!("failed to start streaming: will reconnect {:?} : {}", e, subscription);
+                        tracing::warn!("failed to receive message: will reconnect {:?} : {}", e, subscription);
                         continue;
                     } else {
-                        tracing::error!("failed to start streaming: will stop {:?} : {}", e, subscription);
+                        tracing::error!("failed to receive message: will stop {:?} : {}", e, subscription);
                         break;
                     }
-                };
+                } else {
+                    tracing::debug!("stopped to receive message: {}", subscription);
+                    break
+                }
             }
-
-            // streaming request is closed when the ping_sender closed.
             tracing::trace!("stop subscriber: {}", subscription);
+
+            if !queue.is_closed() {
+                // receiver get error when all the senders are closed.
+                queue.close();
+            }
         };
 
         Self {
@@ -212,7 +218,7 @@ impl Subscriber {
         }
     }
 
-    async fn start_streaming(
+    async fn receive(
         client: SubscriberClient,
         request: StreamingPullRequest,
         ping_receiver: async_channel::Receiver<bool>,
@@ -257,6 +263,9 @@ impl Subscriber {
                 let ack_id = msg.ack_id.clone();
                 if queue.send(msg).await.is_ok() {
                     unprocessed_messages.retain(|e| *e != ack_id);
+                }else {
+                    // Permanently stop
+                    return Ok(())
                 }
             }
         }

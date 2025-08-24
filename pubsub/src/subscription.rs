@@ -147,8 +147,16 @@ pub struct MessageStream {
 
 impl MessageStream {
     pub async fn dispose(mut self) {
+        self.queue.close();
+
+        // stop all the subscribers
         for task in self.tasks.drain(..) {
             let _ = task.dispose().await;
+        }
+
+        // Nack received and unprocessed messages
+        while let Ok(msg )= self.queue.recv().await {
+            let _ = msg.nack().await;
         }
     }
 }
@@ -156,7 +164,7 @@ impl MessageStream {
 impl Drop for MessageStream {
     fn drop(&mut self) {
         if !self.queue.is_empty() {
-            tracing::warn!("Call 'dispose' before drop in order to call nack for remaining messages");
+            tracing::error!("Call 'dispose' before drop in order to call nack for remaining messages");
         }
     }
 }
@@ -164,8 +172,7 @@ impl Drop for MessageStream {
 impl Stream for MessageStream {
     type Item = ReceivedMessage;
 
-    /// Return None unless the queue is open.
-    /// Use CancellationToken for SubscribeConfig to get None
+    // return None when all the subscribers are stopped and the queue is empty.
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         Pin::new(&mut self.get_mut().queue).poll_next(cx)
     }
