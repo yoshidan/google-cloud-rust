@@ -141,21 +141,21 @@ impl From<SeekTo> for Target {
 }
 
 pub struct MessageStream {
-    queue: async_channel::Receiver<ReceivedMessage>,
+    buffer: async_channel::Receiver<ReceivedMessage>,
     tasks: Vec<Subscriber>,
 }
 
 impl MessageStream {
     pub async fn dispose(mut self) {
-        self.queue.close();
+        self.buffer.close();
 
         // stop all the subscribers
         for task in self.tasks.drain(..) {
             let _ = task.dispose().await;
         }
 
-        // Nack received and unprocessed messages
-        while let Ok(msg )= self.queue.recv().await {
+        // Nack buffer
+        while let Ok(msg )= self.buffer.recv().await {
             let _ = msg.nack().await;
         }
     }
@@ -163,7 +163,7 @@ impl MessageStream {
 
 impl Drop for MessageStream {
     fn drop(&mut self) {
-        if !self.queue.is_empty() {
+        if !self.buffer.is_empty() {
             tracing::error!("Call 'dispose' before drop in order to call nack for remaining messages");
         }
     }
@@ -174,7 +174,7 @@ impl Stream for MessageStream {
 
     // return None when all the subscribers are stopped and the queue is empty.
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        Pin::new(&mut self.get_mut().queue).poll_next(cx)
+        Pin::new(&mut self.get_mut().buffer).poll_next(cx)
     }
 }
 
@@ -452,7 +452,7 @@ impl Subscription {
             ));
         }
 
-        Ok(MessageStream { queue: rx, tasks })
+        Ok(MessageStream { buffer: rx, tasks })
     }
 
     /// receive calls f with the outstanding messages from the subscription.
