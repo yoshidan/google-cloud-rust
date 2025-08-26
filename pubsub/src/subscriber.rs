@@ -170,20 +170,28 @@ pub(crate) struct Subscriber {
     task_to_ping: JoinHandle<()>,
     task_to_receive: JoinHandle<()>,
     /// Ack id list of unprocessed messages.
-    unprocessed_messages_receiver: oneshot::Receiver<Option<Vec<String>>>,
-    disposed: bool
+    unprocessed_messages_receiver: Option<oneshot::Receiver<Option<Vec<String>>>>,
 }
 
 impl Drop for Subscriber {
     fn drop(&mut self) {
-        if !self.disposed {
+        if let Some(rx) = self.unprocessed_messages_receiver.take() {
             tracing::warn!("Subscriber is not disposed. Call dispose() to properly clean up resources.");
+            tokio::spawn(async move {
+                if let Ok(Some(messages)) = rx.await {
+                    if !messages.is_empty() {
+                        tracing::debug!("nack {} unprocessed messages", messages.len());
+                        // We cannot do anything if nack fails here.
+                        let _ = nack(&self.client, self.subscription.clone(), messages).await;
+                    }
+                }
+            });
         }
     }
 }
 
 impl Subscriber {
-    pub fn new(
+    pub fn spawn(
         subscription: String,
         client: SubscriberClient,
         queue: async_channel::Sender<ReceivedMessage>,
@@ -240,8 +248,6 @@ impl Subscriber {
                         continue;
                     } else {
                         tracing::error!("failed to receive message: will stop {:?} : {}", e, subscription);
-                        // receiver get error when all the senders are closed.
-                        queue.close();
                         break;
                     }
                 } else {
@@ -252,13 +258,17 @@ impl Subscriber {
             tracing::trace!("stop subscriber: {}", subscription);
         };
 
+        // receiver can detect closed when all the senders are closed.
+        if !queue.is_closed() {
+            queue.close();
+        }
+
         Self {
             client: client_clone,
             subscription: subscription_clone,
             task_to_ping: tokio::spawn(task_to_ping),
             task_to_receive: tokio::spawn(task_to_receive),
-            unprocessed_messages_receiver: rx,
-            disposed: false
+            unprocessed_messages_receiver: Some(rx),
         }
     }
 
@@ -321,15 +331,16 @@ impl Subscriber {
     }
 
     pub async fn dispose(mut self) -> Result<(), Status> {
-        self.disposed = true;
         self.task_to_ping.abort();
         self.task_to_receive.abort();
 
-        if let Ok(Some(messages)) = self.unprocessed_messages_receiver.await {
-            // Nack all the unprocessed messages
-            if !messages.is_empty() {
-                tracing::debug!("nack {} unprocessed messages", messages.len());
-                nack(&self.client, self.subscription, messages).await?;
+        if let Some(rx) = self.unprocessed_messages_receiver.take() {
+            if let Ok(Some(messages)) = rx.await {
+                // Nack all the unprocessed messages
+                if !messages.is_empty() {
+                    tracing::debug!("nack {} unprocessed messages", messages.len());
+                    nack(&self.client, self.subscription, messages).await?;
+                }
             }
         }
         Ok(())

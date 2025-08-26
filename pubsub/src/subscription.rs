@@ -141,30 +141,42 @@ impl From<SeekTo> for Target {
 }
 
 pub struct MessageStream {
-    buffer: async_channel::Receiver<ReceivedMessage>,
+    buffer: Option<async_channel::Receiver<ReceivedMessage>>,
     tasks: Vec<Subscriber>,
 }
 
 impl MessageStream {
     pub async fn dispose(mut self) {
-        self.buffer.close();
+        if let Some(buffer) = self.buffer.take() {
+            buffer.close();
 
-        // stop all the subscribers
-        for task in self.tasks.drain(..) {
-            let _ = task.dispose().await;
-        }
+            // stop all the subscribers
+            for task in self.tasks.drain(..) {
+                let _ = task.dispose().await;
+            }
 
-        // Nack buffer
-        while let Ok(msg )= self.buffer.recv().await {
-            let _ = msg.nack().await;
+            // Nack buffer
+            while let Ok(msg) = buffer.recv().await {
+                let _ = msg.nack().await;
+            }
         }
     }
 }
 
 impl Drop for MessageStream {
     fn drop(&mut self) {
-        if !self.buffer.is_empty() {
-            tracing::error!("Call 'dispose' before drop in order to call nack for remaining messages");
+        if let Some(buffer) = self.buffer.take() {
+            buffer.close();
+            if buffer.is_empty() {
+                return;
+            }
+            tracing::warn!("Call 'dispose' before drop in order to call nack for remaining messages");
+            tokio::spawn(async move {
+                tracing::debug!("nack buffered messages");
+                while let Ok(msg) = buffer.recv().await {
+                    let _ = msg.nack().await;
+                }
+            });
         }
     }
 }
@@ -444,7 +456,7 @@ impl Subscription {
         };
         let mut tasks = Vec::with_capacity(subscribers);
         for _ in 0..subscribers {
-            tasks.push(Subscriber::new(
+            tasks.push(Subscriber::spawn(
                 self.fqsn.clone(),
                 self.subc.clone(),
                 tx.clone(),
@@ -452,7 +464,7 @@ impl Subscription {
             ));
         }
 
-        Ok(MessageStream { buffer: rx, tasks })
+        Ok(MessageStream { buffer: Some(rx), tasks })
     }
 
     /// receive calls f with the outstanding messages from the subscription.
@@ -491,10 +503,11 @@ impl Subscription {
             });
         }
 
-        //same ordering key is in same stream.
-        let subscribers: Vec<Subscriber> = senders
+        // same ordering key is in same stream.
+        // nack automatically when the stream is closed. but not waiting for nack done.
+        let _ = senders
             .into_iter()
-            .map(|queue| Subscriber::new(self.fqsn.clone(), self.subc.clone(), queue, sub_opt.clone()))
+            .map(|queue| Subscriber::spawn(self.fqsn.clone(), self.subc.clone(), queue, sub_opt.clone()))
             .collect();
 
         let mut message_receivers = Vec::with_capacity(receivers.len());
@@ -505,15 +518,9 @@ impl Subscription {
                 while let Ok(message) = receiver.recv().await {
                     f_clone(message).await;
                 }
-                // queue is closed by subscriber when the cancellation token is cancelled
                 tracing::trace!("stop message receiver : {}", name);
             }));
         }
-        for subscriber in subscribers {
-            subscriber.dispose().await?;
-        }
-        //TODO wait for cancel
-
         // wait for all the receivers process received messages
         for mr in message_receivers {
             let _ = mr.await;
