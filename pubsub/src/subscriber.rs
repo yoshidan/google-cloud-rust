@@ -175,6 +175,8 @@ pub(crate) struct Subscriber {
 
 impl Drop for Subscriber {
     fn drop(&mut self) {
+        let client = self.client.clone();
+        let subscription = self.subscription.clone();
         if let Some(rx) = self.unprocessed_messages_receiver.take() {
             tracing::warn!("Subscriber is not disposed. Call dispose() to properly clean up resources.");
             tokio::spawn(async move {
@@ -182,7 +184,7 @@ impl Drop for Subscriber {
                     if !messages.is_empty() {
                         tracing::debug!("nack {} unprocessed messages", messages.len());
                         // We cannot do anything if nack fails here.
-                        let _ = nack(&self.client, self.subscription.clone(), messages).await;
+                        let _ = nack(&client, subscription, messages).await;
                     }
                 }
             });
@@ -256,12 +258,13 @@ impl Subscriber {
                 }
             }
             tracing::trace!("stop subscriber: {}", subscription);
+
+            // receiver can detect closed when all the senders are closed.
+            if !queue.is_closed() {
+                queue.close();
+            }
         };
 
-        // receiver can detect closed when all the senders are closed.
-        if !queue.is_closed() {
-            queue.close();
-        }
 
         Self {
             client: client_clone,
@@ -339,7 +342,7 @@ impl Subscriber {
                 // Nack all the unprocessed messages
                 if !messages.is_empty() {
                     tracing::debug!("nack {} unprocessed messages", messages.len());
-                    nack(&self.client, self.subscription, messages).await?;
+                    nack(&self.client, self.subscription.clone(), messages).await?;
                 }
             }
         }

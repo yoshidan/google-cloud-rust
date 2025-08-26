@@ -339,7 +339,7 @@ mod tests {
         let handle = tokio::spawn(async move {
             let _ = subscription
                 .receive(
-                    move |v, _ctx| {
+                    move |v| {
                         let s2 = s.clone();
                         async move {
                             let _ = v.ack().await;
@@ -353,7 +353,6 @@ mod tests {
                             let _ = s2.send(data).await;
                         }
                     },
-                    cancel_receiver,
                     Some(config),
                 )
                 .await;
