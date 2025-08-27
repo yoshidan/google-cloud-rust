@@ -714,7 +714,7 @@ mod tests {
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
 
-    use futures_util::StreamExt;
+    use futures_util::{select, StreamExt};
     use serial_test::serial;
     use tokio_util::sync::CancellationToken;
     use uuid::Uuid;
@@ -738,92 +738,6 @@ mod tests {
         let _ = tracing_subscriber::fmt().try_init();
     }
 
-    async fn create_subscription(enable_exactly_once_delivery: bool) -> Subscription {
-        let cm = ConnectionManager::new(
-            4,
-            "",
-            &Environment::Emulator(EMULATOR.to_string()),
-            &ConnectionOptions::default(),
-        )
-        .await
-        .unwrap();
-        let cm2 = ConnectionManager::new(
-            4,
-            "",
-            &Environment::Emulator(EMULATOR.to_string()),
-            &ConnectionOptions::default(),
-        )
-        .await
-        .unwrap();
-        let client = SubscriberClient::new(cm, cm2);
-
-        let uuid = Uuid::new_v4().hyphenated().to_string();
-        let subscription_name = format!("projects/{}/subscriptions/s{}", PROJECT_NAME, &uuid);
-        let topic_name = format!("projects/{PROJECT_NAME}/topics/test-topic1");
-        let subscription = Subscription::new(subscription_name, client);
-        let config = SubscriptionConfig {
-            enable_exactly_once_delivery,
-            ..Default::default()
-        };
-        if !subscription.exists(None).await.unwrap() {
-            subscription.create(topic_name.as_str(), config, None).await.unwrap();
-        }
-        subscription
-    }
-
-    async fn publish(messages: Option<Vec<PubsubMessage>>) {
-        let pubc = PublisherClient::new(
-            ConnectionManager::new(
-                4,
-                "",
-                &Environment::Emulator(EMULATOR.to_string()),
-                &ConnectionOptions::default(),
-            )
-            .await
-            .unwrap(),
-        );
-        let messages = messages.unwrap_or(vec![PubsubMessage {
-            data: "test_message".into(),
-            ..Default::default()
-        }]);
-        let req = PublishRequest {
-            topic: format!("projects/{PROJECT_NAME}/topics/test-topic1"),
-            messages,
-        };
-        let _ = pubc.publish(req, None).await;
-    }
-
-    async fn test_subscription(enable_exactly_once_delivery: bool) {
-        let subscription = create_subscription(enable_exactly_once_delivery).await;
-
-        let topic_name = format!("projects/{PROJECT_NAME}/topics/test-topic1");
-        let config = subscription.config(None).await.unwrap();
-        assert_eq!(config.0, topic_name);
-
-        let updating = SubscriptionConfigToUpdate {
-            ack_deadline_seconds: Some(100),
-            ..Default::default()
-        };
-        let new_config = subscription.update(updating, None).await.unwrap();
-        assert_eq!(new_config.0, topic_name);
-        assert_eq!(new_config.1.ack_deadline_seconds, 100);
-
-        let handle = tokio::spawn(async move {
-            let _ = subscription
-                .receive(
-                    |message| async move {
-                        println!("{}", message.message.message_id);
-                        let _ = message.ack().await;
-                    },
-                    None,
-                )
-                .await;
-            subscription.delete(None).await.unwrap();
-            assert!(!subscription.exists(None).await.unwrap())
-        });
-        tokio::time::sleep(Duration::from_secs(3)).await;
-        let _ = handle.await;
-    }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
@@ -840,106 +754,6 @@ mod tests {
             m.ack().await.unwrap();
         }
         subscription.delete(None).await.unwrap();
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn test_subscription_exactly_once() {
-        test_subscription(true).await;
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn test_subscription_at_least_once() {
-        test_subscription(false).await;
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
-    async fn test_multi_subscriber_single_subscription_unbound() {
-        test_multi_subscriber_single_subscription(None).await;
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
-    async fn test_multi_subscriber_single_subscription_bound() {
-        let opt = Some(ReceiveConfig {
-            channel_capacity: Some(1),
-            ..Default::default()
-        });
-        test_multi_subscriber_single_subscription(opt).await;
-    }
-
-    async fn test_multi_subscriber_single_subscription(opt: Option<ReceiveConfig>) {
-        let msg = PubsubMessage {
-            data: "test".into(),
-            ..Default::default()
-        };
-        let msg_size = 10;
-        let msgs: Vec<PubsubMessage> = (0..msg_size).map(|_v| msg.clone()).collect();
-        let subscription = create_subscription(false).await;
-        let cancellation_token = CancellationToken::new();
-        let cancel_receiver = cancellation_token.clone();
-        let v = Arc::new(AtomicU32::new(0));
-        let v2 = v.clone();
-        let handle = tokio::spawn(async move {
-            let _ = subscription
-                .receive(
-                    move |message| {
-                        let v2 = v2.clone();
-                        async move {
-                            tracing::info!("received {}", message.message.message_id);
-                            v2.fetch_add(1, SeqCst);
-                            let _ = message.ack().await;
-                        }
-                    },
-                    opt,
-                )
-                .await;
-        });
-        publish(Some(msgs)).await;
-        tokio::time::sleep(Duration::from_secs(5)).await;
-        cancellation_token.cancel();
-        let _ = handle.await;
-        assert_eq!(v.load(SeqCst), msg_size);
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
-    async fn test_multi_subscriber_multi_subscription() {
-        let mut subscriptions = vec![];
-
-        let ctx = CancellationToken::new();
-        for _ in 0..3 {
-            let subscription = create_subscription(false).await;
-            let v = Arc::new(AtomicU32::new(0));
-            let ctx = ctx.clone();
-            let v2 = v.clone();
-            let handle = tokio::spawn(async move {
-                let _ = subscription
-                    .receive(
-                        move |message,| {
-                            let v2 = v2.clone();
-                            async move {
-                                v2.fetch_add(1, SeqCst);
-                                let _ = message.ack().await;
-                            }
-                        },
-                        None,
-                    )
-                    .await;
-            });
-            subscriptions.push((handle, v))
-        }
-
-        publish(None).await;
-        tokio::time::sleep(Duration::from_secs(5)).await;
-
-        ctx.cancel();
-        for (task, v) in subscriptions {
-            let _ = task.await;
-            assert_eq!(v.load(SeqCst), 1);
-        }
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -1039,11 +853,6 @@ mod tests {
             .expect_err("snapshot should already be deleted");
     }
 
-    async fn ack_all(messages: &[ReceivedMessage]) {
-        for message in messages.iter() {
-            message.ack().await.unwrap();
-        }
-    }
 
     #[tokio::test]
     #[serial]
@@ -1133,89 +942,76 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_subscribe_single_subscriber() {
-        test_subscribe(None).await;
-    }
+    async fn test_receive_pattern() {
+        // default
+        let opt = ReceiveConfig::default();
+        test_receive(opt.clone(), true, 10).await;
+        test_receive(opt.clone(), false, 10).await;
+        test_receive(opt.clone(), true, 0).await;
+        test_receive(opt.clone(), false, 0).await;
 
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
-    async fn test_subscribe_multiple_subscriber() {
-        test_subscribe(Some(SubscribeConfig::default().with_enable_multiple_subscriber(true))).await;
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
-    async fn test_subscribe_multiple_subscriber_bound() {
-        test_subscribe(Some(
-            SubscribeConfig::default()
-                .with_enable_multiple_subscriber(true)
-                .with_channel_capacity(1),
-        ))
-        .await;
-    }
-
-    async fn test_subscribe(opt: Option<SubscribeConfig>) {
-        let msg = PubsubMessage {
-            data: "test".into(),
+        // with channel capacity
+        let opt = ReceiveConfig {
+            channel_capacity: Some(1),
             ..Default::default()
         };
-        let msg_count = 10;
-        let msg: Vec<PubsubMessage> = (0..msg_count).map(|_v| msg.clone()).collect();
-        let subscription = create_subscription(false).await;
-        let received = Arc::new(Mutex::new(0));
-        let checking = received.clone();
-        let ctx = CancellationToken::new();
-        let ctx_for_sub = ctx.clone();
-        let handler = tokio::spawn(async move {
-            let mut iter = subscription.subscribe(opt).await.unwrap();
-            while let Some(message) = tokio::select! {
-                v = iter.next() => v,
-                _ = ctx_for_sub.cancelled() => None
-            } {
-                tracing::info!("received {}", message.message.message_id);
-                *received.lock().unwrap() += 1;
-                tokio::time::sleep(Duration::from_millis(500)).await;
-                let _ = message.ack().await;
-            }
-            iter.dispose().await;
-        });
-        publish(Some(msg)).await;
-        tokio::time::sleep(Duration::from_secs(8)).await;
-        ctx.cancel();
-        let _ = handler.await;
-        assert_eq!(*checking.lock().unwrap(), msg_count);
+        test_receive(opt.clone(), true, 10).await;
+        test_receive(opt.clone(), false, 10).await;
+        test_receive(opt.clone(), true, 0).await;
+        test_receive(opt.clone(), false, 0).await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_subscribe_nack_on_cancel_read() {
-        subscribe_nack_on_cancel_read(10, true).await;
-        subscribe_nack_on_cancel_read(0, true).await;
-        subscribe_nack_on_cancel_read(10, false).await;
-        subscribe_nack_on_cancel_read(0, false).await;
-    }
+    async fn test_subscribe_pattern() {
+        // default
+        let opt = Some(SubscribeConfig::default());
+        test_subscribe(opt.clone() , true, 10, 11).await;
+        test_subscribe(opt.clone() , false, 10, 11).await;
+        test_subscribe(opt.clone(),true, 10, 10).await;
+        test_subscribe(opt.clone(),false, 10, 10).await;
+        test_subscribe(opt.clone(),true,10, 5).await;
+        test_subscribe(opt.clone(),false,10, 5).await;
+        test_subscribe(opt.clone(),true, 10, 0).await;
+        test_subscribe(opt.clone(),false, 10, 0).await;
+        test_subscribe(opt.clone(),true, 0, 0).await;
+        test_subscribe(opt.clone(),false, 0, 0).await;
 
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
-    async fn test_subscribe_nack_on_cancel_next() {
-        // cancel after subscribe all message
-        subscribe_nack_on_cancel_next(10, Duration::from_secs(3)).await;
-        tracing::info!("next start");
-        // cancel after process all message
-        subscribe_nack_on_cancel_next(10, Duration::from_millis(0)).await;
-        // no message
-        subscribe_nack_on_cancel_next(0, Duration::from_secs(3)).await;
-    }
-
-    async fn subscribe_nack_on_cancel_read(msg_count: usize, should_cancel: bool) {
+        // with multiple subscribers
         let opt = Some(SubscribeConfig::default().with_enable_multiple_subscriber(true));
+        test_subscribe(opt.clone() , true, 10, 11).await;
+        test_subscribe(opt.clone() , false, 10, 11).await;
+        test_subscribe(opt.clone(),true, 10, 10).await;
+        test_subscribe(opt.clone(),false, 10, 10).await;
+        test_subscribe(opt.clone(),true,10, 5).await;
+        test_subscribe(opt.clone(),false,10, 5).await;
+        test_subscribe(opt.clone(),true, 10, 0).await;
+        test_subscribe(opt.clone(),false, 10, 0).await;
+        test_subscribe(opt.clone(),true, 0, 0).await;
+        test_subscribe(opt.clone(),false, 0, 0).await;
+
+        // with multiple subscribers and channel capacity
+        let opt = Some(SubscribeConfig::default().with_enable_multiple_subscriber(true).with_channel_capacity(1));
+        test_subscribe(opt.clone() , true, 10, 11).await;
+        test_subscribe(opt.clone() , false, 10, 11).await;
+        test_subscribe(opt.clone(),true, 10, 10).await;
+        test_subscribe(opt.clone(),false, 10, 10).await;
+        test_subscribe(opt.clone(),true,10, 5).await;
+        test_subscribe(opt.clone(),false,10, 5).await;
+        test_subscribe(opt.clone(),true, 10, 0).await;
+        test_subscribe(opt.clone(),false, 10, 0).await;
+        test_subscribe(opt.clone(),true, 0, 0).await;
+        test_subscribe(opt.clone(),false, 0, 0).await;
+    }
+
+    async fn test_subscribe(opt: Option<SubscribeConfig>, enable_exactly_once_delivery: bool, msg_count: usize, limit: usize) {
 
         let msg = PubsubMessage {
             data: "test".into(),
             ..Default::default()
         };
         let msg: Vec<PubsubMessage> = (0..msg_count).map(|_v| msg.clone()).collect();
-        let subscription = create_subscription(false).await;
+        let subscription = create_subscription(enable_exactly_once_delivery).await;
         let received = Arc::new(Mutex::new(0));
         let checking = received.clone();
 
@@ -1231,67 +1027,122 @@ mod tests {
                 }
             } {
                 tracing::info!("received {}", message.message.message_id);
-                *received.lock().unwrap() += 1;
-                if should_cancel {
-                    // expect cancel
-                    tokio::time::sleep(Duration::from_secs(10)).await;
-                } else {
-                    tokio::time::sleep(Duration::from_millis(1)).await;
-                }
                 let _ = message.ack().await;
+                let locked = received.lock().unwrap();
+                **locked += 1;
+                if **locked == limit {
+                    // should nack rest of messages
+                    break;
+                }
             }
             iter.dispose().await;
+            tracing::info!("disposed");
         });
         publish(Some(msg)).await;
         tokio::time::sleep(Duration::from_secs(10)).await;
         ctx.cancel();
         subscriber.await.unwrap();
-        if should_cancel && msg_count > 0 {
-            // expect nack
-            assert!(*checking.lock().unwrap() < msg_count);
-        } else {
-            // all delivered
+        if limit > msg_count {
             assert_eq!(*checking.lock().unwrap(), msg_count);
+        } else {
+            assert_eq!(*checking.lock().unwrap(), limit);
         }
+        //TODO check nacked
     }
 
-    async fn subscribe_nack_on_cancel_next(msg_count: usize, recv_time: Duration) {
-        let opt = Some(SubscribeConfig::default().with_enable_multiple_subscriber(true));
-
+    async fn test_receive(opt: ReceiveConfig, enable_exactly_once_delivery: bool, msg_count: usize) {
         let msg = PubsubMessage {
             data: "test".into(),
             ..Default::default()
         };
         let msg: Vec<PubsubMessage> = (0..msg_count).map(|_v| msg.clone()).collect();
-        let subscription = create_subscription(false).await;
+
+        let subscription = create_subscription(enable_exactly_once_delivery).await;
+        let ctx = CancellationToken::new();
+        let ctx_for_receive = CancellationToken::new();
         let received = Arc::new(Mutex::new(0));
         let checking = received.clone();
-
-        let ctx = CancellationToken::new();
-        let ctx_for_sub = ctx.clone();
-        let handler = tokio::spawn(async move {
-            let mut iter = subscription.subscribe(opt).await.unwrap();
-            while let Some(message) = {
-                tokio::select! {
-                    v = iter.next() => v,
-                    _ = ctx_for_sub.cancelled() => None
-                }
-            } {
-                tracing::info!("received {}", message.message.message_id);
-                *received.lock().unwrap() += 1;
-                tokio::time::sleep(recv_time).await;
-                let _ = message.ack().await;
+        let handle = tokio::spawn(async move {
+            let mut task = subscription
+                .receive(
+                    |message| async move {
+                        println!("{}", message.message.message_id);
+                        tracing::info!("received {}", message.message.message_id);
+                        let locked = received.lock().unwrap();
+                        **locked += 1;
+                        let _ = message.ack().await;
+                    },
+                    Some(opt),
+                );
+            select! {
+                _ = task => {}
+                _ = ctx_for_receive.cancelled() => {}
             }
-            tracing::info!("will stop ");
-            iter.dispose().await;
-            tracing::info!("stopped ");
         });
         publish(Some(msg)).await;
         tokio::time::sleep(Duration::from_secs(10)).await;
-        ctx.cancel();
-        handler.await.unwrap();
-        let locked = {*checking.lock().unwrap()};
-        tracing::info!("handler stopped");
-        assert_eq!(locked, msg_count);
+        ctx_for_receive.cancel();
+        handle.await.unwrap();
+        assert_eq!(*checking.lock().unwrap(), msg_count);
     }
+
+    async fn ack_all(messages: &[ReceivedMessage]) {
+        for message in messages.iter() {
+            message.ack().await.unwrap();
+        }
+    }
+
+    async fn create_subscription(enable_exactly_once_delivery: bool) -> Subscription {
+        let cm = ConnectionManager::new(
+            4,
+            "",
+            &Environment::Emulator(EMULATOR.to_string()),
+            &ConnectionOptions::default(),
+        )
+            .await
+            .unwrap();
+        let cm2 = ConnectionManager::new(
+            4,
+            "",
+            &Environment::Emulator(EMULATOR.to_string()),
+            &ConnectionOptions::default(),
+        )
+            .await
+            .unwrap();
+        let client = SubscriberClient::new(cm, cm2);
+
+        let uuid = Uuid::new_v4().hyphenated().to_string();
+        let subscription_name = format!("projects/{}/subscriptions/s{}", PROJECT_NAME, &uuid);
+        let topic_name = format!("projects/{PROJECT_NAME}/topics/test-topic1");
+        let subscription = Subscription::new(subscription_name, client);
+        let config = SubscriptionConfig {
+            enable_exactly_once_delivery,
+            ..Default::default()
+        };
+        subscription.create(topic_name.as_str(), config, None).await.unwrap();
+        subscription
+    }
+
+    async fn publish(messages: Option<Vec<PubsubMessage>>) {
+        let pubc = PublisherClient::new(
+            ConnectionManager::new(
+                4,
+                "",
+                &Environment::Emulator(EMULATOR.to_string()),
+                &ConnectionOptions::default(),
+            )
+                .await
+                .unwrap(),
+        );
+        let messages = messages.unwrap_or(vec![PubsubMessage {
+            data: "test_message".into(),
+            ..Default::default()
+        }]);
+        let req = PublishRequest {
+            topic: format!("projects/{PROJECT_NAME}/topics/test-topic1"),
+            messages,
+        };
+        let _ = pubc.publish(req, None).await;
+    }
+
 }
