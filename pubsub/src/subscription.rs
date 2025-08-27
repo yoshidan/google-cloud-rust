@@ -1005,7 +1005,7 @@ mod tests {
     }
 
     async fn test_subscribe(opt: Option<SubscribeConfig>, enable_exactly_once_delivery: bool, msg_count: usize, limit: usize) {
-
+        tracing::info!("test_subscribe: exactly_once_delivery={} msg_count={} limit={}", enable_exactly_once_delivery, msg_count, limit);
         let msg = PubsubMessage {
             data: "test".into(),
             ..Default::default()
@@ -1028,9 +1028,9 @@ mod tests {
             } {
                 tracing::info!("received {}", message.message.message_id);
                 let _ = message.ack().await;
-                let locked = received.lock().unwrap();
-                **locked += 1;
-                if **locked == limit {
+                let mut locked = received.lock().unwrap();
+                *locked += 1;
+                if *locked == limit {
                     // should nack rest of messages
                     break;
                 }
@@ -1051,6 +1051,7 @@ mod tests {
     }
 
     async fn test_receive(opt: ReceiveConfig, enable_exactly_once_delivery: bool, msg_count: usize) {
+        tracing::info!("test_receive: exactly_once_delivery={} msg_count={}", enable_exactly_once_delivery, msg_count);
         let msg = PubsubMessage {
             data: "test".into(),
             ..Default::default()
@@ -1060,30 +1061,34 @@ mod tests {
         let subscription = create_subscription(enable_exactly_once_delivery).await;
         let ctx = CancellationToken::new();
         let ctx_for_receive = CancellationToken::new();
-        let received = Arc::new(Mutex::new(0));
+        let received = Arc::new(tokio::sync::Mutex::new(0));
         let checking = received.clone();
         let handle = tokio::spawn(async move {
             let mut task = subscription
                 .receive(
-                    |message| async move {
-                        println!("{}", message.message.message_id);
-                        tracing::info!("received {}", message.message.message_id);
-                        let locked = received.lock().unwrap();
-                        **locked += 1;
-                        let _ = message.ack().await;
+                    move |message| {
+                        let received = received.clone();
+                        async move {
+                            println!("{}", message.message.message_id);
+                            tracing::info!("received {}", message.message.message_id);
+                            let mut locked = received.lock().await;
+                            *locked += 1;
+                            let _ = message.ack().await;
+                        }
                     },
                     Some(opt),
                 );
-            select! {
+            tokio::select! {
                 _ = task => {}
                 _ = ctx_for_receive.cancelled() => {}
             }
+            tracing::info!("receive stopped");
         });
         publish(Some(msg)).await;
         tokio::time::sleep(Duration::from_secs(10)).await;
-        ctx_for_receive.cancel();
+        ctx.cancel();
         handle.await.unwrap();
-        assert_eq!(*checking.lock().unwrap(), msg_count);
+        assert_eq!(*checking.lock().await, msg_count);
     }
 
     async fn ack_all(messages: &[ReceivedMessage]) {
