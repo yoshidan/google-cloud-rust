@@ -147,14 +147,15 @@ pub struct MessageStream {
 }
 
 impl MessageStream {
-    pub async fn dispose(mut self) {
+    pub async fn dispose(mut self) -> usize{
         // dispose buffer
-        self.buffer.dispose().await;
+        let mut unprocessed= self.buffer.dispose().await;
 
         // stop all the subscribers
         for task in self.tasks {
-            let _ = task.dispose().await;
+            unprocessed += task.dispose().await;
         }
+        unprocessed
     }
 }
 
@@ -190,14 +191,20 @@ impl DisposableReceiver {
         Self { receiver }
     }
 
-    async fn dispose(self) {
+    async fn dispose(self) -> usize{
         self.receiver.close();
         if self.receiver.is_empty() {
-            return;
+            return 0 ;
         }
+        let mut count : usize = 0;
         while let Ok(msg) = self.receiver.recv().await {
-            let _ = msg.nack().await;
+            let result = msg.nack().await;
+            match result {
+                Ok(_) => count+=1,
+                Err(e) => tracing::error!("nack message error: {}, {:?}", msg.ack_id(), e),
+            }
         }
+        count
     }
 
 
@@ -1035,7 +1042,8 @@ mod tests {
                     break;
                 }
             }
-            iter.dispose().await;
+            let nacked_msgs= iter.dispose().await;
+            assert_eq!(nacked_msgs, msg_count - limit.min(msg_count));
             tracing::info!("disposed");
         });
         publish(Some(msg)).await;

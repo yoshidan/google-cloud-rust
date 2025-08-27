@@ -333,20 +333,26 @@ impl Subscriber {
         }
     }
 
-    pub async fn dispose(mut self) -> Result<(), Status> {
+    pub async fn dispose(mut self) -> usize {
         self.task_to_ping.abort();
         self.task_to_receive.abort();
 
+        let mut count = 0;
         if let Some(rx) = self.unprocessed_messages_receiver.take() {
             if let Ok(Some(messages)) = rx.await {
                 // Nack all the unprocessed messages
                 if !messages.is_empty() {
-                    tracing::debug!("nack {} unprocessed messages", messages.len());
-                    nack(&self.client, self.subscription.clone(), messages).await?;
+                    let size = messages.len();
+                    tracing::debug!("nack {} unprocessed messages", size);
+                    let result = nack(&self.client, self.subscription.clone(), messages).await;
+                    match result {
+                        Ok(_) => count = size,
+                        Err(err) => tracing::error!("failed to nack message: {:?}", err),
+                    }
                 }
             }
         }
-        Ok(())
+        count
     }
 }
 
