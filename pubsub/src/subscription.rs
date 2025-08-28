@@ -844,7 +844,7 @@ mod tests {
         let (subscription , topic) = create_subscription(false).await;
         let received = Arc::new(Mutex::new(0));
 
-        // all cancel
+        // for all nack
         let iter = subscription.subscribe(None).await.unwrap();
 
         let msg = PubsubMessage {

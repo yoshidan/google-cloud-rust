@@ -219,10 +219,22 @@ impl Drop for Receiver {
         }
         tracing::warn!("Call 'dispose' before drop in order to call nack for remaining messages");
         let _forget = tokio::spawn(async move {
-            tracing::debug!("nack buffered messages");
+            let mut ack_ids = vec![];
+            let mut subscription = None;
+            let mut client = None;
             while let Ok(msg) = receiver.recv().await {
-                if let Err(err ) = msg.nack().await {
-                    tracing::error!("nack message error: {}, {:?}", msg.ack_id(), err);
+                ack_ids.push(msg.ack_id().to_string());
+                if subscription.is_none() {
+                    subscription = Some(msg.subscription.clone());
+                }
+                if client.is_none() {
+                    client = Some(msg.subscriber_client.clone());
+                }
+            }
+            if let (Some(sub), Some(cli)) = (subscription, client) {
+                tracing::debug!("nack {} unprocessed messages", ack_ids.len());
+                if let Err(err) = nack(&cli, sub, ack_ids).await {
+                    tracing::error!("failed to nack message: {:?}", err);
                 }
             }
         });
@@ -454,7 +466,10 @@ async fn modify_ack_deadline(
 }
 
 async fn nack(subscriber_client: &SubscriberClient, subscription: String, ack_ids: Vec<String>) -> Result<(), Status> {
-    modify_ack_deadline(subscriber_client, subscription, ack_ids, 0).await
+    for chunk in ack_ids.chunks(100) {
+        modify_ack_deadline(subscriber_client, subscription.clone(), chunk.to_vec(), 0).await?;
+    }
+    Ok(())
 }
 
 pub(crate) async fn ack(
