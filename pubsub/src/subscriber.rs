@@ -1,17 +1,13 @@
-use std::ops::{Deref, DerefMut};
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::select;
-use tokio::sync::{oneshot, Mutex};
-use tokio::task::JoinHandle;
-use tokio::time::sleep;
-use tokio_util::sync::CancellationToken;
-use google_cloud_gax::grpc::{Code, Status, Streaming};
+use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::{
-    AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage, ReceivedMessage as InternalReceivedMessage,
-    StreamingPullRequest, StreamingPullResponse,
+    AcknowledgeRequest, ModifyAckDeadlineRequest, PubsubMessage, StreamingPullRequest,
 };
+use std::ops::{Deref, DerefMut};
+use std::time::Duration;
+use tokio::sync::oneshot;
+use tokio::task::JoinHandle;
+use tokio::time::sleep;
 
 use crate::apiv1::default_retry_setting;
 use crate::apiv1::subscriber_client::{create_empty_streaming_pull_request, SubscriberClient};
@@ -128,14 +124,14 @@ impl Default for SubscriberConfig {
 
 struct UnprocessedMessages {
     tx: Option<oneshot::Sender<Option<Vec<String>>>>,
-    ack_ids: Option<Vec<String>>
+    ack_ids: Option<Vec<String>>,
 }
 
 impl UnprocessedMessages {
     fn new(tx: oneshot::Sender<Option<Vec<String>>>) -> Self {
         Self {
             tx: Some(tx),
-            ack_ids: Some(vec![])
+            ack_ids: Some(vec![]),
         }
     }
 }
@@ -149,7 +145,6 @@ impl Deref for UnprocessedMessages {
 }
 
 impl DerefMut for UnprocessedMessages {
-
     fn deref_mut(&mut self) -> &mut Vec<String> {
         self.ack_ids.as_mut().unwrap()
     }
@@ -183,23 +178,25 @@ impl DerefMut for Receiver {
 
 impl Receiver {
     pub fn new(receiver: async_channel::Receiver<ReceivedMessage>) -> Self {
-        Self { receiver: Some(receiver) }
+        Self {
+            receiver: Some(receiver),
+        }
     }
 
-    pub async fn dispose(mut self) -> usize{
+    pub async fn dispose(mut self) -> usize {
         let receiver = match self.receiver.take() {
             None => return 0,
-            Some(rx) => rx
+            Some(rx) => rx,
         };
         receiver.close();
         if receiver.is_empty() {
-            return 0 ;
+            return 0;
         }
-        let mut count : usize = 0;
+        let mut count: usize = 0;
         while let Ok(msg) = receiver.recv().await {
             let result = msg.nack().await;
             match result {
-                Ok(_) => count+=1,
+                Ok(_) => count += 1,
                 Err(e) => tracing::error!("nack message error: {}, {:?}", msg.ack_id(), e),
             }
         }
@@ -211,7 +208,7 @@ impl Drop for Receiver {
     fn drop(&mut self) {
         let receiver = match self.receiver.take() {
             None => return,
-            Some(rx) => rx
+            Some(rx) => rx,
         };
         receiver.close();
         if receiver.is_empty() {
@@ -253,19 +250,22 @@ pub(crate) struct Subscriber {
 
 impl Drop for Subscriber {
     fn drop(&mut self) {
-        if let Some(task) = self.task_to_ping.take(){
+        if let Some(task) = self.task_to_ping.take() {
             task.abort();
         }
-        if let Some(task) = self.task_to_receive.take(){
+        if let Some(task) = self.task_to_receive.take() {
             task.abort();
         }
         let rx = match self.unprocessed_messages_receiver.take() {
             None => return,
-            Some(rx) => rx
+            Some(rx) => rx,
         };
         let subscription = self.subscription.clone();
         let client = self.client.clone();
-        tracing::warn!("Subscriber is not disposed. Call dispose() to properly clean up resources. subscription={}",&subscription);
+        tracing::warn!(
+            "Subscriber is not disposed. Call dispose() to properly clean up resources. subscription={}",
+            &subscription
+        );
         let task = async move {
             if let Ok(Some(messages)) = rx.await {
                 if messages.is_empty() {
@@ -277,7 +277,7 @@ impl Drop for Subscriber {
                 }
             }
         };
-        let _ = tokio::spawn(task);
+        let _forget = tokio::spawn(task);
     }
 }
 
@@ -301,7 +301,6 @@ impl Subscriber {
         let subscription_clone = subscription.clone();
         let client_clone = client.clone();
 
-
         // Build task to receive
         let (tx, rx) = oneshot::channel();
         let task_to_receive = async move {
@@ -323,13 +322,14 @@ impl Subscriber {
                 tracing::debug!("start streaming: {}", subscription);
 
                 let response = Self::receive(
-                        client.clone(),
-                        request,
-                        ping_receiver.clone(),
-                        config.clone(),
-                        queue.clone(),
-                        &mut unprocessed_messages,
-                ).await;
+                    client.clone(),
+                    request,
+                    ping_receiver.clone(),
+                    config.clone(),
+                    queue.clone(),
+                    &mut unprocessed_messages,
+                )
+                .await;
 
                 if let Err(e) = response {
                     if retryable_codes.contains(&e.code()) {
@@ -341,7 +341,7 @@ impl Subscriber {
                     }
                 } else {
                     tracing::debug!("stopped to receive message: {}", subscription);
-                    break
+                    break;
                 }
             }
             tracing::debug!("stop subscriber: {}", subscription);
@@ -351,7 +351,6 @@ impl Subscriber {
                 queue.close();
             }
         };
-
 
         Self {
             client: client_clone,
@@ -407,7 +406,7 @@ impl Subscriber {
                 let ack_id = msg.ack_id.clone();
                 if queue.send(msg).await.is_ok() {
                     unprocessed_messages.retain(|e| *e != ack_id);
-                }else {
+                } else {
                     // Permanently close the stream if the queue is closed.
                     break;
                 }
@@ -416,16 +415,16 @@ impl Subscriber {
     }
 
     pub async fn dispose(mut self) -> usize {
-        if let Some(task) = self.task_to_ping.take(){
+        if let Some(task) = self.task_to_ping.take() {
             task.abort();
         }
-        if let Some(task) = self.task_to_receive.take(){
+        if let Some(task) = self.task_to_receive.take() {
             task.abort();
         }
         let mut count = 0;
         let rx = match self.unprocessed_messages_receiver.take() {
             None => return count,
-            Some(rx) => rx
+            Some(rx) => rx,
         };
 
         if let Ok(Some(messages)) = rx.await {

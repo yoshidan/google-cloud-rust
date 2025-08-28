@@ -1,6 +1,5 @@
 use std::collections::HashMap;
-use std::future::Future;
-use std::ops::{Deref, DerefMut};
+use std::ops::DerefMut;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::{Duration, SystemTime};
@@ -129,9 +128,9 @@ pub struct MessageStream {
 }
 
 impl MessageStream {
-    pub async fn dispose(mut self) -> usize{
+    pub async fn dispose(self) -> usize {
         // dispose buffer
-        let mut unprocessed= self.buffer.dispose().await;
+        let mut unprocessed = self.buffer.dispose().await;
         tracing::debug!("unprocessed messages in the buffer: {}", unprocessed);
 
         // stop all the subscribers
@@ -152,7 +151,6 @@ impl Stream for MessageStream {
         Pin::new(self.buffer.deref_mut()).poll_next(cx)
     }
 }
-
 
 /// Subscription is a reference to a PubSub subscription.
 #[derive(Clone, Debug)]
@@ -431,7 +429,10 @@ impl Subscription {
             ));
         }
 
-        Ok(MessageStream { buffer: Receiver::new(rx), tasks })
+        Ok(MessageStream {
+            buffer: Receiver::new(rx),
+            tasks,
+        })
     }
 
     /// Ack acknowledges the messages associated with the ack_ids in the AcknowledgeRequest.
@@ -575,16 +576,14 @@ impl Subscription {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use std::sync::atomic::AtomicU32;
-    use std::sync::atomic::Ordering::SeqCst;
+
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
 
-    use futures_util::{select, StreamExt};
+    use futures_util::StreamExt;
     use serial_test::serial;
     use tokio_util::sync::CancellationToken;
-    use tracing::log::{Level, LevelFilter};
-    use tracing_subscriber::EnvFilter;
+
     use uuid::Uuid;
 
     use google_cloud_gax::conn::{ConnectionOptions, Environment};
@@ -594,14 +593,11 @@ mod tests {
     use crate::apiv1::publisher_client::PublisherClient;
     use crate::apiv1::subscriber_client::SubscriberClient;
     use crate::subscriber::ReceivedMessage;
-    use crate::subscription::{
-        SeekTo, SubscribeConfig, Subscription, SubscriptionConfig, SubscriptionConfigToUpdate,
-    };
+    use crate::subscription::{SeekTo, SubscribeConfig, Subscription, SubscriptionConfig, SubscriptionConfigToUpdate};
     use crate::topic::Topic;
 
     const PROJECT_NAME: &str = "local-project";
     const EMULATOR: &str = "localhost:8681";
-
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
@@ -624,7 +620,7 @@ mod tests {
     #[serial]
     async fn test_batch_ack() {
         let ctx = CancellationToken::new();
-        let (subscription , topic) = create_subscription(false).await;
+        let (subscription, topic) = create_subscription(false).await;
         let (sender, receiver) = async_channel::unbounded();
         let subscription_for_receive = subscription.clone();
         let ctx_for_subscribe = ctx.clone();
@@ -668,7 +664,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_snapshots() {
-        let (subscription , topic) = create_subscription(false).await;
+        let (subscription, _topic) = create_subscription(false).await;
 
         let snapshot_name = format!("snapshot-{}", rand::random::<u64>());
         let labels: HashMap<String, String> =
@@ -708,11 +704,10 @@ mod tests {
             .expect_err("snapshot should already be deleted");
     }
 
-
     #[tokio::test]
     #[serial]
     async fn test_seek_snapshot() {
-        let (subscription , topic) = create_subscription(false).await;
+        let (subscription, topic) = create_subscription(false).await;
         let snapshot_name = format!("snapshot-{}", rand::random::<u64>());
 
         // publish and receive a message
@@ -755,7 +750,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_seek_timestamp() {
-        let (subscription , topic) = create_subscription(false).await;
+        let (subscription, topic) = create_subscription(false).await;
 
         // enable acked message retention on subscription -- required for timestamp-based seeks
         subscription
@@ -800,49 +795,52 @@ mod tests {
     async fn test_subscribe_pattern() {
         // default
         let opt = Some(SubscribeConfig::default());
-        test_subscribe(opt.clone() , true, 10, 11).await;
-        test_subscribe(opt.clone() , false, 10, 11).await;
-        test_subscribe(opt.clone(),true, 10, 10).await;
-        test_subscribe(opt.clone(),false, 10, 10).await;
-        test_subscribe(opt.clone(),true,10, 5).await;
-        test_subscribe(opt.clone(),false,10, 5).await;
-        test_subscribe(opt.clone(),true, 10, 1).await;
-        test_subscribe(opt.clone(),false, 10, 1).await;
-        test_subscribe(opt.clone(),true, 0, 0).await;
-        test_subscribe(opt.clone(),false, 0, 0).await;
+        test_subscribe(opt.clone(), true, 10, 11).await;
+        test_subscribe(opt.clone(), false, 10, 11).await;
+        test_subscribe(opt.clone(), true, 10, 10).await;
+        test_subscribe(opt.clone(), false, 10, 10).await;
+        test_subscribe(opt.clone(), true, 10, 5).await;
+        test_subscribe(opt.clone(), false, 10, 5).await;
+        test_subscribe(opt.clone(), true, 10, 1).await;
+        test_subscribe(opt.clone(), false, 10, 1).await;
+        test_subscribe(opt.clone(), true, 0, 0).await;
+        test_subscribe(opt.clone(), false, 0, 0).await;
 
         // with multiple subscribers
         let opt = Some(SubscribeConfig::default().with_enable_multiple_subscriber(true));
-        test_subscribe(opt.clone() , true, 10, 11).await;
-        test_subscribe(opt.clone() , false, 10, 11).await;
-        test_subscribe(opt.clone(),true, 10, 10).await;
-        test_subscribe(opt.clone(),false, 10, 10).await;
-        test_subscribe(opt.clone(),true,10, 5).await;
-        test_subscribe(opt.clone(),false,10, 5).await;
-        test_subscribe(opt.clone(),true, 10, 1).await;
-        test_subscribe(opt.clone(),false, 10, 1).await;
-        test_subscribe(opt.clone(),true, 0, 0).await;
-        test_subscribe(opt.clone(),false, 0, 0).await;
+        test_subscribe(opt.clone(), true, 10, 11).await;
+        test_subscribe(opt.clone(), false, 10, 11).await;
+        test_subscribe(opt.clone(), true, 10, 10).await;
+        test_subscribe(opt.clone(), false, 10, 10).await;
+        test_subscribe(opt.clone(), true, 10, 5).await;
+        test_subscribe(opt.clone(), false, 10, 5).await;
+        test_subscribe(opt.clone(), true, 10, 1).await;
+        test_subscribe(opt.clone(), false, 10, 1).await;
+        test_subscribe(opt.clone(), true, 0, 0).await;
+        test_subscribe(opt.clone(), false, 0, 0).await;
 
         // with multiple subscribers and channel capacity
-        let opt = Some(SubscribeConfig::default().with_enable_multiple_subscriber(true).with_channel_capacity(1));
-        test_subscribe(opt.clone() , true, 10, 11).await;
-        test_subscribe(opt.clone() , false, 10, 11).await;
-        test_subscribe(opt.clone(),true, 10, 10).await;
-        test_subscribe(opt.clone(),false, 10, 10).await;
-        test_subscribe(opt.clone(),true,10, 5).await;
-        test_subscribe(opt.clone(),false,10, 5).await;
-        test_subscribe(opt.clone(),true, 10, 1).await;
-        test_subscribe(opt.clone(),false, 10, 1).await;
-        test_subscribe(opt.clone(),true, 0, 0).await;
-        test_subscribe(opt.clone(),false, 0, 0).await;
+        let opt = Some(
+            SubscribeConfig::default()
+                .with_enable_multiple_subscriber(true)
+                .with_channel_capacity(1),
+        );
+        test_subscribe(opt.clone(), true, 10, 11).await;
+        test_subscribe(opt.clone(), false, 10, 11).await;
+        test_subscribe(opt.clone(), true, 10, 10).await;
+        test_subscribe(opt.clone(), false, 10, 10).await;
+        test_subscribe(opt.clone(), true, 10, 5).await;
+        test_subscribe(opt.clone(), false, 10, 5).await;
+        test_subscribe(opt.clone(), true, 10, 1).await;
+        test_subscribe(opt.clone(), false, 10, 1).await;
+        test_subscribe(opt.clone(), true, 0, 0).await;
+        test_subscribe(opt.clone(), false, 0, 0).await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_subscribe_forget() {
-        let (subscription , topic) = create_subscription(false).await;
-        let received = Arc::new(Mutex::new(0));
+        let (subscription, topic) = create_subscription(false).await;
 
         // for all nack
         let iter = subscription.subscribe(None).await.unwrap();
@@ -877,7 +875,7 @@ mod tests {
                 let mut locked = received.lock().unwrap();
                 *locked += 1;
             }
-            let nacked_msgs= iter.dispose().await;
+            let nacked_msgs = iter.dispose().await;
             assert_eq!(nacked_msgs, 0);
             tracing::info!("disposed");
         });
@@ -888,14 +886,24 @@ mod tests {
         assert_eq!(*checking.lock().unwrap(), 10);
     }
 
-    async fn test_subscribe(opt: Option<SubscribeConfig>, enable_exactly_once_delivery: bool, msg_count: usize, limit: usize) {
-        tracing::info!("test_subscribe: exactly_once_delivery={} msg_count={} limit={}", enable_exactly_once_delivery, msg_count, limit);
+    async fn test_subscribe(
+        opt: Option<SubscribeConfig>,
+        enable_exactly_once_delivery: bool,
+        msg_count: usize,
+        limit: usize,
+    ) {
+        tracing::info!(
+            "test_subscribe: exactly_once_delivery={} msg_count={} limit={}",
+            enable_exactly_once_delivery,
+            msg_count,
+            limit
+        );
         let msg = PubsubMessage {
             data: "test".into(),
             ..Default::default()
         };
         let msg: Vec<PubsubMessage> = (0..msg_count).map(|_v| msg.clone()).collect();
-        let (subscription , topic) = create_subscription(enable_exactly_once_delivery).await;
+        let (subscription, topic) = create_subscription(enable_exactly_once_delivery).await;
         let received = Arc::new(Mutex::new(0));
         let checking = received.clone();
 
@@ -919,7 +927,7 @@ mod tests {
                     break;
                 }
             }
-            let nacked_msgs= iter.dispose().await;
+            let nacked_msgs = iter.dispose().await;
             assert_eq!(nacked_msgs, msg_count - limit.min(msg_count));
             tracing::info!("disposed");
         });
@@ -947,24 +955,24 @@ mod tests {
             &Environment::Emulator(EMULATOR.to_string()),
             &ConnectionOptions::default(),
         )
-            .await
-            .unwrap();
+        .await
+        .unwrap();
         let cm2 = ConnectionManager::new(
             4,
             "",
             &Environment::Emulator(EMULATOR.to_string()),
             &ConnectionOptions::default(),
         )
-            .await
-            .unwrap();
-        let cm3= ConnectionManager::new(
+        .await
+        .unwrap();
+        let cm3 = ConnectionManager::new(
             4,
             "",
             &Environment::Emulator(EMULATOR.to_string()),
             &ConnectionOptions::default(),
         )
-            .await
-            .unwrap();
+        .await
+        .unwrap();
         let sub_client = SubscriberClient::new(cm, cm2);
         let pub_client = PublisherClient::new(cm3);
         let uuid = Uuid::new_v4().hyphenated().to_string();
@@ -992,8 +1000,8 @@ mod tests {
                 &Environment::Emulator(EMULATOR.to_string()),
                 &ConnectionOptions::default(),
             )
-                .await
-                .unwrap(),
+            .await
+            .unwrap(),
         );
         let messages = messages.unwrap_or(vec![PubsubMessage {
             data: "test_message".into(),
@@ -1005,5 +1013,4 @@ mod tests {
         };
         let _ = pubc.publish(req, None).await;
     }
-
 }

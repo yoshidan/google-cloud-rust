@@ -283,11 +283,11 @@ mod tests {
     use std::collections::HashMap;
 
     use serial_test::serial;
-    use tracing::log::LevelFilter;
+
     use uuid::Uuid;
 
     use crate::client::Client;
-    use crate::subscription::{SubscriptionConfig};
+    use crate::subscription::SubscriptionConfig;
 
     async fn create_client() -> Client {
         std::env::set_var("PUBSUB_EMULATOR_HOST", "localhost:8681");
