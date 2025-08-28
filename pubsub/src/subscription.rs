@@ -20,7 +20,6 @@ use google_cloud_googleapis::pubsub::v1::{
 };
 
 use crate::apiv1::subscriber_client::SubscriberClient;
-use crate::subscriber;
 use crate::subscriber::{ack, ReceivedMessage, Receiver, Subscriber, SubscriberConfig};
 
 #[derive(Debug, Clone, Default)]
@@ -109,23 +108,6 @@ impl SubscribeConfig {
 }
 
 #[derive(Debug, Clone)]
-pub struct ReceiveConfig {
-    pub worker_count: usize,
-    pub channel_capacity: Option<usize>,
-    pub subscriber_config: Option<SubscriberConfig>,
-}
-
-impl Default for ReceiveConfig {
-    fn default() -> Self {
-        Self {
-            worker_count: 10,
-            subscriber_config: None,
-            channel_capacity: None,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
 pub enum SeekTo {
     Timestamp(SystemTime),
     Snapshot(String),
@@ -150,10 +132,13 @@ impl MessageStream {
     pub async fn dispose(mut self) -> usize{
         // dispose buffer
         let mut unprocessed= self.buffer.dispose().await;
+        tracing::debug!("unprocessed messages in the buffer: {}", unprocessed);
 
         // stop all the subscribers
         for task in self.tasks {
-            unprocessed += task.dispose().await;
+            let nacked = task.dispose().await;
+            tracing::debug!("unprocessed messages in the subscriber: {}", nacked);
+            unprocessed += nacked;
         }
         unprocessed
     }
@@ -610,7 +595,7 @@ mod tests {
     use crate::apiv1::subscriber_client::SubscriberClient;
     use crate::subscriber::ReceivedMessage;
     use crate::subscription::{
-        ReceiveConfig, SeekTo, SubscribeConfig, Subscription, SubscriptionConfig, SubscriptionConfigToUpdate,
+        SeekTo, SubscribeConfig, Subscription, SubscriptionConfig, SubscriptionConfigToUpdate,
     };
     use crate::topic::Topic;
 
@@ -853,6 +838,56 @@ mod tests {
         test_subscribe(opt.clone(),false, 0, 0).await;
     }
 
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_subscribe_forget() {
+        let (subscription , topic) = create_subscription(false).await;
+        let received = Arc::new(Mutex::new(0));
+
+        // all cancel
+        let iter = subscription.subscribe(None).await.unwrap();
+
+        let msg = PubsubMessage {
+            data: "test".into(),
+            ..Default::default()
+        };
+        let msg: Vec<PubsubMessage> = (0..10).map(|_v| msg.clone()).collect();
+        publish(&topic, Some(msg)).await;
+        tokio::time::sleep(Duration::from_secs(5)).await;
+
+        // spawn nack task
+        drop(iter);
+        tokio::time::sleep(Duration::from_secs(3)).await;
+
+        // ensure all the messages should be redelivered
+        let ctx = CancellationToken::new();
+        let ctx_for_sub = ctx.clone();
+        let received = Arc::new(Mutex::new(0));
+        let checking = received.clone();
+        let subscriber = tokio::spawn(async move {
+            let mut iter = subscription.subscribe(None).await.unwrap();
+            while let Some(message) = {
+                tokio::select! {
+                    v = iter.next() => v,
+                    _ = ctx_for_sub.cancelled() => None
+                }
+            } {
+                let _ = message.ack().await;
+                tracing::info!("acked {}", message.message.message_id);
+                let mut locked = received.lock().unwrap();
+                *locked += 1;
+            }
+            let nacked_msgs= iter.dispose().await;
+            assert_eq!(nacked_msgs, 0);
+            tracing::info!("disposed");
+        });
+
+        tokio::time::sleep(Duration::from_secs(10)).await;
+        ctx.cancel();
+        subscriber.await.unwrap();
+        assert_eq!(*checking.lock().unwrap(), 10);
+    }
+
     async fn test_subscribe(opt: Option<SubscribeConfig>, enable_exactly_once_delivery: bool, msg_count: usize, limit: usize) {
         tracing::info!("test_subscribe: exactly_once_delivery={} msg_count={} limit={}", enable_exactly_once_delivery, msg_count, limit);
         let msg = PubsubMessage {
@@ -942,6 +977,7 @@ mod tests {
         let subscription = Subscription::new(subscription_name, sub_client);
         let config = SubscriptionConfig {
             enable_exactly_once_delivery,
+            enable_message_ordering: true,
             ..Default::default()
         };
         subscription.create(topic_name.as_str(), config, None).await.unwrap();

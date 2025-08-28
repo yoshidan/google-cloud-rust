@@ -374,7 +374,7 @@ impl Subscriber {
                 None => return Ok(()),
             };
 
-            let mut msgs = vec![];
+            let mut msgs = Vec::with_capacity(messages.len());
             for received_message in messages {
                 if let Some(message) = received_message.message {
                     let id = message.message_id.clone();
@@ -396,13 +396,8 @@ impl Subscriber {
                 if queue.send(msg).await.is_ok() {
                     unprocessed_messages.retain(|e| *e != ack_id);
                 }else {
-                    if let Err(err) = nack(&client, subscription.clone(), vec![ack_id]).await {
-                        tracing::error!("failed to nack message: {:?}", err);
-                    }else {
-                        unprocessed_messages.clear();
-                    }
-                    // Receiver is closed permanently.
-                    return Ok(())
+                    // Permanently close the stream if the queue is closed.
+                    break;
                 }
             }
         }

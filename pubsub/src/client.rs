@@ -287,7 +287,7 @@ mod tests {
     use uuid::Uuid;
 
     use crate::client::Client;
-    use crate::subscription::{ReceiveConfig, SubscriptionConfig};
+    use crate::subscription::{SubscriptionConfig};
 
     async fn create_client() -> Client {
         std::env::set_var("PUBSUB_EMULATOR_HOST", "localhost:8681");
