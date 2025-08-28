@@ -612,6 +612,7 @@ mod tests {
     use crate::subscription::{
         ReceiveConfig, SeekTo, SubscribeConfig, Subscription, SubscriptionConfig, SubscriptionConfigToUpdate,
     };
+    use crate::topic::Topic;
 
     const PROJECT_NAME: &str = "local-project";
     const EMULATOR: &str = "localhost:8681";
@@ -620,12 +621,12 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_pull() {
-        let subscription = create_subscription(false).await;
+        let (subscription, topic) = create_subscription(false).await;
         let base = PubsubMessage {
             data: "test_message".into(),
             ..Default::default()
         };
-        publish(Some(vec![base.clone(), base.clone(), base])).await;
+        publish(&topic, Some(vec![base.clone(), base.clone(), base])).await;
         let messages = subscription.pull(2, None).await.unwrap();
         assert_eq!(messages.len(), 2);
         for m in messages {
@@ -638,7 +639,7 @@ mod tests {
     #[serial]
     async fn test_batch_ack() {
         let ctx = CancellationToken::new();
-        let subscription = create_subscription(false).await;
+        let (subscription , topic) = create_subscription(false).await;
         let (sender, receiver) = async_channel::unbounded();
         let subscription_for_receive = subscription.clone();
         let ctx_for_subscribe = ctx.clone();
@@ -671,7 +672,7 @@ mod tests {
             ..Default::default()
         };
         let msg: Vec<PubsubMessage> = (0..10).map(|_v| msg.clone()).collect();
-        publish(Some(msg)).await;
+        publish(&topic, Some(msg)).await;
         tokio::time::sleep(Duration::from_secs(10)).await;
         ctx.cancel();
 
@@ -682,7 +683,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_snapshots() {
-        let subscription = create_subscription(false).await;
+        let (subscription , topic) = create_subscription(false).await;
 
         let snapshot_name = format!("snapshot-{}", rand::random::<u64>());
         let labels: HashMap<String, String> =
@@ -726,11 +727,11 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_seek_snapshot() {
-        let subscription = create_subscription(false).await;
+        let (subscription , topic) = create_subscription(false).await;
         let snapshot_name = format!("snapshot-{}", rand::random::<u64>());
 
         // publish and receive a message
-        publish(None).await;
+        publish(&topic, None).await;
         let messages = subscription.pull(100, None).await.unwrap();
         ack_all(&messages).await;
         assert_eq!(messages.len(), 1);
@@ -742,7 +743,7 @@ mod tests {
             .unwrap();
 
         // publish and receive another message
-        publish(None).await;
+        publish(&topic, None).await;
         let messages = subscription.pull(100, None).await.unwrap();
         assert_eq!(messages.len(), 1);
         ack_all(&messages).await;
@@ -769,7 +770,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_seek_timestamp() {
-        let subscription = create_subscription(false).await;
+        let (subscription , topic) = create_subscription(false).await;
 
         // enable acked message retention on subscription -- required for timestamp-based seeks
         subscription
@@ -785,7 +786,7 @@ mod tests {
             .unwrap();
 
         // publish and receive a message
-        publish(None).await;
+        publish(&topic, None).await;
         let messages = subscription.pull(100, None).await.unwrap();
         ack_all(&messages).await;
         assert_eq!(messages.len(), 1);
@@ -820,8 +821,8 @@ mod tests {
         test_subscribe(opt.clone(),false, 10, 10).await;
         test_subscribe(opt.clone(),true,10, 5).await;
         test_subscribe(opt.clone(),false,10, 5).await;
-        test_subscribe(opt.clone(),true, 10, 0).await;
-        test_subscribe(opt.clone(),false, 10, 0).await;
+        test_subscribe(opt.clone(),true, 10, 1).await;
+        test_subscribe(opt.clone(),false, 10, 1).await;
         test_subscribe(opt.clone(),true, 0, 0).await;
         test_subscribe(opt.clone(),false, 0, 0).await;
 
@@ -833,8 +834,8 @@ mod tests {
         test_subscribe(opt.clone(),false, 10, 10).await;
         test_subscribe(opt.clone(),true,10, 5).await;
         test_subscribe(opt.clone(),false,10, 5).await;
-        test_subscribe(opt.clone(),true, 10, 0).await;
-        test_subscribe(opt.clone(),false, 10, 0).await;
+        test_subscribe(opt.clone(),true, 10, 1).await;
+        test_subscribe(opt.clone(),false, 10, 1).await;
         test_subscribe(opt.clone(),true, 0, 0).await;
         test_subscribe(opt.clone(),false, 0, 0).await;
 
@@ -846,8 +847,8 @@ mod tests {
         test_subscribe(opt.clone(),false, 10, 10).await;
         test_subscribe(opt.clone(),true,10, 5).await;
         test_subscribe(opt.clone(),false,10, 5).await;
-        test_subscribe(opt.clone(),true, 10, 0).await;
-        test_subscribe(opt.clone(),false, 10, 0).await;
+        test_subscribe(opt.clone(),true, 10, 1).await;
+        test_subscribe(opt.clone(),false, 10, 1).await;
         test_subscribe(opt.clone(),true, 0, 0).await;
         test_subscribe(opt.clone(),false, 0, 0).await;
     }
@@ -859,7 +860,7 @@ mod tests {
             ..Default::default()
         };
         let msg: Vec<PubsubMessage> = (0..msg_count).map(|_v| msg.clone()).collect();
-        let subscription = create_subscription(enable_exactly_once_delivery).await;
+        let (subscription , topic) = create_subscription(enable_exactly_once_delivery).await;
         let received = Arc::new(Mutex::new(0));
         let checking = received.clone();
 
@@ -874,8 +875,8 @@ mod tests {
                     _ = ctx_for_sub.cancelled() => None
                 }
             } {
-                tracing::info!("received {}", message.message.message_id);
                 let _ = message.ack().await;
+                tracing::info!("acked {}", message.message.message_id);
                 let mut locked = received.lock().unwrap();
                 *locked += 1;
                 if *locked >= limit {
@@ -887,7 +888,7 @@ mod tests {
             assert_eq!(nacked_msgs, msg_count - limit.min(msg_count));
             tracing::info!("disposed");
         });
-        publish(Some(msg)).await;
+        publish(&topic, Some(msg)).await;
         tokio::time::sleep(Duration::from_secs(10)).await;
         ctx.cancel();
         subscriber.await.unwrap();
@@ -904,7 +905,7 @@ mod tests {
         }
     }
 
-    async fn create_subscription(enable_exactly_once_delivery: bool) -> Subscription {
+    async fn create_subscription(enable_exactly_once_delivery: bool) -> (Subscription, Topic) {
         let cm = ConnectionManager::new(
             4,
             "",
@@ -921,21 +922,33 @@ mod tests {
         )
             .await
             .unwrap();
-        let client = SubscriberClient::new(cm, cm2);
-
+        let cm3= ConnectionManager::new(
+            4,
+            "",
+            &Environment::Emulator(EMULATOR.to_string()),
+            &ConnectionOptions::default(),
+        )
+            .await
+            .unwrap();
+        let sub_client = SubscriberClient::new(cm, cm2);
+        let pub_client = PublisherClient::new(cm3);
         let uuid = Uuid::new_v4().hyphenated().to_string();
+
+        let topic_name = format!("projects/{}/topics/t{}", PROJECT_NAME, &uuid);
+        let topic = Topic::new(topic_name.clone(), pub_client, sub_client.clone());
+        topic.create(None, None).await.unwrap();
+
         let subscription_name = format!("projects/{}/subscriptions/s{}", PROJECT_NAME, &uuid);
-        let topic_name = format!("projects/{PROJECT_NAME}/topics/test-topic1");
-        let subscription = Subscription::new(subscription_name, client);
+        let subscription = Subscription::new(subscription_name, sub_client);
         let config = SubscriptionConfig {
             enable_exactly_once_delivery,
             ..Default::default()
         };
         subscription.create(topic_name.as_str(), config, None).await.unwrap();
-        subscription
+        (subscription, topic)
     }
 
-    async fn publish(messages: Option<Vec<PubsubMessage>>) {
+    async fn publish(topic: &Topic, messages: Option<Vec<PubsubMessage>>) {
         let pubc = PublisherClient::new(
             ConnectionManager::new(
                 4,
@@ -951,7 +964,7 @@ mod tests {
             ..Default::default()
         }]);
         let req = PublishRequest {
-            topic: format!("projects/{PROJECT_NAME}/topics/test-topic1"),
+            topic: topic.fully_qualified_name().to_string(),
             messages,
         };
         let _ = pubc.publish(req, None).await;
