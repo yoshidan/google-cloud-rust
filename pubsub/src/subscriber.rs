@@ -181,20 +181,25 @@ impl Drop for Subscriber {
         if let Some(task) = self.task_to_receive.take(){
             task.abort();
         }
-        let client = self.client.clone();
+        let rx = match self.unprocessed_messages_receiver.take() {
+            None => return,
+            Some(rx) => rx
+        };
         let subscription = self.subscription.clone();
-        if let Some(rx) = self.unprocessed_messages_receiver.take() {
-            tracing::warn!("Subscriber is not disposed. Call dispose() to properly clean up resources.");
-            tokio::spawn(async move {
-                if let Ok(Some(messages)) = rx.await {
-                    if !messages.is_empty() {
-                        tracing::debug!("nack {} unprocessed messages", messages.len());
-                        // We cannot do anything if nack fails here.
-                        let _ = nack(&client, subscription, messages).await;
-                    }
+        let client = self.client.clone();
+        tracing::warn!("Subscriber is not disposed. Call dispose() to properly clean up resources. subscription={}",&subscription);
+        let task = async move {
+            if let Ok(Some(messages)) = rx.await {
+                if messages.is_empty() {
+                    return;
                 }
-            });
-        }
+                tracing::debug!("nack {} unprocessed messages", messages.len());
+                if let Err(err) = nack(&client, subscription, messages).await {
+                    tracing::error!("failed to nack message: {:?}", err);
+                }
+            }
+        };
+        let _ = tokio::spawn(task);
     }
 }
 
@@ -344,20 +349,23 @@ impl Subscriber {
         if let Some(task) = self.task_to_receive.take(){
             task.abort();
         }
-
         let mut count = 0;
-        if let Some(rx) = self.unprocessed_messages_receiver.take() {
-            if let Ok(Some(messages)) = rx.await {
-                // Nack all the unprocessed messages
-                if !messages.is_empty() {
-                    let size = messages.len();
-                    tracing::debug!("nack {} unprocessed messages", size);
-                    let result = nack(&self.client, self.subscription.clone(), messages).await;
-                    match result {
-                        Ok(_) => count = size,
-                        Err(err) => tracing::error!("failed to nack message: {:?}", err),
-                    }
-                }
+        let rx = match self.unprocessed_messages_receiver.take() {
+            None => return count,
+            Some(rx) => rx
+        };
+
+        if let Ok(Some(messages)) = rx.await {
+            // Nack all the unprocessed messages
+            if messages.is_empty() {
+                return count;
+            }
+            let size = messages.len();
+            tracing::debug!("nack {} unprocessed messages", size);
+            let result = nack(&self.client, self.subscription.clone(), messages).await;
+            match result {
+                Ok(_) => count = size,
+                Err(err) => tracing::error!("failed to nack message: {:?}", err),
             }
         }
         count
