@@ -20,8 +20,8 @@ use google_cloud_googleapis::pubsub::v1::{
 };
 
 use crate::apiv1::subscriber_client::SubscriberClient;
-
-use crate::subscriber::{ack, ReceivedMessage, Subscriber, SubscriberConfig};
+use crate::subscriber;
+use crate::subscriber::{ack, ReceivedMessage, Receiver, Subscriber, SubscriberConfig};
 
 #[derive(Debug, Clone, Default)]
 pub struct SubscriptionConfig {
@@ -142,7 +142,7 @@ impl From<SeekTo> for Target {
 }
 
 pub struct MessageStream {
-    buffer: DisposableReceiver,
+    buffer: Receiver,
     tasks: Vec<Subscriber>,
 }
 
@@ -168,62 +168,6 @@ impl Stream for MessageStream {
     }
 }
 
-struct DisposableReceiver {
-    receiver: async_channel::Receiver<ReceivedMessage>,
-}
-
-impl Deref for DisposableReceiver {
-    type Target = async_channel::Receiver<ReceivedMessage>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.receiver
-    }
-}
-impl DerefMut for DisposableReceiver {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.receiver
-    }
-}
-
-impl DisposableReceiver {
-    fn new(receiver: async_channel::Receiver<ReceivedMessage>) -> Self {
-        Self { receiver }
-    }
-
-    async fn dispose(self) -> usize{
-        self.receiver.close();
-        if self.receiver.is_empty() {
-            return 0 ;
-        }
-        let mut count : usize = 0;
-        while let Ok(msg) = self.receiver.recv().await {
-            let result = msg.nack().await;
-            match result {
-                Ok(_) => count+=1,
-                Err(e) => tracing::error!("nack message error: {}, {:?}", msg.ack_id(), e),
-            }
-        }
-        count
-    }
-
-}
-
-impl Drop for DisposableReceiver {
-    fn drop(&mut self) {
-        self.receiver.close();
-        if self.receiver.is_empty() {
-            return;
-        }
-        tracing::warn!("Call 'dispose' before drop in order to call nack for remaining messages");
-        let receiver = self.receiver.clone();
-        let _forget = tokio::spawn(async move {
-            tracing::debug!("nack buffered messages");
-            while let Ok(msg) = receiver.recv().await {
-                let _ = msg.nack().await;
-            }
-        });
-    }
-}
 
 /// Subscription is a reference to a PubSub subscription.
 #[derive(Clone, Debug)]
@@ -480,7 +424,10 @@ impl Subscription {
     /// ```
     pub async fn subscribe(&self, opt: Option<SubscribeConfig>) -> Result<MessageStream, Status> {
         let opt = opt.unwrap_or_default();
-        let (tx, rx) = create_channel(opt.channel_capacity);
+        let (tx, rx) = match opt.channel_capacity {
+            None => async_channel::unbounded(),
+            Some(cap) => async_channel::bounded(cap),
+        };
         let sub_opt = self.unwrap_subscribe_config(opt.subscriber_config).await?;
 
         // spawn a separate subscriber task for each connection in the pool
@@ -499,7 +446,7 @@ impl Subscription {
             ));
         }
 
-        Ok(MessageStream { buffer: rx, tasks })
+        Ok(MessageStream { buffer: Receiver::new(rx), tasks })
     }
 
     /// Ack acknowledges the messages associated with the ack_ids in the AcknowledgeRequest.
@@ -640,16 +587,6 @@ impl Subscription {
     }
 }
 
-fn create_channel(
-    channel_capacity: Option<usize>,
-) -> (async_channel::Sender<ReceivedMessage>, DisposableReceiver) {
-    let (tx, rx) = match channel_capacity {
-        None => async_channel::unbounded(),
-        Some(cap) => async_channel::bounded(cap),
-    };
-    (tx, DisposableReceiver::new(rx))
-}
-
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -661,6 +598,8 @@ mod tests {
     use futures_util::{select, StreamExt};
     use serial_test::serial;
     use tokio_util::sync::CancellationToken;
+    use tracing::log::{Level, LevelFilter};
+    use tracing_subscriber::EnvFilter;
     use uuid::Uuid;
 
     use google_cloud_gax::conn::{ConnectionOptions, Environment};
@@ -677,12 +616,6 @@ mod tests {
     const PROJECT_NAME: &str = "local-project";
     const EMULATOR: &str = "localhost:8681";
 
-    #[ctor::ctor]
-    fn init() {
-        let filter = tracing_subscriber::filter::EnvFilter::from_default_env()
-            .add_directive("google_cloud_pubsub=trace".parse().unwrap());
-        let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
-    }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
@@ -743,9 +676,7 @@ mod tests {
         ctx.cancel();
 
         assert!(subscriber.await.is_ok());
-        tracing::info!("finish batch ack1");
         assert!(ack_manager.await.is_ok());
-        tracing::info!("finish batch ack2");
     }
 
     #[tokio::test]

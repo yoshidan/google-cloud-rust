@@ -281,25 +281,13 @@ impl Client {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use std::thread;
-    use std::time::Duration;
 
     use serial_test::serial;
-    use tokio_util::sync::CancellationToken;
+    use tracing::log::LevelFilter;
     use uuid::Uuid;
 
-    use google_cloud_googleapis::pubsub::v1::PubsubMessage;
-
     use crate::client::Client;
-    use crate::subscriber::SubscriberConfig;
     use crate::subscription::{ReceiveConfig, SubscriptionConfig};
-
-    #[ctor::ctor]
-    fn init() {
-        let filter = tracing_subscriber::filter::EnvFilter::from_default_env()
-            .add_directive("google_cloud_pubsub=trace".parse().unwrap());
-        let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
-    }
 
     async fn create_client() -> Client {
         std::env::set_var("PUBSUB_EMULATOR_HOST", "localhost:8681");

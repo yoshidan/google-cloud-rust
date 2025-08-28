@@ -126,7 +126,7 @@ impl Default for SubscriberConfig {
     }
 }
 
-struct UnprocessedMessages{
+struct UnprocessedMessages {
     tx: Option<oneshot::Sender<Option<Vec<String>>>>,
     ack_ids: Option<Vec<String>>
 }
@@ -160,6 +160,72 @@ impl Drop for UnprocessedMessages {
         if let Some(tx) = self.tx.take() {
             let _ = tx.send(self.ack_ids.take());
         }
+    }
+}
+
+/// Receiver with dispose method to nack remaining messages.
+pub(crate) struct Receiver {
+    receiver: Option<async_channel::Receiver<ReceivedMessage>>,
+}
+
+impl Deref for Receiver {
+    type Target = async_channel::Receiver<ReceivedMessage>;
+
+    fn deref(&self) -> &Self::Target {
+        self.receiver.as_ref().unwrap()
+    }
+}
+impl DerefMut for Receiver {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.receiver.as_mut().unwrap()
+    }
+}
+
+impl Receiver {
+    pub fn new(receiver: async_channel::Receiver<ReceivedMessage>) -> Self {
+        Self { receiver: Some(receiver) }
+    }
+
+    pub async fn dispose(mut self) -> usize{
+        let receiver = match self.receiver.take() {
+            None => return 0,
+            Some(rx) => rx
+        };
+        receiver.close();
+        if receiver.is_empty() {
+            return 0 ;
+        }
+        let mut count : usize = 0;
+        while let Ok(msg) = receiver.recv().await {
+            let result = msg.nack().await;
+            match result {
+                Ok(_) => count+=1,
+                Err(e) => tracing::error!("nack message error: {}, {:?}", msg.ack_id(), e),
+            }
+        }
+        count
+    }
+}
+
+impl Drop for Receiver {
+    fn drop(&mut self) {
+        let receiver = match self.receiver.take() {
+            None => return,
+            Some(rx) => rx
+        };
+        receiver.close();
+        if receiver.is_empty() {
+            return;
+        }
+        tracing::warn!("Call 'dispose' before drop in order to call nack for remaining messages");
+        let _forget = tokio::spawn(async move {
+            tracing::debug!("nack buffered messages");
+            while let Ok(msg) = receiver.recv().await {
+                if let Err(err ) = msg.nack().await {
+                    tracing::error!("nack message error: {}, {:?}", msg.ack_id(), err);
+                }
+            }
+        });
     }
 }
 
