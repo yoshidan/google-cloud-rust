@@ -144,7 +144,10 @@ mod tests {
 
     #[ctor::ctor]
     fn init() {
-        let _ = tracing_subscriber::fmt().try_init();
+        let filter = tracing_subscriber::filter::EnvFilter::from_default_env()
+            .add_directive("google_cloud_pubsub=trace".parse().unwrap());
+        let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
+
     }
 
     async fn create_topic() -> Topic {

@@ -168,7 +168,6 @@ impl Stream for MessageStream {
     }
 }
 
-#[derive(Clone)]
 struct DisposableReceiver {
     receiver: async_channel::Receiver<ReceivedMessage>,
 }
@@ -206,7 +205,6 @@ impl DisposableReceiver {
         }
         count
     }
-
 
 }
 
@@ -504,67 +502,6 @@ impl Subscription {
         Ok(MessageStream { buffer: rx, tasks })
     }
 
-    /// receive calls f with the outstanding messages from the subscription.
-    /// It blocks until cancellation token is cancelled, or the service returns a non-retryable error.
-    /// The standard way to terminate a receive is to use CancellationToken.
-    /// [Deprecated] Use `subscribe` instead.
-    pub async fn receive<F>(
-        &self,
-        f: impl Fn(ReceivedMessage) -> F + Send + 'static + Sync + Clone,
-        config: Option<ReceiveConfig>,
-    ) -> Result<(), Status>
-    where
-        F: Future<Output = ()> + Send + 'static,
-    {
-        let op = config.unwrap_or_default();
-        let mut receivers = Vec::with_capacity(op.worker_count);
-        let mut senders = Vec::with_capacity(receivers.len());
-        let sub_opt = self.unwrap_subscribe_config(op.subscriber_config).await?;
-
-        if self
-            .config(sub_opt.retry_setting.clone())
-            .await?
-            .1
-            .enable_message_ordering
-        {
-            (0..op.worker_count).for_each(|_v| {
-                let (sender, receiver) = create_channel(op.channel_capacity);
-                receivers.push(receiver);
-                senders.push(sender);
-            });
-        } else {
-            let (sender, receiver) = create_channel(op.channel_capacity);
-            (0..op.worker_count).for_each(|_v| {
-                receivers.push(receiver.clone());
-                senders.push(sender.clone());
-            });
-        }
-
-        // same ordering key is in same stream.
-        // nack automatically when the stream is closed. but not waiting for nack done.
-        let _: Vec<Subscriber> = senders
-            .into_iter()
-            .map(|queue| Subscriber::spawn(self.fqsn.clone(), self.subc.clone(), queue, sub_opt.clone()))
-            .collect();
-
-        let mut message_receivers = Vec::with_capacity(receivers.len());
-        for receiver in receivers {
-            let f_clone = f.clone();
-            let name = self.fqsn.clone();
-            message_receivers.push(tokio::spawn(async move {
-                while let Ok(message) = receiver.recv().await {
-                    f_clone(message).await;
-                }
-                tracing::trace!("stop message receiver : {}", name);
-            }));
-        }
-        // wait for all the receivers process received messages
-        for mr in message_receivers {
-            let _ = mr.await;
-        }
-        Ok(())
-    }
-
     /// Ack acknowledges the messages associated with the ack_ids in the AcknowledgeRequest.
     /// The Pub/Sub system can remove the relevant messages from the subscription.
     /// This method is for batch acking.
@@ -742,9 +679,10 @@ mod tests {
 
     #[ctor::ctor]
     fn init() {
-        let _ = tracing_subscriber::fmt().try_init();
+        let filter = tracing_subscriber::filter::EnvFilter::from_default_env()
+            .add_directive("google_cloud_pubsub=trace".parse().unwrap());
+        let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
     }
-
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
@@ -765,56 +703,49 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_batch_acking() {
+    async fn test_batch_ack() {
         let ctx = CancellationToken::new();
         let subscription = create_subscription(false).await;
-        let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
+        let (sender, receiver) = async_channel::unbounded();
         let subscription_for_receive = subscription.clone();
-        let handle = tokio::spawn(async move {
-            let _ = subscription_for_receive
-                .receive(
-                    move |message| {
-                        let sender = sender.clone();
-                        async move {
-                            let _ = sender.send(message.ack_id().to_string());
-                        }
-                    },
-                    None,
-                )
-                .await;
+        let ctx_for_subscribe = ctx.clone();
+
+        let subscriber = tokio::spawn(async move {
+            let mut stream = subscription_for_receive.subscribe(None).await.unwrap();
+            while let Some(message) = tokio::select! {
+                v = stream.next() => v,
+                _ = ctx_for_subscribe.cancelled() => None,
+            } {
+                let _ = sender.send(message.ack_id().to_string()).await;
+            }
+            stream.dispose().await;
+            tracing::info!("finish subscriber task");
         });
 
-        let ctx_for_ack_manager = ctx.clone();
         let ack_manager = tokio::spawn(async move {
             let mut ack_ids = Vec::new();
-            while !ctx_for_ack_manager.is_cancelled() {
-                match tokio::time::timeout(Duration::from_secs(10), receiver.recv()).await {
-                    Ok(ack_id) => {
-                        if let Some(ack_id) = ack_id {
-                            ack_ids.push(ack_id);
-                            if ack_ids.len() > 10 {
-                                subscription.ack(ack_ids).await.unwrap();
-                                ack_ids = Vec::new();
-                            }
-                        }
-                    }
-                    Err(_e) => {
-                        // timeout
-                        subscription.ack(ack_ids).await.unwrap();
-                        ack_ids = Vec::new();
-                    }
-                }
+            while let Ok(ack_id) = receiver.recv().await {
+                tracing::info!("received ack_id: {}", ack_id);
+                ack_ids.push(ack_id);
             }
-            // flush
-            subscription.ack(ack_ids).await
+            assert!(!ack_ids.is_empty());
+            let _ = subscription.ack(ack_ids).await;
+            tracing::info!("finish ack manager task");
         });
 
-        publish(None).await;
-        tokio::time::sleep(Duration::from_secs(5)).await;
-
+        let msg = PubsubMessage {
+            data: "test".into(),
+            ..Default::default()
+        };
+        let msg: Vec<PubsubMessage> = (0..10).map(|_v| msg.clone()).collect();
+        publish(Some(msg)).await;
+        tokio::time::sleep(Duration::from_secs(10)).await;
         ctx.cancel();
-        let _ = handle.await;
+
+        assert!(subscriber.await.is_ok());
+        tracing::info!("finish batch ack1");
         assert!(ack_manager.await.is_ok());
+        tracing::info!("finish batch ack2");
     }
 
     #[tokio::test]
@@ -949,27 +880,6 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
-    async fn test_receive_pattern() {
-        // default
-        let opt = ReceiveConfig::default();
-        test_receive(opt.clone(), true, 10).await;
-        test_receive(opt.clone(), false, 10).await;
-        test_receive(opt.clone(), true, 0).await;
-        test_receive(opt.clone(), false, 0).await;
-
-        // with channel capacity
-        let opt = ReceiveConfig {
-            channel_capacity: Some(1),
-            ..Default::default()
-        };
-        test_receive(opt.clone(), true, 10).await;
-        test_receive(opt.clone(), false, 10).await;
-        test_receive(opt.clone(), true, 0).await;
-        test_receive(opt.clone(), false, 0).await;
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
     async fn test_subscribe_pattern() {
         // default
         let opt = Some(SubscribeConfig::default());
@@ -1037,7 +947,7 @@ mod tests {
                 let _ = message.ack().await;
                 let mut locked = received.lock().unwrap();
                 *locked += 1;
-                if *locked == limit {
+                if *locked >= limit {
                     // should nack rest of messages
                     break;
                 }
@@ -1055,48 +965,6 @@ mod tests {
         } else {
             assert_eq!(*checking.lock().unwrap(), limit);
         }
-        //TODO check nacked
-    }
-
-    async fn test_receive(opt: ReceiveConfig, enable_exactly_once_delivery: bool, msg_count: usize) {
-        tracing::info!("test_receive: exactly_once_delivery={} msg_count={}", enable_exactly_once_delivery, msg_count);
-        let msg = PubsubMessage {
-            data: "test".into(),
-            ..Default::default()
-        };
-        let msg: Vec<PubsubMessage> = (0..msg_count).map(|_v| msg.clone()).collect();
-
-        let subscription = create_subscription(enable_exactly_once_delivery).await;
-        let ctx = CancellationToken::new();
-        let ctx_for_receive = CancellationToken::new();
-        let received = Arc::new(tokio::sync::Mutex::new(0));
-        let checking = received.clone();
-        let handle = tokio::spawn(async move {
-            let mut task = subscription
-                .receive(
-                    move |message| {
-                        let received = received.clone();
-                        async move {
-                            println!("{}", message.message.message_id);
-                            tracing::info!("received {}", message.message.message_id);
-                            let mut locked = received.lock().await;
-                            *locked += 1;
-                            let _ = message.ack().await;
-                        }
-                    },
-                    Some(opt),
-                );
-            tokio::select! {
-                _ = task => {}
-                _ = ctx_for_receive.cancelled() => {}
-            }
-            tracing::info!("receive stopped");
-        });
-        publish(Some(msg)).await;
-        tokio::time::sleep(Duration::from_secs(10)).await;
-        ctx.cancel();
-        handle.await.unwrap();
-        assert_eq!(*checking.lock().await, msg_count);
     }
 
     async fn ack_all(messages: &[ReceivedMessage]) {

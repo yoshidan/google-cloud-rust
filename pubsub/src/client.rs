@@ -296,135 +296,15 @@ mod tests {
 
     #[ctor::ctor]
     fn init() {
-        let _ = tracing_subscriber::fmt().try_init();
+        let filter = tracing_subscriber::filter::EnvFilter::from_default_env()
+            .add_directive("google_cloud_pubsub=trace".parse().unwrap());
+        let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
     }
 
     async fn create_client() -> Client {
         std::env::set_var("PUBSUB_EMULATOR_HOST", "localhost:8681");
 
         Client::new(Default::default()).await.unwrap()
-    }
-
-    async fn do_publish_and_subscribe(ordering_key: &str, bulk: bool) {
-        let client = create_client().await;
-
-        let order = !ordering_key.is_empty();
-        // create
-        let uuid = Uuid::new_v4().hyphenated().to_string();
-        let topic_id = &format!("t{}", &uuid);
-        let subscription_id = &format!("s{}", &uuid);
-        let topic = client.create_topic(topic_id.as_str(), None, None).await.unwrap();
-        let publisher = topic.new_publisher(None);
-        let config = SubscriptionConfig {
-            enable_message_ordering: !ordering_key.is_empty(),
-            ..Default::default()
-        };
-        let subscription = client
-            .create_subscription(subscription_id.as_str(), topic_id.as_str(), config, None)
-            .await
-            .unwrap();
-
-        let cancellation_token = CancellationToken::new();
-        //subscribe
-        let config = ReceiveConfig {
-            worker_count: 2,
-            channel_capacity: None,
-            subscriber_config: Some(SubscriberConfig {
-                ping_interval: Duration::from_secs(1),
-                ..Default::default()
-            }),
-        };
-        let cancel_receiver = cancellation_token.clone();
-        let (s, mut r) = tokio::sync::mpsc::channel(100);
-        let handle = tokio::spawn(async move {
-            let _ = subscription
-                .receive(
-                    move |v| {
-                        let s2 = s.clone();
-                        async move {
-                            let _ = v.ack().await;
-                            let data = std::str::from_utf8(&v.message.data).unwrap().to_string();
-                            tracing::info!(
-                                "tid={:?} id={} data={}",
-                                thread::current().id(),
-                                v.message.message_id,
-                                data
-                            );
-                            let _ = s2.send(data).await;
-                        }
-                    },
-                    Some(config),
-                )
-                .await;
-        });
-
-        //publish
-        let awaiters = if bulk {
-            let messages = (0..100)
-                .map(|key| PubsubMessage {
-                    data: format!("abc_{key}").into(),
-                    ordering_key: ordering_key.to_string(),
-                    ..Default::default()
-                })
-                .collect();
-            publisher.publish_bulk(messages).await
-        } else {
-            let mut awaiters = Vec::with_capacity(100);
-            for key in 0..100 {
-                let message = PubsubMessage {
-                    data: format!("abc_{key}").into(),
-                    ordering_key: ordering_key.into(),
-                    ..Default::default()
-                };
-                awaiters.push(publisher.publish(message).await);
-            }
-            awaiters
-        };
-        for v in awaiters {
-            tracing::info!("sent message_id = {}", v.get().await.unwrap());
-        }
-
-        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-        cancellation_token.cancel();
-        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
-
-        let mut count = 0;
-        while let Some(data) = r.recv().await {
-            tracing::debug!("{}", data);
-            if order {
-                assert_eq!(format!("abc_{count}"), data);
-            }
-            count += 1;
-        }
-        assert_eq!(count, 100);
-        let _ = handle.await;
-
-        let mut publisher = publisher;
-        publisher.shutdown().await;
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
-    async fn test_publish_subscribe_ordered() {
-        do_publish_and_subscribe("ordering", false).await;
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
-    async fn test_publish_subscribe_ordered_bulk() {
-        do_publish_and_subscribe("ordering", true).await;
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
-    async fn test_publish_subscribe_random() {
-        do_publish_and_subscribe("", false).await;
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
-    async fn test_publish_subscribe_random_bulk() {
-        do_publish_and_subscribe("", true).await;
     }
 
     #[tokio::test(flavor = "multi_thread")]

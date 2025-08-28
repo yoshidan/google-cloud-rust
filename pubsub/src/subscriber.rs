@@ -5,7 +5,7 @@ use tokio::select;
 use tokio::sync::{oneshot, Mutex};
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
-
+use tokio_util::sync::CancellationToken;
 use google_cloud_gax::grpc::{Code, Status, Streaming};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::{
@@ -167,14 +167,20 @@ impl Drop for UnprocessedMessages {
 pub(crate) struct Subscriber {
     client: SubscriberClient,
     subscription: String,
-    task_to_ping: JoinHandle<()>,
-    task_to_receive: JoinHandle<()>,
+    task_to_ping: Option<JoinHandle<()>>,
+    task_to_receive: Option<JoinHandle<()>>,
     /// Ack id list of unprocessed messages.
     unprocessed_messages_receiver: Option<oneshot::Receiver<Option<Vec<String>>>>,
 }
 
 impl Drop for Subscriber {
     fn drop(&mut self) {
+        if let Some(task) = self.task_to_ping.take(){
+            task.abort();
+        }
+        if let Some(task) = self.task_to_receive.take(){
+            task.abort();
+        }
         let client = self.client.clone();
         let subscription = self.subscription.clone();
         if let Some(rx) = self.unprocessed_messages_receiver.take() {
@@ -204,7 +210,7 @@ impl Subscriber {
         // Build task to ping
         let task_to_ping = async move {
             loop {
-                _ = sleep(config.ping_interval);
+                let _ = sleep(config.ping_interval).await;
                 let _ = ping_sender.send(true).await;
             }
         };
@@ -212,10 +218,11 @@ impl Subscriber {
         let subscription_clone = subscription.clone();
         let client_clone = client.clone();
 
+
         // Build task to receive
         let (tx, rx) = oneshot::channel();
         let task_to_receive = async move {
-            tracing::trace!("start subscriber: {}", subscription);
+            tracing::debug!("start subscriber: {}", subscription);
 
             let retryable_codes = match &config.retry_setting {
                 Some(v) => v.codes.clone(),
@@ -230,19 +237,16 @@ impl Subscriber {
                 request.max_outstanding_messages = config.max_outstanding_messages;
                 request.max_outstanding_bytes = config.max_outstanding_bytes;
 
-                tracing::trace!("start streaming: {}", subscription);
+                tracing::debug!("start streaming: {}", subscription);
 
-                let response = {
-                    Self::receive(
+                let response = Self::receive(
                         client.clone(),
                         request,
                         ping_receiver.clone(),
                         config.clone(),
                         queue.clone(),
                         &mut unprocessed_messages,
-                    )
-                    .await
-                };
+                ).await;
 
                 if let Err(e) = response {
                     if retryable_codes.contains(&e.code()) {
@@ -257,7 +261,7 @@ impl Subscriber {
                     break
                 }
             }
-            tracing::trace!("stop subscriber: {}", subscription);
+            tracing::debug!("stop subscriber: {}", subscription);
 
             // receiver can detect closed when all the senders are closed.
             if !queue.is_closed() {
@@ -269,8 +273,8 @@ impl Subscriber {
         Self {
             client: client_clone,
             subscription: subscription_clone,
-            task_to_ping: tokio::spawn(task_to_ping),
-            task_to_receive: tokio::spawn(task_to_receive),
+            task_to_ping: Some(tokio::spawn(task_to_ping)),
+            task_to_receive: Some(tokio::spawn(task_to_receive)),
             unprocessed_messages_receiver: Some(rx),
         }
     }
@@ -303,7 +307,7 @@ impl Subscriber {
             for received_message in messages {
                 if let Some(message) = received_message.message {
                     let id = message.message_id.clone();
-                    tracing::debug!("message received: msg_id={id}");
+                    tracing::trace!("message received: msg_id={id}");
                     let msg = ReceivedMessage::new(
                         subscription.clone(),
                         client.clone(),
@@ -334,8 +338,12 @@ impl Subscriber {
     }
 
     pub async fn dispose(mut self) -> usize {
-        self.task_to_ping.abort();
-        self.task_to_receive.abort();
+        if let Some(task) = self.task_to_ping.take(){
+            task.abort();
+        }
+        if let Some(task) = self.task_to_receive.take(){
+            task.abort();
+        }
 
         let mut count = 0;
         if let Some(rx) = self.unprocessed_messages_receiver.take() {
