@@ -491,6 +491,15 @@ impl Subscription {
     /// receive calls f with the outstanding messages from the subscription.
     /// It blocks until cancellation token is cancelled, or the service returns a non-retryable error.
     /// The standard way to terminate a receive is to use CancellationToken.
+    ///
+    /// # Deprecated
+    /// Deprecated since 1.4.1.
+    /// This method will be removed in **1.5.0**.
+    /// Please use [`subscribe`] instead.
+    #[deprecated(
+        since = "1.4.1",
+        note = "This will be removed in 1.5.0. Please use `subscribe` method to get a stream of messages and process the messages from the stream."
+    )]
     pub async fn receive<F>(
         &self,
         f: impl Fn(ReceivedMessage, CancellationToken) -> F + Send + 'static + Sync + Clone,
@@ -707,7 +716,9 @@ fn create_channel(
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
+
     use std::collections::HashMap;
     use std::sync::atomic::AtomicU32;
     use std::sync::atomic::Ordering::SeqCst;
