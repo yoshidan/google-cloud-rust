@@ -4,7 +4,7 @@ use crate::credentials;
 use crate::error::Error;
 use crate::misc::{UnwrapOrEmpty, EMPTY};
 use crate::token::{Token, TOKEN_URL};
-use crate::token_source::TokenSource;
+use crate::token_source::GoogleCloudTokenSource;
 use crate::token_source::{default_http_client, InternalToken};
 
 #[allow(dead_code)]
@@ -49,7 +49,7 @@ struct RequestBody<'a> {
 }
 
 #[async_trait]
-impl TokenSource for UserAccountTokenSource {
+impl GoogleCloudTokenSource for UserAccountTokenSource {
     async fn token(&self) -> Result<Token, Error> {
         let data = RequestBody {
             client_id: &self.client_id,
