@@ -574,7 +574,9 @@ impl Subscription {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
+
     use std::collections::HashMap;
 
     use std::sync::{Arc, Mutex};

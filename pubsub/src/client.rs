@@ -279,6 +279,7 @@ impl Client {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use std::collections::HashMap;
 
