@@ -365,12 +365,9 @@ impl Subscriber {
                 }
             }
             tracing::debug!("stop subscriber: {}", subscription);
-
-            // receiver can detect closed when all the senders are closed.
-            if !queue.is_closed() {
-                queue.close();
-            }
         };
+
+        // When the all the task stops queue will be closed automatically and closed is detected by receiver.
 
         Self {
             client: client_clone,

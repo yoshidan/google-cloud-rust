@@ -789,6 +789,7 @@ mod tests {
 
         let msg = PubsubMessage {
             data: "test".into(),
+            ordering_key: "order1".to_string(),
             ..Default::default()
         };
         let msg: Vec<PubsubMessage> = (0..10).map(|_v| msg.clone()).collect();
@@ -849,6 +850,7 @@ mod tests {
         let publisher = tokio::spawn(async move {
             let msg = PubsubMessage {
                 data: "test".into(),
+                ordering_key: "order1".to_string(),
                 ..Default::default()
             };
             let msg: Vec<PubsubMessage> = (0..msg_count).map(|_v| msg.clone()).collect();
