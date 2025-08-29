@@ -364,44 +364,43 @@ impl Subscription {
             .collect())
     }
 
-    /// subscribe creates a `Stream` of `ReceivedMessage`
+    /// Subscribes to a Pub/Sub subscription and creates a `MessageStream` for consuming messages.
+    ///
+    /// This method initializes a message stream by setting up the necessary channel and spawning
+    /// subscriber tasks based on the provided configuration. It supports multiple subscribers and
+    /// configurable channel capacity.
+    ///
+    /// # Arguments
+    /// - `opt`: An optional `SubscribeConfig` that specifies the subscription configuration, such as
+    ///   enabling multiple subscribers, setting channel capacity, or providing a custom `SubscriberConfig`.
+    ///
+    /// # Returns
+    /// - `Ok(MessageStream)`: A stream of `ReceivedMessage` objects for consuming messages.
+    /// - `Err(Status)`: An error if the subscription configuration or setup fails.
+    ///
+    /// # Behavior
+    /// - If `enable_multiple_subscriber` is set to `true` in the `SubscribeConfig`, multiple subscriber
+    ///   tasks are spawned based on the streaming pool size.
+    /// - If `channel_capacity` is specified, the channel is bounded; otherwise, it is unbounded.
+    ///
     /// ```
-    /// use google_cloud_pubsub::subscription::{SubscribeConfig, Subscription};
-    /// use tokio::select;
     /// use google_cloud_gax::grpc::Status;
-    ///
-    /// async fn run(subscription: Subscription) -> Result<(), Status> {
-    ///     let mut iter = subscription.subscribe(None).await?;
-    ///     let ctx = iter.cancellable();
-    ///     let handler = tokio::spawn(async move {
-    ///         while let Some(message) = iter.read().await {
-    ///             let _ = message.ack().await;
-    ///         }
-    ///     });
-    ///     // Cancel and wait for nack all the pulled messages.
-    ///     ctx.cancel();
-    ///     let _ = handler.await;
-    ///     Ok(())
-    ///  }
-    /// ```
-    ///
-    /// ```
     /// use google_cloud_pubsub::subscription::{SubscribeConfig, Subscription};
     /// use futures_util::StreamExt;
     /// use tokio::select;
-    /// use google_cloud_gax::grpc::Status;
+    /// use tokio_util::sync::CancellationToken;
     ///
-    /// async fn run(subscription: Subscription) -> Result<(), Status> {
+    /// async fn run(ctx: CancellationToken, subscription: Subscription) -> Result<(), Status> {
     ///     let mut iter = subscription.subscribe(None).await?;
-    ///     let ctx = iter.cancellable();
-    ///     let handler = tokio::spawn(async move {
-    ///         while let Some(message) = iter.next().await {
-    ///             let _ = message.ack().await;
-    ///         }
-    ///     });
-    ///     // Cancel and wait for receive all the pulled messages.
-    ///     ctx.cancel();
-    ///     let _ = handler.await;
+    ///     while let Some(message) = select!{
+    ///         v = iter.next() => v,
+    ///         _ = ctx.cancelled() => None,
+    ///     }.await {
+    ///         let _ = message.ack().await;
+    ///     }
+    ///     // Wait for all the unprocessed messages to be Nack.
+    ///     // If you don't call dispose, the unprocessed messages will be Nacke when the iterator is dropped.
+    ///     iter.dispose().await;
     ///     Ok(())
     ///  }
     /// ```
@@ -437,66 +436,7 @@ impl Subscription {
 
     /// Ack acknowledges the messages associated with the ack_ids in the AcknowledgeRequest.
     /// The Pub/Sub system can remove the relevant messages from the subscription.
-    /// This method is for batch acking.
-    ///
-    /// ```
-    /// use google_cloud_pubsub::client::Client;
-    /// use google_cloud_pubsub::subscription::Subscription;
-    /// use google_cloud_gax::grpc::Status;
-    /// use std::time::Duration;
-    /// use tokio_util::sync::CancellationToken;;
-    ///
-    /// #[tokio::main]
-    /// async fn run(client: Client) -> Result<(), Status> {
-    ///     let subscription = client.subscription("test-subscription");
-    ///     let ctx = CancellationToken::new();
-    ///     let (sender, mut receiver)  = tokio::sync::mpsc::unbounded_channel();
-    ///     let subscription_for_receive = subscription.clone();
-    ///     let ctx_for_receive = ctx.clone();
-    ///     let ctx_for_ack_manager = ctx.clone();
-    ///
-    ///     // receive
-    ///     let handle = tokio::spawn(async move {
-    ///         let _ = subscription_for_receive.receive(move |message, _ctx| {
-    ///             let sender = sender.clone();
-    ///             async move {
-    ///                 let _ = sender.send(message.ack_id().to_string());
-    ///             }
-    ///         }, ctx_for_receive.clone(), None).await;
-    ///     });
-    ///
-    ///     // batch ack manager
-    ///     let ack_manager = tokio::spawn( async move {
-    ///         let mut ack_ids = Vec::new();
-    ///         loop {
-    ///             tokio::select! {
-    ///                 _ = ctx_for_ack_manager.cancelled() => {
-    ///                     return subscription.ack(ack_ids).await;
-    ///                 },
-    ///                 r = tokio::time::timeout(Duration::from_secs(10), receiver.recv()) => match r {
-    ///                     Ok(ack_id) => {
-    ///                         if let Some(ack_id) = ack_id {
-    ///                             ack_ids.push(ack_id);
-    ///                             if ack_ids.len() > 10 {
-    ///                                 let _ = subscription.ack(ack_ids).await;
-    ///                                 ack_ids = Vec::new();
-    ///                             }
-    ///                         }
-    ///                     },
-    ///                     Err(_e) => {
-    ///                         // timeout
-    ///                         let _ = subscription.ack(ack_ids).await;
-    ///                         ack_ids = Vec::new();
-    ///                     }
-    ///                 }
-    ///             }
-    ///         }
-    ///     });
-    ///
-    ///     ctx.cancel();
-    ///     Ok(())
-    ///  }
-    /// ```
+    /// This method is for batch ack.
     pub async fn ack(&self, ack_ids: Vec<String>) -> Result<(), Status> {
         ack(&self.subc, self.fqsn.to_string(), ack_ids).await
     }
@@ -862,30 +802,30 @@ mod tests {
         // ensure all the messages should be redelivered
         let ctx = CancellationToken::new();
         let ctx_for_sub = ctx.clone();
-        let received = Arc::new(Mutex::new(0));
-        let checking = received.clone();
         let subscriber = tokio::spawn(async move {
+            let mut acked = 0;
             let mut iter = subscription.subscribe(None).await.unwrap();
-            while let Some(message) = {
-                tokio::select! {
-                    v = iter.next() => v,
-                    _ = ctx_for_sub.cancelled() => None
-                }
-            } {
-                let _ = message.ack().await;
-                tracing::info!("acked {}", message.message.message_id);
-                let mut locked = received.lock().unwrap();
-                *locked += 1;
+            let task = async {
+                while let Some(message) = iter.next().await {
+                    let _ = message.ack().await;
+                    tracing::info!("acked {}", message.message.message_id);
+                    acked += 1;
+                };
+            };
+            tokio::select! {
+                _ = task => {},
+                _ = ctx_for_sub.cancelled() => {}
             }
-            let nacked_msgs = iter.dispose().await;
-            assert_eq!(nacked_msgs, 0);
+            let nack_msgs= iter.dispose().await;
+            assert_eq!(nack_msgs, 0);
             tracing::info!("disposed");
+            return acked;
         });
 
         tokio::time::sleep(Duration::from_secs(10)).await;
         ctx.cancel();
-        subscriber.await.unwrap();
-        assert_eq!(*checking.lock().unwrap(), 10);
+        let acked = subscriber.await.unwrap();
+        assert_eq!(acked, 10);
     }
 
     async fn test_subscribe(
@@ -900,47 +840,50 @@ mod tests {
             msg_count,
             limit
         );
-        let msg = PubsubMessage {
-            data: "test".into(),
-            ..Default::default()
-        };
-        let msg: Vec<PubsubMessage> = (0..msg_count).map(|_v| msg.clone()).collect();
         let (subscription, topic) = create_subscription(enable_exactly_once_delivery).await;
-        let received = Arc::new(Mutex::new(0));
-        let checking = received.clone();
 
         let ctx = CancellationToken::new();
-        let ctx_for_sub = ctx.clone();
+        let ctx_for_pub = ctx.clone();
 
-        let subscriber = tokio::spawn(async move {
-            let mut iter = subscription.subscribe(opt).await.unwrap();
-            while let Some(message) = {
-                tokio::select! {
-                    v = iter.next() => v,
-                    _ = ctx_for_sub.cancelled() => None
-                }
-            } {
-                let _ = message.ack().await;
-                tracing::info!("acked {}", message.message.message_id);
-                let mut locked = received.lock().unwrap();
-                *locked += 1;
-                if *locked >= limit {
-                    // should nack rest of messages
-                    break;
-                }
-            }
-            let nacked_msgs = iter.dispose().await;
-            assert_eq!(nacked_msgs, msg_count - limit.min(msg_count));
-            tracing::info!("disposed");
+        // publish messages
+        let publisher = tokio::spawn(async move {
+            let msg = PubsubMessage {
+                data: "test".into(),
+                ..Default::default()
+            };
+            let msg: Vec<PubsubMessage> = (0..msg_count).map(|_v| msg.clone()).collect();
+            publish(&topic, Some(msg)).await;
+            tokio::time::sleep(Duration::from_secs(10)).await;
+            ctx_for_pub.cancel();
         });
-        publish(&topic, Some(msg)).await;
-        tokio::time::sleep(Duration::from_secs(10)).await;
-        ctx.cancel();
-        subscriber.await.unwrap();
+
+        // subscribe and ack messages
+        let mut acked = 0;
+        let mut iter = subscription.subscribe(opt).await.unwrap();
+        while let Some(message) = {
+            tokio::select! {
+                v = iter.next() => v,
+                _ = ctx.cancelled() => None
+            }
+        } {
+            let _ = message.ack().await;
+            tracing::info!("acked {}", message.message.message_id);
+            acked += 1;
+            if acked >= limit {
+                // should nack rest of messages
+                break;
+            }
+        }
+        let nack_msgs = iter.dispose().await;
+        assert_eq!(nack_msgs, msg_count - limit.min(msg_count));
+
+        publisher.await.unwrap();
+        tracing::info!("disposed");
+
         if limit > msg_count {
-            assert_eq!(*checking.lock().unwrap(), msg_count);
+            assert_eq!(acked, msg_count);
         } else {
-            assert_eq!(*checking.lock().unwrap(), limit);
+            assert_eq!(acked, limit);
         }
     }
 

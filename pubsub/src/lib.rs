@@ -166,67 +166,6 @@
 //!     Ok(())
 //! }
 //! ```
-//!
-//! ### Subscribe Message (Alternative Way)
-//!
-//! After canceling, wait until all pulled messages are processed.
-//! ```
-//! use std::time::Duration;
-//! use futures_util::StreamExt;
-//! use google_cloud_pubsub::client::{Client, ClientConfig};
-//! use google_cloud_googleapis::pubsub::v1::PubsubMessage;
-//! use google_cloud_pubsub::subscription::{SubscribeConfig, SubscriptionConfig};
-//! use google_cloud_gax::grpc::Status;
-//!
-//! async fn run(config: ClientConfig) -> Result<(), Status> {
-//!     // Creating Client, Topic and Subscription...
-//!     let client = Client::new(config).await.unwrap();
-//!     let subscription = client.subscription("test-subscription");
-//!
-//!     // Read the messages as a stream
-//!     let mut stream = subscription.subscribe(None).await.unwrap();
-//!     let cancellable = stream.cancellable();
-//!     let task = tokio::spawn(async move {
-//!         // None if the stream is cancelled
-//!         while let Some(message) = stream.next().await {
-//!             message.ack().await.unwrap();
-//!         }
-//!     });
-//!     tokio::time::sleep(Duration::from_secs(60)).await;
-//!     cancellable.cancel();
-//!     let _ = task.await;
-//!     Ok(())
-//! }
-//! ```
-//!
-//! Unprocessed messages are nack after cancellation.
-//! ```
-//! use std::time::Duration;
-//! use google_cloud_pubsub::client::{Client, ClientConfig};
-//! use google_cloud_googleapis::pubsub::v1::PubsubMessage;
-//! use google_cloud_pubsub::subscription::{SubscribeConfig, SubscriptionConfig};
-//! use google_cloud_gax::grpc::Status;
-//!
-//! async fn run(config: ClientConfig) -> Result<(), Status> {
-//!     // Creating Client, Topic and Subscription...
-//!     let client = Client::new(config).await.unwrap();
-//!     let subscription = client.subscription("test-subscription");
-//!
-//!     // Read the messages as a stream
-//!     let mut stream = subscription.subscribe(None).await.unwrap();
-//!     let cancellable = stream.cancellable();
-//!     let task = tokio::spawn(async move {
-//!         // None if the tream is cancelled
-//!         while let Some(message) = stream.read().await {
-//!             message.ack().await.unwrap();
-//!         }
-//!     });
-//!     tokio::time::sleep(Duration::from_secs(60)).await;
-//!     cancellable.cancel();
-//!     let _ = task.await;
-//!     Ok(())
-//! }
-//! ```
 pub mod apiv1;
 pub mod client;
 pub mod publisher;

@@ -182,7 +182,27 @@ impl Receiver {
             receiver: Some(receiver),
         }
     }
-
+    /// Properly disposes of the `Subscriber` by aborting background tasks and
+    /// nack any unprocessed messages.
+    ///
+    /// This method ensures that:
+    /// - The `task_to_ping` and `task_to_receive` background tasks are aborted.
+    /// - Any unprocessed messages are nack (negative acknowledgment) to inform
+    ///   the server that the messages were not successfully processed.
+    ///
+    /// # Returns
+    /// The number of unprocessed messages that were nack.
+    ///
+    /// # Behavior
+    /// - If there are no unprocessed messages, the method returns `0`.
+    /// - If there are unprocessed messages, it attempts to nack them and returns
+    ///   the count of successfully nack messages.
+    ///
+    /// # Example
+    /// ```rust
+    /// let count = subscriber.dispose().await;
+    /// println!("Disposed with {} unprocessed messages nacked", count);
+    /// ```
     pub async fn dispose(mut self) -> usize {
         let receiver = match self.receiver.take() {
             None => return 0,
