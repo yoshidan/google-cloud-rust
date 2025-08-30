@@ -550,7 +550,7 @@ mod tests_in_gcp {
         for i in 0..msg_len {
             publisher
                 .publish(PubsubMessage {
-                    data: vec![i],
+                    data: vec![i].into(),
                     ordering_key: "key1".into(),
                     ..Default::default()
                 })
