@@ -341,6 +341,7 @@ mod tests_in_gcp {
     use std::time::Duration;
     use tokio::select;
     use tokio_util::sync::CancellationToken;
+    use crate::subscription::SubscribeConfig;
 
     fn make_msg(key: &str) -> PubsubMessage {
         PubsubMessage {
@@ -461,7 +462,7 @@ mod tests_in_gcp {
     #[tokio::test]
     #[serial]
     #[ignore]
-    async fn test_subscribe_exactly_once_delivery() {
+    async fn test_publish_subscribe_exactly_once_delivery() {
         let client = Client::new(ClientConfig::default().with_auth().await.unwrap())
             .await
             .unwrap();
@@ -525,6 +526,60 @@ mod tests_in_gcp {
         tracing::info!("Number of received messages = {}", received_msgs.len());
         for (msg_id, count) in received_msgs {
             assert_eq!(count, 1, "msg_id = {msg_id}, count = {count}");
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
+    #[ignore]
+    async fn test_publish_subscribe_ordering() {
+        let client = Client::new(ClientConfig::default().with_auth().await.unwrap())
+            .await
+            .unwrap();
+        let subscription = client.subscription("order-test");
+        let config = subscription.config(None).await.unwrap().1;
+        assert!(config.enable_message_ordering);
+
+        let msg_len = 10;
+
+        // publish message
+        tracing::info!("publish messages: size = {msg_len}");
+        let ctx = CancellationToken::new();
+        let publisher = client.topic("order-test").new_publisher(None);
+        for i in 0..msg_len {
+            publisher.publish(PubsubMessage {
+                    data: vec![i].into(),
+                    ordering_key: "key1".into(),
+                    ..Default::default()
+                }).await.get().await.unwrap();
+        }
+
+        let checker = tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_secs(60)).await;
+            ctx.cancel();
+        });
+
+        // subscribe message
+        tracing::info!("start subscriber");
+        let ctx_sub= ctx.clone();
+        let option = SubscribeConfig::default().with_enable_multiple_subscriber(true);
+        let mut stream = subscription.subscribe(Some(option)).await.unwrap();
+        let mut msgs = vec![];
+        while let Some(message) = select! {
+            msg = stream.next() => msg,
+            _ = ctx_sub.cancelled() => None
+        } {
+            let msg = message.message.data;
+            msgs.push(msg[0]);
+            message.ack().await.unwrap();
+        }
+        tracing::info!("finish subscriber");
+        let _ = checker.await;
+        let nack = stream.dispose().await;
+        assert_eq!(nack, 0);
+        assert_eq!(msgs.len(), msg_len);
+        for i in 0..msg_len {
+            assert_eq!(msgs[i], i);
         }
     }
 
