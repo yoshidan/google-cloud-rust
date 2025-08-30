@@ -150,15 +150,19 @@
 //!         cancel2.cancel();
 //!     });
 //!
-//!     // Receive blocks until the ctx is cancelled or an error occurs.
-//!     // Or simply use the `subscription.subscribe` method.
-//!     subscription.receive(|mut message, cancel| async move {
-//!         // Handle data.
-//!         println!("Got Message: {:?}", message.message.data);
-//!
-//!         // Ack or Nack message.
+//!     // Start receiving messages from the subscription.
+//!     let mut iter = subscription.subscribe(None).await?;
+//!     // Get buffered messages.
+//!     // To close safely, use a CancellationToken or to signal shutdown.
+//!     while let Some(message) = tokio::select!{
+//!         v = iter.next() => v,
+//!         _ = cancel.cancelled() => None,
+//!     }.await {
 //!         let _ = message.ack().await;
-//!     }, cancel.clone(), None).await?;
+//!     }
+//!     // Wait for all the unprocessed messages to be Nack.
+//!     // If you don't call dispose, the unprocessed messages will be Nacke when the iterator is dropped.
+//!     iter.dispose().await;
 //!
 //!     // Delete subscription if needed.
 //!     subscription.delete(None).await?;

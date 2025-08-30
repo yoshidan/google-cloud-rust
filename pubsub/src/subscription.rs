@@ -391,8 +391,11 @@ impl Subscription {
     /// use tokio_util::sync::CancellationToken;
     ///
     /// async fn run(ctx: CancellationToken, subscription: Subscription) -> Result<(), Status> {
+    ///     // Start receiving messages from the subscription.
     ///     let mut iter = subscription.subscribe(None).await?;
-    ///     while let Some(message) = select!{
+    ///     // Get buffered messages.
+    ///     // To close safely, use a CancellationToken or to signal shutdown.
+    ///     while let Some(message) = tokio::select!{
     ///         v = iter.next() => v,
     ///         _ = ctx.cancelled() => None,
     ///     }.await {
