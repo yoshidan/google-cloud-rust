@@ -338,10 +338,10 @@ mod tests_in_gcp {
     use serial_test::serial;
     use std::collections::HashMap;
 
+    use crate::subscription::SubscribeConfig;
     use std::time::Duration;
     use tokio::select;
     use tokio_util::sync::CancellationToken;
-    use crate::subscription::SubscribeConfig;
 
     fn make_msg(key: &str) -> PubsubMessage {
         PubsubMessage {
@@ -541,17 +541,23 @@ mod tests_in_gcp {
         assert!(config.enable_message_ordering);
 
         let msg_len = 10;
+        let ctx = CancellationToken::new();
+        let ctx_sub = ctx.clone();
 
         // publish message
         tracing::info!("publish messages: size = {msg_len}");
-        let ctx = CancellationToken::new();
         let publisher = client.topic("order-test").new_publisher(None);
         for i in 0..msg_len {
-            publisher.publish(PubsubMessage {
-                    data: vec![i].into(),
+            publisher
+                .publish(PubsubMessage {
+                    data: vec![i],
                     ordering_key: "key1".into(),
                     ..Default::default()
-                }).await.get().await.unwrap();
+                })
+                .await
+                .get()
+                .await
+                .unwrap();
         }
 
         let checker = tokio::spawn(async move {
@@ -561,7 +567,6 @@ mod tests_in_gcp {
 
         // subscribe message
         tracing::info!("start subscriber");
-        let ctx_sub= ctx.clone();
         let option = SubscribeConfig::default().with_enable_multiple_subscriber(true);
         let mut stream = subscription.subscribe(Some(option)).await.unwrap();
         let mut msgs = vec![];
@@ -569,7 +574,7 @@ mod tests_in_gcp {
             msg = stream.next() => msg,
             _ = ctx_sub.cancelled() => None
         } {
-            let msg = message.message.data;
+            let msg = &message.message.data;
             msgs.push(msg[0]);
             message.ack().await.unwrap();
         }
@@ -577,9 +582,9 @@ mod tests_in_gcp {
         let _ = checker.await;
         let nack = stream.dispose().await;
         assert_eq!(nack, 0);
-        assert_eq!(msgs.len(), msg_len);
+        assert_eq!(msgs.len(), msg_len as usize);
         for i in 0..msg_len {
-            assert_eq!(msgs[i], i);
+            assert_eq!(msgs[i as usize], i);
         }
     }
 

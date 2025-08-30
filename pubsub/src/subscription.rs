@@ -522,7 +522,6 @@ mod tests {
 
     use std::collections::HashMap;
 
-    use std::sync::{Arc, Mutex};
     use std::time::Duration;
 
     use futures_util::StreamExt;
@@ -814,16 +813,16 @@ mod tests {
                     let _ = message.ack().await;
                     tracing::info!("acked {}", message.message.message_id);
                     acked += 1;
-                };
+                }
             };
             tokio::select! {
                 _ = task => {},
                 _ = ctx_for_sub.cancelled() => {}
             }
-            let nack_msgs= iter.dispose().await;
+            let nack_msgs = iter.dispose().await;
             assert_eq!(nack_msgs, 0);
             tracing::info!("disposed");
-            return acked;
+            acked
         });
 
         tokio::time::sleep(Duration::from_secs(10)).await;
