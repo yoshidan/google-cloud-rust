@@ -341,6 +341,7 @@ mod tests_in_gcp {
     use crate::subscription::SubscribeConfig;
     use std::time::Duration;
     use tokio::select;
+    use tokio_util::bytes::Bytes;
     use tokio_util::sync::CancellationToken;
 
     fn make_msg(key: &str) -> PubsubMessage {
@@ -550,7 +551,7 @@ mod tests_in_gcp {
         for i in 0..msg_len {
             publisher
                 .publish(PubsubMessage {
-                    data: [i].into(),
+                    data: Bytes::from(vec![i]),
                     ordering_key: "key1".into(),
                     ..Default::default()
                 })
