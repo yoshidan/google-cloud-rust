@@ -546,7 +546,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_pull() {
-        let (subscription, topic) = create_subscription(false).await;
+        let (subscription, topic) = create_subscription(false, false).await;
         let base = PubsubMessage {
             data: "test_message".into(),
             ..Default::default()
@@ -564,7 +564,7 @@ mod tests {
     #[serial]
     async fn test_batch_ack() {
         let ctx = CancellationToken::new();
-        let (subscription, topic) = create_subscription(false).await;
+        let (subscription, topic) = create_subscription(false, false).await;
         let (sender, receiver) = async_channel::unbounded();
         let subscription_for_receive = subscription.clone();
         let ctx_for_subscribe = ctx.clone();
@@ -608,7 +608,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_snapshots() {
-        let (subscription, _topic) = create_subscription(false).await;
+        let (subscription, _topic) = create_subscription(false, false).await;
 
         let snapshot_name = format!("snapshot-{}", rand::random::<u64>());
         let labels: HashMap<String, String> =
@@ -651,7 +651,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_seek_snapshot() {
-        let (subscription, topic) = create_subscription(false).await;
+        let (subscription, topic) = create_subscription(false, false).await;
         let snapshot_name = format!("snapshot-{}", rand::random::<u64>());
 
         // publish and receive a message
@@ -694,7 +694,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_seek_timestamp() {
-        let (subscription, topic) = create_subscription(false).await;
+        let (subscription, topic) = create_subscription(false, false).await;
 
         // enable acked message retention on subscription -- required for timestamp-based seeks
         subscription
@@ -739,29 +739,29 @@ mod tests {
     async fn test_subscribe_pattern() {
         // default
         let opt = Some(SubscribeConfig::default());
-        test_subscribe(opt.clone(), true, 10, 11).await;
-        test_subscribe(opt.clone(), false, 10, 11).await;
-        test_subscribe(opt.clone(), true, 10, 10).await;
-        test_subscribe(opt.clone(), false, 10, 10).await;
-        test_subscribe(opt.clone(), true, 10, 5).await;
-        test_subscribe(opt.clone(), false, 10, 5).await;
-        test_subscribe(opt.clone(), true, 10, 1).await;
-        test_subscribe(opt.clone(), false, 10, 1).await;
-        test_subscribe(opt.clone(), true, 0, 0).await;
-        test_subscribe(opt.clone(), false, 0, 0).await;
+        test_subscribe(opt.clone(), true, true, 10, 11).await;
+        test_subscribe(opt.clone(), false, true, 10, 11).await;
+        test_subscribe(opt.clone(), true, false, 10, 10).await;
+        test_subscribe(opt.clone(), false, false, 10, 10).await;
+        test_subscribe(opt.clone(), true, true, 10, 5).await;
+        test_subscribe(opt.clone(), false, true, 10, 5).await;
+        test_subscribe(opt.clone(), true, false, 10, 1).await;
+        test_subscribe(opt.clone(), false, false, 10, 1).await;
+        test_subscribe(opt.clone(), true, true, 0, 0).await;
+        test_subscribe(opt.clone(), false, true, 0, 0).await;
 
         // with multiple subscribers
         let opt = Some(SubscribeConfig::default().with_enable_multiple_subscriber(true));
-        test_subscribe(opt.clone(), true, 10, 11).await;
-        test_subscribe(opt.clone(), false, 10, 11).await;
-        test_subscribe(opt.clone(), true, 10, 10).await;
-        test_subscribe(opt.clone(), false, 10, 10).await;
-        test_subscribe(opt.clone(), true, 10, 5).await;
-        test_subscribe(opt.clone(), false, 10, 5).await;
-        test_subscribe(opt.clone(), true, 10, 1).await;
-        test_subscribe(opt.clone(), false, 10, 1).await;
-        test_subscribe(opt.clone(), true, 0, 0).await;
-        test_subscribe(opt.clone(), false, 0, 0).await;
+        test_subscribe(opt.clone(), true, false, 10, 11).await;
+        test_subscribe(opt.clone(), false, false, 10, 11).await;
+        test_subscribe(opt.clone(), true, true, 10, 10).await;
+        test_subscribe(opt.clone(), false, true, 10, 10).await;
+        test_subscribe(opt.clone(), true, false, 10, 5).await;
+        test_subscribe(opt.clone(), false, false, 10, 5).await;
+        test_subscribe(opt.clone(), true, true, 10, 1).await;
+        test_subscribe(opt.clone(), false, true, 10, 1).await;
+        test_subscribe(opt.clone(), true, false, 0, 0).await;
+        test_subscribe(opt.clone(), false, false, 0, 0).await;
 
         // with multiple subscribers and channel capacity
         let opt = Some(
@@ -769,22 +769,22 @@ mod tests {
                 .with_enable_multiple_subscriber(true)
                 .with_channel_capacity(1),
         );
-        test_subscribe(opt.clone(), true, 10, 11).await;
-        test_subscribe(opt.clone(), false, 10, 11).await;
-        test_subscribe(opt.clone(), true, 10, 10).await;
-        test_subscribe(opt.clone(), false, 10, 10).await;
-        test_subscribe(opt.clone(), true, 10, 5).await;
-        test_subscribe(opt.clone(), false, 10, 5).await;
-        test_subscribe(opt.clone(), true, 10, 1).await;
-        test_subscribe(opt.clone(), false, 10, 1).await;
-        test_subscribe(opt.clone(), true, 0, 0).await;
-        test_subscribe(opt.clone(), false, 0, 0).await;
+        test_subscribe(opt.clone(), true, true, 10, 11).await;
+        test_subscribe(opt.clone(), false, true, 10, 11).await;
+        test_subscribe(opt.clone(), true, false, 10, 10).await;
+        test_subscribe(opt.clone(), false, false, 10, 10).await;
+        test_subscribe(opt.clone(), true, true, 10, 5).await;
+        test_subscribe(opt.clone(), false, true, 10, 5).await;
+        test_subscribe(opt.clone(), true, false, 10, 1).await;
+        test_subscribe(opt.clone(), false, false, 10, 1).await;
+        test_subscribe(opt.clone(), true, true, 0, 0).await;
+        test_subscribe(opt.clone(), false, true, 0, 0).await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]
     async fn test_subscribe_forget() {
-        let (subscription, topic) = create_subscription(false).await;
+        let (subscription, topic) = create_subscription(false, false).await;
 
         // for all nack
         let iter = subscription.subscribe(None).await.unwrap();
@@ -834,6 +834,7 @@ mod tests {
     async fn test_subscribe(
         opt: Option<SubscribeConfig>,
         enable_exactly_once_delivery: bool,
+        enable_message_ordering: bool,
         msg_count: usize,
         limit: usize,
     ) {
@@ -843,7 +844,7 @@ mod tests {
             msg_count,
             limit
         );
-        let (subscription, topic) = create_subscription(enable_exactly_once_delivery).await;
+        let (subscription, topic) = create_subscription(enable_exactly_once_delivery, enable_message_ordering).await;
 
         let ctx = CancellationToken::new();
         let ctx_for_pub = ctx.clone();
@@ -897,7 +898,10 @@ mod tests {
         }
     }
 
-    async fn create_subscription(enable_exactly_once_delivery: bool) -> (Subscription, Topic) {
+    async fn create_subscription(
+        enable_exactly_once_delivery: bool,
+        enable_message_ordering: bool,
+    ) -> (Subscription, Topic) {
         let cm = ConnectionManager::new(
             4,
             "",
@@ -934,7 +938,7 @@ mod tests {
         let subscription = Subscription::new(subscription_name, sub_client);
         let config = SubscriptionConfig {
             enable_exactly_once_delivery,
-            enable_message_ordering: true,
+            enable_message_ordering,
             ..Default::default()
         };
         subscription.create(topic_name.as_str(), config, None).await.unwrap();
