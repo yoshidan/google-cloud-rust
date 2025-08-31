@@ -831,6 +831,39 @@ mod tests {
         assert_eq!(acked, 10);
     }
 
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_subscribe_finish_on_available() {
+        test_subscribe_unavailable(SubscribeConfig::default()).await;
+
+        let cfg = SubscribeConfig::default().with_enable_multiple_subscriber(true);
+        test_subscribe_unavailable(cfg).await;
+
+        let cfg = SubscribeConfig::default()
+            .with_enable_multiple_subscriber(true)
+            .with_channel_capacity(1);
+        test_subscribe_unavailable(cfg).await;
+    }
+
+    async fn test_subscribe_unavailable(cfg: SubscribeConfig) {
+        let (subscription, topic) = create_subscription(true, true).await;
+        let subscription_for_delete = subscription.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_secs(5)).await;
+            subscription_for_delete.delete(None).await.unwrap();
+        });
+        let mut iter = subscription.subscribe(Some(cfg)).await.unwrap();
+        while let Some(message) = tokio::select! {
+            v = iter.next() => v,
+            _ = tokio::time::sleep(Duration::from_secs(10)) => {
+                panic!("test_subscribe_finish_on_available timeout");
+            }
+        } {
+            message.ack().await.unwrap();
+        }
+        iter.dispose().await;
+    }
+
     async fn test_subscribe(
         opt: Option<SubscribeConfig>,
         enable_exactly_once_delivery: bool,
