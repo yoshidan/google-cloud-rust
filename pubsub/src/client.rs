@@ -575,7 +575,7 @@ mod tests_in_gcp {
             _ = ctx_sub.cancelled() => None
         } {
             let data = message.message.data.clone().to_vec();
-            let i : u8 = String::from_utf8(data).unwrap().parse().unwrap();
+            let i: u8 = String::from_utf8(data).unwrap().parse().unwrap();
             msgs.push(i);
             message.ack().await.unwrap();
         }
