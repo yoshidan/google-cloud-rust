@@ -353,10 +353,10 @@ impl Subscriber {
 
                 if let Err(e) = response {
                     if retryable_codes.contains(&e.code()) {
-                        tracing::warn!("failed to receive message: will reconnect {:?} : {}", e, subscription);
+                        tracing::debug!("refresh connection: subscriber will reconnect {:?} : {}", e, subscription);
                         continue;
                     } else {
-                        tracing::error!("failed to receive message: will stop {:?} : {}", e, subscription);
+                        tracing::error!("failed to receive message: subscriber will stop {:?} : {}", e, subscription);
                         break;
                     }
                 } else {
