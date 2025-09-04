@@ -153,11 +153,11 @@ async fn run(config: ClientConfig) -> Result<(), Status> {
 
     // Token for cancel.
     let cancel = CancellationToken::new();
-    let cancel2 = cancel.clone();
+    let cancel_fo_task = cancel.clone();
     tokio::spawn(async move {
         // Cancel after 10 seconds.
         tokio::time::sleep(Duration::from_secs(10)).await;
-        cancel2.cancel();
+        cancel_fo_task.cancel();
     });
 
     // Start receiving messages from the subscription.
@@ -171,73 +171,12 @@ async fn run(config: ClientConfig) -> Result<(), Status> {
         let _ = message.ack().await;
     }
     // Wait for all the unprocessed messages to be Nack.
-    // If you don't call dispose, the unprocessed messages will be Nacke when the iterator is dropped.
+    // If you don't call dispose, the unprocessed messages will be Nack when the iterator is dropped.
     iter.dispose().await;    
         
     // Delete subscription if needed.
     subscription.delete(None).await?;
 
     Ok(())
-}
-```
-
-### Subscribe Message (Alternative Way)
-
-After canceling, wait until all pulled messages are processed.
-```rust
-use std::time::Duration;
-use futures_util::StreamExt;
-use google_cloud_pubsub::client::{Client, ClientConfig};
-use google_cloud_googleapis::pubsub::v1::PubsubMessage;
-use google_cloud_pubsub::subscription::{SubscribeConfig, SubscriptionConfig};
-use google_cloud_gax::grpc::Status;
-
-async fn run(config: ClientConfig) -> Result<(), Status> {
-     // Creating Client, Topic and Subscription...
-     let client = Client::new(config).await.unwrap();
-     let subscription = client.subscription("test-subscription");
-
-     // Read the messages as a stream
-     let mut stream = subscription.subscribe(None).await.unwrap();
-     let cancellable = stream.cancellable();
-     let task = tokio::spawn(async move {
-         // None if the stream is cancelled
-         while let Some(message) = stream.next().await {
-             message.ack().await.unwrap();
-         }
-     });
-     tokio::time::sleep(Duration::from_secs(60)).await;
-     cancellable.cancel();
-     let _ = task.await;
-     Ok(())
-}
- ```
-
-Unprocessed messages are nack after cancellation.
-```rust
-use std::time::Duration;
-use google_cloud_pubsub::client::{Client, ClientConfig};
-use google_cloud_googleapis::pubsub::v1::PubsubMessage;
-use google_cloud_pubsub::subscription::{SubscribeConfig, SubscriptionConfig};
-use google_cloud_gax::grpc::Status;
-
-async fn run(config: ClientConfig) -> Result<(), Status> {
-     // Creating Client, Topic and Subscription...
-     let client = Client::new(config).await.unwrap();
-     let subscription = client.subscription("test-subscription");
-
-     // Read the messages as a stream
-     let mut stream = subscription.subscribe(None).await.unwrap();
-     let cancellable = stream.cancellable();
-     let task = tokio::spawn(async move {
-         // None if the stream is cancelled
-         while let Some(message) = stream.read().await {
-             message.ack().await.unwrap();
-         }
-     });
-     tokio::time::sleep(Duration::from_secs(60)).await;
-     cancellable.cancel();
-     let _ = task.await;
-     Ok(())
 }
 ```

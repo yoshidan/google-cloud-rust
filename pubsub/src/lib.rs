@@ -161,7 +161,7 @@
 //!         let _ = message.ack().await;
 //!     }
 //!     // Wait for all the unprocessed messages to be Nack.
-//!     // If you don't call dispose, the unprocessed messages will be Nacke when the iterator is dropped.
+//!     // If you don't call dispose, the unprocessed messages will be Nack when the iterator is dropped.
 //!     iter.dispose().await;
 //!
 //!     // Delete subscription if needed.
