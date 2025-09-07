@@ -142,11 +142,6 @@ mod tests {
     use crate::publisher::{Publisher, PublisherConfig};
     use crate::topic::Topic;
 
-    #[ctor::ctor]
-    fn init() {
-        let _ = tracing_subscriber::fmt().try_init();
-    }
-
     async fn create_topic() -> Topic {
         let environment = Environment::Emulator("localhost:8681".to_string());
         let cm1 = ConnectionManager::new(4, "", &environment, &ConnectionOptions::default())

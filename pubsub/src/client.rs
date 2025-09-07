@@ -17,7 +17,7 @@ use crate::topic::{Topic, TopicConfig};
 #[derive(Debug)]
 pub struct ClientConfig {
     /// gRPC channel pool size
-    pub pool_size: Option<usize>,
+    pub pool_size: usize,
     /// Pub/Sub project_id
     pub project_id: Option<String>,
     /// Runtime project info
@@ -34,7 +34,7 @@ impl Default for ClientConfig {
         let emulator = var("PUBSUB_EMULATOR_HOST").ok();
         let default_project_id = emulator.as_ref().map(|_| "local-project".to_string());
         Self {
-            pool_size: Some(4),
+            pool_size: 4,
             environment: match emulator {
                 Some(v) => Environment::Emulator(v),
                 None => Environment::GoogleCloud(Box::new(NoopTokenSourceProvider {})),
@@ -105,11 +105,9 @@ pub struct Client {
 impl Client {
     /// new creates a Pub/Sub client. See [`ClientConfig`] for more information.
     pub async fn new(config: ClientConfig) -> Result<Self, Error> {
-        let pool_size = config.pool_size.unwrap_or_default();
-
         let pubc = PublisherClient::new(
             ConnectionManager::new(
-                pool_size,
+                config.pool_size,
                 config.endpoint.as_str(),
                 &config.environment,
                 &config.connection_option,
@@ -118,14 +116,14 @@ impl Client {
         );
         let subc = SubscriberClient::new(
             ConnectionManager::new(
-                pool_size,
+                config.pool_size,
                 config.endpoint.as_str(),
                 &config.environment,
                 &config.connection_option,
             )
             .await?,
             ConnectionManager::new(
-                pool_size,
+                config.pool_size,
                 config.endpoint.as_str(),
                 &config.environment,
                 &config.connection_option,
@@ -278,155 +276,22 @@ impl Client {
     }
 }
 
-#[allow(deprecated)]
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use std::collections::HashMap;
-    use std::thread;
-    use std::time::Duration;
 
     use serial_test::serial;
-    use tokio_util::sync::CancellationToken;
+
     use uuid::Uuid;
 
-    use google_cloud_googleapis::pubsub::v1::PubsubMessage;
-
     use crate::client::Client;
-    use crate::subscriber::SubscriberConfig;
-    use crate::subscription::{ReceiveConfig, SubscriptionConfig};
-
-    #[ctor::ctor]
-    fn init() {
-        let _ = tracing_subscriber::fmt().try_init();
-    }
+    use crate::subscription::SubscriptionConfig;
 
     async fn create_client() -> Client {
         std::env::set_var("PUBSUB_EMULATOR_HOST", "localhost:8681");
 
         Client::new(Default::default()).await.unwrap()
-    }
-
-    async fn do_publish_and_subscribe(ordering_key: &str, bulk: bool) {
-        let client = create_client().await;
-
-        let order = !ordering_key.is_empty();
-        // create
-        let uuid = Uuid::new_v4().hyphenated().to_string();
-        let topic_id = &format!("t{}", &uuid);
-        let subscription_id = &format!("s{}", &uuid);
-        let topic = client.create_topic(topic_id.as_str(), None, None).await.unwrap();
-        let publisher = topic.new_publisher(None);
-        let config = SubscriptionConfig {
-            enable_message_ordering: !ordering_key.is_empty(),
-            ..Default::default()
-        };
-        let subscription = client
-            .create_subscription(subscription_id.as_str(), topic_id.as_str(), config, None)
-            .await
-            .unwrap();
-
-        let cancellation_token = CancellationToken::new();
-        //subscribe
-        let config = ReceiveConfig {
-            worker_count: 2,
-            channel_capacity: None,
-            subscriber_config: Some(SubscriberConfig {
-                ping_interval: Duration::from_secs(1),
-                ..Default::default()
-            }),
-        };
-        let cancel_receiver = cancellation_token.clone();
-        let (s, mut r) = tokio::sync::mpsc::channel(100);
-        let handle = tokio::spawn(async move {
-            let _ = subscription
-                .receive(
-                    move |v, _ctx| {
-                        let s2 = s.clone();
-                        async move {
-                            let _ = v.ack().await;
-                            let data = std::str::from_utf8(&v.message.data).unwrap().to_string();
-                            tracing::info!(
-                                "tid={:?} id={} data={}",
-                                thread::current().id(),
-                                v.message.message_id,
-                                data
-                            );
-                            let _ = s2.send(data).await;
-                        }
-                    },
-                    cancel_receiver,
-                    Some(config),
-                )
-                .await;
-        });
-
-        //publish
-        let awaiters = if bulk {
-            let messages = (0..100)
-                .map(|key| PubsubMessage {
-                    data: format!("abc_{key}").into(),
-                    ordering_key: ordering_key.to_string(),
-                    ..Default::default()
-                })
-                .collect();
-            publisher.publish_bulk(messages).await
-        } else {
-            let mut awaiters = Vec::with_capacity(100);
-            for key in 0..100 {
-                let message = PubsubMessage {
-                    data: format!("abc_{key}").into(),
-                    ordering_key: ordering_key.into(),
-                    ..Default::default()
-                };
-                awaiters.push(publisher.publish(message).await);
-            }
-            awaiters
-        };
-        for v in awaiters {
-            tracing::info!("sent message_id = {}", v.get().await.unwrap());
-        }
-
-        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-        cancellation_token.cancel();
-        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
-
-        let mut count = 0;
-        while let Some(data) = r.recv().await {
-            tracing::debug!("{}", data);
-            if order {
-                assert_eq!(format!("abc_{count}"), data);
-            }
-            count += 1;
-        }
-        assert_eq!(count, 100);
-        let _ = handle.await;
-
-        let mut publisher = publisher;
-        publisher.shutdown().await;
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
-    async fn test_publish_subscribe_ordered() {
-        do_publish_and_subscribe("ordering", false).await;
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
-    async fn test_publish_subscribe_ordered_bulk() {
-        do_publish_and_subscribe("ordering", true).await;
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
-    async fn test_publish_subscribe_random() {
-        do_publish_and_subscribe("", false).await;
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    #[serial]
-    async fn test_publish_subscribe_random_bulk() {
-        do_publish_and_subscribe("", true).await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -471,6 +336,7 @@ mod tests_in_gcp {
     use serial_test::serial;
     use std::collections::HashMap;
 
+    use crate::subscription::SubscribeConfig;
     use std::time::Duration;
     use tokio::select;
     use tokio_util::sync::CancellationToken;
@@ -594,7 +460,7 @@ mod tests_in_gcp {
     #[tokio::test]
     #[serial]
     #[ignore]
-    async fn test_subscribe_exactly_once_delivery() {
+    async fn test_publish_subscribe_exactly_once_delivery() {
         let client = Client::new(ClientConfig::default().with_auth().await.unwrap())
             .await
             .unwrap();
@@ -658,6 +524,66 @@ mod tests_in_gcp {
         tracing::info!("Number of received messages = {}", received_msgs.len());
         for (msg_id, count) in received_msgs {
             assert_eq!(count, 1, "msg_id = {msg_id}, count = {count}");
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
+    #[ignore]
+    async fn test_publish_subscribe_ordering() {
+        let client = Client::new(ClientConfig::default().with_auth().await.unwrap())
+            .await
+            .unwrap();
+        let subscription = client.subscription("order-test");
+        let config = subscription.config(None).await.unwrap().1;
+        assert!(config.enable_message_ordering);
+
+        let msg_len = 10;
+        let ctx = CancellationToken::new();
+        let ctx_sub = ctx.clone();
+
+        // publish message
+        tracing::info!("publish messages: size = {msg_len}");
+        let publisher = client.topic("order-test").new_publisher(None);
+        for i in 0..msg_len {
+            publisher
+                .publish(PubsubMessage {
+                    data: i.to_string().into(),
+                    ordering_key: "key1".into(),
+                    ..Default::default()
+                })
+                .await
+                .get()
+                .await
+                .unwrap();
+        }
+
+        let checker = tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_secs(60)).await;
+            ctx.cancel();
+        });
+
+        // subscribe message
+        tracing::info!("start subscriber");
+        let option = SubscribeConfig::default().with_enable_multiple_subscriber(true);
+        let mut stream = subscription.subscribe(Some(option)).await.unwrap();
+        let mut msgs = vec![];
+        while let Some(message) = select! {
+            msg = stream.next() => msg,
+            _ = ctx_sub.cancelled() => None
+        } {
+            let data = message.message.data.clone().to_vec();
+            let i: u8 = String::from_utf8(data).unwrap().parse().unwrap();
+            msgs.push(i);
+            message.ack().await.unwrap();
+        }
+        tracing::info!("finish subscriber");
+        let _ = checker.await;
+        let nack = stream.dispose().await;
+        assert_eq!(nack, 0);
+        assert_eq!(msgs.len(), msg_len as usize);
+        for i in 0..msg_len {
+            assert_eq!(msgs[i as usize], i);
         }
     }
 

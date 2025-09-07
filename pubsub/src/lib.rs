@@ -143,87 +143,30 @@
 //!
 //!     // Token for cancel.
 //!     let cancel = CancellationToken::new();
-//!     let cancel2 = cancel.clone();
+//!     let cancel_for_task = cancel.clone();
 //!     tokio::spawn(async move {
 //!         // Cancel after 10 seconds.
 //!         tokio::time::sleep(Duration::from_secs(10)).await;
-//!         cancel2.cancel();
+//!         cancel_for_task.cancel();
 //!     });
 //!
-//!     // Receive blocks until the ctx is cancelled or an error occurs.
-//!     // Or simply use the `subscription.subscribe` method.
-//!     subscription.receive(|mut message, cancel| async move {
-//!         // Handle data.
-//!         println!("Got Message: {:?}", message.message.data);
-//!
-//!         // Ack or Nack message.
+//!     // Start receiving messages from the subscription.
+//!     let mut iter = subscription.subscribe(None).await?;
+//!     // Get buffered messages.
+//!     // To close safely, use a CancellationToken or to signal shutdown.
+//!     while let Some(message) = tokio::select!{
+//!         v = iter.next() => v,
+//!         _ = cancel.cancelled() => None,
+//!     }.await {
 //!         let _ = message.ack().await;
-//!     }, cancel.clone(), None).await?;
+//!     }
+//!     // Wait for all the unprocessed messages to be Nack.
+//!     // If you don't call dispose, the unprocessed messages will be Nack when the iterator is dropped.
+//!     iter.dispose().await;
 //!
 //!     // Delete subscription if needed.
 //!     subscription.delete(None).await?;
 //!
-//!     Ok(())
-//! }
-//! ```
-//!
-//! ### Subscribe Message (Alternative Way)
-//!
-//! After canceling, wait until all pulled messages are processed.
-//! ```
-//! use std::time::Duration;
-//! use futures_util::StreamExt;
-//! use google_cloud_pubsub::client::{Client, ClientConfig};
-//! use google_cloud_googleapis::pubsub::v1::PubsubMessage;
-//! use google_cloud_pubsub::subscription::{SubscribeConfig, SubscriptionConfig};
-//! use google_cloud_gax::grpc::Status;
-//!
-//! async fn run(config: ClientConfig) -> Result<(), Status> {
-//!     // Creating Client, Topic and Subscription...
-//!     let client = Client::new(config).await.unwrap();
-//!     let subscription = client.subscription("test-subscription");
-//!
-//!     // Read the messages as a stream
-//!     let mut stream = subscription.subscribe(None).await.unwrap();
-//!     let cancellable = stream.cancellable();
-//!     let task = tokio::spawn(async move {
-//!         // None if the stream is cancelled
-//!         while let Some(message) = stream.next().await {
-//!             message.ack().await.unwrap();
-//!         }
-//!     });
-//!     tokio::time::sleep(Duration::from_secs(60)).await;
-//!     cancellable.cancel();
-//!     let _ = task.await;
-//!     Ok(())
-//! }
-//! ```
-//!
-//! Unprocessed messages are nack after cancellation.
-//! ```
-//! use std::time::Duration;
-//! use google_cloud_pubsub::client::{Client, ClientConfig};
-//! use google_cloud_googleapis::pubsub::v1::PubsubMessage;
-//! use google_cloud_pubsub::subscription::{SubscribeConfig, SubscriptionConfig};
-//! use google_cloud_gax::grpc::Status;
-//!
-//! async fn run(config: ClientConfig) -> Result<(), Status> {
-//!     // Creating Client, Topic and Subscription...
-//!     let client = Client::new(config).await.unwrap();
-//!     let subscription = client.subscription("test-subscription");
-//!
-//!     // Read the messages as a stream
-//!     let mut stream = subscription.subscribe(None).await.unwrap();
-//!     let cancellable = stream.cancellable();
-//!     let task = tokio::spawn(async move {
-//!         // None if the tream is cancelled
-//!         while let Some(message) = stream.read().await {
-//!             message.ack().await.unwrap();
-//!         }
-//!     });
-//!     tokio::time::sleep(Duration::from_secs(60)).await;
-//!     cancellable.cancel();
-//!     let _ = task.await;
 //!     Ok(())
 //! }
 //! ```
@@ -234,3 +177,14 @@ pub mod subscriber;
 pub mod subscription;
 pub mod topic;
 pub mod util;
+
+#[cfg(test)]
+mod test {
+    use tracing_subscriber::EnvFilter;
+
+    #[ctor::ctor]
+    fn init() {
+        let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("gcloud_pubsub=trace"));
+        let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
+    }
+}
