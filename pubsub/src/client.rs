@@ -17,7 +17,7 @@ use crate::topic::{Topic, TopicConfig};
 #[derive(Debug)]
 pub struct ClientConfig {
     /// gRPC channel pool size
-    pub pool_size: Option<usize>,
+    pub pool_size: usize,
     /// Pub/Sub project_id
     pub project_id: Option<String>,
     /// Runtime project info
@@ -34,7 +34,7 @@ impl Default for ClientConfig {
         let emulator = var("PUBSUB_EMULATOR_HOST").ok();
         let default_project_id = emulator.as_ref().map(|_| "local-project".to_string());
         Self {
-            pool_size: Some(4),
+            pool_size: 4,
             environment: match emulator {
                 Some(v) => Environment::Emulator(v),
                 None => Environment::GoogleCloud(Box::new(NoopTokenSourceProvider {})),
@@ -105,11 +105,9 @@ pub struct Client {
 impl Client {
     /// new creates a Pub/Sub client. See [`ClientConfig`] for more information.
     pub async fn new(config: ClientConfig) -> Result<Self, Error> {
-        let pool_size = config.pool_size.unwrap_or_default();
-
         let pubc = PublisherClient::new(
             ConnectionManager::new(
-                pool_size,
+                config.pool_size,
                 config.endpoint.as_str(),
                 &config.environment,
                 &config.connection_option,
@@ -118,14 +116,14 @@ impl Client {
         );
         let subc = SubscriberClient::new(
             ConnectionManager::new(
-                pool_size,
+                config.pool_size,
                 config.endpoint.as_str(),
                 &config.environment,
                 &config.connection_option,
             )
             .await?,
             ConnectionManager::new(
-                pool_size,
+                config.pool_size,
                 config.endpoint.as_str(),
                 &config.environment,
                 &config.connection_option,

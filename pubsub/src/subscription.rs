@@ -846,7 +846,7 @@ mod tests {
     }
 
     async fn test_subscribe_unavailable(cfg: SubscribeConfig) {
-        let (subscription, topic) = create_subscription(true, true).await;
+        let (subscription, _) = create_subscription(true, true).await;
         let subscription_for_delete = subscription.clone();
         tokio::spawn(async move {
             tokio::time::sleep(Duration::from_secs(5)).await;
