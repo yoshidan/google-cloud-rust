@@ -143,11 +143,11 @@
 //!
 //!     // Token for cancel.
 //!     let cancel = CancellationToken::new();
-//!     let cancel2 = cancel.clone();
+//!     let cancel_for_task = cancel.clone();
 //!     tokio::spawn(async move {
 //!         // Cancel after 10 seconds.
 //!         tokio::time::sleep(Duration::from_secs(10)).await;
-//!         cancel2.cancel();
+//!         cancel_for_task.cancel();
 //!     });
 //!
 //!     // Start receiving messages from the subscription.

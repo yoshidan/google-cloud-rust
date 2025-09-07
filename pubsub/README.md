@@ -153,11 +153,11 @@ async fn run(config: ClientConfig) -> Result<(), Status> {
 
     // Token for cancel.
     let cancel = CancellationToken::new();
-    let cancel_fo_task = cancel.clone();
+    let cancel_for_task = cancel.clone();
     tokio::spawn(async move {
         // Cancel after 10 seconds.
         tokio::time::sleep(Duration::from_secs(10)).await;
-        cancel_fo_task.cancel();
+        cancel_for_task.cancel();
     });
 
     // Start receiving messages from the subscription.
