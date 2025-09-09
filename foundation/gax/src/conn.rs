@@ -226,8 +226,8 @@ mod test {
 
     #[test]
     fn test_get_pool_size() {
-        assert_eq!(1,ConnectionManager::get_pool_size(0));
-        assert_eq!(1,ConnectionManager::get_pool_size(1));
-        assert_eq!(2,ConnectionManager::get_pool_size(2));
+        assert_eq!(1, ConnectionManager::get_pool_size(0));
+        assert_eq!(1, ConnectionManager::get_pool_size(1));
+        assert_eq!(2, ConnectionManager::get_pool_size(2));
     }
 }
