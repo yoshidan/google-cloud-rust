@@ -141,6 +141,8 @@ impl<'a> ConnectionManager {
         ts_provider: &dyn TokenSourceProvider,
         conn_options: &'a ConnectionOptions,
     ) -> Result<Vec<Channel>, Error> {
+        let pool_size = Self::get_pool_size(pool_size);
+
         let tls_config = ClientTlsConfig::new().with_webpki_roots().domain_name(domain_name);
         let mut conns = Vec::with_capacity(pool_size);
 
@@ -182,6 +184,10 @@ impl<'a> ConnectionManager {
         Ok(channel)
     }
 
+    fn get_pool_size(pool_size: usize) -> usize {
+        pool_size.max(1)
+    }
+
     pub fn num(&self) -> usize {
         self.inner.values.len()
     }
@@ -196,7 +202,7 @@ mod test {
     use std::collections::HashSet;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
-    use crate::conn::AtomicRing;
+    use crate::conn::{AtomicRing, ConnectionManager};
 
     #[test]
     fn test_atomic_ring() {
@@ -216,5 +222,12 @@ mod test {
         assert_eq!(2, cm.index.load(Ordering::SeqCst));
         assert!(!values.insert(cm.next()));
         assert_eq!(3, cm.index.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn test_get_pool_size() {
+        assert_eq!(1, ConnectionManager::get_pool_size(0));
+        assert_eq!(1, ConnectionManager::get_pool_size(1));
+        assert_eq!(2, ConnectionManager::get_pool_size(2));
     }
 }
