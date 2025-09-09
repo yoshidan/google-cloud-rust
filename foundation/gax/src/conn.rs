@@ -141,6 +141,8 @@ impl<'a> ConnectionManager {
         ts_provider: &dyn TokenSourceProvider,
         conn_options: &'a ConnectionOptions,
     ) -> Result<Vec<Channel>, Error> {
+        let pool_size = pool_size.max(1);
+
         let tls_config = ClientTlsConfig::new().with_webpki_roots().domain_name(domain_name);
         let mut conns = Vec::with_capacity(pool_size);
 
