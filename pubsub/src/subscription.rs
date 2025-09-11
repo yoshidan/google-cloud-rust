@@ -1,8 +1,12 @@
 use std::collections::HashMap;
+use std::ops::DerefMut;
+use std::pin::Pin;
+use std::task::{Context, Poll};
 use std::time::{Duration, SystemTime};
 
 use prost_types::{DurationError, FieldMask};
 
+use google_cloud_gax::grpc::codegen::tokio_stream::Stream;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::seek_request::Target;
@@ -118,16 +122,19 @@ impl From<SeekTo> for Target {
     }
 }
 
+#[pin_project::pin_project]
 pub struct MessageStream {
-    buffer: Receiver,
+    #[pin]
+    buffer: async_channel::Receiver<ReceivedMessage>,
     tasks: Vec<Subscriber>,
 }
 
 impl MessageStream {
     pub async fn dispose(self) -> usize {
         // dispose buffer
-        let mut unprocessed = self.buffer.dispose().await;
-        tracing::debug!("unprocessed messages in the buffer: {}", unprocessed);
+        let mut unprocessed = 0;
+        //  let mut unprocessed = self.buffer.dispose().await;
+        // tracing::debug!("unprocessed messages in the buffer: {}", unprocessed);
 
         // stop all the subscribers
         for task in self.tasks {
@@ -137,9 +144,15 @@ impl MessageStream {
         }
         unprocessed
     }
+}
 
-    pub async fn next(&self) -> Option<ReceivedMessage> {
-        self.buffer.recv().await.ok()
+impl Stream for MessageStream {
+    type Item = ReceivedMessage;
+
+    // return None when all the subscribers are stopped and the queue is empty.
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let mut this = self.project();
+        this.buffer.poll_next(cx)
     }
 }
 
@@ -422,10 +435,7 @@ impl Subscription {
             ));
         }
 
-        Ok(MessageStream {
-            buffer: Receiver::new(rx),
-            tasks,
-        })
+        Ok(MessageStream { buffer: rx, tasks })
     }
 
     /// Ack acknowledges the messages associated with the ack_ids in the AcknowledgeRequest.
@@ -561,7 +571,7 @@ mod tests {
         let ctx_for_subscribe = ctx.clone();
 
         let subscriber = tokio::spawn(async move {
-            let stream = subscription_for_receive.subscribe(None).await.unwrap();
+            let mut stream = subscription_for_receive.subscribe(None).await.unwrap();
             while let Some(message) = tokio::select! {
                 v = stream.next() => v,
                 _ = ctx_for_subscribe.cancelled() => None,
@@ -798,7 +808,7 @@ mod tests {
         let ctx_for_sub = ctx.clone();
         let subscriber = tokio::spawn(async move {
             let mut acked = 0;
-            let iter = subscription.subscribe(None).await.unwrap();
+            let mut iter = subscription.subscribe(None).await.unwrap();
             let task = async {
                 while let Some(message) = iter.next().await {
                     let _ = message.ack().await;
@@ -843,7 +853,7 @@ mod tests {
             tokio::time::sleep(Duration::from_secs(5)).await;
             subscription_for_delete.delete(None).await.unwrap();
         });
-        let iter = subscription.subscribe(Some(cfg)).await.unwrap();
+        let mut iter = subscription.subscribe(Some(cfg)).await.unwrap();
         while let Some(message) = tokio::select! {
             v = iter.next() => v,
             _ = tokio::time::sleep(Duration::from_secs(10)) => {
@@ -888,7 +898,7 @@ mod tests {
 
         // subscribe and ack messages
         let mut acked = 0;
-        let iter = subscription.subscribe(opt).await.unwrap();
+        let mut iter = subscription.subscribe(opt).await.unwrap();
         while let Some(message) = {
             tokio::select! {
                 v = iter.next() => v,
