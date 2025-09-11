@@ -1,8 +1,8 @@
+use prost_types::{DurationError, FieldMask};
 use std::collections::HashMap;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::{Duration, SystemTime};
-use prost_types::{DurationError, FieldMask};
 
 use google_cloud_gax::grpc::codegen::tokio_stream::{Stream, StreamExt};
 use google_cloud_gax::grpc::{Code, Status};
@@ -16,10 +16,10 @@ use google_cloud_googleapis::pubsub::v1::{
     UpdateSubscriptionRequest,
 };
 
-use tokio::sync::mpsc;
-use google_cloud_gax::grpc::codegen::tokio_stream::wrappers::ReceiverStream;
 use crate::apiv1::subscriber_client::SubscriberClient;
-use crate::subscriber::{ack, ReceivedMessage, Subscriber, SubscriberConfig};
+use crate::subscriber::{ack, nack, ReceivedMessage, Subscriber, SubscriberConfig};
+use google_cloud_gax::grpc::codegen::tokio_stream::wrappers::ReceiverStream;
+use tokio::sync::mpsc;
 
 #[derive(Debug, Clone, Default)]
 pub struct SubscriptionConfig {
@@ -172,8 +172,21 @@ impl Drop for MessageStream {
         tracing::warn!("Call 'dispose' before drop in order to call nack for remaining messages");
 
         let _forget = tokio::spawn(async move {
+            let mut ack_ids = vec![];
+            let mut subscription = None;
+            let mut client = None;
             while let Some(msg) = inner.next().await {
-                if let Err(err) = msg.nack().await {
+                ack_ids.push(msg.ack_id().to_string());
+                if subscription.is_none() {
+                    subscription = Some(msg.subscription.clone());
+                }
+                if client.is_none() {
+                    client = Some(msg.subscriber_client.clone());
+                }
+            }
+            if let (Some(sub), Some(cli)) = (subscription, client) {
+                tracing::debug!("nack {} unprocessed messages", ack_ids.len());
+                if let Err(err) = nack(&cli, sub, ack_ids).await {
                     tracing::error!("failed to nack message: {:?}", err);
                 }
             }
@@ -188,7 +201,7 @@ impl Stream for MessageStream {
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match &mut self.inner {
             None => Poll::Ready(None),
-            Some(inner) => Pin::new(inner).poll_next(cx)
+            Some(inner) => Pin::new(inner).poll_next(cx),
         }
     }
 }
@@ -457,7 +470,7 @@ impl Subscription {
         let sub_opt = self.unwrap_subscribe_config(opt.subscriber_config).await?;
 
         // spawn a separate subscriber task for each connection in the pool
-        let subscriber_num= if opt.enable_multiple_subscriber {
+        let subscriber_num = if opt.enable_multiple_subscriber {
             self.streaming_pool_size()
         } else {
             1
@@ -863,7 +876,7 @@ mod tests {
             acked
         });
 
-        tokio::time::sleep(Duration::from_secs(10)).await;
+        tokio::time::sleep(Duration::from_secs(20)).await;
         ctx.cancel();
         let acked = subscriber.await.unwrap();
         assert_eq!(acked, 10);
