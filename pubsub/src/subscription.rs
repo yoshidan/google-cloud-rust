@@ -1,12 +1,10 @@
 use std::collections::HashMap;
-use std::ops::DerefMut;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::{Duration, SystemTime};
-
 use prost_types::{DurationError, FieldMask};
 
-use google_cloud_gax::grpc::codegen::tokio_stream::Stream;
+use google_cloud_gax::grpc::codegen::tokio_stream::{Stream, StreamExt};
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::seek_request::Target;
@@ -18,8 +16,10 @@ use google_cloud_googleapis::pubsub::v1::{
     UpdateSubscriptionRequest,
 };
 
+use tokio::sync::mpsc;
+use google_cloud_gax::grpc::codegen::tokio_stream::wrappers::ReceiverStream;
 use crate::apiv1::subscriber_client::SubscriberClient;
-use crate::subscriber::{ack, ReceivedMessage, Receiver, Subscriber, SubscriberConfig};
+use crate::subscriber::{ack, ReceivedMessage, Subscriber, SubscriberConfig};
 
 #[derive(Debug, Clone, Default)]
 pub struct SubscriptionConfig {
@@ -122,22 +122,35 @@ impl From<SeekTo> for Target {
     }
 }
 
-#[pin_project::pin_project]
 pub struct MessageStream {
-    #[pin]
-    buffer: async_channel::Receiver<ReceivedMessage>,
-    tasks: Vec<Subscriber>,
+    inner: Option<ReceiverStream<ReceivedMessage>>,
+    subscribers: Option<Vec<Subscriber>>,
 }
 
 impl MessageStream {
-    pub async fn dispose(self) -> usize {
+    pub async fn dispose(mut self) -> usize {
         // dispose buffer
+        let tasks = match self.subscribers.take() {
+            Some(t) => t,
+            None => return 0,
+        };
+        let mut inner = match self.inner.take() {
+            Some(t) => t,
+            None => return 0,
+        };
+        inner.close();
         let mut unprocessed = 0;
-        //  let mut unprocessed = self.buffer.dispose().await;
-        // tracing::debug!("unprocessed messages in the buffer: {}", unprocessed);
+        while let Some(msg) = inner.next().await {
+            let result = msg.nack().await;
+            match result {
+                Ok(_) => unprocessed += 1,
+                Err(e) => tracing::error!("nack message error: {}, {:?}", msg.ack_id(), e),
+            }
+        }
+        tracing::debug!("unprocessed messages in the buffer: {}", unprocessed);
 
         // stop all the subscribers
-        for task in self.tasks {
+        for task in tasks {
             let nacked = task.dispose().await;
             tracing::debug!("unprocessed messages in the subscriber: {}", nacked);
             unprocessed += nacked;
@@ -146,13 +159,37 @@ impl MessageStream {
     }
 }
 
+impl Drop for MessageStream {
+    fn drop(&mut self) {
+        if self.subscribers.is_none() {
+            return;
+        }
+        let mut inner = match self.inner.take() {
+            Some(t) => t,
+            None => return,
+        };
+        inner.close();
+        tracing::warn!("Call 'dispose' before drop in order to call nack for remaining messages");
+
+        let _forget = tokio::spawn(async move {
+            while let Some(msg) = inner.next().await {
+                if let Err(err) = msg.nack().await {
+                    tracing::error!("failed to nack message: {:?}", err);
+                }
+            }
+        });
+    }
+}
+
 impl Stream for MessageStream {
     type Item = ReceivedMessage;
 
     // return None when all the subscribers are stopped and the queue is empty.
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let mut this = self.project();
-        this.buffer.poll_next(cx)
+        match &mut self.inner {
+            None => Poll::Ready(None),
+            Some(inner) => Pin::new(inner).poll_next(cx)
+        }
     }
 }
 
@@ -414,20 +451,20 @@ impl Subscription {
     pub async fn subscribe(&self, opt: Option<SubscribeConfig>) -> Result<MessageStream, Status> {
         let opt = opt.unwrap_or_default();
         let (tx, rx) = match opt.channel_capacity {
-            None => async_channel::unbounded(),
-            Some(cap) => async_channel::bounded(cap),
+            None => mpsc::channel(100), //TODO default
+            Some(cap) => mpsc::channel(cap),
         };
         let sub_opt = self.unwrap_subscribe_config(opt.subscriber_config).await?;
 
         // spawn a separate subscriber task for each connection in the pool
-        let subscribers = if opt.enable_multiple_subscriber {
+        let subscriber_num= if opt.enable_multiple_subscriber {
             self.streaming_pool_size()
         } else {
             1
         };
-        let mut tasks = Vec::with_capacity(subscribers);
-        for _ in 0..subscribers {
-            tasks.push(Subscriber::spawn(
+        let mut subscribers = Vec::with_capacity(subscriber_num);
+        for _ in 0..subscriber_num {
+            subscribers.push(Subscriber::spawn(
                 self.fqsn.clone(),
                 self.subc.clone(),
                 tx.clone(),
@@ -435,7 +472,10 @@ impl Subscription {
             ));
         }
 
-        Ok(MessageStream { buffer: rx, tasks })
+        Ok(MessageStream {
+            inner: Some(ReceiverStream::new(rx)),
+            subscribers: Some(subscribers),
+        })
     }
 
     /// Ack acknowledges the messages associated with the ack_ids in the AcknowledgeRequest.
@@ -809,16 +849,13 @@ mod tests {
         let subscriber = tokio::spawn(async move {
             let mut acked = 0;
             let mut iter = subscription.subscribe(None).await.unwrap();
-            let task = async {
-                while let Some(message) = iter.next().await {
-                    let _ = message.ack().await;
-                    tracing::info!("acked {}", message.message.message_id);
-                    acked += 1;
-                }
-            };
-            tokio::select! {
-                _ = task => {},
-                _ = ctx_for_sub.cancelled() => {}
+            while let Some(message) = tokio::select! {
+                v = iter.next() => v,
+                _ = ctx_for_sub.cancelled() => None,
+            } {
+                let _ = message.ack().await;
+                tracing::info!("acked {}", message.message.message_id);
+                acked += 1;
             }
             let nack_msgs = iter.dispose().await;
             assert_eq!(nack_msgs, 0);

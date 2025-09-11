@@ -496,7 +496,7 @@ mod tests_in_gcp {
         let ctx_sub = ctx.child_token();
         let sub_task = tokio::spawn(async move {
             tracing::info!("start subscriber");
-            let stream = subscription.subscribe(None).await.unwrap();
+            let mut stream = subscription.subscribe(None).await.unwrap();
             let mut msgs = HashMap::new();
             while let Some(message) = select! {
                 msg = stream.next() => msg,
@@ -566,7 +566,7 @@ mod tests_in_gcp {
         // subscribe message
         tracing::info!("start subscriber");
         let option = SubscribeConfig::default().with_enable_multiple_subscriber(true);
-        let stream = subscription.subscribe(Some(option)).await.unwrap();
+        let mut stream = subscription.subscribe(Some(option)).await.unwrap();
         let mut msgs = vec![];
         while let Some(message) = select! {
             msg = stream.next() => msg,
