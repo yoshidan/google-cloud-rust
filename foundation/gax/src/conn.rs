@@ -10,22 +10,26 @@ use http::{HeaderValue, Request};
 use tonic::body::Body;
 use tonic::transport::{Channel as TonicChannel, ClientTlsConfig, Endpoint};
 use tonic::{Code, Status};
-use tower::filter::{AsyncFilter, AsyncFilterLayer, AsyncPredicate};
-use tower::util::Either;
+use tower::filter::{AsyncFilter, AsyncPredicate};
 use tower::{BoxError, ServiceBuilder};
 
 use token_source::{TokenSource, TokenSourceProvider};
 
-pub type Channel = Either<AsyncFilter<TonicChannel, AsyncAuthInterceptor>, TonicChannel>;
+pub type Channel = AsyncFilter<TonicChannel, AsyncAuthInterceptor>;
 
 #[derive(Clone, Debug)]
 pub struct AsyncAuthInterceptor {
-    token_source: Arc<dyn TokenSource>,
+    token_source: Option<Arc<dyn TokenSource>>,
 }
 
 impl AsyncAuthInterceptor {
     fn new(token_source: Arc<dyn TokenSource>) -> Self {
-        Self { token_source }
+        Self {
+            token_source: Some(token_source),
+        }
+    }
+    fn empty() -> Self {
+        Self { token_source: None }
     }
 }
 
@@ -34,7 +38,10 @@ impl AsyncPredicate<Request<Body>> for AsyncAuthInterceptor {
     type Request = Request<Body>;
 
     fn check(&mut self, request: Request<Body>) -> Self::Future {
-        let ts = self.token_source.clone();
+        let ts = match &self.token_source {
+            Some(ts) => ts.clone(),
+            None => return Box::pin(async move { Ok(request) }),
+        };
         Box::pin(async move {
             let token = ts
                 .token()
@@ -154,8 +161,8 @@ impl<'a> ConnectionManager {
 
             let con = Self::connect(endpoint).await?;
             // use GCP token per call
-            let auth_layer = Some(AsyncFilterLayer::new(AsyncAuthInterceptor::new(Arc::clone(&ts))));
-            let auth_con = ServiceBuilder::new().option_layer(auth_layer).service(con);
+            let auth_filter = AsyncAuthInterceptor::new(Arc::clone(&ts));
+            let auth_con = ServiceBuilder::new().filter_async(auth_filter).service(con);
             conns.push(auth_con);
         }
         Ok(conns)
@@ -171,11 +178,9 @@ impl<'a> ConnectionManager {
         let endpoint = conn_options.apply(endpoint);
 
         let con = Self::connect(endpoint).await?;
-        conns.push(
-            ServiceBuilder::new()
-                .option_layer::<AsyncFilterLayer<AsyncAuthInterceptor>>(None)
-                .service(con),
-        );
+        let auth_filter = AsyncAuthInterceptor::empty();
+        let auth_con = ServiceBuilder::new().filter_async(auth_filter).service(con);
+        conns.push(auth_con);
         Ok(conns)
     }
 
