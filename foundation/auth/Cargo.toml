@@ -1,6 +1,6 @@
 [package]
 name = "gcloud-auth"
-version = "1.1.1"
+version = "1.1.2"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/foundation/auth"
@@ -18,12 +18,12 @@ reqwest = { version = "0.12.4", features = ["json", "charset"], default-features
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
 jsonwebtoken = { version = "9.2.0" }
-thiserror = "1.0"
+thiserror = "2.0"
 async-trait = "0.1"
 home = "0.5"
 urlencoding = "2.1"
 tokio = { version = "1.32", features = ["fs"] }
-google-cloud-metadata = { package = "gcloud-metadata", version = "1.0.0", path = "../metadata" }
+google-cloud-metadata = { package = "gcloud-metadata", version = "1.0.1", path = "../metadata" }
 token-source = "1.0"
 base64 = "0.22"
 time = "0.3"
@@ -38,7 +38,7 @@ hex = { version = "0.4", optional = true }
 [dev-dependencies]
 tokio = { version = "1.32", features = ["test-util", "rt-multi-thread", "macros"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "std"] }
-ctor = "0.1"
+ctor = "0.5"
 tempfile = "3.8.0"
 temp-env = { version = "0.3.6", features = ["async_closure"] }
 
