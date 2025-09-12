@@ -84,11 +84,21 @@ pub struct SubscriptionConfigToUpdate {
     pub retry_policy: Option<RetryPolicy>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct SubscribeConfig {
     enable_multiple_subscriber: bool,
-    channel_capacity: Option<usize>,
+    channel_capacity: usize,
     subscriber_config: Option<SubscriberConfig>,
+}
+
+impl Default for SubscribeConfig {
+    fn default() -> Self {
+        Self {
+            enable_multiple_subscriber: false,
+            channel_capacity: 1000,
+            subscriber_config: None,
+        }
+    }
 }
 
 impl SubscribeConfig {
@@ -101,7 +111,7 @@ impl SubscribeConfig {
         self
     }
     pub fn with_channel_capacity(mut self, v: usize) -> Self {
-        self.channel_capacity = Some(v);
+        self.channel_capacity = v;
         self
     }
 }
@@ -424,19 +434,6 @@ impl Subscription {
     /// subscriber tasks based on the provided configuration. It supports multiple subscribers and
     /// configurable channel capacity.
     ///
-    /// # Arguments
-    /// - `opt`: An optional `SubscribeConfig` that specifies the subscription configuration, such as
-    ///   enabling multiple subscribers, setting channel capacity, or providing a custom `SubscriberConfig`.
-    ///
-    /// # Returns
-    /// - `Ok(MessageStream)`: A stream of `ReceivedMessage` objects for consuming messages.
-    /// - `Err(Status)`: An error if the subscription configuration or setup fails.
-    ///
-    /// # Behavior
-    /// - If `enable_multiple_subscriber` is set to `true` in the `SubscribeConfig`, multiple subscriber
-    ///   tasks are spawned based on the streaming pool size.
-    /// - If `channel_capacity` is specified, the channel is bounded; otherwise, it is unbounded.
-    ///
     /// ```
     /// use google_cloud_gax::grpc::Status;
     /// use google_cloud_pubsub::subscription::{SubscribeConfig, Subscription};
@@ -456,17 +453,14 @@ impl Subscription {
     ///         let _ = message.ack().await;
     ///     }
     ///     // Wait for all the unprocessed messages to be Nack.
-    ///     // If you don't call dispose, the unprocessed messages will be Nacke when the iterator is dropped.
+    ///     // If you don't call dispose, the unprocessed messages will be Nack when the iterator is dropped.
     ///     iter.dispose().await;
     ///     Ok(())
     ///  }
     /// ```
     pub async fn subscribe(&self, opt: Option<SubscribeConfig>) -> Result<MessageStream, Status> {
         let opt = opt.unwrap_or_default();
-        let (tx, rx) = match opt.channel_capacity {
-            None => mpsc::channel(100), //TODO default
-            Some(cap) => mpsc::channel(cap),
-        };
+        let (tx, rx) = mpsc::channel(opt.channel_capacity.max(1));
         let sub_opt = self.unwrap_subscribe_config(opt.subscriber_config).await?;
 
         // spawn a separate subscriber task for each connection in the pool
