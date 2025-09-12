@@ -1,12 +1,10 @@
+use prost_types::{DurationError, FieldMask};
 use std::collections::HashMap;
-use std::ops::DerefMut;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::{Duration, SystemTime};
 
-use prost_types::{DurationError, FieldMask};
-
-use google_cloud_gax::grpc::codegen::tokio_stream::Stream;
+use google_cloud_gax::grpc::codegen::tokio_stream::{Stream, StreamExt};
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::seek_request::Target;
@@ -19,7 +17,9 @@ use google_cloud_googleapis::pubsub::v1::{
 };
 
 use crate::apiv1::subscriber_client::SubscriberClient;
-use crate::subscriber::{ack, ReceivedMessage, Receiver, Subscriber, SubscriberConfig};
+use crate::subscriber::{ack, nack, ReceivedMessage, Subscriber, SubscriberConfig};
+use google_cloud_gax::grpc::codegen::tokio_stream::wrappers::ReceiverStream;
+use tokio::sync::mpsc;
 
 #[derive(Debug, Clone, Default)]
 pub struct SubscriptionConfig {
@@ -84,11 +84,21 @@ pub struct SubscriptionConfigToUpdate {
     pub retry_policy: Option<RetryPolicy>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct SubscribeConfig {
     enable_multiple_subscriber: bool,
-    channel_capacity: Option<usize>,
+    channel_capacity: usize,
     subscriber_config: Option<SubscriberConfig>,
+}
+
+impl Default for SubscribeConfig {
+    fn default() -> Self {
+        Self {
+            enable_multiple_subscriber: false,
+            channel_capacity: 1000,
+            subscriber_config: None,
+        }
+    }
 }
 
 impl SubscribeConfig {
@@ -101,7 +111,7 @@ impl SubscribeConfig {
         self
     }
     pub fn with_channel_capacity(mut self, v: usize) -> Self {
-        self.channel_capacity = Some(v);
+        self.channel_capacity = v;
         self
     }
 }
@@ -123,18 +133,34 @@ impl From<SeekTo> for Target {
 }
 
 pub struct MessageStream {
-    buffer: Receiver,
-    tasks: Vec<Subscriber>,
+    inner: Option<ReceiverStream<ReceivedMessage>>,
+    subscribers: Option<Vec<Subscriber>>,
 }
 
 impl MessageStream {
-    pub async fn dispose(self) -> usize {
+    pub async fn dispose(mut self) -> usize {
         // dispose buffer
-        let mut unprocessed = self.buffer.dispose().await;
+        let tasks = match self.subscribers.take() {
+            Some(t) => t,
+            None => return 0,
+        };
+        let mut inner = match self.inner.take() {
+            Some(t) => t,
+            None => return 0,
+        };
+        inner.close();
+        let mut unprocessed = 0;
+        while let Some(msg) = inner.next().await {
+            let result = msg.nack().await;
+            match result {
+                Ok(_) => unprocessed += 1,
+                Err(e) => tracing::error!("nack message error: {}, {:?}", msg.ack_id(), e),
+            }
+        }
         tracing::debug!("unprocessed messages in the buffer: {}", unprocessed);
 
         // stop all the subscribers
-        for task in self.tasks {
+        for task in tasks {
             let nacked = task.dispose().await;
             tracing::debug!("unprocessed messages in the subscriber: {}", nacked);
             unprocessed += nacked;
@@ -143,12 +169,50 @@ impl MessageStream {
     }
 }
 
+impl Drop for MessageStream {
+    fn drop(&mut self) {
+        if self.subscribers.is_none() {
+            return;
+        }
+        let mut inner = match self.inner.take() {
+            Some(t) => t,
+            None => return,
+        };
+        inner.close();
+        tracing::warn!("Call 'dispose' before drop in order to call nack for remaining messages");
+
+        let _forget = tokio::spawn(async move {
+            let mut ack_ids = vec![];
+            let mut subscription = None;
+            let mut client = None;
+            while let Some(msg) = inner.next().await {
+                ack_ids.push(msg.ack_id().to_string());
+                if subscription.is_none() {
+                    subscription = Some(msg.subscription.clone());
+                }
+                if client.is_none() {
+                    client = Some(msg.subscriber_client.clone());
+                }
+            }
+            if let (Some(sub), Some(cli)) = (subscription, client) {
+                tracing::debug!("nack {} unprocessed messages", ack_ids.len());
+                if let Err(err) = nack(&cli, sub, ack_ids).await {
+                    tracing::error!("failed to nack message: {:?}", err);
+                }
+            }
+        });
+    }
+}
+
 impl Stream for MessageStream {
     type Item = ReceivedMessage;
 
     // return None when all the subscribers are stopped and the queue is empty.
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        Pin::new(self.buffer.deref_mut()).poll_next(cx)
+        match &mut self.inner {
+            None => Poll::Ready(None),
+            Some(inner) => Pin::new(inner).poll_next(cx),
+        }
     }
 }
 
@@ -370,19 +434,6 @@ impl Subscription {
     /// subscriber tasks based on the provided configuration. It supports multiple subscribers and
     /// configurable channel capacity.
     ///
-    /// # Arguments
-    /// - `opt`: An optional `SubscribeConfig` that specifies the subscription configuration, such as
-    ///   enabling multiple subscribers, setting channel capacity, or providing a custom `SubscriberConfig`.
-    ///
-    /// # Returns
-    /// - `Ok(MessageStream)`: A stream of `ReceivedMessage` objects for consuming messages.
-    /// - `Err(Status)`: An error if the subscription configuration or setup fails.
-    ///
-    /// # Behavior
-    /// - If `enable_multiple_subscriber` is set to `true` in the `SubscribeConfig`, multiple subscriber
-    ///   tasks are spawned based on the streaming pool size.
-    /// - If `channel_capacity` is specified, the channel is bounded; otherwise, it is unbounded.
-    ///
     /// ```
     /// use google_cloud_gax::grpc::Status;
     /// use google_cloud_pubsub::subscription::{SubscribeConfig, Subscription};
@@ -402,28 +453,25 @@ impl Subscription {
     ///         let _ = message.ack().await;
     ///     }
     ///     // Wait for all the unprocessed messages to be Nack.
-    ///     // If you don't call dispose, the unprocessed messages will be Nacke when the iterator is dropped.
+    ///     // If you don't call dispose, the unprocessed messages will be Nack when the iterator is dropped.
     ///     iter.dispose().await;
     ///     Ok(())
     ///  }
     /// ```
     pub async fn subscribe(&self, opt: Option<SubscribeConfig>) -> Result<MessageStream, Status> {
         let opt = opt.unwrap_or_default();
-        let (tx, rx) = match opt.channel_capacity {
-            None => async_channel::unbounded(),
-            Some(cap) => async_channel::bounded(cap),
-        };
+        let (tx, rx) = mpsc::channel(opt.channel_capacity.max(1));
         let sub_opt = self.unwrap_subscribe_config(opt.subscriber_config).await?;
 
         // spawn a separate subscriber task for each connection in the pool
-        let subscribers = if opt.enable_multiple_subscriber {
+        let subscriber_num = if opt.enable_multiple_subscriber {
             self.streaming_pool_size()
         } else {
             1
         };
-        let mut tasks = Vec::with_capacity(subscribers);
-        for _ in 0..subscribers {
-            tasks.push(Subscriber::spawn(
+        let mut subscribers = Vec::with_capacity(subscriber_num);
+        for _ in 0..subscriber_num {
+            subscribers.push(Subscriber::spawn(
                 self.fqsn.clone(),
                 self.subc.clone(),
                 tx.clone(),
@@ -432,8 +480,8 @@ impl Subscription {
         }
 
         Ok(MessageStream {
-            buffer: Receiver::new(rx),
-            tasks,
+            inner: Some(ReceiverStream::new(rx)),
+            subscribers: Some(subscribers),
         })
     }
 
@@ -808,16 +856,13 @@ mod tests {
         let subscriber = tokio::spawn(async move {
             let mut acked = 0;
             let mut iter = subscription.subscribe(None).await.unwrap();
-            let task = async {
-                while let Some(message) = iter.next().await {
-                    let _ = message.ack().await;
-                    tracing::info!("acked {}", message.message.message_id);
-                    acked += 1;
-                }
-            };
-            tokio::select! {
-                _ = task => {},
-                _ = ctx_for_sub.cancelled() => {}
+            while let Some(message) = tokio::select! {
+                v = iter.next() => v,
+                _ = ctx_for_sub.cancelled() => None,
+            } {
+                let _ = message.ack().await;
+                tracing::info!("acked {}", message.message.message_id);
+                acked += 1;
             }
             let nack_msgs = iter.dispose().await;
             assert_eq!(nack_msgs, 0);
@@ -825,7 +870,7 @@ mod tests {
             acked
         });
 
-        tokio::time::sleep(Duration::from_secs(10)).await;
+        tokio::time::sleep(Duration::from_secs(20)).await;
         ctx.cancel();
         let acked = subscriber.await.unwrap();
         assert_eq!(acked, 10);

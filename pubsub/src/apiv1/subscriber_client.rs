@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use google_cloud_gax::conn::Channel;
 use google_cloud_gax::create_request;
 use google_cloud_gax::grpc::Status;
@@ -13,6 +11,8 @@ use google_cloud_googleapis::pubsub::v1::{
     SeekRequest, SeekResponse, Snapshot, StreamingPullRequest, StreamingPullResponse, Subscription,
     UpdateSnapshotRequest, UpdateSubscriptionRequest,
 };
+use std::sync::Arc;
+use std::time::Duration;
 
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::PUBSUB_MESSAGE_LIMIT;
@@ -242,20 +242,17 @@ impl SubscriberClient {
     pub async fn streaming_pull(
         &self,
         req: StreamingPullRequest,
-        ping_receiver: async_channel::Receiver<bool>,
+        interval: Duration,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Streaming<StreamingPullResponse>>, Status> {
         let action = || async {
             let mut client = self.client_for_streaming_pull();
             let base_req = req.clone();
-            let rx = ping_receiver.clone();
             let request = Box::pin(async_stream::stream! {
                 yield base_req.clone();
-
-                // ping message.
-                // must be empty request
-                while let Ok(_r) = rx.recv().await {
-                   yield create_empty_streaming_pull_request();
+                loop {
+                    tokio::time::sleep(interval).await;
+                    yield create_empty_streaming_pull_request();
                 }
             });
             let mut v = request.into_streaming_request();

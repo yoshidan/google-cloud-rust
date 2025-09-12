@@ -5,9 +5,8 @@ use google_cloud_googleapis::pubsub::v1::{
 };
 use std::ops::{Deref, DerefMut};
 use std::time::Duration;
-use tokio::sync::oneshot;
+use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
-use tokio::time::sleep;
 
 use crate::apiv1::default_retry_setting;
 use crate::apiv1::subscriber_client::{create_empty_streaming_pull_request, SubscriberClient};
@@ -15,10 +14,10 @@ use crate::apiv1::subscriber_client::{create_empty_streaming_pull_request, Subsc
 #[derive(Debug, Clone)]
 pub struct ReceivedMessage {
     pub message: PubsubMessage,
-    ack_id: String,
-    subscription: String,
-    subscriber_client: SubscriberClient,
-    delivery_attempt: Option<usize>,
+    pub ack_id: String,
+    pub subscription: String,
+    pub subscriber_client: SubscriberClient,
+    pub delivery_attempt: Option<usize>,
 }
 
 impl ReceivedMessage {
@@ -158,111 +157,10 @@ impl Drop for UnprocessedMessages {
     }
 }
 
-/// Receiver with dispose method to nack remaining messages.
-pub(crate) struct Receiver {
-    receiver: Option<async_channel::Receiver<ReceivedMessage>>,
-}
-
-impl Deref for Receiver {
-    type Target = async_channel::Receiver<ReceivedMessage>;
-
-    fn deref(&self) -> &Self::Target {
-        self.receiver.as_ref().unwrap()
-    }
-}
-impl DerefMut for Receiver {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.receiver.as_mut().unwrap()
-    }
-}
-
-impl Receiver {
-    pub fn new(receiver: async_channel::Receiver<ReceivedMessage>) -> Self {
-        Self {
-            receiver: Some(receiver),
-        }
-    }
-    /// Properly disposes of the `Subscriber` by aborting background tasks and
-    /// nack any unprocessed messages.
-    ///
-    /// This method ensures that:
-    /// - The `task_to_ping` and `task_to_receive` background tasks are aborted.
-    /// - Any unprocessed messages are nack (negative acknowledgment) to inform
-    ///   the server that the messages were not successfully processed.
-    ///
-    /// # Returns
-    /// The number of unprocessed messages that were nack.
-    ///
-    /// # Behavior
-    /// - If there are no unprocessed messages, the method returns `0`.
-    /// - If there are unprocessed messages, it attempts to nack them and returns
-    ///   the count of successfully nack messages.
-    ///
-    /// # Example
-    /// ```rust
-    /// let count = subscriber.dispose().await;
-    /// println!("Disposed with {} unprocessed messages nacked", count);
-    /// ```
-    pub async fn dispose(mut self) -> usize {
-        let receiver = match self.receiver.take() {
-            None => return 0,
-            Some(rx) => rx,
-        };
-        receiver.close();
-        if receiver.is_empty() {
-            return 0;
-        }
-        let mut count: usize = 0;
-        while let Ok(msg) = receiver.recv().await {
-            let result = msg.nack().await;
-            match result {
-                Ok(_) => count += 1,
-                Err(e) => tracing::error!("nack message error: {}, {:?}", msg.ack_id(), e),
-            }
-        }
-        count
-    }
-}
-
-impl Drop for Receiver {
-    fn drop(&mut self) {
-        let receiver = match self.receiver.take() {
-            None => return,
-            Some(rx) => rx,
-        };
-        receiver.close();
-        if receiver.is_empty() {
-            return;
-        }
-        tracing::warn!("Call 'dispose' before drop in order to call nack for remaining messages");
-        let _forget = tokio::spawn(async move {
-            let mut ack_ids = vec![];
-            let mut subscription = None;
-            let mut client = None;
-            while let Ok(msg) = receiver.recv().await {
-                ack_ids.push(msg.ack_id().to_string());
-                if subscription.is_none() {
-                    subscription = Some(msg.subscription.clone());
-                }
-                if client.is_none() {
-                    client = Some(msg.subscriber_client.clone());
-                }
-            }
-            if let (Some(sub), Some(cli)) = (subscription, client) {
-                tracing::debug!("nack {} unprocessed messages", ack_ids.len());
-                if let Err(err) = nack(&cli, sub, ack_ids).await {
-                    tracing::error!("failed to nack message: {:?}", err);
-                }
-            }
-        });
-    }
-}
-
 #[derive(Debug)]
 pub(crate) struct Subscriber {
     client: SubscriberClient,
     subscription: String,
-    task_to_ping: Option<JoinHandle<()>>,
     task_to_receive: Option<JoinHandle<()>>,
     /// Ack id list of unprocessed messages.
     unprocessed_messages_receiver: Option<oneshot::Receiver<Option<Vec<String>>>>,
@@ -270,9 +168,6 @@ pub(crate) struct Subscriber {
 
 impl Drop for Subscriber {
     fn drop(&mut self) {
-        if let Some(task) = self.task_to_ping.take() {
-            task.abort();
-        }
         if let Some(task) = self.task_to_receive.take() {
             task.abort();
         }
@@ -305,19 +200,9 @@ impl Subscriber {
     pub fn spawn(
         subscription: String,
         client: SubscriberClient,
-        queue: async_channel::Sender<ReceivedMessage>,
+        queue: mpsc::Sender<ReceivedMessage>,
         config: SubscriberConfig,
     ) -> Self {
-        let (ping_sender, ping_receiver) = async_channel::unbounded();
-
-        // Build task to ping
-        let task_to_ping = async move {
-            loop {
-                let _ = sleep(config.ping_interval).await;
-                let _ = ping_sender.send(true).await;
-            }
-        };
-
         let subscription_clone = subscription.clone();
         let client_clone = client.clone();
 
@@ -339,12 +224,9 @@ impl Subscriber {
                 request.max_outstanding_messages = config.max_outstanding_messages;
                 request.max_outstanding_bytes = config.max_outstanding_bytes;
 
-                tracing::debug!("start streaming: {}", subscription);
-
                 let response = Self::receive(
                     client.clone(),
                     request,
-                    ping_receiver.clone(),
                     config.clone(),
                     queue.clone(),
                     &mut unprocessed_messages,
@@ -372,7 +254,6 @@ impl Subscriber {
         Self {
             client: client_clone,
             subscription: subscription_clone,
-            task_to_ping: Some(tokio::spawn(task_to_ping)),
             task_to_receive: Some(tokio::spawn(task_to_receive)),
             unprocessed_messages_receiver: Some(rx),
         }
@@ -381,16 +262,15 @@ impl Subscriber {
     async fn receive(
         client: SubscriberClient,
         request: StreamingPullRequest,
-        ping_receiver: async_channel::Receiver<bool>,
         config: SubscriberConfig,
-        queue: async_channel::Sender<ReceivedMessage>,
+        queue: mpsc::Sender<ReceivedMessage>,
         unprocessed_messages: &mut Vec<String>,
     ) -> Result<(), Status> {
         let subscription = request.subscription.to_string();
 
         // Call the streaming_pull method with the provided request and ping_receiver
         let response = client
-            .streaming_pull(request, ping_receiver.clone(), config.retry_setting.clone())
+            .streaming_pull(request, config.ping_interval, config.retry_setting.clone())
             .await?;
         let mut stream = response.into_inner();
 
@@ -432,9 +312,6 @@ impl Subscriber {
     }
 
     pub async fn dispose(mut self) -> usize {
-        if let Some(task) = self.task_to_ping.take() {
-            task.abort();
-        }
         if let Some(task) = self.task_to_receive.take() {
             task.abort();
         }
@@ -481,7 +358,11 @@ async fn modify_ack_deadline(
         .map(|e| e.into_inner())
 }
 
-async fn nack(subscriber_client: &SubscriberClient, subscription: String, ack_ids: Vec<String>) -> Result<(), Status> {
+pub(crate) async fn nack(
+    subscriber_client: &SubscriberClient,
+    subscription: String,
+    ack_ids: Vec<String>,
+) -> Result<(), Status> {
     for chunk in ack_ids.chunks(100) {
         modify_ack_deadline(subscriber_client, subscription.clone(), chunk.to_vec(), 0).await?;
     }

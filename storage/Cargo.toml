@@ -8,7 +8,7 @@ license = "MIT"
 name = "gcloud-storage"
 readme = "README.md"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/storage"
-version = "1.1.0"
+version = "1.1.1"
 
 [lib]
 doctest = false
@@ -34,7 +34,7 @@ ring = "0.17"
 serde = {version = "1.0", features = ["derive"]}
 serde_json = "1.0"
 sha2 = "0.10"
-thiserror = "1.0"
+thiserror = "2.0"
 time = {version = "0.3", features = [
   "std",
   "macros",
@@ -46,11 +46,11 @@ tokio = {version = "1.32", features = ["macros"]}
 tracing = "0.1"
 url = "2.4"
 
-google-cloud-auth = {package = "gcloud-auth", optional = true, version = "1.1.0", path = "../foundation/auth", default-features = false}
-google-cloud-metadata = {package = "gcloud-metadata", optional = true, version = "1.0.0", path = "../foundation/metadata"}
+google-cloud-auth = {package = "gcloud-auth", optional = true, version = "1.1.2", path = "../foundation/auth", default-features = false}
+google-cloud-metadata = {package = "gcloud-metadata", optional = true, version = "1.0.1", path = "../foundation/metadata"}
 
 [dev-dependencies]
-ctor = "0.1.26"
+ctor = "0.5"
 google-cloud-auth = { package = "gcloud-auth", path = "../foundation/auth", default-features = false}
 serial_test = "3.1"
 tokio = {version = "1.32", features = ["rt-multi-thread"]}
