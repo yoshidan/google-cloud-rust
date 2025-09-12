@@ -224,8 +224,6 @@ impl Subscriber {
                 request.max_outstanding_messages = config.max_outstanding_messages;
                 request.max_outstanding_bytes = config.max_outstanding_bytes;
 
-                tracing::debug!("start streaming: {}", subscription);
-
                 let response = Self::receive(
                     client.clone(),
                     request,
