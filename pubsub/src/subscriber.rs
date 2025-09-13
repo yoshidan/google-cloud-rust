@@ -8,7 +8,7 @@ use std::time::Duration;
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 
-use crate::apiv1::default_retry_setting;
+use crate::apiv1::default_retry_setting as base_retry_setting;
 use crate::apiv1::subscriber_client::{create_empty_streaming_pull_request, SubscriberClient};
 
 #[derive(Debug, Clone)]
@@ -81,6 +81,13 @@ impl ReceivedMessage {
     }
 }
 
+fn default_retry_setting() -> RetrySetting {
+    let mut retry = base_retry_setting();
+    // Default retry setting with Cancelled code
+    retry.codes.push(Code::Cancelled);
+    retry
+}
+
 #[derive(Debug, Clone)]
 pub struct SubscriberConfig {
     /// ping interval for Bi Directional Streaming
@@ -107,13 +114,9 @@ pub struct SubscriberConfig {
 
 impl Default for SubscriberConfig {
     fn default() -> Self {
-        // Default retry setting with Cancelled code
-        let mut retry = default_retry_setting();
-        retry.codes.push(Code::Cancelled);
-
         Self {
             ping_interval: Duration::from_secs(10),
-            retry_setting: Some(retry),
+            retry_setting: Some(default_retry_setting()),
             stream_ack_deadline_seconds: 60,
             max_outstanding_messages: 50,
             max_outstanding_bytes: 1000 * 1000 * 1000,
