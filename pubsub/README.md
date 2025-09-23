@@ -167,13 +167,13 @@ async fn run(config: ClientConfig) -> Result<(), Status> {
     while let Some(message) = tokio::select!{
         v = iter.next() => v,
         _ = ctx.cancelled() => None,
-    }.await {
+    } {
         let _ = message.ack().await;
     }
     // Wait for all the unprocessed messages to be Nack.
     // If you don't call dispose, the unprocessed messages will be Nack when the iterator is dropped.
-    iter.dispose().await;    
-        
+    iter.dispose().await;
+
     // Delete subscription if needed.
     subscription.delete(None).await?;
 
