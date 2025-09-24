@@ -157,7 +157,7 @@
 //!     while let Some(message) = tokio::select!{
 //!         v = iter.next() => v,
 //!         _ = cancel.cancelled() => None,
-//!     }.await {
+//!     } {
 //!         let _ = message.ack().await;
 //!     }
 //!     // Wait for all the unprocessed messages to be Nack.
