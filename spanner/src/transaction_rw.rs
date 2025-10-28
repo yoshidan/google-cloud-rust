@@ -125,12 +125,14 @@ impl ReadWriteTransaction {
         session: ManagedSession,
         options: CallOptions,
         transaction_tag: Option<String>,
+        disable_route_to_leader: bool,
     ) -> Result<ReadWriteTransaction, BeginError> {
         ReadWriteTransaction::begin_internal(
             session,
             transaction_options::Mode::ReadWrite(transaction_options::ReadWrite::default()),
             options,
             transaction_tag,
+            disable_route_to_leader,
         )
         .await
     }
@@ -139,12 +141,14 @@ impl ReadWriteTransaction {
         session: ManagedSession,
         options: CallOptions,
         transaction_tag: Option<String>,
+        disable_route_to_leader: bool,
     ) -> Result<ReadWriteTransaction, BeginError> {
         ReadWriteTransaction::begin_internal(
             session,
             transaction_options::Mode::PartitionedDml(transaction_options::PartitionedDml {}),
             options,
             transaction_tag,
+            disable_route_to_leader,
         )
         .await
     }
@@ -154,6 +158,7 @@ impl ReadWriteTransaction {
         mode: transaction_options::Mode,
         options: CallOptions,
         transaction_tag: Option<String>,
+        disable_route_to_leader: bool,
     ) -> Result<ReadWriteTransaction, BeginError> {
         let request = BeginTransactionRequest {
             session: session.session.name.to_string(),
@@ -165,7 +170,10 @@ impl ReadWriteTransaction {
             request_options: Transaction::create_request_options(options.priority, transaction_tag.clone()),
             mutation_key: None,
         };
-        let result = session.spanner_client.begin_transaction(request, options.retry).await;
+        let result = session
+            .spanner_client
+            .begin_transaction(request, disable_route_to_leader, options.retry)
+            .await;
         let response = match session.invalidate_if_needed(result).await {
             Ok(response) => response,
             Err(err) => {
@@ -181,6 +189,7 @@ impl ReadWriteTransaction {
                     selector: Some(transaction_selector::Selector::Id(tx.id.clone())),
                 },
                 transaction_tag,
+                disable_route_to_leader,
             },
             tx_id: tx.id,
             wb: vec![],
@@ -215,11 +224,11 @@ impl ReadWriteTransaction {
             directed_read_options: None,
             last_statement: false,
         };
-
+        let disable_route_to_leader = self.disable_route_to_leader;
         let session = self.as_mut_session();
         let result = session
             .spanner_client
-            .execute_sql(request, options.call_options.retry)
+            .execute_sql(request, disable_route_to_leader, options.call_options.retry)
             .await;
         let response = session.invalidate_if_needed(result).await?;
         Ok(extract_row_count(response.into_inner().stats))
@@ -253,10 +262,11 @@ impl ReadWriteTransaction {
             last_statements: false,
         };
 
+        let disable_route_to_leader = self.disable_route_to_leader;
         let session = self.as_mut_session();
         let result = session
             .spanner_client
-            .execute_batch_dml(request, options.call_options.retry)
+            .execute_batch_dml(request, disable_route_to_leader, options.call_options.retry)
             .await;
         let response = session.invalidate_if_needed(result).await?;
         Ok(response
@@ -341,8 +351,9 @@ impl ReadWriteTransaction {
     pub(crate) async fn commit(&mut self, options: CommitOptions) -> Result<CommitResponse, Status> {
         let tx_id = self.tx_id.clone();
         let mutations = self.wb.to_vec();
+        let disable_route_to_leader = self.disable_route_to_leader;
         let session = self.as_mut_session();
-        commit(session, mutations, TransactionId(tx_id), options).await
+        commit(session, mutations, TransactionId(tx_id), options, disable_route_to_leader).await
     }
 
     pub(crate) async fn rollback(&mut self, retry: Option<RetrySetting>) -> Result<(), Status> {
@@ -350,8 +361,12 @@ impl ReadWriteTransaction {
             transaction_id: self.tx_id.clone(),
             session: self.get_session_name(),
         };
+        let disable_route_to_leader = self.disable_route_to_leader;
         let session = self.as_mut_session();
-        let result = session.spanner_client.rollback(request, retry).await;
+        let result = session
+            .spanner_client
+            .rollback(request, disable_route_to_leader, retry)
+            .await;
         session.invalidate_if_needed(result).await?.into_inner();
         Ok(())
     }
@@ -362,6 +377,7 @@ pub(crate) async fn commit(
     ms: Vec<Mutation>,
     tx: commit_request::Transaction,
     commit_options: CommitOptions,
+    disable_route_to_leader: bool,
 ) -> Result<CommitResponse, Status> {
     let request = CommitRequest {
         session: session.session.name.to_string(),
@@ -377,7 +393,7 @@ pub(crate) async fn commit(
     };
     let result = session
         .spanner_client
-        .commit(request, commit_options.call_options.retry)
+        .commit(request, disable_route_to_leader, commit_options.call_options.retry)
         .await;
     let response = session.invalidate_if_needed(result).await;
     match response {
