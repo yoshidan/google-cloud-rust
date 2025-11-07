@@ -7,13 +7,13 @@ use std::time::Duration;
 
 use google_cloud_gax::conn::{ConnectionOptions, Environment};
 use google_cloud_gax::grpc::{Code, Status};
-use google_cloud_gax::retry::{invoke_fn, TryAs};
+use google_cloud_gax::retry::TryAs;
 use google_cloud_googleapis::spanner::v1::{commit_request, transaction_options, Mutation, TransactionOptions};
 use token_source::NoopTokenSourceProvider;
 
 use crate::apiv1::conn_pool::{ConnectionManager, SPANNER};
-use crate::retry::TransactionRetrySetting;
-use crate::session::{ManagedSession, SessionConfig, SessionError, SessionManager};
+use crate::retry::{invoke_with_session_retry, SessionRetryAction, TransactionRetrySetting};
+use crate::session::{is_session_not_found_status, ManagedSession, SessionConfig, SessionError, SessionManager};
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions};
 use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
@@ -275,9 +275,20 @@ impl Client {
         &self,
         options: ReadOnlyTransactionOption,
     ) -> Result<ReadOnlyTransaction, Error> {
-        let session = self.get_session().await?;
-        let result = ReadOnlyTransaction::begin(session, options.timestamp_bound, options.call_options).await?;
-        Ok(result)
+        let timestamp_bound = options.timestamp_bound;
+        let call_options = options.call_options;
+        loop {
+            let session = self.get_session().await?;
+            match ReadOnlyTransaction::begin(session, timestamp_bound.clone(), call_options.clone()).await {
+                Ok(tx) => return Ok(tx),
+                Err(status) => {
+                    if is_session_not_found_status(&status) {
+                        continue;
+                    }
+                    return Err(Error::GRPC(status));
+                }
+            }
+        }
     }
 
     /// batch_read_only_transaction returns a BatchReadOnlyTransaction that can be used
@@ -297,9 +308,20 @@ impl Client {
         &self,
         options: ReadOnlyTransactionOption,
     ) -> Result<BatchReadOnlyTransaction, Error> {
-        let session = self.get_session().await?;
-        let result = BatchReadOnlyTransaction::begin(session, options.timestamp_bound, options.call_options).await?;
-        Ok(result)
+        let timestamp_bound = options.timestamp_bound;
+        let call_options = options.call_options;
+        loop {
+            let session = self.get_session().await?;
+            match BatchReadOnlyTransaction::begin(session, timestamp_bound.clone(), call_options.clone()).await {
+                Ok(tx) => return Ok(tx),
+                Err(status) => {
+                    if is_session_not_found_status(&status) {
+                        continue;
+                    }
+                    return Err(Error::GRPC(status));
+                }
+            }
+        }
     }
 
     /// partitioned_update executes a DML statement in parallel across the database,
@@ -328,30 +350,35 @@ impl Client {
         stmt: Statement,
         options: PartitionedUpdateOption,
     ) -> Result<i64, Error> {
-        let ro = TransactionRetrySetting::new(vec![Code::Aborted, Code::Internal]);
-        let session = Some(self.get_session().await?);
-
-        // reuse session
-        invoke_fn(
-            Some(ro),
-            |session| async {
-                let mut tx = match ReadWriteTransaction::begin_partitioned_dml(
-                    session.unwrap(),
-                    options.begin_options.clone(),
-                    options.transaction_tag.clone(),
-                )
-                .await
-                {
-                    Ok(tx) => tx,
-                    Err(e) => return Err((Error::GRPC(e.status), Some(e.session))),
-                };
-                tx.update_with_option(stmt.clone(), options.query_options.clone().unwrap_or_default())
+        let helper = self.session_retry_helper(TransactionRetrySetting::new(vec![Code::Aborted, Code::Internal]));
+        helper
+            .run(|session| {
+                let stmt = stmt.clone();
+                let options = options.clone();
+                async move {
+                    let mut tx = match ReadWriteTransaction::begin_partitioned_dml(
+                        session,
+                        options.begin_options.clone(),
+                        options.transaction_tag.clone(),
+                    )
                     .await
-                    .map_err(|e| (Error::GRPC(e), tx.take_session()))
-            },
-            session,
-        )
-        .await
+                    {
+                        Ok(tx) => tx,
+                        Err(e) => return Err(SessionRetryAction::retry(Error::GRPC(e.status), e.session)),
+                    };
+                    match tx
+                        .update_with_option(stmt, options.query_options.clone().unwrap_or_default())
+                        .await
+                    {
+                        Ok(rows) => Ok(rows),
+                        Err(status) => match tx.take_session() {
+                            Some(session) => Err(SessionRetryAction::retry(Error::GRPC(status), session)),
+                            None => Err(SessionRetryAction::fail(Error::GRPC(status))),
+                        },
+                    }
+                }
+            })
+            .await
     }
 
     /// apply_at_least_once may attempt to apply mutations more than once; if
@@ -381,25 +408,24 @@ impl Client {
         ms: Vec<Mutation>,
         options: CommitOptions,
     ) -> Result<Option<CommitResult>, Error> {
-        let ro = TransactionRetrySetting::default();
-        let mut session = self.get_session().await?;
-
-        invoke_fn(
-            Some(ro),
-            |session| async {
-                let tx = commit_request::Transaction::SingleUseTransaction(TransactionOptions {
-                    exclude_txn_from_change_streams: false,
-                    mode: Some(transaction_options::Mode::ReadWrite(transaction_options::ReadWrite::default())),
-                    isolation_level: IsolationLevel::Unspecified as i32,
-                });
-                match commit(session, ms.clone(), tx, options.clone()).await {
-                    Ok(s) => Ok(Some(s.into())),
-                    Err(e) => Err((Error::GRPC(e), session)),
+        let helper = self.session_retry_helper(TransactionRetrySetting::new(vec![Code::Aborted, Code::Internal]));
+        helper
+            .run(|mut session| {
+                let ms = ms.clone();
+                let options = options.clone();
+                async move {
+                    let tx = commit_request::Transaction::SingleUseTransaction(TransactionOptions {
+                        exclude_txn_from_change_streams: false,
+                        mode: Some(transaction_options::Mode::ReadWrite(transaction_options::ReadWrite::default())),
+                        isolation_level: IsolationLevel::Unspecified as i32,
+                    });
+                    match commit(&mut session, ms, tx, options.clone()).await {
+                        Ok(s) => Ok(Some(s.into())),
+                        Err(status) => Err(SessionRetryAction::retry(Error::GRPC(status), session)),
+                    }
                 }
-            },
-            &mut session,
-        )
-        .await
+            })
+            .await
     }
 
     /// Apply applies a list of mutations atomically to the database.
@@ -526,22 +552,21 @@ impl Client {
         F: for<'tx> Fn(&'tx mut ReadWriteTransaction) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'tx>>,
     {
         let (bo, co, tag) = Client::split_read_write_transaction_option(options);
-
-        let ro = TransactionRetrySetting::default();
-        let session = Some(self.get_session().await?);
-        // must reuse session
-        invoke_fn(
-            Some(ro),
-            |session| async {
-                let mut tx = self
-                    .create_read_write_transaction::<E>(session, bo.clone(), tag.clone())
-                    .await?;
-                let result = f(&mut tx).await;
-                tx.finish(result, Some(co.clone())).await
-            },
-            session,
-        )
-        .await
+        let client = self;
+        let helper = self.session_retry_helper(TransactionRetrySetting::default());
+        helper
+            .run(|session| {
+                let bo = bo.clone();
+                let co = co.clone();
+                let tag = tag.clone();
+                let func = &f;
+                async move {
+                    let mut tx = client.create_read_write_transaction::<E>(session, bo, tag).await?;
+                    let result = func(&mut tx).await;
+                    tx.finish(result, Some(co)).await.map_err(SessionRetryAction::from)
+                }
+            })
+            .await
     }
 
     /// begin_read_write_transaction creates new ReadWriteTransaction.
@@ -610,37 +635,35 @@ impl Client {
         E: TryAs<Status> + From<SessionError> + From<Status>,
     {
         let (bo, co, tag) = Client::split_read_write_transaction_option(options);
-
-        let ro = TransactionRetrySetting::default();
-        let session = Some(self.get_session().await?);
-
-        // reuse session
-        invoke_fn(
-            Some(ro),
-            |session| async {
-                let mut tx = self
-                    .create_read_write_transaction::<E>(session, bo.clone(), tag.clone())
-                    .await?;
-                let result = f(&mut tx);
-                tx.finish(result, Some(co.clone())).await
-            },
-            session,
-        )
-        .await
+        let client = self;
+        let helper = self.session_retry_helper(TransactionRetrySetting::default());
+        helper
+            .run(|session| {
+                let bo = bo.clone();
+                let co = co.clone();
+                let tag = tag.clone();
+                let func = &f;
+                async move {
+                    let mut tx = client.create_read_write_transaction::<E>(session, bo, tag).await?;
+                    let result = func(&mut tx);
+                    tx.finish(result, Some(co)).await.map_err(SessionRetryAction::from)
+                }
+            })
+            .await
     }
 
     async fn create_read_write_transaction<E>(
         &self,
-        session: Option<ManagedSession>,
+        session: ManagedSession,
         bo: CallOptions,
         transaction_tag: Option<String>,
-    ) -> Result<ReadWriteTransaction, (E, Option<ManagedSession>)>
+    ) -> Result<ReadWriteTransaction, SessionRetryAction<E>>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
     {
-        ReadWriteTransaction::begin(session.unwrap(), bo, transaction_tag)
+        ReadWriteTransaction::begin(session, bo, transaction_tag)
             .await
-            .map_err(|e| (E::from(e.status), Some(e.session)))
+            .map_err(|e| SessionRetryAction::retry(E::from(e.status), e.session))
     }
 
     async fn get_session(&self) -> Result<ManagedSession, SessionError> {
@@ -651,5 +674,39 @@ impl Client {
         options: ReadWriteTransactionOption,
     ) -> (CallOptions, CommitOptions, Option<String>) {
         (options.begin_options, options.commit_options, options.transaction_tag)
+    }
+
+    fn session_retry_helper(&self, retry: TransactionRetrySetting) -> SessionRetryHelper<'_> {
+        SessionRetryHelper {
+            sessions: &self.sessions,
+            retry,
+        }
+    }
+}
+
+struct SessionRetryHelper<'a> {
+    sessions: &'a Arc<SessionManager>,
+    retry: TransactionRetrySetting,
+}
+
+impl<'a> SessionRetryHelper<'a> {
+    async fn run<R, Fut, F, E>(&self, mut f: F) -> Result<R, E>
+    where
+        E: TryAs<Status> + From<SessionError> + From<Status>,
+        Fut: Future<Output = Result<R, SessionRetryAction<E>>>,
+        F: FnMut(ManagedSession) -> Fut,
+    {
+        let session = Some(self.sessions.get().await?);
+        invoke_with_session_retry(Some(self.retry.clone()), session, |session| {
+            let session = session.expect("session missing");
+            let fut = f(session);
+            async move {
+                match fut.await {
+                    Ok(value) => Ok(value),
+                    Err(action) => Err(action.into()),
+                }
+            }
+        })
+        .await
     }
 }
