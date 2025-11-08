@@ -51,22 +51,14 @@ impl TransactionManager {
     /// The transaction must be ended by calling `end()` on the returned
     /// reference before calling `begin_read_write_transaction()` again.
     pub async fn begin_read_write_transaction(&mut self) -> Result<&mut ReadWriteTransaction, Error> {
-        self.begin_internal(CallOptions::default(), None).await
+        self.begin_read_write_transaction_with_options(CallOptions::default(), None)
+            .await
     }
 
     /// Begins a new read-write transaction with custom call options and transaction tag.
     /// This is similar to `begin_read_write_transaction()` but allows specifying
     /// custom options for the transaction.
     pub async fn begin_read_write_transaction_with_options(
-        &mut self,
-        options: CallOptions,
-        transaction_tag: Option<String>,
-    ) -> Result<&mut ReadWriteTransaction, Error> {
-        self.begin_internal(options, transaction_tag).await
-    }
-
-    /// Internal helper that contains the common logic for beginning a transaction.
-    async fn begin_internal(
         &mut self,
         options: CallOptions,
         transaction_tag: Option<String>,
