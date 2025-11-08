@@ -44,6 +44,27 @@ impl TransactionManager {
         }
     }
 
+    /// Returns a mutable reference to the current transaction, if one has been started.
+    ///
+    /// Returns `None` if no transaction is currently active. Call
+    /// `begin_read_write_transaction()` to start a new transaction.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let mut tm = client.transaction_manager().await?;
+    ///
+    /// // Initially returns None
+    /// assert!(tm.transaction().is_none());
+    ///
+    /// // After begin, returns Some
+    /// let tx = tm.begin_read_write_transaction().await?;
+    /// assert!(tm.transaction().is_some());
+    /// ```
+    pub fn transaction(&mut self) -> Option<&mut ReadWriteTransaction> {
+        self.transaction.as_mut()
+    }
+
     /// Begins a new read-write transaction, reusing the session from the
     /// previous transaction if one exists. Returns a mutable reference to
     /// the transaction which can be used to execute queries and mutations.

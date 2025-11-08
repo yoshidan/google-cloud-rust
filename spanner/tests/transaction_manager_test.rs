@@ -255,3 +255,61 @@ async fn verify_transaction_manager_data(
     );
     assert!(user_characters.is_empty());
 }
+
+#[tokio::test]
+#[serial]
+async fn test_transaction_accessor() {
+    // Set up test data
+    let now = OffsetDateTime::now_utc();
+    let data_client = create_data_client().await;
+    let user_id = format!("user_tm_accessor_{}", now.unix_timestamp());
+
+    data_client
+        .apply(vec![create_user_mutation(&user_id, &now)])
+        .await
+        .unwrap();
+
+    // Test transaction accessor method
+    let mut tm = data_client.transaction_manager().await.unwrap();
+
+    // Initially should return None
+    assert!(tm.transaction().is_none());
+
+    // Begin a transaction
+    let _tx = tm.begin_read_write_transaction().await.unwrap();
+
+    // Now should return Some
+    assert!(tm.transaction().is_some());
+
+    // Should be able to use the accessor to perform operations
+    if let Some(tx) = tm.transaction() {
+        let mut stmt = Statement::new(
+            "INSERT INTO UserItem (UserId,ItemId,Quantity,UpdatedAt) \
+             VALUES(@UserId,999,123,PENDING_COMMIT_TIMESTAMP())",
+        );
+        stmt.add_param("UserId", &user_id);
+        tx.update(stmt).await.unwrap();
+
+        // Commit via the accessor
+        let result: Result<(), google_cloud_spanner::client::Error> = Ok(());
+        match tx.end(result, None).await {
+            Ok(_) => (),
+            Err(err) => panic!("Commit failed: {:?}", err),
+        }
+    }
+
+    // Verify the data was actually written
+    let mut tx = data_client.read_only_transaction().await.unwrap();
+    let mut stmt = Statement::new(
+        "SELECT * FROM UserItem WHERE UserId = @UserId AND ItemId = 999",
+    );
+    stmt.add_param("UserId", &user_id);
+
+    let reader = tx.query(stmt).await.unwrap();
+    let rows: Vec<Row> = all_rows(reader).await.unwrap();
+
+    assert_eq!(1, rows.len());
+    let row = rows.first().unwrap();
+    assert_eq!(row.column_by_name::<i64>("ItemId").unwrap(), 999);
+    assert_eq!(row.column_by_name::<i64>("Quantity").unwrap(), 123);
+}
