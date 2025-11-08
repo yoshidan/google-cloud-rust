@@ -1,6 +1,7 @@
+use crate::client::Error;
 use crate::session::ManagedSession;
 use crate::transaction::CallOptions;
-use crate::transaction_rw::{BeginError, ReadWriteTransaction};
+use crate::transaction_rw::ReadWriteTransaction;
 
 /// TransactionManager manages a single session for executing multiple
 /// read-write transactions with session reuse. This is particularly useful
@@ -49,7 +50,7 @@ impl TransactionManager {
     ///
     /// The transaction must be ended by calling `end()` on the returned
     /// reference before calling `begin_read_write_transaction()` again.
-    pub async fn begin_read_write_transaction(&mut self) -> Result<&mut ReadWriteTransaction, BeginError> {
+    pub async fn begin_read_write_transaction(&mut self) -> Result<&mut ReadWriteTransaction, Error> {
         // Extract session from previous transaction if it exists, otherwise use stored session
         let session = if let Some(ref mut tx) = self.transaction {
             tx.take_session()
@@ -59,11 +60,18 @@ impl TransactionManager {
         };
 
         // Create new transaction with the session
-        let new_tx = ReadWriteTransaction::begin(session, CallOptions::default(), None).await?;
-
-        // Store the transaction and return a mutable reference
-        self.transaction = Some(new_tx);
-        Ok(self.transaction.as_mut().unwrap())
+        match ReadWriteTransaction::begin(session, CallOptions::default(), None).await {
+            Ok(new_tx) => {
+                // Store the transaction and return a mutable reference
+                self.transaction = Some(new_tx);
+                Ok(self.transaction.as_mut().unwrap())
+            }
+            Err(begin_error) => {
+                // Store session back for next retry attempt
+                self.session = Some(begin_error.session);
+                Err(begin_error.status.into())
+            }
+        }
     }
 
     /// Begins a new read-write transaction with custom call options and transaction tag.
@@ -73,7 +81,7 @@ impl TransactionManager {
         &mut self,
         options: CallOptions,
         transaction_tag: Option<String>,
-    ) -> Result<&mut ReadWriteTransaction, BeginError> {
+    ) -> Result<&mut ReadWriteTransaction, Error> {
         // Extract session from previous transaction if it exists, otherwise use stored session
         let session = if let Some(ref mut tx) = self.transaction {
             tx.take_session()
@@ -83,20 +91,17 @@ impl TransactionManager {
         };
 
         // Create new transaction with the session
-        let new_tx = ReadWriteTransaction::begin(session, options, transaction_tag).await?;
-
-        // Store the transaction and return a mutable reference
-        self.transaction = Some(new_tx);
-        Ok(self.transaction.as_mut().unwrap())
-    }
-}
-
-impl Drop for TransactionManager {
-    fn drop(&mut self) {
-        // If there's a transaction, extract its session before dropping
-        // This ensures the session is properly returned to the pool
-        if let Some(ref mut tx) = self.transaction {
-            let _ = tx.take_session();
+        match ReadWriteTransaction::begin(session, options, transaction_tag).await {
+            Ok(new_tx) => {
+                // Store the transaction and return a mutable reference
+                self.transaction = Some(new_tx);
+                Ok(self.transaction.as_mut().unwrap())
+            }
+            Err(begin_error) => {
+                // Store session back for next retry attempt
+                self.session = Some(begin_error.session);
+                Err(begin_error.status.into())
+            }
         }
     }
 }
