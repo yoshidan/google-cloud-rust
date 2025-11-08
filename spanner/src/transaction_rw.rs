@@ -120,6 +120,15 @@ pub struct BeginError {
     pub session: ManagedSession,
 }
 
+impl std::fmt::Debug for BeginError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BeginError")
+            .field("status", &self.status)
+            .field("session", &"<session>")
+            .finish()
+    }
+}
+
 impl ReadWriteTransaction {
     pub async fn begin(
         session: ManagedSession,
