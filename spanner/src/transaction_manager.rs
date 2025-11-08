@@ -51,33 +51,22 @@ impl TransactionManager {
     /// The transaction must be ended by calling `end()` on the returned
     /// reference before calling `begin_read_write_transaction()` again.
     pub async fn begin_read_write_transaction(&mut self) -> Result<&mut ReadWriteTransaction, Error> {
-        // Extract session from previous transaction if it exists, otherwise use stored session
-        let session = if let Some(ref mut tx) = self.transaction {
-            tx.take_session()
-                .expect("transaction should have a session")
-        } else {
-            self.session.take().expect("manager should have a session")
-        };
-
-        // Create new transaction with the session
-        match ReadWriteTransaction::begin(session, CallOptions::default(), None).await {
-            Ok(new_tx) => {
-                // Store the transaction and return a mutable reference
-                self.transaction = Some(new_tx);
-                Ok(self.transaction.as_mut().unwrap())
-            }
-            Err(begin_error) => {
-                // Store session back for next retry attempt
-                self.session = Some(begin_error.session);
-                Err(begin_error.status.into())
-            }
-        }
+        self.begin_internal(CallOptions::default(), None).await
     }
 
     /// Begins a new read-write transaction with custom call options and transaction tag.
     /// This is similar to `begin_read_write_transaction()` but allows specifying
     /// custom options for the transaction.
     pub async fn begin_read_write_transaction_with_options(
+        &mut self,
+        options: CallOptions,
+        transaction_tag: Option<String>,
+    ) -> Result<&mut ReadWriteTransaction, Error> {
+        self.begin_internal(options, transaction_tag).await
+    }
+
+    /// Internal helper that contains the common logic for beginning a transaction.
+    async fn begin_internal(
         &mut self,
         options: CallOptions,
         transaction_tag: Option<String>,
