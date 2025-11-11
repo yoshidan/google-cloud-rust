@@ -6,11 +6,11 @@ use time::OffsetDateTime;
 
 use crate::key::KeySet;
 use crate::reader::{Reader, RowIterator, StatementReader, TableReader};
-use crate::session::ManagedSession;
+use crate::session::{is_session_not_found_status, ManagedSession};
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions, ReadOptions, Transaction};
 use crate::value::TimestampBound;
-use google_cloud_gax::grpc::Status;
+use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_googleapis::spanner::v1::transaction_options::IsolationLevel;
 use google_cloud_googleapis::spanner::v1::{
     transaction_options, transaction_selector, BeginTransactionRequest, DirectedReadOptions, ExecuteSqlRequest,
@@ -35,6 +35,11 @@ use google_cloud_googleapis::spanner::v1::{
 pub struct ReadOnlyTransaction {
     base_tx: Transaction,
     pub rts: Option<OffsetDateTime>,
+}
+
+pub(crate) struct ReadOnlyBeginError {
+    pub(crate) status: Status,
+    pub(crate) session: ManagedSession,
 }
 
 impl Deref for ReadOnlyTransaction {
@@ -72,10 +77,21 @@ impl ReadOnlyTransaction {
 
     /// begin starts a snapshot read-only Transaction on Cloud Spanner.
     pub async fn begin(
-        mut session: ManagedSession,
+        session: ManagedSession,
         tb: TimestampBound,
         options: CallOptions,
     ) -> Result<ReadOnlyTransaction, Status> {
+        match ReadOnlyTransaction::begin_internal(session, tb, options).await {
+            Ok(tx) => Ok(tx),
+            Err(err) => Err(err.status),
+        }
+    }
+
+    pub(crate) async fn begin_internal(
+        mut session: ManagedSession,
+        tb: TimestampBound,
+        options: CallOptions,
+    ) -> Result<ReadOnlyTransaction, ReadOnlyBeginError> {
         let request = BeginTransactionRequest {
             session: session.session.name.to_string(),
             options: Some(TransactionOptions {
@@ -105,7 +121,7 @@ impl ReadOnlyTransaction {
                     rts: Some(OffsetDateTime::from(st)),
                 })
             }
-            Err(e) => Err(e),
+            Err(e) => Err(ReadOnlyBeginError { status: e, session }),
         }
     }
 }
@@ -121,6 +137,8 @@ pub struct Partition<T: Reader> {
 /// same snapshot of the database.
 pub struct BatchReadOnlyTransaction {
     base_tx: ReadOnlyTransaction,
+    timestamp_bound: TimestampBound,
+    call_options: CallOptions,
 }
 
 impl Deref for BatchReadOnlyTransaction {
@@ -143,8 +161,12 @@ impl BatchReadOnlyTransaction {
         tb: TimestampBound,
         options: CallOptions,
     ) -> Result<BatchReadOnlyTransaction, Status> {
-        let tx = ReadOnlyTransaction::begin(session, tb, options).await?;
-        Ok(BatchReadOnlyTransaction { base_tx: tx })
+        let tx = ReadOnlyTransaction::begin(session, tb.clone(), options.clone()).await?;
+        Ok(BatchReadOnlyTransaction {
+            base_tx: tx,
+            timestamp_bound: tb,
+            call_options: options,
+        })
     }
 
     /// partition_read returns a list of Partitions that can be used to read rows from
@@ -176,54 +198,80 @@ impl BatchReadOnlyTransaction {
         data_boost_enabled: bool,
         directed_read_options: Option<DirectedReadOptions>,
     ) -> Result<Vec<Partition<TableReader>>, Status> {
+        let table_name = table.to_string();
         let columns: Vec<String> = columns.iter().map(|x| x.to_string()).collect();
-        let inner_keyset = keys.into().inner;
-        let request = PartitionReadRequest {
-            session: self.get_session_name(),
-            transaction: Some(self.transaction_selector.clone()),
-            table: table.to_string(),
-            index: ro.index.clone(),
-            columns: columns.clone(),
-            key_set: Some(inner_keyset.clone()),
-            partition_options: po,
-        };
-        let result = match self
-            .as_mut_session()
-            .spanner_client
-            .partition_read(request, ro.call_options.retry)
-            .await
-        {
-            Ok(r) => Ok(r
-                .into_inner()
-                .partitions
-                .into_iter()
-                .map(|x| Partition {
-                    reader: TableReader {
-                        request: ReadRequest {
-                            session: self.get_session_name(),
-                            transaction: Some(self.transaction_selector.clone()),
-                            table: table.to_string(),
-                            index: ro.index.clone(),
-                            columns: columns.clone(),
-                            key_set: Some(inner_keyset.clone()),
-                            limit: ro.limit,
-                            resume_token: vec![],
-                            partition_token: x.partition_token,
-                            request_options: Transaction::create_request_options(
-                                ro.call_options.priority,
-                                self.base_tx.transaction_tag.clone(),
-                            ),
-                            directed_read_options: directed_read_options.clone(),
-                            data_boost_enabled,
-                            order_by: 0,
-                            lock_hint: 0,
-                        },
-                    },
-                })
-                .collect()),
-            Err(e) => Err(e),
-        };
-        self.as_mut_session().invalidate_if_needed(result).await
+        let keyset = keys.into();
+        let inner_keyset = keyset.inner;
+        let partition_options = po;
+        let directed = directed_read_options;
+        let ReadOptions {
+            index,
+            limit,
+            call_options,
+        } = ro;
+        loop {
+            let request = PartitionReadRequest {
+                session: self.get_session_name(),
+                transaction: Some(self.transaction_selector.clone()),
+                table: table_name.clone(),
+                index: index.clone(),
+                columns: columns.clone(),
+                key_set: Some(inner_keyset.clone()),
+                partition_options,
+            };
+            match self
+                .as_mut_session()
+                .spanner_client
+                .partition_read(request, call_options.retry.clone())
+                .await
+            {
+                Ok(response) => {
+                    let partitions = response
+                        .into_inner()
+                        .partitions
+                        .into_iter()
+                        .map(|x| Partition {
+                            reader: TableReader {
+                                request: ReadRequest {
+                                    session: self.get_session_name(),
+                                    transaction: Some(self.transaction_selector.clone()),
+                                    table: table_name.clone(),
+                                    index: index.clone(),
+                                    columns: columns.clone(),
+                                    key_set: Some(inner_keyset.clone()),
+                                    limit,
+                                    resume_token: vec![],
+                                    partition_token: x.partition_token,
+                                    request_options: Transaction::create_request_options(
+                                        call_options.priority,
+                                        self.base_tx.transaction_tag.clone(),
+                                    ),
+                                    directed_read_options: directed.clone(),
+                                    data_boost_enabled,
+                                    order_by: 0,
+                                    lock_hint: 0,
+                                },
+                            },
+                        })
+                        .collect::<Vec<Partition<TableReader>>>();
+                    return self.as_mut_session().invalidate_if_needed(Ok(partitions)).await;
+                }
+                Err(status) => {
+                    if is_session_not_found_status(&status) {
+                        let _ = self
+                            .as_mut_session()
+                            .invalidate_if_needed::<()>(Err(status.clone()))
+                            .await;
+                        self.restart_snapshot().await?;
+                        continue;
+                    }
+                    return self
+                        .as_mut_session()
+                        .invalidate_if_needed::<Vec<Partition<TableReader>>>(Err(status))
+                        .await;
+                }
+            }
+        }
     }
 
     /// partition_query returns a list of Partitions that can be used to execute a query against the database.
@@ -241,56 +289,81 @@ impl BatchReadOnlyTransaction {
         data_boost_enabled: bool,
         directed_read_options: Option<DirectedReadOptions>,
     ) -> Result<Vec<Partition<StatementReader>>, Status> {
-        let request = PartitionQueryRequest {
-            session: self.get_session_name(),
-            transaction: Some(self.transaction_selector.clone()),
-            sql: stmt.sql.clone(),
-            params: Some(prost_types::Struct {
-                fields: stmt.params.clone(),
-            }),
-            param_types: stmt.param_types.clone(),
-            partition_options: po,
-        };
-        let result = match self
-            .as_mut_session()
-            .spanner_client
-            .partition_query(request.clone(), qo.call_options.retry.clone())
-            .await
-        {
-            Ok(r) => Ok(r
-                .into_inner()
-                .partitions
-                .into_iter()
-                .map(|x| Partition {
-                    reader: StatementReader {
-                        enable_resume: qo.enable_resume,
-                        request: ExecuteSqlRequest {
-                            session: self.get_session_name(),
-                            transaction: Some(self.transaction_selector.clone()),
-                            sql: stmt.sql.clone(),
-                            params: Some(prost_types::Struct {
-                                fields: stmt.params.clone(),
-                            }),
-                            param_types: stmt.param_types.clone(),
-                            resume_token: vec![],
-                            query_mode: 0,
-                            partition_token: x.partition_token,
-                            seqno: 0,
-                            query_options: qo.optimizer_options.clone(),
-                            request_options: Transaction::create_request_options(
-                                qo.call_options.priority,
-                                self.base_tx.transaction_tag.clone(),
-                            ),
-                            data_boost_enabled,
-                            directed_read_options: directed_read_options.clone(),
-                            last_statement: false,
-                        },
-                    },
-                })
-                .collect()),
-            Err(e) => Err(e),
-        };
-        self.as_mut_session().invalidate_if_needed(result).await
+        let partition_options = po;
+        let directed = directed_read_options;
+        let QueryOptions {
+            mode: _,
+            optimizer_options,
+            call_options,
+            enable_resume,
+        } = qo;
+        loop {
+            let request = PartitionQueryRequest {
+                session: self.get_session_name(),
+                transaction: Some(self.transaction_selector.clone()),
+                sql: stmt.sql.clone(),
+                params: Some(prost_types::Struct {
+                    fields: stmt.params.clone(),
+                }),
+                param_types: stmt.param_types.clone(),
+                partition_options,
+            };
+            match self
+                .as_mut_session()
+                .spanner_client
+                .partition_query(request, call_options.retry.clone())
+                .await
+            {
+                Ok(response) => {
+                    let partitions = response
+                        .into_inner()
+                        .partitions
+                        .into_iter()
+                        .map(|x| Partition {
+                            reader: StatementReader {
+                                enable_resume,
+                                request: ExecuteSqlRequest {
+                                    session: self.get_session_name(),
+                                    transaction: Some(self.transaction_selector.clone()),
+                                    sql: stmt.sql.clone(),
+                                    params: Some(prost_types::Struct {
+                                        fields: stmt.params.clone(),
+                                    }),
+                                    param_types: stmt.param_types.clone(),
+                                    resume_token: vec![],
+                                    query_mode: 0,
+                                    partition_token: x.partition_token,
+                                    seqno: 0,
+                                    query_options: optimizer_options.clone(),
+                                    request_options: Transaction::create_request_options(
+                                        call_options.priority,
+                                        self.base_tx.transaction_tag.clone(),
+                                    ),
+                                    data_boost_enabled,
+                                    directed_read_options: directed.clone(),
+                                    last_statement: false,
+                                },
+                            },
+                        })
+                        .collect::<Vec<Partition<StatementReader>>>();
+                    return self.as_mut_session().invalidate_if_needed(Ok(partitions)).await;
+                }
+                Err(status) => {
+                    if is_session_not_found_status(&status) {
+                        let _ = self
+                            .as_mut_session()
+                            .invalidate_if_needed::<()>(Err(status.clone()))
+                            .await;
+                        self.restart_snapshot().await?;
+                        continue;
+                    }
+                    return self
+                        .as_mut_session()
+                        .invalidate_if_needed::<Vec<Partition<StatementReader>>>(Err(status))
+                        .await;
+                }
+            }
+        }
     }
 
     /// execute runs a single Partition obtained from partition_read or partition_query.
@@ -299,7 +372,36 @@ impl BatchReadOnlyTransaction {
         partition: Partition<T>,
         option: Option<CallOptions>,
     ) -> Result<RowIterator<'_, T>, Status> {
+        let allow_refresh = self.base_tx.can_retry_on_session_not_found();
         let session = self.as_mut_session();
-        RowIterator::new(session, partition.reader, option).await
+        RowIterator::new(session, partition.reader, option, allow_refresh).await
+    }
+
+    async fn restart_snapshot(&mut self) -> Result<(), Status> {
+        let mut session = self
+            .base_tx
+            .take_session()
+            .ok_or_else(|| Status::new(Code::Internal, "missing session while restarting batch transaction"))?;
+        loop {
+            match ReadOnlyTransaction::begin_internal(session, self.timestamp_bound.clone(), self.call_options.clone())
+                .await
+            {
+                Ok(tx) => {
+                    self.base_tx = tx;
+                    return Ok(());
+                }
+                Err(err) => {
+                    if is_session_not_found_status(&err.status) {
+                        session = err.session;
+                        session
+                            .renew(self.call_options.session_renew_timeout())
+                            .await
+                            .map_err(Status::from)?;
+                        continue;
+                    }
+                    return Err(err.status);
+                }
+            }
+        }
     }
 }

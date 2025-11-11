@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::io::Cursor;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
@@ -12,19 +13,104 @@ use tokio::sync::{mpsc, oneshot};
 use tokio::task::{JoinHandle, JoinSet};
 use tokio::time::{sleep, timeout};
 use tokio_util::sync::CancellationToken;
+use tokio_util::task::TaskTracker;
 
 use google_cloud_gax::grpc::metadata::MetadataMap;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::TryAs;
+use google_cloud_googleapis::rpc::{self, ResourceInfo};
 use google_cloud_googleapis::spanner::v1::{BatchCreateSessionsRequest, DeleteSessionRequest, Session};
+use prost::Message;
 
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::spanner_client::{ping_query_request, Client};
+
+const RESOURCE_INFO_TYPE_URL: &str = "type.googleapis.com/google.rpc.ResourceInfo";
+const SESSION_RESOURCE_TYPE: &str = "type.googleapis.com/google.spanner.v1.Session";
+
+pub(crate) fn is_session_not_found_status(status: &Status) -> bool {
+    if status.code() != Code::NotFound {
+        return false;
+    }
+    if matches_resource_type(status, SESSION_RESOURCE_TYPE) {
+        return true;
+    }
+    status.message().contains("Session not found:")
+}
+
+fn matches_resource_type(status: &Status, expected: &str) -> bool {
+    match extract_resource_type(status) {
+        Some(resource_type) => resource_type == expected,
+        None => false,
+    }
+}
+
+fn extract_resource_type(status: &Status) -> Option<String> {
+    let details = status.details();
+    if details.is_empty() {
+        return None;
+    }
+    let mut cursor = Cursor::new(details);
+    let parsed = rpc::Status::decode(&mut cursor).ok()?;
+    parsed
+        .details
+        .into_iter()
+        .find_map(|any| decode_resource_info(any).map(|info| info.resource_type))
+}
+
+fn decode_resource_info(any: prost_types::Any) -> Option<ResourceInfo> {
+    if any.type_url != RESOURCE_INFO_TYPE_URL {
+        return None;
+    }
+    let mut cursor = Cursor::new(any.value);
+    ResourceInfo::decode(&mut cursor).ok()
+}
+
+#[cfg(test)]
+mod status_tests {
+    use super::*;
+
+    #[test]
+    fn detects_session_not_found_from_resource_info() {
+        let status = build_status_with_resource_info(SESSION_RESOURCE_TYPE);
+        assert!(is_session_not_found_status(&status));
+    }
+
+    #[test]
+    fn falls_back_to_message_when_details_missing() {
+        let status = Status::new(Code::NotFound, "Session not found: foo");
+        assert!(is_session_not_found_status(&status));
+    }
+
+    fn build_status_with_resource_info(resource_type: &str) -> Status {
+        let info = ResourceInfo {
+            resource_type: resource_type.to_string(),
+            resource_name: "projects/p/instances/i/databases/d/sessions/s".to_string(),
+            owner: String::new(),
+            description: String::new(),
+        };
+        let mut info_buf = Vec::new();
+        info.encode(&mut info_buf).unwrap();
+        let detail = prost_types::Any {
+            type_url: RESOURCE_INFO_TYPE_URL.to_string(),
+            value: info_buf,
+        };
+        let grpc_status = rpc::Status {
+            code: Code::NotFound as i32,
+            message: String::from("Session not found"),
+            details: vec![detail],
+        };
+        let mut details_buf = Vec::new();
+        grpc_status.encode(&mut details_buf).unwrap();
+        Status::with_details(Code::NotFound, "Session not found", details_buf.into())
+    }
+}
 
 /// Session
 pub struct SessionHandle {
     pub session: Session,
     pub spanner_client: Client,
+    task_tracker: Arc<TaskTracker>,
     valid: bool,
     deleted: bool,
     last_used_at: Instant,
@@ -34,10 +120,16 @@ pub struct SessionHandle {
 }
 
 impl SessionHandle {
-    pub(crate) fn new(session: Session, spanner_client: Client, now: Instant) -> SessionHandle {
+    pub(crate) fn new(
+        session: Session,
+        spanner_client: Client,
+        task_tracker: Arc<TaskTracker>,
+        now: Instant,
+    ) -> SessionHandle {
         SessionHandle {
             session,
             spanner_client,
+            task_tracker,
             valid: true,
             deleted: false,
             last_used_at: now,
@@ -51,7 +143,7 @@ impl SessionHandle {
         match arg {
             Ok(s) => Ok(s),
             Err(e) => {
-                if e.code() == Code::NotFound && e.message().contains("Session not found:") {
+                if is_session_not_found_status(&e) {
                     tracing::debug!("session invalidate {}", self.session.name);
                     self.delete().await;
                 }
@@ -61,15 +153,21 @@ impl SessionHandle {
     }
 
     async fn delete(&mut self) {
+        if self.deleted {
+            self.valid = false;
+            return;
+        }
         self.valid = false;
-        let session_name = &self.session.name;
-        let request = DeleteSessionRequest {
-            name: session_name.to_string(),
-        };
-        match self.spanner_client.delete_session(request, None).await {
-            Ok(_) => self.deleted = true,
-            Err(e) => tracing::error!("failed to delete session {}, {:?}", session_name, e),
-        };
+        self.deleted = true;
+        let session_name = self.session.name.to_string();
+        let mut client = self.spanner_client.clone();
+        let tracker = self.task_tracker.clone();
+        tracker.spawn(async move {
+            let request = DeleteSessionRequest { name: session_name };
+            if let Err(e) = client.delete_session(request, None).await {
+                tracing::error!("failed to delete session, {:?}", e);
+            }
+        });
     }
 }
 
@@ -86,12 +184,36 @@ impl ManagedSession {
             session: Some(session),
         }
     }
+
+    pub(crate) async fn renew(&mut self, wait_timeout: Option<Duration>) -> Result<(), SessionError> {
+        if let Some(mut session) = self.session.take() {
+            if session.valid {
+                // Ensure the orphaned session is deleted before returning it to the pool so
+                // it will not be handed out again.
+                session.delete().await;
+            }
+            self.session_pool.recycle(session);
+        }
+        let wait_timeout = wait_timeout.unwrap_or(self.session_pool.config.session_get_timeout);
+        match self.session_pool.acquire_with_timeout(wait_timeout).await {
+            Ok(mut replacement) => {
+                self.session = replacement.session.take();
+                Ok(())
+            }
+            Err(SessionError::SessionGetTimeout) => {
+                tracing::warn!("session renewal timed out while waiting for a new session");
+                Err(SessionError::SessionGetTimeout)
+            }
+            Err(e) => Err(e),
+        }
+    }
 }
 
 impl Drop for ManagedSession {
     fn drop(&mut self) {
-        let session = self.session.take().unwrap();
-        self.session_pool.recycle(session);
+        if let Some(session) = self.session.take() {
+            self.session_pool.recycle(session);
+        }
     }
 }
 
@@ -152,6 +274,7 @@ impl Sessions {
     }
 
     fn release(&mut self, session: SessionHandle) {
+        assert!(self.num_inuse > 0, "release called without an in-use session");
         self.num_inuse -= 1;
         if session.valid {
             self.available_sessions.push_back(session);
@@ -204,6 +327,7 @@ struct SessionPool {
     inner: Arc<RwLock<Sessions>>,
     session_creation_sender: UnboundedSender<usize>,
     config: Arc<SessionConfig>,
+    task_tracker: Arc<TaskTracker>,
 }
 
 impl SessionPool {
@@ -212,8 +336,9 @@ impl SessionPool {
         conn_pool: &ConnectionManager,
         session_creation_sender: UnboundedSender<usize>,
         config: Arc<SessionConfig>,
+        task_tracker: Arc<TaskTracker>,
     ) -> Result<Self, Status> {
-        let available_sessions = Self::init_pool(database, conn_pool, config.min_opened).await?;
+        let available_sessions = Self::init_pool(database, conn_pool, config.min_opened, task_tracker.clone()).await?;
         Ok(SessionPool {
             inner: Arc::new(RwLock::new(Sessions {
                 available_sessions,
@@ -224,6 +349,7 @@ impl SessionPool {
             })),
             session_creation_sender,
             config,
+            task_tracker,
         })
     }
 
@@ -231,6 +357,7 @@ impl SessionPool {
         database: String,
         conn_pool: &ConnectionManager,
         min_opened: usize,
+        task_tracker: Arc<TaskTracker>,
     ) -> Result<VecDeque<SessionHandle>, Status> {
         let channel_num = conn_pool.num();
         let creation_count_per_channel = min_opened / channel_num;
@@ -247,7 +374,8 @@ impl SessionPool {
             };
             let next_client = conn_pool.conn().with_metadata(client_metadata(&database));
             let database = database.clone();
-            tasks.spawn(async move { batch_create_sessions(next_client, &database, creation_count).await });
+            let tracker = task_tracker.clone();
+            tasks.spawn(async move { batch_create_sessions(next_client, &database, creation_count, tracker).await });
         }
         while let Some(r) = tasks.join_next().await {
             let new_sessions = r.map_err(|e| Status::from_error(e.into()))??;
@@ -268,6 +396,10 @@ impl SessionPool {
     /// The client on the waiting list will be notified when another client's session has finished and
     /// when the process of replenishing the available sessions is complete.
     async fn acquire(&self) -> Result<ManagedSession, SessionError> {
+        self.acquire_with_timeout(self.config.session_get_timeout).await
+    }
+
+    async fn acquire_with_timeout(&self, wait_timeout: Duration) -> Result<ManagedSession, SessionError> {
         loop {
             let (on_session_acquired, session_count) = {
                 let mut sessions = self.inner.write();
@@ -291,7 +423,7 @@ impl SessionPool {
             }
 
             // Wait for the session available notification.
-            match timeout(self.config.session_get_timeout, on_session_acquired).await {
+            match timeout(wait_timeout, on_session_acquired).await {
                 Ok(Ok(())) => {
                     let mut sessions = self.inner.write();
                     if let Some(mut s) = sessions.take() {
@@ -447,10 +579,21 @@ impl TryAs<Status> for SessionError {
     }
 }
 
+impl From<SessionError> for Status {
+    fn from(value: SessionError) -> Self {
+        match value {
+            SessionError::GRPC(status) => status,
+            SessionError::SessionGetTimeout => Status::new(Code::DeadlineExceeded, "session get time out"),
+            SessionError::FailedToCreateSession => Status::new(Code::Internal, "failed to create session"),
+        }
+    }
+}
+
 pub(crate) struct SessionManager {
     session_pool: SessionPool,
     cancel: CancellationToken,
     tasks: Mutex<Vec<JoinHandle<()>>>,
+    task_tracker: Arc<TaskTracker>,
 }
 
 impl SessionManager {
@@ -461,7 +604,15 @@ impl SessionManager {
     ) -> Result<Arc<SessionManager>, Status> {
         let database = database.into();
         let (sender, receiver) = mpsc::unbounded_channel();
-        let session_pool = SessionPool::new(database.clone(), &conn_pool, sender, Arc::new(config.clone())).await?;
+        let task_tracker = Arc::new(TaskTracker::new());
+        let session_pool = SessionPool::new(
+            database.clone(),
+            &conn_pool,
+            sender,
+            Arc::new(config.clone()),
+            task_tracker.clone(),
+        )
+        .await?;
 
         let cancel = CancellationToken::new();
         let task_session_cleaner = Self::spawn_health_check_task(config, session_pool.clone(), cancel.clone());
@@ -472,6 +623,7 @@ impl SessionManager {
             session_pool,
             cancel,
             tasks: Mutex::new(vec![task_session_cleaner, task_session_creator]),
+            task_tracker,
         };
         Ok(Arc::new(sm))
     }
@@ -494,6 +646,8 @@ impl SessionManager {
             let _ = task.await;
         }
         self.session_pool.close().await;
+        self.task_tracker.close();
+        self.task_tracker.wait().await;
     }
 
     fn spawn_session_creation_task(
@@ -505,6 +659,7 @@ impl SessionManager {
     ) -> JoinHandle<()> {
         tokio::spawn(async move {
             let mut tasks = JoinSet::default();
+            let tracker = session_pool.task_tracker.clone();
             loop {
                 select! {
                     biased;
@@ -516,7 +671,13 @@ impl SessionManager {
                         Some(session_count) => {
                             let client = conn_pool.conn().with_metadata(client_metadata(&database));
                             let database = database.clone();
-                            tasks.spawn(async move { (session_count, batch_create_sessions(client, &database, session_count).await) });
+                            let tracker_clone = tracker.clone();
+                            tasks.spawn(async move {
+                                (
+                                    session_count,
+                                    batch_create_sessions(client, &database, session_count, tracker_clone).await
+                                )
+                            });
                         },
                         None => continue
                     },
@@ -614,10 +775,13 @@ async fn batch_create_sessions(
     spanner_client: Client,
     database: &str,
     mut remaining_create_count: usize,
+    task_tracker: Arc<TaskTracker>,
 ) -> Result<Vec<SessionHandle>, Status> {
     let mut created = Vec::with_capacity(remaining_create_count);
     while remaining_create_count > 0 {
-        let sessions = batch_create_session(spanner_client.clone(), database, remaining_create_count).await?;
+        let sessions =
+            batch_create_session(spanner_client.clone(), database, remaining_create_count, task_tracker.clone())
+                .await?;
         // Spanner could return less sessions than requested.
         // In that case, we should do another call using the same gRPC channel.
         let actually_created = sessions.len();
@@ -631,6 +795,7 @@ async fn batch_create_session(
     mut spanner_client: Client,
     database: &str,
     session_count: usize,
+    task_tracker: Arc<TaskTracker>,
 ) -> Result<Vec<SessionHandle>, Status> {
     let request = BatchCreateSessionsRequest {
         database: database.to_string(),
@@ -645,7 +810,7 @@ async fn batch_create_session(
     Ok(response
         .session
         .into_iter()
-        .map(|s| SessionHandle::new(s, spanner_client.clone(), now))
+        .map(|s| SessionHandle::new(s, spanner_client.clone(), task_tracker.clone(), now))
         .collect::<Vec<SessionHandle>>())
 }
 
@@ -664,7 +829,7 @@ mod tests {
     use parking_lot::RwLock;
     use serial_test::serial;
     use tokio::time::sleep;
-    use tokio_util::sync::CancellationToken;
+    use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
     use google_cloud_gax::conn::{ConnectionOptions, Environment};
     use google_cloud_googleapis::spanner::v1::ExecuteSqlRequest;
@@ -1106,7 +1271,8 @@ mod tests {
         .unwrap();
         let client = cm.conn().with_metadata(client_metadata(DATABASE));
         let session_count = 125;
-        let result = batch_create_sessions(client.clone(), DATABASE, session_count).await;
+        let tracker = Arc::new(TaskTracker::new());
+        let result = batch_create_sessions(client.clone(), DATABASE, session_count, tracker).await;
         match result {
             Ok(created) => {
                 assert_eq!(session_count, created.len());

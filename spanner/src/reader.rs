@@ -1,5 +1,7 @@
 use std::collections::{HashMap, VecDeque};
+use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
+use std::time::Duration;
 
 use prost_types::{value::Kind, Value};
 
@@ -8,7 +10,7 @@ use google_cloud_googleapis::spanner::v1::struct_type::Field;
 use google_cloud_googleapis::spanner::v1::{ExecuteSqlRequest, PartialResultSet, ReadRequest, ResultSetMetadata};
 
 use crate::row::Row;
-use crate::session::SessionHandle;
+use crate::session::{is_session_not_found_status, ManagedSession, SessionHandle};
 use crate::transaction::CallOptions;
 
 pub trait Reader: Send + Sync {
@@ -21,6 +23,8 @@ pub trait Reader: Send + Sync {
     fn update_token(&mut self, resume_token: Vec<u8>);
 
     fn can_resume(&self) -> bool;
+
+    fn update_session(&mut self, session: &SessionHandle);
 }
 
 pub struct StatementReader {
@@ -47,6 +51,10 @@ impl Reader for StatementReader {
     fn can_resume(&self) -> bool {
         self.enable_resume && !self.request.resume_token.is_empty()
     }
+
+    fn update_session(&mut self, session: &SessionHandle) {
+        self.request.session = session.session.name.clone();
+    }
 }
 
 pub struct TableReader {
@@ -71,6 +79,10 @@ impl Reader for TableReader {
 
     fn can_resume(&self) -> bool {
         !self.request.resume_token.is_empty()
+    }
+
+    fn update_session(&mut self, session: &SessionHandle) {
+        self.request.session = session.session.name.clone();
     }
 }
 
@@ -182,10 +194,12 @@ where
     T: Reader,
 {
     streaming: Streaming<PartialResultSet>,
-    session: &'a mut SessionHandle,
+    session_owner: &'a mut ManagedSession,
     reader: T,
     rs: ResultSet,
     reader_option: Option<CallOptions>,
+    allow_session_refresh: bool,
+    session_wait_timeout: Option<Duration>,
 }
 
 impl<'a, T> RowIterator<'a, T>
@@ -193,11 +207,28 @@ where
     T: Reader,
 {
     pub(crate) async fn new(
-        session: &'a mut SessionHandle,
-        reader: T,
+        session: &'a mut ManagedSession,
+        mut reader: T,
         option: Option<CallOptions>,
+        allow_session_refresh: bool,
     ) -> Result<RowIterator<'a, T>, Status> {
-        let streaming = reader.read(session, option).await?.into_inner();
+        let session_wait_timeout = option.as_ref().and_then(|opts| opts.session_renew_timeout());
+        let streaming = loop {
+            let call_option = option.clone();
+            let result = reader.read(session.deref_mut(), call_option).await;
+            match session.deref_mut().invalidate_if_needed(result).await {
+                Ok(response) => break response.into_inner(),
+                Err(status) => {
+                    tracing::warn!("session read attempt failed: {:?}", status);
+                    if allow_session_refresh && is_session_not_found_status(&status) {
+                        session.renew(session_wait_timeout).await.map_err(Status::from)?;
+                        reader.update_session(session.deref());
+                        continue;
+                    }
+                    return Err(status);
+                }
+            }
+        };
         let rs = ResultSet {
             fields: Arc::new(vec![]),
             index: Arc::new(HashMap::new()),
@@ -206,10 +237,12 @@ where
         };
         Ok(Self {
             streaming,
-            session,
+            session_owner: session,
             reader,
             rs,
             reader_option: None,
+            allow_session_refresh,
+            session_wait_timeout,
         })
     }
 
@@ -218,17 +251,31 @@ where
     }
 
     async fn try_recv(&mut self, option: Option<CallOptions>) -> Result<bool, Status> {
-        // try getting records from server
-        let maybe_result_set = match self.streaming.message().await {
-            Ok(s) => s,
-            Err(e) => {
-                if !self.reader.can_resume() {
-                    return Err(e);
+        let maybe_result_set = loop {
+            match self.streaming.message().await {
+                Ok(s) => break s,
+                Err(status) => {
+                    if self.allow_session_refresh && !self.reader.can_resume() && is_session_not_found_status(&status) {
+                        tracing::warn!("streaming saw Session not found; attempting to renew session");
+                        self.session_owner
+                            .renew(self.session_wait_timeout)
+                            .await
+                            .map_err(Status::from)?;
+                        self.reader.update_session(self.session_owner.deref());
+                        let call_option = option.clone();
+                        let result = self.reader.read(self.session_owner.deref_mut(), call_option).await?;
+                        self.streaming = result.into_inner();
+                        continue;
+                    }
+
+                    if !self.reader.can_resume() {
+                        return Err(status);
+                    }
+                    tracing::debug!("streaming error: {}. resume reading by resume_token", status);
+                    let call_option = option.clone();
+                    let result = self.reader.read(self.session_owner.deref_mut(), call_option).await?;
+                    self.streaming = result.into_inner();
                 }
-                tracing::debug!("streaming error: {}. resume reading by resume_token", e);
-                let result = self.reader.read(self.session, option).await?;
-                self.streaming = result.into_inner();
-                self.streaming.message().await?
             }
         };
 

@@ -16,12 +16,14 @@ doctest = false
 [dependencies]
 tracing = "0.1"
 prost-types = "0.14"
+prost = "0.14"
 tokio = "1.32"
 time = { version="0.3", features = ["std", "macros", "formatting", "parsing"] }
 thiserror = "2.0"
 parking_lot = "0.12"
 base64 = "0.22"
-tokio-util = "0.7"
+serde = { version = "1.0", optional = true, features = ["derive"] }
+tokio-util = { version = "0.7", features = ["rt"] }
 bigdecimal = { version="0.4", features=["serde"] }
 
 token-source = "1.0"
@@ -36,6 +38,7 @@ tokio = { version="1.32", features=["rt-multi-thread"] }
 tracing-subscriber = { version="0.3", features=["env-filter"] }
 serial_test = "3.1"
 ctor = "0.5"
+tonic = { version = "0.13", default-features = false, features = ["transport"] }
 google-cloud-auth = { package = "gcloud-auth", path="../foundation/auth", default-features=false, features=["rustls-tls"]}
 
 [features]

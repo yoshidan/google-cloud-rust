@@ -1,5 +1,5 @@
-use std::ops::DerefMut;
 use std::sync::atomic::AtomicI64;
+use std::time::Duration;
 
 use prost_types::Struct;
 
@@ -7,8 +7,8 @@ use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::spanner::v1::request_options::Priority;
 use google_cloud_googleapis::spanner::v1::{
-    execute_sql_request::QueryMode, execute_sql_request::QueryOptions as ExecuteQueryOptions, ExecuteSqlRequest,
-    ReadRequest, RequestOptions, TransactionSelector,
+    execute_sql_request::QueryMode, execute_sql_request::QueryOptions as ExecuteQueryOptions, transaction_selector,
+    ExecuteSqlRequest, ReadRequest, RequestOptions, TransactionSelector,
 };
 
 use crate::key::{Key, KeySet};
@@ -22,6 +22,12 @@ pub struct CallOptions {
     /// Priority is the RPC priority to use for the read operation.
     pub priority: Option<Priority>,
     pub retry: Option<RetrySetting>,
+}
+
+impl CallOptions {
+    pub fn session_renew_timeout(&self) -> Option<Duration> {
+        self.retry.as_ref().and_then(|setting| setting.max_delay)
+    }
 }
 
 #[derive(Clone)]
@@ -160,12 +166,13 @@ impl Transaction {
             directed_read_options: None,
             last_statement: false,
         };
-        let session = self.session.as_mut().unwrap().deref_mut();
         let reader = StatementReader {
             enable_resume: options.enable_resume,
             request,
         };
-        RowIterator::new(session, reader, Some(options.call_options)).await
+        let allow_refresh = self.can_retry_on_session_not_found();
+        let session = self.as_mut_session();
+        RowIterator::new(session, reader, Some(options.call_options), allow_refresh).await
     }
 
     /// read returns a RowIterator for reading multiple rows from the database.
@@ -226,9 +233,10 @@ impl Transaction {
             lock_hint: 0,
         };
 
-        let session = self.as_mut_session();
         let reader = TableReader { request };
-        RowIterator::new(session, reader, Some(options.call_options)).await
+        let allow_refresh = self.can_retry_on_session_not_found();
+        let session = self.as_mut_session();
+        RowIterator::new(session, reader, Some(options.call_options), allow_refresh).await
     }
 
     /// read returns a RowIterator for reading multiple rows from the database.
@@ -262,6 +270,13 @@ impl Transaction {
             .await?;
         reader.set_call_options(call_options);
         reader.next().await
+    }
+
+    pub(crate) fn can_retry_on_session_not_found(&self) -> bool {
+        matches!(
+            self.transaction_selector.selector,
+            Some(transaction_selector::Selector::SingleUse(_))
+        )
     }
 
     pub(crate) fn get_session_name(&self) -> String {
