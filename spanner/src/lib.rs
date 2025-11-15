@@ -636,6 +636,7 @@ pub mod admin;
 pub mod apiv1;
 pub mod client;
 pub mod key;
+pub mod metrics;
 pub mod mutation;
 pub mod reader;
 pub mod retry;

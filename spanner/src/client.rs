@@ -12,6 +12,7 @@ use google_cloud_googleapis::spanner::v1::{commit_request, transaction_options, 
 use token_source::NoopTokenSourceProvider;
 
 use crate::apiv1::conn_pool::{ConnectionManager, SPANNER};
+use crate::metrics::{MetricsConfig, MetricsRecorder};
 use crate::retry::TransactionRetrySetting;
 use crate::session::{ManagedSession, SessionConfig, SessionError, SessionManager};
 use crate::statement::Statement;
@@ -80,6 +81,8 @@ pub struct ClientConfig {
     pub endpoint: String,
     /// Runtime project
     pub environment: Environment,
+    /// Metrics configuration for emitting OpenTelemetry signals.
+    pub metrics: MetricsConfig,
 }
 
 impl Default for ClientConfig {
@@ -92,6 +95,7 @@ impl Default for ClientConfig {
                 Some(v) => Environment::Emulator(v),
                 None => Environment::GoogleCloud(Box::new(NoopTokenSourceProvider {})),
             },
+            metrics: MetricsConfig::default(),
         };
         config.session_config.min_opened = config.channel_config.num_channels * 4;
         config.session_config.max_opened = config.channel_config.num_channels * 100;
@@ -180,6 +184,11 @@ impl Client {
             )));
         }
 
+        let database: String = database.into();
+        let metrics = Arc::new(
+            MetricsRecorder::try_new(&database, &config.metrics).map_err(|e| Error::InvalidConfig(e.to_string()))?,
+        );
+
         let pool_size = config.channel_config.num_channels;
         let options = ConnectionOptions {
             timeout: Some(config.channel_config.timeout),
@@ -187,7 +196,7 @@ impl Client {
         };
         let conn_pool =
             ConnectionManager::new(pool_size, &config.environment, config.endpoint.as_str(), &options).await?;
-        let session_manager = SessionManager::new(database, conn_pool, config.session_config).await?;
+        let session_manager = SessionManager::new(database, conn_pool, config.session_config, metrics.clone()).await?;
 
         Ok(Client {
             sessions: session_manager,
