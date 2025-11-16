@@ -64,15 +64,10 @@ pub struct BucketAccessControl {
 }
 
 /// A set of properties to return in a response.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize, Debug, Default)]
 pub enum BucketACLRole {
     OWNER,
+    #[default]
     READER,
     WRITER,
-}
-
-impl Default for BucketACLRole {
-    fn default() -> Self {
-        Self::READER
-    }
 }

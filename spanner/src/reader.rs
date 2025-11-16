@@ -5,7 +5,9 @@ use prost_types::{value::Kind, Value};
 
 use google_cloud_gax::grpc::{Code, Response, Status, Streaming};
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
-use google_cloud_googleapis::spanner::v1::{ExecuteSqlRequest, PartialResultSet, ReadRequest, ResultSetMetadata, ResultSetStats};
+use google_cloud_googleapis::spanner::v1::{
+    ExecuteSqlRequest, PartialResultSet, ReadRequest, ResultSetMetadata, ResultSetStats,
+};
 
 use crate::row::Row;
 use crate::session::SessionHandle;
@@ -16,6 +18,7 @@ pub trait Reader: Send + Sync {
         &self,
         session: &mut SessionHandle,
         option: Option<CallOptions>,
+        disable_route_to_leader: bool,
     ) -> impl std::future::Future<Output = Result<Response<Streaming<PartialResultSet>>, Status>> + Send;
 
     fn update_token(&mut self, resume_token: Vec<u8>);
@@ -33,10 +36,13 @@ impl Reader for StatementReader {
         &self,
         session: &mut SessionHandle,
         option: Option<CallOptions>,
+        disable_route_to_leader: bool,
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
         let option = option.unwrap_or_default();
         let client = &mut session.spanner_client;
-        let result = client.execute_streaming_sql(self.request.clone(), option.retry).await;
+        let result = client
+            .execute_streaming_sql(self.request.clone(), disable_route_to_leader, option.retry)
+            .await;
         session.invalidate_if_needed(result).await
     }
 
@@ -58,10 +64,13 @@ impl Reader for TableReader {
         &self,
         session: &mut SessionHandle,
         option: Option<CallOptions>,
+        disable_route_to_leader: bool,
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
         let option = option.unwrap_or_default();
         let client = &mut session.spanner_client;
-        let result = client.streaming_read(self.request.clone(), option.retry).await;
+        let result = client
+            .streaming_read(self.request.clone(), disable_route_to_leader, option.retry)
+            .await;
         session.invalidate_if_needed(result).await
     }
 
@@ -186,6 +195,7 @@ where
     reader: T,
     rs: ResultSet,
     reader_option: Option<CallOptions>,
+    disable_route_to_leader: bool,
     stats: Option<ResultSetStats>,
 }
 
@@ -197,8 +207,12 @@ where
         session: &'a mut SessionHandle,
         reader: T,
         option: Option<CallOptions>,
+        disable_route_to_leader: bool,
     ) -> Result<RowIterator<'a, T>, Status> {
-        let streaming = reader.read(session, option).await?.into_inner();
+        let streaming = reader
+            .read(session, option, disable_route_to_leader)
+            .await?
+            .into_inner();
         let rs = ResultSet {
             fields: Arc::new(vec![]),
             index: Arc::new(HashMap::new()),
@@ -211,6 +225,7 @@ where
             reader,
             rs,
             reader_option: None,
+            disable_route_to_leader,
             stats: None,
         })
     }
@@ -228,7 +243,10 @@ where
                     return Err(e);
                 }
                 tracing::debug!("streaming error: {}. resume reading by resume_token", e);
-                let result = self.reader.read(self.session, option).await?;
+                let result = self
+                    .reader
+                    .read(self.session, option, self.disable_route_to_leader)
+                    .await?;
                 self.streaming = result.into_inner();
                 self.streaming.message().await?
             }

@@ -105,6 +105,9 @@ pub struct Transaction {
     pub(crate) transaction_selector: TransactionSelector,
     /// The transaction tag to include with each request in this transaction.
     pub(crate) transaction_tag: Option<String>,
+    /// disableRouteToLeader specifies if all the requests of type read-write and PDML
+    /// need to be routed to the leader region.
+    pub(crate) disable_route_to_leader: bool,
 }
 
 impl Transaction {
@@ -163,7 +166,7 @@ impl Transaction {
             enable_resume: options.enable_resume,
             request,
         };
-        RowIterator::new(session, reader, Some(options.call_options)).await
+        RowIterator::new(session, reader, Some(options.call_options), self.disable_route_to_leader).await
     }
 
     /// read returns a RowIterator for reading multiple rows from the database.
@@ -224,9 +227,10 @@ impl Transaction {
             lock_hint: 0,
         };
 
+        let disable_route_to_leader = self.disable_route_to_leader;
         let session = self.as_mut_session();
         let reader = TableReader { request };
-        RowIterator::new(session, reader, Some(options.call_options)).await
+        RowIterator::new(session, reader, Some(options.call_options), disable_route_to_leader).await
     }
 
     /// read returns a RowIterator for reading multiple rows from the database.

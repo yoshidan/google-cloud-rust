@@ -65,6 +65,7 @@ impl ReadOnlyTransaction {
                     })),
                 },
                 transaction_tag: None,
+                disable_route_to_leader: true,
             },
             rts: None,
         })
@@ -87,7 +88,10 @@ impl ReadOnlyTransaction {
             mutation_key: None,
         };
 
-        let result = session.spanner_client.begin_transaction(request, options.retry).await;
+        let result = session
+            .spanner_client
+            .begin_transaction(request, true, options.retry)
+            .await;
         match session.invalidate_if_needed(result).await {
             Ok(response) => {
                 let tx = response.into_inner();
@@ -101,6 +105,7 @@ impl ReadOnlyTransaction {
                             selector: Some(transaction_selector::Selector::Id(tx.id)),
                         },
                         transaction_tag: None,
+                        disable_route_to_leader: true,
                     },
                     rts: Some(OffsetDateTime::from(st)),
                 })
@@ -187,10 +192,11 @@ impl BatchReadOnlyTransaction {
             key_set: Some(inner_keyset.clone()),
             partition_options: po,
         };
+        let disable_route_to_leader = self.disable_route_to_leader;
         let result = match self
             .as_mut_session()
             .spanner_client
-            .partition_read(request, ro.call_options.retry)
+            .partition_read(request, disable_route_to_leader, ro.call_options.retry)
             .await
         {
             Ok(r) => Ok(r
@@ -251,10 +257,11 @@ impl BatchReadOnlyTransaction {
             param_types: stmt.param_types.clone(),
             partition_options: po,
         };
+        let disable_route_to_leader = self.disable_route_to_leader;
         let result = match self
             .as_mut_session()
             .spanner_client
-            .partition_query(request.clone(), qo.call_options.retry.clone())
+            .partition_query(request.clone(), disable_route_to_leader, qo.call_options.retry.clone())
             .await
         {
             Ok(r) => Ok(r
@@ -299,7 +306,8 @@ impl BatchReadOnlyTransaction {
         partition: Partition<T>,
         option: Option<CallOptions>,
     ) -> Result<RowIterator<'_, T>, Status> {
+        let disable_route_to_leader = self.disable_route_to_leader;
         let session = self.as_mut_session();
-        RowIterator::new(session, partition.reader, option).await
+        RowIterator::new(session, partition.reader, option, disable_route_to_leader).await
     }
 }
