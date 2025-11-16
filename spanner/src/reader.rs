@@ -5,7 +5,9 @@ use prost_types::{value::Kind, Value};
 
 use google_cloud_gax::grpc::{Code, Response, Status, Streaming};
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
-use google_cloud_googleapis::spanner::v1::{ExecuteSqlRequest, PartialResultSet, ReadRequest, ResultSetMetadata};
+use google_cloud_googleapis::spanner::v1::{
+    ExecuteSqlRequest, PartialResultSet, ReadRequest, ResultSetMetadata, ResultSetStats,
+};
 
 use crate::row::Row;
 use crate::session::SessionHandle;
@@ -194,6 +196,7 @@ where
     rs: ResultSet,
     reader_option: Option<CallOptions>,
     disable_route_to_leader: bool,
+    stats: Option<ResultSetStats>,
 }
 
 impl<'a, T> RowIterator<'a, T>
@@ -223,6 +226,7 @@ where
             rs,
             reader_option: None,
             disable_route_to_leader,
+            stats: None,
         })
     }
 
@@ -257,6 +261,10 @@ where
                 if !result_set.resume_token.is_empty() {
                     self.reader.update_token(result_set.resume_token);
                 }
+                // Capture stats if present (only sent with the last response)
+                if result_set.stats.is_some() {
+                    self.stats = result_set.stats;
+                }
                 self.rs
                     .add(result_set.metadata, result_set.values, result_set.chunked_value)
             }
@@ -276,6 +284,13 @@ where
             }
         }
         None
+    }
+
+    /// Returns query execution statistics if available.
+    /// Stats are only available after all rows have been consumed and only when
+    /// the query was executed with a QueryMode that includes stats (Profile, WithStats, or WithPlanAndStats).
+    pub fn stats(&self) -> Option<&ResultSetStats> {
+        self.stats.as_ref()
     }
 
     /// next returns the next result.

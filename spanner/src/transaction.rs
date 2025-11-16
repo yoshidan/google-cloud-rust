@@ -135,8 +135,6 @@ impl Transaction {
 
     /// query executes a query against the database. It returns a RowIterator for
     /// retrieving the resulting rows.
-    ///
-    /// query returns only row data, without a query plan or execution statistics.
     pub async fn query_with_option(
         &mut self,
         statement: Statement,
