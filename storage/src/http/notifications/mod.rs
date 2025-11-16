@@ -44,15 +44,11 @@ pub enum EventType {
 
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[derive(Default)]
 pub enum PayloadFormat {
     /// The payload will be a UTF-8 string containing the resource representation of the object’s metadata.
+    #[default]
     JsonApiV1,
     /// No payload is included with the notification.
     None,
-}
-
-impl Default for PayloadFormat {
-    fn default() -> Self {
-        Self::JsonApiV1
-    }
 }
