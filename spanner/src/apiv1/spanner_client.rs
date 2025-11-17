@@ -114,7 +114,7 @@ impl Client {
                 let request = this.create_request(disable_route_to_leader, format!("database={database}"), req.clone());
                 this.inner.create_session(request).await.map_err(|e| (e, this))
             },
-            &mut *self,
+            self,
         )
         .await
         .inspect(move |response| {
@@ -142,7 +142,7 @@ impl Client {
                 let request = this.create_request(disable_route_to_leader, format!("database={database}"), req.clone());
                 this.inner.batch_create_sessions(request).await.map_err(|e| (e, this))
             },
-            &mut *self,
+            self,
         )
         .await
         .inspect(move |response| {
@@ -168,7 +168,7 @@ impl Client {
                 let request = this.create_request(disable_route_to_leader, format!("name={name}"), req.clone());
                 this.inner.get_session(request).await.map_err(|e| (e, this))
             },
-            &mut *self,
+            self,
         )
         .await
         .inspect(move |response| {
@@ -193,7 +193,7 @@ impl Client {
                 let request = this.create_request(disable_route_to_leader, format!("database={database}"), req.clone());
                 this.inner.list_sessions(request).await.map_err(|e| (e, this))
             },
-            &mut *self,
+            self,
         )
         .await
         .inspect(move |response| {
@@ -220,7 +220,7 @@ impl Client {
                 let request = this.create_request(disable_route_to_leader, format!("name={name}"), req.clone());
                 this.inner.delete_session(request).await.map_err(|e| (e, this))
             },
-            &mut *self,
+            self,
         )
         .await
         .inspect(move |response| {
@@ -255,7 +255,7 @@ impl Client {
                 let request = this.create_request(disable_route_to_leader, format!("session={session}"), req.clone());
                 this.inner.execute_sql(request).await.map_err(|e| (e, this))
             },
-            &mut *self,
+            self,
         )
         .await
         .inspect(move |response| {
@@ -284,7 +284,7 @@ impl Client {
                 let request = this.create_request(disable_route_to_leader, format!("session={session}"), req.clone());
                 this.inner.execute_streaming_sql(request).await.map_err(|e| (e, this))
             },
-            &mut *self,
+            self,
         )
         .await
         .inspect(move |response| {
@@ -333,7 +333,7 @@ impl Client {
                     Err(err) => Err((err, this)),
                 }
             },
-            &mut *self,
+            self,
         )
         .await
         .inspect(move |response| {
@@ -370,7 +370,7 @@ impl Client {
                 let request = this.create_request(disable_route_to_leader, format!("session={session}"), req.clone());
                 this.inner.read(request).await.map_err(|e| (e, this))
             },
-            &mut *self,
+            self,
         )
         .await
         .inspect(move |response| {
@@ -399,7 +399,7 @@ impl Client {
                 let request = this.create_request(disable_route_to_leader, format!("session={session}"), req.clone());
                 this.inner.streaming_read(request).await.map_err(|e| (e, this))
             },
-            &mut *self,
+            self,
         )
         .await
         .inspect(move |response| {
@@ -427,7 +427,7 @@ impl Client {
                 let request = this.create_request(disable_route_to_leader, format!("session={session}"), req.clone());
                 this.inner.begin_transaction(request).await.map_err(|e| (e, this))
             },
-            &mut *self,
+            self,
         )
         .await
         .inspect(move |response| {
@@ -465,7 +465,7 @@ impl Client {
                 let request = this.create_request(disable_route_to_leader, format!("session={session}"), req.clone());
                 this.inner.commit(request).await.map_err(|e| (e, this))
             },
-            &mut *self,
+            self,
         )
         .await
         .inspect(move |response| {
@@ -497,7 +497,7 @@ impl Client {
                 let request = this.create_request(disable_route_to_leader, format!("session={session}"), req.clone());
                 this.inner.rollback(request).await.map_err(|e| (e, this))
             },
-            &mut *self,
+            self,
         )
         .await
         .inspect(move |response| {
@@ -532,7 +532,7 @@ impl Client {
                 let request = this.create_request(disable_route_to_leader, format!("session={session}"), req.clone());
                 this.inner.partition_query(request).await.map_err(|e| (e, this))
             },
-            &mut *self,
+            self,
         )
         .await
         .inspect(move |response| {
@@ -569,7 +569,7 @@ impl Client {
                 let request = this.create_request(disable_route_to_leader, format!("session={session}"), req.clone());
                 this.inner.partition_read(request).await.map_err(|e| (e, this))
             },
-            &mut *self,
+            self,
         )
         .await
         .inspect(move |response| {
