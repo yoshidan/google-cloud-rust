@@ -305,6 +305,7 @@ impl SessionPool {
     /// The client on the waiting list will be notified when another client's session has finished and
     /// when the process of replenishing the available sessions is complete.
     async fn acquire(&self) -> Result<ManagedSession, SessionError> {
+        let request_started_at = Instant::now();
         loop {
             let (on_session_acquired, session_count) = {
                 let mut sessions = self.inner.write();
@@ -314,6 +315,8 @@ impl SessionPool {
                     if let Some(mut s) = sessions.take() {
                         s.last_used_at = Instant::now();
                         self.metrics.record_session_acquired();
+                        self.metrics
+                            .record_session_acquire_latency(request_started_at.elapsed());
                         return Ok(ManagedSession::new(self.clone(), s));
                     }
                 }
@@ -335,6 +338,8 @@ impl SessionPool {
                     if let Some(mut s) = sessions.take() {
                         s.last_used_at = Instant::now();
                         self.metrics.record_session_acquired();
+                        self.metrics
+                            .record_session_acquire_latency(request_started_at.elapsed());
                         return Ok(ManagedSession::new(self.clone(), s));
                     } else {
                         continue; // another waiter raced for session

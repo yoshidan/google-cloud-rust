@@ -3,6 +3,7 @@ use std::collections::HashMap;
 #[cfg(feature = "otel-metrics")]
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
+use std::time::Duration;
 
 use google_cloud_gax::grpc::metadata::MetadataMap;
 use thiserror::Error;
@@ -107,6 +108,17 @@ impl MetricsRecorder {
         }
     }
 
+    pub(crate) fn record_session_acquire_latency(&self, duration: Duration) {
+        #[cfg(feature = "otel-metrics")]
+        if let Some(inner) = &self.inner {
+            inner.record_session_acquire_latency(duration);
+        }
+        #[cfg(not(feature = "otel-metrics"))]
+        {
+            let _ = duration;
+        }
+    }
+
     pub(crate) fn record_server_timing(&self, method: &'static str, metadata: &MetadataMap) {
         #[cfg(feature = "otel-metrics")]
         if let Some(inner) = &self.inner {
@@ -126,12 +138,13 @@ mod otel_impl {
     use super::{
         ParsedDatabaseName, ServerTimingMetrics, SessionPoolStatsFn, ATTR_CLIENT_ID, ATTR_DATABASE, ATTR_INSTANCE,
         ATTR_IS_MULTIPLEXED, ATTR_LIB_VERSION, ATTR_METHOD, ATTR_PROJECT, ATTR_TYPE, CLIENT_ID_SEQ, GFE_BUCKETS,
-        GFE_TIMING_HEADER, METRICS_PREFIX, OTEL_SCOPE,
+        GFE_TIMING_HEADER, METRICS_PREFIX, OTEL_SCOPE, SESSION_ACQUIRE_BUCKETS,
     };
     use opentelemetry::metrics::{Counter, Histogram, Meter, MeterProvider, ObservableGauge};
     use opentelemetry::{global, InstrumentationScope, KeyValue};
     use std::sync::atomic::Ordering;
     use std::sync::{Arc, Mutex};
+    use std::time::Duration;
 
     pub(super) struct OtelMetrics {
         meter: Meter,
@@ -142,6 +155,7 @@ mod otel_impl {
         released_sessions: Counter<u64>,
         gfe_latency: Histogram<f64>,
         gfe_header_missing: Counter<u64>,
+        session_acquire_latency: Histogram<f64>,
     }
 
     struct SessionGaugeHandles {
@@ -193,6 +207,12 @@ mod otel_impl {
                 .with_description("Number of RPC responses received without the server-timing header, most likely meaning the RPC never reached Google's network.")
                 .with_unit("1")
                 .build();
+            let session_acquire_latency = meter
+                .f64_histogram(METRICS_PREFIX.to_owned() + "session_acquire_latency")
+                .with_description("Time spent waiting to acquire a session from the pool.")
+                .with_unit("ms")
+                .with_boundaries(SESSION_ACQUIRE_BUCKETS.to_vec())
+                .build();
 
             OtelMetrics {
                 meter,
@@ -203,6 +223,7 @@ mod otel_impl {
                 released_sessions,
                 gfe_latency,
                 gfe_header_missing,
+                session_acquire_latency,
             }
         }
 
@@ -291,6 +312,12 @@ mod otel_impl {
         pub(super) fn record_session_released(&self) {
             self.released_sessions
                 .add(1, self.attributes.without_multiplexed.as_ref());
+        }
+
+        pub(super) fn record_session_acquire_latency(&self, duration: Duration) {
+            let latency_ms = duration.as_secs_f64() * 1000.0;
+            self.session_acquire_latency
+                .record(latency_ms, self.attributes.base.as_ref());
         }
 
         pub(super) fn record_gfe_metrics(&self, method: &'static str, metrics: ServerTimingMetrics) {
@@ -386,6 +413,12 @@ const ATTR_METHOD: &str = "grpc_client_method";
 const GFE_TIMING_HEADER: &str = "gfet4t7";
 #[cfg(feature = "otel-metrics")]
 const SERVER_TIMING_HEADER: &str = "server-timing";
+
+#[cfg(feature = "otel-metrics")]
+const SESSION_ACQUIRE_BUCKETS: &[f64] = &[
+    0.0, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 75.0, 100.0, 150.0, 200.0, 300.0, 400.0, 500.0, 750.0, 1000.0, 1500.0,
+    2000.0, 3000.0, 4000.0, 5000.0, 7500.0, 10000.0, 15000.0, 30000.0, 60000.0,
+];
 
 #[cfg(feature = "otel-metrics")]
 const GFE_BUCKETS: &[f64] = &[
