@@ -57,15 +57,15 @@ impl MetricsRecorder {
     pub fn try_new(database: &str, config: &MetricsConfig) -> Result<Self, MetricsError> {
         #[cfg(feature = "otel-metrics")]
         {
-            if !config.enabled {
-                return Ok(Self { inner: None });
+            if config.enabled {
+                let parsed = parse_database_name(database)?;
+                let inner = OtelMetrics::new(parsed, config.meter_provider.clone());
+                Ok(Self {
+                    inner: Some(Arc::new(inner)),
+                })
+            } else {
+                Ok(Self { inner: None })
             }
-
-            let parsed = parse_database_name(database)?;
-            let inner = OtelMetrics::new(parsed, config.meter_provider.clone());
-            return Ok(Self {
-                inner: Some(Arc::new(inner)),
-            });
         }
         #[cfg(not(feature = "otel-metrics"))]
         {

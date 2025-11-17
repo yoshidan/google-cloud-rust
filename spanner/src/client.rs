@@ -81,6 +81,8 @@ pub struct ClientConfig {
     pub endpoint: String,
     /// Runtime project
     pub environment: Environment,
+    /// DisableRouteToLeader specifies if all the requests of type read-write and PDML need to be routed to the leader region.
+    pub disable_route_to_leader: bool,
     /// Metrics configuration for emitting OpenTelemetry signals.
     pub metrics: MetricsConfig,
 }
@@ -95,6 +97,7 @@ impl Default for ClientConfig {
                 Some(v) => Environment::Emulator(v),
                 None => Environment::GoogleCloud(Box::new(NoopTokenSourceProvider {})),
             },
+            disable_route_to_leader: false,
             metrics: MetricsConfig::default(),
         };
         config.session_config.min_opened = config.channel_config.num_channels * 4;
@@ -171,6 +174,7 @@ impl TryAs<Status> for Error {
 #[derive(Clone)]
 pub struct Client {
     sessions: Arc<SessionManager>,
+    disable_route_to_leader: bool,
 }
 
 impl Client {
@@ -196,10 +200,18 @@ impl Client {
         };
         let conn_pool =
             ConnectionManager::new(pool_size, &config.environment, config.endpoint.as_str(), &options).await?;
-        let session_manager = SessionManager::new(database, conn_pool, config.session_config, metrics.clone()).await?;
+        let session_manager = SessionManager::new(
+            database,
+            conn_pool,
+            config.session_config,
+            config.disable_route_to_leader,
+            metrics.clone(),
+        )
+        .await?;
 
         Ok(Client {
             sessions: session_manager,
+            disable_route_to_leader: config.disable_route_to_leader,
         })
     }
 
@@ -348,6 +360,7 @@ impl Client {
                     session.unwrap(),
                     options.begin_options.clone(),
                     options.transaction_tag.clone(),
+                    self.disable_route_to_leader,
                 )
                 .await
                 {
@@ -401,7 +414,7 @@ impl Client {
                     mode: Some(transaction_options::Mode::ReadWrite(transaction_options::ReadWrite::default())),
                     isolation_level: IsolationLevel::Unspecified as i32,
                 });
-                match commit(session, ms.clone(), tx, options.clone()).await {
+                match commit(session, ms.clone(), tx, options.clone(), self.disable_route_to_leader).await {
                     Ok(s) => Ok(Some(s.into())),
                     Err(e) => Err((Error::GRPC(e), session)),
                 }
@@ -600,6 +613,7 @@ impl Client {
             session,
             ReadWriteTransactionOption::default().begin_options,
             ReadWriteTransactionOption::default().transaction_tag,
+            self.disable_route_to_leader,
         )
         .await
         .map_err(|e| e.status.into())
@@ -647,7 +661,7 @@ impl Client {
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
     {
-        ReadWriteTransaction::begin(session.unwrap(), bo, transaction_tag)
+        ReadWriteTransaction::begin(session.unwrap(), bo, transaction_tag, self.disable_route_to_leader)
             .await
             .map_err(|e| (E::from(e.status), Some(e.session)))
     }
