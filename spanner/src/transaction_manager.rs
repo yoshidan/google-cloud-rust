@@ -33,14 +33,16 @@ use crate::transaction_rw::ReadWriteTransaction;
 pub struct TransactionManager {
     session: Option<ManagedSession>,
     transaction: Option<ReadWriteTransaction>,
+    disable_route_to_leader: bool,
 }
 
 impl TransactionManager {
     /// Creates a new TransactionManager with the given session.
-    pub(crate) fn new(session: ManagedSession) -> Self {
+    pub(crate) fn new(session: ManagedSession, disable_route_to_leader: bool) -> Self {
         Self {
             session: Some(session),
             transaction: None,
+            disable_route_to_leader,
         }
     }
 
@@ -93,7 +95,7 @@ impl TransactionManager {
         };
 
         // Create new transaction with the session
-        match ReadWriteTransaction::begin(session, options, transaction_tag).await {
+        match ReadWriteTransaction::begin(session, options, transaction_tag, self.disable_route_to_leader).await {
             Ok(new_tx) => {
                 // Store the transaction and return a mutable reference
                 self.transaction = Some(new_tx);

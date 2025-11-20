@@ -639,7 +639,7 @@ impl Client {
     /// ```
     pub async fn transaction_manager(&self) -> Result<TransactionManager, Error> {
         let session = self.get_session().await?;
-        Ok(TransactionManager::new(session))
+        Ok(TransactionManager::new(session, self.disable_route_to_leader))
     }
 
     /// Get open session count.
