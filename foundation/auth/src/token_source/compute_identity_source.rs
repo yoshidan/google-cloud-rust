@@ -64,6 +64,7 @@ impl TokenSource for ComputeIdentitySource {
             .text()
             .await?;
 
+        // Only used to extract the expiry without checking the signature.
         let token = jsonwebtoken::dangerous::insecure_decode::<ExpClaim>(jwt.as_bytes())?;
         Ok(Token {
             access_token: jwt,
