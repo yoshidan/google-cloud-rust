@@ -496,9 +496,7 @@ mod tests {
     #[test]
     fn parses_server_timing_header() {
         let mut metadata = MetadataMap::new();
-        metadata
-            .insert(SERVER_TIMING_HEADER, "gfet4t7;dur=12.5,another-metric;dur=3.5".parse().unwrap())
-            .unwrap();
+        metadata.insert(SERVER_TIMING_HEADER, "gfet4t7;dur=12.5,another-metric;dur=3.5".parse().unwrap());
         let metrics = parse_server_timing(&metadata);
         assert!(!metrics.is_empty());
         assert!((metrics.value(GFE_TIMING_HEADER) - 12.5).abs() < f64::EPSILON);
