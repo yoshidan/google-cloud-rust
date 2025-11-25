@@ -63,6 +63,7 @@ use crate::http::{
     object_access_controls, objects, Error,
 };
 
+pub const AUDIENCE: &str = "https://storage.googleapis.com/";
 pub const SCOPES: [&str; 2] = [
     "https://www.googleapis.com/auth/cloud-platform",
     "https://www.googleapis.com/auth/devstorage.full_control",
