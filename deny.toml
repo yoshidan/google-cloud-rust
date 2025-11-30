@@ -87,6 +87,8 @@ exceptions = [
     # ring uses code from multiple libraries but all with permissive licenses
     # https://tldrlegal.com/license/openssl-license-(openssl)
     { allow = ["OpenSSL"], name = "ring" },
+    # similar to ring
+    { allow = ["OpenSSL"], name = "aws-lc-sys" },
 ]
 
 # Some crates don't have (easily) machine readable licensing information,
