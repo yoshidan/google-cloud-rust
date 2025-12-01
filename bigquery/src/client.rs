@@ -32,6 +32,7 @@ use crate::{http, query};
 
 #[cfg(feature = "auth")]
 pub use google_cloud_auth;
+pub use google_cloud_gax;
 
 const JOB_RETRY_REASONS: [&str; 3] = ["backendError", "rateLimitExceeded", "internalError"];
 

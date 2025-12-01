@@ -151,6 +151,21 @@ pub struct QueryResponse {
     pub session_info: Option<SessionInfo>,
     /// Output only. Detailed statistics for DML statements INSERT, UPDATE, DELETE, MERGE or TRUNCATE.
     pub dml_stats: Option<DmlStats>,
+    /// Output only. If the project is configured to use on-demand pricing, then this field contains the total bytes billed for the job. If the project is configured to use flat-rate pricing, then you are not billed for bytes and this field is informational only.
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub total_bytes_billed: Option<i64>,
+    /// Output only. Number of slot ms the user is actually billed for.
+     #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub total_slot_ms: Option<i64>,
+    /// Output only. Creation time of this query, in milliseconds since the epoch. This field will be present on all queries.
+     #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub creation_time: Option<i64>,
+    /// Output only. Start time of this query, in milliseconds since the epoch. This field will be present when the query job transitions from the PENDING state to either RUNNING or DONE.
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub start_time: Option<i64>,
+    /// Output only. End time of this query, in milliseconds since the epoch. This field will be present whenever a query job is in the DONE state.
+    #[serde(default, deserialize_with = "crate::http::from_str_option")]
+    pub end_time: Option<i64>
 }
 
 pub fn build(base_url: &str, client: &Client, project_id: &str, data: &QueryRequest) -> RequestBuilder {
