@@ -123,7 +123,7 @@ impl<'a> ConnectionManager {
     pub async fn new(
         pool_size: usize,
         domain_name: impl Into<String>,
-        audience: &'static str,
+        audience: &str,
         environment: &Environment,
         conn_options: &'a ConnectionOptions,
     ) -> Result<Self, Error> {
@@ -144,7 +144,7 @@ impl<'a> ConnectionManager {
     async fn create_connections(
         pool_size: usize,
         domain_name: impl Into<String>,
-        audience: &'static str,
+        audience: &str,
         ts_provider: &dyn TokenSourceProvider,
         conn_options: &'a ConnectionOptions,
     ) -> Result<Vec<Channel>, Error> {
@@ -156,7 +156,9 @@ impl<'a> ConnectionManager {
         let ts = ts_provider.token_source();
 
         for _i_ in 0..pool_size {
-            let endpoint = TonicChannel::from_static(audience).tls_config(tls_config.clone())?;
+            let endpoint = TonicChannel::from_shared(audience.to_string().into_bytes())
+                .map_err(|e| Error::InvalidEmulatorHOST(e.to_string()))?
+                .tls_config(tls_config.clone())?;
             let endpoint = conn_options.apply(endpoint);
 
             let con = Self::connect(endpoint).await?;
