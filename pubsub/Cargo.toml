@@ -37,10 +37,12 @@ futures-util = "0.3"
 tokio-util = "0.7"
 
 [features]
-default = ["auth", "default-tls"]
+default = ["auth", "default-tls", "jwt-aws-lc-rs"]
 default-tls = ["google-cloud-auth?/default-tls"]
 rustls-tls = ["google-cloud-auth?/rustls-tls"]
 external-account = ["google-cloud-auth?/external-account"]
 trace = []
 bytes = ["google-cloud-googleapis/bytes"]
 auth = ["google-cloud-auth"]
+jwt-aws-lc-rs = ["google-cloud-auth?/aws_lc_rs"]
+jwt-rust-crypto = ["google-cloud-auth?/rust_crypto"]

@@ -48,10 +48,12 @@ prost = "0.14"
 futures-util = "0.3"
 
 [features]
-default = ["default-tls", "auth"]
+default = ["default-tls", "auth", "jwt-aws-lc-rs"]
 default-tls = ["reqwest/default-tls","google-cloud-auth?/default-tls"]
 rustls-tls = ["reqwest/rustls-tls","google-cloud-auth?/rustls-tls"]
 hickory-dns = ["reqwest/hickory-dns", "google-cloud-auth?/hickory-dns"]
 trace = []
 auth = ["google-cloud-auth"]
 external-account = ["google-cloud-auth?/external-account"]
+jwt-aws-lc-rs = ["google-cloud-auth?/aws_lc_rs"]
+jwt-rust-crypto = ["google-cloud-auth?/rust_crypto"]
