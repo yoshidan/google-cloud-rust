@@ -1,6 +1,6 @@
 [package]
 name = "gcloud-bigquery"
-version = "1.4.2"
+version = "1.5.0"
 edition = "2021"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/bigquery"
@@ -35,7 +35,7 @@ anyhow = "1.0"
 async-stream = "0.3"
 prost-types = "0.14"
 
-google-cloud-auth = { package = "gcloud-auth", optional = true, version = "1.1.3", path="../foundation/auth", default-features=false }
+google-cloud-auth = { package = "gcloud-auth", optional = true, version = "1.2.0", path="../foundation/auth", default-features=false }
 
 [dev-dependencies]
 tokio = { version="1.32", features=["rt-multi-thread"] }
@@ -55,5 +55,5 @@ hickory-dns = ["reqwest/hickory-dns", "google-cloud-auth?/hickory-dns"]
 trace = []
 auth = ["google-cloud-auth"]
 external-account = ["google-cloud-auth?/external-account"]
-jwt-aws-lc-rs = ["google-cloud-auth?/aws_lc_rs"]
-jwt-rust-crypto = ["google-cloud-auth?/rust_crypto"]
+jwt-aws-lc-rs = ["google-cloud-auth?/jwt-aws-lc-rs"]
+jwt-rust-crypto = ["google-cloud-auth?/jwt-rust-crypto"]

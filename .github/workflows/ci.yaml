@@ -58,7 +58,7 @@ jobs:
           service_account_key: ${{ secrets.STORAGE_CREDENTIALS }}
           export_default_credentials: true
       - name: auth-test
-        run: cargo test --release --all-features --manifest-path foundation/auth/Cargo.toml
+        run: cargo test --release --features default-tls,rustls-tls,hickory-dns,external-account,jwt-aws-lc-rs --manifest-path foundation/auth/Cargo.toml
       - name: gax-test
         run: cargo test --release --all-features --manifest-path foundation/gax/Cargo.toml
   pubsub:

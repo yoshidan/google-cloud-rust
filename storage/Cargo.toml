@@ -8,7 +8,7 @@ license = "MIT"
 name = "gcloud-storage"
 readme = "README.md"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/storage"
-version = "1.1.2"
+version = "1.2.0"
 
 [lib]
 doctest = false
@@ -46,7 +46,7 @@ tokio = {version = "1.32", features = ["macros"]}
 tracing = "0.1"
 url = "2.4"
 
-google-cloud-auth = {package = "gcloud-auth", optional = true, version = "1.1.3", path = "../foundation/auth", default-features = false}
+google-cloud-auth = {package = "gcloud-auth", optional = true, version = "1.2.0", path = "../foundation/auth", default-features = false}
 google-cloud-metadata = {package = "gcloud-metadata", optional = true, version = "1.0.1", path = "../foundation/metadata"}
 
 [dev-dependencies]
@@ -63,6 +63,6 @@ default-tls = ["reqwest/default-tls", "google-cloud-auth?/default-tls"]
 external-account = ["google-cloud-auth?/external-account"]
 hickory-dns = ["reqwest/hickory-dns", "google-cloud-auth?/hickory-dns"]
 rustls-tls = ["reqwest/rustls-tls", "google-cloud-auth?/rustls-tls"]
-jwt-aws-lc-rs = ["google-cloud-auth?/aws_lc_rs"]
-jwt-rust-crypto = ["google-cloud-auth?/rust_crypto"]
+jwt-aws-lc-rs = ["google-cloud-auth?/jwt-aws-lc-rs"]
+jwt-rust-crypto = ["google-cloud-auth?/jwt-rust-crypto"]
 trace = []
