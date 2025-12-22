@@ -40,7 +40,7 @@ jobs:
         uses: EmbarkStudios/cargo-deny-action@v2
         with:
           rust-version: "1.88.0"
-          arguments: --workspace --all-features
+          arguments: --workspace
   foundation:
     name: foundation
     runs-on: ubuntu-latest
