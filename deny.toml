@@ -35,7 +35,7 @@ yanked = "warn"
 # A list of advisory IDs to ignore. Note that ignored advisories will still
 # output a note when they are encountered.
 ignore = [
-    # Thiis is derive from feature ['jsonwebtoken/rust_crypto']
+    # This is due to the feature ['jsonwebtoken/rust_crypto']
     # We can use ['jsonwebtoken/aws_lc_rs'] instead to avoid this vulnerability.
     "RUSTSEC-2023-0071"
 ]
