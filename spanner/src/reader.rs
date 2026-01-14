@@ -1,6 +1,7 @@
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
+use prost::Message;
 use prost_types::{value::Kind, Value};
 
 use google_cloud_gax::grpc::{Code, Response, Status, Streaming};
@@ -11,6 +12,7 @@ use google_cloud_googleapis::spanner::v1::{
 
 use crate::row::Row;
 use crate::session::SessionHandle;
+use crate::retry::StreamingRetry;
 use crate::transaction::CallOptions;
 
 pub trait Reader: Send + Sync {
@@ -88,6 +90,78 @@ pub struct ResultSet {
     index: Arc<HashMap<String, usize>>,
     rows: VecDeque<Value>,
     chunked_value: bool,
+}
+
+const DEFAULT_MAX_BYTES_BETWEEN_RESUME_TOKENS: usize = 128 * 1024 * 1024;
+
+#[derive(Debug)]
+struct ResumablePartialResultSetBuffer {
+    pending: VecDeque<PartialResultSet>,
+    last_delivered_token: Vec<u8>,
+    observed_token: Vec<u8>,
+    bytes_between_tokens: usize,
+    max_bytes_between_tokens: usize,
+    unretryable: bool,
+}
+
+impl ResumablePartialResultSetBuffer {
+    fn new(max_bytes_between_tokens: usize) -> Self {
+        Self {
+            pending: VecDeque::new(),
+            last_delivered_token: Vec::new(),
+            observed_token: Vec::new(),
+            bytes_between_tokens: 0,
+            max_bytes_between_tokens,
+            unretryable: false,
+        }
+    }
+
+    fn push(&mut self, result_set: PartialResultSet) {
+        if !result_set.resume_token.is_empty() && result_set.resume_token != self.observed_token {
+            self.observed_token = result_set.resume_token.clone();
+        }
+
+        if !self.unretryable && self.observed_token == self.last_delivered_token {
+            self.bytes_between_tokens = self
+                .bytes_between_tokens
+                .saturating_add(result_set.encoded_len());
+            if self.bytes_between_tokens >= self.max_bytes_between_tokens {
+                self.unretryable = true;
+            }
+        }
+
+        self.pending.push_back(result_set);
+    }
+
+    fn pop_ready(&mut self, end_of_stream: bool) -> Option<PartialResultSet> {
+        if self.pending.is_empty() {
+            return None;
+        }
+
+        if self.unretryable || end_of_stream {
+            return self.pending.pop_front();
+        }
+
+        if self.observed_token != self.last_delivered_token {
+            let result_set = self.pending.pop_front();
+            if let Some(ref rs) = result_set {
+                if !rs.resume_token.is_empty() && rs.resume_token == self.observed_token {
+                    self.last_delivered_token = self.observed_token.clone();
+                    self.bytes_between_tokens = 0;
+                }
+            }
+            return result_set;
+        }
+
+        None
+    }
+
+    fn on_resumption(&mut self) {
+        self.pending.clear();
+        self.observed_token = self.last_delivered_token.clone();
+        self.bytes_between_tokens = 0;
+        self.unretryable = false;
+    }
 }
 
 impl ResultSet {
@@ -184,6 +258,20 @@ impl ResultSet {
         self.chunked_value = chunked_value;
         Ok(true)
     }
+
+    fn is_row_boundary(&self) -> bool {
+        if self.fields.is_empty() {
+            return self.rows.is_empty() && !self.chunked_value;
+        }
+        if self.chunked_value {
+            return false;
+        }
+        let columns = self.fields.len();
+        if columns == 0 {
+            return self.rows.is_empty();
+        }
+        self.rows.len() % columns == 0
+    }
 }
 
 pub struct RowIterator<'a, T>
@@ -197,6 +285,10 @@ where
     reader_option: Option<CallOptions>,
     disable_route_to_leader: bool,
     stats: Option<ResultSetStats>,
+    prs_buffer: ResumablePartialResultSetBuffer,
+    resumable: bool,
+    end_of_stream: bool,
+    stream_retry: StreamingRetry,
 }
 
 impl<'a, T> RowIterator<'a, T>
@@ -227,6 +319,10 @@ where
             reader_option: None,
             disable_route_to_leader,
             stats: None,
+            prs_buffer: ResumablePartialResultSetBuffer::new(DEFAULT_MAX_BYTES_BETWEEN_RESUME_TOKENS),
+            resumable: true,
+            end_of_stream: false,
+            stream_retry: StreamingRetry::new(),
         })
     }
 
@@ -235,40 +331,71 @@ where
     }
 
     async fn try_recv(&mut self, option: Option<CallOptions>) -> Result<bool, Status> {
-        // try getting records from server
-        let maybe_result_set = match self.streaming.message().await {
-            Ok(s) => s,
-            Err(e) => {
-                if !self.reader.can_resume() {
-                    return Err(e);
-                }
-                tracing::debug!("streaming error: {}. resume reading by resume_token", e);
-                let result = self
-                    .reader
-                    .read(self.session, option, self.disable_route_to_leader)
-                    .await?;
-                self.streaming = result.into_inner();
-                self.streaming.message().await?
-            }
-        };
-
-        match maybe_result_set {
-            Some(result_set) => {
+        loop {
+            if let Some(result_set) = self.prs_buffer.pop_ready(self.end_of_stream) {
                 if result_set.values.is_empty() {
                     return Ok(false);
                 }
+                let resume_token_present = !result_set.resume_token.is_empty();
                 //if resume_token changes set new resume_token
-                if !result_set.resume_token.is_empty() {
-                    self.reader.update_token(result_set.resume_token);
+                if resume_token_present {
+                    self.reader.update_token(result_set.resume_token.clone());
                 }
                 // Capture stats if present (only sent with the last response)
                 if result_set.stats.is_some() {
                     self.stats = result_set.stats;
                 }
-                self.rs
-                    .add(result_set.metadata, result_set.values, result_set.chunked_value)
+                let added = self
+                    .rs
+                    .add(result_set.metadata, result_set.values, result_set.chunked_value)?;
+                if resume_token_present && !self.rs.is_row_boundary() {
+                    return Err(Status::new(
+                        Code::FailedPrecondition,
+                        "resume token is not on a row boundary",
+                    ));
+                }
+                return Ok(added);
             }
-            None => Ok(false),
+
+            if self.end_of_stream {
+                return Ok(false);
+            }
+
+            let received = match self.streaming.message().await {
+                Ok(s) => s,
+                Err(e) => {
+                    if !self.reader.can_resume() || !self.resumable {
+                        return Err(e);
+                    }
+                    tracing::debug!("streaming error: {}. resume reading by resume_token", e);
+                    if let Err(status) = self.stream_retry.next(e).await {
+                        return Err(status);
+                    }
+                    let call_option = option.clone();
+                    let result = self
+                        .reader
+                        .read(self.session, call_option, self.disable_route_to_leader)
+                        .await?;
+                    self.streaming = result.into_inner();
+                    self.prs_buffer.on_resumption();
+                    continue;
+                }
+            };
+
+            match received {
+                Some(result_set) => {
+                    if result_set.last {
+                        self.end_of_stream = true;
+                    }
+                    self.prs_buffer.push(result_set);
+                    if self.prs_buffer.unretryable {
+                        self.resumable = false;
+                    }
+                }
+                None => {
+                    self.end_of_stream = true;
+                }
+            }
         }
     }
 
@@ -318,7 +445,7 @@ mod tests {
     use prost_types::Value;
 
     use google_cloud_googleapis::spanner::v1::struct_type::Field;
-    use google_cloud_googleapis::spanner::v1::{ResultSetMetadata, StructType};
+    use google_cloud_googleapis::spanner::v1::{PartialResultSet, ResultSetMetadata, StructType};
 
     use crate::reader::ResultSet;
     use crate::row::{Row, TryFromValue};
@@ -343,6 +470,18 @@ mod tests {
     fn value(to_kind: impl ToKind) -> Value {
         Value {
             kind: Some(to_kind.to_kind()),
+        }
+    }
+
+    fn prs(values: Vec<Value>, resume_token: &str, chunked_value: bool) -> PartialResultSet {
+        PartialResultSet {
+            metadata: None,
+            values,
+            chunked_value,
+            resume_token: resume_token.as_bytes().to_vec(),
+            stats: None,
+            precommit_token: None,
+            last: false,
         }
     }
 
@@ -736,5 +875,80 @@ mod tests {
             "valueB".to_string(),
         );
         assert!(rs.next().is_none());
+    }
+
+    #[test]
+    fn test_prs_buffer_waits_for_resume_token() {
+        let mut buffer = super::ResumablePartialResultSetBuffer::new(1024);
+        buffer.push(prs(vec![value("value-1")], "", false));
+        assert!(buffer.pop_ready(false).is_none());
+
+        buffer.push(prs(vec![value("value-2")], "token-1", false));
+        assert!(buffer.pop_ready(false).is_some());
+        assert!(buffer.pop_ready(false).is_some());
+        assert!(buffer.pop_ready(false).is_none());
+    }
+
+    #[test]
+    fn test_prs_buffer_flushes_on_end_of_stream() {
+        let mut buffer = super::ResumablePartialResultSetBuffer::new(1024);
+        buffer.push(prs(vec![value("value-1")], "", false));
+        assert!(buffer.pop_ready(false).is_none());
+        assert!(buffer.pop_ready(true).is_some());
+        assert!(buffer.pop_ready(true).is_none());
+    }
+
+    #[test]
+    fn test_prs_buffer_becomes_unretryable_after_limit() {
+        let mut buffer = super::ResumablePartialResultSetBuffer::new(1);
+        buffer.push(prs(vec![value("value-1")], "", false));
+        assert!(buffer.unretryable);
+        assert!(buffer.pop_ready(false).is_some());
+    }
+
+    #[test]
+    fn test_prs_buffer_on_resumption_discards_pending() {
+        let mut buffer = super::ResumablePartialResultSetBuffer::new(1024);
+        buffer.push(prs(vec![value("value-1")], "", false));
+        buffer.on_resumption();
+        buffer.push(prs(vec![value("value-2")], "token-1", false));
+        assert!(buffer.pop_ready(false).is_some());
+        assert!(buffer.pop_ready(false).is_none());
+    }
+
+    #[test]
+    fn test_rs_is_row_boundary_empty() {
+        let rs = empty_rs();
+        assert!(rs.is_row_boundary());
+    }
+
+    #[test]
+    fn test_rs_is_row_boundary_chunked() {
+        let rs = ResultSet {
+            fields: Arc::new(vec![field("column1")]),
+            index: Arc::new(Default::default()),
+            rows: VecDeque::from(vec![value("value1")]),
+            chunked_value: true,
+        };
+        assert!(!rs.is_row_boundary());
+    }
+
+    #[test]
+    fn test_rs_is_row_boundary_multiple_columns() {
+        let rs_complete = ResultSet {
+            fields: Arc::new(vec![field("column1"), field("column2")]),
+            index: Arc::new(Default::default()),
+            rows: VecDeque::from(vec![value("value1"), value("value2")]),
+            chunked_value: false,
+        };
+        assert!(rs_complete.is_row_boundary());
+
+        let rs_partial = ResultSet {
+            fields: Arc::new(vec![field("column1"), field("column2")]),
+            index: Arc::new(Default::default()),
+            rows: VecDeque::from(vec![value("value1")]),
+            chunked_value: false,
+        };
+        assert!(!rs_partial.is_row_boundary());
     }
 }
