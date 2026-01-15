@@ -71,7 +71,7 @@ impl SessionHandle {
         };
         match self.spanner_client.delete_session(request, true, None).await {
             Ok(_) => self.deleted = true,
-            Err(e) => tracing::error!("failed to delete session {}, {:?}", session_name, e),
+            Err(e) => tracing::warn!("failed to delete session {}, {:?}", session_name, e),
         };
     }
 }
