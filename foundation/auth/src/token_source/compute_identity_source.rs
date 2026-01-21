@@ -60,9 +60,11 @@ impl TokenSource for ComputeIdentitySource {
             .get(self.token_url.to_string())
             .header(METADATA_FLAVOR_KEY, METADATA_GOOGLE)
             .send()
-            .await?
+            .await
+            .map_err(|e| Error::HttpError(self.token_url.clone(), e))?
             .text()
-            .await?;
+            .await
+            .map_err(|e| Error::HttpError(self.token_url.clone(), e))?;
 
         // Only used to extract the expiry without checking the signature.
         let token = jsonwebtoken::dangerous::insecure_decode::<ExpClaim>(jwt.as_bytes())?;
