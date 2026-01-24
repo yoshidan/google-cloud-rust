@@ -52,6 +52,9 @@ pub enum Error {
     BigDecimalParseError(String, #[source] ParseBigDecimalError),
     #[error("Failed to parse as Prost Timestamp field={0}")]
     ProstTimestampParseError(String, #[source] ::prost_types::TimestampError),
+    #[cfg(feature = "uuid")]
+    #[error("Failed to parse as Uuid field={0}")]
+    UuidParseError(String, #[source] ::uuid::Error),
 }
 
 impl Row {
@@ -225,6 +228,18 @@ impl TryFromValue for BigDecimal {
         match as_ref(item, field)? {
             Kind::StringValue(s) => {
                 Ok(BigDecimal::from_str(s).map_err(|e| Error::BigDecimalParseError(field.name.to_string(), e))?)
+            }
+            v => kind_to_error(v, field),
+        }
+    }
+}
+
+#[cfg(feature = "uuid")]
+impl TryFromValue for ::uuid::Uuid {
+    fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
+        match as_ref(item, field)? {
+            Kind::StringValue(s) => {
+                ::uuid::Uuid::parse_str(s).map_err(|e| Error::UuidParseError(field.name.to_string(), e))
             }
             v => kind_to_error(v, field),
         }
@@ -490,5 +505,29 @@ mod tests {
             BigDecimal::zero()
         );
         assert_eq!(format!("{}", struct_data[1].prost_timestamp), "2027-02-19T07:23:59Z");
+    }
+
+    #[cfg(feature = "uuid")]
+    #[test]
+    fn test_uuid_try_from() {
+        use crate::row::TryFromValue;
+        use crate::statement::ToKind;
+        use google_cloud_googleapis::spanner::v1::struct_type::Field;
+        use prost_types::Value;
+
+        let uuid_str = "550e8400-e29b-41d4-a716-446655440000";
+        let expected_uuid = ::uuid::Uuid::parse_str(uuid_str).unwrap();
+
+        let field = Field {
+            name: "uuid_field".to_string(),
+            r#type: Some(::uuid::Uuid::get_type()),
+        };
+
+        let value = Value {
+            kind: Some(uuid_str.to_string().to_kind()),
+        };
+
+        let parsed: ::uuid::Uuid = TryFromValue::try_from(&value, &field).unwrap();
+        assert_eq!(parsed, expected_uuid);
     }
 }
