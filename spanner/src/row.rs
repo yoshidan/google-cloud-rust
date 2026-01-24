@@ -75,6 +75,14 @@ impl Row {
     {
         self.column(index(&self.index, column_name)?)
     }
+
+    pub fn field(&self, column_index: usize) -> Option<&Field> {
+        self.fields.get(column_index)
+    }
+
+    pub fn field_by_name(&self, column_name: &str) -> Option<&Field> {
+        self.index.get(column_name).and_then(|&idx| self.fields.get(idx))
+    }
 }
 
 //don't use TryFrom trait to avoid the conflict
