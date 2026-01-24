@@ -10,9 +10,9 @@ use google_cloud_googleapis::spanner::v1::{
     ExecuteSqlRequest, PartialResultSet, ReadRequest, ResultSetMetadata, ResultSetStats,
 };
 
+use crate::retry::StreamingRetry;
 use crate::row::Row;
 use crate::session::SessionHandle;
-use crate::retry::StreamingRetry;
 use crate::transaction::CallOptions;
 
 pub trait Reader: Send + Sync {
@@ -122,9 +122,7 @@ impl ResumablePartialResultSetBuffer {
         }
 
         if !self.unretryable && self.observed_token == self.last_delivered_token {
-            self.bytes_between_tokens = self
-                .bytes_between_tokens
-                .saturating_add(result_set.encoded_len());
+            self.bytes_between_tokens = self.bytes_between_tokens.saturating_add(result_set.encoded_len());
             if self.bytes_between_tokens >= self.max_bytes_between_tokens {
                 self.unretryable = true;
             }
@@ -270,7 +268,7 @@ impl ResultSet {
         if columns == 0 {
             return self.rows.is_empty();
         }
-        self.rows.len() % columns == 0
+        self.rows.len().is_multiple_of(columns)
     }
 }
 
@@ -349,10 +347,7 @@ where
                     .rs
                     .add(result_set.metadata, result_set.values, result_set.chunked_value)?;
                 if resume_token_present && !self.rs.is_row_boundary() {
-                    return Err(Status::new(
-                        Code::FailedPrecondition,
-                        "resume token is not on a row boundary",
-                    ));
+                    return Err(Status::new(Code::FailedPrecondition, "resume token is not on a row boundary"));
                 }
                 return Ok(added);
             }
@@ -368,9 +363,7 @@ where
                         return Err(e);
                     }
                     tracing::debug!("streaming error: {}. resume reading by resume_token", e);
-                    if let Err(status) = self.stream_retry.next(e).await {
-                        return Err(status);
-                    }
+                    self.stream_retry.next(e).await?;
                     let call_option = option.clone();
                     let result = self
                         .reader

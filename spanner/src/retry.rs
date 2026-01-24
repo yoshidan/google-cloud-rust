@@ -220,7 +220,9 @@ mod tests {
     fn test_streaming_retry_condition() {
         let setting = StreamingRetrySetting::default();
         assert!(setting.condition().should_retry(&Status::new(Code::Unavailable, "")));
-        assert!(setting.condition().should_retry(&Status::new(Code::ResourceExhausted, "")));
+        assert!(setting
+            .condition()
+            .should_retry(&Status::new(Code::ResourceExhausted, "")));
         assert!(setting.condition().should_retry(&Status::new(Code::Internal, "")));
         assert!(!setting.condition().should_retry(&Status::new(Code::Aborted, "")));
     }
