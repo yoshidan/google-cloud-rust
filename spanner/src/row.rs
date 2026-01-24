@@ -237,6 +237,21 @@ impl TryFromValue for BigDecimal {
 #[cfg(feature = "uuid")]
 impl TryFromValue for ::uuid::Uuid {
     fn try_from(item: &Value, field: &Field) -> Result<Self, Error> {
+        use google_cloud_googleapis::spanner::v1::TypeCode;
+
+        let type_code = field
+            .r#type
+            .as_ref()
+            .map(|t| t.code)
+            .unwrap_or(TypeCode::Unspecified as i32);
+
+        if type_code != TypeCode::Uuid as i32 {
+            return Err(Error::KindMismatch(
+                field.name.to_string(),
+                format!("expected UUID type, got TypeCode={}", type_code),
+            ));
+        }
+
         match as_ref(item, field)? {
             Kind::StringValue(s) => {
                 ::uuid::Uuid::parse_str(s).map_err(|e| Error::UuidParseError(field.name.to_string(), e))
