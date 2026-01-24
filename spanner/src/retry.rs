@@ -125,13 +125,86 @@ impl Default for TransactionRetrySetting {
     }
 }
 
+pub struct StreamingRetry {
+    strategy: Take<ExponentialBackoff>,
+    condition: CodeCondition,
+}
+
+impl StreamingRetry {
+    pub async fn next(&mut self, status: Status) -> Result<(), Status> {
+        let duration = if self.condition.should_retry(&status) {
+            self.strategy.next()
+        } else {
+            None
+        };
+        match duration {
+            Some(duration) => {
+                tokio::time::sleep(duration).await;
+                Ok(())
+            }
+            None => Err(status),
+        }
+    }
+
+    pub fn new() -> Self {
+        let setting = StreamingRetrySetting::default();
+        let strategy = <StreamingRetrySetting as Retry<Status, CodeCondition>>::strategy(&setting);
+        Self {
+            strategy,
+            condition: setting.condition(),
+        }
+    }
+}
+
+impl Default for StreamingRetry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct StreamingRetrySetting {
+    pub inner: RetrySetting,
+}
+
+impl Retry<Status, CodeCondition> for StreamingRetrySetting {
+    fn strategy(&self) -> Take<ExponentialBackoff> {
+        self.inner.strategy()
+    }
+
+    fn condition(&self) -> CodeCondition {
+        CodeCondition::new(self.inner.codes.clone())
+    }
+
+    fn notify(error: &Status, duration: std::time::Duration) {
+        tracing::trace!("streaming retry fn, error: {:?}, duration: {:?}", error, duration);
+    }
+}
+
+impl StreamingRetrySetting {
+    pub fn new(codes: Vec<Code>) -> Self {
+        Self {
+            inner: RetrySetting {
+                codes,
+                ..Default::default()
+            },
+        }
+    }
+}
+
+impl Default for StreamingRetrySetting {
+    fn default() -> Self {
+        StreamingRetrySetting::new(vec![Code::Unavailable, Code::ResourceExhausted, Code::Internal])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use google_cloud_gax::grpc::{Code, Status};
     use google_cloud_gax::retry::{Condition, Retry};
 
     use crate::client::Error;
-    use crate::retry::TransactionRetrySetting;
+    use crate::retry::{StreamingRetrySetting, TransactionRetrySetting};
 
     #[test]
     fn test_transaction_condition() {
@@ -141,5 +214,14 @@ mod tests {
 
         let err = &Error::GRPC(Status::new(Code::Aborted, ""));
         assert!(default.condition().should_retry(err));
+    }
+
+    #[test]
+    fn test_streaming_retry_condition() {
+        let setting = StreamingRetrySetting::default();
+        assert!(setting.condition().should_retry(&Status::new(Code::Unavailable, "")));
+        assert!(setting.condition().should_retry(&Status::new(Code::ResourceExhausted, "")));
+        assert!(setting.condition().should_retry(&Status::new(Code::Internal, "")));
+        assert!(!setting.condition().should_retry(&Status::new(Code::Aborted, "")));
     }
 }
