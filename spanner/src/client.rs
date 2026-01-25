@@ -17,6 +17,7 @@ use crate::retry::TransactionRetrySetting;
 use crate::session::{ManagedSession, SessionConfig, SessionError, SessionManager};
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions};
+use crate::transaction_manager::TransactionManager;
 use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
 use crate::transaction_rw::{commit, CommitOptions, CommitResult, ReadWriteTransaction};
 use crate::value::TimestampBound;
@@ -617,6 +618,43 @@ impl Client {
         )
         .await
         .map_err(|e| e.status.into())
+    }
+
+    /// transaction_manager creates a TransactionManager that allows manual control over
+    /// transaction execution with session reuse across retries. This is useful when you need
+    /// to handle transaction retry logic manually while maintaining the same session for
+    /// better lock priority.
+    ///
+    /// The TransactionManager holds a session and allows multiple calls to
+    /// `begin_read_write_transaction()` that reuse the same session. This is particularly
+    /// helpful when retrying transactions that fail with ABORTED errors, as reusing the
+    /// session retains lock priority and increases the likelihood of commit success.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use google_cloud_spanner::client::Client;
+    /// use google_cloud_spanner::retry::TransactionRetry;
+    ///
+    /// async fn run(client: Client) -> Result<(), Error> {
+    ///     let mut tm = client.transaction_manager().await?;
+    ///     let retry = &mut TransactionRetry::new();
+    ///
+    ///     loop {
+    ///         let tx = tm.begin_read_write_transaction().await?;
+    ///
+    ///         let result = run_in_transaction(tx).await;
+    ///
+    ///         match tx.end(result, None).await {
+    ///             Ok((commit_result, success)) => return Ok(success),
+    ///             Err(err) => retry.next(err).await?
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    pub async fn transaction_manager(&self) -> Result<TransactionManager, Error> {
+        let session = self.get_session().await?;
+        Ok(TransactionManager::new(session, self.disable_route_to_leader))
     }
 
     /// Get open session count.
