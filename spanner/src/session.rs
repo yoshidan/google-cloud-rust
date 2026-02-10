@@ -20,6 +20,9 @@ use google_cloud_googleapis::spanner::v1::{BatchCreateSessionsRequest, DeleteSes
 
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::spanner_client::{ping_query_request, Client};
+use crate::metrics::{MetricsRecorder, SessionPoolSnapshot, SessionPoolStatsFn};
+
+const MAX_IN_USE_WINDOW: Duration = Duration::from_secs(600);
 
 /// Session
 pub struct SessionHandle {
@@ -66,9 +69,9 @@ impl SessionHandle {
         let request = DeleteSessionRequest {
             name: session_name.to_string(),
         };
-        match self.spanner_client.delete_session(request, None).await {
+        match self.spanner_client.delete_session(request, true, None).await {
             Ok(_) => self.deleted = true,
-            Err(e) => tracing::error!("failed to delete session {}, {:?}", session_name, e),
+            Err(e) => tracing::warn!("failed to delete session {}, {:?}", session_name, e),
         };
     }
 }
@@ -124,6 +127,11 @@ struct Sessions {
 
     /// number of sessions scheduled to be replenished.
     num_creating: usize,
+
+    /// Maximum observed number of sessions in use during the current window.
+    max_inuse_window: usize,
+    /// Start of the rolling window used for `max_inuse_window`.
+    window_started_at: Instant,
 }
 
 impl Sessions {
@@ -146,13 +154,16 @@ impl Sessions {
             None => None,
             Some(s) => {
                 self.num_inuse += 1;
+                self.update_max_in_use();
                 Some(s)
             }
         }
     }
 
     fn release(&mut self, session: SessionHandle) {
-        self.num_inuse -= 1;
+        if self.num_inuse > 0 {
+            self.num_inuse -= 1;
+        }
         if session.valid {
             self.available_sessions.push_back(session);
         } else if !session.deleted {
@@ -197,6 +208,16 @@ impl Sessions {
             Err(e) => tracing::error!("failed to create new sessions {:?}", e),
         }
     }
+
+    fn update_max_in_use(&mut self) {
+        let now = Instant::now();
+        if now.duration_since(self.window_started_at) >= MAX_IN_USE_WINDOW {
+            self.window_started_at = now;
+            self.max_inuse_window = self.num_inuse;
+        } else if self.num_inuse > self.max_inuse_window {
+            self.max_inuse_window = self.num_inuse;
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -204,6 +225,7 @@ struct SessionPool {
     inner: Arc<RwLock<Sessions>>,
     session_creation_sender: UnboundedSender<usize>,
     config: Arc<SessionConfig>,
+    metrics: Arc<MetricsRecorder>,
 }
 
 impl SessionPool {
@@ -212,25 +234,35 @@ impl SessionPool {
         conn_pool: &ConnectionManager,
         session_creation_sender: UnboundedSender<usize>,
         config: Arc<SessionConfig>,
+        disable_route_to_leader: bool,
+        metrics: Arc<MetricsRecorder>,
     ) -> Result<Self, Status> {
-        let available_sessions = Self::init_pool(database, conn_pool, config.min_opened).await?;
-        Ok(SessionPool {
+        let available_sessions =
+            Self::init_pool(database, conn_pool, config.min_opened, disable_route_to_leader, metrics.clone()).await?;
+        let pool = SessionPool {
             inner: Arc::new(RwLock::new(Sessions {
                 available_sessions,
                 waiters: VecDeque::new(),
                 orphans: Vec::new(),
                 num_inuse: 0,
                 num_creating: 0,
+                max_inuse_window: 0,
+                window_started_at: Instant::now(),
             })),
             session_creation_sender,
             config,
-        })
+            metrics,
+        };
+        pool.metrics.register_session_pool(pool.snapshot_fn());
+        Ok(pool)
     }
 
     async fn init_pool(
         database: String,
         conn_pool: &ConnectionManager,
         min_opened: usize,
+        disable_route_to_leader: bool,
+        metrics: Arc<MetricsRecorder>,
     ) -> Result<VecDeque<SessionHandle>, Status> {
         let channel_num = conn_pool.num();
         let creation_count_per_channel = min_opened / channel_num;
@@ -238,16 +270,21 @@ impl SessionPool {
 
         let mut sessions = Vec::<SessionHandle>::new();
         let mut tasks = JoinSet::new();
-        for _ in 0..channel_num {
+        for i in 0..channel_num {
             // Ensure that we create the exact number of requested sessions by adding the remainder to the first channel.
-            let creation_count = if channel_num == 0 {
+            let creation_count = if i == 0 {
                 creation_count_per_channel + remainder
             } else {
                 creation_count_per_channel
             };
-            let next_client = conn_pool.conn().with_metadata(client_metadata(&database));
+            let next_client = conn_pool
+                .conn()
+                .with_metrics(metrics.clone())
+                .with_metadata(client_metadata(&database));
             let database = database.clone();
-            tasks.spawn(async move { batch_create_sessions(next_client, &database, creation_count).await });
+            tasks.spawn(async move {
+                batch_create_sessions(next_client, &database, creation_count, disable_route_to_leader).await
+            });
         }
         while let Some(r) = tasks.join_next().await {
             let new_sessions = r.map_err(|e| Status::from_error(e.into()))??;
@@ -268,6 +305,7 @@ impl SessionPool {
     /// The client on the waiting list will be notified when another client's session has finished and
     /// when the process of replenishing the available sessions is complete.
     async fn acquire(&self) -> Result<ManagedSession, SessionError> {
+        let request_started_at = Instant::now();
         loop {
             let (on_session_acquired, session_count) = {
                 let mut sessions = self.inner.write();
@@ -276,6 +314,9 @@ impl SessionPool {
                 if sessions.waiters.is_empty() {
                     if let Some(mut s) = sessions.take() {
                         s.last_used_at = Instant::now();
+                        self.metrics.record_session_acquired();
+                        self.metrics
+                            .record_session_acquire_latency(request_started_at.elapsed());
                         return Ok(ManagedSession::new(self.clone(), s));
                     }
                 }
@@ -296,6 +337,9 @@ impl SessionPool {
                     let mut sessions = self.inner.write();
                     if let Some(mut s) = sessions.take() {
                         s.last_used_at = Instant::now();
+                        self.metrics.record_session_acquired();
+                        self.metrics
+                            .record_session_acquire_latency(request_started_at.elapsed());
                         return Ok(ManagedSession::new(self.clone(), s));
                     } else {
                         continue; // another waiter raced for session
@@ -314,6 +358,7 @@ impl SessionPool {
                             "Timeout acquiring session"
                         );
                     }
+                    self.metrics.record_session_timeout();
                     return Err(SessionError::SessionGetTimeout);
                 }
             }
@@ -326,6 +371,7 @@ impl SessionPool {
     ///    If the session is invalid
     ///  - Discard the session. If the number of sessions falls below the threshold as a result of discarding, the session replenishment process is called.
     fn recycle(&self, mut session: SessionHandle) {
+        self.metrics.record_session_released();
         if session.valid {
             let mut sessions = self.inner.write();
             let waiter = sessions.take_waiter();
@@ -364,6 +410,22 @@ impl SessionPool {
         }
 
         self.remove_orphans().await;
+    }
+
+    fn snapshot_fn(&self) -> SessionPoolStatsFn {
+        let inner = self.inner.clone();
+        let max_allowed = self.config.max_opened;
+        Arc::new(move || {
+            let sessions = inner.read();
+            SessionPoolSnapshot {
+                open_sessions: sessions.num_opened(),
+                sessions_in_use: sessions.num_inuse,
+                idle_sessions: sessions.available_sessions.len(),
+                max_allowed_sessions: max_allowed,
+                max_in_use_last_window: sessions.max_inuse_window,
+                has_multiplexed_session: false,
+            }
+        })
     }
 
     async fn remove_orphans(&self) {
@@ -458,15 +520,31 @@ impl SessionManager {
         database: impl Into<String>,
         conn_pool: ConnectionManager,
         config: SessionConfig,
+        disable_route_to_leader: bool,
+        metrics: Arc<MetricsRecorder>,
     ) -> Result<Arc<SessionManager>, Status> {
         let database = database.into();
         let (sender, receiver) = mpsc::unbounded_channel();
-        let session_pool = SessionPool::new(database.clone(), &conn_pool, sender, Arc::new(config.clone())).await?;
+        let session_pool = SessionPool::new(
+            database.clone(),
+            &conn_pool,
+            sender,
+            Arc::new(config.clone()),
+            disable_route_to_leader,
+            metrics.clone(),
+        )
+        .await?;
 
         let cancel = CancellationToken::new();
         let task_session_cleaner = Self::spawn_health_check_task(config, session_pool.clone(), cancel.clone());
-        let task_session_creator =
-            Self::spawn_session_creation_task(session_pool.clone(), database, conn_pool, receiver, cancel.clone());
+        let task_session_creator = Self::spawn_session_creation_task(
+            session_pool.clone(),
+            database,
+            conn_pool,
+            receiver,
+            cancel.clone(),
+            disable_route_to_leader,
+        );
 
         let sm = SessionManager {
             session_pool,
@@ -502,6 +580,7 @@ impl SessionManager {
         conn_pool: ConnectionManager,
         mut rx: UnboundedReceiver<usize>,
         cancel: CancellationToken,
+        disable_route_to_leader: bool,
     ) -> JoinHandle<()> {
         tokio::spawn(async move {
             let mut tasks = JoinSet::default();
@@ -514,9 +593,12 @@ impl SessionManager {
                     }
                     session_count = rx.recv() => match session_count {
                         Some(session_count) => {
-                            let client = conn_pool.conn().with_metadata(client_metadata(&database));
+                            let client = conn_pool
+                                .conn()
+                                .with_metrics(session_pool.metrics.clone())
+                                .with_metadata(client_metadata(&database));
                             let database = database.clone();
-                            tasks.spawn(async move { (session_count, batch_create_sessions(client, &database, session_count).await) });
+                            tasks.spawn(async move { (session_count, batch_create_sessions(client, &database, session_count, disable_route_to_leader).await) });
                         },
                         None => continue
                     },
@@ -595,7 +677,7 @@ async fn health_check(
         };
 
         let request = ping_query_request(s.session.name.clone());
-        match s.spanner_client.execute_sql(request, None).await {
+        match s.spanner_client.execute_sql(request, true, None).await {
             Ok(_) => {
                 s.last_checked_at = now;
                 s.last_pong_at = now;
@@ -614,10 +696,17 @@ async fn batch_create_sessions(
     spanner_client: Client,
     database: &str,
     mut remaining_create_count: usize,
+    disable_route_to_leader: bool,
 ) -> Result<Vec<SessionHandle>, Status> {
     let mut created = Vec::with_capacity(remaining_create_count);
     while remaining_create_count > 0 {
-        let sessions = batch_create_session(spanner_client.clone(), database, remaining_create_count).await?;
+        let sessions = batch_create_session(
+            spanner_client.clone(),
+            database,
+            remaining_create_count,
+            disable_route_to_leader,
+        )
+        .await?;
         // Spanner could return less sessions than requested.
         // In that case, we should do another call using the same gRPC channel.
         let actually_created = sessions.len();
@@ -631,6 +720,7 @@ async fn batch_create_session(
     mut spanner_client: Client,
     database: &str,
     session_count: usize,
+    disable_route_to_leader: bool,
 ) -> Result<Vec<SessionHandle>, Status> {
     let request = BatchCreateSessionsRequest {
         database: database.to_string(),
@@ -639,7 +729,10 @@ async fn batch_create_session(
     };
 
     tracing::debug!("spawn session creation request : session_count = {}", session_count);
-    let response = spanner_client.batch_create_sessions(request, None).await?.into_inner();
+    let response = spanner_client
+        .batch_create_sessions(request, disable_route_to_leader, None)
+        .await?
+        .into_inner();
 
     let now = Instant::now();
     Ok(response
@@ -670,6 +763,7 @@ mod tests {
     use google_cloud_googleapis::spanner::v1::ExecuteSqlRequest;
 
     use crate::apiv1::conn_pool::ConnectionManager;
+    use crate::metrics::MetricsRecorder;
     use crate::session::{
         batch_create_sessions, client_metadata, health_check, SessionConfig, SessionError, SessionManager,
     };
@@ -692,7 +786,9 @@ mod tests {
         )
         .await
         .unwrap();
-        let sm = SessionManager::new(DATABASE, cm, config).await.unwrap();
+        let sm = SessionManager::new(DATABASE, cm, config, false, Arc::new(MetricsRecorder::default()))
+            .await
+            .unwrap();
 
         let counter = Arc::new(AtomicI64::new(0));
         let mut spawns = Vec::with_capacity(100);
@@ -732,7 +828,11 @@ mod tests {
             max_opened: 5,
             ..Default::default()
         };
-        let sm = std::sync::Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
+        let sm = std::sync::Arc::new(
+            SessionManager::new(DATABASE, cm, config, false, Arc::new(MetricsRecorder::default()))
+                .await
+                .unwrap(),
+        );
         sleep(Duration::from_secs(1)).await;
 
         let cancel = CancellationToken::new();
@@ -761,7 +861,11 @@ mod tests {
             max_opened: 5,
             ..Default::default()
         };
-        let sm = Arc::new(SessionManager::new(DATABASE, cm, config).await.unwrap());
+        let sm = Arc::new(
+            SessionManager::new(DATABASE, cm, config, false, Arc::new(MetricsRecorder::default()))
+                .await
+                .unwrap(),
+        );
         sleep(Duration::from_secs(1)).await;
 
         let cancel = CancellationToken::new();
@@ -790,7 +894,9 @@ mod tests {
             max_opened: 45,
             ..Default::default()
         };
-        let sm = SessionManager::new(DATABASE, conn_pool, config).await.unwrap();
+        let sm = SessionManager::new(DATABASE, conn_pool, config, false, Arc::new(MetricsRecorder::default()))
+            .await
+            .unwrap();
         {
             let mut sessions = Vec::new();
             for _ in 0..45 {
@@ -830,7 +936,11 @@ mod tests {
             session_get_timeout: Duration::from_secs(1),
             ..Default::default()
         };
-        let sm = Arc::new(SessionManager::new(DATABASE, conn_pool, config.clone()).await.unwrap());
+        let sm = Arc::new(
+            SessionManager::new(DATABASE, conn_pool, config.clone(), false, Arc::new(MetricsRecorder::default()))
+                .await
+                .unwrap(),
+        );
         let mu = Arc::new(RwLock::new(Vec::new()));
         let mut awaiters = Vec::with_capacity(100);
         for _ in 0..100 {
@@ -1086,7 +1196,9 @@ mod tests {
         .await
         .unwrap();
         let config = SessionConfig::default();
-        let sm = SessionManager::new(DATABASE, cm, config.clone()).await.unwrap();
+        let sm = SessionManager::new(DATABASE, cm, config.clone(), false, Arc::new(MetricsRecorder::default()))
+            .await
+            .unwrap();
         assert_eq!(sm.num_opened(), config.min_opened);
         sm.close().await;
         assert_eq!(sm.num_opened(), 0);
@@ -1104,9 +1216,12 @@ mod tests {
         )
         .await
         .unwrap();
-        let client = cm.conn().with_metadata(client_metadata(DATABASE));
+        let client = cm
+            .conn()
+            .with_metrics(Arc::new(MetricsRecorder::default()))
+            .with_metadata(client_metadata(DATABASE));
         let session_count = 125;
-        let result = batch_create_sessions(client.clone(), DATABASE, session_count).await;
+        let result = batch_create_sessions(client.clone(), DATABASE, session_count, false).await;
         match result {
             Ok(created) => {
                 assert_eq!(session_count, created.len());
@@ -1128,7 +1243,9 @@ mod tests {
                                 request_options: None,
                                 directed_read_options: None,
                                 data_boost_enabled: false,
+                                last_statement: false,
                             },
+                            false,
                             None,
                         )
                         .await;

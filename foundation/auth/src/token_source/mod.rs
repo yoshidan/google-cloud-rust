@@ -66,16 +66,10 @@ impl InternalIdToken {
         })
     }
 
-    fn get_exp(&self, audience: &str) -> Result<i64, Error> {
-        let mut validation = jsonwebtoken::Validation::default();
-        validation.insecure_disable_signature_validation();
-        validation.set_audience(&[audience]);
-        let decoding_key = jsonwebtoken::DecodingKey::from_secret(b"");
-        Ok(
-            jsonwebtoken::decode::<ExpClaim>(self.id_token.as_str(), &decoding_key, &validation)?
-                .claims
-                .exp,
-        )
+    fn get_exp(&self, _audience: &str) -> Result<i64, Error> {
+        //skips all checks, so audience has to be manually checked if necessary
+        let token = jsonwebtoken::dangerous::insecure_decode::<ExpClaim>(self.id_token.as_bytes())?;
+        Ok(token.claims.exp)
     }
 }
 

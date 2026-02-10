@@ -49,8 +49,8 @@ async fn test_mutation_and_statement() {
     let result = tx.end(result, None).await;
     let commit_timestamp = match result {
         Ok(s) => {
-            assert!(s.0.is_some());
-            let ts = s.0.unwrap();
+            assert!(s.0.timestamp.is_some());
+            let ts = s.0.timestamp.unwrap();
             let dt = OffsetDateTime::from_unix_timestamp(ts.seconds)
                 .unwrap()
                 .replace_nanosecond(ts.nanos as u32)
@@ -61,7 +61,7 @@ async fn test_mutation_and_statement() {
         Err(e) => panic!("error {e:?}"),
     };
 
-    let ts = cr.unwrap();
+    let ts = cr.timestamp.unwrap();
     let ts = OffsetDateTime::from_unix_timestamp(ts.seconds)
         .unwrap()
         .replace_nanosecond(ts.nanos as u32)
@@ -98,7 +98,7 @@ async fn test_rollback() {
     let mut tx = data_client.read_only_transaction().await.unwrap();
     let reader = tx.read("User", &user_columns(), Key::new(&past_user)).await.unwrap();
     let row: Row = all_rows(reader).await.unwrap().pop().unwrap();
-    let ts = cr.unwrap();
+    let ts = cr.timestamp.unwrap();
     let ts = OffsetDateTime::from_unix_timestamp(ts.seconds)
         .unwrap()
         .replace_nanosecond(ts.nanos as u32)

@@ -25,9 +25,6 @@ pub(crate) fn build(
     table_id: &str,
     req: &SetIamPolicyRequest,
 ) -> RequestBuilder {
-    let url = format!(
-        "{}/projects/{}/datasets/{}/tables/{}:setIamPolicy?alt=json",
-        base_url, project_id, dataset_id, table_id
-    );
+    let url = format!("{base_url}/projects/{project_id}/datasets/{dataset_id}/tables/{table_id}:setIamPolicy?alt=json");
     client.post(url).json(&req)
 }

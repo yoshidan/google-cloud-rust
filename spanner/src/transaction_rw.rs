@@ -5,25 +5,42 @@ use std::time::Duration;
 
 use prost_types::Struct;
 
+use crate::session::ManagedSession;
+use crate::statement::Statement;
+use crate::transaction::{CallOptions, QueryOptions, Transaction};
+use crate::value::Timestamp;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::{RetrySetting, TryAs};
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::TransactionId;
+use google_cloud_googleapis::spanner::v1::transaction_options::IsolationLevel;
 use google_cloud_googleapis::spanner::v1::{
     commit_request, execute_batch_dml_request, result_set_stats, transaction_options, transaction_selector,
     BeginTransactionRequest, CommitRequest, CommitResponse, ExecuteBatchDmlRequest, ExecuteSqlRequest, Mutation,
     ResultSetStats, RollbackRequest, TransactionOptions, TransactionSelector,
 };
 
-use crate::session::ManagedSession;
-use crate::statement::Statement;
-use crate::transaction::{CallOptions, QueryOptions, Transaction};
-use crate::value::Timestamp;
-
 #[derive(Clone, Default)]
 pub struct CommitOptions {
     pub return_commit_stats: bool,
     pub call_options: CallOptions,
     pub max_commit_delay: Option<Duration>,
+    /// The transaction tag to use for the CommitRequest.
+    pub transaction_tag: Option<String>,
+}
+
+#[derive(Clone)]
+pub struct CommitResult {
+    pub timestamp: Option<Timestamp>,
+    pub mutation_count: Option<u64>,
+}
+
+impl From<CommitResponse> for CommitResult {
+    fn from(value: CommitResponse) -> Self {
+        Self {
+            timestamp: value.commit_timestamp.map(|v| v.into()),
+            mutation_count: value.commit_stats.map(|s| s.mutation_count as u64),
+        }
+    }
 }
 
 /// ReadWriteTransaction provides a locking read-write transaction.
@@ -104,11 +121,18 @@ pub struct BeginError {
 }
 
 impl ReadWriteTransaction {
-    pub async fn begin(session: ManagedSession, options: CallOptions) -> Result<ReadWriteTransaction, BeginError> {
+    pub async fn begin(
+        session: ManagedSession,
+        options: CallOptions,
+        transaction_tag: Option<String>,
+        disable_route_to_leader: bool,
+    ) -> Result<ReadWriteTransaction, BeginError> {
         ReadWriteTransaction::begin_internal(
             session,
             transaction_options::Mode::ReadWrite(transaction_options::ReadWrite::default()),
             options,
+            transaction_tag,
+            disable_route_to_leader,
         )
         .await
     }
@@ -116,11 +140,15 @@ impl ReadWriteTransaction {
     pub async fn begin_partitioned_dml(
         session: ManagedSession,
         options: CallOptions,
+        transaction_tag: Option<String>,
+        disable_route_to_leader: bool,
     ) -> Result<ReadWriteTransaction, BeginError> {
         ReadWriteTransaction::begin_internal(
             session,
             transaction_options::Mode::PartitionedDml(transaction_options::PartitionedDml {}),
             options,
+            transaction_tag,
+            disable_route_to_leader,
         )
         .await
     }
@@ -129,16 +157,23 @@ impl ReadWriteTransaction {
         mut session: ManagedSession,
         mode: transaction_options::Mode,
         options: CallOptions,
+        transaction_tag: Option<String>,
+        disable_route_to_leader: bool,
     ) -> Result<ReadWriteTransaction, BeginError> {
         let request = BeginTransactionRequest {
             session: session.session.name.to_string(),
             options: Some(TransactionOptions {
                 exclude_txn_from_change_streams: false,
                 mode: Some(mode),
+                isolation_level: IsolationLevel::Unspecified as i32,
             }),
-            request_options: Transaction::create_request_options(options.priority),
+            request_options: Transaction::create_request_options(options.priority, transaction_tag.clone()),
+            mutation_key: None,
         };
-        let result = session.spanner_client.begin_transaction(request, options.retry).await;
+        let result = session
+            .spanner_client
+            .begin_transaction(request, disable_route_to_leader, options.retry)
+            .await;
         let response = match session.invalidate_if_needed(result).await {
             Ok(response) => response,
             Err(err) => {
@@ -153,6 +188,8 @@ impl ReadWriteTransaction {
                 transaction_selector: TransactionSelector {
                     selector: Some(transaction_selector::Selector::Id(tx.id.clone())),
                 },
+                transaction_tag,
+                disable_route_to_leader,
             },
             tx_id: tx.id,
             wb: vec![],
@@ -180,14 +217,18 @@ impl ReadWriteTransaction {
             partition_token: vec![],
             seqno: self.sequence_number.fetch_add(1, Ordering::Relaxed),
             query_options: options.optimizer_options,
-            request_options: Transaction::create_request_options(options.call_options.priority),
+            request_options: Transaction::create_request_options(
+                options.call_options.priority,
+                self.base_tx.transaction_tag.clone(),
+            ),
             directed_read_options: None,
+            last_statement: false,
         };
-
+        let disable_route_to_leader = self.disable_route_to_leader;
         let session = self.as_mut_session();
         let result = session
             .spanner_client
-            .execute_sql(request, options.call_options.retry)
+            .execute_sql(request, disable_route_to_leader, options.call_options.retry)
             .await;
         let response = session.invalidate_if_needed(result).await?;
         Ok(extract_row_count(response.into_inner().stats))
@@ -206,7 +247,10 @@ impl ReadWriteTransaction {
             session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
             seqno: self.sequence_number.fetch_add(1, Ordering::Relaxed),
-            request_options: Transaction::create_request_options(options.call_options.priority),
+            request_options: Transaction::create_request_options(
+                options.call_options.priority,
+                self.base_tx.transaction_tag.clone(),
+            ),
             statements: stmt
                 .into_iter()
                 .map(|x| execute_batch_dml_request::Statement {
@@ -215,12 +259,14 @@ impl ReadWriteTransaction {
                     param_types: x.param_types,
                 })
                 .collect(),
+            last_statements: false,
         };
 
+        let disable_route_to_leader = self.disable_route_to_leader;
         let session = self.as_mut_session();
         let result = session
             .spanner_client
-            .execute_batch_dml(request, options.call_options.retry)
+            .execute_batch_dml(request, disable_route_to_leader, options.call_options.retry)
             .await;
         let response = session.invalidate_if_needed(result).await?;
         Ok(response
@@ -235,7 +281,7 @@ impl ReadWriteTransaction {
         &mut self,
         result: Result<S, E>,
         options: Option<CommitOptions>,
-    ) -> Result<(Option<Timestamp>, S), E>
+    ) -> Result<(CommitResult, S), E>
     where
         E: TryAs<Status> + From<Status>,
     {
@@ -243,7 +289,7 @@ impl ReadWriteTransaction {
         match result {
             Ok(success) => {
                 let cr = self.commit(opt).await?;
-                Ok((cr.commit_timestamp.map(|e| e.into()), success))
+                Ok((cr.into(), success))
             }
             Err(err) => {
                 if let Some(status) = err.try_as() {
@@ -262,7 +308,7 @@ impl ReadWriteTransaction {
         &mut self,
         result: Result<T, E>,
         options: Option<CommitOptions>,
-    ) -> Result<(Option<Timestamp>, T), (E, Option<ManagedSession>)>
+    ) -> Result<(CommitResult, T), (E, Option<ManagedSession>)>
     where
         E: TryAs<Status> + From<Status>,
     {
@@ -270,7 +316,7 @@ impl ReadWriteTransaction {
 
         match result {
             Ok(s) => match self.commit(opt).await {
-                Ok(c) => Ok((c.commit_timestamp.map(|ts| ts.into()), s)),
+                Ok(c) => Ok((c.into(), s)),
                 // Retry the transaction using the same session on ABORT error.
                 // Cloud Spanner will create the new transaction with the previous
                 // one's wound-wait priority.
@@ -305,8 +351,9 @@ impl ReadWriteTransaction {
     pub(crate) async fn commit(&mut self, options: CommitOptions) -> Result<CommitResponse, Status> {
         let tx_id = self.tx_id.clone();
         let mutations = self.wb.to_vec();
+        let disable_route_to_leader = self.disable_route_to_leader;
         let session = self.as_mut_session();
-        commit(session, mutations, TransactionId(tx_id), options).await
+        commit(session, mutations, TransactionId(tx_id), options, disable_route_to_leader).await
     }
 
     pub(crate) async fn rollback(&mut self, retry: Option<RetrySetting>) -> Result<(), Status> {
@@ -314,8 +361,12 @@ impl ReadWriteTransaction {
             transaction_id: self.tx_id.clone(),
             session: self.get_session_name(),
         };
+        let disable_route_to_leader = self.disable_route_to_leader;
         let session = self.as_mut_session();
-        let result = session.spanner_client.rollback(request, retry).await;
+        let result = session
+            .spanner_client
+            .rollback(request, disable_route_to_leader, retry)
+            .await;
         session.invalidate_if_needed(result).await?.into_inner();
         Ok(())
     }
@@ -326,18 +377,23 @@ pub(crate) async fn commit(
     ms: Vec<Mutation>,
     tx: commit_request::Transaction,
     commit_options: CommitOptions,
+    disable_route_to_leader: bool,
 ) -> Result<CommitResponse, Status> {
     let request = CommitRequest {
         session: session.session.name.to_string(),
         mutations: ms,
         transaction: Some(tx),
-        request_options: Transaction::create_request_options(commit_options.call_options.priority),
+        request_options: Transaction::create_request_options(
+            commit_options.call_options.priority,
+            commit_options.transaction_tag.clone(),
+        ),
         return_commit_stats: commit_options.return_commit_stats,
         max_commit_delay: commit_options.max_commit_delay.map(|d| d.try_into().unwrap()),
+        precommit_token: None,
     };
     let result = session
         .spanner_client
-        .commit(request, commit_options.call_options.retry)
+        .commit(request, disable_route_to_leader, commit_options.call_options.retry)
         .await;
     let response = session.invalidate_if_needed(result).await;
     match response {

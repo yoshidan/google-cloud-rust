@@ -80,7 +80,7 @@ pub fn build(
     data: &ListJobsRequest,
     page_token: Option<String>,
 ) -> RequestBuilder {
-    let url = format!("{}/projects/{}/jobs", base_url, project_id);
+    let url = format!("{base_url}/projects/{project_id}/jobs");
     let builder = client.get(url).query(data);
     if let Some(page_token) = page_token {
         builder.query(&[("pageToken", page_token.as_str())])

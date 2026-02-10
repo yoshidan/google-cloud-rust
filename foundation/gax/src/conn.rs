@@ -7,34 +7,41 @@ use std::time::Duration;
 
 use http::header::AUTHORIZATION;
 use http::{HeaderValue, Request};
-use tonic::body::BoxBody;
+use tonic::body::Body;
 use tonic::transport::{Channel as TonicChannel, ClientTlsConfig, Endpoint};
 use tonic::{Code, Status};
-use tower::filter::{AsyncFilter, AsyncFilterLayer, AsyncPredicate};
-use tower::util::Either;
+use tower::filter::{AsyncFilter, AsyncPredicate};
 use tower::{BoxError, ServiceBuilder};
 
-use google_cloud_token::{TokenSource, TokenSourceProvider};
+use token_source::{TokenSource, TokenSourceProvider};
 
-pub type Channel = Either<AsyncFilter<TonicChannel, AsyncAuthInterceptor>, TonicChannel>;
+pub type Channel = AsyncFilter<TonicChannel, AsyncAuthInterceptor>;
 
 #[derive(Clone, Debug)]
 pub struct AsyncAuthInterceptor {
-    token_source: Arc<dyn TokenSource>,
+    token_source: Option<Arc<dyn TokenSource>>,
 }
 
 impl AsyncAuthInterceptor {
     fn new(token_source: Arc<dyn TokenSource>) -> Self {
-        Self { token_source }
+        Self {
+            token_source: Some(token_source),
+        }
+    }
+    fn empty() -> Self {
+        Self { token_source: None }
     }
 }
 
-impl AsyncPredicate<Request<BoxBody>> for AsyncAuthInterceptor {
+impl AsyncPredicate<Request<Body>> for AsyncAuthInterceptor {
     type Future = Pin<Box<dyn Future<Output = Result<Self::Request, BoxError>> + Send>>;
-    type Request = Request<BoxBody>;
+    type Request = Request<Body>;
 
-    fn check(&mut self, request: Request<BoxBody>) -> Self::Future {
-        let ts = self.token_source.clone();
+    fn check(&mut self, request: Request<Body>) -> Self::Future {
+        let ts = match &self.token_source {
+            Some(ts) => ts.clone(),
+            None => return Box::pin(async move { Ok(request) }),
+        };
         Box::pin(async move {
             let token = ts
                 .token()
@@ -116,7 +123,7 @@ impl<'a> ConnectionManager {
     pub async fn new(
         pool_size: usize,
         domain_name: impl Into<String>,
-        audience: &'static str,
+        audience: &str,
         environment: &Environment,
         conn_options: &'a ConnectionOptions,
     ) -> Result<Self, Error> {
@@ -137,23 +144,27 @@ impl<'a> ConnectionManager {
     async fn create_connections(
         pool_size: usize,
         domain_name: impl Into<String>,
-        audience: &'static str,
+        audience: &str,
         ts_provider: &dyn TokenSourceProvider,
         conn_options: &'a ConnectionOptions,
     ) -> Result<Vec<Channel>, Error> {
+        let pool_size = Self::get_pool_size(pool_size);
+
         let tls_config = ClientTlsConfig::new().with_webpki_roots().domain_name(domain_name);
         let mut conns = Vec::with_capacity(pool_size);
 
         let ts = ts_provider.token_source();
 
         for _i_ in 0..pool_size {
-            let endpoint = TonicChannel::from_static(audience).tls_config(tls_config.clone())?;
+            let endpoint = TonicChannel::from_shared(audience.to_string().into_bytes())
+                .map_err(|e| Error::InvalidEmulatorHOST(e.to_string()))?
+                .tls_config(tls_config.clone())?;
             let endpoint = conn_options.apply(endpoint);
 
             let con = Self::connect(endpoint).await?;
             // use GCP token per call
-            let auth_layer = Some(AsyncFilterLayer::new(AsyncAuthInterceptor::new(Arc::clone(&ts))));
-            let auth_con = ServiceBuilder::new().option_layer(auth_layer).service(con);
+            let auth_filter = AsyncAuthInterceptor::new(Arc::clone(&ts));
+            let auth_con = ServiceBuilder::new().filter_async(auth_filter).service(con);
             conns.push(auth_con);
         }
         Ok(conns)
@@ -169,17 +180,19 @@ impl<'a> ConnectionManager {
         let endpoint = conn_options.apply(endpoint);
 
         let con = Self::connect(endpoint).await?;
-        conns.push(
-            ServiceBuilder::new()
-                .option_layer::<AsyncFilterLayer<AsyncAuthInterceptor>>(None)
-                .service(con),
-        );
+        let auth_filter = AsyncAuthInterceptor::empty();
+        let auth_con = ServiceBuilder::new().filter_async(auth_filter).service(con);
+        conns.push(auth_con);
         Ok(conns)
     }
 
     async fn connect(endpoint: Endpoint) -> Result<TonicChannel, tonic::transport::Error> {
         let channel = endpoint.connect().await?;
         Ok(channel)
+    }
+
+    fn get_pool_size(pool_size: usize) -> usize {
+        pool_size.max(1)
     }
 
     pub fn num(&self) -> usize {
@@ -196,7 +209,7 @@ mod test {
     use std::collections::HashSet;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
-    use crate::conn::AtomicRing;
+    use crate::conn::{AtomicRing, ConnectionManager};
 
     #[test]
     fn test_atomic_ring() {
@@ -216,5 +229,12 @@ mod test {
         assert_eq!(2, cm.index.load(Ordering::SeqCst));
         assert!(!values.insert(cm.next()));
         assert_eq!(3, cm.index.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn test_get_pool_size() {
+        assert_eq!(1, ConnectionManager::get_pool_size(0));
+        assert_eq!(1, ConnectionManager::get_pool_size(1));
+        assert_eq!(2, ConnectionManager::get_pool_size(2));
     }
 }

@@ -1,8 +1,8 @@
 use crate::grpc::apiv1::artifact_registry_client::Client as ArtifactRegistryGrpcClient;
 use google_cloud_gax::conn::{ConnectionManager, ConnectionOptions, Environment, Error};
-use google_cloud_token::{NopeTokenSourceProvider, TokenSourceProvider};
 use std::ops::{Deref, DerefMut};
 use std::time::Duration;
+use token_source::{NoopTokenSourceProvider, TokenSourceProvider};
 
 use crate::grpc::apiv1::{ARTIFACT_REGISTRY, AUDIENCE, SCOPES};
 
@@ -53,7 +53,7 @@ impl Default for ClientConfig {
     fn default() -> Self {
         Self {
             artifact_registry_endpoint: ARTIFACT_REGISTRY.to_string(),
-            token_source_provider: Box::new(NopeTokenSourceProvider {}),
+            token_source_provider: Box::new(NoopTokenSourceProvider {}),
             timeout: Some(Duration::from_secs(30)),
             connect_timeout: Some(Duration::from_secs(30)),
         }
@@ -153,6 +153,10 @@ mod tests {
                 cleanup_policy_dry_run: false,
                 format_config: None,
                 mode_config: None,
+                vulnerability_scanning_config: None,
+                disallow_unspecified_mode: false,
+                satisfies_pzi: false,
+                registry_uri: "".to_string(),
             }),
         };
         let mut created_repository = client.create_repository(create_request.clone(), None).await.unwrap();
@@ -187,6 +191,8 @@ mod tests {
             parent: create_request.parent.to_string(),
             page_size: 0,
             page_token: "".to_string(),
+            order_by: "".to_string(),
+            filter: "".to_string(),
         };
         let list_result = client.list_repositories(list_request, None).await.unwrap();
         assert!(!list_result.repositories.is_empty());

@@ -9,21 +9,24 @@ use google_cloud_gax::conn::{ConnectionOptions, Environment};
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::{invoke_fn, TryAs};
 use google_cloud_googleapis::spanner::v1::{commit_request, transaction_options, Mutation, TransactionOptions};
-use google_cloud_token::NopeTokenSourceProvider;
+use token_source::NoopTokenSourceProvider;
 
 use crate::apiv1::conn_pool::{ConnectionManager, SPANNER};
+use crate::metrics::{MetricsConfig, MetricsRecorder};
 use crate::retry::TransactionRetrySetting;
 use crate::session::{ManagedSession, SessionConfig, SessionError, SessionManager};
 use crate::statement::Statement;
 use crate::transaction::{CallOptions, QueryOptions};
 use crate::transaction_ro::{BatchReadOnlyTransaction, ReadOnlyTransaction};
-use crate::transaction_rw::{commit, CommitOptions, ReadWriteTransaction};
-use crate::value::{Timestamp, TimestampBound};
+use crate::transaction_rw::{commit, CommitOptions, CommitResult, ReadWriteTransaction};
+use crate::value::TimestampBound;
 
 #[derive(Clone, Default)]
 pub struct PartitionedUpdateOption {
     pub begin_options: CallOptions,
     pub query_options: Option<QueryOptions>,
+    /// The transaction tag to use for partitioned update operations.
+    pub transaction_tag: Option<String>,
 }
 
 #[derive(Clone)]
@@ -45,6 +48,8 @@ impl Default for ReadOnlyTransactionOption {
 pub struct ReadWriteTransactionOption {
     pub begin_options: CallOptions,
     pub commit_options: CommitOptions,
+    /// The transaction tag to use for this read/write transaction.
+    pub transaction_tag: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -76,6 +81,10 @@ pub struct ClientConfig {
     pub endpoint: String,
     /// Runtime project
     pub environment: Environment,
+    /// DisableRouteToLeader specifies if all the requests of type read-write and PDML need to be routed to the leader region.
+    pub disable_route_to_leader: bool,
+    /// Metrics configuration for emitting OpenTelemetry signals.
+    pub metrics: MetricsConfig,
 }
 
 impl Default for ClientConfig {
@@ -86,8 +95,10 @@ impl Default for ClientConfig {
             endpoint: SPANNER.to_string(),
             environment: match var("SPANNER_EMULATOR_HOST").ok() {
                 Some(v) => Environment::Emulator(v),
-                None => Environment::GoogleCloud(Box::new(NopeTokenSourceProvider {})),
+                None => Environment::GoogleCloud(Box::new(NoopTokenSourceProvider {})),
             },
+            disable_route_to_leader: false,
+            metrics: MetricsConfig::default(),
         };
         config.session_config.min_opened = config.channel_config.num_channels * 4;
         config.session_config.max_opened = config.channel_config.num_channels * 100;
@@ -97,6 +108,7 @@ impl Default for ClientConfig {
 
 #[cfg(feature = "auth")]
 pub use google_cloud_auth;
+use google_cloud_googleapis::spanner::v1::transaction_options::IsolationLevel;
 
 #[cfg(feature = "auth")]
 impl ClientConfig {
@@ -162,6 +174,7 @@ impl TryAs<Status> for Error {
 #[derive(Clone)]
 pub struct Client {
     sessions: Arc<SessionManager>,
+    disable_route_to_leader: bool,
 }
 
 impl Client {
@@ -175,6 +188,11 @@ impl Client {
             )));
         }
 
+        let database: String = database.into();
+        let metrics = Arc::new(
+            MetricsRecorder::try_new(&database, &config.metrics).map_err(|e| Error::InvalidConfig(e.to_string()))?,
+        );
+
         let pool_size = config.channel_config.num_channels;
         let options = ConnectionOptions {
             timeout: Some(config.channel_config.timeout),
@@ -182,10 +200,18 @@ impl Client {
         };
         let conn_pool =
             ConnectionManager::new(pool_size, &config.environment, config.endpoint.as_str(), &options).await?;
-        let session_manager = SessionManager::new(database, conn_pool, config.session_config).await?;
+        let session_manager = SessionManager::new(
+            database,
+            conn_pool,
+            config.session_config,
+            config.disable_route_to_leader,
+            metrics.clone(),
+        )
+        .await?;
 
         Ok(Client {
             sessions: session_manager,
+            disable_route_to_leader: config.disable_route_to_leader,
         })
     }
 
@@ -330,15 +356,18 @@ impl Client {
         invoke_fn(
             Some(ro),
             |session| async {
-                let mut tx =
-                    match ReadWriteTransaction::begin_partitioned_dml(session.unwrap(), options.begin_options.clone())
-                        .await
-                    {
-                        Ok(tx) => tx,
-                        Err(e) => return Err((Error::GRPC(e.status), Some(e.session))),
-                    };
-                let qo = options.query_options.clone().unwrap_or_default();
-                tx.update_with_option(stmt.clone(), qo)
+                let mut tx = match ReadWriteTransaction::begin_partitioned_dml(
+                    session.unwrap(),
+                    options.begin_options.clone(),
+                    options.transaction_tag.clone(),
+                    self.disable_route_to_leader,
+                )
+                .await
+                {
+                    Ok(tx) => tx,
+                    Err(e) => return Err((Error::GRPC(e.status), Some(e.session))),
+                };
+                tx.update_with_option(stmt.clone(), options.query_options.clone().unwrap_or_default())
                     .await
                     .map_err(|e| (Error::GRPC(e), tx.take_session()))
             },
@@ -356,7 +385,7 @@ impl Client {
     /// apply's default replay protection may require an additional RPC.  So this
     /// method may be appropriate for latency sensitive and/or high throughput blind
     /// writing.
-    pub async fn apply_at_least_once(&self, ms: Vec<Mutation>) -> Result<Option<Timestamp>, Error> {
+    pub async fn apply_at_least_once(&self, ms: Vec<Mutation>) -> Result<Option<CommitResult>, Error> {
         self.apply_at_least_once_with_option(ms, CommitOptions::default()).await
     }
 
@@ -373,7 +402,7 @@ impl Client {
         &self,
         ms: Vec<Mutation>,
         options: CommitOptions,
-    ) -> Result<Option<Timestamp>, Error> {
+    ) -> Result<Option<CommitResult>, Error> {
         let ro = TransactionRetrySetting::default();
         let mut session = self.get_session().await?;
 
@@ -383,9 +412,10 @@ impl Client {
                 let tx = commit_request::Transaction::SingleUseTransaction(TransactionOptions {
                     exclude_txn_from_change_streams: false,
                     mode: Some(transaction_options::Mode::ReadWrite(transaction_options::ReadWrite::default())),
+                    isolation_level: IsolationLevel::Unspecified as i32,
                 });
-                match commit(session, ms.clone(), tx, options.clone()).await {
-                    Ok(s) => Ok(s.commit_timestamp.map(|s| s.into())),
+                match commit(session, ms.clone(), tx, options.clone(), self.disable_route_to_leader).await {
+                    Ok(s) => Ok(Some(s.into())),
                     Err(e) => Err((Error::GRPC(e), session)),
                 }
             },
@@ -410,7 +440,7 @@ impl Client {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn apply(&self, ms: Vec<Mutation>) -> Result<Option<Timestamp>, Error> {
+    pub async fn apply(&self, ms: Vec<Mutation>) -> Result<CommitResult, Error> {
         self.apply_with_option(ms, ReadWriteTransactionOption::default()).await
     }
 
@@ -419,8 +449,8 @@ impl Client {
         &self,
         ms: Vec<Mutation>,
         options: ReadWriteTransactionOption,
-    ) -> Result<Option<Timestamp>, Error> {
-        let result: Result<(Option<Timestamp>, ()), Error> = self
+    ) -> Result<CommitResult, Error> {
+        let result: Result<(CommitResult, ()), Error> = self
             .read_write_transaction_sync_with_option(
                 |tx| {
                     tx.buffer_write(ms.to_vec());
@@ -481,7 +511,7 @@ impl Client {
     ///         })
     ///     }).await
     /// }
-    pub async fn read_write_transaction<'a, T, E, F>(&self, f: F) -> Result<(Option<Timestamp>, T), E>
+    pub async fn read_write_transaction<'a, T, E, F>(&self, f: F) -> Result<(CommitResult, T), E>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
         F: for<'tx> Fn(&'tx mut ReadWriteTransaction) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'tx>>,
@@ -512,12 +542,12 @@ impl Client {
         &'a self,
         f: F,
         options: ReadWriteTransactionOption,
-    ) -> Result<(Option<Timestamp>, T), E>
+    ) -> Result<(CommitResult, T), E>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
         F: for<'tx> Fn(&'tx mut ReadWriteTransaction) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'tx>>,
     {
-        let (bo, co) = Client::split_read_write_transaction_option(options);
+        let (bo, co, tag) = Client::split_read_write_transaction_option(options);
 
         let ro = TransactionRetrySetting::default();
         let session = Some(self.get_session().await?);
@@ -525,7 +555,9 @@ impl Client {
         invoke_fn(
             Some(ro),
             |session| async {
-                let mut tx = self.create_read_write_transaction::<E>(session, bo.clone()).await?;
+                let mut tx = self
+                    .create_read_write_transaction::<E>(session, bo.clone(), tag.clone())
+                    .await?;
                 let result = f(&mut tx).await;
                 tx.finish(result, Some(co.clone())).await
             },
@@ -577,9 +609,14 @@ impl Client {
     /// ```
     pub async fn begin_read_write_transaction(&self) -> Result<ReadWriteTransaction, Error> {
         let session = self.get_session().await?;
-        ReadWriteTransaction::begin(session, ReadWriteTransactionOption::default().begin_options)
-            .await
-            .map_err(|e| e.status.into())
+        ReadWriteTransaction::begin(
+            session,
+            ReadWriteTransactionOption::default().begin_options,
+            ReadWriteTransactionOption::default().transaction_tag,
+            self.disable_route_to_leader,
+        )
+        .await
+        .map_err(|e| e.status.into())
     }
 
     /// Get open session count.
@@ -591,11 +628,11 @@ impl Client {
         &self,
         f: impl Fn(&mut ReadWriteTransaction) -> Result<T, E>,
         options: ReadWriteTransactionOption,
-    ) -> Result<(Option<Timestamp>, T), E>
+    ) -> Result<(CommitResult, T), E>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
     {
-        let (bo, co) = Client::split_read_write_transaction_option(options);
+        let (bo, co, tag) = Client::split_read_write_transaction_option(options);
 
         let ro = TransactionRetrySetting::default();
         let session = Some(self.get_session().await?);
@@ -604,7 +641,9 @@ impl Client {
         invoke_fn(
             Some(ro),
             |session| async {
-                let mut tx = self.create_read_write_transaction::<E>(session, bo.clone()).await?;
+                let mut tx = self
+                    .create_read_write_transaction::<E>(session, bo.clone(), tag.clone())
+                    .await?;
                 let result = f(&mut tx);
                 tx.finish(result, Some(co.clone())).await
             },
@@ -617,11 +656,12 @@ impl Client {
         &self,
         session: Option<ManagedSession>,
         bo: CallOptions,
+        transaction_tag: Option<String>,
     ) -> Result<ReadWriteTransaction, (E, Option<ManagedSession>)>
     where
         E: TryAs<Status> + From<SessionError> + From<Status>,
     {
-        ReadWriteTransaction::begin(session.unwrap(), bo)
+        ReadWriteTransaction::begin(session.unwrap(), bo, transaction_tag, self.disable_route_to_leader)
             .await
             .map_err(|e| (E::from(e.status), Some(e.session)))
     }
@@ -630,7 +670,9 @@ impl Client {
         self.sessions.get().await
     }
 
-    fn split_read_write_transaction_option(options: ReadWriteTransactionOption) -> (CallOptions, CommitOptions) {
-        (options.begin_options, options.commit_options)
+    fn split_read_write_transaction_option(
+        options: ReadWriteTransactionOption,
+    ) -> (CallOptions, CommitOptions, Option<String>) {
+        (options.begin_options, options.commit_options, options.transaction_tag)
     }
 }

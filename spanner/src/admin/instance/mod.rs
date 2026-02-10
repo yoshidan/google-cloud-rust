@@ -44,13 +44,17 @@ mod tests {
                 display_name: "test-instance-ut".to_string(),
                 node_count: 0,
                 processing_units: 0,
+                replica_compute_capacity: vec![],
                 autoscaling_config: None,
                 state: 0,
                 labels: Default::default(),
+                instance_type: 0,
                 endpoint_uris: vec![],
                 create_time: None,
                 update_time: None,
+                free_instance_metadata: None,
                 edition: 0,
+                default_backup_schedule_type: 0,
             }),
         };
 

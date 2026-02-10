@@ -6,9 +6,13 @@ mod tests {
     use prost_types::{value::Kind, ListValue, Value};
     use serial_test::serial;
 
+    use crate::apiv1::conn_pool::ConnectionManager;
+    use crate::apiv1::spanner_client::Client;
+    use crate::session::client_metadata;
     use google_cloud_gax::conn::{ConnectionOptions, Environment};
     use google_cloud_gax::grpc::Code;
     use google_cloud_googleapis::spanner::v1::mutation::{Operation, Write};
+    use google_cloud_googleapis::spanner::v1::transaction_options::IsolationLevel;
     use google_cloud_googleapis::spanner::v1::{
         commit_request, transaction_options, transaction_selector, BatchCreateSessionsRequest, BeginTransactionRequest,
         CommitRequest, CreateSessionRequest, DeleteSessionRequest, ExecuteBatchDmlRequest, ExecuteSqlRequest,
@@ -16,10 +20,6 @@ mod tests {
         RequestOptions, RollbackRequest, Session, Transaction, TransactionOptions, TransactionSelector,
     };
     use google_cloud_googleapis::spanner::v1::{execute_batch_dml_request, KeySet, Mutation};
-
-    use crate::apiv1::conn_pool::ConnectionManager;
-    use crate::apiv1::spanner_client::Client;
-    use crate::session::client_metadata;
 
     const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
 
@@ -40,7 +40,7 @@ mod tests {
             database: DATABASE.to_string(),
             session: None,
         };
-        let session_response = client.create_session(session_request, None).await.unwrap();
+        let session_response = client.create_session(session_request, true, None).await.unwrap();
         session_response.into_inner()
     }
 
@@ -53,10 +53,16 @@ mod tests {
                     return_read_timestamp: false,
                     timestamp_bound: None,
                 })),
+                isolation_level: IsolationLevel::Unspecified as i32,
             }),
             request_options: None,
+            mutation_key: None,
         };
-        client.begin_transaction(request, None).await.unwrap().into_inner()
+        client
+            .begin_transaction(request, true, None)
+            .await
+            .unwrap()
+            .into_inner()
     }
 
     async fn begin_read_write_transaction(client: &mut Client, session: &Session) -> Transaction {
@@ -65,10 +71,16 @@ mod tests {
             options: Some(TransactionOptions {
                 exclude_txn_from_change_streams: false,
                 mode: Some(transaction_options::Mode::ReadWrite(transaction_options::ReadWrite::default())),
+                isolation_level: IsolationLevel::Unspecified as i32,
             }),
             request_options: None,
+            mutation_key: None,
         };
-        client.begin_transaction(request, None).await.unwrap().into_inner()
+        client
+            .begin_transaction(request, true, None)
+            .await
+            .unwrap()
+            .into_inner()
     }
 
     #[tokio::test]
@@ -80,7 +92,7 @@ mod tests {
             session: None,
         };
 
-        match client.create_session(request, None).await {
+        match client.create_session(request, true, None).await {
             Ok(res) => {
                 println!("created session = {}", res.get_ref().name);
                 assert!(!res.get_ref().name.is_empty());
@@ -99,7 +111,7 @@ mod tests {
             session_template: None,
         };
 
-        match client.batch_create_sessions(request, None).await {
+        match client.batch_create_sessions(request, true, None).await {
             Ok(res) => {
                 assert_eq!(
                     res.get_ref().session.len(),
@@ -121,7 +133,7 @@ mod tests {
             name: session.name.to_string(),
         };
 
-        match client.get_session(request, None).await {
+        match client.get_session(request, true, None).await {
             Ok(res) => {
                 assert_eq!(res.get_ref().name, session.name.to_string());
             }
@@ -140,7 +152,7 @@ mod tests {
             filter: "".to_string(),
         };
 
-        match client.list_sessions(request, None).await {
+        match client.list_sessions(request, true, None).await {
             Ok(res) => {
                 println!("list session size = {}", res.get_ref().sessions.len());
             }
@@ -159,7 +171,7 @@ mod tests {
             session_count: 2,
             session_template: None,
         };
-        let session_response = client.batch_create_sessions(batch_request, None).await.unwrap();
+        let session_response = client.batch_create_sessions(batch_request, true, None).await.unwrap();
         let sessions = &session_response.get_ref().session;
 
         // all delete
@@ -168,7 +180,7 @@ mod tests {
                 name: session.name.to_string(),
             };
 
-            match client.delete_session(request, None).await {
+            match client.delete_session(request, true, None).await {
                 Ok(_) => {}
                 Err(err) => panic!("err: {err:?}"),
             };
@@ -194,8 +206,9 @@ mod tests {
             request_options: None,
             directed_read_options: None,
             data_boost_enabled: false,
+            last_statement: false,
         };
-        match client.execute_sql(request, None).await {
+        match client.execute_sql(request, true, None).await {
             Ok(res) => {
                 assert_eq!(1, res.into_inner().rows.len());
             }
@@ -222,9 +235,10 @@ mod tests {
             request_options: None,
             directed_read_options: None,
             data_boost_enabled: false,
+            last_statement: false,
         };
 
-        let resume_token = match client.execute_streaming_sql(request.clone(), None).await {
+        let resume_token = match client.execute_streaming_sql(request.clone(), true, None).await {
             Ok(res) => {
                 let mut result = res.into_inner();
                 if let Some(next_message) = result.message().await.unwrap() {
@@ -239,7 +253,7 @@ mod tests {
         println!("resume token = {:?}", resume_token.clone().unwrap());
         request.resume_token = resume_token.unwrap();
 
-        match client.execute_streaming_sql(request, None).await {
+        match client.execute_streaming_sql(request, true, None).await {
             Ok(res) => {
                 let mut result = res.into_inner();
                 assert!(!result.message().await.unwrap().unwrap().values.is_empty())
@@ -261,11 +275,13 @@ mod tests {
                     return_read_timestamp: false,
                     timestamp_bound: None,
                 })),
+                isolation_level: IsolationLevel::Unspecified as i32,
             }),
             request_options: None,
+            mutation_key: None,
         };
 
-        match client.begin_transaction(request, None).await {
+        match client.begin_transaction(request, true, None).await {
             Ok(res) => {
                 let tx_id = res.into_inner().id;
                 println!("tx id is {tx_id:?}");
@@ -302,15 +318,17 @@ mod tests {
             ],
             seqno: 0,
             request_options: None,
+            last_statements: false,
         };
 
-        let result = client.execute_batch_dml(request, None).await;
+        let result = client.execute_batch_dml(request, true, None).await;
         client
             .rollback(
                 RollbackRequest {
                     session: session.name.to_string(),
                     transaction_id: tx.id,
                 },
+                true,
                 None,
             )
             .await
@@ -343,15 +361,17 @@ mod tests {
             }],
             seqno: 0,
             request_options: None,
+            last_statements: false,
         };
 
-        let result = client.execute_batch_dml(request, None).await;
+        let result = client.execute_batch_dml(request, true, None).await;
         client
             .rollback(
                 RollbackRequest {
                     session: session.name.to_string(),
                     transaction_id: tx.id,
                 },
+                true,
                 None,
             )
             .await
@@ -394,7 +414,7 @@ mod tests {
             lock_hint: 0,
         };
 
-        match client.read(request, None).await {
+        match client.read(request, true, None).await {
             Ok(res) => {
                 println!("row size = {:?}", res.into_inner().rows.len());
             }
@@ -428,7 +448,7 @@ mod tests {
             lock_hint: 0,
         };
 
-        match client.streaming_read(request, None).await {
+        match client.streaming_read(request, true, None).await {
             Ok(res) => match res.into_inner().message().await {
                 Ok(..) => {}
                 Err(err) => panic!("err: {err:?}"),
@@ -476,9 +496,10 @@ mod tests {
             }),
             return_commit_stats: false,
             max_commit_delay: None,
+            precommit_token: None,
         };
 
-        match client.commit(request, None).await {
+        match client.commit(request, true, None).await {
             Ok(res) => {
                 assert!(res.into_inner().commit_timestamp.is_some());
             }
@@ -497,7 +518,7 @@ mod tests {
             transaction_id: tx.id,
         };
 
-        match client.rollback(request, None).await {
+        match client.rollback(request, true, None).await {
             Ok(_) => {}
             Err(err) => panic!("err: {err:?}"),
         };
@@ -520,7 +541,7 @@ mod tests {
             partition_options: None,
         };
 
-        match client.partition_query(request, None).await {
+        match client.partition_query(request, true, None).await {
             Ok(res) => {
                 println!("partition count {:?}", res.into_inner().partitions.len());
                 assert_eq!(true, true);
@@ -550,7 +571,7 @@ mod tests {
             key_set: None,
         };
 
-        match client.partition_read(request, None).await {
+        match client.partition_read(request, true, None).await {
             Ok(res) => {
                 println!("partition count {:?}", res.into_inner().partitions.len());
                 assert_eq!(true, true);

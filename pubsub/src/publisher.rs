@@ -244,7 +244,7 @@ impl Tasks {
             //TODO enable manage task by ordering_key
             let mut bundle = MessageBundle::new();
             while !receiver.is_closed() {
-                let result = match timeout(flush_interval, &mut receiver.recv()).await {
+                let result = match timeout(flush_interval, receiver.recv()).await {
                     Ok(result) => result,
                     //timed out
                     Err(_e) => {

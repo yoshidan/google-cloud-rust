@@ -30,6 +30,6 @@ pub fn build(
     job_id: &str,
     data: &CancelJobRequest,
 ) -> RequestBuilder {
-    let url = format!("{}/projects/{}/jobs/{}/cancel", base_url, project_id, job_id);
+    let url = format!("{base_url}/projects/{project_id}/jobs/{job_id}/cancel");
     client.post(url).query(data).header(CONTENT_LENGTH, 0)
 }

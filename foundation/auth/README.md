@@ -9,7 +9,6 @@ Google Cloud Platform server application authentication library.
 ```toml
 [dependencies]
 google-cloud-auth = { package="gcloud-auth", version="1.0.0" }
-google-cloud-token = { package="gcloud-token", version="1.0.0" }
 ```
 
 ## Quickstart
@@ -18,7 +17,8 @@ google-cloud-token = { package="gcloud-token", version="1.0.0" }
 #[tokio::main]
 async fn main() -> Result<(), error::Error> {
     use google_cloud_auth::{project::Config, token::DefaultTokenSourceProvider};
-    use google_cloud_token::TokenSourceProvider as _;
+    // This https://crates.io/crates/token-source
+    use token_source::TokenSourceProvider as _;
 
     let audience = "https://spanner.googleapis.com/";
     let scopes = [

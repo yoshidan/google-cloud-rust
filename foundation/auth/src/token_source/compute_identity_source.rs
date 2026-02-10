@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use jsonwebtoken::Validation;
 use serde::Deserialize;
 use time::OffsetDateTime;
 use urlencoding::encode;
@@ -20,8 +19,6 @@ use crate::token_source::{default_http_client, TokenSource};
 pub struct ComputeIdentitySource {
     token_url: String,
     client: reqwest::Client,
-    decoding_key: jsonwebtoken::DecodingKey,
-    validation: jsonwebtoken::Validation,
 }
 
 impl std::fmt::Debug for ComputeIdentitySource {
@@ -39,12 +36,6 @@ impl ComputeIdentitySource {
             Err(_e) => METADATA_IP.to_string(),
         };
 
-        // Only used to extract the expiry without checking the signature.
-        let mut validation = Validation::default();
-        validation.insecure_disable_signature_validation();
-        validation.set_audience(&[audience]);
-        let decoding_key = jsonwebtoken::DecodingKey::from_secret(b"");
-
         Ok(ComputeIdentitySource {
             token_url: format!(
                 "http://{}/computeMetadata/v1/instance/service-accounts/default/identity?audience={}&format=full",
@@ -52,8 +43,6 @@ impl ComputeIdentitySource {
                 encode(audience)
             ),
             client: default_http_client(),
-            decoding_key,
-            validation,
         })
     }
 }
@@ -75,14 +64,12 @@ impl TokenSource for ComputeIdentitySource {
             .text()
             .await?;
 
-        let exp = jsonwebtoken::decode::<ExpClaim>(&jwt, &self.decoding_key, &self.validation)?
-            .claims
-            .exp;
-
+        // Only used to extract the expiry without checking the signature.
+        let token = jsonwebtoken::dangerous::insecure_decode::<ExpClaim>(jwt.as_bytes())?;
         Ok(Token {
             access_token: jwt,
             token_type: "Bearer".into(),
-            expiry: OffsetDateTime::from_unix_timestamp(exp).ok(),
+            expiry: OffsetDateTime::from_unix_timestamp(token.claims.exp).ok(),
         })
     }
 }

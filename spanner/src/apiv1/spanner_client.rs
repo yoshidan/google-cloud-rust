@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use google_cloud_gax::conn::Channel;
@@ -12,6 +13,10 @@ use google_cloud_googleapis::spanner::v1::{
     GetSessionRequest, ListSessionsRequest, ListSessionsResponse, PartialResultSet, PartitionQueryRequest,
     PartitionReadRequest, PartitionResponse, ReadRequest, ResultSet, RollbackRequest, Session, Transaction,
 };
+
+use crate::metrics::MetricsRecorder;
+
+const ROUTE_TO_LEADER_HEADER: &str = "x-goog-spanner-route-to-leader";
 
 pub(crate) fn ping_query_request(session_name: impl Into<String>) -> ExecuteSqlRequest {
     ExecuteSqlRequest {
@@ -28,6 +33,7 @@ pub(crate) fn ping_query_request(session_name: impl Into<String>) -> ExecuteSqlR
         request_options: None,
         directed_read_options: None,
         data_boost_enabled: false,
+        last_statement: false,
     }
 }
 
@@ -45,6 +51,7 @@ fn default_setting() -> RetrySetting {
 pub struct Client {
     inner: SpannerClient<Channel>,
     metadata: MetadataMap,
+    metrics: Arc<MetricsRecorder>,
 }
 
 impl Client {
@@ -54,6 +61,7 @@ impl Client {
         Client {
             inner: inner.max_decoding_message_size(i32::MAX as usize),
             metadata: Default::default(),
+            metrics: Arc::new(MetricsRecorder::default()),
         }
     }
 
@@ -62,7 +70,13 @@ impl Client {
         Client {
             inner: self.inner,
             metadata,
+            metrics: self.metrics,
         }
+    }
+
+    pub(crate) fn with_metrics(mut self, metrics: Arc<MetricsRecorder>) -> Client {
+        self.metrics = metrics;
+        self
     }
 
     /// create_session creates a new session. A session can be used to perform
@@ -88,19 +102,24 @@ impl Client {
     pub async fn create_session(
         &mut self,
         req: CreateSessionRequest,
+        disable_route_to_leader: bool,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Session>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let database = &req.database;
+        let metrics = Arc::clone(&self.metrics);
         invoke_fn(
             Some(setting),
             |this| async {
-                let request = this.create_request(format!("database={database}"), req.clone());
+                let request = this.create_request(disable_route_to_leader, format!("database={database}"), req.clone());
                 this.inner.create_session(request).await.map_err(|e| (e, this))
             },
             self,
         )
         .await
+        .inspect(move |response| {
+            Self::record_gfe(metrics.as_ref(), "createSession", response);
+        })
     }
 
     /// batch_create_sessions creates multiple new sessions.
@@ -111,19 +130,24 @@ impl Client {
     pub async fn batch_create_sessions(
         &mut self,
         req: BatchCreateSessionsRequest,
+        disable_route_to_leader: bool,
         retry: Option<RetrySetting>,
     ) -> Result<Response<BatchCreateSessionsResponse>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let database = &req.database;
+        let metrics = Arc::clone(&self.metrics);
         invoke_fn(
             Some(setting),
             |this| async {
-                let request = this.create_request(format!("database={database}"), req.clone());
+                let request = this.create_request(disable_route_to_leader, format!("database={database}"), req.clone());
                 this.inner.batch_create_sessions(request).await.map_err(|e| (e, this))
             },
             self,
         )
         .await
+        .inspect(move |response| {
+            Self::record_gfe(metrics.as_ref(), "batchCreateSessions", response);
+        })
     }
 
     /// get_session gets a session. Returns NOT_FOUND if the session does not exist.
@@ -132,19 +156,24 @@ impl Client {
     pub async fn get_session(
         &mut self,
         req: GetSessionRequest,
+        disable_route_to_leader: bool,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Session>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let name = &req.name;
+        let metrics = Arc::clone(&self.metrics);
         invoke_fn(
             Some(setting),
             |this| async {
-                let request = this.create_request(format!("name={name}"), req.clone());
+                let request = this.create_request(disable_route_to_leader, format!("name={name}"), req.clone());
                 this.inner.get_session(request).await.map_err(|e| (e, this))
             },
             self,
         )
         .await
+        .inspect(move |response| {
+            Self::record_gfe(metrics.as_ref(), "getSession", response);
+        })
     }
 
     /// list_sessions lists all sessions in a given database.
@@ -152,19 +181,24 @@ impl Client {
     pub async fn list_sessions(
         &mut self,
         req: ListSessionsRequest,
+        disable_route_to_leader: bool,
         retry: Option<RetrySetting>,
     ) -> Result<Response<ListSessionsResponse>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let database = &req.database;
+        let metrics = Arc::clone(&self.metrics);
         invoke_fn(
             Some(setting),
             |this| async {
-                let request = this.create_request(format!("database={database}"), req.clone());
+                let request = this.create_request(disable_route_to_leader, format!("database={database}"), req.clone());
                 this.inner.list_sessions(request).await.map_err(|e| (e, this))
             },
             self,
         )
         .await
+        .inspect(move |response| {
+            Self::record_gfe(metrics.as_ref(), "listSessions", response);
+        })
     }
 
     /// delete_session ends a session, releasing server resources associated with it. This will
@@ -174,19 +208,24 @@ impl Client {
     pub async fn delete_session(
         &mut self,
         req: DeleteSessionRequest,
+        disable_route_to_leader: bool,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let name = &req.name;
+        let metrics = Arc::clone(&self.metrics);
         invoke_fn(
             Some(setting),
             |this| async {
-                let request = this.create_request(format!("name={name}"), req.clone());
+                let request = this.create_request(disable_route_to_leader, format!("name={name}"), req.clone());
                 this.inner.delete_session(request).await.map_err(|e| (e, this))
             },
             self,
         )
         .await
+        .inspect(move |response| {
+            Self::record_gfe(metrics.as_ref(), "deleteSession", response);
+        })
     }
 
     /// execute_sql executes an SQL statement, returning all results in a single reply. This
@@ -204,19 +243,24 @@ impl Client {
     pub async fn execute_sql(
         &mut self,
         req: ExecuteSqlRequest,
+        disable_route_to_leader: bool,
         retry: Option<RetrySetting>,
     ) -> Result<Response<ResultSet>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
+        let metrics = Arc::clone(&self.metrics);
         invoke_fn(
             Some(setting),
             |this| async {
-                let request = this.create_request(format!("session={session}"), req.clone());
+                let request = this.create_request(disable_route_to_leader, format!("session={session}"), req.clone());
                 this.inner.execute_sql(request).await.map_err(|e| (e, this))
             },
             self,
         )
         .await
+        .inspect(move |response| {
+            Self::record_gfe(metrics.as_ref(), "executeSql", response);
+        })
     }
 
     /// execute_streaming_sql like ExecuteSql, except returns the result
@@ -228,19 +272,24 @@ impl Client {
     pub async fn execute_streaming_sql(
         &mut self,
         req: ExecuteSqlRequest,
+        disable_route_to_leader: bool,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
+        let metrics = Arc::clone(&self.metrics);
         invoke_fn(
             Some(setting),
             |this| async {
-                let request = this.create_request(format!("session={session}"), req.clone());
+                let request = this.create_request(disable_route_to_leader, format!("session={session}"), req.clone());
                 this.inner.execute_streaming_sql(request).await.map_err(|e| (e, this))
             },
             self,
         )
         .await
+        .inspect(move |response| {
+            Self::record_gfe(metrics.as_ref(), "executeStreamingSql", response);
+        })
     }
 
     /// execute_batch_dml executes a batch of SQL DML statements. This method allows many statements
@@ -258,14 +307,16 @@ impl Client {
     pub async fn execute_batch_dml(
         &mut self,
         req: ExecuteBatchDmlRequest,
+        disable_route_to_leader: bool,
         retry: Option<RetrySetting>,
     ) -> Result<Response<ExecuteBatchDmlResponse>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
+        let metrics = Arc::clone(&self.metrics);
         invoke_fn(
             Some(setting),
             |this| async {
-                let request = this.create_request(format!("session={session}"), req.clone());
+                let request = this.create_request(disable_route_to_leader, format!("session={session}"), req.clone());
                 let result = this.inner.execute_batch_dml(request).await;
                 match result {
                     Ok(response) => match response.get_ref().status.as_ref() {
@@ -285,6 +336,9 @@ impl Client {
             self,
         )
         .await
+        .inspect(move |response| {
+            Self::record_gfe(metrics.as_ref(), "executeBatchDml", response);
+        })
     }
 
     /// read reads rows from the database using key lookups and scans, as a
@@ -301,18 +355,27 @@ impl Client {
     /// Larger result sets can be yielded in streaming fashion by calling
     /// StreamingRead instead.
     #[cfg_attr(feature = "trace", tracing::instrument(skip_all))]
-    pub async fn read(&mut self, req: ReadRequest, retry: Option<RetrySetting>) -> Result<Response<ResultSet>, Status> {
+    pub async fn read(
+        &mut self,
+        req: ReadRequest,
+        disable_route_to_leader: bool,
+        retry: Option<RetrySetting>,
+    ) -> Result<Response<ResultSet>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
+        let metrics = Arc::clone(&self.metrics);
         invoke_fn(
             Some(setting),
             |this| async {
-                let request = this.create_request(format!("session={session}"), req.clone());
+                let request = this.create_request(disable_route_to_leader, format!("session={session}"), req.clone());
                 this.inner.read(request).await.map_err(|e| (e, this))
             },
             self,
         )
         .await
+        .inspect(move |response| {
+            Self::record_gfe(metrics.as_ref(), "read", response);
+        })
     }
 
     /// streaming_read like read, except returns the result set as a
@@ -324,19 +387,24 @@ impl Client {
     pub async fn streaming_read(
         &mut self,
         req: ReadRequest,
+        disable_route_to_leader: bool,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
+        let metrics = Arc::clone(&self.metrics);
         invoke_fn(
             Some(setting),
             |this| async {
-                let request = this.create_request(format!("session={session}"), req.clone());
+                let request = this.create_request(disable_route_to_leader, format!("session={session}"), req.clone());
                 this.inner.streaming_read(request).await.map_err(|e| (e, this))
             },
             self,
         )
         .await
+        .inspect(move |response| {
+            Self::record_gfe(metrics.as_ref(), "streamingRead", response);
+        })
     }
 
     /// BeginTransaction begins a new transaction. This step can often be skipped:
@@ -347,19 +415,24 @@ impl Client {
     pub async fn begin_transaction(
         &mut self,
         req: BeginTransactionRequest,
+        disable_route_to_leader: bool,
         retry: Option<RetrySetting>,
     ) -> Result<Response<Transaction>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
+        let metrics = Arc::clone(&self.metrics);
         invoke_fn(
             Some(setting),
             |this| async {
-                let request = this.create_request(format!("session={session}"), req.clone());
+                let request = this.create_request(disable_route_to_leader, format!("session={session}"), req.clone());
                 this.inner.begin_transaction(request).await.map_err(|e| (e, this))
             },
             self,
         )
         .await
+        .inspect(move |response| {
+            Self::record_gfe(metrics.as_ref(), "beginTransaction", response);
+        })
     }
 
     /// Commit commits a transaction. The request includes the mutations to be
@@ -380,19 +453,24 @@ impl Client {
     pub async fn commit(
         &mut self,
         req: CommitRequest,
+        disable_route_to_leader: bool,
         retry: Option<RetrySetting>,
     ) -> Result<Response<CommitResponse>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
+        let metrics = Arc::clone(&self.metrics);
         invoke_fn(
             Some(setting),
             |this| async {
-                let request = this.create_request(format!("session={session}"), req.clone());
+                let request = this.create_request(disable_route_to_leader, format!("session={session}"), req.clone());
                 this.inner.commit(request).await.map_err(|e| (e, this))
             },
             self,
         )
         .await
+        .inspect(move |response| {
+            Self::record_gfe(metrics.as_ref(), "commit", response);
+        })
     }
 
     /// Rollback rolls back a transaction, releasing any locks it holds. It is a good
@@ -407,19 +485,24 @@ impl Client {
     pub async fn rollback(
         &mut self,
         req: RollbackRequest,
+        disable_route_to_leader: bool,
         retry: Option<RetrySetting>,
     ) -> Result<Response<()>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
+        let metrics = Arc::clone(&self.metrics);
         invoke_fn(
             Some(setting),
             |this| async {
-                let request = this.create_request(format!("session={session}"), req.clone());
+                let request = this.create_request(disable_route_to_leader, format!("session={session}"), req.clone());
                 this.inner.rollback(request).await.map_err(|e| (e, this))
             },
             self,
         )
         .await
+        .inspect(move |response| {
+            Self::record_gfe(metrics.as_ref(), "rollback", response);
+        })
     }
 
     /// PartitionQuery creates a set of partition tokens that can be used to execute a query
@@ -437,19 +520,24 @@ impl Client {
     pub async fn partition_query(
         &mut self,
         req: PartitionQueryRequest,
+        disable_route_to_leader: bool,
         retry: Option<RetrySetting>,
     ) -> Result<Response<PartitionResponse>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
+        let metrics = Arc::clone(&self.metrics);
         invoke_fn(
             Some(setting),
             |this| async {
-                let request = this.create_request(format!("session={session}"), req.clone());
+                let request = this.create_request(disable_route_to_leader, format!("session={session}"), req.clone());
                 this.inner.partition_query(request).await.map_err(|e| (e, this))
             },
             self,
         )
         .await
+        .inspect(move |response| {
+            Self::record_gfe(metrics.as_ref(), "partitionQuery", response);
+        })
     }
 
     /// PartitionRead creates a set of partition tokens that can be used to execute a read
@@ -469,24 +557,37 @@ impl Client {
     pub async fn partition_read(
         &mut self,
         req: PartitionReadRequest,
+        disable_route_to_leader: bool,
         retry: Option<RetrySetting>,
     ) -> Result<Response<PartitionResponse>, Status> {
         let setting = retry.unwrap_or_else(default_setting);
         let session = &req.session;
+        let metrics = Arc::clone(&self.metrics);
         invoke_fn(
             Some(setting),
             |this| async {
-                let request = this.create_request(format!("session={session}"), req.clone());
+                let request = this.create_request(disable_route_to_leader, format!("session={session}"), req.clone());
                 this.inner.partition_read(request).await.map_err(|e| (e, this))
             },
             self,
         )
         .await
+        .inspect(move |response| {
+            Self::record_gfe(metrics.as_ref(), "partitionRead", response);
+        })
     }
 
-    fn create_request<T>(&self, param_string: String, into_request: impl grpc::IntoRequest<T>) -> grpc::Request<T> {
+    fn create_request<T>(
+        &self,
+        disable_route_to_leader: bool,
+        param_string: String,
+        into_request: impl grpc::IntoRequest<T>,
+    ) -> grpc::Request<T> {
         let mut req = create_request(param_string, into_request);
         let target = req.metadata_mut();
+        if !disable_route_to_leader {
+            target.append(ROUTE_TO_LEADER_HEADER, "true".parse().unwrap());
+        }
         for entry in self.metadata.iter() {
             match entry {
                 KeyAndValueRef::Ascii(k, v) => {
@@ -498,5 +599,9 @@ impl Client {
             }
         }
         req
+    }
+
+    fn record_gfe<T>(metrics: &MetricsRecorder, method: &'static str, response: &Response<T>) {
+        metrics.record_server_timing(method, response.metadata());
     }
 }

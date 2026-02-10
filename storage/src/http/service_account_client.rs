@@ -1,6 +1,6 @@
-use google_cloud_token::TokenSource;
 use reqwest::Response;
 use std::sync::Arc;
+use token_source::TokenSource;
 
 use crate::http::Error;
 
@@ -80,7 +80,7 @@ mod test {
 
     use google_cloud_auth::project::Config;
     use google_cloud_auth::token::DefaultTokenSourceProvider;
-    use google_cloud_token::TokenSourceProvider;
+    use token_source::TokenSourceProvider;
 
     use crate::http::service_account_client::ServiceAccountClient;
 
@@ -116,7 +116,7 @@ mod test {
             56, 98, 50, 56, 101, 55, 48, 98, 101,
         ];
         let data = client
-            .sign_blob(&format!("projects/-/serviceAccounts/{}", email), &body)
+            .sign_blob(&format!("projects/-/serviceAccounts/{email}"), &body)
             .await
             .unwrap();
         assert_eq!(256, data.len());

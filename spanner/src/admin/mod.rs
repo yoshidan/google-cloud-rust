@@ -4,7 +4,7 @@ use std::time::Duration;
 use google_cloud_gax::conn::Environment;
 use google_cloud_gax::grpc::Code;
 use google_cloud_gax::retry::RetrySetting;
-use google_cloud_token::NopeTokenSourceProvider;
+use token_source::NoopTokenSourceProvider;
 
 pub mod client;
 pub mod database;
@@ -25,7 +25,7 @@ impl Default for AdminClientConfig {
         AdminClientConfig {
             environment: match var("SPANNER_EMULATOR_HOST").ok() {
                 Some(v) => Environment::Emulator(v),
-                None => Environment::GoogleCloud(Box::new(NopeTokenSourceProvider {})),
+                None => Environment::GoogleCloud(Box::new(NoopTokenSourceProvider {})),
             },
         }
     }

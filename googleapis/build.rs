@@ -15,7 +15,7 @@ fn main() {
 
 #[cfg(feature = "generate")]
 fn generate(config: prost_build::Config, out_dir: impl AsRef<std::path::Path>) {
-    tonic_build::configure()
+    tonic_prost_build::configure()
         .build_server(false)
         .out_dir(out_dir) // you can change the generated code's location
         .compile_with_config(

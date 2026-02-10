@@ -90,6 +90,6 @@ pub fn build(
     job_id: &str,
     data: &GetQueryResultsRequest,
 ) -> RequestBuilder {
-    let url = format!("{}/projects/{}/queries/{}", base_url, project_id, job_id);
+    let url = format!("{base_url}/projects/{project_id}/queries/{job_id}");
     client.get(url).query(data)
 }

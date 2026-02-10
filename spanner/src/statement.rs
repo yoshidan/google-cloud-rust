@@ -211,7 +211,7 @@ impl ToKind for ::prost_types::Timestamp {
     fn to_kind(&self) -> Kind {
         // The protobuf timestamp type should be formatted in RFC3339
         // See here for more details: https://docs.rs/prost-types/latest/prost_types/struct.Timestamp.html
-        let rfc3339 = format!("{}", self);
+        let rfc3339 = format!("{self}");
         rfc3339.to_kind()
     }
 

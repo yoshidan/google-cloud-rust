@@ -1,4 +1,6 @@
 #![allow(clippy::doc_lazy_continuation)]
+#![allow(clippy::doc_overindented_list_items)]
+#![allow(clippy::large_enum_variant)]
 
 #[path = "google.rpc.rs"]
 pub mod rpc;

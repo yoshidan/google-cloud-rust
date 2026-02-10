@@ -103,14 +103,25 @@ pub struct Transaction {
     // for returning ownership of session on before destroy
     pub(crate) sequence_number: AtomicI64,
     pub(crate) transaction_selector: TransactionSelector,
+    /// The transaction tag to include with each request in this transaction.
+    pub(crate) transaction_tag: Option<String>,
+    /// disableRouteToLeader specifies if all the requests of type read-write and PDML
+    /// need to be routed to the leader region.
+    pub(crate) disable_route_to_leader: bool,
 }
 
 impl Transaction {
-    pub(crate) fn create_request_options(priority: Option<Priority>) -> Option<RequestOptions> {
-        priority.map(|s| RequestOptions {
-            priority: s.into(),
-            request_tag: "".to_string(),
-            transaction_tag: "".to_string(),
+    pub(crate) fn create_request_options(
+        priority: Option<Priority>,
+        transaction_tag: Option<String>,
+    ) -> Option<RequestOptions> {
+        if priority.is_none() && transaction_tag.as_ref().map(String::is_empty).unwrap_or(true) {
+            return None;
+        }
+        Some(RequestOptions {
+            priority: priority.unwrap_or_default().into(),
+            request_tag: String::new(),
+            transaction_tag: transaction_tag.unwrap_or_default(),
         })
     }
 
@@ -124,8 +135,6 @@ impl Transaction {
 
     /// query executes a query against the database. It returns a RowIterator for
     /// retrieving the resulting rows.
-    ///
-    /// query returns only row data, without a query plan or execution statistics.
     pub async fn query_with_option(
         &mut self,
         statement: Statement,
@@ -144,16 +153,20 @@ impl Transaction {
             partition_token: vec![],
             seqno: 0,
             query_options: options.optimizer_options,
-            request_options: Transaction::create_request_options(options.call_options.priority),
+            request_options: Transaction::create_request_options(
+                options.call_options.priority,
+                self.transaction_tag.clone(),
+            ),
             data_boost_enabled: false,
             directed_read_options: None,
+            last_statement: false,
         };
         let session = self.session.as_mut().unwrap().deref_mut();
         let reader = StatementReader {
             enable_resume: options.enable_resume,
             request,
         };
-        RowIterator::new(session, reader, Some(options.call_options)).await
+        RowIterator::new(session, reader, Some(options.call_options), self.disable_route_to_leader).await
     }
 
     /// read returns a RowIterator for reading multiple rows from the database.
@@ -204,16 +217,20 @@ impl Transaction {
             limit: options.limit,
             resume_token: vec![],
             partition_token: vec![],
-            request_options: Transaction::create_request_options(options.call_options.priority),
+            request_options: Transaction::create_request_options(
+                options.call_options.priority,
+                self.transaction_tag.clone(),
+            ),
             data_boost_enabled: false,
             order_by: 0,
             directed_read_options: None,
             lock_hint: 0,
         };
 
+        let disable_route_to_leader = self.disable_route_to_leader;
         let session = self.as_mut_session();
         let reader = TableReader { request };
-        RowIterator::new(session, reader, Some(options.call_options)).await
+        RowIterator::new(session, reader, Some(options.call_options), disable_route_to_leader).await
     }
 
     /// read returns a RowIterator for reading multiple rows from the database.

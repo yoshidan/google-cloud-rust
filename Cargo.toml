@@ -1,7 +1,6 @@
 [workspace]
 resolver = "2"
 members = [
-    "foundation/token",
     "foundation/metadata",
     "foundation/gax",
     "foundation/longrunning",

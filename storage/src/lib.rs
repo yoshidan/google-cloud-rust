@@ -1,3 +1,4 @@
+#![allow(clippy::result_large_err)]
 //! # google-cloud-storage
 //!
 //! Google Cloud Platform Storage Client library.
