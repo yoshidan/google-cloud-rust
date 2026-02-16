@@ -8,7 +8,7 @@ license = "MIT"
 name = "gcloud-storage"
 readme = "README.md"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/storage"
-version = "2.0.0"
+version = "1.5.0"
 
 [lib]
 doctest = false
@@ -46,7 +46,7 @@ tokio = {version = "1.32", features = ["macros"]}
 tracing = "0.1"
 url = "2.4"
 
-google-cloud-auth = {package = "gcloud-auth", optional = true, version = "2.0.0", path = "../foundation/auth", default-features = false}
+google-cloud-auth = {package = "gcloud-auth", optional = true, version = "1.5.0", path = "../foundation/auth", default-features = false}
 google-cloud-metadata = {package = "gcloud-metadata", optional = true, version = "1.0.1", path = "../foundation/metadata"}
 
 [dev-dependencies]
@@ -58,8 +58,8 @@ tracing-subscriber = {version = "0.3.17", features = ["env-filter"]}
 
 [features]
 auth = ["google-cloud-auth", "google-cloud-metadata"]
-default = ["rustls", "auth", "jwt-aws-lc-rs"]
-rustls = ["google-cloud-auth?/rustls"]
+default = ["rustls-tls", "auth", "jwt-aws-lc-rs"]
+rustls-tls = ["google-cloud-auth?/rustls-tls"]
 rustls-no-provider = ["google-cloud-auth?/rustls-no-provider"]
 external-account = ["google-cloud-auth?/external-account"]
 hickory-dns = ["reqwest/hickory-dns", "google-cloud-auth?/hickory-dns"]
