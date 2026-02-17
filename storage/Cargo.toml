@@ -59,6 +59,7 @@ tracing-subscriber = {version = "0.3.17", features = ["env-filter"]}
 [features]
 auth = ["google-cloud-auth", "google-cloud-metadata"]
 default = ["rustls-tls", "auth", "jwt-aws-lc-rs"]
+default-tls = ["google-cloud-auth?/default-tls"]
 rustls-tls = ["google-cloud-auth?/rustls-tls"]
 rustls-no-provider = ["google-cloud-auth?/rustls-no-provider"]
 external-account = ["google-cloud-auth?/external-account"]
