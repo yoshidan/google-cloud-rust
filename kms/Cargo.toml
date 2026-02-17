@@ -15,7 +15,7 @@ doctest = false
 
 [dependencies]
 token-source = "1.0"
-google-cloud-auth = { package = "gcloud-auth", optional = true, version = "1.5.0", path="../foundation/auth", default-features=false }
+google-cloud-auth = { package = "gcloud-auth", optional = true, version = "1.3.0", path="../foundation/auth", default-features=false }
 google-cloud-googleapis = { package = "gcloud-googleapis", version="1.3.0", path = "../googleapis", features=["kms"]}
 google-cloud-gax = { package = "gcloud-gax", version = "1.3.1", path = "../foundation/gax"}
 tracing = "0.1"
@@ -28,7 +28,7 @@ ctor = "0.5"
 google-cloud-auth = { package = "gcloud-auth", path = "../foundation/auth", default-features=false }
 
 [features]
-default = ["rustls-tls", "auth", "jwt-aws-lc-rs"]
+default = ["default-tls", "auth", "jwt-aws-lc-rs"]
 default-tls = ["google-cloud-auth?/default-tls"]
 rustls-tls = ["google-cloud-auth?/rustls-tls"]
 rustls-no-provider = ["google-cloud-auth?/rustls-no-provider"]

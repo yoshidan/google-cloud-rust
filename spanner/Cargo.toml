@@ -1,6 +1,6 @@
 [package]
 name = "gcloud-spanner"
-version = "1.5.0"
+version = "1.8.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/spanner"
@@ -31,7 +31,7 @@ google-cloud-gax = { package = "gcloud-gax", version = "1.3.2", path = "../found
 google-cloud-googleapis = { package = "gcloud-googleapis", version = "1.3.0", path = "../googleapis", features = ["spanner"]}
 opentelemetry = { version = "0.31", optional = true, default-features = false, features = ["metrics"] }
 
-google-cloud-auth = { package = "gcloud-auth", optional = true, version = "1.5.0", path="../foundation/auth", default-features=false }
+google-cloud-auth = { package = "gcloud-auth", optional = true, version = "1.3.0", path="../foundation/auth", default-features=false }
 
 [dev-dependencies]
 tokio = { version="1.32", features=["rt-multi-thread"] }
@@ -41,9 +41,10 @@ ctor = "0.5"
 google-cloud-auth = { package = "gcloud-auth", path="../foundation/auth", default-features=false, features=["rustls-tls"]}
 
 [features]
-default = ["auth", "rustls-tls", "jwt-aws-lc-rs"]
+default = ["auth", "default-tls", "jwt-aws-lc-rs"]
 trace = []
 auth = ["google-cloud-auth"]
+default-tls = ["google-cloud-auth?/default-tls"]
 rustls-tls = ["google-cloud-auth?/rustls-tls"]
 rustls-no-provider = ["google-cloud-auth?/rustls-no-provider"]
 external-account = ["google-cloud-auth?/external-account"]

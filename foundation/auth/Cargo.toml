@@ -1,6 +1,6 @@
 [package]
 name = "gcloud-auth"
-version = "1.5.0"
+version = "1.3.0"
 authors = ["yoshidan <naohiro.y@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/yoshidan/google-cloud-rust/tree/main/foundation/auth"
@@ -43,7 +43,7 @@ tempfile = "3.8.0"
 temp-env = { version = "0.3.6", features = ["async_closure"] }
 
 [features]
-default = ["rustls-tls", "jwt-aws-lc-rs"]
+default = ["default-tls", "jwt-aws-lc-rs"]
 default-tls = ["reqwest/rustls"]
 rustls-tls = ["reqwest/rustls"]
 rustls-no-provider = ["reqwest/rustls-no-provider"]
