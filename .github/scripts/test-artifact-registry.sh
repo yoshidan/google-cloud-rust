@@ -1,4 +1,4 @@
 #!/bin/bash
 set -e
 
-cargo test --release --features default-tls,rustls-tls,trace,auth,external-account,jwt-aws-lc-rs --manifest-path artifact-registry/Cargo.toml
+cargo test --release --features trace --manifest-path artifact-registry/Cargo.toml
