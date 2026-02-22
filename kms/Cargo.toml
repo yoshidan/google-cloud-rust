@@ -31,6 +31,7 @@ google-cloud-auth = { package = "gcloud-auth", path = "../foundation/auth", defa
 default = ["default-tls", "auth", "jwt-aws-lc-rs"]
 default-tls = ["google-cloud-auth?/default-tls"]
 rustls-tls = ["google-cloud-auth?/rustls-tls"]
+native-tls = ["google-cloud-auth?/native-tls"]
 rustls-no-provider = ["google-cloud-auth?/rustls-no-provider"]
 trace = []
 auth = ["google-cloud-auth"]

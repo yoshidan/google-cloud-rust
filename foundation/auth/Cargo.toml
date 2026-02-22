@@ -46,6 +46,7 @@ temp-env = { version = "0.3.6", features = ["async_closure"] }
 default = ["default-tls", "jwt-aws-lc-rs"]
 default-tls = ["reqwest/rustls"]
 rustls-tls = ["reqwest/rustls"]
+native-tls = ["reqwest/native-tls"]
 rustls-no-provider = ["reqwest/rustls-no-provider"]
 hickory-dns = ["reqwest/hickory-dns"]
 external-account = ["sha2", "path-clean", "url", "percent-encoding", "hmac", "hex"]
