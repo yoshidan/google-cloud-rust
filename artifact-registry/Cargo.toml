@@ -30,8 +30,7 @@ ctor = "0.5"
 google-cloud-auth = { package = "gcloud-auth", path = "../foundation/auth", default-features=false }
 
 [features]
-default = ["default-tls", "auth", "jwt-aws-lc-rs"]
-default-tls = ["google-cloud-auth?/default-tls"]
+default = ["rustls-tls", "auth", "jwt-aws-lc-rs"]
 rustls-tls = ["google-cloud-auth?/rustls-tls"]
 native-tls = ["google-cloud-auth?/native-tls"]
 rustls-no-provider = ["google-cloud-auth?/rustls-no-provider"]
