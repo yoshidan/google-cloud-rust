@@ -41,11 +41,11 @@ ctor = "0.5"
 google-cloud-auth = { package = "gcloud-auth", path="../foundation/auth", default-features=false, features=["rustls-tls"]}
 
 [features]
-default = ["auth", "default-tls", "jwt-aws-lc-rs"]
+default = ["auth", "rustls-tls", "jwt-aws-lc-rs"]
 trace = []
 auth = ["google-cloud-auth"]
-default-tls = ["google-cloud-auth?/default-tls"]
 rustls-tls = ["google-cloud-auth?/rustls-tls"]
+native-tls = ["google-cloud-auth?/native-tls"]
 rustls-no-provider = ["google-cloud-auth?/rustls-no-provider"]
 external-account = ["google-cloud-auth?/external-account"]
 otel-metrics = ["opentelemetry"]

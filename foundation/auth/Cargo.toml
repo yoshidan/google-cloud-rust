@@ -43,9 +43,9 @@ tempfile = "3.8.0"
 temp-env = { version = "0.3.6", features = ["async_closure"] }
 
 [features]
-default = ["default-tls", "jwt-aws-lc-rs"]
-default-tls = ["reqwest/rustls"]
+default = ["rustls-tls", "jwt-aws-lc-rs"]
 rustls-tls = ["reqwest/rustls"]
+native-tls = ["reqwest/native-tls"]
 rustls-no-provider = ["reqwest/rustls-no-provider"]
 hickory-dns = ["reqwest/hickory-dns"]
 external-account = ["sha2", "path-clean", "url", "percent-encoding", "hmac", "hex"]
