@@ -48,8 +48,7 @@ prost = "0.14"
 futures-util = "0.3"
 
 [features]
-default = ["default-tls", "auth", "jwt-aws-lc-rs"]
-default-tls = ["google-cloud-auth?/default-tls"]
+default = ["rustls-tls", "auth", "jwt-aws-lc-rs"]
 rustls-tls = ["google-cloud-auth?/rustls-tls"]
 native-tls = ["google-cloud-auth?/native-tls"]
 rustls-no-provider = ["google-cloud-auth?/rustls-no-provider"]
