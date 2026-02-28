@@ -6,9 +6,11 @@ use serial_test::serial;
 use time::{Duration, OffsetDateTime};
 
 use common::*;
+use google_cloud_googleapis::spanner::v1::execute_sql_request::QueryMode;
 use google_cloud_spanner::key::Key;
 use google_cloud_spanner::row::Row;
 use google_cloud_spanner::statement::Statement;
+use google_cloud_spanner::transaction::QueryOptions;
 use google_cloud_spanner::transaction_ro::ReadOnlyTransaction;
 
 mod common;
@@ -382,4 +384,85 @@ async fn test_big_decimal() {
         "99999999999999999999999999999.999999999",
         row.column::<BigDecimal>(6).unwrap().to_string()
     );
+}
+
+#[tokio::test]
+#[serial]
+async fn test_query_plan_mode_metadata() {
+    let data_client = create_data_client().await;
+    let mut tx = data_client.read_only_transaction().await.unwrap();
+
+    let stmt = Statement::new("SELECT UserId, NotNullINT64 FROM User LIMIT 1");
+    let options = QueryOptions {
+        mode: QueryMode::Plan,
+        ..Default::default()
+    };
+    let mut iter = tx.query_with_option(stmt, options).await.unwrap();
+
+    // Drain iterator — Plan mode returns no data rows, so next() returns None immediately.
+    // Metadata is populated via try_recv() during this call.
+    assert!(iter.next().await.unwrap().is_none());
+
+    // Verify metadata is populated after draining despite no data rows
+    let metadata = iter.columns_metadata();
+    assert!(!metadata.is_empty(), "Plan mode should populate column metadata");
+    assert_eq!(metadata.len(), 2);
+    assert_eq!(metadata[0].name, "UserId");
+    assert_eq!(metadata[1].name, "NotNullINT64");
+
+    // Note: On real Spanner, Plan mode also returns stats with query_plan
+    // (plan_nodes). The emulator does not return stats for Plan mode, so we
+    // cannot assert on query_plan here. Verified manually against a real instance
+    // that stats().query_plan is Some with populated plan_nodes.
+}
+
+#[tokio::test]
+#[serial]
+async fn test_query_empty_result_metadata() {
+    let data_client = create_data_client().await;
+    let mut tx = data_client.read_only_transaction().await.unwrap();
+
+    // Query that returns 0 rows but should still have metadata
+    let stmt = Statement::new("SELECT UserId, NotNullINT64 FROM User WHERE FALSE");
+    let mut iter = tx.query(stmt).await.unwrap();
+
+    // No rows returned; metadata is populated via try_recv() during this call.
+    assert!(iter.next().await.unwrap().is_none());
+
+    // Metadata should still be populated after draining
+    let metadata = iter.columns_metadata();
+    assert!(!metadata.is_empty(), "Empty result should still populate column metadata");
+    assert_eq!(metadata.len(), 2);
+    assert_eq!(metadata[0].name, "UserId");
+    assert_eq!(metadata[1].name, "NotNullINT64");
+}
+
+#[tokio::test]
+#[serial]
+async fn test_query_profile_mode_empty_result_stats() {
+    let data_client = create_data_client().await;
+    let mut tx = data_client.read_only_transaction().await.unwrap();
+
+    // Profile mode with 0 rows: values are empty, but stats should still be captured
+    let stmt = Statement::new("SELECT UserId, NotNullINT64 FROM User WHERE FALSE");
+    let options = QueryOptions {
+        mode: QueryMode::Profile,
+        ..Default::default()
+    };
+    let mut iter = tx.query_with_option(stmt, options).await.unwrap();
+
+    // Drain iterator — no data rows returned.
+    assert!(iter.next().await.unwrap().is_none());
+
+    // Metadata should be populated after draining
+    let metadata = iter.columns_metadata();
+    assert!(!metadata.is_empty(), "Profile mode empty result should populate column metadata");
+    assert_eq!(metadata.len(), 2);
+    assert_eq!(metadata[0].name, "UserId");
+    assert_eq!(metadata[1].name, "NotNullINT64");
+
+    // Stats (query_stats) should be available even with 0 rows
+    let stats = iter.stats();
+    assert!(stats.is_some(), "Profile mode should return stats even with empty results");
+    assert!(stats.unwrap().query_stats.is_some(), "Profile mode should return query_stats");
 }

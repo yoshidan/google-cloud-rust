@@ -331,9 +331,6 @@ where
     async fn try_recv(&mut self, option: Option<CallOptions>) -> Result<bool, Status> {
         loop {
             if let Some(result_set) = self.prs_buffer.pop_ready(self.end_of_stream) {
-                if result_set.values.is_empty() {
-                    return Ok(false);
-                }
                 let resume_token_present = !result_set.resume_token.is_empty();
                 //if resume_token changes set new resume_token
                 if resume_token_present {
@@ -342,6 +339,12 @@ where
                 // Capture stats if present (only sent with the last response)
                 if result_set.stats.is_some() {
                     self.stats = result_set.stats;
+                }
+                if result_set.values.is_empty() {
+                    // Process metadata even when values are empty (e.g., QueryMode::Plan)
+                    self.rs
+                        .add(result_set.metadata, result_set.values, result_set.chunked_value)?;
+                    return Ok(false);
                 }
                 let added = self
                     .rs
