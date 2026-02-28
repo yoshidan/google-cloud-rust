@@ -19,7 +19,12 @@ impl FileCredentialSource {
         match self.format.as_ref().map(|f| f.tp.as_str()).unwrap_or("") {
             "json" => {
                 let data: serde_json::Value = serde_json::from_str(&content)?;
-                if let Some(token) = data[&self.format.as_ref().unwrap().subject_token_field_name].as_str() {
+                let field_name = self
+                    .format
+                    .as_ref()
+                    .and_then(|f| f.subject_token_field_name.as_ref())
+                    .ok_or(Error::MissingSubjectTokenFieldName)?;
+                if let Some(token) = data[field_name].as_str() {
                     Ok(token.to_string())
                 } else {
                     Err(Error::MissingSubjectTokenFieldName)

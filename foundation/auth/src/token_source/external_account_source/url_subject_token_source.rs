@@ -45,7 +45,12 @@ impl UrlSubjectTokenSource {
         match format_type {
             "json" => {
                 let data: Value = serde_json::from_str(&body).map_err(Error::JsonError)?;
-                if let Some(token) = data[&self.format.subject_token_field_name].as_str() {
+                let field_name = self
+                    .format
+                    .subject_token_field_name
+                    .as_ref()
+                    .ok_or(Error::MissingSubjectTokenFieldName)?;
+                if let Some(token) = data[field_name].as_str() {
                     Ok(token.to_string())
                 } else {
                     Err(Error::MissingSubjectTokenFieldName)

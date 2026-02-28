@@ -28,7 +28,7 @@ pub struct ExecutableConfig {
 pub struct Format {
     #[serde(rename(deserialize = "type"))]
     pub(crate) tp: String,
-    pub(crate) subject_token_field_name: String,
+    pub(crate) subject_token_field_name: Option<String>,
 }
 
 #[allow(dead_code)]
