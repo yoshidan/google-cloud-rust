@@ -16,3 +16,5 @@ Cargo.lock
 
 # IDE
 .idea
+spanner/target/rust-analyzer/flycheck0
+spanner/.env

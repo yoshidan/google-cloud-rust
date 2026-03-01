@@ -169,6 +169,7 @@ async fn test_read_change_stream() {
     let db = format!("projects/{project}/instances/test-instance/databases/local-database2");
     let admin_client = admin::client::Client::new(AdminClientConfig {
         environment: create_environment().await,
+        ..Default::default()
     })
     .await
     .unwrap();
