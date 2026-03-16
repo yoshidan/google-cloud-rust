@@ -456,7 +456,10 @@ async fn test_query_profile_mode_empty_result_stats() {
 
     // Metadata should be populated after draining
     let metadata = iter.columns_metadata();
-    assert!(!metadata.is_empty(), "Profile mode empty result should populate column metadata");
+    assert!(
+        !metadata.is_empty(),
+        "Profile mode empty result should populate column metadata"
+    );
     assert_eq!(metadata.len(), 2);
     assert_eq!(metadata[0].name, "UserId");
     assert_eq!(metadata[1].name, "NotNullINT64");
