@@ -148,6 +148,9 @@ pub struct ChannelConfig {
     num_channels: usize,
     connect_timeout: Option<Duration>,
     timeout: Option<Duration>,
+    http2_keep_alive_interval: Option<Duration>,
+    keep_alive_timeout: Option<Duration>,
+    keep_alive_while_idle: Option<bool>,
 }
 
 impl ChannelConfig {
@@ -163,6 +166,18 @@ impl ChannelConfig {
         self.timeout = Some(value);
         self
     }
+    pub fn with_http2_keep_alive_interval(mut self, value: Duration) -> Self {
+        self.http2_keep_alive_interval = Some(value);
+        self
+    }
+    pub fn with_keep_alive_timeout(mut self, value: Duration) -> Self {
+        self.keep_alive_timeout = Some(value);
+        self
+    }
+    pub fn with_keep_alive_while_idle(mut self, value: bool) -> Self {
+        self.keep_alive_while_idle = Some(value);
+        self
+    }
 
     async fn into_connection_manager(
         self,
@@ -174,6 +189,9 @@ impl ChannelConfig {
             &ConnectionOptions {
                 timeout: self.timeout,
                 connect_timeout: self.connect_timeout,
+                http2_keep_alive_interval: self.http2_keep_alive_interval,
+                keep_alive_timeout: self.keep_alive_timeout,
+                keep_alive_while_idle: self.keep_alive_while_idle,
             },
         )
         .await
@@ -186,6 +204,9 @@ impl Default for ChannelConfig {
             num_channels: 4,
             connect_timeout: Some(Duration::from_secs(30)),
             timeout: None,
+            http2_keep_alive_interval: None,
+            keep_alive_timeout: None,
+            keep_alive_while_idle: None,
         }
     }
 }

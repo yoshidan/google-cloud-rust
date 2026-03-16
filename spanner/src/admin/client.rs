@@ -35,6 +35,9 @@ async fn internal_client(config: &AdminClientConfig) -> Result<(Channel, Operati
     let conn_options = ConnectionOptions {
         timeout: Some(config.timeout),
         connect_timeout: Some(config.connect_timeout),
+        http2_keep_alive_interval: config.http2_keep_alive_interval,
+        keep_alive_timeout: config.keep_alive_timeout,
+        keep_alive_while_idle: config.keep_alive_while_idle,
     };
     let conn_pool = ConnectionManager::new(1, SPANNER, AUDIENCE, &config.environment, &conn_options).await?;
     let conn = conn_pool.conn();
