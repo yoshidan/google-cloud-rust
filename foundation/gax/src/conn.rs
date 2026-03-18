@@ -98,6 +98,9 @@ where
 pub struct ConnectionOptions {
     pub timeout: Option<Duration>,
     pub connect_timeout: Option<Duration>,
+    pub http2_keep_alive_interval: Option<Duration>,
+    pub keep_alive_timeout: Option<Duration>,
+    pub keep_alive_while_idle: Option<bool>,
 }
 
 impl ConnectionOptions {
@@ -108,6 +111,18 @@ impl ConnectionOptions {
         };
         endpoint = match self.connect_timeout {
             Some(t) => endpoint.connect_timeout(t),
+            None => endpoint,
+        };
+        endpoint = match self.http2_keep_alive_interval {
+            Some(d) => endpoint.http2_keep_alive_interval(d),
+            None => endpoint,
+        };
+        endpoint = match self.keep_alive_timeout {
+            Some(d) => endpoint.keep_alive_timeout(d),
+            None => endpoint,
+        };
+        endpoint = match self.keep_alive_while_idle {
+            Some(v) => endpoint.keep_alive_while_idle(v),
             None => endpoint,
         };
         endpoint

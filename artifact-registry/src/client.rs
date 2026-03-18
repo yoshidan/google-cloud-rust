@@ -15,6 +15,9 @@ pub struct ClientConfig {
     pub token_source_provider: Box<dyn TokenSourceProvider>,
     pub timeout: Option<Duration>,
     pub connect_timeout: Option<Duration>,
+    pub http2_keep_alive_interval: Option<Duration>,
+    pub keep_alive_timeout: Option<Duration>,
+    pub keep_alive_while_idle: Option<bool>,
 }
 
 #[cfg(feature = "auth")]
@@ -56,6 +59,9 @@ impl Default for ClientConfig {
             token_source_provider: Box::new(NoopTokenSourceProvider {}),
             timeout: Some(Duration::from_secs(30)),
             connect_timeout: Some(Duration::from_secs(30)),
+            http2_keep_alive_interval: None,
+            keep_alive_timeout: None,
+            keep_alive_while_idle: None,
         }
     }
 }
@@ -70,6 +76,9 @@ impl Client {
         let conn_options = ConnectionOptions {
             timeout: config.timeout,
             connect_timeout: config.connect_timeout,
+            http2_keep_alive_interval: config.http2_keep_alive_interval,
+            keep_alive_timeout: config.keep_alive_timeout,
+            keep_alive_while_idle: config.keep_alive_while_idle,
         };
         let conn_pool = ConnectionManager::new(
             1,

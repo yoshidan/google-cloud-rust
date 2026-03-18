@@ -58,6 +58,9 @@ pub struct ChannelConfig {
     pub num_channels: usize,
     pub connect_timeout: Duration,
     pub timeout: Duration,
+    pub http2_keep_alive_interval: Option<Duration>,
+    pub keep_alive_timeout: Option<Duration>,
+    pub keep_alive_while_idle: Option<bool>,
 }
 
 impl Default for ChannelConfig {
@@ -66,6 +69,9 @@ impl Default for ChannelConfig {
             num_channels: 4,
             connect_timeout: Duration::from_secs(30),
             timeout: Duration::from_secs(30),
+            http2_keep_alive_interval: None,
+            keep_alive_timeout: None,
+            keep_alive_while_idle: None,
         }
     }
 }
@@ -197,6 +203,9 @@ impl Client {
         let options = ConnectionOptions {
             timeout: Some(config.channel_config.timeout),
             connect_timeout: Some(config.channel_config.connect_timeout),
+            http2_keep_alive_interval: config.channel_config.http2_keep_alive_interval,
+            keep_alive_timeout: config.channel_config.keep_alive_timeout,
+            keep_alive_while_idle: config.channel_config.keep_alive_while_idle,
         };
         let conn_pool =
             ConnectionManager::new(pool_size, &config.environment, config.endpoint.as_str(), &options).await?;
