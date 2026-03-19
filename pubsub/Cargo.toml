@@ -22,7 +22,7 @@ async-stream = "0.3"
 thiserror = "2.0"
 
 token-source = "1.0"
-google-cloud-gax = { package = "gcloud-gax", version = "1.3.2", path = "../foundation/gax" }
+google-cloud-gax = { package = "gcloud-gax", version = "1.4.0", path = "../foundation/gax" }
 google-cloud-googleapis = { package = "gcloud-googleapis", version = "1.3.0", path = "../googleapis", features = ["pubsub"]}
 google-cloud-auth = { package = "gcloud-auth", optional = true, version = "1.3.0", path="../foundation/auth", default-features=false }
 

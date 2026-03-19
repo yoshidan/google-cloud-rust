@@ -17,7 +17,7 @@ doctest = false
 async-trait = "0.1"
 token-source = "1.0"
 google-cloud-googleapis = { package = "gcloud-googleapis", version="1.3.0", path = "../googleapis", features=["bigquery"]}
-google-cloud-gax = { package = "gcloud-gax", version = "1.3.2", path = "../foundation/gax"}
+google-cloud-gax = { package = "gcloud-gax", version = "1.4.0", path = "../foundation/gax"}
 thiserror = "2.0"
 tracing = "0.1"
 reqwest = { version = "0.13", features = ["json", "stream", "multipart", "charset"], default-features = false }
