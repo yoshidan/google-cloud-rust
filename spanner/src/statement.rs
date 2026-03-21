@@ -207,6 +207,16 @@ impl ToKind for BigDecimal {
     }
 }
 
+#[cfg(feature = "uuid")]
+impl ToKind for ::uuid::Uuid {
+    fn to_kind(&self) -> Kind {
+        self.to_string().to_kind()
+    }
+    fn get_type() -> Type {
+        single_type(TypeCode::Uuid)
+    }
+}
+
 impl ToKind for ::prost_types::Timestamp {
     fn to_kind(&self) -> Kind {
         // The protobuf timestamp type should be formatted in RFC3339
@@ -327,5 +337,19 @@ mod test {
 
         // Prost's Timestamp type and OffsetDateTime should have the same representation in spanner
         assert_eq!(prost_types::Timestamp::get_type(), OffsetDateTime::get_type());
+    }
+
+    #[cfg(feature = "uuid")]
+    #[test]
+    fn uuid_to_kind_works() {
+        use google_cloud_googleapis::spanner::v1::TypeCode;
+
+        let uuid = ::uuid::Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000").unwrap();
+        let expected = "550e8400-e29b-41d4-a716-446655440000";
+        let kind = uuid.to_kind();
+        assert!(matches!(kind, Kind::StringValue(s) if s == expected));
+
+        let uuid_type = ::uuid::Uuid::get_type();
+        assert_eq!(uuid_type.code, TypeCode::Uuid as i32);
     }
 }
