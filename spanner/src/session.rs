@@ -13,6 +13,8 @@ use tokio::task::{JoinHandle, JoinSet};
 use tokio::time::{sleep, timeout};
 use tokio_util::sync::CancellationToken;
 
+use tracing::{Instrument, Span};
+
 use google_cloud_gax::grpc::metadata::MetadataMap;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::TryAs;
@@ -284,7 +286,7 @@ impl SessionPool {
             let database = database.clone();
             tasks.spawn(async move {
                 batch_create_sessions(next_client, &database, creation_count, disable_route_to_leader).await
-            });
+            }.instrument(Span::current()));
         }
         while let Some(r) = tasks.join_next().await {
             let new_sessions = r.map_err(|e| Status::from_error(e.into()))??;
