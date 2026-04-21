@@ -56,8 +56,7 @@ impl AppendRowsRequestBuilder {
             generator.schema_to_bytes_with_dictionary_tracker(&batch.schema(), &mut dict_tracker, &options);
         let serialized_schema = encoded_to_bytes(vec![schema_encoded], &options)?;
 
-        let (dict_encoded, batch_encoded) =
-            generator.encode(batch, &mut dict_tracker, &options, &mut compression)?;
+        let (dict_encoded, batch_encoded) = generator.encode(batch, &mut dict_tracker, &options, &mut compression)?;
         let mut encoded = dict_encoded;
         encoded.push(batch_encoded);
         let serialized_record_batch = encoded_to_bytes(encoded, &options)?;
