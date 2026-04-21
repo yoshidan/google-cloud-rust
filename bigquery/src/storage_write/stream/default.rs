@@ -57,7 +57,7 @@ impl AsStream for DefaultStream {
 #[cfg(test)]
 mod tests {
     use crate::client::{Client, ClientConfig};
-    use crate::storage_write::stream::tests::{create_append_rows_request, TestData};
+    use crate::storage_write::stream::tests::{create_append_rows_request, create_arrow_append_rows_request, TestData};
     use futures_util::StreamExt;
     use google_cloud_gax::grpc::Status;
     use prost::Message;
@@ -113,6 +113,48 @@ mod tests {
         }
 
         // Wait for append rows
+        for task in tasks {
+            task.await.unwrap().unwrap();
+        }
+    }
+
+    #[serial_test::serial]
+    #[tokio::test]
+    async fn test_storage_write_arrow() {
+        let (config, project_id) = ClientConfig::new_with_auth().await.unwrap();
+        let project_id = project_id.unwrap();
+        let client = Client::new(config).await.unwrap();
+        let tables = ["write_test", "write_test_1"];
+        let writer = client.default_storage_writer();
+
+        let mut streams = vec![];
+        for i in 0..2 {
+            let table = format!(
+                "projects/{}/datasets/gcrbq_storage/tables/{}",
+                &project_id,
+                tables[i % tables.len()]
+            );
+            let stream = writer.create_write_stream(&table).await.unwrap();
+            streams.push(stream);
+        }
+
+        let mut tasks: Vec<JoinHandle<Result<(), Status>>> = vec![];
+        for (i, stream) in streams.into_iter().enumerate() {
+            tasks.push(tokio::spawn(async move {
+                let mut rows = vec![];
+                for j in 0..5 {
+                    let values = (0..3).map(|k| format!("arrow_default_{i}_{j}_{k}")).collect();
+                    rows.push(create_arrow_append_rows_request(values));
+                }
+                let mut result = stream.append_rows(rows).await.unwrap();
+                while let Some(res) = result.next().await {
+                    let res = res?;
+                    tracing::info!("append row errors = {:?}", res.row_errors.len());
+                }
+                Ok(())
+            }));
+        }
+
         for task in tasks {
             task.await.unwrap().unwrap();
         }

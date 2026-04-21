@@ -108,8 +108,14 @@ impl DisposableStreamDelegate {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::storage_write::AppendRowsRequestBuilder;
+    use std::sync::Arc;
+
+    use arrow::array::StringArray;
+    use arrow::datatypes::{DataType, Field, Schema};
+    use arrow::record_batch::RecordBatch;
     use prost_types::{field_descriptor_proto, DescriptorProto, FieldDescriptorProto};
+
+    use crate::storage_write::AppendRowsRequestBuilder;
 
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub(crate) struct TestData {
@@ -149,5 +155,12 @@ pub(crate) mod tests {
             reserved_name: vec![],
         };
         AppendRowsRequestBuilder::new(proto, buf)
+    }
+
+    pub(crate) fn create_arrow_append_rows_request(values: Vec<String>) -> AppendRowsRequestBuilder {
+        let schema = Arc::new(Schema::new(vec![Field::new("col_string", DataType::Utf8, false)]));
+        let col = Arc::new(StringArray::from(values));
+        let batch = RecordBatch::try_new(schema, vec![col]).unwrap();
+        AppendRowsRequestBuilder::from_record_batch(&batch).unwrap()
     }
 }
