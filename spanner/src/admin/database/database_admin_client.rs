@@ -54,7 +54,7 @@ impl DatabaseAdminClient {
                     .map_transient_err()
             };
             let response = invoke(retry.clone(), action).await?;
-            all_databases.extend(response.databases.into_iter());
+            all_databases.extend(response.databases);
             if response.next_page_token.is_empty() {
                 return Ok(all_databases);
             }
@@ -340,7 +340,7 @@ impl DatabaseAdminClient {
                     .map_transient_err()
             };
             let response = invoke(retry.clone(), action).await?;
-            all_backups.extend(response.backups.into_iter());
+            all_backups.extend(response.backups);
             if response.next_page_token.is_empty() {
                 return Ok(all_backups);
             }
@@ -413,7 +413,7 @@ impl DatabaseAdminClient {
                     .map_transient_err()
             };
             let response = invoke(retry.clone(), action).await?;
-            all_operations.extend(response.operations.into_iter());
+            all_operations.extend(response.operations);
             if response.next_page_token.is_empty() {
                 return Ok(all_operations);
             }
@@ -450,7 +450,7 @@ impl DatabaseAdminClient {
                     .map_transient_err()
             };
             let response = invoke(retry.clone(), action).await?;
-            all_operations.extend(response.operations.into_iter());
+            all_operations.extend(response.operations);
             if response.next_page_token.is_empty() {
                 return Ok(all_operations);
             }

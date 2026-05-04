@@ -147,7 +147,7 @@ impl SubscriberClient {
                     .map_transient_err()
             };
             let response: ListSubscriptionsResponse = invoke(retry.clone(), action).await?;
-            all.extend(response.subscriptions.into_iter());
+            all.extend(response.subscriptions);
             if response.next_page_token.is_empty() {
                 return Ok(all);
             }
@@ -331,7 +331,7 @@ impl SubscriberClient {
                     .map_transient_err()
             };
             let response: ListSnapshotsResponse = invoke(retry.clone(), action).await?;
-            all.extend(response.snapshots.into_iter());
+            all.extend(response.snapshots);
             if response.next_page_token.is_empty() {
                 return Ok(all);
             }

@@ -51,7 +51,7 @@ impl InstanceAdminClient {
                     .map_transient_err()
             };
             let response = invoke(retry.clone(), action).await?;
-            all.extend(response.instance_configs.into_iter());
+            all.extend(response.instance_configs);
             if response.next_page_token.is_empty() {
                 return Ok(all);
             }
@@ -102,7 +102,7 @@ impl InstanceAdminClient {
                     .map_transient_err()
             };
             let response = invoke(retry.clone(), action).await?;
-            all.extend(response.instances.into_iter());
+            all.extend(response.instances);
             if response.next_page_token.is_empty() {
                 return Ok(all);
             }

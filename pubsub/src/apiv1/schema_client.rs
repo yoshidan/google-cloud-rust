@@ -79,7 +79,7 @@ impl SchemaClient {
                     .map_transient_err()
             };
             let response = invoke(retry.clone(), action).await?;
-            all.extend(response.schemas.into_iter());
+            all.extend(response.schemas);
             if response.next_page_token.is_empty() {
                 return Ok(all);
             }
