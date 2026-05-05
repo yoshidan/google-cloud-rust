@@ -1,6 +1,11 @@
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use google_cloud_googleapis::spanner::v1::MultiplexedSessionPrecommitToken;
+use parking_lot::Mutex;
 use std::time::Duration;
 
 use prost_types::Struct;
@@ -32,6 +37,24 @@ pub struct CommitOptions {
 pub struct CommitResult {
     pub timestamp: Option<Timestamp>,
     pub mutation_count: Option<u64>,
+}
+
+/// Update the precommit-token slot with `new_token` only if its `seq_num` is
+/// strictly greater than the currently-stored token's `seq_num`. The proto
+/// requires the client to send the precommit token with the highest `seq_num`
+/// of the transaction attempt.
+pub(crate) fn update_precommit_token(
+    slot: &Mutex<Option<MultiplexedSessionPrecommitToken>>,
+    new_token: &MultiplexedSessionPrecommitToken,
+) {
+    let mut guard = slot.lock();
+    let should_replace = match guard.as_ref() {
+        None => true,
+        Some(cur) => new_token.seq_num > cur.seq_num,
+    };
+    if should_replace {
+        *guard = Some(new_token.clone());
+    }
 }
 
 impl From<CommitResponse> for CommitResult {
@@ -160,13 +183,43 @@ impl ReadWriteTransaction {
         transaction_tag: Option<String>,
         disable_route_to_leader: bool,
     ) -> Result<ReadWriteTransaction, BeginError> {
+        let is_read_write = matches!(mode, transaction_options::Mode::ReadWrite(_));
+        let tx_options = TransactionOptions {
+            exclude_txn_from_change_streams: false,
+            mode: Some(mode),
+            isolation_level: IsolationLevel::Unspecified as i32,
+        };
+
+        // Multiplexed sessions use inline begin for read-write transactions:
+        // the transaction is started implicitly with the first RPC (query or
+        // DML), not via a separate BeginTransaction call. This matches the
+        // Java client's behaviour. (Read-only transactions on multiplexed
+        // sessions still use explicit BeginTransaction in this crate; see
+        // ReadOnlyTransaction::begin.) PartitionedDml is not supported by
+        // inline begin and must always go through BeginTransaction.
+        if session.session.multiplexed && is_read_write {
+            let pending_tx_id = Arc::new(Mutex::new(None));
+            let pending_token = Arc::new(Mutex::new(None));
+            return Ok(ReadWriteTransaction {
+                base_tx: Transaction {
+                    session: Some(session),
+                    sequence_number: AtomicI64::new(0),
+                    transaction_selector: TransactionSelector {
+                        selector: Some(transaction_selector::Selector::Begin(tx_options)),
+                    },
+                    transaction_tag,
+                    disable_route_to_leader,
+                    pending_inline_tx_id: Some(pending_tx_id),
+                    pending_precommit_token: Some(pending_token),
+                },
+                tx_id: vec![],
+                wb: vec![],
+            });
+        }
+
         let request = BeginTransactionRequest {
             session: session.session.name.to_string(),
-            options: Some(TransactionOptions {
-                exclude_txn_from_change_streams: false,
-                mode: Some(mode),
-                isolation_level: IsolationLevel::Unspecified as i32,
-            }),
+            options: Some(tx_options),
             request_options: Transaction::create_request_options(options.priority, transaction_tag.clone()),
             mutation_key: None,
         };
@@ -190,10 +243,27 @@ impl ReadWriteTransaction {
                 },
                 transaction_tag,
                 disable_route_to_leader,
+                pending_inline_tx_id: None,
+                pending_precommit_token: None,
             },
             tx_id: tx.id,
             wb: vec![],
         })
+    }
+
+    /// If inline begin captured a transaction ID, upgrade the selector to
+    /// `Id(tx_id)` and mirror the id into `self.tx_id` (used by commit and
+    /// rollback). Idempotent.
+    fn resolve_inline_begin(&mut self) {
+        self.base_tx.resolve_inline_begin_selector();
+        if !self.tx_id.is_empty() {
+            return;
+        }
+        if let Some(ref slot) = self.base_tx.pending_inline_tx_id {
+            if let Some(tx_id) = slot.lock().clone() {
+                self.tx_id = tx_id;
+            }
+        }
     }
 
     pub fn buffer_write(&mut self, ms: Vec<Mutation>) {
@@ -205,6 +275,7 @@ impl ReadWriteTransaction {
     }
 
     pub async fn update_with_option(&mut self, stmt: Statement, options: QueryOptions) -> Result<i64, Status> {
+        self.resolve_inline_begin();
         let request = ExecuteSqlRequest {
             session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
@@ -231,7 +302,29 @@ impl ReadWriteTransaction {
             .execute_sql(request, disable_route_to_leader, options.call_options.retry)
             .await;
         let response = session.invalidate_if_needed(result).await?;
-        Ok(extract_row_count(response.into_inner().stats))
+        let result_set = response.into_inner();
+        // When this is the first operation in an inline-begin transaction,
+        // the server returns the new transaction ID in the response metadata.
+        // Capture it so commit() can use Id(tx_id) instead of Begin.
+        if let Some(ref slot) = self.base_tx.pending_inline_tx_id {
+            if let Some(ref meta) = result_set.metadata {
+                if let Some(ref txn) = meta.transaction {
+                    if !txn.id.is_empty() {
+                        let mut guard = slot.lock();
+                        if guard.is_none() {
+                            *guard = Some(txn.id.clone());
+                        }
+                    }
+                }
+            }
+        }
+        // Capture the precommit token from DML responses (multiplexed sessions).
+        if let Some(ref slot) = self.base_tx.pending_precommit_token {
+            if let Some(token) = result_set.precommit_token.as_ref() {
+                update_precommit_token(slot, token);
+            }
+        }
+        Ok(extract_row_count(result_set.stats))
     }
 
     pub async fn batch_update(&mut self, stmt: Vec<Statement>) -> Result<Vec<i64>, Status> {
@@ -243,6 +336,7 @@ impl ReadWriteTransaction {
         stmt: Vec<Statement>,
         options: QueryOptions,
     ) -> Result<Vec<i64>, Status> {
+        self.resolve_inline_begin();
         let request = ExecuteBatchDmlRequest {
             session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
@@ -268,13 +362,31 @@ impl ReadWriteTransaction {
             .spanner_client
             .execute_batch_dml(request, disable_route_to_leader, options.call_options.retry)
             .await;
-        let response = session.invalidate_if_needed(result).await?;
-        Ok(response
-            .into_inner()
-            .result_sets
-            .into_iter()
-            .map(|x| extract_row_count(x.stats))
-            .collect())
+        let response = session.invalidate_if_needed(result).await?.into_inner();
+        // When this is the first operation in an inline-begin transaction,
+        // the server returns the new transaction ID in the metadata of the
+        // first ResultSet (only result_sets[0] carries valid metadata).
+        if let Some(ref slot) = self.base_tx.pending_inline_tx_id {
+            if let Some(first) = response.result_sets.first() {
+                if let Some(ref meta) = first.metadata {
+                    if let Some(ref txn) = meta.transaction {
+                        if !txn.id.is_empty() {
+                            let mut guard = slot.lock();
+                            if guard.is_none() {
+                                *guard = Some(txn.id.clone());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // Capture the response-level precommit token (multiplexed sessions).
+        if let Some(ref slot) = self.base_tx.pending_precommit_token {
+            if let Some(token) = response.precommit_token.as_ref() {
+                update_precommit_token(slot, token);
+            }
+        }
+        Ok(response.result_sets.into_iter().map(|x| extract_row_count(x.stats)).collect())
     }
 
     pub async fn end<S, E>(
@@ -349,14 +461,111 @@ impl ReadWriteTransaction {
     }
 
     pub(crate) async fn commit(&mut self, options: CommitOptions) -> Result<CommitResponse, Status> {
+        self.resolve_inline_begin();
+        // Mutations-only commit on a multiplexed session: no read/DML fired,
+        // so there is no server-side transaction yet. The Spanner protocol
+        // requires an explicit BeginTransaction with `mutation_key` set to one
+        // of the buffered mutations in this case.
+        if self.tx_id.is_empty() && self.base_tx.pending_inline_tx_id.is_some() && !self.wb.is_empty() {
+            self.begin_for_mutations_only(&options).await?;
+        }
+        // No server-side transaction was ever started (no read/DML and no
+        // mutations to commit). There is nothing to commit; return a synthetic
+        // empty response rather than shipping `TransactionId(empty)`, which
+        // the server would reject.
+        if self.tx_id.is_empty() {
+            return Ok(CommitResponse::default());
+        }
         let tx_id = self.tx_id.clone();
         let mutations = self.wb.to_vec();
         let disable_route_to_leader = self.disable_route_to_leader;
+        // Collect the precommit token required by Spanner Omni for inline-begin
+        // transactions on multiplexed sessions.
+        let precommit_token = self
+            .base_tx
+            .pending_precommit_token
+            .as_ref()
+            .and_then(|slot| slot.lock().clone());
         let session = self.as_mut_session();
-        commit(session, mutations, TransactionId(tx_id), options, disable_route_to_leader).await
+        commit(session, mutations, TransactionId(tx_id), options, disable_route_to_leader, precommit_token).await
+    }
+
+    /// Issue an explicit BeginTransaction with `mutation_key` for the
+    /// multiplexed-session mutations-only case. The returned tx_id is mirrored
+    /// into the inline-begin slot, the selector, and `self.tx_id`.
+    async fn begin_for_mutations_only(&mut self, options: &CommitOptions) -> Result<(), Status> {
+        let tx_options = match self.base_tx.transaction_selector.selector {
+            Some(transaction_selector::Selector::Begin(ref opts)) => opts.clone(),
+            _ => TransactionOptions {
+                exclude_txn_from_change_streams: false,
+                mode: Some(transaction_options::Mode::ReadWrite(transaction_options::ReadWrite::default())),
+                isolation_level: IsolationLevel::Unspecified as i32,
+            },
+        };
+        // Spanner v1 proto for BeginTransactionRequest.mutation_key advises:
+        // "Clients should randomly select one of the mutations from the
+        // mutation set and send it as a part of this request." A stable
+        // first-element pick would defeat the server's partition lookup
+        // load-spreading. Use clock nanos for a cheap pseudo-random index
+        // (no new crate dependency; spec only requires load distribution,
+        // not cryptographic randomness).
+        let mutation_key = if self.wb.is_empty() {
+            None
+        } else {
+            let nanos = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|d| d.subsec_nanos() as usize)
+                .unwrap_or(0);
+            self.wb.get(nanos % self.wb.len()).cloned()
+        };
+        let request = BeginTransactionRequest {
+            session: self.get_session_name(),
+            options: Some(tx_options),
+            request_options: Transaction::create_request_options(
+                options.call_options.priority,
+                self.base_tx.transaction_tag.clone(),
+            ),
+            mutation_key,
+        };
+        let disable_route_to_leader = self.disable_route_to_leader;
+        let retry = options.call_options.retry.clone();
+        let session = self.as_mut_session();
+        let result = session.spanner_client.begin_transaction(request, disable_route_to_leader, retry).await;
+        let response = session.invalidate_if_needed(result).await?;
+        let tx = response.into_inner();
+        if tx.id.is_empty() {
+            return Err(Status::new(
+                Code::Internal,
+                "BeginTransaction returned empty transaction id for mutations-only commit",
+            ));
+        }
+        // The server returns a precommit token on the BeginTransaction response
+        // when `mutation_key` is set on a multiplexed session; it must be sent
+        // back on the Commit request or the server rejects the commit.
+        if let Some(ref slot) = self.base_tx.pending_precommit_token {
+            if let Some(token) = tx.precommit_token.as_ref() {
+                update_precommit_token(slot, token);
+            }
+        }
+        if let Some(ref slot) = self.base_tx.pending_inline_tx_id {
+            *slot.lock() = Some(tx.id.clone());
+        }
+        self.base_tx.transaction_selector = TransactionSelector {
+            selector: Some(transaction_selector::Selector::Id(tx.id.clone())),
+        };
+        self.tx_id = tx.id;
+        Ok(())
     }
 
     pub(crate) async fn rollback(&mut self, retry: Option<RetrySetting>) -> Result<(), Status> {
+        // Mirror any inline-begin tx_id captured by a prior read/DML so that
+        // rollback targets the right server-side transaction.
+        self.resolve_inline_begin();
+        // If no server-side transaction was ever started (no read/DML and no
+        // mutations-only begin), there is nothing to roll back.
+        if self.tx_id.is_empty() {
+            return Ok(());
+        }
         let request = RollbackRequest {
             transaction_id: self.tx_id.clone(),
             session: self.get_session_name(),
@@ -378,6 +587,7 @@ pub(crate) async fn commit(
     tx: commit_request::Transaction,
     commit_options: CommitOptions,
     disable_route_to_leader: bool,
+    precommit_token: Option<MultiplexedSessionPrecommitToken>,
 ) -> Result<CommitResponse, Status> {
     let request = CommitRequest {
         session: session.session.name.to_string(),
@@ -389,7 +599,7 @@ pub(crate) async fn commit(
         ),
         return_commit_stats: commit_options.return_commit_stats,
         max_commit_delay: commit_options.max_commit_delay.map(|d| d.try_into().unwrap()),
-        precommit_token: None,
+        precommit_token,
     };
     let result = session
         .spanner_client
@@ -412,5 +622,48 @@ fn extract_row_count(rs: Option<ResultSetStats>) -> i64 {
             None => 0,
         },
         None => 0,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn token(bytes: &[u8], seq_num: i32) -> MultiplexedSessionPrecommitToken {
+        MultiplexedSessionPrecommitToken {
+            precommit_token: bytes.to_vec(),
+            seq_num,
+        }
+    }
+
+    #[test]
+    fn update_precommit_token_stores_into_empty_slot() {
+        let slot = Mutex::new(None);
+        update_precommit_token(&slot, &token(b"a", 5));
+        assert_eq!(slot.lock().as_ref().unwrap().seq_num, 5);
+        assert_eq!(slot.lock().as_ref().unwrap().precommit_token, b"a");
+    }
+
+    #[test]
+    fn update_precommit_token_replaces_when_seq_num_strictly_greater() {
+        let slot = Mutex::new(Some(token(b"a", 3)));
+        update_precommit_token(&slot, &token(b"b", 5));
+        assert_eq!(slot.lock().as_ref().unwrap().seq_num, 5);
+        assert_eq!(slot.lock().as_ref().unwrap().precommit_token, b"b");
+    }
+
+    #[test]
+    fn update_precommit_token_keeps_existing_when_seq_num_lower() {
+        let slot = Mutex::new(Some(token(b"a", 5)));
+        update_precommit_token(&slot, &token(b"b", 3));
+        assert_eq!(slot.lock().as_ref().unwrap().seq_num, 5);
+        assert_eq!(slot.lock().as_ref().unwrap().precommit_token, b"a");
+    }
+
+    #[test]
+    fn update_precommit_token_keeps_existing_when_seq_num_equal() {
+        let slot = Mutex::new(Some(token(b"a", 5)));
+        update_precommit_token(&slot, &token(b"b", 5));
+        assert_eq!(slot.lock().as_ref().unwrap().precommit_token, b"a");
     }
 }

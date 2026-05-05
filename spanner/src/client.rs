@@ -95,14 +95,42 @@ pub struct ClientConfig {
 
 impl Default for ClientConfig {
     fn default() -> Self {
+        // SPANNER_OMNI_ENDPOINT and SPANNER_EMULATOR_HOST both reuse the
+        // `Environment::Emulator` variant because they share the same
+        // connection profile we need for our Omni deployment: plain-text gRPC
+        // and no auth interceptor. This is a deliberate overload — the variant
+        // name describes the connection shape we want, not the kind of server
+        // on the other end. If your Omni deployment requires TLS or auth, do
+        // not rely on `Default`; build a `ClientConfig` with a custom
+        // `environment` instead.
+        //
+        // SPANNER_OMNI_ENDPOINT takes precedence over SPANNER_EMULATOR_HOST,
+        // and additionally flips `use_multiplexed_session` on (Omni requires
+        // multiplexed sessions for read-write transactions).
+        let (environment, use_multiplexed, env_source) = if let Ok(v) = var("SPANNER_OMNI_ENDPOINT") {
+            (Environment::Emulator(v), true, Some("SPANNER_OMNI_ENDPOINT"))
+        } else if let Ok(v) = var("SPANNER_EMULATOR_HOST") {
+            (Environment::Emulator(v), false, Some("SPANNER_EMULATOR_HOST"))
+        } else {
+            (Environment::GoogleCloud(Box::new(NoopTokenSourceProvider {})), false, None)
+        };
+        if let Some(name) = env_source {
+            tracing::info!(
+                env_var = name,
+                use_multiplexed_session = use_multiplexed,
+                "ClientConfig::default(): using plaintext+no-auth profile because {} is set",
+                name,
+            );
+        }
+
+        let mut session_config = SessionConfig::default();
+        session_config.use_multiplexed_session = use_multiplexed;
+
         let mut config = ClientConfig {
             channel_config: Default::default(),
-            session_config: Default::default(),
+            session_config,
             endpoint: SPANNER.to_string(),
-            environment: match var("SPANNER_EMULATOR_HOST").ok() {
-                Some(v) => Environment::Emulator(v),
-                None => Environment::GoogleCloud(Box::new(NoopTokenSourceProvider {})),
-            },
+            environment,
             disable_route_to_leader: false,
             metrics: MetricsConfig::default(),
         };
@@ -415,6 +443,22 @@ impl Client {
         let ro = TransactionRetrySetting::default();
         let mut session = self.get_session().await?;
 
+        // Multiplexed sessions reject mutation commits sent through a
+        // SingleUseTransaction (there is no place to attach the required
+        // `mutation_key`/`precommit_token`). Fall back to the regular RW
+        // transaction path, which routes through `begin_for_mutations_only`
+        // and includes the precommit token on Commit. The single-RPC
+        // optimisation does not apply on multiplexed sessions.
+        if session.session.multiplexed {
+            drop(session);
+            let opts = ReadWriteTransactionOption {
+                commit_options: options,
+                ..Default::default()
+            };
+            let result = self.apply_with_option(ms, opts).await?;
+            return Ok(Some(result));
+        }
+
         invoke_fn(
             Some(ro),
             |session| async {
@@ -423,7 +467,7 @@ impl Client {
                     mode: Some(transaction_options::Mode::ReadWrite(transaction_options::ReadWrite::default())),
                     isolation_level: IsolationLevel::Unspecified as i32,
                 });
-                match commit(session, ms.clone(), tx, options.clone(), self.disable_route_to_leader).await {
+                match commit(session, ms.clone(), tx, options.clone(), self.disable_route_to_leader, None).await {
                     Ok(s) => Ok(Some(s.into())),
                     Err(e) => Err((Error::GRPC(e), session)),
                 }

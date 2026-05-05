@@ -1,11 +1,16 @@
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
+use google_cloud_googleapis::spanner::v1::MultiplexedSessionPrecommitToken;
+use parking_lot::Mutex;
+
 use prost::Message;
 use prost_types::{value::Kind, Value};
 
 use google_cloud_gax::grpc::{Code, Response, Status, Streaming};
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
+use google_cloud_googleapis::spanner::v1::transaction_selector::Selector as TransactionSelectorEnum;
+use google_cloud_googleapis::spanner::v1::TransactionSelector;
 use google_cloud_googleapis::spanner::v1::{
     ExecuteSqlRequest, PartialResultSet, ReadRequest, ResultSetMetadata, ResultSetStats,
 };
@@ -14,6 +19,33 @@ use crate::retry::StreamingRetry;
 use crate::row::Row;
 use crate::session::SessionHandle;
 use crate::transaction::CallOptions;
+
+/// Capture the inline-begin transaction id (from the first response's metadata)
+/// and the latest multiplexed-session precommit token from a PartialResultSet
+/// into the slots shared with the parent transaction.
+fn capture_inline_metadata(
+    inline_tx_id: &Option<Arc<Mutex<Option<Vec<u8>>>>>,
+    inline_precommit_token: &Option<Arc<Mutex<Option<MultiplexedSessionPrecommitToken>>>>,
+    prs: &PartialResultSet,
+) {
+    if let Some(slot) = inline_tx_id {
+        if let Some(meta) = prs.metadata.as_ref() {
+            if let Some(txn) = meta.transaction.as_ref() {
+                if !txn.id.is_empty() {
+                    let mut guard = slot.lock();
+                    if guard.is_none() {
+                        *guard = Some(txn.id.clone());
+                    }
+                }
+            }
+        }
+    }
+    if let Some(slot) = inline_precommit_token {
+        if let Some(token) = prs.precommit_token.as_ref() {
+            crate::transaction_rw::update_precommit_token(slot, token);
+        }
+    }
+}
 
 pub trait Reader: Send + Sync {
     fn read(
@@ -24,6 +56,16 @@ pub trait Reader: Send + Sync {
     ) -> impl std::future::Future<Output = Result<Response<Streaming<PartialResultSet>>, Status>> + Send;
 
     fn update_token(&mut self, resume_token: Vec<u8>);
+
+    /// Replace the request's transaction selector with `Id(tx_id)`. Used
+    /// after inline-begin captures the server-assigned tx_id so that any
+    /// subsequent retry of the same streaming RPC does not re-issue a
+    /// `Begin(...)` selector and accidentally start a second server-side
+    /// transaction. Default impl is a no-op so external `Reader`
+    /// implementations don't need to be updated; only callers that
+    /// participate in inline-begin (the in-crate `StatementReader` /
+    /// `TableReader`) need to override it.
+    fn update_transaction_selector(&mut self, _tx_id: Vec<u8>) {}
 
     fn can_resume(&self) -> bool;
 }
@@ -52,6 +94,12 @@ impl Reader for StatementReader {
         self.request.resume_token = resume_token;
     }
 
+    fn update_transaction_selector(&mut self, tx_id: Vec<u8>) {
+        self.request.transaction = Some(TransactionSelector {
+            selector: Some(TransactionSelectorEnum::Id(tx_id)),
+        });
+    }
+
     fn can_resume(&self) -> bool {
         self.enable_resume && !self.request.resume_token.is_empty()
     }
@@ -78,6 +126,12 @@ impl Reader for TableReader {
 
     fn update_token(&mut self, resume_token: Vec<u8>) {
         self.request.resume_token = resume_token;
+    }
+
+    fn update_transaction_selector(&mut self, tx_id: Vec<u8>) {
+        self.request.transaction = Some(TransactionSelector {
+            selector: Some(TransactionSelectorEnum::Id(tx_id)),
+        });
     }
 
     fn can_resume(&self) -> bool {
@@ -287,6 +341,13 @@ where
     resumable: bool,
     end_of_stream: bool,
     stream_retry: StreamingRetry,
+    /// Populated by the first PartialResultSet when using inline begin.
+    /// The RowIterator writes the transaction ID here; the owning
+    /// ReadWriteTransaction reads it to upgrade its selector to Id(tx_id).
+    inline_tx_id: Option<Arc<Mutex<Option<Vec<u8>>>>>,
+    /// Updated with the latest precommit token from each PartialResultSet.
+    /// Required in the Commit request for multiplexed session transactions.
+    inline_precommit_token: Option<Arc<Mutex<Option<MultiplexedSessionPrecommitToken>>>>,
 }
 
 impl<'a, T> RowIterator<'a, T>
@@ -298,8 +359,10 @@ where
         reader: T,
         option: Option<CallOptions>,
         disable_route_to_leader: bool,
+        inline_tx_id: Option<Arc<Mutex<Option<Vec<u8>>>>>,
+        inline_precommit_token: Option<Arc<Mutex<Option<MultiplexedSessionPrecommitToken>>>>,
     ) -> Result<RowIterator<'a, T>, Status> {
-        let streaming = reader
+        let mut streaming = reader
             .read(session, option, disable_route_to_leader)
             .await?
             .into_inner();
@@ -309,6 +372,36 @@ where
             rows: VecDeque::new(),
             chunked_value: false,
         };
+        let mut prs_buffer = ResumablePartialResultSetBuffer::new(DEFAULT_MAX_BYTES_BETWEEN_RESUME_TOKENS);
+        let mut end_of_stream = false;
+        let mut resumable = true;
+        // For inline-begin (multiplexed sessions) the parent transaction
+        // depends on the tx_id carried in the first PartialResultSet's
+        // metadata. Pre-fetch that frame here so the id is captured before
+        // the caller has any chance to drop the iterator unconsumed. Once
+        // the slot has been populated by the first op of this transaction,
+        // subsequent ops should behave like non-multiplexed iterators
+        // (no constructor pre-fetch).
+        let needs_inline_prefetch = inline_tx_id
+            .as_ref()
+            .is_some_and(|slot| slot.lock().is_none());
+        if needs_inline_prefetch {
+            match streaming.message().await? {
+                Some(prs) => {
+                    if prs.last {
+                        end_of_stream = true;
+                    }
+                    capture_inline_metadata(&inline_tx_id, &inline_precommit_token, &prs);
+                    prs_buffer.push(prs);
+                    if prs_buffer.unretryable {
+                        resumable = false;
+                    }
+                }
+                None => {
+                    end_of_stream = true;
+                }
+            }
+        }
         Ok(Self {
             streaming,
             session,
@@ -317,10 +410,12 @@ where
             reader_option: None,
             disable_route_to_leader,
             stats: None,
-            prs_buffer: ResumablePartialResultSetBuffer::new(DEFAULT_MAX_BYTES_BETWEEN_RESUME_TOKENS),
-            resumable: true,
-            end_of_stream: false,
+            prs_buffer,
+            resumable,
+            end_of_stream,
             stream_retry: StreamingRetry::new(),
+            inline_tx_id,
+            inline_precommit_token,
         })
     }
 
@@ -367,6 +462,16 @@ where
                     }
                     tracing::debug!("streaming error: {}. resume reading by resume_token", e);
                     self.stream_retry.next(e).await?;
+                    // If inline begin already captured the server-assigned
+                    // tx_id, upgrade the cached request's selector to
+                    // `Id(tx_id)` before retrying so the server does not
+                    // start a second transaction in response to a `Begin`
+                    // + resume_token combination.
+                    if let Some(slot) = self.inline_tx_id.as_ref() {
+                        if let Some(tx_id) = slot.lock().clone() {
+                            self.reader.update_transaction_selector(tx_id);
+                        }
+                    }
                     let call_option = option.clone();
                     let result = self
                         .reader
@@ -383,6 +488,7 @@ where
                     if result_set.last {
                         self.end_of_stream = true;
                     }
+                    capture_inline_metadata(&self.inline_tx_id, &self.inline_precommit_token, &result_set);
                     self.prs_buffer.push(result_set);
                     if self.prs_buffer.unretryable {
                         self.resumable = false;
@@ -441,9 +547,13 @@ mod tests {
     use prost_types::Value;
 
     use google_cloud_googleapis::spanner::v1::struct_type::Field;
-    use google_cloud_googleapis::spanner::v1::{PartialResultSet, ResultSetMetadata, StructType};
+    use google_cloud_googleapis::spanner::v1::transaction_selector::Selector as TxSelector;
+    use google_cloud_googleapis::spanner::v1::{
+        transaction_options, ExecuteSqlRequest, PartialResultSet, ReadRequest, ResultSetMetadata, StructType,
+        TransactionOptions, TransactionSelector,
+    };
 
-    use crate::reader::ResultSet;
+    use crate::reader::{Reader, ResultSet, StatementReader, TableReader};
     use crate::row::{Row, TryFromValue};
     use crate::statement::ToKind;
 
@@ -946,5 +1056,84 @@ mod tests {
             chunked_value: false,
         };
         assert!(!rs_partial.is_row_boundary());
+    }
+
+    fn begin_selector() -> Option<TransactionSelector> {
+        Some(TransactionSelector {
+            selector: Some(TxSelector::Begin(TransactionOptions {
+                exclude_txn_from_change_streams: false,
+                mode: Some(transaction_options::Mode::ReadWrite(
+                    transaction_options::ReadWrite::default(),
+                )),
+                isolation_level: 0,
+            })),
+        })
+    }
+
+    #[test]
+    fn statement_reader_update_transaction_selector_replaces_begin_with_id() {
+        let mut reader = StatementReader {
+            enable_resume: true,
+            request: ExecuteSqlRequest {
+                transaction: begin_selector(),
+                resume_token: b"some-token".to_vec(),
+                ..Default::default()
+            },
+        };
+        reader.update_transaction_selector(b"tx-1".to_vec());
+        match reader.request.transaction.as_ref().unwrap().selector.as_ref().unwrap() {
+            TxSelector::Id(id) => assert_eq!(id, b"tx-1"),
+            other => panic!("expected Id selector, got {other:?}"),
+        }
+        // Resume token must not be touched — that's update_token's job.
+        assert_eq!(reader.request.resume_token, b"some-token");
+    }
+
+    #[test]
+    fn table_reader_update_transaction_selector_replaces_begin_with_id() {
+        let mut reader = TableReader {
+            request: ReadRequest {
+                transaction: begin_selector(),
+                resume_token: b"some-token".to_vec(),
+                ..Default::default()
+            },
+        };
+        reader.update_transaction_selector(b"tx-1".to_vec());
+        match reader.request.transaction.as_ref().unwrap().selector.as_ref().unwrap() {
+            TxSelector::Id(id) => assert_eq!(id, b"tx-1"),
+            other => panic!("expected Id selector, got {other:?}"),
+        }
+        assert_eq!(reader.request.resume_token, b"some-token");
+    }
+
+    /// Compile-time canary: an external `Reader` impl must be able to omit
+    /// `update_transaction_selector` and rely on the trait's default body.
+    /// If someone removes the default body to make the method required
+    /// again, this stops compiling — which is a SemVer-major break for
+    /// downstream crates with their own `Reader` impls.
+    #[test]
+    fn reader_trait_has_default_update_transaction_selector() {
+        struct ExternalStyleReader;
+        impl Reader for ExternalStyleReader {
+            async fn read(
+                &self,
+                _session: &mut crate::session::SessionHandle,
+                _option: Option<crate::transaction::CallOptions>,
+                _disable_route_to_leader: bool,
+            ) -> Result<
+                google_cloud_gax::grpc::Response<google_cloud_gax::grpc::Streaming<PartialResultSet>>,
+                google_cloud_gax::grpc::Status,
+            > {
+                unreachable!("not invoked")
+            }
+            fn update_token(&mut self, _resume_token: Vec<u8>) {}
+            fn can_resume(&self) -> bool {
+                false
+            }
+            // Intentionally NO `update_transaction_selector` — relies on default.
+        }
+        // Default impl is a no-op; calling it must not panic.
+        let mut r = ExternalStyleReader;
+        r.update_transaction_selector(b"tx".to_vec());
     }
 }
