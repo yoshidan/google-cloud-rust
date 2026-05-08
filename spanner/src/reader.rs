@@ -213,8 +213,6 @@ impl ResultSet {
                     // first element of `first` must be of a chunkable kind
                     // (StringValue or ListValue). Otherwise the boundary fell
                     // between complete elements and we just concatenate.
-                    // Mirrors the Go SDK (read.go: isMergeable / merge) and
-                    // the official Rust SDK (result_set.rs: merge_values).
                     let first_value_of_current = first.values.remove(0);
                     let last_value_of_previous = last.values.pop().unwrap();
                     let mergeable = matches!(
