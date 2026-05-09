@@ -222,8 +222,7 @@ impl ResultSet {
                             | (Some(Kind::ListValue(_)), Some(Kind::ListValue(_)))
                     );
                     if mergeable {
-                        let merged =
-                            ResultSet::merge(last_value_of_previous, first_value_of_current)?;
+                        let merged = ResultSet::merge(last_value_of_previous, first_value_of_current)?;
                         last.values.push(merged);
                     } else {
                         last.values.push(last_value_of_previous);
@@ -660,9 +659,15 @@ mod tests {
     // mismatch ...`. After the fix it must concatenate without merging.
     #[test]
     fn test_rs_merge_list_value_with_non_mergeable_tail() {
-        let null = || Value { kind: Some(Kind::NullValue(prost_types::NullValue::NullValue.into())) };
-        let bool_v = |b: bool| Value { kind: Some(Kind::BoolValue(b)) };
-        let num_v = |n: f64| Value { kind: Some(Kind::NumberValue(n)) };
+        let null = || Value {
+            kind: Some(Kind::NullValue(prost_types::NullValue::NullValue.into())),
+        };
+        let bool_v = |b: bool| Value {
+            kind: Some(Kind::BoolValue(b)),
+        };
+        let num_v = |n: f64| Value {
+            kind: Some(Kind::NumberValue(n)),
+        };
 
         // previous tail = NullValue, source first = StringValue: must NOT merge.
         let previous_last = Value {
