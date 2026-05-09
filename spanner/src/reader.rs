@@ -197,7 +197,7 @@ impl ResultSet {
                 )),
             },
             Kind::ListValue(mut last) => match current_first.kind.unwrap() {
-                Kind::ListValue(mut first) => {
+                Kind::ListValue(first) => {
                     if first.values.is_empty() {
                         return Ok(Value {
                             kind: Some(Kind::ListValue(last)),
@@ -213,7 +213,8 @@ impl ResultSet {
                     // first element of `first` must be of a chunkable kind
                     // (StringValue or ListValue). Otherwise the boundary fell
                     // between complete elements and we just concatenate.
-                    let first_value_of_current = first.values.remove(0);
+                    let mut iter = first.values.into_iter();
+                    let first_value_of_current = iter.next().unwrap();
                     let last_value_of_previous = last.values.pop().unwrap();
                     let mergeable = matches!(
                         (&last_value_of_previous.kind, &first_value_of_current.kind),
@@ -228,7 +229,7 @@ impl ResultSet {
                         last.values.push(last_value_of_previous);
                         last.values.push(first_value_of_current);
                     }
-                    last.values.extend(first.values);
+                    last.values.extend(iter);
                     Ok(Value {
                         kind: Some(Kind::ListValue(last)),
                     })
@@ -659,7 +660,7 @@ mod tests {
     // mismatch ...`. After the fix it must concatenate without merging.
     #[test]
     fn test_rs_merge_list_value_with_non_mergeable_tail() {
-        let null = || Value { kind: Some(Kind::NullValue(0)) };
+        let null = || Value { kind: Some(Kind::NullValue(prost_types::NullValue::NullValue.into())) };
         let bool_v = |b: bool| Value { kind: Some(Kind::BoolValue(b)) };
         let num_v = |n: f64| Value { kind: Some(Kind::NumberValue(n)) };
 
