@@ -38,13 +38,6 @@ ignore = [
     # This is due to the feature ['jsonwebtoken/rust_crypto']
     # We can use ['jsonwebtoken/aws_lc_rs'] instead to avoid this vulnerability.
     "RUSTSEC-2023-0071",
-    # hickory-proto 0.25.x vulnerabilities - reqwest 0.13.x depends on hickory-resolver 0.25.x
-    # which requires hickory-proto 0.25.x. Waiting for reqwest to update to hickory 0.26.x.
-    # Only affects users enabling the 'hickory-dns' feature.
-    # https://github.com/hickory-dns/hickory-dns/security/advisories/GHSA-3v94-mw7p-v465
-    "RUSTSEC-2026-0118",
-    # https://github.com/hickory-dns/hickory-dns/security/advisories/GHSA-q2qq-hmj6-3wpp
-    "RUSTSEC-2026-0119",
 ]
 # Threshold for security vulnerabilities, any vulnerability with a CVSS score
 # lower than the range specified will be ignored. Note that ignored advisories
