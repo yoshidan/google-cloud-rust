@@ -197,17 +197,38 @@ impl ResultSet {
                 )),
             },
             Kind::ListValue(mut last) => match current_first.kind.unwrap() {
-                Kind::ListValue(mut first) => {
-                    let first_value_of_current = first.values.remove(0);
-                    let merged = match last.values.pop() {
-                        Some(last_value_of_previous) => {
-                            ResultSet::merge(last_value_of_previous, first_value_of_current)?
-                        }
-                        // last record can be empty
-                        None => first_value_of_current,
-                    };
-                    last.values.push(merged);
-                    last.values.extend(first.values);
+                Kind::ListValue(first) => {
+                    if first.values.is_empty() {
+                        return Ok(Value {
+                            kind: Some(Kind::ListValue(last)),
+                        });
+                    }
+                    if last.values.is_empty() {
+                        return Ok(Value {
+                            kind: Some(Kind::ListValue(first)),
+                        });
+                    }
+                    // Only recurse when the chunk boundary actually splits a
+                    // single value: both the last element of `last` and the
+                    // first element of `first` must be of a chunkable kind
+                    // (StringValue or ListValue). Otherwise the boundary fell
+                    // between complete elements and we just concatenate.
+                    let mut iter = first.values.into_iter();
+                    let first_value_of_current = iter.next().unwrap();
+                    let last_value_of_previous = last.values.pop().unwrap();
+                    let mergeable = matches!(
+                        (&last_value_of_previous.kind, &first_value_of_current.kind),
+                        (Some(Kind::StringValue(_)), Some(Kind::StringValue(_)))
+                            | (Some(Kind::ListValue(_)), Some(Kind::ListValue(_)))
+                    );
+                    if mergeable {
+                        let merged = ResultSet::merge(last_value_of_previous, first_value_of_current)?;
+                        last.values.push(merged);
+                    } else {
+                        last.values.push(last_value_of_previous);
+                        last.values.push(first_value_of_current);
+                    }
+                    last.values.extend(iter);
                     Ok(Value {
                         kind: Some(Kind::ListValue(last)),
                     })
@@ -629,6 +650,101 @@ mod tests {
                 }
             }
             _ => unreachable!("must be string value"),
+        }
+    }
+
+    // Regression: chunk boundary falls between complete inner elements where
+    // the last element of the previous list is not a chunkable kind (here
+    // NullValue). Previously this returned `Internal: previous_last kind
+    // mismatch ...`. After the fix it must concatenate without merging.
+    #[test]
+    fn test_rs_merge_list_value_with_non_mergeable_tail() {
+        let null = || Value {
+            kind: Some(Kind::NullValue(prost_types::NullValue::NullValue.into())),
+        };
+        let bool_v = |b: bool| Value {
+            kind: Some(Kind::BoolValue(b)),
+        };
+        let num_v = |n: f64| Value {
+            kind: Some(Kind::NumberValue(n)),
+        };
+
+        // previous tail = NullValue, source first = StringValue: must NOT merge.
+        let previous_last = Value {
+            kind: Some(Kind::ListValue(prost_types::ListValue {
+                values: vec![value("a"), null()],
+            })),
+        };
+        let current_first = Value {
+            kind: Some(Kind::ListValue(prost_types::ListValue {
+                values: vec![value("b"), bool_v(true)],
+            })),
+        };
+        let merged = ResultSet::merge(previous_last, current_first).expect("must concatenate");
+        match merged.kind.unwrap() {
+            Kind::ListValue(v) => {
+                assert_eq!(v.values.len(), 4);
+                assert!(matches!(v.values[0].kind, Some(Kind::StringValue(ref s)) if s == "a"));
+                assert!(matches!(v.values[1].kind, Some(Kind::NullValue(_))));
+                assert!(matches!(v.values[2].kind, Some(Kind::StringValue(ref s)) if s == "b"));
+                assert!(matches!(v.values[3].kind, Some(Kind::BoolValue(true))));
+            }
+            _ => unreachable!("must be list value"),
+        }
+
+        // previous tail = BoolValue, source first = NumberValue: still ok.
+        let previous_last = Value {
+            kind: Some(Kind::ListValue(prost_types::ListValue {
+                values: vec![bool_v(false)],
+            })),
+        };
+        let current_first = Value {
+            kind: Some(Kind::ListValue(prost_types::ListValue {
+                values: vec![num_v(1.5), value("tail")],
+            })),
+        };
+        let merged = ResultSet::merge(previous_last, current_first).expect("must concatenate");
+        match merged.kind.unwrap() {
+            Kind::ListValue(v) => {
+                assert_eq!(v.values.len(), 3);
+                assert!(matches!(v.values[0].kind, Some(Kind::BoolValue(false))));
+                assert!(matches!(v.values[1].kind, Some(Kind::NumberValue(n)) if n == 1.5));
+                assert!(matches!(v.values[2].kind, Some(Kind::StringValue(ref s)) if s == "tail"));
+            }
+            _ => unreachable!("must be list value"),
+        }
+    }
+
+    // Empty list edge cases — a chunk may carry no inner values.
+    #[test]
+    fn test_rs_merge_list_value_empty_sides() {
+        let empty_list = || Value {
+            kind: Some(Kind::ListValue(prost_types::ListValue { values: vec![] })),
+        };
+        let with_one = || Value {
+            kind: Some(Kind::ListValue(prost_types::ListValue {
+                values: vec![value("only")],
+            })),
+        };
+
+        // previous empty + current with one => result is current.
+        let merged = ResultSet::merge(empty_list(), with_one()).unwrap();
+        match merged.kind.unwrap() {
+            Kind::ListValue(v) => {
+                assert_eq!(v.values.len(), 1);
+                assert!(matches!(v.values[0].kind, Some(Kind::StringValue(ref s)) if s == "only"));
+            }
+            _ => unreachable!(),
+        }
+
+        // previous with one + current empty => result is previous.
+        let merged = ResultSet::merge(with_one(), empty_list()).unwrap();
+        match merged.kind.unwrap() {
+            Kind::ListValue(v) => {
+                assert_eq!(v.values.len(), 1);
+                assert!(matches!(v.values[0].kind, Some(Kind::StringValue(ref s)) if s == "only"));
+            }
+            _ => unreachable!(),
         }
     }
 
