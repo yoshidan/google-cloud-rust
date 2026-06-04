@@ -61,7 +61,7 @@ pub struct RetrySetting {
 
 impl Retry<Status, CodeCondition> for RetrySetting {
     fn strategy(&self) -> Take<ExponentialBackoff> {
-        let mut st = ExponentialBackoff::from_millis(self.from_millis);
+        let mut st = ExponentialBackoff::from_millis(self.from_millis).factor(self.factor);
         if let Some(max_delay) = self.max_delay {
             st = st.max_delay(max_delay);
         }
