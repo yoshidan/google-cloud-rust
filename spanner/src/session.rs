@@ -239,8 +239,15 @@ impl SessionPool {
         disable_route_to_leader: bool,
         metrics: Arc<MetricsRecorder>,
     ) -> Result<Self, Status> {
-        let available_sessions =
-            Self::init_pool(database, conn_pool, config.min_opened, disable_route_to_leader, metrics.clone()).await?;
+        let available_sessions = Self::init_pool(
+            database,
+            conn_pool,
+            config.min_opened,
+            config.database_role.clone(),
+            disable_route_to_leader,
+            metrics.clone(),
+        )
+        .await?;
         let pool = SessionPool {
             inner: Arc::new(RwLock::new(Sessions {
                 available_sessions,
@@ -263,6 +270,7 @@ impl SessionPool {
         database: String,
         conn_pool: &ConnectionManager,
         min_opened: usize,
+        database_role: Option<String>,
         disable_route_to_leader: bool,
         metrics: Arc<MetricsRecorder>,
     ) -> Result<VecDeque<SessionHandle>, Status> {
@@ -284,8 +292,9 @@ impl SessionPool {
                 .with_metrics(metrics.clone())
                 .with_metadata(client_metadata(&database));
             let database = database.clone();
+            let database_role = database_role.clone();
             tasks.spawn(async move {
-                batch_create_sessions(next_client, &database, creation_count, disable_route_to_leader).await
+                batch_create_sessions(next_client, &database, creation_count, database_role.as_deref(), disable_route_to_leader).await
             }.instrument(Span::current()));
         }
         while let Some(r) = tasks.join_next().await {
@@ -472,6 +481,11 @@ pub struct SessionConfig {
     /// refresh_interval is the interval of cleanup and health check functions.
     pub refresh_interval: Duration,
 
+    /// database_role is the Spanner database role that new sessions assume.
+    /// Sent as `BatchCreateSessionsRequest.session_template.creator_role`. Leave
+    /// empty/None to create sessions with no role (the default).
+    pub database_role: Option<String>,
+
     /// incStep is the number of sessions to create in one batch when at least
     /// one more session is needed.
     inc_step: usize,
@@ -488,6 +502,7 @@ impl Default for SessionConfig {
             session_alive_trust_duration: Duration::from_secs(55 * 60),
             session_get_timeout: Duration::from_secs(1),
             refresh_interval: Duration::from_secs(5 * 60),
+            database_role: None,
         }
     }
 }
@@ -545,6 +560,7 @@ impl SessionManager {
             conn_pool,
             receiver,
             cancel.clone(),
+            session_pool.config.database_role.clone(),
             disable_route_to_leader,
         );
 
@@ -582,6 +598,7 @@ impl SessionManager {
         conn_pool: ConnectionManager,
         mut rx: UnboundedReceiver<usize>,
         cancel: CancellationToken,
+        database_role: Option<String>,
         disable_route_to_leader: bool,
     ) -> JoinHandle<()> {
         tokio::spawn(async move {
@@ -600,7 +617,8 @@ impl SessionManager {
                                 .with_metrics(session_pool.metrics.clone())
                                 .with_metadata(client_metadata(&database));
                             let database = database.clone();
-                            tasks.spawn(async move { (session_count, batch_create_sessions(client, &database, session_count, disable_route_to_leader).await) });
+                            let database_role = database_role.clone();
+                            tasks.spawn(async move { (session_count, batch_create_sessions(client, &database, session_count, database_role.as_deref(), disable_route_to_leader).await) });
                         },
                         None => continue
                     },
@@ -698,6 +716,7 @@ async fn batch_create_sessions(
     spanner_client: Client,
     database: &str,
     mut remaining_create_count: usize,
+    database_role: Option<&str>,
     disable_route_to_leader: bool,
 ) -> Result<Vec<SessionHandle>, Status> {
     let mut created = Vec::with_capacity(remaining_create_count);
@@ -706,6 +725,7 @@ async fn batch_create_sessions(
             spanner_client.clone(),
             database,
             remaining_create_count,
+            database_role,
             disable_route_to_leader,
         )
         .await?;
@@ -722,11 +742,16 @@ async fn batch_create_session(
     mut spanner_client: Client,
     database: &str,
     session_count: usize,
+    database_role: Option<&str>,
     disable_route_to_leader: bool,
 ) -> Result<Vec<SessionHandle>, Status> {
+    let session_template = database_role.map(|role| Session {
+        creator_role: role.to_string(),
+        ..Default::default()
+    });
     let request = BatchCreateSessionsRequest {
         database: database.to_string(),
-        session_template: None,
+        session_template,
         session_count: session_count as i32,
     };
 
@@ -1223,7 +1248,7 @@ mod tests {
             .with_metrics(Arc::new(MetricsRecorder::default()))
             .with_metadata(client_metadata(DATABASE));
         let session_count = 125;
-        let result = batch_create_sessions(client.clone(), DATABASE, session_count, false).await;
+        let result = batch_create_sessions(client.clone(), DATABASE, session_count, None, false).await;
         match result {
             Ok(created) => {
                 assert_eq!(session_count, created.len());
