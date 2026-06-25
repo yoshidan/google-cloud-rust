@@ -66,6 +66,8 @@ impl ReadOnlyTransaction {
                 },
                 transaction_tag: None,
                 disable_route_to_leader: true,
+                pending_inline_tx_id: None,
+                pending_precommit_token: None,
             },
             rts: None,
         })
@@ -106,6 +108,8 @@ impl ReadOnlyTransaction {
                         },
                         transaction_tag: None,
                         disable_route_to_leader: true,
+                        pending_inline_tx_id: None,
+                        pending_precommit_token: None,
                     },
                     rts: Some(OffsetDateTime::from(st)),
                 })
@@ -308,6 +312,6 @@ impl BatchReadOnlyTransaction {
     ) -> Result<RowIterator<'_, T>, Status> {
         let disable_route_to_leader = self.disable_route_to_leader;
         let session = self.as_mut_session();
-        RowIterator::new(session, partition.reader, option, disable_route_to_leader).await
+        RowIterator::new(session, partition.reader, option, disable_route_to_leader, None, None).await
     }
 }

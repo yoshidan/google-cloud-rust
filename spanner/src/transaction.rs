@@ -1,5 +1,9 @@
 use std::ops::DerefMut;
 use std::sync::atomic::AtomicI64;
+use std::sync::Arc;
+
+use google_cloud_googleapis::spanner::v1::MultiplexedSessionPrecommitToken;
+use parking_lot::Mutex;
 
 use prost_types::Struct;
 
@@ -7,8 +11,8 @@ use google_cloud_gax::grpc::Status;
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::spanner::v1::request_options::Priority;
 use google_cloud_googleapis::spanner::v1::{
-    execute_sql_request::QueryMode, execute_sql_request::QueryOptions as ExecuteQueryOptions, ExecuteSqlRequest,
-    ReadRequest, RequestOptions, TransactionSelector,
+    execute_sql_request::QueryMode, execute_sql_request::QueryOptions as ExecuteQueryOptions, transaction_selector,
+    ExecuteSqlRequest, ReadRequest, RequestOptions, TransactionSelector,
 };
 
 use crate::key::{Key, KeySet};
@@ -108,6 +112,15 @@ pub struct Transaction {
     /// disableRouteToLeader specifies if all the requests of type read-write and PDML
     /// need to be routed to the leader region.
     pub(crate) disable_route_to_leader: bool,
+    /// When using inline begin (multiplexed sessions), the transaction ID is
+    /// not known until the first RPC response. This shared slot is populated
+    /// by the first response that carries `metadata.transaction.id`. Once
+    /// populated, callers must upgrade `transaction_selector` to `Id(tx_id)`.
+    pub(crate) pending_inline_tx_id: Option<Arc<Mutex<Option<Vec<u8>>>>>,
+    /// The most recent precommit token received from Spanner for multiplexed
+    /// session transactions. Spanner Omni requires this to be included in the
+    /// Commit request when using inline begin.
+    pub(crate) pending_precommit_token: Option<Arc<Mutex<Option<MultiplexedSessionPrecommitToken>>>>,
 }
 
 impl Transaction {
@@ -140,6 +153,7 @@ impl Transaction {
         statement: Statement,
         options: QueryOptions,
     ) -> Result<RowIterator<'_, impl Reader>, Status> {
+        self.resolve_inline_begin_selector();
         let request = ExecuteSqlRequest {
             session: self.session.as_ref().unwrap().session.name.to_string(),
             transaction: Some(self.transaction_selector.clone()),
@@ -166,7 +180,15 @@ impl Transaction {
             enable_resume: options.enable_resume,
             request,
         };
-        RowIterator::new(session, reader, Some(options.call_options), self.disable_route_to_leader).await
+        RowIterator::new(
+            session,
+            reader,
+            Some(options.call_options),
+            self.disable_route_to_leader,
+            self.pending_inline_tx_id.clone(),
+            self.pending_precommit_token.clone(),
+        )
+        .await
     }
 
     /// read returns a RowIterator for reading multiple rows from the database.
@@ -207,6 +229,7 @@ impl Transaction {
         key_set: impl Into<KeySet>,
         options: ReadOptions,
     ) -> Result<RowIterator<'_, impl Reader>, Status> {
+        self.resolve_inline_begin_selector();
         let request = ReadRequest {
             session: self.get_session_name(),
             transaction: Some(self.transaction_selector.clone()),
@@ -228,9 +251,19 @@ impl Transaction {
         };
 
         let disable_route_to_leader = self.disable_route_to_leader;
+        let inline_tx_id = self.pending_inline_tx_id.clone();
+        let inline_precommit_token = self.pending_precommit_token.clone();
         let session = self.as_mut_session();
         let reader = TableReader { request };
-        RowIterator::new(session, reader, Some(options.call_options), disable_route_to_leader).await
+        RowIterator::new(
+            session,
+            reader,
+            Some(options.call_options),
+            disable_route_to_leader,
+            inline_tx_id,
+            inline_precommit_token,
+        )
+        .await
     }
 
     /// read returns a RowIterator for reading multiple rows from the database.
@@ -268,6 +301,26 @@ impl Transaction {
 
     pub(crate) fn get_session_name(&self) -> String {
         self.session.as_ref().unwrap().session.name.to_string()
+    }
+
+    /// If inline begin captured a transaction ID in `pending_inline_tx_id` and
+    /// the selector is still `Begin(...)`, upgrade it to `Id(tx_id)` so the
+    /// next request joins the existing server-side transaction instead of
+    /// starting a new one. Idempotent; the slot is left in place so that
+    /// `ReadWriteTransaction::commit` and `rollback` can read the same value.
+    pub(crate) fn resolve_inline_begin_selector(&mut self) {
+        let Some(ref slot) = self.pending_inline_tx_id else {
+            return;
+        };
+        if matches!(self.transaction_selector.selector, Some(transaction_selector::Selector::Id(_))) {
+            return;
+        }
+        let Some(tx_id) = slot.lock().clone() else {
+            return;
+        };
+        self.transaction_selector = TransactionSelector {
+            selector: Some(transaction_selector::Selector::Id(tx_id)),
+        };
     }
 
     pub(crate) fn as_mut_session(&mut self) -> &mut ManagedSession {

@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 use std::mem;
 use std::ops::{Deref, DerefMut};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -18,13 +19,25 @@ use tracing::{Instrument, Span};
 use google_cloud_gax::grpc::metadata::MetadataMap;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::TryAs;
-use google_cloud_googleapis::spanner::v1::{BatchCreateSessionsRequest, DeleteSessionRequest, Session};
+use google_cloud_googleapis::spanner::v1::{BatchCreateSessionsRequest, CreateSessionRequest, DeleteSessionRequest, Session};
 
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::spanner_client::{ping_query_request, Client};
 use crate::metrics::{MetricsRecorder, SessionPoolSnapshot, SessionPoolStatsFn};
 
 const MAX_IN_USE_WINDOW: Duration = Duration::from_secs(600);
+
+/// Carried by clones of the multiplexed master so that `invalidate_if_needed`
+/// can flip the manager's invalid flag if and only if the failing clone
+/// belongs to the master generation that is currently installed. Without the
+/// generation check, a delayed `NotFound` from a stale clone (whose master
+/// has already been recreated) would falsely re-flag the new master as
+/// invalid and trigger another redundant `CreateSession` RPC.
+pub(crate) struct MultiplexedInvalidator {
+    flag: Arc<AtomicBool>,
+    clone_generation: u64,
+    current_generation: Arc<AtomicU64>,
+}
 
 /// Session
 pub struct SessionHandle {
@@ -36,6 +49,13 @@ pub struct SessionHandle {
     last_checked_at: Instant,
     last_pong_at: Instant,
     created_at: Instant,
+    /// Set on clones of a multiplexed session. When `invalidate_if_needed`
+    /// observes a NotFound on a multiplexed handle, this flag is raised so
+    /// `SessionManager::get` recreates the underlying session on the next
+    /// call (subject to a generation check, see `MultiplexedInvalidator`).
+    /// Multiplexed sessions cannot be deleted (per the v1 proto), so the
+    /// delete RPC is skipped in that case.
+    multiplexed_invalidator: Option<MultiplexedInvalidator>,
 }
 
 impl SessionHandle {
@@ -49,6 +69,26 @@ impl SessionHandle {
             last_checked_at: now,
             last_pong_at: now,
             created_at: now,
+            multiplexed_invalidator: None,
+        }
+    }
+
+    pub(crate) fn new_multiplexed_clone(
+        session: Session,
+        spanner_client: Client,
+        now: Instant,
+        invalidator: MultiplexedInvalidator,
+    ) -> SessionHandle {
+        SessionHandle {
+            session,
+            spanner_client,
+            valid: true,
+            deleted: false,
+            last_used_at: now,
+            last_checked_at: now,
+            last_pong_at: now,
+            created_at: now,
+            multiplexed_invalidator: Some(invalidator),
         }
     }
 
@@ -57,8 +97,32 @@ impl SessionHandle {
             Ok(s) => Ok(s),
             Err(e) => {
                 if e.code() == Code::NotFound && e.message().contains("Session not found:") {
-                    tracing::debug!("session invalidate {}", self.session.name);
-                    self.delete().await;
+                    if let Some(inv) = &self.multiplexed_invalidator {
+                        // Multiplexed sessions cannot be deleted via the API;
+                        // signal SessionManager to recreate on the next get(),
+                        // but only if this clone still belongs to the master
+                        // generation currently installed. A `NotFound` from a
+                        // stale clone (master already rotated) is silently
+                        // swallowed so it does not trigger a redundant
+                        // CreateSession.
+                        let current = inv.current_generation.load(Ordering::Acquire);
+                        if current == inv.clone_generation {
+                            tracing::debug!("multiplexed session invalidated: {}", self.session.name);
+                            self.valid = false;
+                            inv.flag.store(true, Ordering::Release);
+                        } else {
+                            tracing::debug!(
+                                "stale multiplexed clone NotFound ignored (clone_gen={}, current_gen={}, name={})",
+                                inv.clone_generation,
+                                current,
+                                self.session.name,
+                            );
+                            self.valid = false;
+                        }
+                    } else {
+                        tracing::debug!("session invalidate {}", self.session.name);
+                        self.delete().await;
+                    }
                 }
                 Err(e)
             }
@@ -82,6 +146,9 @@ impl SessionHandle {
 pub struct ManagedSession {
     session_pool: SessionPool,
     session: Option<SessionHandle>,
+    /// When false (multiplexed session mode), the session is NOT returned to
+    /// the pool on drop — it is a short-lived clone of a shared handle.
+    recycle_on_drop: bool,
 }
 
 impl ManagedSession {
@@ -89,6 +156,15 @@ impl ManagedSession {
         ManagedSession {
             session_pool,
             session: Some(session),
+            recycle_on_drop: true,
+        }
+    }
+
+    fn new_multiplexed(session_pool: SessionPool, session: SessionHandle) -> Self {
+        ManagedSession {
+            session_pool,
+            session: Some(session),
+            recycle_on_drop: false,
         }
     }
 }
@@ -96,7 +172,15 @@ impl ManagedSession {
 impl Drop for ManagedSession {
     fn drop(&mut self) {
         let session = self.session.take().unwrap();
-        self.session_pool.recycle(session);
+        if self.recycle_on_drop {
+            self.session_pool.recycle(session);
+        } else {
+            // Multiplexed sessions are shared; the handle is simply dropped.
+            // recycle() emits record_session_released for pool sessions, so
+            // emit it directly here to keep acquire/release counts balanced
+            // for observability.
+            self.session_pool.metrics.record_session_released();
+        }
     }
 }
 
@@ -255,7 +339,6 @@ impl SessionPool {
             config,
             metrics,
         };
-        pool.metrics.register_session_pool(pool.snapshot_fn());
         Ok(pool)
     }
 
@@ -414,7 +497,7 @@ impl SessionPool {
         self.remove_orphans().await;
     }
 
-    fn snapshot_fn(&self) -> SessionPoolStatsFn {
+    fn snapshot_fn(&self, has_multiplexed_session: bool) -> SessionPoolStatsFn {
         let inner = self.inner.clone();
         let max_allowed = self.config.max_opened;
         Arc::new(move || {
@@ -425,7 +508,7 @@ impl SessionPool {
                 idle_sessions: sessions.available_sessions.len(),
                 max_allowed_sessions: max_allowed,
                 max_in_use_last_window: sessions.max_inuse_window,
-                has_multiplexed_session: false,
+                has_multiplexed_session,
             }
         })
     }
@@ -475,6 +558,16 @@ pub struct SessionConfig {
     /// incStep is the number of sessions to create in one batch when at least
     /// one more session is needed.
     inc_step: usize,
+
+    /// use_multiplexed_session enables multiplexed session mode.
+    ///
+    /// When true, a single multiplexed session is created via `CreateSession`
+    /// (with `Session.multiplexed = true`) and shared across all callers.
+    /// No session pool is maintained; the session does not expire.
+    ///
+    /// Required for Spanner Omni deployments, which only accept multiplexed
+    /// sessions. Set automatically when `SPANNER_OMNI_ENDPOINT` is detected.
+    pub use_multiplexed_session: bool,
 }
 
 impl Default for SessionConfig {
@@ -488,6 +581,7 @@ impl Default for SessionConfig {
             session_alive_trust_duration: Duration::from_secs(55 * 60),
             session_get_timeout: Duration::from_secs(1),
             refresh_interval: Duration::from_secs(5 * 60),
+            use_multiplexed_session: false,
         }
     }
 }
@@ -511,8 +605,35 @@ impl TryAs<Status> for SessionError {
     }
 }
 
+/// Context required to (re)create a multiplexed session after the original
+/// has been observed as `NotFound` server-side.
+struct MultiplexedRecreateCtx {
+    conn_pool: Arc<ConnectionManager>,
+    database: String,
+    disable_route_to_leader: bool,
+    metrics: Arc<MetricsRecorder>,
+}
+
 pub(crate) struct SessionManager {
     session_pool: SessionPool,
+    /// Multiplexed session mode: holds the single long-lived session used as a
+    /// template. Each call to `get()` clones the session proto + gRPC client to
+    /// produce a fresh `SessionHandle` without pooling or expiry semantics.
+    multiplexed: RwLock<Option<SessionHandle>>,
+    /// Shared with every multiplexed clone. A NotFound on any clone flips
+    /// this to `true`; the next `get()` triggers a recreation. Subject to
+    /// the generation check carried by `MultiplexedInvalidator` so stale
+    /// clones cannot re-flag a freshly-recreated master.
+    multiplexed_invalid: Arc<AtomicBool>,
+    /// Bumped each time a new master multiplexed session is installed
+    /// (initial create + every recreation). Each clone snapshots the
+    /// current value at clone time; `invalidate_if_needed` only flips the
+    /// invalid flag when the snapshot matches the current value.
+    multiplexed_generation: Arc<AtomicU64>,
+    /// Serializes concurrent recreation attempts (an async mutex because
+    /// `create_multiplexed_session` is awaitable).
+    multiplexed_create_lock: tokio::sync::Mutex<()>,
+    multiplexed_recreate_ctx: Option<MultiplexedRecreateCtx>,
     cancel: CancellationToken,
     tasks: Mutex<Vec<JoinHandle<()>>>,
 }
@@ -526,32 +647,80 @@ impl SessionManager {
         metrics: Arc<MetricsRecorder>,
     ) -> Result<Arc<SessionManager>, Status> {
         let database = database.into();
+        let use_multiplexed = config.use_multiplexed_session;
+
+        // For multiplexed mode we still create a minimal (empty) pool as a
+        // placeholder — it satisfies the SessionPool type without pre-creating
+        // any regular sessions (min_opened = 0).
+        let pool_config = if use_multiplexed {
+            let mut c = config.clone();
+            c.min_opened = 0;
+            c
+        } else {
+            config.clone()
+        };
+
+        let conn_pool = Arc::new(conn_pool);
         let (sender, receiver) = mpsc::unbounded_channel();
         let session_pool = SessionPool::new(
             database.clone(),
-            &conn_pool,
+            conn_pool.as_ref(),
             sender,
-            Arc::new(config.clone()),
+            Arc::new(pool_config),
             disable_route_to_leader,
             metrics.clone(),
         )
         .await?;
 
         let cancel = CancellationToken::new();
-        let task_session_cleaner = Self::spawn_health_check_task(config, session_pool.clone(), cancel.clone());
-        let task_session_creator = Self::spawn_session_creation_task(
-            session_pool.clone(),
-            database,
-            conn_pool,
-            receiver,
-            cancel.clone(),
-            disable_route_to_leader,
-        );
+        let multiplexed_invalid = Arc::new(AtomicBool::new(false));
+        let multiplexed_generation = Arc::new(AtomicU64::new(0));
+
+        let (multiplexed, tasks, multiplexed_recreate_ctx) = if use_multiplexed {
+            // Create the single multiplexed session and store it.
+            let handle =
+                create_multiplexed_session(conn_pool.as_ref(), &database, disable_route_to_leader, metrics.clone())
+                    .await?;
+            tracing::debug!("multiplexed session created: {}", handle.session.name);
+            // First master generation = 1 (clones default to 0; bumping here
+            // ensures even the first clone snapshots a non-zero value that
+            // matches a real installed master).
+            multiplexed_generation.store(1, Ordering::Release);
+            let ctx = MultiplexedRecreateCtx {
+                conn_pool: conn_pool.clone(),
+                database: database.clone(),
+                disable_route_to_leader,
+                metrics: metrics.clone(),
+            };
+            (RwLock::new(Some(handle)), Mutex::new(vec![]), Some(ctx))
+        } else {
+            // Standard pool mode: spin up the background maintenance tasks.
+            let task_cleaner = Self::spawn_health_check_task(config, session_pool.clone(), cancel.clone());
+            let task_creator = Self::spawn_session_creation_task(
+                session_pool.clone(),
+                database,
+                conn_pool,
+                receiver,
+                cancel.clone(),
+                disable_route_to_leader,
+            );
+            (RwLock::new(None), Mutex::new(vec![task_cleaner, task_creator]), None)
+        };
+
+        // Register the session-pool stats snapshot with the metrics recorder
+        // now that we know whether a multiplexed session was created.
+        let has_multiplexed = use_multiplexed && multiplexed.read().is_some();
+        metrics.register_session_pool(session_pool.snapshot_fn(has_multiplexed));
 
         let sm = SessionManager {
             session_pool,
+            multiplexed,
+            multiplexed_invalid,
+            multiplexed_generation,
+            multiplexed_create_lock: tokio::sync::Mutex::new(()),
+            multiplexed_recreate_ctx,
             cancel,
-            tasks: Mutex::new(vec![task_session_cleaner, task_session_creator]),
+            tasks,
         };
         Ok(Arc::new(sm))
     }
@@ -561,7 +730,90 @@ impl SessionManager {
     }
 
     pub async fn get(&self) -> Result<ManagedSession, SessionError> {
+        if self.cancel.is_cancelled() {
+            return Err(SessionError::FailedToCreateSession);
+        }
+        if let Some(ctx) = &self.multiplexed_recreate_ctx {
+            // Multiplexed mode: try the fast path; fall back to recreating
+            // the master if a prior NotFound flagged it as invalid. Record
+            // acquire/latency here so observability matches the pool path
+            // (record_session_acquired/_acquire_latency are otherwise only
+            // emitted from SessionPool::acquire).
+            let started_at = Instant::now();
+            let metrics = self.session_pool.metrics.clone();
+            if !self.multiplexed_invalid.load(Ordering::Acquire) {
+                if let Some(handle) = self.clone_multiplexed_handle() {
+                    metrics.record_session_acquired();
+                    metrics.record_session_acquire_latency(started_at.elapsed());
+                    return Ok(handle);
+                }
+            }
+            self.recreate_multiplexed_session(ctx).await?;
+            let handle = self
+                .clone_multiplexed_handle()
+                .ok_or(SessionError::FailedToCreateSession)?;
+            metrics.record_session_acquired();
+            metrics.record_session_acquire_latency(started_at.elapsed());
+            return Ok(handle);
+        }
         self.session_pool.acquire().await
+    }
+
+    /// Clone session proto + gRPC client of the master multiplexed handle.
+    /// The read guard is dropped at the end of the inner block, so the
+    /// SessionHandle is constructed without the lock held. parking_lot's
+    /// RwLock allows multiple concurrent readers, so this also lets parallel
+    /// `get()` callers clone in parallel; only recreate_multiplexed_session
+    /// needs the write lock.
+    fn clone_multiplexed_handle(&self) -> Option<ManagedSession> {
+        let snapshot = {
+            let guard = self.multiplexed.read();
+            guard.as_ref().map(|h| (h.session.clone(), h.spanner_client.clone()))
+        };
+        snapshot.map(|(session, client)| {
+            let handle = SessionHandle::new_multiplexed_clone(
+                session,
+                client,
+                Instant::now(),
+                self.multiplexed_invalidator(),
+            );
+            ManagedSession::new_multiplexed(self.session_pool.clone(), handle)
+        })
+    }
+
+    fn multiplexed_invalidator(&self) -> MultiplexedInvalidator {
+        MultiplexedInvalidator {
+            flag: self.multiplexed_invalid.clone(),
+            clone_generation: self.multiplexed_generation.load(Ordering::Acquire),
+            current_generation: self.multiplexed_generation.clone(),
+        }
+    }
+
+    async fn recreate_multiplexed_session(&self, ctx: &MultiplexedRecreateCtx) -> Result<(), Status> {
+        // Serialize concurrent recreation attempts; double-check the flag
+        // after acquiring the lock so we only pay for one CreateSession RPC.
+        let _guard = self.multiplexed_create_lock.lock().await;
+        if self.cancel.is_cancelled() {
+            return Err(Status::new(Code::Cancelled, "session manager is closed"));
+        }
+        if !self.multiplexed_invalid.load(Ordering::Acquire) && self.multiplexed.read().is_some() {
+            return Ok(());
+        }
+        let new_handle = create_multiplexed_session(
+            ctx.conn_pool.as_ref(),
+            &ctx.database,
+            ctx.disable_route_to_leader,
+            ctx.metrics.clone(),
+        )
+        .await?;
+        tracing::debug!("multiplexed session recreated: {}", new_handle.session.name);
+        *self.multiplexed.write() = Some(new_handle);
+        // Bump the generation BEFORE clearing the invalid flag: any
+        // late-arriving NotFound from a stale clone will then observe
+        // a mismatched generation and skip the flag flip.
+        self.multiplexed_generation.fetch_add(1, Ordering::AcqRel);
+        self.multiplexed_invalid.store(false, Ordering::Release);
+        Ok(())
     }
 
     pub async fn close(&self) {
@@ -573,13 +825,18 @@ impl SessionManager {
         for task in tasks {
             let _ = task.await;
         }
+        // Drop the multiplexed master handle. Multiplexed sessions cannot
+        // be deleted via the API per the v1 proto ("Multiplexed sessions
+        // may not be deleted nor listed"); the server reclaims them via
+        // its own TTL once the channel is gone.
+        let _ = self.multiplexed.write().take();
         self.session_pool.close().await;
     }
 
     fn spawn_session_creation_task(
         session_pool: SessionPool,
         database: String,
-        conn_pool: ConnectionManager,
+        conn_pool: Arc<ConnectionManager>,
         mut rx: UnboundedReceiver<usize>,
         cancel: CancellationToken,
         disable_route_to_leader: bool,
@@ -694,6 +951,36 @@ async fn health_check(
     tracing::trace!("end health check elapsed={}msec", start.elapsed().as_millis());
 }
 
+/// Create a single multiplexed session via the `CreateSession` RPC.
+///
+/// Multiplexed sessions are long-lived, shared across concurrent operations,
+/// and do not expire. They are required by Spanner Omni (and supported by
+/// Cloud Spanner for read-only workloads). See:
+/// <https://cloud.google.com/spanner/docs/sessions#create_a_multiplexed_session>
+async fn create_multiplexed_session(
+    conn_pool: &ConnectionManager,
+    database: &str,
+    disable_route_to_leader: bool,
+    metrics: Arc<MetricsRecorder>,
+) -> Result<SessionHandle, Status> {
+    let mut client = conn_pool
+        .conn()
+        .with_metrics(metrics)
+        .with_metadata(client_metadata(database));
+    let req = CreateSessionRequest {
+        database: database.to_string(),
+        session: Some(Session {
+            multiplexed: true,
+            ..Default::default()
+        }),
+    };
+    let session = client
+        .create_session(req, disable_route_to_leader, None)
+        .await?
+        .into_inner();
+    Ok(SessionHandle::new(session, client, Instant::now()))
+}
+
 async fn batch_create_sessions(
     spanner_client: Client,
     database: &str,
@@ -762,6 +1049,7 @@ mod tests {
     use tokio_util::sync::CancellationToken;
 
     use google_cloud_gax::conn::{ConnectionOptions, Environment};
+    use google_cloud_gax::grpc::{Code, Status};
     use google_cloud_googleapis::spanner::v1::ExecuteSqlRequest;
 
     use crate::apiv1::conn_pool::ConnectionManager;
@@ -1205,6 +1493,122 @@ mod tests {
         sm.close().await;
         assert_eq!(sm.num_opened(), 0);
         assert_eq!(sm.session_pool.inner.read().orphans.len(), 0);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_multiplexed_session_recreated_after_invalidation() {
+        let cm = ConnectionManager::new(
+            1,
+            &Environment::Emulator("localhost:9010".to_string()),
+            "",
+            &ConnectionOptions::default(),
+        )
+        .await
+        .unwrap();
+        let config = SessionConfig {
+            use_multiplexed_session: true,
+            min_opened: 0,
+            max_opened: 1,
+            ..Default::default()
+        };
+        let sm = SessionManager::new(DATABASE, cm, config, false, Arc::new(MetricsRecorder::default()))
+            .await
+            .unwrap();
+
+        // First get(): returns a clone of the freshly-created master.
+        let s1 = sm.get().await.unwrap();
+        let name1 = (*s1).session.name.clone();
+        drop(s1);
+
+        // Simulate what invalidate_if_needed would do on a NotFound from
+        // any operation that uses the multiplexed session.
+        sm.multiplexed_invalid.store(true, Ordering::Release);
+
+        // Next get(): must recreate the master and hand back a clone of
+        // the new session, which has a different server-assigned name.
+        let s2 = sm.get().await.unwrap();
+        let name2 = (*s2).session.name.clone();
+
+        assert_ne!(name1, name2, "expected the master multiplexed session to be recreated");
+        assert!(!sm.multiplexed_invalid.load(Ordering::Acquire), "invalid flag should be cleared after recreate");
+        sm.close().await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_stale_multiplexed_clone_does_not_reflag_invalid() {
+        let cm = ConnectionManager::new(
+            1,
+            &Environment::Emulator("localhost:9010".to_string()),
+            "",
+            &ConnectionOptions::default(),
+        )
+        .await
+        .unwrap();
+        let config = SessionConfig {
+            use_multiplexed_session: true,
+            min_opened: 0,
+            max_opened: 1,
+            ..Default::default()
+        };
+        let sm = SessionManager::new(DATABASE, cm, config, false, Arc::new(MetricsRecorder::default()))
+            .await
+            .unwrap();
+
+        // Take a clone at generation N.
+        let mut stale = sm.get().await.unwrap();
+
+        // Simulate a recreation having already happened by bumping the
+        // generation under the stale clone. Clear the invalid flag so we
+        // can see whether `invalidate_if_needed` flips it back.
+        sm.multiplexed_generation.fetch_add(1, Ordering::AcqRel);
+        sm.multiplexed_invalid.store(false, Ordering::Release);
+
+        // Mimic a server-side `NotFound` arriving on the stale clone. The
+        // generation check must skip the flag flip.
+        let err = Status::new(Code::NotFound, "Session not found: projects/.../sessions/stale");
+        let _ = stale.invalidate_if_needed::<()>(Err(err)).await;
+        assert!(
+            !sm.multiplexed_invalid.load(Ordering::Acquire),
+            "stale clone (older generation) must not re-flag the master invalid"
+        );
+        drop(stale);
+
+        // A fresh clone snapshots the current generation; a NotFound on
+        // it must flip the flag.
+        let mut fresh = sm.get().await.unwrap();
+        let err = Status::new(Code::NotFound, "Session not found: projects/.../sessions/fresh");
+        let _ = fresh.invalidate_if_needed::<()>(Err(err)).await;
+        assert!(
+            sm.multiplexed_invalid.load(Ordering::Acquire),
+            "current-generation clone must flip the master invalid flag"
+        );
+        drop(fresh);
+        sm.close().await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_get_after_close_returns_error() {
+        let cm = ConnectionManager::new(
+            4,
+            &Environment::Emulator("localhost:9010".to_string()),
+            "",
+            &ConnectionOptions::default(),
+        )
+        .await
+        .unwrap();
+        let config = SessionConfig::default();
+        let sm = SessionManager::new(DATABASE, cm, config, false, Arc::new(MetricsRecorder::default()))
+            .await
+            .unwrap();
+        sm.close().await;
+        match sm.get().await {
+            Err(SessionError::FailedToCreateSession) => {}
+            Err(e) => panic!("expected FailedToCreateSession after close, got {e:?}"),
+            Ok(_) => panic!("expected FailedToCreateSession after close, got Ok"),
+        }
     }
 
     #[tokio::test(flavor = "multi_thread")]
