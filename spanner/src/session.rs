@@ -293,9 +293,19 @@ impl SessionPool {
                 .with_metadata(client_metadata(&database));
             let database = database.clone();
             let database_role = database_role.clone();
-            tasks.spawn(async move {
-                batch_create_sessions(next_client, &database, creation_count, database_role.as_deref(), disable_route_to_leader).await
-            }.instrument(Span::current()));
+            tasks.spawn(
+                async move {
+                    batch_create_sessions(
+                        next_client,
+                        &database,
+                        creation_count,
+                        database_role.as_deref(),
+                        disable_route_to_leader,
+                    )
+                    .await
+                }
+                .instrument(Span::current()),
+            );
         }
         while let Some(r) = tasks.join_next().await {
             let new_sessions = r.map_err(|e| Status::from_error(e.into()))??;
