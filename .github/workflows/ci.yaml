@@ -13,12 +13,15 @@ jobs:
   check-lint:
     name: check-lint
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'safe to test') || ${{ github.event_name }} == 'push'
+    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'safe to test')
     steps:
       - uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{github.event.pull_request.head.repo.full_name}}
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          # This workflow is gated by the 'safe to test' label, which a maintainer
+          # applies only after reviewing the fork's diff.
+          allow-unsafe-pr-checkout: true
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -30,12 +33,15 @@ jobs:
   check-deps:
     name: check-deps
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'safe to test') || ${{ github.event_name }} == 'push'
+    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'safe to test')
     steps:
       - uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{github.event.pull_request.head.repo.full_name}}
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          # This workflow is gated by the 'safe to test' label, which a maintainer
+          # applies only after reviewing the fork's diff.
+          allow-unsafe-pr-checkout: true
       - name: cargo-deny
         uses: EmbarkStudios/cargo-deny-action@v2
         with:
@@ -44,12 +50,15 @@ jobs:
   foundation:
     name: foundation
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'safe to test') || ${{ github.event_name }} == 'push'
+    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'safe to test')
     steps:
       - uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{github.event.pull_request.head.repo.full_name}}
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          # This workflow is gated by the 'safe to test' label, which a maintainer
+          # applies only after reviewing the fork's diff.
+          allow-unsafe-pr-checkout: true
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Setup gcloud
@@ -64,6 +73,7 @@ jobs:
   pubsub:
     name: pubsub
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'safe to test')
     services:
       pubsub:
         image: messagebird/gcloud-pubsub-emulator:latest
@@ -74,8 +84,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{github.event.pull_request.head.repo.full_name}}
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          # This workflow is gated by the 'safe to test' label, which a maintainer
+          # applies only after reviewing the fork's diff.
+          allow-unsafe-pr-checkout: true
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: test
@@ -95,6 +108,7 @@ jobs:
   spanner:
     name: spanner
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'safe to test')
     services:
       spanner:
         image: gcr.io/cloud-spanner-emulator/emulator
@@ -104,8 +118,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{github.event.pull_request.head.repo.full_name}}
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          # This workflow is gated by the 'safe to test' label, which a maintainer
+          # applies only after reviewing the fork's diff.
+          allow-unsafe-pr-checkout: true
       - uses: Swatinem/rust-cache@v2
       - name: setup spanner
         run: |
@@ -142,12 +159,15 @@ jobs:
   storage:
     name: storage
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'safe to test') || ${{ github.event_name }} == 'push'
+    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'safe to test')
     steps:
       - uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{github.event.pull_request.head.repo.full_name}}
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          # This workflow is gated by the 'safe to test' label, which a maintainer
+          # applies only after reviewing the fork's diff.
+          allow-unsafe-pr-checkout: true
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v0.6.0
         with:
@@ -162,12 +182,15 @@ jobs:
   bigquery:
     name: bigquery
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'safe to test') || ${{ github.event_name }} == 'push'
+    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'safe to test')
     steps:
       - uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{github.event.pull_request.head.repo.full_name}}
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          # This workflow is gated by the 'safe to test' label, which a maintainer
+          # applies only after reviewing the fork's diff.
+          allow-unsafe-pr-checkout: true
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v0.6.0
         with:
@@ -182,12 +205,15 @@ jobs:
   artifact-registry:
     name: artifact-registry
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'safe to test') || ${{ github.event_name }} == 'push'
+    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'safe to test')
     steps:
       - uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{github.event.pull_request.head.repo.full_name}}
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          # This workflow is gated by the 'safe to test' label, which a maintainer
+          # applies only after reviewing the fork's diff.
+          allow-unsafe-pr-checkout: true
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v0.6.0
         with:
@@ -202,12 +228,15 @@ jobs:
   kms:
     name: kms
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'safe to test') || ${{ github.event_name }} == 'push'
+    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'safe to test')
     steps:
       - uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{github.event.pull_request.head.repo.full_name}}
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          # This workflow is gated by the 'safe to test' label, which a maintainer
+          # applies only after reviewing the fork's diff.
+          allow-unsafe-pr-checkout: true
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v0.6.0
         with:
