@@ -330,7 +330,7 @@ async fn test_read_row() {
 async fn test_read_multi_row() {
     //set up test data
     let now = OffsetDateTime::now_utc();
-    let user_id = format!("user_x_{}", &now.second());
+    let user_id = format!("user_x_{}", now.second());
     let user_id2 = format!("user_x_{}", &now.second() + 1);
     let mutations = vec![
         create_user_mutation(&user_id, &now),

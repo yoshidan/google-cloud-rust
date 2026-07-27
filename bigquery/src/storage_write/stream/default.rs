@@ -82,7 +82,7 @@ mod tests {
         for i in 0..2 {
             let table = format!(
                 "projects/{}/datasets/gcrbq_storage/tables/{}",
-                &project_id,
+                project_id,
                 tables[i % tables.len()]
             )
             .to_string();
@@ -131,7 +131,7 @@ mod tests {
         for i in 0..2 {
             let table = format!(
                 "projects/{}/datasets/gcrbq_storage/tables/{}",
-                &project_id,
+                project_id,
                 tables[i % tables.len()]
             );
             let stream = writer.create_write_stream(&table).await.unwrap();

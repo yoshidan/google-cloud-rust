@@ -83,7 +83,7 @@ mod tests {
         for i in 0..2 {
             let table = format!(
                 "projects/{}/datasets/gcrbq_storage/tables/{}",
-                &project_id,
+                project_id,
                 tables[i % tables.len()]
             )
             .to_string();
@@ -131,7 +131,7 @@ mod tests {
 
         // Create Streams
         let mut streams = vec![];
-        let table = format!("projects/{}/datasets/gcrbq_storage/tables/write_test", &project_id).to_string();
+        let table = format!("projects/{}/datasets/gcrbq_storage/tables/write_test", project_id).to_string();
         let stream = Arc::new(writer.create_write_stream(&table).await.unwrap());
         for _i in 0..2 {
             streams.push(stream.clone());

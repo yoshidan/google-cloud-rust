@@ -300,9 +300,9 @@ mod tests {
         let client = create_client().await;
 
         let uuid = Uuid::new_v4().hyphenated().to_string();
-        let topic_id = &format!("t{}", &uuid);
-        let subscription_id = &format!("s{}", &uuid);
-        let snapshot_id = &format!("snap{}", &uuid);
+        let topic_id = &format!("t{}", uuid);
+        let subscription_id = &format!("s{}", uuid);
+        let snapshot_id = &format!("snap{}", uuid);
         let topics = client.get_topics(None).await.unwrap();
         let subs = client.get_subscriptions(None).await.unwrap();
         let snapshots = client.get_snapshots(None).await.unwrap();

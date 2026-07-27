@@ -1008,11 +1008,11 @@ mod tests {
         let pub_client = PublisherClient::new(cm3);
         let uuid = Uuid::new_v4().hyphenated().to_string();
 
-        let topic_name = format!("projects/{}/topics/t{}", PROJECT_NAME, &uuid);
+        let topic_name = format!("projects/{}/topics/t{}", PROJECT_NAME, uuid);
         let topic = Topic::new(topic_name.clone(), pub_client, sub_client.clone());
         topic.create(None, None).await.unwrap();
 
-        let subscription_name = format!("projects/{}/subscriptions/s{}", PROJECT_NAME, &uuid);
+        let subscription_name = format!("projects/{}/subscriptions/s{}", PROJECT_NAME, uuid);
         let subscription = Subscription::new(subscription_name, sub_client);
         let config = SubscriptionConfig {
             enable_exactly_once_delivery,
