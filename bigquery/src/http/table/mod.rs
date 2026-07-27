@@ -26,7 +26,7 @@ impl TableReference {
     pub fn resource(&self) -> String {
         format!(
             "projects/{}/datasets/{}/tables/{}",
-            &self.project_id, &self.dataset_id, &self.table_id
+            self.project_id, self.dataset_id, self.table_id
         )
     }
 }

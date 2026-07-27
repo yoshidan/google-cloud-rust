@@ -179,9 +179,9 @@ pub(crate) fn create_signed_buffer(
     let host = opts.style.host(bucket);
     let mut builder = {
         let url = if opts.insecure {
-            format!("http://{}", &host)
+            format!("http://{}", host)
         } else {
-            format!("https://{}", &host)
+            format!("https://{}", host)
         };
         url::Url::parse(&url)
     }?;
