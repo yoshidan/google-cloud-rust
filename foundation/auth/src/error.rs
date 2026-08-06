@@ -17,8 +17,8 @@ pub enum Error {
     #[error("jwt error: {0}")]
     JwtError(#[from] jsonwebtoken::errors::Error),
 
-    #[error("http error: {0}")]
-    HttpError(#[from] reqwest::Error),
+    #[error("http error on {0}: {1}")]
+    HttpError(String, reqwest::Error),
 
     #[error("GOOGLE_APPLICATION_CREDENTIALS or default credentials is required: {0}")]
     CredentialsIOError(#[from] std::io::Error),
