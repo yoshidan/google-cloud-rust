@@ -384,10 +384,18 @@ where
                 Ok(s) => s,
                 Err(e) => {
                     if !self.reader.can_resume() || !self.resumable {
-                        return Err(e);
+                        // A "Session not found" NotFound from a server-expired session
+                        // surfaces here (on the first stream message, not the initial
+                        // call, which Reader::read already guards) — route it through
+                        // invalidate_if_needed so the dead session is evicted instead
+                        // of being recycled into the pool as valid.
+                        return self.session.invalidate_if_needed(Err(e)).await;
                     }
                     tracing::debug!("streaming error: {}. resume reading by resume_token", e);
-                    self.stream_retry.next(e).await?;
+                    if let Err(e) = self.stream_retry.next(e).await {
+                        // Retries exhausted / non-retryable: same eviction requirement.
+                        return self.session.invalidate_if_needed(Err(e)).await;
+                    }
                     let call_option = option.clone();
                     let result = self
                         .reader
