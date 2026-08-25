@@ -30,9 +30,9 @@ time = "0.3"
 
 url = { version = "2.4", optional = true }
 path-clean = { version = "1.0", optional = true }
-sha2 = { version = "0.10", optional = true }
+sha2 = { version = "0.11", optional = true }
 percent-encoding = { version = "2.3", optional = true }
-hmac = { version = "0.12", optional = true }
+hmac = { version = "0.13", optional = true }
 hex = { version = "0.4", optional = true }
 
 [dev-dependencies]
