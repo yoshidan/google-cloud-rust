@@ -2,7 +2,7 @@ use std::env::var;
 use std::path::PathBuf;
 
 use async_trait::async_trait;
-use hmac::Mac;
+use hmac::{KeyInit, Mac};
 use path_clean::PathClean;
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use serde::{Deserialize, Serialize};
