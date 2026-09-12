@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use arrow::error::ArrowError;
 use arrow::ipc::writer::{
-    write_message, CompressionContext, DictionaryTracker, EncodedData, IpcDataGenerator, IpcWriteOptions,
+    write_message, DictionaryTracker, EncodedData, IpcDataGenerator, IpcWriteContext, IpcWriteOptions,
 };
 use arrow::record_batch::RecordBatch;
 use google_cloud_gax::grpc::codegen::tokio_stream::Stream;
@@ -50,13 +50,13 @@ impl AppendRowsRequestBuilder {
         let options = IpcWriteOptions::default();
         let generator = IpcDataGenerator::default();
         let mut dict_tracker = DictionaryTracker::new(true);
-        let mut compression = CompressionContext::default();
+        let mut write_ctx = IpcWriteContext::default();
 
         let schema_encoded =
             generator.schema_to_bytes_with_dictionary_tracker(&batch.schema(), &mut dict_tracker, &options);
         let serialized_schema = encoded_to_bytes(vec![schema_encoded], &options)?;
 
-        let (dict_encoded, batch_encoded) = generator.encode(batch, &mut dict_tracker, &options, &mut compression)?;
+        let (dict_encoded, batch_encoded) = generator.encode(batch, &mut dict_tracker, &options, &mut write_ctx)?;
         let mut encoded = dict_encoded;
         encoded.push(batch_encoded);
         let serialized_record_batch = encoded_to_bytes(encoded, &options)?;
