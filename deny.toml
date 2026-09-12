@@ -174,12 +174,18 @@ deny = [
 skip = [
     { name = "hashbrown" },
     { name = "getrandom" },
+    # arrow depends on num-bigint 0.5 while bigdecimal/simple_asn1 still use 0.4
+    { name = "num-bigint" },
 ]
 # Similarly to `skip` allows you to skip certain crates during duplicate
 # detection. Unlike skip, it also includes the entire tree of transitive
 # dependencies starting at the specified crate, up to a certain depth, which is
 # by default infinite.
 skip-tree = [
+    # sha2 0.11 / hmac 0.13 are on the digest 0.11 stack, while jsonwebtoken's
+    # rust-crypto backend still depends on digest 0.10
+    { name = "sha2", version = "0.11" },
+    { name = "hmac", version = "0.13" },
     { name = "regex-automata" },
     { name = "windows-sys" },
     { name = "reqwest" },
