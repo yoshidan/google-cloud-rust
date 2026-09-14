@@ -19,7 +19,7 @@ pub struct SchemaClient {
 }
 
 impl SchemaClient {
-    /// create new publisher client
+    /// create new schema client
     pub fn new(cm: ConnectionManager) -> SchemaClient {
         SchemaClient { cm: Arc::new(cm) }
     }
