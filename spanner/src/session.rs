@@ -18,7 +18,9 @@ use tracing::{Instrument, Span};
 use google_cloud_gax::grpc::metadata::MetadataMap;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::TryAs;
-use google_cloud_googleapis::spanner::v1::{BatchCreateSessionsRequest, DeleteSessionRequest, Session};
+use google_cloud_googleapis::spanner::v1::{
+    BatchCreateSessionsRequest, CreateSessionRequest, DeleteSessionRequest, Session,
+};
 
 use crate::apiv1::conn_pool::ConnectionManager;
 use crate::apiv1::spanner_client::{ping_query_request, Client};
@@ -73,6 +75,7 @@ impl SessionHandle {
         };
         match self.spanner_client.delete_session(request, true, None).await {
             Ok(_) => self.deleted = true,
+            // Multiplexed sessions cannot be deleted and will fail here.
             Err(e) => tracing::warn!("failed to delete session {}, {:?}", session_name, e),
         };
     }
@@ -239,8 +242,15 @@ impl SessionPool {
         disable_route_to_leader: bool,
         metrics: Arc<MetricsRecorder>,
     ) -> Result<Self, Status> {
-        let available_sessions =
-            Self::init_pool(database, conn_pool, config.min_opened, disable_route_to_leader, metrics.clone()).await?;
+        let available_sessions = Self::init_pool(
+            database,
+            conn_pool,
+            config.min_opened,
+            disable_route_to_leader,
+            config.multiplexed,
+            metrics.clone(),
+        )
+        .await?;
         let pool = SessionPool {
             inner: Arc::new(RwLock::new(Sessions {
                 available_sessions,
@@ -264,6 +274,7 @@ impl SessionPool {
         conn_pool: &ConnectionManager,
         min_opened: usize,
         disable_route_to_leader: bool,
+        multiplexed: bool,
         metrics: Arc<MetricsRecorder>,
     ) -> Result<VecDeque<SessionHandle>, Status> {
         let channel_num = conn_pool.num();
@@ -284,9 +295,13 @@ impl SessionPool {
                 .with_metrics(metrics.clone())
                 .with_metadata(client_metadata(&database));
             let database = database.clone();
-            tasks.spawn(async move {
-                batch_create_sessions(next_client, &database, creation_count, disable_route_to_leader).await
-            }.instrument(Span::current()));
+            tasks.spawn(
+                async move {
+                    batch_create_sessions(next_client, &database, creation_count, disable_route_to_leader, multiplexed)
+                        .await
+                }
+                .instrument(Span::current()),
+            );
         }
         while let Some(r) = tasks.join_next().await {
             let new_sessions = r.map_err(|e| Status::from_error(e.into()))??;
@@ -417,6 +432,7 @@ impl SessionPool {
     fn snapshot_fn(&self) -> SessionPoolStatsFn {
         let inner = self.inner.clone();
         let max_allowed = self.config.max_opened;
+        let has_multiplexed = self.config.multiplexed;
         Arc::new(move || {
             let sessions = inner.read();
             SessionPoolSnapshot {
@@ -425,7 +441,7 @@ impl SessionPool {
                 idle_sessions: sessions.available_sessions.len(),
                 max_allowed_sessions: max_allowed,
                 max_in_use_last_window: sessions.max_inuse_window,
-                has_multiplexed_session: false,
+                has_multiplexed_session: has_multiplexed,
             }
         })
     }
@@ -475,6 +491,18 @@ pub struct SessionConfig {
     /// incStep is the number of sessions to create in one batch when at least
     /// one more session is needed.
     inc_step: usize,
+
+    /// multiplexed creates multiplexed sessions instead of regular ones.
+    ///
+    /// A multiplexed session is a single shared session that cannot be deleted and does
+    /// not idle out, so most of the pool's sizing, eviction and health-check logic stops
+    /// being meaningful — but it is left in place and simply becomes redundant.
+    ///
+    /// Required by Spanner Omni, which rejects regular sessions with
+    /// `InvalidArgument: Please use multiplexed sessions.` Real Cloud Spanner and the
+    /// Cloud Spanner emulator both still accept regular sessions, so this defaults to
+    /// `false` and the existing behaviour is unchanged unless it is opted into.
+    pub multiplexed: bool,
 }
 
 impl Default for SessionConfig {
@@ -488,6 +516,7 @@ impl Default for SessionConfig {
             session_alive_trust_duration: Duration::from_secs(55 * 60),
             session_get_timeout: Duration::from_secs(1),
             refresh_interval: Duration::from_secs(5 * 60),
+            multiplexed: false,
         }
     }
 }
@@ -538,7 +567,7 @@ impl SessionManager {
         .await?;
 
         let cancel = CancellationToken::new();
-        let task_session_cleaner = Self::spawn_health_check_task(config, session_pool.clone(), cancel.clone());
+        let task_session_cleaner = Self::spawn_health_check_task(config.clone(), session_pool.clone(), cancel.clone());
         let task_session_creator = Self::spawn_session_creation_task(
             session_pool.clone(),
             database,
@@ -546,6 +575,7 @@ impl SessionManager {
             receiver,
             cancel.clone(),
             disable_route_to_leader,
+            config.multiplexed,
         );
 
         let sm = SessionManager {
@@ -583,6 +613,7 @@ impl SessionManager {
         mut rx: UnboundedReceiver<usize>,
         cancel: CancellationToken,
         disable_route_to_leader: bool,
+        multiplexed: bool,
     ) -> JoinHandle<()> {
         tokio::spawn(async move {
             let mut tasks = JoinSet::default();
@@ -600,7 +631,7 @@ impl SessionManager {
                                 .with_metrics(session_pool.metrics.clone())
                                 .with_metadata(client_metadata(&database));
                             let database = database.clone();
-                            tasks.spawn(async move { (session_count, batch_create_sessions(client, &database, session_count, disable_route_to_leader).await) });
+                            tasks.spawn(async move { (session_count, batch_create_sessions(client, &database, session_count, disable_route_to_leader, multiplexed).await) });
                         },
                         None => continue
                     },
@@ -699,6 +730,7 @@ async fn batch_create_sessions(
     database: &str,
     mut remaining_create_count: usize,
     disable_route_to_leader: bool,
+    multiplexed: bool,
 ) -> Result<Vec<SessionHandle>, Status> {
     let mut created = Vec::with_capacity(remaining_create_count);
     while remaining_create_count > 0 {
@@ -707,6 +739,7 @@ async fn batch_create_sessions(
             database,
             remaining_create_count,
             disable_route_to_leader,
+            multiplexed,
         )
         .await?;
         // Spanner could return less sessions than requested.
@@ -723,25 +756,49 @@ async fn batch_create_session(
     database: &str,
     session_count: usize,
     disable_route_to_leader: bool,
+    multiplexed: bool,
 ) -> Result<Vec<SessionHandle>, Status> {
-    let request = BatchCreateSessionsRequest {
-        database: database.to_string(),
-        session_template: None,
-        session_count: session_count as i32,
-    };
-
-    tracing::debug!("spawn session creation request : session_count = {}", session_count);
-    let response = spanner_client
-        .batch_create_sessions(request, disable_route_to_leader, None)
-        .await?
-        .into_inner();
-
     let now = Instant::now();
-    Ok(response
-        .session
-        .into_iter()
-        .map(|s| SessionHandle::new(s, spanner_client.clone(), now))
-        .collect::<Vec<SessionHandle>>())
+
+    if multiplexed {
+        // Multiplexed sessions must be created one at a time using create_session.
+        tracing::debug!("spawn multiplexed session creation request : session_count = {}", session_count);
+        let mut sessions = Vec::with_capacity(session_count);
+        for _ in 0..session_count {
+            let request = CreateSessionRequest {
+                database: database.to_string(),
+                session: Some(Session {
+                    multiplexed: true,
+                    ..Default::default()
+                }),
+            };
+            let response = spanner_client
+                .create_session(request, disable_route_to_leader, None)
+                .await?
+                .into_inner();
+            sessions.push(SessionHandle::new(response, spanner_client.clone(), now));
+        }
+        Ok(sessions)
+    } else {
+        // Regular sessions use batch creation.
+        let request = BatchCreateSessionsRequest {
+            database: database.to_string(),
+            session_template: None,
+            session_count: session_count as i32,
+        };
+
+        tracing::debug!("spawn session creation request : session_count = {}", session_count);
+        let response = spanner_client
+            .batch_create_sessions(request, disable_route_to_leader, None)
+            .await?
+            .into_inner();
+
+        Ok(response
+            .session
+            .into_iter()
+            .map(|s| SessionHandle::new(s, spanner_client.clone(), now))
+            .collect::<Vec<SessionHandle>>())
+    }
 }
 
 pub(crate) fn client_metadata(database: &str) -> MetadataMap {
@@ -1223,7 +1280,7 @@ mod tests {
             .with_metrics(Arc::new(MetricsRecorder::default()))
             .with_metadata(client_metadata(DATABASE));
         let session_count = 125;
-        let result = batch_create_sessions(client.clone(), DATABASE, session_count, false).await;
+        let result = batch_create_sessions(client.clone(), DATABASE, session_count, false, false).await;
         match result {
             Ok(created) => {
                 assert_eq!(session_count, created.len());

@@ -1,6 +1,8 @@
 use std::ops::DerefMut;
 use std::sync::atomic::AtomicI64;
+use std::sync::Arc;
 
+use parking_lot::Mutex;
 use prost_types::Struct;
 
 use google_cloud_gax::grpc::Status;
@@ -8,7 +10,7 @@ use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::spanner::v1::request_options::Priority;
 use google_cloud_googleapis::spanner::v1::{
     execute_sql_request::QueryMode, execute_sql_request::QueryOptions as ExecuteQueryOptions, ExecuteSqlRequest,
-    ReadRequest, RequestOptions, TransactionSelector,
+    MultiplexedSessionPrecommitToken, ReadRequest, RequestOptions, TransactionSelector,
 };
 
 use crate::key::{Key, KeySet};
@@ -98,6 +100,28 @@ impl Default for QueryOptions {
     }
 }
 
+/// Shared slot holding the highest-sequence precommit token seen during a transaction.
+///
+/// Spanner rejects a read-write commit on a multiplexed session unless the request carries
+/// the most recent precommit token, and tokens arrive on several different responses --
+/// including the `PartialResultSet`s that a [`RowIterator`] consumes while it holds the
+/// session borrow. A shared slot lets the iterator record tokens without having to hand
+/// anything back to the transaction that owns it.
+///
+/// Regular sessions never receive tokens, so the slot simply stays empty for them.
+pub(crate) type PrecommitTokenSink = Arc<Mutex<Option<MultiplexedSessionPrecommitToken>>>;
+
+/// Records `token` if it is newer than whatever the sink already holds.
+pub(crate) fn observe_precommit_token(sink: &PrecommitTokenSink, token: Option<MultiplexedSessionPrecommitToken>) {
+    let Some(token) = token else {
+        return;
+    };
+    let mut current = sink.lock();
+    if current.as_ref().is_none_or(|held| token.seq_num > held.seq_num) {
+        *current = Some(token);
+    }
+}
+
 pub struct Transaction {
     pub(crate) session: Option<ManagedSession>,
     // for returning ownership of session on before destroy
@@ -108,9 +132,18 @@ pub struct Transaction {
     /// disableRouteToLeader specifies if all the requests of type read-write and PDML
     /// need to be routed to the leader region.
     pub(crate) disable_route_to_leader: bool,
+    /// Highest-sequence precommit token observed so far. Only ever populated when the
+    /// transaction runs on a multiplexed session.
+    pub(crate) precommit_token: PrecommitTokenSink,
 }
 
 impl Transaction {
+    /// Whether this transaction runs on a multiplexed session, which is what makes the
+    /// precommit token and `mutation_key` plumbing necessary.
+    pub(crate) fn uses_multiplexed_session(&self) -> bool {
+        self.session.as_ref().is_some_and(|s| s.session.multiplexed)
+    }
+
     pub(crate) fn create_request_options(
         priority: Option<Priority>,
         transaction_tag: Option<String>,
@@ -161,12 +194,20 @@ impl Transaction {
             directed_read_options: None,
             last_statement: false,
         };
+        let precommit_token = self.precommit_token.clone();
         let session = self.session.as_mut().unwrap().deref_mut();
         let reader = StatementReader {
             enable_resume: options.enable_resume,
             request,
         };
-        RowIterator::new(session, reader, Some(options.call_options), self.disable_route_to_leader).await
+        RowIterator::new(
+            session,
+            reader,
+            Some(options.call_options),
+            self.disable_route_to_leader,
+            precommit_token,
+        )
+        .await
     }
 
     /// read returns a RowIterator for reading multiple rows from the database.
@@ -228,9 +269,17 @@ impl Transaction {
         };
 
         let disable_route_to_leader = self.disable_route_to_leader;
+        let precommit_token = self.precommit_token.clone();
         let session = self.as_mut_session();
         let reader = TableReader { request };
-        RowIterator::new(session, reader, Some(options.call_options), disable_route_to_leader).await
+        RowIterator::new(
+            session,
+            reader,
+            Some(options.call_options),
+            disable_route_to_leader,
+            precommit_token,
+        )
+        .await
     }
 
     /// read returns a RowIterator for reading multiple rows from the database.
@@ -278,5 +327,40 @@ impl Transaction {
     /// must drop destroy after this method.
     pub(crate) fn take_session(&mut self) -> Option<ManagedSession> {
         self.session.take()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use google_cloud_googleapis::spanner::v1::MultiplexedSessionPrecommitToken;
+
+    use crate::transaction::{observe_precommit_token, PrecommitTokenSink};
+
+    fn token(seq_num: i32) -> Option<MultiplexedSessionPrecommitToken> {
+        Some(MultiplexedSessionPrecommitToken {
+            precommit_token: vec![seq_num as u8],
+            seq_num,
+        })
+    }
+
+    #[test]
+    fn test_observe_precommit_token_keeps_highest_seq_num() {
+        let sink = PrecommitTokenSink::default();
+        assert!(sink.lock().is_none());
+
+        observe_precommit_token(&sink, token(2));
+        assert_eq!(sink.lock().as_ref().unwrap().seq_num, 2);
+
+        // An older token must not displace the one already held.
+        observe_precommit_token(&sink, token(1));
+        assert_eq!(sink.lock().as_ref().unwrap().seq_num, 2);
+
+        observe_precommit_token(&sink, token(3));
+        assert_eq!(sink.lock().as_ref().unwrap().seq_num, 3);
+
+        // Responses without a token leave the sink alone, which is the only thing that
+        // ever happens on a regular session.
+        observe_precommit_token(&sink, None);
+        assert_eq!(sink.lock().as_ref().unwrap().seq_num, 3);
     }
 }

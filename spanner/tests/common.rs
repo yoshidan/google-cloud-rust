@@ -12,6 +12,7 @@ use google_cloud_spanner::row::{Error as RowError, Row, Struct, TryFromStruct};
 use google_cloud_spanner::session::SessionConfig;
 use google_cloud_spanner::statement::Statement;
 use google_cloud_spanner::transaction_ro::BatchReadOnlyTransaction;
+use google_cloud_spanner::transaction_rw::CommitResult;
 use google_cloud_spanner::value::CommitTimestamp;
 
 use google_cloud_spanner::bigdecimal::BigDecimal;
@@ -120,17 +121,65 @@ pub fn user_columns() -> Vec<&'static str> {
     ]
 }
 
+/// The backend the tests run against.
+///
+/// Defaults to the Cloud Spanner emulator on its usual port. Set `SPANNER_EMULATOR_HOST` to
+/// point somewhere else, and `SPANNER_MULTIPLEXED_SESSIONS=true` to use multiplexed
+/// sessions, which is the only kind Spanner Omni accepts.
+#[allow(dead_code)]
+pub fn emulator_host() -> String {
+    std::env::var("SPANNER_EMULATOR_HOST").unwrap_or_else(|_| "localhost:9010".to_string())
+}
+
+#[allow(dead_code)]
+pub fn multiplexed_sessions() -> bool {
+    matches!(std::env::var("SPANNER_MULTIPLEXED_SESSIONS").as_deref(), Ok("true" | "1"))
+}
+
+/// Rows per commit for bulk `User` fixtures: 19 columns x 5,000 rows = 95,000 mutations.
+#[allow(dead_code)]
+pub const USER_ROWS_PER_COMMIT: usize = 5_000;
+
+/// Applies `mutations` in chunks, returning one [`CommitResult`] per chunk, in order.
+///
+/// Spanner refuses a commit carrying more than 120,000 mutations, counted once per column
+/// affected, so a fixture of tens of thousands of `User` rows cannot go in one transaction.
+/// The Cloud Spanner emulator does not enforce that limit, but real Cloud Spanner and
+/// Spanner Omni both do.
+///
+/// Each chunk commits separately and so gets its own commit timestamp; the rows written by
+/// chunk `i` carry the timestamp of `results[i]`. Use [`chunk_timestamp`] to recover it.
+#[allow(dead_code)]
+pub async fn apply_in_chunks(client: &Client, mutations: Vec<Mutation>, rows_per_commit: usize) -> Vec<CommitResult> {
+    let mut results = Vec::new();
+    for chunk in mutations.chunks(rows_per_commit) {
+        results.push(client.apply(chunk.to_vec()).await.unwrap());
+    }
+    results
+}
+
+/// The commit timestamp of the chunk that the mutation at `index` was written in.
+#[allow(dead_code)]
+pub fn chunk_timestamp(results: &[CommitResult], index: usize, rows_per_commit: usize) -> OffsetDateTime {
+    let ts = results[index / rows_per_commit].timestamp.clone().unwrap();
+    OffsetDateTime::from_unix_timestamp(ts.seconds)
+        .unwrap()
+        .replace_nanosecond(ts.nanos as u32)
+        .unwrap()
+}
+
 #[allow(dead_code)]
 pub async fn create_data_client() -> Client {
     let mut session_config = SessionConfig::default();
     session_config.min_opened = 1;
     session_config.max_opened = 1;
+    session_config.multiplexed = multiplexed_sessions();
 
     Client::new(
         DATABASE,
         ClientConfig {
             session_config,
-            environment: Environment::Emulator("localhost:9010".to_string()),
+            environment: Environment::Emulator(emulator_host()),
             channel_config: ChannelConfig {
                 num_channels: 1,
                 ..Default::default()

@@ -20,7 +20,10 @@ fn init() {
     let filter = tracing_subscriber::filter::EnvFilter::from_default_env()
         .add_directive("google_cloud_spanner=trace".parse().unwrap());
     let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
-    std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
+    // Leave an explicitly configured host alone so the suite can be pointed at Spanner Omni.
+    if std::env::var("SPANNER_EMULATOR_HOST").is_err() {
+        std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
+    }
 }
 
 async fn assert_read(tx: &mut ReadOnlyTransaction, user_id: &str, now: &OffsetDateTime, cts: &OffsetDateTime) {
@@ -237,7 +240,9 @@ async fn test_batch_partition_query_and_read() {
     let many = (0..20000)
         .map(|x| create_user_mutation(&format!("user_partitionx_{x}"), &now))
         .collect();
-    let cr2 = data_client.apply(many).await.unwrap();
+    // Too many mutations for a single transaction, so each chunk lands at its own commit
+    // timestamp and rows have to be checked against the chunk that wrote them.
+    let cr2 = apply_in_chunks(&data_client, many, USER_ROWS_PER_COMMIT).await;
 
     // test
     let mut tx = data_client.batch_read_only_transaction().await.unwrap();
@@ -262,13 +267,9 @@ async fn test_batch_partition_query_and_read() {
         map.insert(user_id, row);
     }
 
-    let ts = cr2.timestamp.unwrap();
-    let ts = OffsetDateTime::from_unix_timestamp(ts.seconds)
-        .unwrap()
-        .replace_nanosecond(ts.nanos as u32)
-        .unwrap();
     (0..20000).for_each(|x| {
         let user_id = format!("user_partitionx_{x}");
+        let ts = chunk_timestamp(&cr2, x, USER_ROWS_PER_COMMIT);
         assert_user_row(map.get(&user_id).unwrap(), &user_id, &now, &ts)
     });
 }
@@ -279,22 +280,23 @@ async fn test_query(count: usize, prefix: &str) {
         .map(|x| create_user_mutation(&format!("user_{prefix}_{x}"), &now))
         .collect();
     let data_client = create_data_client().await;
-    let cr = data_client.apply(mutations).await.unwrap();
+    // Chunked because a large `count` would otherwise exceed Spanner's per-transaction
+    // mutation limit; each chunk lands at its own commit timestamp.
+    let cr = apply_in_chunks(&data_client, mutations, USER_ROWS_PER_COMMIT).await;
 
     let mut tx = data_client.read_only_transaction().await.unwrap();
     let stmt = Statement::new(format!("SELECT *, Array[UserId,UserId,UserId,UserId,UserId] as UserIds, Array[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20] as NumArray FROM User p WHERE p.UserId LIKE 'user_{prefix}_%' ORDER BY UserId "));
     let rows = execute_query(&mut tx, stmt).await;
     assert_eq!(count, rows.len());
 
-    let ts = cr.timestamp.unwrap();
-    let ts = OffsetDateTime::from_unix_timestamp(ts.seconds)
-        .unwrap()
-        .replace_nanosecond(ts.nanos as u32)
-        .unwrap();
     let mut user_ids: Vec<String> = (0..count).map(|x| format!("user_{prefix}_{x}")).collect();
     user_ids.sort();
     for (x, user_id) in user_ids.iter().enumerate() {
         let row = rows.get(x).unwrap();
+        // Sorted lexicographically, so recover the mutation index from the name to find
+        // which chunk -- and so which commit timestamp -- this row was written in.
+        let index: usize = user_id.rsplit('_').next().unwrap().parse().unwrap();
+        let ts = chunk_timestamp(&cr, index, USER_ROWS_PER_COMMIT);
         assert_user_row(row, user_id, &now, &ts);
         let user_ids = row.column_by_name::<Vec<String>>("UserIds").unwrap();
         user_ids.iter().for_each(|u| assert_eq!(u, user_id));

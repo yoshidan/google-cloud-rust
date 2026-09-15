@@ -80,6 +80,7 @@ impl Default for ChannelConfig {
 #[derive(Debug)]
 pub struct ClientConfig {
     /// SessionPoolConfig is the configuration for session pool.
+    /// For Spanner Omni, set `session_config.multiplexed = true`.
     pub session_config: SessionConfig,
     /// ChannelConfig is the configuration for gRPC connection.
     pub channel_config: ChannelConfig,
@@ -108,6 +109,11 @@ impl Default for ClientConfig {
         };
         config.session_config.min_opened = config.channel_config.num_channels * 4;
         config.session_config.max_opened = config.channel_config.num_channels * 100;
+        // Spanner Omni accepts only multiplexed sessions. Reading the switch from the
+        // environment, the same way SPANNER_EMULATOR_HOST already is, lets an application
+        // point at Omni without any code change.
+        config.session_config.multiplexed =
+            matches!(var("SPANNER_MULTIPLEXED_SESSIONS").as_deref(), Ok("true") | Ok("1"));
         config
     }
 }
@@ -423,7 +429,9 @@ impl Client {
                     mode: Some(transaction_options::Mode::ReadWrite(transaction_options::ReadWrite::default())),
                     isolation_level: IsolationLevel::Unspecified as i32,
                 });
-                match commit(session, ms.clone(), tx, options.clone(), self.disable_route_to_leader).await {
+                // A single-use transaction is begun and committed by the same request, so
+                // there is no earlier response that could have carried a precommit token.
+                match commit(session, ms.clone(), tx, options.clone(), self.disable_route_to_leader, None).await {
                     Ok(s) => Ok(Some(s.into())),
                     Err(e) => Err((Error::GRPC(e), session)),
                 }
