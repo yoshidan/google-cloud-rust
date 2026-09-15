@@ -752,22 +752,27 @@ pub(crate) fn client_metadata(database: &str) -> MetadataMap {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::VecDeque;
+    use std::future::{poll_fn, Future};
     use std::sync::atomic::{AtomicI64, Ordering};
     use std::sync::Arc;
+    use std::task::Poll;
     use std::time::{Duration, Instant};
 
     use parking_lot::RwLock;
     use serial_test::serial;
+    use tokio::sync::mpsc;
     use tokio::time::sleep;
     use tokio_util::sync::CancellationToken;
 
     use google_cloud_gax::conn::{ConnectionOptions, Environment};
-    use google_cloud_googleapis::spanner::v1::ExecuteSqlRequest;
+    use google_cloud_googleapis::spanner::v1::{ExecuteSqlRequest, Session};
 
     use crate::apiv1::conn_pool::ConnectionManager;
     use crate::metrics::MetricsRecorder;
     use crate::session::{
-        batch_create_sessions, client_metadata, health_check, SessionConfig, SessionError, SessionManager,
+        batch_create_sessions, client_metadata, health_check, SessionConfig, SessionError, SessionHandle,
+        SessionManager, SessionPool, Sessions,
     };
 
     pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
@@ -777,6 +782,95 @@ mod tests {
         let filter = tracing_subscriber::filter::EnvFilter::from_default_env()
             .add_directive("google_cloud_spanner=trace".parse().unwrap());
         let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
+    }
+
+    async fn single_session_pool() -> (SessionPool, tokio::net::TcpStream) {
+        // These tests never issue an RPC, so the transport only needs a TCP peer.
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let environment = Environment::Emulator(listener.local_addr().unwrap().to_string());
+        let options = ConnectionOptions::default();
+        let (connection, peer) =
+            tokio::join!(ConnectionManager::new(1, &environment, "", &options), listener.accept(),);
+        let client = connection.unwrap().conn();
+        let (peer, _) = peer.unwrap();
+        let now = Instant::now();
+        let handle = SessionHandle::new(Session::default(), client, now);
+        let (session_creation_sender, _) = mpsc::unbounded_channel();
+        let pool = SessionPool {
+            inner: Arc::new(RwLock::new(Sessions {
+                available_sessions: VecDeque::from([handle]),
+                waiters: VecDeque::new(),
+                orphans: Vec::new(),
+                num_inuse: 0,
+                num_creating: 0,
+                max_inuse_window: 0,
+                window_started_at: now,
+            })),
+            session_creation_sender,
+            config: Arc::new(SessionConfig {
+                max_opened: 1,
+                min_opened: 1,
+                max_idle: 1,
+                session_get_timeout: Duration::from_secs(1),
+                ..Default::default()
+            }),
+            metrics: Arc::new(MetricsRecorder::default()),
+        };
+        (pool, peer)
+    }
+
+    #[tokio::test]
+    async fn cancellation_before_notification_preserves_progress() {
+        let (pool, _peer) = single_session_pool().await;
+        tokio::time::pause();
+        let held = pool.acquire().await.unwrap();
+        let mut first = Box::pin(pool.acquire());
+        let mut second = Box::pin(pool.acquire());
+        poll_fn(|cx| {
+            assert!(first.as_mut().poll(cx).is_pending());
+            assert!(second.as_mut().poll(cx).is_pending());
+            Poll::Ready(())
+        })
+        .await;
+        assert_eq!(pool.inner.read().waiters.len(), 2);
+
+        drop(first);
+        drop(held);
+
+        let _session = second
+            .await
+            .expect("the remaining waiter should acquire the returned session");
+    }
+
+    #[tokio::test]
+    async fn cancellation_after_notification_preserves_progress() {
+        let (pool, _peer) = single_session_pool().await;
+        tokio::time::pause();
+        let held = pool.acquire().await.unwrap();
+        let mut first = Box::pin(pool.acquire());
+        let mut second = Box::pin(pool.acquire());
+        poll_fn(|cx| {
+            assert!(first.as_mut().poll(cx).is_pending());
+            assert!(second.as_mut().poll(cx).is_pending());
+            Poll::Ready(())
+        })
+        .await;
+        assert_eq!(pool.inner.read().waiters.len(), 2);
+
+        // Returning the only session notifies the first waiter, which is never polled again.
+        drop(held);
+        assert_eq!(pool.inner.read().waiters.len(), 1);
+        drop(first);
+
+        let _session = second.await.unwrap_or_else(|err| {
+            let state = pool.inner.read();
+            panic!(
+                "remaining waiter failed: {err}; idle={}, in_use={}, waiters={}",
+                state.available_sessions.len(),
+                state.num_inuse,
+                state.waiters.len()
+            );
+        });
     }
 
     async fn assert_rush(use_invalidate: bool, config: SessionConfig) -> Arc<SessionManager> {
