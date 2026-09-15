@@ -528,6 +528,17 @@ pub(crate) struct SessionManager {
     tasks: Mutex<Vec<JoinHandle<()>>>,
 }
 
+impl Drop for SessionManager {
+    /// Stops the background tasks when the last `Client` clone is dropped without
+    /// `close().await`. Aborting also covers tasks blocked mid-RPC.
+    fn drop(&mut self) {
+        self.cancel.cancel();
+        for task in self.tasks.lock().drain(..) {
+            task.abort();
+        }
+    }
+}
+
 impl SessionManager {
     pub async fn new(
         database: impl Into<String>,
@@ -1217,6 +1228,40 @@ mod tests {
         sm.close().await;
         assert_eq!(sm.num_opened(), 0);
         assert_eq!(sm.session_pool.inner.read().orphans.len(), 0);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_drop_cancels_background_tasks() {
+        let cm = ConnectionManager::new(
+            4,
+            &Environment::Emulator("localhost:9010".to_string()),
+            "",
+            &ConnectionOptions::default(),
+        )
+        .await
+        .unwrap();
+        let config = SessionConfig {
+            min_opened: 5,
+            max_opened: 10,
+            ..Default::default()
+        };
+        let sm = SessionManager::new(DATABASE, cm, config, false, Arc::new(MetricsRecorder::default()))
+            .await
+            .unwrap();
+
+        let cancel = sm.cancel.clone();
+        let pool = Arc::clone(&sm.session_pool.inner);
+
+        drop(sm);
+        assert!(cancel.is_cancelled());
+
+        // The background tasks must release their references to the session pool.
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while Arc::strong_count(&pool) > 1 {
+            assert!(Instant::now() < deadline, "background tasks did not stop after drop");
+            sleep(Duration::from_millis(50)).await;
+        }
     }
 
     #[tokio::test(flavor = "multi_thread")]

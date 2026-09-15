@@ -226,6 +226,9 @@ impl Client {
 
     /// Close closes all the sessions gracefully.
     /// This method can be called only once.
+    ///
+    /// Dropping the last `Client` clone instead also stops the background tasks,
+    /// but server-side sessions are left to expire (about one hour idle).
     pub async fn close(self) {
         self.sessions.close().await;
     }
