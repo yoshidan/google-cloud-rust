@@ -415,9 +415,20 @@ impl SessionPool {
     }
 
     fn snapshot_fn(&self) -> SessionPoolStatsFn {
-        let inner = self.inner.clone();
+        // Weak ref to break the cycle: Sessions -> SessionHandle -> client -> MetricsRecorder -> gauge callback -> Sessions.
+        let inner = Arc::downgrade(&self.inner);
         let max_allowed = self.config.max_opened;
         Arc::new(move || {
+            let Some(inner) = inner.upgrade() else {
+                return SessionPoolSnapshot {
+                    open_sessions: 0,
+                    sessions_in_use: 0,
+                    idle_sessions: 0,
+                    max_allowed_sessions: max_allowed,
+                    max_in_use_last_window: 0,
+                    has_multiplexed_session: false,
+                };
+            };
             let sessions = inner.read();
             SessionPoolSnapshot {
                 open_sessions: sessions.num_opened(),
