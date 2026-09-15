@@ -222,6 +222,26 @@ impl Sessions {
     }
 }
 
+/// Keeps an idle session from being stranded when an acquisition is cancelled.
+struct SessionWaiter<'a> {
+    sessions: &'a RwLock<Sessions>,
+    receiver: oneshot::Receiver<()>,
+}
+
+impl Drop for SessionWaiter<'_> {
+    fn drop(&mut self) {
+        let mut sessions = self.sessions.write();
+        // Serialize closing the receiver with selecting and notifying waiters.
+        // The timeout must borrow the receiver so it cannot close it outside this lock.
+        self.receiver.close();
+        if !sessions.available_sessions.is_empty() {
+            if let Some(waiter) = sessions.take_waiter() {
+                let _ = waiter.send(());
+            }
+        }
+    }
+}
+
 #[derive(Clone)]
 struct SessionPool {
     inner: Arc<RwLock<Sessions>>,
@@ -309,7 +329,7 @@ impl SessionPool {
     async fn acquire(&self) -> Result<ManagedSession, SessionError> {
         let request_started_at = Instant::now();
         loop {
-            let (on_session_acquired, session_count) = {
+            let (mut waiter, session_count) = {
                 let mut sessions = self.inner.write();
 
                 // Prioritize waiters over new acquirers.
@@ -326,7 +346,13 @@ impl SessionPool {
                 let (sender, receiver) = oneshot::channel();
                 sessions.waiters.push_back(sender);
                 let session_count = sessions.reserve(self.config.max_opened, self.config.inc_step);
-                (receiver, session_count)
+                (
+                    SessionWaiter {
+                        sessions: &self.inner,
+                        receiver,
+                    },
+                    session_count,
+                )
             };
 
             if session_count > 0 {
@@ -334,7 +360,7 @@ impl SessionPool {
             }
 
             // Wait for the session available notification.
-            match timeout(self.config.session_get_timeout, on_session_acquired).await {
+            match timeout(self.config.session_get_timeout, &mut waiter.receiver).await {
                 Ok(Ok(())) => {
                     let mut sessions = self.inner.write();
                     if let Some(mut s) = sessions.take() {
@@ -871,6 +897,48 @@ mod tests {
                 state.waiters.len()
             );
         });
+    }
+
+    #[tokio::test]
+    async fn cancellation_after_replenishment_preserves_progress() {
+        let (pool, _peer) = single_session_pool().await;
+        tokio::time::pause();
+        // Hold the session outside the pool to simulate an in-flight creation RPC.
+        let created = {
+            let mut sessions = pool.inner.write();
+            sessions.num_creating = 1;
+            sessions.available_sessions.pop_front().unwrap()
+        };
+        let mut first = Box::pin(pool.acquire());
+        let mut second = Box::pin(pool.acquire());
+        let mut third = Box::pin(pool.acquire());
+        poll_fn(|cx| {
+            assert!(first.as_mut().poll(cx).is_pending());
+            assert!(second.as_mut().poll(cx).is_pending());
+            assert!(third.as_mut().poll(cx).is_pending());
+            Poll::Ready(())
+        })
+        .await;
+
+        pool.inner.write().replenish(1, Ok(vec![created]));
+        assert_eq!(pool.inner.read().waiters.len(), 2);
+        drop(first);
+        assert_eq!(pool.inner.read().waiters.len(), 1);
+        drop(second);
+
+        let session = third
+            .await
+            .expect("successive cancellations should pass on the notification");
+        {
+            let sessions = pool.inner.read();
+            assert_eq!(sessions.num_inuse, 1);
+            assert_eq!(sessions.num_creating, 0);
+            assert!(sessions.available_sessions.is_empty());
+            assert!(sessions.waiters.is_empty());
+        }
+        drop(session);
+        assert_eq!(pool.inner.read().num_inuse, 0);
+        assert_eq!(pool.inner.read().available_sessions.len(), 1);
     }
 
     async fn assert_rush(use_invalidate: bool, config: SessionConfig) -> Arc<SessionManager> {
