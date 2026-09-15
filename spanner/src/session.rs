@@ -602,7 +602,8 @@ impl SessionManager {
                             let database = database.clone();
                             tasks.spawn(async move { (session_count, batch_create_sessions(client, &database, session_count, disable_route_to_leader).await) });
                         },
-                        None => continue
+                        // channel closed
+                        None => break
                     },
                 }
             }
