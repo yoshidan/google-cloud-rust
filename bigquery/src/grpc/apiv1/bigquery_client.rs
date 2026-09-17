@@ -21,6 +21,7 @@ fn default_setting() -> RetrySetting {
         factor: 1u64,
         take: 20,
         codes: vec![Code::Unavailable, Code::Unknown],
+        jitter: false,
     }
 }
 
