@@ -2,17 +2,17 @@ use async_trait::async_trait;
 
 use crate::error::Error;
 use crate::token::Token;
-use crate::token_source::TokenSource;
+use crate::token_source::GoogleCloudTokenSource;
 
 #[derive(Debug)]
 pub struct ReuseTokenSource {
-    target: Box<dyn TokenSource>,
+    target: Box<dyn GoogleCloudTokenSource>,
     current_token: std::sync::RwLock<Token>,
     guard: tokio::sync::Mutex<()>,
 }
 
 impl ReuseTokenSource {
-    pub(crate) fn new(target: Box<dyn TokenSource>, token: Token) -> ReuseTokenSource {
+    pub(crate) fn new(target: Box<dyn GoogleCloudTokenSource>, token: Token) -> ReuseTokenSource {
         ReuseTokenSource {
             target,
             current_token: std::sync::RwLock::new(token),
@@ -22,7 +22,7 @@ impl ReuseTokenSource {
 }
 
 #[async_trait]
-impl TokenSource for ReuseTokenSource {
+impl GoogleCloudTokenSource for ReuseTokenSource {
     async fn token(&self) -> Result<Token, Error> {
         if let Some(token) = self.r_lock_token() {
             return Ok(token);
@@ -65,14 +65,14 @@ mod test {
     use crate::error::Error;
     use crate::token::Token;
     use crate::token_source::reuse_token_source::ReuseTokenSource;
-    use crate::token_source::TokenSource;
+    use crate::token_source::GoogleCloudTokenSource;
 
     #[derive(Debug)]
     struct EmptyTokenSource {
         pub expiry: OffsetDateTime,
     }
     #[async_trait]
-    impl TokenSource for EmptyTokenSource {
+    impl GoogleCloudTokenSource for EmptyTokenSource {
         async fn token(&self) -> Result<Token, Error> {
             Ok(Token {
                 access_token: "empty".to_string(),

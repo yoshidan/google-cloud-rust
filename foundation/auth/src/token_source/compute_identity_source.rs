@@ -7,7 +7,7 @@ use google_cloud_metadata::{METADATA_FLAVOR_KEY, METADATA_GOOGLE, METADATA_HOST_
 
 use crate::error::Error;
 use crate::token::Token;
-use crate::token_source::{default_http_client, TokenSource};
+use crate::token_source::{default_http_client, GoogleCloudTokenSource};
 
 /// Fetches a JWT token from the metadata server.
 /// using the `identity` endpoint.
@@ -53,7 +53,7 @@ struct ExpClaim {
 }
 
 #[async_trait]
-impl TokenSource for ComputeIdentitySource {
+impl GoogleCloudTokenSource for ComputeIdentitySource {
     async fn token(&self) -> Result<Token, Error> {
         let jwt = self
             .client

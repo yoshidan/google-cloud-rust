@@ -6,7 +6,7 @@ use google_cloud_metadata::{METADATA_FLAVOR_KEY, METADATA_GOOGLE, METADATA_HOST_
 use crate::error::Error;
 use crate::token::Token;
 use crate::token_source::InternalToken;
-use crate::token_source::{default_http_client, TokenSource};
+use crate::token_source::{default_http_client, GoogleCloudTokenSource};
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -34,7 +34,7 @@ impl ComputeTokenSource {
 }
 
 #[async_trait]
-impl TokenSource for ComputeTokenSource {
+impl GoogleCloudTokenSource for ComputeTokenSource {
     async fn token(&self) -> Result<Token, Error> {
         let it = self
             .client
