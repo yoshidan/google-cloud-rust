@@ -50,6 +50,7 @@ fn default_setting() -> RetrySetting {
 #[derive(Clone)]
 pub struct Client {
     inner: SpannerClient<Channel>,
+    enable_gzip: bool,
     metadata: MetadataMap,
     metrics: Arc<MetricsRecorder>,
 }
@@ -60,6 +61,7 @@ impl Client {
         // https://github.com/googleapis/google-cloud-go/blob/65a9ba55ed3777f520bd881d891e8917323549a5/spanner/apiv1/spanner_client.go#L73
         Client {
             inner: inner.max_decoding_message_size(i32::MAX as usize),
+            enable_gzip: false,
             metadata: Default::default(),
             metrics: Arc::new(MetricsRecorder::default()),
         }
@@ -69,9 +71,21 @@ impl Client {
     pub(crate) fn with_metadata(self, metadata: MetadataMap) -> Client {
         Client {
             inner: self.inner,
+            enable_gzip: self.enable_gzip,
             metadata,
             metrics: self.metrics,
         }
+    }
+
+    pub(crate) fn with_gzip(mut self, enabled: bool) -> Self {
+        self.enable_gzip = enabled;
+        if enabled {
+            self.inner = self
+                .inner
+                .send_compressed(grpc::codec::CompressionEncoding::Gzip)
+                .accept_compressed(grpc::codec::CompressionEncoding::Gzip);
+        }
+        self
     }
 
     pub(crate) fn with_metrics(mut self, metrics: Arc<MetricsRecorder>) -> Client {
@@ -585,6 +599,10 @@ impl Client {
     ) -> grpc::Request<T> {
         let mut req = create_request(param_string, into_request);
         let target = req.metadata_mut();
+        if self.enable_gzip {
+            // Spanner requires this header to request compressed responses.
+            target.insert("x-response-encoding", "gzip".parse().unwrap());
+        }
         if !disable_route_to_leader {
             target.append(ROUTE_TO_LEADER_HEADER, "true".parse().unwrap());
         }
@@ -603,5 +621,210 @@ impl Client {
 
     fn record_gfe<T>(metrics: &MetricsRecorder, method: &'static str, response: &Response<T>) {
         metrics.record_server_timing(method, response.metadata());
+    }
+}
+
+#[cfg(test)]
+mod compression_tests {
+    use std::convert::Infallible;
+    use std::future::Future;
+    use std::io::{Read, Write};
+    use std::pin::Pin;
+    use std::task::{Context, Poll};
+
+    use bytes::Bytes;
+    use flate2::{read::GzDecoder, write::GzEncoder, Compression};
+    use http_body_util::BodyExt;
+    use prost::Message;
+    use tokio_stream::wrappers::TcpListenerStream;
+    use tonic::body::Body;
+    use tonic::server::NamedService;
+    use tower::Service;
+
+    use super::*;
+
+    #[derive(Clone)]
+    struct CompressionServer {
+        gzip: bool,
+    }
+
+    impl NamedService for CompressionServer {
+        const NAME: &'static str = "google.spanner.v1.Spanner";
+    }
+
+    impl Service<http::Request<Body>> for CompressionServer {
+        type Response = http::Response<Body>;
+        type Error = Infallible;
+        type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+
+        fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+
+        fn call(&mut self, req: http::Request<Body>) -> Self::Future {
+            let gzip = self.gzip;
+            Box::pin(async move {
+                let path = req.uri().path().to_string();
+                assert_eq!(
+                    req.headers().get("x-response-encoding").map(|v| v.to_str().unwrap()),
+                    gzip.then_some("gzip")
+                );
+                assert_eq!(
+                    req.headers().get("grpc-encoding").map(|v| v.to_str().unwrap()),
+                    gzip.then_some("gzip")
+                );
+                assert_eq!(
+                    req.headers()["google-cloud-resource-prefix"],
+                    "projects/test/instances/test/databases/test"
+                );
+                if gzip {
+                    assert!(req.headers()["grpc-accept-encoding"].to_str().unwrap().contains("gzip"));
+                }
+                let frame = req.into_body().collect().await.unwrap().to_bytes();
+                assert_eq!(frame[0], u8::from(gzip));
+                assert_eq!(u32::from_be_bytes(frame[1..5].try_into().unwrap()) as usize, frame.len() - 5);
+                let payload = if gzip {
+                    let mut decoded = Vec::new();
+                    GzDecoder::new(&frame[5..]).read_to_end(&mut decoded).unwrap();
+                    decoded
+                } else {
+                    frame[5..].to_vec()
+                };
+                let mut payload = match path.as_str() {
+                    "/google.spanner.v1.Spanner/GetSession" => {
+                        let request = GetSessionRequest::decode(payload.as_slice()).unwrap();
+                        Session {
+                            name: request.name,
+                            ..Default::default()
+                        }
+                        .encode_to_vec()
+                    }
+                    "/google.spanner.v1.Spanner/BatchCreateSessions" => {
+                        let request = BatchCreateSessionsRequest::decode(payload.as_slice()).unwrap();
+                        assert_eq!(request.database, "projects/test/instances/test/databases/test");
+                        assert_eq!(request.session_count, 1);
+                        BatchCreateSessionsResponse {
+                            session: vec![Session {
+                                name: format!("{}/sessions/test", request.database),
+                                ..Default::default()
+                            }],
+                        }
+                        .encode_to_vec()
+                    }
+                    "/google.spanner.v1.Spanner/DeleteSession" => {
+                        let request = DeleteSessionRequest::decode(payload.as_slice()).unwrap();
+                        assert_eq!(request.name, "projects/test/instances/test/databases/test/sessions/test");
+                        Vec::new()
+                    }
+                    _ => panic!("Unexpected RPC: {path}"),
+                };
+                if gzip {
+                    let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+                    encoder.write_all(&payload).unwrap();
+                    payload = encoder.finish().unwrap();
+                }
+                let mut frame = vec![u8::from(gzip)];
+                frame.extend_from_slice(&(payload.len() as u32).to_be_bytes());
+                frame.extend_from_slice(&payload);
+                let mut response = http::Response::builder().header("content-type", "application/grpc");
+                if gzip {
+                    response = response.header("grpc-encoding", "gzip");
+                }
+                let body = http_body_util::Full::new(Bytes::from(frame)).with_trailers(async {
+                    let mut trailers = http::HeaderMap::new();
+                    trailers.insert("grpc-status", "0".parse().unwrap());
+                    Some(Ok::<_, Infallible>(trailers))
+                });
+                Ok(response.body(Body::new(body)).unwrap())
+            })
+        }
+    }
+
+    #[tokio::test]
+    async fn gzip_round_trip_and_uncompressed_default() {
+        for gzip in [false, true] {
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let addr = listener.local_addr().unwrap();
+            let server = tokio::spawn(
+                tonic::transport::Server::builder()
+                    .add_service(CompressionServer { gzip })
+                    .serve_with_incoming(TcpListenerStream::new(listener)),
+            );
+            let pool = crate::apiv1::conn_pool::ConnectionManager::new(
+                1,
+                &google_cloud_gax::conn::Environment::Emulator(addr.to_string()),
+                "",
+                &google_cloud_gax::conn::ConnectionOptions::default(),
+            )
+            .await
+            .unwrap()
+            .with_gzip(gzip);
+            let mut client = pool
+                .conn()
+                .with_metadata(crate::session::client_metadata("projects/test/instances/test/databases/test"));
+            let name = "projects/test/instances/test/databases/test/sessions/test";
+            let response = tokio::time::timeout(
+                Duration::from_secs(5),
+                client.get_session(GetSessionRequest { name: name.into() }, false, None),
+            )
+            .await
+            .unwrap()
+            .unwrap();
+            assert_eq!(response.into_inner().name, name);
+            server.abort();
+        }
+    }
+
+    #[tokio::test]
+    async fn public_builder_compression_and_legacy_constructor() {
+        use crate::client::{Client as SpannerClient, ClientConfig, Compression};
+
+        for mode in ["legacy", "default", "gzip", "identity"] {
+            let gzip = mode == "gzip";
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let addr = listener.local_addr().unwrap();
+            let server = tokio::spawn(
+                tonic::transport::Server::builder()
+                    .add_service(CompressionServer { gzip })
+                    .serve_with_incoming(TcpListenerStream::new(listener)),
+            );
+            let mut config = ClientConfig {
+                environment: google_cloud_gax::conn::Environment::Emulator(addr.to_string()),
+                ..Default::default()
+            };
+            config.channel_config.num_channels = 1;
+            config.session_config.min_opened = 1;
+            config.session_config.max_opened = 1;
+            config.session_config.max_idle = 1;
+            let database = "projects/test/instances/test/databases/test";
+            tokio::time::timeout(Duration::from_secs(5), async {
+                let client = match mode {
+                    "legacy" => SpannerClient::new(database, config).await,
+                    "default" => SpannerClient::builder(database).config(config).build().await,
+                    "gzip" => {
+                        SpannerClient::builder(database)
+                            .compression(Compression::Gzip)
+                            .config(config)
+                            .build()
+                            .await
+                    }
+                    "identity" => {
+                        SpannerClient::builder(database)
+                            .config(config)
+                            .compression(Compression::Gzip)
+                            .compression(Compression::Identity)
+                            .build()
+                            .await
+                    }
+                    _ => unreachable!(),
+                }
+                .unwrap();
+                assert_eq!(client.session_count(), 1);
+                client.close().await;
+            })
+            .await
+            .unwrap();
+            server.abort();
+        }
     }
 }
