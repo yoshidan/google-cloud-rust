@@ -6,7 +6,7 @@ use crate::{
     project::{project, Project, SERVICE_ACCOUNT_KEY},
     token_source::{
         compute_identity_source::ComputeIdentitySource, reuse_token_source::ReuseTokenSource,
-        service_account_token_source::OAuth2ServiceAccountTokenSource, TokenSource,
+        service_account_token_source::OAuth2ServiceAccountTokenSource, GoogleCloudTokenSource,
     },
 };
 
@@ -39,7 +39,7 @@ impl IdTokenSourceConfig {
         self
     }
 
-    pub async fn build(self, audience: &str) -> Result<Box<dyn TokenSource>, error::Error> {
+    pub async fn build(self, audience: &str) -> Result<Box<dyn GoogleCloudTokenSource>, error::Error> {
         create_id_token_source(self, audience).await
     }
 }
@@ -47,7 +47,7 @@ impl IdTokenSourceConfig {
 pub async fn create_id_token_source(
     config: IdTokenSourceConfig,
     audience: &str,
-) -> Result<Box<dyn TokenSource>, error::Error> {
+) -> Result<Box<dyn GoogleCloudTokenSource>, error::Error> {
     if audience.is_empty() {
         return Err(error::Error::ScopeOrAudienceRequired);
     }
@@ -72,7 +72,7 @@ pub(crate) async fn id_token_source_from_credentials(
     custom_claims: &HashMap<String, serde_json::Value>,
     credentials: &CredentialsFile,
     audience: &str,
-) -> Result<Box<dyn TokenSource>, error::Error> {
+) -> Result<Box<dyn GoogleCloudTokenSource>, error::Error> {
     let ts = match credentials.tp.as_str() {
         SERVICE_ACCOUNT_KEY => {
             let mut claims = custom_claims.clone();
