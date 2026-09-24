@@ -194,7 +194,17 @@ impl StreamingRetrySetting {
 
 impl Default for StreamingRetrySetting {
     fn default() -> Self {
-        StreamingRetrySetting::new(vec![Code::Unavailable, Code::ResourceExhausted, Code::Internal])
+        // `Cancelled` covers a connection torn down under an in-flight stream
+        // (e.g. the server recycling an HTTP/2 channel via GOAWAY "max_age"):
+        // tonic surfaces that race as Code::Cancelled ("operation was
+        // canceled" / hyper "connection closed") rather than the Unavailable
+        // that other gRPC implementations map it to.
+        StreamingRetrySetting::new(vec![
+            Code::Unavailable,
+            Code::ResourceExhausted,
+            Code::Internal,
+            Code::Cancelled,
+        ])
     }
 }
 
@@ -224,6 +234,9 @@ mod tests {
             .condition()
             .should_retry(&Status::new(Code::ResourceExhausted, "")));
         assert!(setting.condition().should_retry(&Status::new(Code::Internal, "")));
+        assert!(setting
+            .condition()
+            .should_retry(&Status::new(Code::Cancelled, "operation was canceled")));
         assert!(!setting.condition().should_retry(&Status::new(Code::Aborted, "")));
     }
 }
