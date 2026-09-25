@@ -644,6 +644,7 @@ pub mod row;
 pub mod session;
 pub mod statement;
 pub mod transaction;
+pub mod transaction_manager;
 pub mod transaction_ro;
 pub mod transaction_rw;
 pub mod value;
