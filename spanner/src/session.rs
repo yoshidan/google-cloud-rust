@@ -222,6 +222,26 @@ impl Sessions {
     }
 }
 
+/// Keeps an idle session from being stranded when an acquisition is cancelled.
+struct SessionWaiter<'a> {
+    sessions: &'a RwLock<Sessions>,
+    receiver: oneshot::Receiver<()>,
+}
+
+impl Drop for SessionWaiter<'_> {
+    fn drop(&mut self) {
+        let mut sessions = self.sessions.write();
+        // Serialize closing the receiver with selecting and notifying waiters.
+        // The timeout must borrow the receiver so it cannot close it outside this lock.
+        self.receiver.close();
+        if !sessions.available_sessions.is_empty() {
+            if let Some(waiter) = sessions.take_waiter() {
+                let _ = waiter.send(());
+            }
+        }
+    }
+}
+
 #[derive(Clone)]
 struct SessionPool {
     inner: Arc<RwLock<Sessions>>,
@@ -309,7 +329,7 @@ impl SessionPool {
     async fn acquire(&self) -> Result<ManagedSession, SessionError> {
         let request_started_at = Instant::now();
         loop {
-            let (on_session_acquired, session_count) = {
+            let (mut waiter, session_count) = {
                 let mut sessions = self.inner.write();
 
                 // Prioritize waiters over new acquirers.
@@ -326,7 +346,13 @@ impl SessionPool {
                 let (sender, receiver) = oneshot::channel();
                 sessions.waiters.push_back(sender);
                 let session_count = sessions.reserve(self.config.max_opened, self.config.inc_step);
-                (receiver, session_count)
+                (
+                    SessionWaiter {
+                        sessions: &self.inner,
+                        receiver,
+                    },
+                    session_count,
+                )
             };
 
             if session_count > 0 {
@@ -334,7 +360,7 @@ impl SessionPool {
             }
 
             // Wait for the session available notification.
-            match timeout(self.config.session_get_timeout, on_session_acquired).await {
+            match timeout(self.config.session_get_timeout, &mut waiter.receiver).await {
                 Ok(Ok(())) => {
                     let mut sessions = self.inner.write();
                     if let Some(mut s) = sessions.take() {
@@ -415,9 +441,20 @@ impl SessionPool {
     }
 
     fn snapshot_fn(&self) -> SessionPoolStatsFn {
-        let inner = self.inner.clone();
+        // Weak ref to break the cycle: Sessions -> SessionHandle -> client -> MetricsRecorder -> gauge callback -> Sessions.
+        let inner = Arc::downgrade(&self.inner);
         let max_allowed = self.config.max_opened;
         Arc::new(move || {
+            let Some(inner) = inner.upgrade() else {
+                return SessionPoolSnapshot {
+                    open_sessions: 0,
+                    sessions_in_use: 0,
+                    idle_sessions: 0,
+                    max_allowed_sessions: max_allowed,
+                    max_in_use_last_window: 0,
+                    has_multiplexed_session: false,
+                };
+            };
             let sessions = inner.read();
             SessionPoolSnapshot {
                 open_sessions: sessions.num_opened(),
@@ -517,6 +554,17 @@ pub(crate) struct SessionManager {
     tasks: Mutex<Vec<JoinHandle<()>>>,
 }
 
+impl Drop for SessionManager {
+    /// Stops the background tasks when the last `Client` clone is dropped without
+    /// `close().await`. Aborting also covers tasks blocked mid-RPC.
+    fn drop(&mut self) {
+        self.cancel.cancel();
+        for task in self.tasks.lock().drain(..) {
+            task.abort();
+        }
+    }
+}
+
 impl SessionManager {
     pub async fn new(
         database: impl Into<String>,
@@ -602,7 +650,8 @@ impl SessionManager {
                             let database = database.clone();
                             tasks.spawn(async move { (session_count, batch_create_sessions(client, &database, session_count, disable_route_to_leader).await) });
                         },
-                        None => continue
+                        // channel closed
+                        None => break
                     },
                 }
             }
@@ -752,22 +801,27 @@ pub(crate) fn client_metadata(database: &str) -> MetadataMap {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::VecDeque;
+    use std::future::{poll_fn, Future};
     use std::sync::atomic::{AtomicI64, Ordering};
     use std::sync::Arc;
+    use std::task::Poll;
     use std::time::{Duration, Instant};
 
     use parking_lot::RwLock;
     use serial_test::serial;
+    use tokio::sync::mpsc;
     use tokio::time::sleep;
     use tokio_util::sync::CancellationToken;
 
     use google_cloud_gax::conn::{ConnectionOptions, Environment};
-    use google_cloud_googleapis::spanner::v1::ExecuteSqlRequest;
+    use google_cloud_googleapis::spanner::v1::{ExecuteSqlRequest, Session};
 
     use crate::apiv1::conn_pool::ConnectionManager;
     use crate::metrics::MetricsRecorder;
     use crate::session::{
-        batch_create_sessions, client_metadata, health_check, SessionConfig, SessionError, SessionManager,
+        batch_create_sessions, client_metadata, health_check, SessionConfig, SessionError, SessionHandle,
+        SessionManager, SessionPool, Sessions,
     };
 
     pub const DATABASE: &str = "projects/local-project/instances/test-instance/databases/local-database";
@@ -777,6 +831,137 @@ mod tests {
         let filter = tracing_subscriber::filter::EnvFilter::from_default_env()
             .add_directive("google_cloud_spanner=trace".parse().unwrap());
         let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
+    }
+
+    async fn single_session_pool() -> (SessionPool, tokio::net::TcpStream) {
+        // These tests never issue an RPC, so the transport only needs a TCP peer.
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let environment = Environment::Emulator(listener.local_addr().unwrap().to_string());
+        let options = ConnectionOptions::default();
+        let (connection, peer) =
+            tokio::join!(ConnectionManager::new(1, &environment, "", &options), listener.accept(),);
+        let client = connection.unwrap().conn();
+        let (peer, _) = peer.unwrap();
+        let now = Instant::now();
+        let handle = SessionHandle::new(Session::default(), client, now);
+        let (session_creation_sender, _) = mpsc::unbounded_channel();
+        let pool = SessionPool {
+            inner: Arc::new(RwLock::new(Sessions {
+                available_sessions: VecDeque::from([handle]),
+                waiters: VecDeque::new(),
+                orphans: Vec::new(),
+                num_inuse: 0,
+                num_creating: 0,
+                max_inuse_window: 0,
+                window_started_at: now,
+            })),
+            session_creation_sender,
+            config: Arc::new(SessionConfig {
+                max_opened: 1,
+                min_opened: 1,
+                max_idle: 1,
+                session_get_timeout: Duration::from_secs(1),
+                ..Default::default()
+            }),
+            metrics: Arc::new(MetricsRecorder::default()),
+        };
+        (pool, peer)
+    }
+
+    #[tokio::test]
+    async fn cancellation_before_notification_preserves_progress() {
+        let (pool, _peer) = single_session_pool().await;
+        tokio::time::pause();
+        let held = pool.acquire().await.unwrap();
+        let mut first = Box::pin(pool.acquire());
+        let mut second = Box::pin(pool.acquire());
+        poll_fn(|cx| {
+            assert!(first.as_mut().poll(cx).is_pending());
+            assert!(second.as_mut().poll(cx).is_pending());
+            Poll::Ready(())
+        })
+        .await;
+        assert_eq!(pool.inner.read().waiters.len(), 2);
+
+        drop(first);
+        drop(held);
+
+        let _session = second
+            .await
+            .expect("the remaining waiter should acquire the returned session");
+    }
+
+    #[tokio::test]
+    async fn cancellation_after_notification_preserves_progress() {
+        let (pool, _peer) = single_session_pool().await;
+        tokio::time::pause();
+        let held = pool.acquire().await.unwrap();
+        let mut first = Box::pin(pool.acquire());
+        let mut second = Box::pin(pool.acquire());
+        poll_fn(|cx| {
+            assert!(first.as_mut().poll(cx).is_pending());
+            assert!(second.as_mut().poll(cx).is_pending());
+            Poll::Ready(())
+        })
+        .await;
+        assert_eq!(pool.inner.read().waiters.len(), 2);
+
+        // Returning the only session notifies the first waiter, which is never polled again.
+        drop(held);
+        assert_eq!(pool.inner.read().waiters.len(), 1);
+        drop(first);
+
+        let _session = second.await.unwrap_or_else(|err| {
+            let state = pool.inner.read();
+            panic!(
+                "remaining waiter failed: {err}; idle={}, in_use={}, waiters={}",
+                state.available_sessions.len(),
+                state.num_inuse,
+                state.waiters.len()
+            );
+        });
+    }
+
+    #[tokio::test]
+    async fn cancellation_after_replenishment_preserves_progress() {
+        let (pool, _peer) = single_session_pool().await;
+        tokio::time::pause();
+        // Hold the session outside the pool to simulate an in-flight creation RPC.
+        let created = {
+            let mut sessions = pool.inner.write();
+            sessions.num_creating = 1;
+            sessions.available_sessions.pop_front().unwrap()
+        };
+        let mut first = Box::pin(pool.acquire());
+        let mut second = Box::pin(pool.acquire());
+        let mut third = Box::pin(pool.acquire());
+        poll_fn(|cx| {
+            assert!(first.as_mut().poll(cx).is_pending());
+            assert!(second.as_mut().poll(cx).is_pending());
+            assert!(third.as_mut().poll(cx).is_pending());
+            Poll::Ready(())
+        })
+        .await;
+
+        pool.inner.write().replenish(1, Ok(vec![created]));
+        assert_eq!(pool.inner.read().waiters.len(), 2);
+        drop(first);
+        assert_eq!(pool.inner.read().waiters.len(), 1);
+        drop(second);
+
+        let session = third
+            .await
+            .expect("successive cancellations should pass on the notification");
+        {
+            let sessions = pool.inner.read();
+            assert_eq!(sessions.num_inuse, 1);
+            assert_eq!(sessions.num_creating, 0);
+            assert!(sessions.available_sessions.is_empty());
+            assert!(sessions.waiters.is_empty());
+        }
+        drop(session);
+        assert_eq!(pool.inner.read().num_inuse, 0);
+        assert_eq!(pool.inner.read().available_sessions.len(), 1);
     }
 
     async fn assert_rush(use_invalidate: bool, config: SessionConfig) -> Arc<SessionManager> {
@@ -1205,6 +1390,40 @@ mod tests {
         sm.close().await;
         assert_eq!(sm.num_opened(), 0);
         assert_eq!(sm.session_pool.inner.read().orphans.len(), 0);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
+    async fn test_drop_cancels_background_tasks() {
+        let cm = ConnectionManager::new(
+            4,
+            &Environment::Emulator("localhost:9010".to_string()),
+            "",
+            &ConnectionOptions::default(),
+        )
+        .await
+        .unwrap();
+        let config = SessionConfig {
+            min_opened: 5,
+            max_opened: 10,
+            ..Default::default()
+        };
+        let sm = SessionManager::new(DATABASE, cm, config, false, Arc::new(MetricsRecorder::default()))
+            .await
+            .unwrap();
+
+        let cancel = sm.cancel.clone();
+        let pool = Arc::clone(&sm.session_pool.inner);
+
+        drop(sm);
+        assert!(cancel.is_cancelled());
+
+        // The background tasks must release their references to the session pool.
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while Arc::strong_count(&pool) > 1 {
+            assert!(Instant::now() < deadline, "background tasks did not stop after drop");
+            sleep(Duration::from_millis(50)).await;
+        }
     }
 
     #[tokio::test(flavor = "multi_thread")]

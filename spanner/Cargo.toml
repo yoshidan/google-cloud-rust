@@ -41,7 +41,7 @@ http-body-util = "0.1"
 tokio-stream = { version = "0.1", features = ["net"] }
 tonic = { version = "0.14", default-features = false, features = ["transport", "router"] }
 tower = "0.5"
-tokio = { version="1.32", features=["macros", "net", "rt-multi-thread"] }
+tokio = { version="1.32", features=["macros", "net", "rt-multi-thread", "test-util"] }
 tracing-subscriber = { version="0.3", features=["env-filter"] }
 serial_test = "3.1"
 ctor = "0.5"
