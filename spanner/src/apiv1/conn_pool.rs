@@ -12,6 +12,7 @@ pub const SCOPES: [&str; 2] = [
 
 pub struct ConnectionManager {
     inner: GRPCConnectionManager,
+    enable_gzip: bool,
 }
 
 impl ConnectionManager {
@@ -38,6 +39,7 @@ impl ConnectionManager {
 
         Ok(ConnectionManager {
             inner: GRPCConnectionManager::new(pool_size, sni_domain, audience, environment, conn_options).await?,
+            enable_gzip: false,
         })
     }
 
@@ -45,8 +47,13 @@ impl ConnectionManager {
         self.inner.num()
     }
 
+    pub(crate) fn with_gzip(mut self, enabled: bool) -> Self {
+        self.enable_gzip = enabled;
+        self
+    }
+
     pub fn conn(&self) -> Client {
         let conn = self.inner.conn();
-        Client::new(SpannerClient::new(conn))
+        Client::new(SpannerClient::new(conn)).with_gzip(self.enable_gzip)
     }
 }

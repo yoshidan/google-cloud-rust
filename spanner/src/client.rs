@@ -175,18 +175,52 @@ impl TryAs<Status> for Error {
     }
 }
 
-/// Client is a client for reading and writing data to a Cloud Spanner database.
-/// A client is safe to use concurrently, except for its Close method.
-#[derive(Clone)]
-pub struct Client {
-    sessions: Arc<SessionManager>,
-    disable_route_to_leader: bool,
+/// Compression used for Spanner gRPC requests and responses.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum Compression {
+    /// Sends uncompressed requests and does not request compressed responses.
+    #[default]
+    Identity,
+    /// Compresses requests and requests gzip-compressed responses.
+    Gzip,
 }
 
-impl Client {
-    /// new creates a client to a database. A valid database name has
-    /// the form projects/PROJECT_ID/instances/INSTANCE_ID/databases/DATABASE_ID.
-    pub async fn new(database: impl Into<String>, config: ClientConfig) -> Result<Self, Error> {
+/// Builds a Spanner client with optional transport settings.
+///
+/// Use [`Client::builder`] to create a builder. Additional settings can be added
+/// without changing [`ClientConfig`] or the existing [`Client::new`] constructor.
+#[derive(Debug)]
+#[must_use]
+pub struct ClientBuilder {
+    database: String,
+    config: ClientConfig,
+    compression: Compression,
+}
+
+impl ClientBuilder {
+    /// Replaces the client configuration. Defaults to [`ClientConfig::default`].
+    ///
+    /// Configure authentication on `config` before passing it to this method.
+    /// This does not change the builder's transport settings.
+    pub fn config(mut self, config: ClientConfig) -> Self {
+        self.config = config;
+        self
+    }
+
+    /// Selects request and response compression. Defaults to [`Compression::Identity`].
+    pub fn compression(mut self, compression: Compression) -> Self {
+        self.compression = compression;
+        self
+    }
+
+    /// Connects to Spanner and initializes the session pool.
+    pub async fn build(self) -> Result<Client, Error> {
+        let Self {
+            database,
+            config,
+            compression,
+        } = self;
         if config.session_config.max_opened > config.channel_config.num_channels * 100 {
             return Err(Error::InvalidConfig(format!(
                 "max session size is {} because max session size is 100 per gRPC connection",
@@ -194,7 +228,6 @@ impl Client {
             )));
         }
 
-        let database: String = database.into();
         let metrics = Arc::new(
             MetricsRecorder::try_new(&database, &config.metrics).map_err(|e| Error::InvalidConfig(e.to_string()))?,
         );
@@ -207,8 +240,12 @@ impl Client {
             keep_alive_timeout: config.channel_config.keep_alive_timeout,
             keep_alive_while_idle: config.channel_config.keep_alive_while_idle,
         };
-        let conn_pool =
-            ConnectionManager::new(pool_size, &config.environment, config.endpoint.as_str(), &options).await?;
+        let conn_pool = ConnectionManager::new(pool_size, &config.environment, config.endpoint.as_str(), &options)
+            .await?
+            .with_gzip(match compression {
+                Compression::Identity => false,
+                Compression::Gzip => true,
+            });
         let session_manager = SessionManager::new(
             database,
             conn_pool,
@@ -222,6 +259,33 @@ impl Client {
             sessions: session_manager,
             disable_route_to_leader: config.disable_route_to_leader,
         })
+    }
+}
+
+/// Client is a client for reading and writing data to a Cloud Spanner database.
+/// A client is safe to use concurrently, except for its Close method.
+#[derive(Clone)]
+pub struct Client {
+    sessions: Arc<SessionManager>,
+    disable_route_to_leader: bool,
+}
+
+impl Client {
+    /// new creates a client to a database. A valid database name has
+    /// the form projects/PROJECT_ID/instances/INSTANCE_ID/databases/DATABASE_ID.
+    pub async fn new(database: impl Into<String>, config: ClientConfig) -> Result<Self, Error> {
+        Self::builder(database).config(config).build().await
+    }
+
+    /// Creates a builder with default configuration and compression disabled.
+    /// A valid database name has the form
+    /// projects/PROJECT_ID/instances/INSTANCE_ID/databases/DATABASE_ID.
+    pub fn builder(database: impl Into<String>) -> ClientBuilder {
+        ClientBuilder {
+            database: database.into(),
+            config: ClientConfig::default(),
+            compression: Compression::default(),
+        }
     }
 
     /// Close closes all the sessions gracefully.
