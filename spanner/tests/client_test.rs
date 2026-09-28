@@ -22,7 +22,10 @@ fn init() {
     let filter = tracing_subscriber::filter::EnvFilter::from_default_env()
         .add_directive("google_cloud_spanner=trace".parse().unwrap());
     let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
-    std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
+    // Leave an explicitly configured host alone so the suite can be pointed at Spanner Omni.
+    if std::env::var("SPANNER_EMULATOR_HOST").is_err() {
+        std::env::set_var("SPANNER_EMULATOR_HOST", "localhost:9010");
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -195,7 +198,9 @@ async fn test_batch_read_only_transaction() {
         .map(|x| create_user_mutation(&format!("user_partition_{}_{}", now.unix_timestamp(), x), &now))
         .collect();
     let data_client = create_data_client().await;
-    data_client.apply(many).await.unwrap();
+    // Too many mutations for a single transaction; only the row count is asserted below,
+    // so the per-chunk commit timestamps do not matter here.
+    apply_in_chunks(&data_client, many, USER_ROWS_PER_COMMIT).await;
 
     // test
     let client = Client::new(DATABASE, ClientConfig::default()).await.unwrap();

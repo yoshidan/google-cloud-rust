@@ -7,17 +7,23 @@ use prost_types::Struct;
 
 use crate::session::ManagedSession;
 use crate::statement::Statement;
-use crate::transaction::{CallOptions, QueryOptions, Transaction};
+use crate::transaction::{observe_precommit_token, CallOptions, PrecommitTokenSink, QueryOptions, Transaction};
 use crate::value::Timestamp;
 use google_cloud_gax::grpc::{Code, Status};
 use google_cloud_gax::retry::{RetrySetting, TryAs};
 use google_cloud_googleapis::spanner::v1::commit_request::Transaction::TransactionId;
 use google_cloud_googleapis::spanner::v1::transaction_options::IsolationLevel;
 use google_cloud_googleapis::spanner::v1::{
-    commit_request, execute_batch_dml_request, result_set_stats, transaction_options, transaction_selector,
-    BeginTransactionRequest, CommitRequest, CommitResponse, ExecuteBatchDmlRequest, ExecuteSqlRequest, Mutation,
-    ResultSetStats, RollbackRequest, TransactionOptions, TransactionSelector,
+    commit_request, commit_response, execute_batch_dml_request, result_set_stats, transaction_options,
+    transaction_selector, BeginTransactionRequest, CommitRequest, CommitResponse, ExecuteBatchDmlRequest,
+    ExecuteSqlRequest, MultiplexedSessionPrecommitToken, Mutation, ResultSetStats, RollbackRequest, TransactionOptions,
+    TransactionSelector,
 };
+
+/// A commit on a multiplexed session can succeed at the RPC level without having committed,
+/// returning a fresh precommit token and asking to be retried with it. Bound how often that
+/// exchange may repeat so a misbehaving backend cannot loop forever.
+const MAX_PRECOMMIT_TOKEN_RETRIES: usize = 3;
 
 #[derive(Clone, Default)]
 pub struct CommitOptions {
@@ -181,6 +187,11 @@ impl ReadWriteTransaction {
             }
         };
         let tx = response.into_inner();
+        let precommit_token = PrecommitTokenSink::default();
+        // BeginTransaction only returns a token when a mutation_key was supplied, which it
+        // never is here -- see begin_with_mutation_key. Observe it anyway so the source is
+        // handled uniformly with the others.
+        observe_precommit_token(&precommit_token, tx.precommit_token);
         Ok(ReadWriteTransaction {
             base_tx: Transaction {
                 session: Some(session),
@@ -190,10 +201,57 @@ impl ReadWriteTransaction {
                 },
                 transaction_tag,
                 disable_route_to_leader,
+                precommit_token,
             },
             tx_id: tx.id,
             wb: vec![],
         })
+    }
+
+    /// Re-issues BeginTransaction with a `mutation_key` so that Spanner hands back a
+    /// precommit token.
+    ///
+    /// A read-write transaction on a multiplexed session must commit with a precommit
+    /// token. Tokens normally ride on statement responses, but a transaction that only
+    /// buffers mutations never runs a statement, so its only possible source is
+    /// BeginTransaction -- and BeginTransaction only returns one when a `mutation_key` was
+    /// supplied. Mutations are buffered after the transaction begins, so the key is not
+    /// known until commit time and the transaction has to be begun a second time.
+    ///
+    /// The transaction being replaced has run no statements, which is exactly what "no
+    /// token yet" means here, so nothing is lost by starting a new one. Any buffered
+    /// mutation serves as the key; Spanner only uses it to route the transaction.
+    async fn begin_with_mutation_key(&mut self, options: &CommitOptions) -> Result<(), Status> {
+        let Some(mutation_key) = self.wb.first().cloned() else {
+            return Ok(());
+        };
+        let request = BeginTransactionRequest {
+            session: self.get_session_name(),
+            options: Some(TransactionOptions {
+                exclude_txn_from_change_streams: false,
+                mode: Some(transaction_options::Mode::ReadWrite(transaction_options::ReadWrite::default())),
+                isolation_level: IsolationLevel::Unspecified as i32,
+            }),
+            request_options: Transaction::create_request_options(
+                options.call_options.priority,
+                self.base_tx.transaction_tag.clone(),
+            ),
+            mutation_key: Some(mutation_key),
+        };
+        let disable_route_to_leader = self.disable_route_to_leader;
+        let precommit_token = self.base_tx.precommit_token.clone();
+        let session = self.as_mut_session();
+        let result = session
+            .spanner_client
+            .begin_transaction(request, disable_route_to_leader, options.call_options.retry.clone())
+            .await;
+        let tx = session.invalidate_if_needed(result).await?.into_inner();
+        observe_precommit_token(&precommit_token, tx.precommit_token);
+        self.tx_id = tx.id.clone();
+        self.base_tx.transaction_selector = TransactionSelector {
+            selector: Some(transaction_selector::Selector::Id(tx.id)),
+        };
+        Ok(())
     }
 
     pub fn buffer_write(&mut self, ms: Vec<Mutation>) {
@@ -225,13 +283,15 @@ impl ReadWriteTransaction {
             last_statement: false,
         };
         let disable_route_to_leader = self.disable_route_to_leader;
+        let precommit_token = self.base_tx.precommit_token.clone();
         let session = self.as_mut_session();
         let result = session
             .spanner_client
             .execute_sql(request, disable_route_to_leader, options.call_options.retry)
             .await;
-        let response = session.invalidate_if_needed(result).await?;
-        Ok(extract_row_count(response.into_inner().stats))
+        let response = session.invalidate_if_needed(result).await?.into_inner();
+        observe_precommit_token(&precommit_token, response.precommit_token);
+        Ok(extract_row_count(response.stats))
     }
 
     pub async fn batch_update(&mut self, stmt: Vec<Statement>) -> Result<Vec<i64>, Status> {
@@ -263,14 +323,15 @@ impl ReadWriteTransaction {
         };
 
         let disable_route_to_leader = self.disable_route_to_leader;
+        let precommit_token = self.base_tx.precommit_token.clone();
         let session = self.as_mut_session();
         let result = session
             .spanner_client
             .execute_batch_dml(request, disable_route_to_leader, options.call_options.retry)
             .await;
-        let response = session.invalidate_if_needed(result).await?;
+        let response = session.invalidate_if_needed(result).await?.into_inner();
+        observe_precommit_token(&precommit_token, response.precommit_token);
         Ok(response
-            .into_inner()
             .result_sets
             .into_iter()
             .map(|x| extract_row_count(x.stats))
@@ -349,11 +410,25 @@ impl ReadWriteTransaction {
     }
 
     pub(crate) async fn commit(&mut self, options: CommitOptions) -> Result<CommitResponse, Status> {
+        // On a multiplexed session a mutation-only transaction has no statement response to
+        // take a precommit token from, and Spanner will not commit without one.
+        if self.uses_multiplexed_session() && !self.wb.is_empty() && self.base_tx.precommit_token.lock().is_none() {
+            self.begin_with_mutation_key(&options).await?;
+        }
         let tx_id = self.tx_id.clone();
         let mutations = self.wb.to_vec();
         let disable_route_to_leader = self.disable_route_to_leader;
+        let precommit_token = self.base_tx.precommit_token.lock().clone();
         let session = self.as_mut_session();
-        commit(session, mutations, TransactionId(tx_id), options, disable_route_to_leader).await
+        commit(
+            session,
+            mutations,
+            TransactionId(tx_id),
+            options,
+            disable_route_to_leader,
+            precommit_token,
+        )
+        .await
     }
 
     pub(crate) async fn rollback(&mut self, retry: Option<RetrySetting>) -> Result<(), Status> {
@@ -378,28 +453,54 @@ pub(crate) async fn commit(
     tx: commit_request::Transaction,
     commit_options: CommitOptions,
     disable_route_to_leader: bool,
+    precommit_token: Option<MultiplexedSessionPrecommitToken>,
 ) -> Result<CommitResponse, Status> {
-    let request = CommitRequest {
-        session: session.session.name.to_string(),
-        mutations: ms,
-        transaction: Some(tx),
-        request_options: Transaction::create_request_options(
-            commit_options.call_options.priority,
-            commit_options.transaction_tag.clone(),
-        ),
-        return_commit_stats: commit_options.return_commit_stats,
-        max_commit_delay: commit_options.max_commit_delay.map(|d| d.try_into().unwrap()),
-        precommit_token: None,
+    // Only a multiplexed session can answer a commit with "not committed, try again with
+    // this token", so the regular path stays a single request and never has to keep a copy
+    // of the mutations around.
+    let attempts = if session.session.multiplexed {
+        MAX_PRECOMMIT_TOKEN_RETRIES
+    } else {
+        1
     };
-    let result = session
-        .spanner_client
-        .commit(request, disable_route_to_leader, commit_options.call_options.retry)
-        .await;
-    let response = session.invalidate_if_needed(result).await;
-    match response {
-        Ok(r) => Ok(r.into_inner()),
-        Err(s) => Err(s),
+    let mut precommit_token = precommit_token;
+    let mut mutations = ms;
+
+    for attempt in 1..=attempts {
+        let request = CommitRequest {
+            session: session.session.name.to_string(),
+            mutations: if attempt == attempts {
+                std::mem::take(&mut mutations)
+            } else {
+                mutations.clone()
+            },
+            transaction: Some(tx.clone()),
+            request_options: Transaction::create_request_options(
+                commit_options.call_options.priority,
+                commit_options.transaction_tag.clone(),
+            ),
+            return_commit_stats: commit_options.return_commit_stats,
+            max_commit_delay: commit_options.max_commit_delay.map(|d| d.try_into().unwrap()),
+            precommit_token: precommit_token.take(),
+        };
+        let result = session
+            .spanner_client
+            .commit(request, disable_route_to_leader, commit_options.call_options.retry.clone())
+            .await;
+        let response = session.invalidate_if_needed(result).await?.into_inner();
+        match response.multiplexed_session_retry {
+            Some(commit_response::MultiplexedSessionRetry::PrecommitToken(token)) => {
+                tracing::debug!("commit was not applied, retrying with the returned precommit token");
+                precommit_token = Some(token);
+            }
+            None => return Ok(response),
+        }
     }
+
+    Err(Status::new(
+        Code::Aborted,
+        "commit did not complete after retrying with the precommit tokens returned by Spanner",
+    ))
 }
 
 fn extract_row_count(rs: Option<ResultSetStats>) -> i64 {
