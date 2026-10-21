@@ -41,9 +41,11 @@ impl TokenSource for ComputeTokenSource {
             .get(self.token_url.to_string())
             .header(METADATA_FLAVOR_KEY, METADATA_GOOGLE)
             .send()
-            .await?
+            .await
+            .map_err(|e| Error::HttpError(self.token_url.clone(), e))?
             .json::<InternalToken>()
-            .await?;
+            .await
+            .map_err(|e| Error::HttpError(self.token_url.clone(), e))?;
         return Ok(it.to_token(time::OffsetDateTime::now_utc()));
     }
 }
