@@ -28,10 +28,9 @@ pub struct ModelOverview {
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListModelsResponse {
-    /// An array of the dataset resources in the project.
-    /// Each resource contains basic information.
-    /// For full information about a particular dataset resource, use the Datasets: get method.
-    /// This property is omitted when there are no datasets in the project.
+    /// Models in the requested dataset.
+    /// This property is omitted when there are no models in the dataset.
+    #[serde(default)]
     pub models: Vec<ModelOverview>,
     /// A token that can be used to request the next results page.
     /// This property is omitted on the final results page.
@@ -47,10 +46,38 @@ pub fn build(
     page_token: Option<String>,
 ) -> RequestBuilder {
     let url = format!("{base_url}/projects/{project_id}/datasets/{dataset_id}/models");
-    let builder = client.get(url).query(req).query(req);
+    let builder = client.get(url).query(req);
     if let Some(page_token) = page_token {
         builder.query(&[("pageToken", page_token.as_str())])
     } else {
         builder
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::http::model::list::{build, ListModelsRequest, ListModelsResponse};
+
+    #[test]
+    fn test_deserialize_empty_response() {
+        let response: ListModelsResponse = serde_json::from_str("{}").unwrap();
+        assert!(response.models.is_empty());
+    }
+
+    #[test]
+    fn test_build_query() {
+        let client = reqwest_middleware::ClientBuilder::new(reqwest::Client::new()).build();
+        let req = ListModelsRequest { max_results: Some(10) };
+        let request = build(
+            "https://localhost",
+            &client,
+            "project",
+            "dataset",
+            &req,
+            Some("token".to_string()),
+        )
+        .build()
+        .unwrap();
+        assert_eq!(request.url().query(), Some("maxResults=10&pageToken=token"));
     }
 }

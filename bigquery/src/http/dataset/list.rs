@@ -52,6 +52,7 @@ pub struct ListDatasetsResponse {
     /// Each resource contains basic information.
     /// For full information about a particular dataset resource, use the Datasets: get method.
     /// This property is omitted when there are no datasets in the project.
+    #[serde(default)]
     pub datasets: Vec<DatasetOverview>,
     /// A token that can be used to request the next results page.
     /// This property is omitted on the final results page.
@@ -76,5 +77,17 @@ pub fn build(
         builder.query(&[("pageToken", page_token.as_str())])
     } else {
         builder
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::http::dataset::list::ListDatasetsResponse;
+
+    #[test]
+    fn test_deserialize_empty_response() {
+        let response: ListDatasetsResponse =
+            serde_json::from_str(r#"{"kind":"bigquery#datasetList","etag":"1B2M2Y8AsgTpgAmY7PhCfg=="}"#).unwrap();
+        assert!(response.datasets.is_empty());
     }
 }
