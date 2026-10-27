@@ -15,6 +15,24 @@ use crate::row::Row;
 use crate::session::SessionHandle;
 use crate::transaction::CallOptions;
 
+/// Retry setting for the stream-creation rpc of reads. tonic maps an HTTP/2
+/// channel recycled under the caller (h2 GOAWAY "max_age" -> Internal
+/// "h2 protocol error"; a racing teardown -> Cancelled "operation was
+/// canceled") to codes outside the per-rpc default of
+/// {Unavailable, Unknown}, so the race surfaced to callers once per recycle.
+/// Widening is safe on these paths: queries and reads are idempotent, and DML
+/// carries a per-statement `seqno`, so a replayed request is applied at most
+/// once by the server.
+fn read_default_retry_setting() -> google_cloud_gax::retry::RetrySetting {
+    google_cloud_gax::retry::RetrySetting {
+        from_millis: 50,
+        max_delay: Some(std::time::Duration::from_secs(10)),
+        factor: 1u64,
+        take: 20,
+        codes: vec![Code::Unavailable, Code::Unknown, Code::Cancelled, Code::Internal],
+    }
+}
+
 pub trait Reader: Send + Sync {
     fn read(
         &self,
@@ -42,8 +60,9 @@ impl Reader for StatementReader {
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
         let option = option.unwrap_or_default();
         let client = &mut session.spanner_client;
+        let retry = option.retry.or_else(|| Some(read_default_retry_setting()));
         let result = client
-            .execute_streaming_sql(self.request.clone(), disable_route_to_leader, option.retry)
+            .execute_streaming_sql(self.request.clone(), disable_route_to_leader, retry)
             .await;
         session.invalidate_if_needed(result).await
     }
@@ -70,8 +89,9 @@ impl Reader for TableReader {
     ) -> Result<Response<Streaming<PartialResultSet>>, Status> {
         let option = option.unwrap_or_default();
         let client = &mut session.spanner_client;
+        let retry = option.retry.or_else(|| Some(read_default_retry_setting()));
         let result = client
-            .streaming_read(self.request.clone(), disable_route_to_leader, option.retry)
+            .streaming_read(self.request.clone(), disable_route_to_leader, retry)
             .await;
         session.invalidate_if_needed(result).await
     }
