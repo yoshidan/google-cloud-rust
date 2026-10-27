@@ -943,11 +943,9 @@ mod tests {
         // subscribe and ack messages
         let mut acked = 0;
         let mut iter = subscription.subscribe(opt).await.unwrap();
-        while let Some(message) = {
-            tokio::select! {
-                v = iter.next() => v,
-                _ = ctx.cancelled() => None
-            }
+        while let Some(message) = tokio::select! {
+            v = iter.next() => v,
+            _ = ctx.cancelled() => None
         } {
             let _ = message.ack().await;
             tracing::info!("acked {}", message.message.message_id);

@@ -8,7 +8,7 @@ fn main() {
     #[cfg(all(feature = "generate", feature = "bytes"))]
     {
         let mut bytes_config = prost_build::Config::new();
-        bytes_config.bytes(&["."]);
+        bytes_config.bytes(["."]);
         generate(bytes_config, "src/bytes");
     }
 }

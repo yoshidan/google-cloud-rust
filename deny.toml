@@ -38,6 +38,10 @@ ignore = [
     # This is due to the feature ['jsonwebtoken/rust_crypto']
     # We can use ['jsonwebtoken/aws_lc_rs'] instead to avoid this vulnerability.
     "RUSTSEC-2023-0071",
+    # crypto-bigint 0.5 is pulled in by p256/p384 via ['jsonwebtoken/rust_crypto'].
+    # The fix is only in crypto-bigint 0.7, which the p256/p384 0.13 line does not use.
+    # We can use ['jsonwebtoken/aws_lc_rs'] instead to avoid this vulnerability.
+    "RUSTSEC-2026-0387",
 ]
 # Threshold for security vulnerabilities, any vulnerability with a CVSS score
 # lower than the range specified will be ignored. Note that ignored advisories
