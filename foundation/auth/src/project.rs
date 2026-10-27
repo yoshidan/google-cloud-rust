@@ -9,7 +9,7 @@ use crate::token_source::compute_token_source::ComputeTokenSource;
 use crate::token_source::reuse_token_source::ReuseTokenSource;
 use crate::token_source::service_account_token_source::OAuth2ServiceAccountTokenSource;
 use crate::token_source::service_account_token_source::ServiceAccountTokenSource;
-use crate::token_source::TokenSource;
+use crate::token_source::GoogleCloudTokenSource;
 use crate::{credentials, error};
 
 pub(crate) const SERVICE_ACCOUNT_KEY: &str = "service_account";
@@ -106,7 +106,7 @@ pub async fn project() -> Result<Project, error::Error> {
 pub async fn create_token_source_from_credentials(
     credentials: &CredentialsFile,
     config: &Config<'_>,
-) -> Result<Box<dyn TokenSource>, error::Error> {
+) -> Result<Box<dyn GoogleCloudTokenSource>, error::Error> {
     let ts = credentials_from_json_with_params(credentials, config).await?;
     let token = ts.token().await?;
     Ok(Box::new(ReuseTokenSource::new(ts, token)))
@@ -116,7 +116,7 @@ pub async fn create_token_source_from_credentials(
 pub async fn create_token_source_from_project(
     project: &Project,
     config: Config<'_>,
-) -> Result<Box<dyn TokenSource>, error::Error> {
+) -> Result<Box<dyn GoogleCloudTokenSource>, error::Error> {
     match project {
         Project::FromFile(file) => {
             if config.use_id_token {
@@ -145,7 +145,7 @@ pub async fn create_token_source_from_project(
 /// create_token_source creates the token source
 /// use [DefaultTokenSourceProvider](crate::token::DefaultTokenSourceProvider) or impl [TokenSourceProvider](google_cloud_token::TokenSourceProvider) instead.
 #[deprecated(note = "Use DefaultTokenSourceProvider instead")]
-pub async fn create_token_source(config: Config<'_>) -> Result<Box<dyn TokenSource>, error::Error> {
+pub async fn create_token_source(config: Config<'_>) -> Result<Box<dyn GoogleCloudTokenSource>, error::Error> {
     let project = project().await?;
     create_token_source_from_project(&project, config).await
 }
@@ -153,7 +153,7 @@ pub async fn create_token_source(config: Config<'_>) -> Result<Box<dyn TokenSour
 async fn credentials_from_json_with_params(
     credentials: &CredentialsFile,
     config: &Config<'_>,
-) -> Result<Box<dyn TokenSource>, error::Error> {
+) -> Result<Box<dyn GoogleCloudTokenSource>, error::Error> {
     match credentials.tp.as_str() {
         SERVICE_ACCOUNT_KEY => {
             match config.audience {

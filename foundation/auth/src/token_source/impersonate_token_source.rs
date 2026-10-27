@@ -4,11 +4,11 @@ use time::format_description::well_known::Rfc3339;
 
 use crate::error::Error;
 use crate::token::Token;
-use crate::token_source::{default_http_client, TokenSource};
+use crate::token_source::{default_http_client, GoogleCloudTokenSource};
 
 #[derive(Debug)]
 pub struct ImpersonateTokenSource {
-    target: Box<dyn TokenSource>,
+    target: Box<dyn GoogleCloudTokenSource>,
     scopes: Vec<String>,
     delegates: Vec<String>,
     url: String,
@@ -23,7 +23,7 @@ impl ImpersonateTokenSource {
         delegates: Vec<String>,
         scopes: Vec<String>,
         lifetime: Option<i32>,
-        target: Box<dyn TokenSource>,
+        target: Box<dyn GoogleCloudTokenSource>,
     ) -> Self {
         ImpersonateTokenSource {
             target,
@@ -37,7 +37,7 @@ impl ImpersonateTokenSource {
 }
 
 #[async_trait]
-impl TokenSource for ImpersonateTokenSource {
+impl GoogleCloudTokenSource for ImpersonateTokenSource {
     async fn token(&self) -> Result<Token, Error> {
         let body = ImpersonateTokenRequest {
             lifetime: format!("{}s", self.lifetime.unwrap_or(3600)),
