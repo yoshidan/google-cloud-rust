@@ -1,0 +1,74 @@
+# Spanner Omni: a full Spanner server in one container. It accepts only multiplexed
+# sessions, so the client needs `SessionConfig::multiplexed = true`.
+#
+#   docker compose -f docker-compose.omni.yml up -d --wait
+#   docker wait gcloud-spanner-omni-spanner-omni-init-1   # returns 0 once the schema exists
+#   cargo test -p gcloud-spanner --test omni_test -- --ignored
+#
+# Both waits are needed: `up --wait` returns as soon as the init container is running,
+# which is before it has applied the schema.
+
+name: gcloud-spanner-omni
+
+services:
+  spanner-omni:
+    image: ${SPANNER_OMNI_IMAGE:-us-docker.pkg.dev/spanner-omni/images/spanner-omni:2026.r2.1-beta}
+    command: start-single-server
+    ports:
+      # Omni serves gRPC on 15000 inside the container.
+      - "${SPANNER_OMNI_PORT:-9011}:15000"
+    volumes:
+      - omni-data:/spanner
+    healthcheck:
+      # Absolute path: `CMD` does not run a shell, so PATH does not apply.
+      test: ["CMD", "/google/spanner/bin/spanner", "databases", "list"]
+      interval: 5s
+      timeout: 30s
+      retries: 40
+      start_period: 15s
+
+  # Omni does not create databases on demand, so one has to be made before use. The
+  # image ships its own CLI, which saves pulling a second image.
+  spanner-omni-init:
+    image: ${SPANNER_OMNI_IMAGE:-us-docker.pkg.dev/spanner-omni/images/spanner-omni:2026.r2.1-beta}
+    depends_on:
+      spanner-omni:
+        condition: service_healthy
+    volumes:
+      - ./tests/ddl:/ddl:ro
+    environment:
+      SPANNER_DATABASE_ID: ${SPANNER_DATABASE_ID:-local-database}
+    # The image has no bash and a toybox /bin/sh with no `set -e`, so every failure is
+    # checked explicitly.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        SPANNER=/google/spanner/bin/spanner
+        ENDPOINT=dns:///spanner-omni:15000
+        DB="$${SPANNER_DATABASE_ID}"
+
+        # `databases list` pads and indents its rows, so match on the exit code of
+        # `describe` rather than trying to find the name in the table.
+        if $$SPANNER databases describe "$$DB" --deployment-endpoint="$$ENDPOINT" >/dev/null 2>&1; then
+          echo "database $$DB already exists"
+          exit 0
+        fi
+
+        echo "creating database $$DB"
+        $$SPANNER databases create "$$DB" --deployment-endpoint="$$ENDPOINT" --timeout 5m
+        if [ $$? -ne 0 ]; then
+          echo "failed to create database $$DB"
+          exit 1
+        fi
+
+        echo "applying /ddl/schema.sql"
+        $$SPANNER databases ddl update "$$DB" --ddl-file=/ddl/schema.sql --deployment-endpoint="$$ENDPOINT"
+        if [ $$? -ne 0 ]; then
+          echo "failed to apply schema to $$DB"
+          exit 1
+        fi
+
+        echo "database $$DB is ready"
+
+volumes:
+  omni-data:

@@ -13,7 +13,7 @@ use google_cloud_googleapis::spanner::v1::{
 use crate::retry::StreamingRetry;
 use crate::row::Row;
 use crate::session::SessionHandle;
-use crate::transaction::CallOptions;
+use crate::transaction::{observe_precommit_token, CallOptions, PrecommitTokenSink};
 
 pub trait Reader: Send + Sync {
     fn read(
@@ -316,6 +316,10 @@ where
     resumable: bool,
     end_of_stream: bool,
     stream_retry: StreamingRetry,
+    /// Precommit tokens ride on the `PartialResultSet`s of a read-write transaction running
+    /// on a multiplexed session. The iterator holds the session borrow, so it reports them
+    /// through the owning transaction's shared slot rather than returning them.
+    precommit_token: PrecommitTokenSink,
 }
 
 impl<'a, T> RowIterator<'a, T>
@@ -327,6 +331,7 @@ where
         reader: T,
         option: Option<CallOptions>,
         disable_route_to_leader: bool,
+        precommit_token: PrecommitTokenSink,
     ) -> Result<RowIterator<'a, T>, Status> {
         let streaming = reader
             .read(session, option, disable_route_to_leader)
@@ -351,6 +356,7 @@ where
             resumable: true,
             end_of_stream: false,
             stream_retry: StreamingRetry::new(),
+            precommit_token,
         })
     }
 
@@ -411,10 +417,14 @@ where
             };
 
             match received {
-                Some(result_set) => {
+                Some(mut result_set) => {
                     if result_set.last {
                         self.end_of_stream = true;
                     }
+                    // Record the token as soon as it arrives rather than when the row is
+                    // delivered, so it survives an iterator that is dropped before the
+                    // buffer is drained.
+                    observe_precommit_token(&self.precommit_token, result_set.precommit_token.take());
                     self.prs_buffer.push(result_set);
                     if self.prs_buffer.unretryable {
                         self.resumable = false;
