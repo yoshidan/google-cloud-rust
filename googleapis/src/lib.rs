@@ -58,6 +58,8 @@ pub mod storage {
     pub mod v2;
 }
 
+// The path attribute is unused when no child feature is enabled.
+#[allow(unused_attributes)]
 #[path = ""]
 pub mod devtools {
     #[cfg(feature = "artifact-registry")]
@@ -68,6 +70,8 @@ pub mod devtools {
     }
 }
 
+// The path attribute is unused when no child feature is enabled.
+#[allow(unused_attributes)]
 #[path = ""]
 pub mod cloud {
     #[cfg(feature = "bigquery")]
