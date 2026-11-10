@@ -17,7 +17,7 @@ doctest = false
 tracing = "0.1"
 prost-types = "0.14"
 prost = "0.14"
-tokio = "1.32"
+tokio = { version = "1.32", features = ["rt", "time"] }
 time = { version="0.3", features = ["std", "macros", "formatting", "parsing"] }
 thiserror = "2.0"
 parking_lot = "0.12"
@@ -34,7 +34,10 @@ opentelemetry = { version = "0.31", optional = true, default-features = false, f
 google-cloud-auth = { package = "gcloud-auth", optional = true, version = "1.4.0", path="../foundation/auth", default-features=false }
 
 [dev-dependencies]
-tokio = { version="1.32", features=["rt-multi-thread", "test-util"] }
+bytes = "1"
+h2 = "0.4"
+http = "1"
+tokio = { version="1.32", features=["macros", "net", "rt-multi-thread", "sync", "test-util", "time"] }
 tracing-subscriber = { version="0.3", features=["env-filter"] }
 serial_test = "3.1"
 ctor = "0.5"
