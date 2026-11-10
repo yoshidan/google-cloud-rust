@@ -1,8 +1,10 @@
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
+use std::time::Duration;
 
 use prost::Message;
 use prost_types::{value::Kind, Timestamp, Value};
+use tokio::runtime::Handle;
 
 use google_cloud_gax::grpc::{Code, Response, Status, Streaming};
 use google_cloud_googleapis::spanner::v1::struct_type::Field;
@@ -305,7 +307,7 @@ pub struct RowIterator<'a, T>
 where
     T: Reader,
 {
-    streaming: Streaming<PartialResultSet>,
+    streaming: Option<Streaming<PartialResultSet>>,
     session: &'a mut SessionHandle,
     reader: T,
     rs: ResultSet,
@@ -315,6 +317,8 @@ where
     prs_buffer: ResumablePartialResultSetBuffer,
     resumable: bool,
     end_of_stream: bool,
+    seen_last: bool,
+    tokio_handle: Option<Handle>,
     stream_retry: StreamingRetry,
 }
 
@@ -340,7 +344,7 @@ where
             chunked_value: false,
         };
         Ok(Self {
-            streaming,
+            streaming: Some(streaming),
             session,
             reader,
             rs,
@@ -350,6 +354,8 @@ where
             prs_buffer: ResumablePartialResultSetBuffer::new(DEFAULT_MAX_BYTES_BETWEEN_RESUME_TOKENS),
             resumable: true,
             end_of_stream: false,
+            seen_last: false,
+            tokio_handle: Handle::try_current().ok(),
             stream_retry: StreamingRetry::new(),
         })
     }
@@ -383,7 +389,14 @@ where
                 return Ok(false);
             }
 
-            let received = match self.streaming.message().await {
+            let received = match self.streaming.as_mut() {
+                Some(streaming) => streaming.message().await,
+                None => {
+                    self.end_of_stream = true;
+                    return Ok(false);
+                }
+            };
+            let received = match received {
                 Ok(s) => s,
                 Err(e) => {
                     if !self.reader.can_resume() || !self.resumable {
@@ -404,7 +417,7 @@ where
                         .reader
                         .read(self.session, call_option, self.disable_route_to_leader)
                         .await?;
-                    self.streaming = result.into_inner();
+                    self.streaming = Some(result.into_inner());
                     self.prs_buffer.on_resumption();
                     continue;
                 }
@@ -414,6 +427,7 @@ where
                 Some(result_set) => {
                     if result_set.last {
                         self.end_of_stream = true;
+                        self.seen_last = true;
                     }
                     self.prs_buffer.push(result_set);
                     if self.prs_buffer.unretryable {
@@ -421,6 +435,7 @@ where
                     }
                 }
                 None => {
+                    self.streaming = None;
                     self.end_of_stream = true;
                 }
             }
@@ -470,10 +485,35 @@ where
             }
             // no data found or record chunked.
             if !self.try_recv(self.reader_option.clone()).await? {
+                if self.seen_last {
+                    if let (Some(handle), Some(streaming)) = (self.tokio_handle.as_ref(), self.streaming.take()) {
+                        drain_stream_in_background(handle, streaming);
+                    }
+                }
                 return Ok(None);
             }
         }
     }
+}
+
+impl<T: Reader> Drop for RowIterator<'_, T> {
+    fn drop(&mut self) {
+        if self.seen_last {
+            if let (Some(handle), Some(streaming)) = (self.tokio_handle.as_ref(), self.streaming.take()) {
+                drain_stream_in_background(handle, streaming);
+            }
+        }
+    }
+}
+
+fn drain_stream_in_background(handle: &Handle, mut streaming: Streaming<PartialResultSet>) {
+    handle.spawn(async move {
+        // Draining the trailers avoids resetting a stream after its final result set.
+        let _ = tokio::time::timeout(Duration::from_secs(5), async move {
+            while let Ok(Some(_)) = streaming.message().await {}
+        })
+        .await;
+    });
 }
 
 #[cfg(test)]
@@ -1072,9 +1112,11 @@ mod tests {
     #[test]
     fn test_prs_buffer_flushes_on_end_of_stream() {
         let mut buffer = super::ResumablePartialResultSetBuffer::new(1024);
-        buffer.push(prs(vec![value("value-1")], "", false));
+        let mut last = prs(vec![value("value-1"), value("value-2")], "", false);
+        last.last = true;
+        buffer.push(last);
         assert!(buffer.pop_ready(false).is_none());
-        assert!(buffer.pop_ready(true).is_some());
+        assert_eq!(buffer.pop_ready(true).unwrap().values, vec![value("value-1"), value("value-2")]);
         assert!(buffer.pop_ready(true).is_none());
     }
 
