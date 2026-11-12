@@ -54,15 +54,14 @@ pub struct TableOverview {
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListTablesResponse {
-    /// Output only. The resource type. This property always returns the value "bigquery#datasetList"
+    /// Output only. The resource type. This property always returns the value "bigquery#tableList"
     pub kind: String,
     /// Output only. A hash value of the results page.
     /// You can use this property to determine if the page has changed since the last request.
     pub etag: String,
-    /// An array of the dataset resources in the project.
-    /// Each resource contains basic information.
-    /// For full information about a particular dataset resource, use the Datasets: get method.
-    /// This property is omitted when there are no datasets in the project.
+    /// Tables in the requested dataset.
+    /// This property is omitted when there are no tables in the dataset.
+    #[serde(default)]
     pub tables: Vec<TableOverview>,
     /// A token that can be used to request the next results page.
     /// This property is omitted on the final results page.
@@ -80,10 +79,41 @@ pub fn build(
     page_token: Option<String>,
 ) -> RequestBuilder {
     let url = format!("{base_url}/projects/{project_id}/datasets/{dataset_id}/tables");
-    let builder = client.get(url).query(req).query(req);
+    let builder = client.get(url).query(req);
     if let Some(page_token) = page_token {
         builder.query(&[("pageToken", page_token.as_str())])
     } else {
         builder
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::http::table::list::{build, ListTablesRequest, ListTablesResponse};
+
+    #[test]
+    fn test_deserialize_empty_response() {
+        let response: ListTablesResponse =
+            serde_json::from_str(r#"{"kind":"bigquery#tableList","etag":"1B2M2Y8AsgTpgAmY7PhCfg==","totalItems":0}"#)
+                .unwrap();
+        assert!(response.tables.is_empty());
+        assert_eq!(response.total_items, 0);
+    }
+
+    #[test]
+    fn test_build_query() {
+        let client = reqwest_middleware::ClientBuilder::new(reqwest::Client::new()).build();
+        let req = ListTablesRequest { max_results: Some(10) };
+        let request = build(
+            "https://localhost",
+            &client,
+            "project",
+            "dataset",
+            &req,
+            Some("token".to_string()),
+        )
+        .build()
+        .unwrap();
+        assert_eq!(request.url().query(), Some("maxResults=10&pageToken=token"));
     }
 }

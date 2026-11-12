@@ -20,6 +20,7 @@ pub struct ListRoutinesResponse {
     /// Routines in the requested dataset. Unless readMask is set in the request,
     /// only the following fields are populated: etag, projectId, datasetId, routineId, routineType,
     /// creationTime, lastModifiedTime, language, and remoteFunctionOptions.
+    #[serde(default)]
     pub routines: Vec<RoutineOverview>,
     /// A token to request the next page of results.
     pub next_page_token: Option<String>,
@@ -60,5 +61,16 @@ pub fn build(
         builder.query(&[("pageToken", page_token.as_str())])
     } else {
         builder
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::http::routine::list::ListRoutinesResponse;
+
+    #[test]
+    fn test_deserialize_empty_response() {
+        let response: ListRoutinesResponse = serde_json::from_str("{}").unwrap();
+        assert!(response.routines.is_empty());
     }
 }

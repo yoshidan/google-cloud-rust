@@ -70,6 +70,7 @@ pub struct ListJobsResponse {
     /// A token to request the next page of results.
     pub next_page_token: Option<String>,
     /// List of jobs that were requested.
+    #[serde(default)]
     pub jobs: Vec<JobOverview>,
 }
 
@@ -86,5 +87,17 @@ pub fn build(
         builder.query(&[("pageToken", page_token.as_str())])
     } else {
         builder
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::http::job::list::ListJobsResponse;
+
+    #[test]
+    fn test_deserialize_empty_response() {
+        let response: ListJobsResponse =
+            serde_json::from_str(r#"{"etag":"tAZvk1k2f2GY8yHaQF7how==","kind":"bigquery#jobList"}"#).unwrap();
+        assert!(response.jobs.is_empty());
     }
 }
