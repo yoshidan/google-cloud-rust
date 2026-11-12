@@ -180,6 +180,8 @@ skip = [
     { name = "getrandom" },
     # arrow depends on num-bigint 0.5 while bigdecimal/simple_asn1 still use 0.4
     { name = "num-bigint" },
+    # prost-build 0.14.5 depends on prettyplease 0.3 while tonic-build still uses 0.2
+    { name = "prettyplease" },
 ]
 # Similarly to `skip` allows you to skip certain crates during duplicate
 # detection. Unlike skip, it also includes the entire tree of transitive
