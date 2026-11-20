@@ -3,6 +3,7 @@ use std::iter::Take;
 use std::time::Duration;
 
 pub use tokio_retry2::strategy::ExponentialBackoff;
+use tokio_retry2::strategy::jitter;
 use tokio_retry2::{Action, RetryIf};
 pub use tokio_retry2::{Condition, MapErr};
 
@@ -22,6 +23,9 @@ pub trait Retry<E: TryAs<Status>, T: Condition<E>> {
     fn strategy(&self) -> Take<ExponentialBackoff>;
     fn condition(&self) -> T;
     fn notify(error: &E, duration: Duration);
+    fn jitter(&self) -> bool {
+        false
+    }
 }
 
 pub struct CodeCondition {
@@ -57,6 +61,7 @@ pub struct RetrySetting {
     pub factor: u64,
     pub take: usize,
     pub codes: Vec<Code>,
+    pub jitter: bool,
 }
 
 impl Retry<Status, CodeCondition> for RetrySetting {
@@ -75,6 +80,10 @@ impl Retry<Status, CodeCondition> for RetrySetting {
     fn notify(_error: &Status, _duration: Duration) {
         tracing::trace!("retry fn");
     }
+
+    fn jitter(&self) -> bool {
+        self.jitter
+    }
 }
 
 impl Default for RetrySetting {
@@ -85,6 +94,7 @@ impl Default for RetrySetting {
             factor: 1u64,
             take: 5,
             codes: vec![Code::Unavailable, Code::Unknown, Code::Aborted],
+            jitter: false,
         }
     }
 }
@@ -97,7 +107,8 @@ where
     RT: Retry<E, C> + Default,
 {
     let retry = retry.unwrap_or_default();
-    RetryIf::spawn(retry.strategy(), action, retry.condition(), RT::notify).await
+    let apply: fn(Duration) -> Duration = if retry.jitter() { jitter } else { |d| d };
+    RetryIf::spawn(retry.strategy().map(apply), action, retry.condition(), RT::notify).await
 }
 /// Repeats retries when the specified error is detected.
 /// The argument specified by 'v' can be reused for each retry.
@@ -109,7 +120,8 @@ where
     RT: Retry<E, C> + Default,
 {
     let retry = retry.unwrap_or_default();
-    let mut strategy = retry.strategy();
+    let apply: fn(Duration) -> Duration = if retry.jitter() { jitter } else { |d| d };
+    let mut strategy = retry.strategy().map(apply);
     loop {
         let result = f(v).await;
         let status = match result {
