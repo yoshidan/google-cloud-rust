@@ -17,7 +17,7 @@ doctest = false
 tracing = "0.1"
 prost-types = "0.14"
 prost = "0.14"
-tokio = "1.32"
+tokio = { version = "1.32", features = ["rt", "time"] }
 time = { version="0.3", features = ["std", "macros", "formatting", "parsing"] }
 thiserror = "2.0"
 parking_lot = "0.12"
@@ -36,12 +36,13 @@ google-cloud-auth = { package = "gcloud-auth", optional = true, version = "1.4.0
 [dev-dependencies]
 bytes = "1"
 flate2 = "1"
+h2 = "0.4"
 http = "1"
 http-body-util = "0.1"
 tokio-stream = { version = "0.1", features = ["net"] }
 tonic = { version = "0.14", default-features = false, features = ["transport", "router"] }
 tower = "0.5"
-tokio = { version="1.32", features=["macros", "net", "rt-multi-thread", "test-util"] }
+tokio = { version="1.32", features=["macros", "net", "rt-multi-thread", "sync", "test-util", "time"] }
 tracing-subscriber = { version="0.3", features=["env-filter"] }
 serial_test = "3.1"
 ctor = "0.5"
