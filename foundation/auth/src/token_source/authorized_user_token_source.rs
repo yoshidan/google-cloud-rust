@@ -63,9 +63,11 @@ impl TokenSource for UserAccountTokenSource {
             .post(self.token_url.to_string())
             .json(&data)
             .send()
-            .await?
+            .await
+            .map_err(|e| Error::HttpError(self.token_url.clone(), e))?
             .json::<InternalToken>()
-            .await?;
+            .await
+            .map_err(|e| Error::HttpError(self.token_url.clone(), e))?;
 
         return Ok(it.to_token(time::OffsetDateTime::now_utc()));
     }
